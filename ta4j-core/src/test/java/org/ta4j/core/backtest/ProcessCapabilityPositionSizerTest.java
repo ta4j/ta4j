@@ -191,6 +191,29 @@ public class ProcessCapabilityPositionSizerTest {
     }
 
     @Test
+    public void configuredBaseAmountSurvivesCapabilityFactoryPrecision() {
+        // The constructor must retain the configured base amount losslessly:
+        // a precision-1 capability factory rounds 1.2345 to 1, and coercing
+        // that already-rounded copy into a precision-10 context would
+        // permanently lose the configured digits. The raw snapshot must
+        // round through the context factory instead.
+        NumFactory precisionOneFactory = DecimalNumFactory.getInstance(1);
+        NumFactory precisionTenFactory = DecimalNumFactory.getInstance(10);
+        BarSeries decimalSeries = new MockBarSeriesBuilder().withNumFactory(precisionOneFactory).withData(1, 2).build();
+        FixedIndicator<Num> decimalStatistic = new FixedIndicator<>(decimalSeries, precisionOneFactory.numOf(0),
+                precisionOneFactory.numOf(0));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(decimalStatistic, new BigDecimal("1.2345"), 10);
+
+        runWithNumFactory(precisionTenFactory, () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+            // A zero statistic is exactly safe and returns the full base
+            // amount unchanged, so the assertion isolates the base-amount
+            // coercion.
+            assertNumEquals(numFactory.numOf(new BigDecimal("1.2345")), sizer.amount(context(series, 1, 1)), 0);
+        });
+    }
+
+    @Test
     public void positiveUnderflowingBaseAmountSaturatesToEpsilonFloor() {
         // A DecimalNum base amount of 1e-400 is positive in its own factory
         // but underflows to zero when coerced into a DoubleNum context: the

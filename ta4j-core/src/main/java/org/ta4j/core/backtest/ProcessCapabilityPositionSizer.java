@@ -50,13 +50,16 @@ import org.ta4j.core.num.NumFactory;
  * context's {@link NumFactory}: the capability statistic and the sizing
  * parameters are coerced into the context factory's exact configuration rather
  * than matched by implementation class, so mixed-factory and mixed-precision
- * {@code DecimalNum} compositions round consistently at sizing time. A
- * {@code BigDecimal}-backed context receives the statistic and the base amount
- * through their {@code BigDecimal} delegate, preserving mantissa digits and
- * magnitude beyond the double range (for example a {@code 1e400} statistic
- * sizes at the exact damped amount {@code baseAmount / (1 + 1e400)}); the
- * double-overflow epsilon floor applies only when the context itself cannot
- * represent the ratio.
+ * {@code DecimalNum} compositions round consistently at sizing time. The
+ * configured base amount is retained losslessly (as its exact value, not the
+ * capability factory's rounded copy of it) and coerced through the context
+ * factory at sizing time, so a coarse capability factory never irreversibly
+ * rounds the configured amount. A {@code BigDecimal}-backed context receives
+ * the statistic and the base amount through their {@code BigDecimal} delegate,
+ * preserving mantissa digits and magnitude beyond the double range (for example
+ * a {@code 1e400} statistic sizes at the exact damped amount
+ * {@code baseAmount / (1 + 1e400)}); the double-overflow epsilon floor applies
+ * only when the context itself cannot represent the ratio.
  * <p>
  * Backtest managers validate the returned amount through
  * {@link Num#doubleValue()}, so any amount that cannot round-trip through a
@@ -74,6 +77,7 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
 
     private final Indicator<Num> capabilityIndicator;
     private final Num baseAmount;
+    private final BigDecimal rawBaseAmount;
     private final Num controlLimit;
 
     /**
@@ -83,24 +87,29 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
      *                            not be null and must be bound to a
      *                            {@link org.ta4j.core.BarSeries}
      * @param baseAmount          the position amount when the statistic is zero;
-     *                            must be > 0 and finite in the capability
-     *                            indicator's {@link NumFactory}
+     *                            must be > 0 and finite. The configured value is
+     *                            retained losslessly and coerced through the
+     *                            backtest context's {@link NumFactory} at sizing
+     *                            time, so the capability factory's precision never
+     *                            rounds it irreversibly (a precision-1 capability
+     *                            factory would collapse 1.2345 to 1)
      * @param controlLimit        the statistical control limit; must be > 0 and
      *                            finite in the capability indicator's
      *                            {@link NumFactory}
      */
     public ProcessCapabilityPositionSizer(Indicator<Num> capabilityIndicator, Number baseAmount, Number controlLimit) {
         this.capabilityIndicator = Objects.requireNonNull(capabilityIndicator, "capabilityIndicator must not be null");
-        NumFactory factory = capabilityIndicator.getBarSeries().numFactory();
-        this.baseAmount = requirePositiveFinite(baseAmount, "baseAmount", factory);
-        this.controlLimit = requirePositiveFinite(controlLimit, "controlLimit", factory);
+        this.rawBaseAmount = requirePositiveFiniteRaw(baseAmount, "baseAmount");
+        this.baseAmount = capabilityIndicator.getBarSeries().numFactory().numOf(this.rawBaseAmount);
+        this.controlLimit = requirePositiveFinite(controlLimit, "controlLimit",
+                capabilityIndicator.getBarSeries().numFactory());
     }
 
     @Override
     public Num amount(PositionSizer.Context context) {
         NumFactory factory = context.numFactory();
         Num statistic = capabilityIndicator.getValue(context.entryIndex());
-        Num baseAmountValue = coerceToContextFactory(factory, baseAmount);
+        Num baseAmountValue = coerceBaseAmountToContextFactory(factory);
         if (baseAmountValue.isZero()) {
             // The constructor guarantees baseAmount is positive, so a coerced
             // zero can only be a positive underflow: saturate to the context
@@ -158,6 +167,45 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
         // saturated to the largest double-representable magnitude, keeping the
         // coerced value finite for double-backed destinations.
         return factory.numOf(Double.isFinite(doubleValue) ? doubleValue : Double.MAX_VALUE);
+    }
+
+    /**
+     * Coerces the configured base amount into the backtest context's
+     * {@link NumFactory}. The constructor validated it in the capability factory,
+     * whose precision can differ from the context's: the lossless raw snapshot is
+     * converted here so the context factory's exact configuration rounds the
+     * configured value itself, not an already-capability-rounded copy of it.
+     */
+    private Num coerceBaseAmountToContextFactory(NumFactory factory) {
+        if (factory == baseAmount.getNumFactory()) {
+            return baseAmount;
+        }
+        if (factory.one().getDelegate() instanceof BigDecimal) {
+            // BigDecimal-backed destination: convert via BigDecimal so mantissa
+            // digits and magnitude are preserved; a finite value outside the
+            // double range (for example 1e400) never round-trips through a
+            // primitive double.
+            return factory.numOf(rawBaseAmount);
+        }
+        double doubleValue = rawBaseAmount.doubleValue();
+        // A finite configured value whose double representation overflows is
+        // saturated to the largest double-representable magnitude, keeping the
+        // coerced value finite for double-backed destinations.
+        return factory.numOf(Double.isFinite(doubleValue) ? doubleValue : Double.MAX_VALUE);
+    }
+
+    private static BigDecimal requirePositiveFiniteRaw(Number value, String name) {
+        Objects.requireNonNull(value, name + " must not be null");
+        if (value instanceof Double || value instanceof Float) {
+            if (!Double.isFinite(value.doubleValue())) {
+                throw new IllegalArgumentException(name + " must be finite");
+            }
+        }
+        BigDecimal raw = value instanceof BigDecimal ? (BigDecimal) value : BigDecimal.valueOf(value.doubleValue());
+        if (raw.signum() <= 0) {
+            throw new IllegalArgumentException(name + " must be > 0");
+        }
+        return raw;
     }
 
     /**

@@ -143,10 +143,12 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void seedsVarianceConsistentlyWithRoundedWeights() {
-        // The complement (1 - decay) must be derived from the raw decay
-        // factor, mirroring EWMAIndicator: at DecimalNum precision 1 both
-        // 0.9999 and its complement round to 1 and 0.0001 respectively, and
-        // deriving the complement as one().minus(decay) collapses it to zero.
+        // The complement is derived as the exact BigDecimal difference
+        // 1 - decay and the decay is derived from it, mirroring
+        // CusumIndicator's scale-decay conversion: at DecimalNum precision 1
+        // both 0.9999 and its complement round to 1 and 0.0001 respectively,
+        // and deriving the complement as one().minus(decay) collapses it to
+        // zero.
         NumFactory rounded = DecimalNumFactory.getInstance(1);
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(rounded).withData(1, 2).build();
         EwmaVarianceIndicator roundedWeights = new EwmaVarianceIndicator(
@@ -169,6 +171,25 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
         Num reseeded = collapsed.getValue(4);
         assertTrue(reseeded.isNaN());
+    }
+
+    @Test
+    public void seedsInitialWindowWithoutSquaringOverflow() {
+        // The seed window [0, 2e154, 0] has population variance 8e308/9,
+        // which is representable, but the naive sum-of-squares seeding first
+        // squares 2e154 to 4e308 and overflows DoubleNum to a non-finite
+        // seed. The scaled seeding (window mean scaled by the window size,
+        // squared deviations accumulated per-term scaled) must publish the
+        // finite population variance instead.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(0, 2e154, 0).build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(
+                new MockIndicator(series, 0, numOf(0), numOf(2e154), numOf(0)), 3, 0.5);
+
+        Num value = variance.getValue(2);
+
+        assertTrue(Num.isFinite(value));
+        assertTrue(value.isPositive());
+        assertNumEquals(numOf(8.888888888888889e307), value, 8.888888888888889e307 * 1e-9);
     }
 
     @Test
@@ -259,7 +280,7 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
         // A deviation of 1e160 has a square of 1e320, which overflows
         // DoubleNum even though the decay-weighted contribution
         // (1 - decay) * deviation^2 with a decay one ulp below one (about
-        // 2.22e304) is representable; scaling one deviation factor by the
+        // 1e304) is representable; scaling one deviation factor by the
         // complement weight before completing the product must keep the
         // variance finite.
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(0, 1e160).build();
@@ -271,8 +292,11 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
         assertTrue(Num.isFinite(value));
         if (numFactory instanceof DoubleNumFactory) {
             // Replicate the exact multiplication order for a bit-identical
-            // comparison: deviation * (deviation * oneMinusDecay).
-            assertNumEquals(1e160 * (1e160 * (1d - Math.nextDown(1d))), value);
+            // comparison: deviation * (deviation * oneMinusDecay), where
+            // oneMinusDecay converts the exact BigDecimal complement
+            // BigDecimal.ONE - BigDecimal.valueOf(decayFactor) (1E-16 for a
+            // decay one ulp below one).
+            assertNumEquals(1e160 * (1e160 * 1e-16), value);
         }
     }
 

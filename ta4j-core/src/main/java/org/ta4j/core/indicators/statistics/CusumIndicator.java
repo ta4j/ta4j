@@ -62,7 +62,11 @@ import org.ta4j.core.num.NumFactory;
  * double- and decimal-backed factories, the float ceiling for float-backed
  * ones) instead of publishing infinity, so a composed kill switch still reacts
  * to the extreme observation and the winsorization bound is never silently
- * disabled by a non-finite scale.
+ * disabled by a non-finite scale. The three-term deviation is first computed in
+ * scaled space, so a representable true difference that only overflows the
+ * naive subtraction order (for example {@code 1.7e308 - (-1e308) - 1.7e308 =
+ * 1e308}) is never saturated: only a genuinely unrepresentable difference falls
+ * back to the finite saturation.
  *
  * <p>
  * When the backing series prunes its retained head (for example through
@@ -236,11 +240,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             Num previous = index == beginIndex ? getBarSeries().numFactory().zero() : getValue(index - 1);
             return Num.isFinite(previous) ? previous : getBarSeries().numFactory().zero();
         }
-        Num deviation = targetMean.minus(current).minus(allowance);
-        if (!Num.isFinite(deviation)) {
-            Num magnitude = saturationMagnitude(getBarSeries().numFactory());
-            deviation = deviation.isNegative() ? magnitude.negate() : magnitude;
-        }
+        Num deviation = scaledDeviation(targetMean, current, allowance);
         if (index > beginIndex) {
             Num previousScale = deviationScale.getValue(index - 1);
             if (Num.isFinite(previousScale)) {
@@ -295,6 +295,35 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     /**
+     * The three-term deviation {@code targetMean - current - allowance}, computed
+     * in scaled space when the naive subtraction overflows. Opposite extremes
+     * overflow the naive form even when the true difference is representable
+     * ({@code 1.7e308 - (-1e308) - 1.7e308 = 1e308} overflows the intermediate sum
+     * to infinity for {@code DoubleNum}), and no fixed reordering of the terms is
+     * universally safe. Rescaling the terms by the largest magnitude bounds each
+     * scaled operand to {@code [-1, 1]}, so the scaled subtraction is finite and
+     * the rescaled product overflows only when the true difference itself is
+     * unrepresentable; that case saturates at the largest finite magnitude by sign.
+     * The inputs are validated finite at the call sites, so the scale is positive
+     * and finite.
+     */
+    static Num scaledDeviation(Num targetMean, Num current, Num allowance) {
+        Num deviation = targetMean.minus(current).minus(allowance);
+        if (Num.isFinite(deviation)) {
+            return deviation;
+        }
+        NumFactory factory = targetMean.getNumFactory();
+        Num scale = targetMean.abs().max(current.abs()).max(allowance.abs());
+        Num scaled = targetMean.dividedBy(scale).minus(current.dividedBy(scale)).minus(allowance.dividedBy(scale));
+        Num rescaled = scaled.multipliedBy(scale);
+        if (Num.isFinite(rescaled)) {
+            return rescaled;
+        }
+        Num magnitude = saturationMagnitude(factory);
+        return rescaled.isNegative() ? magnitude.negate() : magnitude;
+    }
+
+    /**
      * Exponentially smoothed mean absolute deviation of the raw CUSUM increment
      * {@code mu0 - X_t - k}, using the parent's {@code scaleDecay} and its
      * separately converted complement. Follows the parent's non-finite convention:
@@ -339,14 +368,10 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
                 Num previous = index == beginIndex ? getBarSeries().numFactory().zero() : getValue(index - 1);
                 return Num.isFinite(previous) ? previous : getBarSeries().numFactory().zero();
             }
-            Num increment = targetMean.minus(current).minus(allowance).abs();
-            if (!Num.isFinite(increment)) {
-                // Opposite extremes overflow the subtraction: saturate so the
-                // scale stays finite and the parent keeps winsorizing against
-                // its bound instead of skipping the clip for a non-finite
-                // previous scale.
-                increment = saturationMagnitude(getBarSeries().numFactory());
-            }
+            // Scaled deviation keeps the increment finite for representable
+            // true differences, so the scale never saturates prematurely and
+            // the parent keeps winsorizing against its bound.
+            Num increment = CusumIndicator.scaledDeviation(targetMean, current, allowance).abs();
             if (index == beginIndex) {
                 return increment;
             }

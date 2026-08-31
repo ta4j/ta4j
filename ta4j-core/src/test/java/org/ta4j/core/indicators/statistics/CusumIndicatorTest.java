@@ -231,6 +231,24 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
+    public void scaledDeviationKeepsRepresentableCancellation() {
+        // targetMean - current - allowance = 1.7e308 - (-1e308) - 1.7e308 =
+        // 1e308 is representable, but the naive three-term subtraction
+        // overflows its intermediate sum to infinity for DoubleNum and
+        // saturating that overflow would publish a CUSUM of MAX instead of
+        // the true 1e308. The scaled computation must publish the true
+        // increment, and the deviation scale feeding the winsorization bound
+        // must stay at the true magnitude instead of saturating at MAX.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(-1e308).build();
+        CusumIndicator cusum = new CusumIndicator(new MockIndicator(series, 0, numOf(-1e308)), 1.7e308, 1.7e308);
+
+        Num value = cusum.getValue(0);
+
+        assertTrue(Num.isFinite(value));
+        assertNumEquals(numOf(1e308), value, 1e308 * 1e-9);
+    }
+
+    @Test
     public void reanchorsAfterRetainedHeadPrunes() {
         // Retained-head pruning invalidates the recursion: the CUSUM must
         // reseed at the new head instead of publishing values cached against

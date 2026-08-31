@@ -13,6 +13,7 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 import java.util.Objects;
+import java.math.BigDecimal;
 
 /**
  * Exponentially weighted moving variance (EWMA variance).
@@ -25,9 +26,12 @@ import java.util.Objects;
  * </pre>
  *
  * where {@code mu} is an {@link EWMAIndicator} over the same {@code barCount}
- * and {@code decayFactor}, and the recursion is seeded with the rolling
- * population variance {@link VarianceIndicator#ofPopulation(Indicator, int)
- * VarianceIndicator.ofPopulation(indicator, barCount)}. The seed also
+ * and {@code decayFactor}, and the recursion is seeded with the seed window's
+ * population variance. The seed is computed from a window-size-scaled mean and
+ * per-term scaled squared deviations, so a seed whose naive sum-of-squares form
+ * would overflow the numeric representation (for example a window whose
+ * population variance is representable but contains a bar large enough to
+ * overflow its own square) still publishes a finite value. The seed also
  * re-anchors the recursion whenever the previous state is non-finite: when only
  * the variance leg has collapsed, it re-anchors on the seed window measured
  * around the retained EWMA mean at the previous index, so the published mean
@@ -75,7 +79,6 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
     private final int barCount;
     private final double decayFactor;
     private volatile transient EWMAIndicator meanIndicator;
-    private final transient VarianceIndicator initialVarianceIndicator;
     private final transient Num decay;
     private final transient Num oneMinusDecay;
     private volatile transient int observedRemovedBarsCount = getBarSeries().getRemovedBarsCount();
@@ -94,9 +97,17 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         this.barCount = barCount;
         this.decayFactor = decayFactor;
         this.meanIndicator = new EWMAIndicator(indicator, barCount, decayFactor);
-        this.initialVarianceIndicator = VarianceIndicator.ofPopulation(indicator, barCount);
-        this.decay = indicator.getBarSeries().numFactory().numOf(decayFactor);
-        this.oneMinusDecay = indicator.getBarSeries().numFactory().numOf(1d - decayFactor);
+        // The complement is the exact BigDecimal difference 1 - rawDecay and
+        // the decay is derived from it, mirroring CusumIndicator's scale-decay
+        // conversion: computing the complement in primitive double first
+        // injects the binary rounding artifact (1d - 0.06), and deriving it
+        // from the already rounded decay collapses to zero where the decay
+        // rounds to one (DecimalNumFactory precision 1 rounds 0.9999 to 1),
+        // so the exact subtraction keeps decay plus complement summing to
+        // exactly one under every factory precision.
+        BigDecimal rawDecay = BigDecimal.valueOf(decayFactor);
+        this.oneMinusDecay = indicator.getBarSeries().numFactory().numOf(BigDecimal.ONE.subtract(rawDecay));
+        this.decay = indicator.getBarSeries().numFactory().one().minus(this.oneMinusDecay);
     }
 
     private static Indicator<Num> validateParameters(Indicator<Num> indicator, int barCount, double decayFactor) {
@@ -167,7 +178,7 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             // reseedIndex, the warm-up guard below keeps the value NaN and
             // the first source-stable index re-seeds through the
             // non-finite-previous path.
-            Num seedVariance = initialVarianceIndicator.getValue(index);
+            Num seedVariance = rollingWindowVariance(index);
             return Num.isFinite(seedVariance) ? seedVariance : NaN.NaN;
         }
         if (index - beginIndex < unstableBars) {
@@ -178,7 +189,10 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             if (!Num.isFinite(current)) {
                 return NaN.NaN;
             }
-            return initialVarianceIndicator.getValue(index);
+            // Only reachable when barCount == 1 (any larger window still has
+            // unstable bars at beginIndex), so the single-bar window scores
+            // zero variance around the bar itself.
+            return rollingWindowVariance(index);
         }
         Num current = indicator.getValue(index);
         if (!Num.isFinite(current)) {
@@ -190,7 +204,7 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             if (!Num.isFinite(previousMean)) {
                 // Both legs of the recursion collapsed: re-anchor on the
                 // rolling population variance of the seed window.
-                Num seedVariance = initialVarianceIndicator.getValue(index);
+                Num seedVariance = rollingWindowVariance(index);
                 return Num.isFinite(seedVariance) ? seedVariance : NaN.NaN;
             }
             // Only the variance leg collapsed. Re-anchor it on the seed
@@ -230,6 +244,27 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             scaledSquareSum = scaledSquareSum.plus(deviation.multipliedBy(deviation.dividedBy(barCountNum)));
         }
         return scaledSquareSum;
+    }
+
+    /**
+     * Population variance of the seed window {@code [index - barCount + 1,
+     * index]}, computed from a window-size-scaled mean and per-term scaled squared
+     * deviations. The naive sum-of-squares form first squares each bar and can
+     * overflow the numeric representation even when the averaged variance is
+     * representable (a window containing {@code 2e154} squares to {@code 4e308} for
+     * {@code DoubleNum}, while its population variance {@code 8e308/9} is finite),
+     * so both the mean and the accumulation are scaled by the window size before
+     * their products complete.
+     */
+    private Num rollingWindowVariance(int index) {
+        int windowBegin = Math.max(index - barCount + 1, getBarSeries().getBeginIndex());
+        NumFactory factory = getBarSeries().numFactory();
+        Num barCountNum = factory.numOf(barCount);
+        Num scaledMean = factory.zero();
+        for (int windowIndex = windowBegin; windowIndex <= index; windowIndex++) {
+            scaledMean = scaledMean.plus(indicator.getValue(windowIndex).dividedBy(barCountNum));
+        }
+        return windowVarianceAround(index, scaledMean);
     }
 
     /**

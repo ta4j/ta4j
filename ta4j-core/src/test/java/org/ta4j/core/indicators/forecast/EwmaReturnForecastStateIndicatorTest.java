@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.forecast;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -233,6 +234,27 @@ public class EwmaReturnForecastStateIndicatorTest
         assertTrue(!headState.isStable());
         assertEquals(0, headState.observationCount());
         assertEquals(1, stateIndicator.getValue(5).observationCount());
+    }
+
+    @Test
+    public void publishedBarMutationRefreshesCachedState() {
+        // Mutating the published end bar (addPrice replaces its close and
+        // bumps the series bar-history revision): the cached state must
+        // refresh on the revision change instead of publishing the state
+        // computed from the superseded close.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 121, 133.1).build();
+        LogReturnIndicator returns = new LogReturnIndicator(series);
+        EwmaReturnForecastStateIndicator stateIndicator = new EwmaReturnForecastStateIndicator(returns, 2, 0.5,
+                EwmaReturnForecastStateIndicator.DriftMode.ROLLING_MEAN);
+
+        ReturnForecastState before = stateIndicator.getValue(3);
+        assertTrue(before.isStable());
+
+        series.addPrice(120);
+
+        ReturnForecastState after = stateIndicator.getValue(3);
+        assertTrue(after.isStable());
+        assertFalse(after.mean().isEqual(before.mean()));
     }
 
     private static final class FixedReturnIndicator extends FixedIndicator<Num> implements ReturnIndicator {

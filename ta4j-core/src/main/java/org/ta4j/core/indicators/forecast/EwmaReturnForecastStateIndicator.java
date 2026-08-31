@@ -29,10 +29,11 @@ import org.ta4j.core.num.Num;
  * invalidated, and the count restarts at the first source value computed
  * entirely within the retained window, so retained-index reads recompute from
  * the re-anchored estimators and never return moments or observation counts
- * still computed from the discarded prefix. Reads bracket the removal count
- * across the cached read and repeat until it is stable, so a concurrently
- * pruning series can never publish a state computed against the discarded
- * prefix.
+ * still computed from the discarded prefix. Reads bracket the removal count and
+ * the bar-history revision across the cached read and repeat until both are
+ * stable, so a concurrently pruning or mutating series can never publish a
+ * state computed against the discarded prefix or a state mixing moments from a
+ * bar that was replaced mid-read.
  *
  * @since 0.22.9
  */
@@ -100,18 +101,23 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
         BarSeries series = getBarSeries();
         while (true) {
             int removedBarsCount = series.getRemovedBarsCount();
+            long barHistoryRevision = series.getBarHistoryRevision();
             if (removedBarsCount != observedRemovedBarsCount) {
                 resetForRetainedHead(removedBarsCount);
             }
             ReturnForecastState value = super.getValue(index);
-            if (series.getRemovedBarsCount() == removedBarsCount) {
+            if (series.getRemovedBarsCount() == removedBarsCount
+                    && series.getBarHistoryRevision() == barHistoryRevision) {
                 return value;
             }
-            // A prune raced the cached read, so the state may still be
-            // computed against the discarded prefix: reset and read again
-            // until a full read completes against a stable removal count. The
+            // A prune or a bar mutation raced the cached read. A prune can
+            // leave the state computed against the discarded prefix; a
+            // mutation of the published end bar can leave a state whose
+            // mean, variance, and observation count were each read from a
+            // different bar revision. Reset and read again until a full read
+            // completes against a stable removal count and revision. The
             // cached read is cheap once re-anchored, so this settles as soon
-            // as the series stops pruning concurrently.
+            // as the series stops changing concurrently.
         }
     }
 
