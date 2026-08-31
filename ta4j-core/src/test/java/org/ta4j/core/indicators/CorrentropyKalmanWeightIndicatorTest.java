@@ -22,8 +22,8 @@ import java.util.Arrays;
 /**
  * Tests for the {@link CorrentropyKalmanWeightIndicator} view of the
  * {@link CorrentropyKalmanFilterIndicator}. The reference values are produced
- * by the same oracle that backs
- * {@link CorrentropyKalmanFilterIndicatorTest} and live in
+ * by the same oracle that backs {@link CorrentropyKalmanFilterIndicatorTest}
+ * and live in
  * {@code src/test/resources/oracles/cf-558-mckf-reference-oracle.py}.
  */
 public class CorrentropyKalmanWeightIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
@@ -109,8 +109,8 @@ public class CorrentropyKalmanWeightIndicatorTest extends AbstractIndicatorTest<
 
     @Test
     public void weightStaysInUnitIntervalOverImpulseRuns() {
-        double[] data = { 10, 10.05, 10.05, 10.05, 10.5, 10.5, 10.5, 10.05, 12, 10.05, 10.05, 10.05, 15, 15, 15,
-                10.05, 12, 10.05, 10.05, 10.05, 10.4 };
+        double[] data = { 10, 10.05, 10.05, 10.05, 10.5, 10.5, 10.5, 10.05, 12, 10.05, 10.05, 10.05, 15, 15, 15, 10.05,
+                12, 10.05, 10.05, 10.05, 10.4 };
         BarSeries series = seriesOf(data);
         CorrentropyKalmanWeightIndicator weight = weight(new ClosePriceIndicator(series), 1e-4, 0.2, 2);
 
@@ -150,8 +150,8 @@ public class CorrentropyKalmanWeightIndicatorTest extends AbstractIndicatorTest<
     @Test
     public void viewIsCachedAndSharesFilterSeriesAndUnstableBars() {
         BarSeries series = seriesOf(10, 10.2, 50, 10.4);
-        CorrentropyKalmanFilterIndicator filter = new CorrentropyKalmanFilterIndicator(
-                new ClosePriceIndicator(series), constant(series, 1e-3), constant(series, 0.2), numOf(2));
+        CorrentropyKalmanFilterIndicator filter = new CorrentropyKalmanFilterIndicator(new ClosePriceIndicator(series),
+                constant(series, 1e-3), constant(series, 0.2), numOf(2));
 
         CorrentropyKalmanWeightIndicator first = filter.measurementWeight();
         CorrentropyKalmanWeightIndicator second = filter.measurementWeight();
@@ -163,8 +163,8 @@ public class CorrentropyKalmanWeightIndicatorTest extends AbstractIndicatorTest<
     @Test
     public void descriptorAndJsonRoundTrip() {
         BarSeries series = seriesOf(10, 10.2, 50, 10.4);
-        CorrentropyKalmanFilterIndicator filter = new CorrentropyKalmanFilterIndicator(
-                new ClosePriceIndicator(series), constant(series, 1e-3), constant(series, 0.2), numOf(2));
+        CorrentropyKalmanFilterIndicator filter = new CorrentropyKalmanFilterIndicator(new ClosePriceIndicator(series),
+                constant(series, 1e-3), constant(series, 0.2), numOf(2));
         CorrentropyKalmanWeightIndicator weight = filter.measurementWeight();
 
         ComponentDescriptor descriptor = weight.toDescriptor();

@@ -36,22 +36,22 @@ import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
  * </pre>
  *
  * This is an explicitly illustrative recipe, not a calibrated or universal
- * claim about Q/R: real deployments should derive noise from the source's
- * own scale and verify it against a benchmark.
+ * claim about Q/R: real deployments should derive noise from the source's own
+ * scale and verify it against a benchmark.
  *
  * <p>
  * The kernel bandwidth is dimensionless because the correntropy error is
  * whitened by the measurement-noise standard deviation. The default
  * {@code sigma = 2.0} rejects single measurements roughly three standard
- * deviations or more away from the predicted state while leaving ordinary
- * noise largely untouched.
+ * deviations or more away from the predicted state while leaving ordinary noise
+ * largely untouched.
  *
  * <p>
- * The walkthrough logs the robust estimate, residual, and measurement weight
- * at the latest bar, then scans history for one isolated wick and one
- * sustained move to show how the weight drops and the estimate stays level.
- * Finally it composes rejection-weighted residual evidence — without
- * activating any trading strategy.
+ * The walkthrough logs the robust estimate, residual, and measurement weight at
+ * the latest bar, then scans history for one isolated wick and one sustained
+ * move to show how the weight drops and the estimate stays level. Finally it
+ * composes rejection-weighted residual evidence — without activating any
+ * trading strategy.
  *
  * @since 0.24.2
  */
@@ -91,8 +91,8 @@ public final class CorrentropyKalmanExample {
         CorrentropyKalmanWeightIndicator weight = filter.measurementWeight();
         Indicator<Num> residual = filter.residual();
         Indicator<Num> rejectionWeightedResidual = BinaryOperationIndicator.product(residual, weight);
-        SMAIndicator smoothedResidualMagnitude = new SMAIndicator(
-                NumericIndicator.of(residual).abs(), SUSTAINED_WINDOW);
+        SMAIndicator smoothedResidualMagnitude = new SMAIndicator(NumericIndicator.of(residual).abs(),
+                SUSTAINED_WINDOW);
 
         int endIndex = series.getEndIndex();
         int firstIndex = Math.max(filter.getCountOfUnstableBars(), atr.getCountOfUnstableBars());
@@ -102,9 +102,8 @@ public final class CorrentropyKalmanExample {
                 "Noise recipe (illustrative, not calibrated): Q=max({}, {}*ATR^2); R=max({}, {}*ATR^2). Bandwidth sigma={} (dimensionless).",
                 MINIMUM_VARIANCE, PROCESS_ATR_VARIANCE_SCALE, MINIMUM_VARIANCE, MEASUREMENT_ATR_VARIANCE_SCALE,
                 KERNEL_BANDWIDTH);
-        LOG.info("Latest bar: close={}, robustEstimate={}, residual={}, measurementWeight={}",
-                close.getValue(endIndex), filter.getValue(endIndex), residual.getValue(endIndex),
-                weight.getValue(endIndex));
+        LOG.info("Latest bar: close={}, robustEstimate={}, residual={}, measurementWeight={}", close.getValue(endIndex),
+                filter.getValue(endIndex), residual.getValue(endIndex), weight.getValue(endIndex));
 
         int wickIndex = largestSingleBarMoveIndex(close, firstIndex, endIndex);
         LOG.info("Isolated wick at index {} (one-bar move {}): inspecting estimate/weight/residual around it",
@@ -115,8 +114,10 @@ public final class CorrentropyKalmanExample {
         }
 
         int sustainedStart = largestCumulativeMoveStart(close, firstIndex, endIndex - SUSTAINED_WINDOW + 1);
-        LOG.info("Sustained move: {} bars starting at index {} (cumulative move {}); weight stays low while the "
-                + "source outruns the state", SUSTAINED_WINDOW, sustainedStart,
+        LOG.info(
+                "Sustained move: {} bars starting at index {} (cumulative move {}); weight stays low while the "
+                        + "source outruns the state",
+                SUSTAINED_WINDOW, sustainedStart,
                 String.format("%.2f", cumulativeMove(close, sustainedStart, sustainedStart + SUSTAINED_WINDOW - 1)));
         for (int i = sustainedStart; i <= Math.min(endIndex, sustainedStart + SUSTAINED_WINDOW - 1); i++) {
             LOG.info("  index {}: close={}, estimate={}, weight={}, residual={}", i, close.getValue(i),

@@ -1,3 +1,6 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
 package org.ta4j.core.indicators;
 
 import java.util.Objects;
@@ -42,20 +45,19 @@ import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
  * K   = P_t^- * c_y / (P_t^- * c_y + R_t * c_x)
  * </pre>
  *
- * using a bounded fixed-point iteration (tolerance {@code 1e-6} relative to {@code max(1, |x|)}, at most 20
- * iterations). The posterior covariance uses the Joseph form with the robust
- * gain. The kernel therefore operates on dimensionless errors and
- * {@code kernelBandwidth} is a dimensionless kernel scale, not a raw-price
- * distance.
+ * using a bounded fixed-point iteration (tolerance {@code 1e-6} relative to
+ * {@code max(1, |x|)}, at most 20 iterations). The posterior covariance uses
+ * the Joseph form with the robust gain. The kernel therefore operates on
+ * dimensionless errors and {@code kernelBandwidth} is a dimensionless kernel
+ * scale, not a raw-price distance.
  * <p>
  * Kernel exponents beyond a fixed bound saturate to zero weight instead of
  * being evaluated with {@link Num#exp()}. This keeps every {@code Num.exp()}
- * call inside the numerically reliable range of every active
- * {@code NumFactory} (verified for {@code DoubleNum} and {@code DecimalNum})
- * and makes the kernel weights identical across factories. A saturated zero
- * measurement weight is a valid redescending rejection: it yields gain zero,
- * the isolated measurement is ignored, and the estimate stays at the prior
- * state.
+ * call inside the numerically reliable range of every active {@code NumFactory}
+ * (verified for {@code DoubleNum} and {@code DecimalNum}) and makes the kernel
+ * weights identical across factories. A saturated zero measurement weight is a
+ * valid redescending rejection: it yields gain zero, the isolated measurement
+ * is ignored, and the estimate stays at the prior state.
  * <p>
  * Unavailable inputs (non-finite or non-positive source/Q/R), a non-converged
  * fixed-point iteration or invalid numerical state make the public estimate,
@@ -64,10 +66,10 @@ import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
  *
  * <p>
  * While the source stays pinned at an extreme value or keeps producing
- * saturated rejections the accepted candidate remains at the last trusted
- * level (zero-gain persistence); the filter resumes tracking as soon as the
- * source returns to values consistent with the predicted state. This lockout
- * is a documented property of the redescending kernel, not an error condition.
+ * saturated rejections the accepted candidate remains at the last trusted level
+ * (zero-gain persistence); the filter resumes tracking as soon as the source
+ * returns to values consistent with the predicted state. This lockout is a
+ * documented property of the redescending kernel, not an error condition.
  *
  * @see CorrentropyKalmanWeightIndicator
  * @see KalmanFilterIndicator
@@ -106,15 +108,14 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
      *
      * @param indicator                the indicator whose values will be robustly
      *                                 smoothed
-     * @param processNoiseVariance     the dynamic process-noise variance
-     *                                 indicator
+     * @param processNoiseVariance     the dynamic process-noise variance indicator
      * @param measurementNoiseVariance the dynamic measurement-noise variance
      *                                 indicator
      * @param bandwidth                the dimensionless correntropy kernel
      *                                 bandwidth (sigma)
      * @throws NullPointerException     if {@code kernelBandwidth} is {@code null}
-     * @throws IllegalArgumentException if {@code kernelBandwidth} is not finite
-     *                                  or not positive
+     * @throws IllegalArgumentException if {@code kernelBandwidth} is not finite or
+     *                                  not positive
      */
     public CorrentropyKalmanFilterIndicator(Indicator<Num> indicator, Indicator<Num> processNoiseVariance,
             Indicator<Num> measurementNoiseVariance, Num kernelBandwidth) {
@@ -129,14 +130,12 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
      *
      * @param indicator                the indicator whose values will be robustly
      *                                 smoothed
-     * @param processNoiseVariance     the dynamic process-noise variance
-     *                                 indicator
+     * @param processNoiseVariance     the dynamic process-noise variance indicator
      * @param measurementNoiseVariance the dynamic measurement-noise variance
      *                                 indicator
      * @param bandwidth                the dimensionless correntropy kernel
      *                                 bandwidth (sigma)
-     * @param maxIterations            the maximum number of fixed-point
-     *                                 iterations
+     * @param maxIterations            the maximum number of fixed-point iterations
      */
     CorrentropyKalmanFilterIndicator(Indicator<Num> indicator, Indicator<Num> processNoiseVariance,
             Indicator<Num> measurementNoiseVariance, Num kernelBandwidth, int maxIterations) {
@@ -153,11 +152,10 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Calculates the correntropy-filtered value of the underlying indicator at
-     * the given index.
+     * Calculates the correntropy-filtered value of the underlying indicator at the
+     * given index.
      *
-     * @param index the index for which to calculate the correntropy-filtered
-     *              value
+     * @param index the index for which to calculate the correntropy-filtered value
      * @return the correntropy-filtered value of the underlying indicator at the
      *         given index, or {@link NaN NaN} when that index is unavailable
      */
@@ -176,8 +174,8 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
 
     /**
      * Returns the number of bars up to which this indicator calculates unstable
-     * values. This is the maximum of the unstable-bar counts of the source and
-     * the two noise indicators.
+     * values. This is the maximum of the unstable-bar counts of the source and the
+     * two noise indicators.
      *
      * @return the number of unstable bars
      */
@@ -188,8 +186,8 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Returns an indicator of the difference between the source indicator and
-     * this filter, i.e. the residual {@code y_t - x_t}.
+     * Returns an indicator of the difference between the source indicator and this
+     * filter, i.e. the residual {@code y_t - x_t}.
      *
      * @return the residual indicator
      */
@@ -199,8 +197,8 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
 
     /**
      * Returns the measurement-side kernel weight {@code c_y} at the accepted
-     * fixed-point candidate. The weight is one at the first valid observation
-     * and otherwise a finite value in {@code [0, 1]} describing how much the
+     * fixed-point candidate. The weight is one at the first valid observation and
+     * otherwise a finite value in {@code [0, 1]} describing how much the
      * measurement contributed to the estimate; zero means the measurement was
      * rejected.
      * <p>
@@ -224,8 +222,7 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Package-private scalar accessor used by the shared measurement-weight
-     * view.
+     * Package-private scalar accessor used by the shared measurement-weight view.
      *
      * @param index the index
      * @return the measurement weight at the given index, or {@link NaN NaN} when
@@ -257,16 +254,16 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * First-valid initialization: the estimate is the measurement, the
-     * covariance starts from the factory's one-valued prior and is corrected
-     * with the current Q/R values under zero innovation, and the measurement
-     * weight is one.
+     * First-valid initialization: the estimate is the measurement, the covariance
+     * starts from the factory's one-valued prior and is corrected with the current
+     * Q/R values under zero innovation, and the measurement weight is one.
      */
     private KalmanState initialize(Num measurement, Num processNoise, Num measurementNoise) {
         Num predictedCovariance = getBarSeries().numFactory().one().plus(processNoise);
         Num gain = predictedCovariance.dividedBy(predictedCovariance.plus(measurementNoise));
         Num gainError = getBarSeries().numFactory().one().minus(gain);
-        Num covariance = gainError.multipliedBy(gainError).multipliedBy(predictedCovariance)
+        Num covariance = gainError.multipliedBy(gainError)
+                .multipliedBy(predictedCovariance)
                 .plus(gain.multipliedBy(gain).multipliedBy(measurementNoise));
         if (!Num.isFinite(covariance) || covariance.isNegative()) {
             return KalmanState.UNINITIALIZED;
@@ -299,9 +296,10 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
             }
             gain = numerator.dividedBy(denominator);
             candidate = predicted.plus(gain.multipliedBy(innovation));
-            if (candidate.minus(previousCandidate).abs().isLessThanOrEqual(
-                    convergenceTolerance.multipliedBy(
-                            getBarSeries().numFactory().one().max(candidate.abs())))) {
+            if (candidate.minus(previousCandidate)
+                    .abs()
+                    .isLessThanOrEqual(convergenceTolerance
+                            .multipliedBy(getBarSeries().numFactory().one().max(candidate.abs())))) {
                 converged = true;
                 break;
             }
@@ -310,11 +308,11 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
             return previous.preserved();
         }
         Num gainError = getBarSeries().numFactory().one().minus(gain);
-        Num covariance = gainError.multipliedBy(gainError).multipliedBy(predictedCovariance)
+        Num covariance = gainError.multipliedBy(gainError)
+                .multipliedBy(predictedCovariance)
                 .plus(gain.multipliedBy(gain).multipliedBy(measurementNoise));
         Num weight = kernelWeight(measurement.minus(candidate), measurementNoise);
-        if (!Num.isFinite(candidate) || !Num.isFinite(covariance) || !Num.isFinite(weight)
-                || covariance.isNegative()) {
+        if (!Num.isFinite(candidate) || !Num.isFinite(covariance) || !Num.isFinite(weight) || covariance.isNegative()) {
             return new KalmanState(candidate, covariance, weight, false, false);
         }
         return new KalmanState(candidate, covariance, weight, true, true);
@@ -322,14 +320,14 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
 
     /**
      * Covariance-whitened correntropy kernel weight for a standardized error:
-     * {@code exp(-e^2 / (2 * sigma^2 * scaleVariance))} where
-     * {@code scaleVariance} is the variance used for whitening (predicted
-     * covariance for the prior error, measurement noise for the measurement
-     * error). Squared exponents above {@link #KERNEL_EXPONENT_BOUND} saturate
-     * to a zero weight.
+     * {@code exp(-e^2 / (2 * sigma^2 * scaleVariance))} where {@code scaleVariance}
+     * is the variance used for whitening (predicted covariance for the prior error,
+     * measurement noise for the measurement error). Squared exponents above
+     * {@link #KERNEL_EXPONENT_BOUND} saturate to a zero weight.
      */
     private Num kernelWeight(Num standardizedError, Num scaleVariance) {
-        Num exponent = standardizedError.multipliedBy(standardizedError).dividedBy(scaleVariance)
+        Num exponent = standardizedError.multipliedBy(standardizedError)
+                .dividedBy(scaleVariance)
                 .dividedBy(twoSigmaSquared);
         if (exponent.isGreaterThan(kernelExponentBound)) {
             return getBarSeries().numFactory().zero();
@@ -338,11 +336,11 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Private recursive state. The estimate and covariance are the posterior of
-     * the last processed index; {@code weight} is the measurement-side kernel
-     * weight of the last processed index; {@code usable} tells whether the next
-     * valid index may continue from this state; {@code currentValuesValid} tells
-     * whether the public views of this index are valid.
+     * Private recursive state. The estimate and covariance are the posterior of the
+     * last processed index; {@code weight} is the measurement-side kernel weight of
+     * the last processed index; {@code usable} tells whether the next valid index
+     * may continue from this state; {@code currentValuesValid} tells whether the
+     * public views of this index are valid.
      */
     private record KalmanState(Num estimate, Num covariance, Num weight, boolean usable, boolean currentValuesValid) {
 
@@ -401,8 +399,7 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
     private static Num validateBandwidth(Num bandwidth) {
         Num validated = Objects.requireNonNull(bandwidth, "kernelBandwidth must not be null");
         if (!Num.isFinite(validated) || validated.isZero() || validated.isNegative()) {
-            throw new IllegalArgumentException(
-                    "kernelBandwidth must be a finite positive Num, but was " + validated);
+            throw new IllegalArgumentException("kernelBandwidth must be a finite positive Num, but was " + validated);
         }
         return validated;
     }
