@@ -23,9 +23,12 @@ import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.indicators.volume.KlingerVolumeOscillatorIndicator;
 import org.ta4j.core.indicators.statistics.PearsonCorrelationIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
+import org.ta4j.core.mocks.MockBarBuilder;
+import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
@@ -47,6 +50,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.*;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.saturatedRetainedWindowSeries;
 
 public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -2310,5 +2314,167 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         Indicator<T> freshIndicator = indicatorFactory.apply(barSeries);
         verifier.accept(freshIndicator.getValue(barSeries.getEndIndex()), indicator.getValue(barSeries.getEndIndex()));
+    }
+
+    /**
+     * A dependency backed by a different series must be reconciled through
+     * dependency observation: advancing seriesB's head changes the dependency's
+     * values while seriesA never changes, so the dependent's cached results must
+     * still be dropped and recomputed from the dependency's new state.
+     */
+    @Test
+    public void crossSeriesDependencyHeadAdvanceInvalidatesDependentCache() {
+        BarSeries seriesA = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        BaseBarSeries seriesB = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 20d, 30d, 40d, 50d)
+                .build();
+        RemovedBarsAwareDependency dependency = new RemovedBarsAwareDependency(seriesB);
+        CrossSeriesDependentIndicator dependent = new CrossSeriesDependentIndicator(seriesA, dependency);
+
+        Num before = dependent.getValue(1);
+        assertNumEquals("22", before); // close(1) + dependency value at 1 with removedBarsCount 0
+        assertEquals(1, dependency.calculations());
+
+        seriesB.setMaximumBarCount(4); // head advances, removedBarsCount becomes 1
+        Num after = dependent.getValue(1);
+
+        assertNumEquals("23", after); // close(1) + dependency value at 1 with removedBarsCount 1
+        assertEquals(2, dependency.calculations());
+    }
+
+    /**
+     * A historical mutation in a cross-series dependency invalidates dependent
+     * cache entries at and above the mutated index even though neither series
+     * advances its head.
+     */
+    @Test
+    public void crossSeriesDependencyMutationInvalidatesDependentCache() {
+        BarSeries seriesA = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        BaseBarSeries seriesB = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 20d, 30d, 40d, 50d)
+                .build();
+        RemovedBarsAwareDependency dependency = new RemovedBarsAwareDependency(seriesB);
+        CrossSeriesDependentIndicator dependent = new CrossSeriesDependentIndicator(seriesA, dependency);
+
+        Num before = dependent.getValue(1);
+        assertNumEquals("22", before);
+
+        Bar replaced = new MockBarBuilder(seriesB.numFactory())
+                .openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).build();
+        seriesB.replaceBar(1, replaced);
+        Num after = dependent.getValue(1);
+
+        assertNumEquals("102", after); // close(1) + dependency value at 1 with removedBarsCount 0
+        assertEquals(2, dependency.calculations());
+    }
+
+    private static final class CrossSeriesDependentIndicator extends CachedIndicator<Num> {
+
+        private final Indicator<Num> dependency;
+
+        CrossSeriesDependentIndicator(BarSeries series, Indicator<Num> dependency) {
+            super(series, dependency);
+            this.dependency = dependency;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            return getBarSeries().getBar(index).getClosePrice().plus(dependency.getValue(index));
+        }
+    }
+
+    private static final class RemovedBarsAwareDependency extends CachedIndicator<Num> {
+
+        private final AtomicInteger calculations = new AtomicInteger();
+
+        RemovedBarsAwareDependency(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            calculations.incrementAndGet();
+            Num close = getBarSeries().getBar(index).getClosePrice();
+            return close.plus(getBarSeries().numFactory().numOf(getBarSeries().getRemovedBarsCount()));
+        }
+
+        @Override
+        protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+            return true;
+        }
+
+        int calculations() {
+            return calculations.get();
+        }
+    }
+    /**
+     * Guards the head-advance reconciliation contract for saturated series whose
+     * retained window legitimately reaches {@link Integer#MAX_VALUE}, where the
+     * sentinel value "discard every cached entry" collides with a real bar index.
+     */
+    @Test
+    public void fullDiscardAfterSaturatedHeadAdvanceRecomputesLastBarValue() {
+        BaseBarSeries seeded = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(10, 20)
+                .build();
+        List<Bar> bars = seeded.getBarData();
+        // Bar A occupies Integer.MAX_VALUE - 1, bar B Integer.MAX_VALUE. Every
+        // index in the retained window is therefore >= MAX_VALUE - 1, which is
+        // exactly where the discard-everything sentinel lives.
+        BaseBarSeries series = saturatedRetainedWindowSeries(bars, Integer.MAX_VALUE - 1, Integer.MAX_VALUE,
+                Integer.MAX_VALUE - 1);
+        CountingFullDiscardIndicator indicator = new CountingFullDiscardIndicator(series);
+
+        Num first = indicator.getValue(series.getEndIndex());
+        assertNumEquals("20", first);
+        assertEquals(1, indicator.calculations());
+
+        // Evicting bar A moves the head to Integer.MAX_VALUE without touching
+        // bar B, so no bar content changed and the last-bar cache would be
+        // served as-is unless the sentinel is recognized as a discard signal.
+        series.setMaximumBarCount(1);
+        Num afterAdvance = indicator.getValue(series.getEndIndex());
+
+        assertNumEquals("20", afterAdvance);
+        assertEquals(2, indicator.calculations());
+    }
+
+    private static final class CountingFullDiscardIndicator extends CachedIndicator<Num> {
+
+        private final AtomicInteger calculations = new AtomicInteger();
+
+        CountingFullDiscardIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            calculations.incrementAndGet();
+            return getBarSeries().getBar(index).getClosePrice();
+        }
+
+        @Override
+        protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+            return true;
+        }
+
+        int calculations() {
+            return calculations.get();
+        }
     }
 }

@@ -599,6 +599,20 @@ public class MACDVIndicator extends CachedIndicator<Num> {
         return macdValue;
     }
 
+    /**
+     * Treats the lazily created VWMA and ATR sub-indicators as part of this
+     * indicator's source graph. A rebaselining source inside those chains (for
+     * example an ATR whose TR source requires full invalidation) must propagate
+     * a whole-cache discard here even though the sub-indicators are not
+     * constructor-registered dependencies.
+     */
+    @Override
+    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+        ensureSubIndicatorsInitialized();
+        return minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex, shortTermVwema, longTermVwema,
+                shortAtrIndicator, longAtrIndicator);
+    }
+
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(getShortTermVwema().getCountOfUnstableBars(), getLongTermVwema().getCountOfUnstableBars());

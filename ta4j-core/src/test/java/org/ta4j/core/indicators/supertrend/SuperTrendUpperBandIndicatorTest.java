@@ -12,9 +12,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.ATRIndicator;
+import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -189,6 +191,31 @@ public class SuperTrendUpperBandIndicatorTest extends AbstractIndicatorTest<BarS
         series.barBuilder().openPrice(101).closePrice(110).highPrice(111).lowPrice(100).add();
         series.barBuilder().openPrice(110).closePrice(115).highPrice(116).lowPrice(109).add();
         return series;
+    }
+
+
+    /**
+     * The three-argument constructor must bind the given series, not the ATR's
+     * series, so the median price and the multiplier share the band series'
+     * num factory even when the ATR is backed by a different series.
+     */
+    @Test
+    public void explicitSeriesCtorBindsGivenSeriesNotAtrSeries() {
+        BarSeries bandSeries = buildSeries();
+        BarSeries atrSeries = buildDowntrendSeries();
+        ATRIndicator atrIndicator = new ATRIndicator(atrSeries, 2);
+        SuperTrendUpperBandIndicator indicator = new SuperTrendUpperBandIndicator(bandSeries, atrIndicator, 1d);
+
+        // getBarSeries() exposes a read-only view over the backing series; the
+        // two series carry different prices, so bar content identifies the bound
+        // series. Pre-fix, the constructor bound the ATR's series instead.
+        Bar boundBar = indicator.getBarSeries().getBar(2);
+        assertThat(boundBar.getClosePrice()).isEqualByComparingTo(bandSeries.getBar(2).getClosePrice());
+        assertThat(boundBar.getClosePrice()).isNotEqualByComparingTo(atrSeries.getBar(2).getClosePrice());
+
+        Num expected = new MedianPriceIndicator(bandSeries).getValue(2)
+                .plus(bandSeries.numFactory().numOf(1).multipliedBy(atrIndicator.getValue(2)));
+        assertNumEquals(expected, indicator.getValue(2));
     }
 
     @Override

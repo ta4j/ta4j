@@ -599,4 +599,24 @@ public class AnalogReturnProjectionIndicatorTest
             return 0;
         }
     }
+
+    /**
+     * The projection must register both its state source and its return source
+     * as dependencies so cross-series rebaselines inside non-restarting state
+     * indicators (for example Kalman plus Stochastic) propagate into its cache.
+     */
+    @Test
+    public void constructorRegistersStateAndReturnIndicatorsAsDependencies() {
+        double[] prices = new double[300];
+        java.util.Arrays.fill(prices, 100d);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(prices).build();
+        org.ta4j.core.indicators.helpers.LogReturnIndicator returns = new org.ta4j.core.indicators.helpers.LogReturnIndicator(
+                series);
+        EwmaReturnForecastStateIndicator states = new EwmaReturnForecastStateIndicator(returns);
+        AnalogReturnProjectionIndicator<ReturnForecastState> projection = new AnalogReturnProjectionIndicator<>(states);
+
+        assertTrue(projection.getDependencies().contains(states));
+        assertTrue(projection.getDependencies().contains(returns));
+    }
+
 }

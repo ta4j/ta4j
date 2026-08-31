@@ -91,7 +91,7 @@ public final class AnalogReturnProjectionIndicator<S extends ReturnMomentState> 
     }
 
     private AnalogReturnProjectionIndicator(Builder<S> builder) {
-        super(validatedSeries(builder));
+        super(validatedSeries(builder), builder.stateIndicator, builder.returnIndicator);
         this.stateIndicator = builder.stateIndicator;
         this.returnIndicator = builder.returnIndicator;
         this.featureExtractor = builder.featureExtractor;

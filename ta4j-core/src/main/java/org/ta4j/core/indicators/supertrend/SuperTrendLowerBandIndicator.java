@@ -72,7 +72,7 @@ public class SuperTrendLowerBandIndicator extends RecursiveCachedIndicator<Num> 
      *                     values create narrower bands (more sensitive).
      */
     public SuperTrendLowerBandIndicator(final BarSeries barSeries, final ATRIndicator atrIndicator, double multiplier) {
-        super(atrIndicator);
+        super(barSeries, atrIndicator);
         this.atrIndicator = atrIndicator;
         this.multiplier = getBarSeries().numFactory().numOf(multiplier);
         this.medianPriceIndicator = new MedianPriceIndicator(barSeries);
