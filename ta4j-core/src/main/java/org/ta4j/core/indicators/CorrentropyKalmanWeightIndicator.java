@@ -1,4 +1,9 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
 package org.ta4j.core.indicators;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -27,6 +32,9 @@ import org.ta4j.core.num.Num;
  * @see CorrentropyKalmanFilterIndicator
  * @since 0.24.2
  */
+@SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The weight view intentionally captures and shares the "
+        + "filter's private recursive state without rerunning the fixed-point iteration; the filter is not mutable "
+        + "through this view.")
 public class CorrentropyKalmanWeightIndicator extends CachedIndicator<Num> {
 
     private final CorrentropyKalmanFilterIndicator filter;

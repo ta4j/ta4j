@@ -1,5 +1,7 @@
 package org.ta4j.core.indicators;
 
+import java.util.Objects;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -40,7 +42,7 @@ import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
  * K   = P_t^- * c_y / (P_t^- * c_y + R_t * c_x)
  * </pre>
  *
- * using a bounded fixed-point iteration (tolerance {@code 1e-6}, at most 20
+ * using a bounded fixed-point iteration (tolerance {@code 1e-6} relative to {@code max(1, |x|)}, at most 20
  * iterations). The posterior covariance uses the Joseph form with the robust
  * gain. The kernel therefore operates on dimensionless errors and
  * {@code kernelBandwidth} is a dimensionless kernel scale, not a raw-price
@@ -59,6 +61,13 @@ import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
  * fixed-point iteration or invalid numerical state make the public estimate,
  * weight and residual {@code NaN.NaN} for that index; the last initialized
  * valid state is preserved internally and later valid indices recover.
+ *
+ * <p>
+ * While the source stays pinned at an extreme value or keeps producing
+ * saturated rejections the accepted candidate remains at the last trusted
+ * level (zero-gain persistence); the filter resumes tracking as soon as the
+ * source returns to values consistent with the predicted state. This lockout
+ * is a documented property of the redescending kernel, not an error condition.
  *
  * @see CorrentropyKalmanWeightIndicator
  * @see KalmanFilterIndicator
@@ -103,10 +112,14 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
      *                                 indicator
      * @param bandwidth                the dimensionless correntropy kernel
      *                                 bandwidth (sigma)
+     * @throws NullPointerException     if {@code kernelBandwidth} is {@code null}
+     * @throws IllegalArgumentException if {@code kernelBandwidth} is not finite
+     *                                  or not positive
      */
     public CorrentropyKalmanFilterIndicator(Indicator<Num> indicator, Indicator<Num> processNoiseVariance,
             Indicator<Num> measurementNoiseVariance, Num kernelBandwidth) {
-        this(indicator, processNoiseVariance, measurementNoiseVariance, kernelBandwidth, DEFAULT_MAX_ITERATIONS);
+        this(indicator, processNoiseVariance, measurementNoiseVariance, validateBandwidth(kernelBandwidth),
+                DEFAULT_MAX_ITERATIONS);
     }
 
     /**
@@ -286,7 +299,9 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
             }
             gain = numerator.dividedBy(denominator);
             candidate = predicted.plus(gain.multipliedBy(innovation));
-            if (candidate.minus(previousCandidate).abs().isLessThan(convergenceTolerance)) {
+            if (candidate.minus(previousCandidate).abs().isLessThanOrEqual(
+                    convergenceTolerance.multipliedBy(
+                            getBarSeries().numFactory().one().max(candidate.abs())))) {
                 converged = true;
                 break;
             }
@@ -381,5 +396,14 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
     private static boolean isValidJointObservation(Num measurement, Num processNoise, Num measurementNoise) {
         return Num.isFinite(measurement) && Num.isFinite(processNoise) && processNoise.isPositive()
                 && Num.isFinite(measurementNoise) && measurementNoise.isPositive();
+    }
+
+    private static Num validateBandwidth(Num bandwidth) {
+        Num validated = Objects.requireNonNull(bandwidth, "kernelBandwidth must not be null");
+        if (!Num.isFinite(validated) || validated.isZero() || validated.isNegative()) {
+            throw new IllegalArgumentException(
+                    "kernelBandwidth must be a finite positive Num, but was " + validated);
+        }
+        return validated;
     }
 }
