@@ -44,13 +44,16 @@ import org.ta4j.core.num.NumFactory;
  * deviation is computed with each deviation normalized by the largest absolute
  * deviation, and a mean whose naive accumulation overflows is recomputed with
  * each value normalized by the largest absolute value, so wide but finite
- * returns of 1e308 and 1.4e308 still yield their exact Cpk); gross returns with
- * non-finite magnitude are treated as incapable and score {@code zero()}.
- * Specification limits are kept as raw decimals and are normalized against the
- * deviation scale before factory conversion when a limit itself overflows the
- * active representation (for example an LSL of -1e400 on a {@code DoubleNum}
- * series), so representable capabilities stay finite instead of collapsing to
- * infinity.
+ * returns of 1e308 and 1.4e308 still yield their exact Cpk); the mean is
+ * accumulated with compensated (Neumaier) summation so it stays order-stable
+ * across the record; gross returns with non-finite magnitude are treated as
+ * incapable and score {@code zero()}. Specification limits are kept as raw
+ * decimals, and when a limit itself overflows the active representation (for
+ * example an LSL of -1e400 on a {@code DoubleNum} series) the mean-to-limit
+ * distance is computed in decimal space and narrowed once against the complete
+ * 3-sigma denominator, so representable capabilities stay finite and a limit
+ * only marginally beyond the representation range still scores its positive
+ * capability instead of collapsing to zero.
  *
  * @since 0.24.2
  */
@@ -124,11 +127,7 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             return factory.zero();
         }
         Num[] valueArray = values.toArray(new Num[0]);
-        Num mean = factory.zero();
-        for (Num value : valueArray) {
-            mean = mean.plus(value);
-        }
-        mean = mean.dividedBy(factory.numOf(valueArray.length));
+        Num mean = compensatedSum(valueArray, factory).dividedBy(factory.numOf(valueArray.length));
         if (!Num.isFinite(mean)) {
             Num maxAbsValue = factory.zero();
             for (Num value : valueArray) {
@@ -137,11 +136,12 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             if (!Num.isFinite(maxAbsValue) || maxAbsValue.isZero()) {
                 return factory.zero();
             }
-            Num scaledSum = factory.zero();
-            for (Num value : valueArray) {
-                scaledSum = scaledSum.plus(value.dividedBy(maxAbsValue));
+            Num[] scaledArray = new Num[valueArray.length];
+            for (int i = 0; i < valueArray.length; i++) {
+                scaledArray[i] = valueArray[i].dividedBy(maxAbsValue);
             }
-            mean = scaledSum.dividedBy(factory.numOf(valueArray.length)).multipliedBy(maxAbsValue);
+            mean = compensatedSum(scaledArray, factory).dividedBy(factory.numOf(valueArray.length))
+                    .multipliedBy(maxAbsValue);
         }
         // Scale-aware deviation pass: value - mean can overflow even though
         // the mean and every value are finite (a return near -MAX against a
@@ -185,13 +185,15 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         Num lowerCapability;
         if (!Num.isFinite(lslNum)) {
             // The limit itself overflows the factory's representation (for
-            // example a DoubleNum series with an LSL of -1e400): divide the
-            // raw decimal limit by the complete 3 * sigma denominator before
-            // narrowing, so the intermediate limit/deviationScale division
-            // cannot overflow while the full capability ratio is
-            // representable.
-            lowerCapability = scaledMean.dividedBy(threeScaledSigma)
-                    .minus(scaledLimit(lsl, deviationScale, threeScaledSigma, factory));
+            // example a DoubleNum series with an LSL of -1e400): the raw
+            // mean-to-limit distance is computed in decimal space before
+            // narrowing, and one division by the complete 3 * sigma
+            // denominator yields the capability. Dividing the limit and the
+            // mean by the same scale separately rounds both quotients for a
+            // limit only marginally beyond the double range, which can
+            // collapse a positive capability to zero.
+            BigDecimal rawDistance = BigDecimal.valueOf(mean.doubleValue()).subtract(lsl, MathContext.DECIMAL128);
+            lowerCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory);
         } else {
             Num lowerDistance = mean.minus(lslNum);
             if (Num.isFinite(lowerDistance)) {
@@ -222,8 +224,8 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         Num uslNum = factory.numOf(usl);
         Num upperCapability;
         if (!Num.isFinite(uslNum)) {
-            upperCapability = scaledLimit(usl, deviationScale, threeScaledSigma, factory)
-                    .minus(scaledMean.dividedBy(threeScaledSigma));
+            BigDecimal rawDistance = usl.subtract(BigDecimal.valueOf(mean.doubleValue()), MathContext.DECIMAL128);
+            upperCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory);
         } else {
             Num upperDistance = uslNum.minus(mean);
             if (Num.isFinite(upperDistance)) {
@@ -242,15 +244,38 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         return lowerCapability.min(upperCapability);
     }
 
-    private static Num scaledLimit(BigDecimal limit, Num deviationScale, Num threeScaledSigma, NumFactory factory) {
-        // The limit itself overflows the factory's representation; divide it
-        // by the complete 3 * sigma denominator in raw decimal space before
-        // narrowing. The deviation scale is finite and nonzero here, and
-        // because the limit overflowed the factory, both scale terms are
-        // double-backed, so their double values are exact.
+    private static Num scaledDistance(BigDecimal rawDistance, Num deviationScale, Num threeScaledSigma,
+            NumFactory factory) {
+        // The limit overflowed the factory's representation, so the mean and
+        // both scale terms are double-backed and their double values are
+        // exact; the raw decimal distance is exact, and a single division by
+        // the complete 3 * sigma denominator narrows once instead of rounding
+        // separate limit/scale and mean/scale quotients. The deviation scale
+        // is finite and nonzero here.
         BigDecimal rawDenominator = BigDecimal.valueOf(deviationScale.doubleValue())
                 .multiply(BigDecimal.valueOf(threeScaledSigma.doubleValue()), MathContext.DECIMAL128);
-        return factory.numOf(limit.divide(rawDenominator, MathContext.DECIMAL128));
+        return factory.numOf(rawDistance.divide(rawDenominator, MathContext.DECIMAL128));
+    }
+
+    private static Num compensatedSum(Num[] values, NumFactory factory) {
+        // Neumaier summation: each step carries the rounding residue of the
+        // previous step, so the sum is order-stable even when large
+        // opposite-sign values cancel catastrophically in a naive
+        // accumulation (gross returns are multiplicative and normally
+        // positive, but prices can cross zero and produce negative gross
+        // returns).
+        Num sum = factory.zero();
+        Num compensation = factory.zero();
+        for (Num value : values) {
+            Num next = sum.plus(value);
+            if (sum.abs().isGreaterThanOrEqual(value.abs())) {
+                compensation = compensation.plus(sum.minus(next).plus(value));
+            } else {
+                compensation = compensation.plus(value.minus(next).plus(sum));
+            }
+            sum = next;
+        }
+        return sum.plus(compensation);
     }
 
     @Override

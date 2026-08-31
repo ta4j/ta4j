@@ -348,4 +348,62 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
         assertThrows(IllegalArgumentException.class, () -> new ProcessCapabilityCriterion(1.0, 1.0));
         assertThrows(IllegalArgumentException.class, () -> new ProcessCapabilityCriterion(1.0, 0.9));
     }
+
+    @Test
+    public void limitJustBeyondDoubleRangeKeepsPositiveCapability() {
+        // Gross returns Double.MAX_VALUE and the next double below it with
+        // limits 0 and 1.79769313486231581e308: the USL overflows DoubleNum
+        // by about one ulp of the return scale, and dividing the limit and
+        // the mean by the same deviation scale rounds both quotients to the
+        // same double, collapsing the positive capability to zero; the raw
+        // decimal mean-to-limit distance must be narrowed once against the
+        // complete 3-sigma denominator instead. DecimalNum rounds both
+        // returns to the same 16-digit value, so its honest score is the
+        // zero-dispersion zero.
+        double max = Double.MAX_VALUE;
+        BigDecimal usl = new BigDecimal("1.79769313486231581E308");
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, max, 1, Math.nextDown(max))
+                .build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series));
+
+        AnalysisCriterion cpk = getCriterion(0, usl);
+        Num capability = cpk.calculate(series, tradingRecord);
+
+        assertTrue(Num.isFinite(capability));
+        if (numFactory instanceof DoubleNumFactory) {
+            assertTrue(capability.isPositive());
+            // The true Cpk is about 0.26 (a unit-of-one-ulp distance over a
+            // unit-of-one-ulp dispersion); bound it loosely to catch wildly
+            // wrong decimal-space narrowing without replicating internals.
+            assertTrue(capability.isGreaterThan(numOf(0.05)));
+            assertTrue(capability.isLessThan(numOf(2)));
+        } else {
+            assertNumEquals(0, capability);
+        }
+    }
+
+    @Test
+    public void meanSummationIsOrderStableAcrossRecords() {
+        // Gross returns 1e16, 1 and -1e16: a naive left-to-right sum absorbs
+        // the unit return (1e16 + 1 = 1e16) and cancels to zero, collapsing
+        // the capability against a one-sided LSL of 0 to zero; the
+        // compensated summation must recover the unit return and keep the
+        // score positive and identical regardless of the trade order.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 1e16, 1, 1, 1, -1e16)
+                .build();
+        TradingRecord ascending = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series));
+        TradingRecord descending = new BaseTradingRecord(Trade.buyAt(4, series), Trade.sellAt(5, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series), Trade.buyAt(0, series), Trade.sellAt(1, series));
+
+        AnalysisCriterion cpk = getCriterion(0);
+        Num ascendingCapability = cpk.calculate(series, ascending);
+        Num descendingCapability = cpk.calculate(series, descending);
+
+        assertTrue(ascendingCapability.isPositive());
+        assertNumEquals(ascendingCapability, descendingCapability);
+    }
 }

@@ -10,6 +10,7 @@ import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.averages.EWMAIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 import java.util.Objects;
 
@@ -27,18 +28,24 @@ import java.util.Objects;
  * and {@code decayFactor}, and the recursion is seeded with the rolling
  * population variance {@link VarianceIndicator#ofPopulation(Indicator, int)
  * VarianceIndicator.ofPopulation(indicator, barCount)}. The seed also
- * re-anchors the recursion whenever the previous state is non-finite.
+ * re-anchors the recursion whenever the previous state is non-finite: when only
+ * the variance leg has collapsed, it re-anchors on the seed window measured
+ * around the retained EWMA mean at the previous index, so the published mean
+ * and variance keep describing one estimator.
  *
  * <p>
  * The value is {@code NaN} while warming up, with
  * {@code getCountOfUnstableBars() = indicator.getCountOfUnstableBars() +
  * barCount - 1}, and non-finite inputs or extreme regime changes whose derived
  * deviation overflows the numeric representation yield {@code NaN} until the
- * next finite bar re-seeds the variance. A seed window whose own population
- * variance is non-finite publishes {@code NaN} rather than a non-finite seed,
- * so a composed kill switch fails open until a finite window is available.
- * Smaller decay factors react faster to volatility changes at the cost of a
- * noisier estimate.
+ * next finite bar re-seeds the variance. The weighted squared deviation
+ * {@code (1 - decayFactor) * deviation^2} is accumulated by scaling one
+ * deviation factor by the complement weight before completing the product, so a
+ * deviation whose square overflows still yields a finite weighted contribution.
+ * A seed window whose own population variance is non-finite publishes
+ * {@code NaN} rather than a non-finite seed, so a composed kill switch fails
+ * open until a finite window is available. Smaller decay factors react faster
+ * to volatility changes at the cost of a noisier estimate.
  *
  * <p>
  * When the backing series prunes its retained head (for example through
@@ -170,14 +177,45 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         }
         Num previousVariance = getValue(index - 1);
         Num previousMean = meanIndicator.getValue(index - 1);
-        if (!Num.isFinite(previousVariance) || !Num.isFinite(previousMean)) {
-            Num seedVariance = initialVarianceIndicator.getValue(index);
-            return Num.isFinite(seedVariance) ? seedVariance : NaN.NaN;
+        if (!Num.isFinite(previousVariance)) {
+            if (!Num.isFinite(previousMean)) {
+                // Both legs of the recursion collapsed: re-anchor on the
+                // rolling population variance of the seed window.
+                Num seedVariance = initialVarianceIndicator.getValue(index);
+                return Num.isFinite(seedVariance) ? seedVariance : NaN.NaN;
+            }
+            // Only the variance leg collapsed. Re-anchor it on the seed
+            // window, measured around the retained EWMA mean at the previous
+            // index (the level this recursion deviates from), so the
+            // published mean and variance keep describing one estimator. The
+            // rolling population variance would be measured around the window
+            // mean instead and can contradict the retained mean (a window of
+            // equal bars scores zero variance while the retained mean still
+            // differs from every window bar).
+            Num recoveredVariance = windowVarianceAround(index, previousMean);
+            return Num.isFinite(recoveredVariance) ? recoveredVariance : NaN.NaN;
         }
         Num deviation = current.minus(previousMean);
+        // Scale one deviation factor by the complement weight before
+        // completing the product: deviation * deviation can overflow even
+        // when the weighted contribution oneMinusDecay * deviation^2 is
+        // representable (a deviation near sqrt(MAX) against a decay near
+        // one), so this multiplication order keeps finite EWMA variances
+        // available to control-limit consumers.
         Num updatedVariance = previousVariance.multipliedBy(decay)
-                .plus(deviation.multipliedBy(deviation).multipliedBy(oneMinusDecay));
+                .plus(deviation.multipliedBy(deviation.multipliedBy(oneMinusDecay)));
         return Num.isFinite(deviation) && Num.isFinite(updatedVariance) ? updatedVariance : NaN.NaN;
+    }
+
+    private Num windowVarianceAround(int index, Num center) {
+        int windowBegin = Math.max(index - barCount + 1, getBarSeries().getBeginIndex());
+        NumFactory factory = getBarSeries().numFactory();
+        Num squaredSum = factory.zero();
+        for (int windowIndex = windowBegin; windowIndex <= index; windowIndex++) {
+            Num deviation = indicator.getValue(windowIndex).minus(center);
+            squaredSum = squaredSum.plus(deviation.multipliedBy(deviation));
+        }
+        return squaredSum.dividedBy(factory.numOf(barCount));
     }
 
     /**

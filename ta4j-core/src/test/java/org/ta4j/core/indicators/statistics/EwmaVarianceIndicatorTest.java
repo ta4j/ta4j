@@ -258,6 +258,52 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
         assertNumEquals(2.0 / 3.0, pruned.getValue(9));
     }
 
+    @Test
+    public void weightedDeviationKeepsFiniteVarianceNearOverflow() {
+        // A deviation of 1e160 has a square of 1e320, which overflows
+        // DoubleNum even though the decay-weighted contribution
+        // (1 - decay) * deviation^2 with a decay one ulp below one (about
+        // 2.22e304) is representable; scaling one deviation factor by the
+        // complement weight before completing the product must keep the
+        // variance finite.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(0, 1e160).build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(new MockIndicator(series, 0, numOf(0), numOf(1e160)),
+                1, Math.nextDown(1d));
+
+        Num value = variance.getValue(1);
+
+        assertTrue(Num.isFinite(value));
+        if (numFactory instanceof DoubleNumFactory) {
+            // Replicate the exact multiplication order for a bit-identical
+            // comparison: deviation * (deviation * oneMinusDecay).
+            assertNumEquals(1e160 * (1e160 * (1d - Math.nextDown(1d))), value);
+        }
+    }
+
+    @Test
+    public void recoveryReanchorsAroundRetainedMean() {
+        // Three -100 bars warm up; the 2e154 bar then produces a deviation
+        // whose square (4e308) overflows DoubleNum and collapses the
+        // variance leg to NaN while the EWMA mean stays finite. The next
+        // bars must re-anchor the variance on the seed window measured
+        // around the retained EWMA mean (1.5e154 at index 4), publishing
+        // 2.5e307 at index 5 instead of the rolling window variance (zero,
+        // because the window holds three equal bars).
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(-100, -100, -100, 2e154, 2e154, 2e154)
+                .build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(new MockIndicator(series, 0, numOf(-100),
+                numOf(-100), numOf(-100), numOf(2e154), numOf(2e154), numOf(2e154)), 3, 0.5);
+
+        Num value = variance.getValue(5);
+
+        assertTrue(Num.isFinite(value));
+        assertTrue(value.isPositive());
+        if (numFactory instanceof DoubleNumFactory) {
+            assertNumEquals(numOf(2.5e307), value, 2.5e307 * 1e-9);
+        }
+    }
+
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);
