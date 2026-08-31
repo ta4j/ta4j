@@ -10,7 +10,6 @@ import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.ReturnIndicator;
-import org.ta4j.core.indicators.averages.EWMAIndicator;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.indicators.statistics.EwmaVarianceIndicator;
@@ -21,14 +20,19 @@ import org.ta4j.core.num.Num;
  * Builds reusable log-return forecast state from EWMA mean and variance
  * indicators.
  *
+ * <p>
+ * The published mean and the variance are computed around one shared EWMA mean
+ * estimator owned by the {@link EwmaVarianceIndicator}: when the backing series
+ * prunes its retained head the estimator is re-anchored together with the
+ * variance, so the returned moments never pair a stale mean with a re-anchored
+ * variance.
+ *
  * @since 0.22.9
  */
 public final class EwmaReturnForecastStateIndicator extends CachedIndicator<ReturnForecastState>
         implements ReturnForecastStateIndicator<ReturnForecastState> {
-
     private final ReturnIndicator returnIndicator;
-    private final Indicator<Num> meanIndicator;
-    private final Indicator<Num> varianceIndicator;
+    private final EwmaVarianceIndicator varianceIndicator;
     private final Indicator<Integer> observationCountIndicator;
     private final DriftMode driftMode;
 
@@ -75,10 +79,10 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
         if (Double.isNaN(decayFactor) || decayFactor <= 0d || decayFactor >= 1d) {
             throw new IllegalArgumentException("decayFactor must be in (0, 1)");
         }
-        Indicator<Num> mean = new EWMAIndicator(returnIndicator, initializationBarCount, decayFactor);
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(returnIndicator, initializationBarCount,
+                decayFactor);
         this.returnIndicator = returnIndicator;
-        this.meanIndicator = mean;
-        this.varianceIndicator = new EwmaVarianceIndicator(returnIndicator, initializationBarCount, decayFactor);
+        this.varianceIndicator = variance;
         this.observationCountIndicator = new ValidObservationCountIndicator(returnIndicator);
         this.driftMode = Objects.requireNonNull(driftMode, "driftMode must not be null");
     }
@@ -117,7 +121,7 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
         if (index < getCountOfUnstableBars()) {
             return ReturnForecastState.unstable(index, observationCount, ReturnRepresentation.LOG);
         }
-        Num mean = meanIndicator.getValue(index);
+        Num mean = varianceIndicator.getMeanIndicator().getValue(index);
         Num variance = varianceIndicator.getValue(index);
         if (!Num.isFinite(mean) || !Num.isFinite(variance)) {
             return ReturnForecastState.unstable(index, observationCount, ReturnRepresentation.LOG);
@@ -133,7 +137,8 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
      */
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(meanIndicator.getCountOfUnstableBars(), varianceIndicator.getCountOfUnstableBars());
+        return Math.max(varianceIndicator.getMeanIndicator().getCountOfUnstableBars(),
+                varianceIndicator.getCountOfUnstableBars());
     }
 
     /**

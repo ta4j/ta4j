@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
@@ -169,6 +170,32 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         Num updatedVariance = previousVariance.multipliedBy(decay)
                 .plus(deviation.multipliedBy(deviation).multipliedBy(oneMinusDecay));
         return Num.isFinite(deviation) && Num.isFinite(updatedVariance) ? updatedVariance : NaN.NaN;
+    }
+
+    /**
+     * Returns the EWMA mean estimator this variance is computed around.
+     *
+     * <p>
+     * The estimator is the same recursion {@link #getValue(int)} deviates from, so
+     * composing the mean and the variance from this single estimator keeps both
+     * moments consistent. The accessor observes prune events on the backing series
+     * and re-anchors the estimator before returning it, so a consumer that reads
+     * the mean ahead of {@link #getValue(int)} still pairs it with the variance of
+     * the retained head; consumers must re-read the estimator for each use rather
+     * than cache the reference.
+     *
+     * @return the shared EWMA mean indicator
+     */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "the mean estimator is the shared recursion this "
+            + "variance deviates from; exposing the instance is the accessor's contract and it is only replaced "
+            + "in place on prune re-anchoring, never mutated after construction")
+    public Indicator<Num> getMeanIndicator() {
+        BarSeries series = getBarSeries();
+        int removedBarsCount = series.getRemovedBarsCount();
+        if (removedBarsCount != observedRemovedBarsCount) {
+            resetForRetainedHead(removedBarsCount);
+        }
+        return meanIndicator;
     }
 
     @Override

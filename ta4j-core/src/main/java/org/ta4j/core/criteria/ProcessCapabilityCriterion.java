@@ -138,19 +138,31 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             }
             mean = scaledSum.dividedBy(factory.numOf(valueArray.length)).multipliedBy(maxAbsValue);
         }
-        Num maxAbsDeviation = factory.zero();
+        // Scale-aware deviation pass: value - mean can overflow even though
+        // the mean and every value are finite (a return near -MAX against a
+        // mean near MAX / 2), so deviations are computed relative to the
+        // largest magnitude first and rescaled afterward. Scaled deviations
+        // stay within [-2, 2], so the squared sum is bounded by 4 * n and the
+        // rescaled standard deviation cannot exceed the deviation scale
+        // itself, keeping it finite whenever the scale is.
+        Num deviationScale = mean.abs();
         for (Num value : valueArray) {
-            maxAbsDeviation = maxAbsDeviation.max(value.minus(mean).abs());
+            deviationScale = deviationScale.max(value.abs());
         }
-        if (!Num.isFinite(maxAbsDeviation) || maxAbsDeviation.isZero()) {
+        if (!Num.isFinite(deviationScale) || deviationScale.isZero()) {
             return factory.zero();
         }
+        Num scaledMean = mean.dividedBy(deviationScale);
         Num scaledSquaredSum = factory.zero();
         for (Num value : valueArray) {
-            Num scaledDeviation = value.minus(mean).dividedBy(maxAbsDeviation);
+            Num scaledDeviation = value.dividedBy(deviationScale).minus(scaledMean);
             scaledSquaredSum = scaledSquaredSum.plus(scaledDeviation.multipliedBy(scaledDeviation));
         }
-        Num standardDeviation = maxAbsDeviation
+        if (scaledSquaredSum.isZero()) {
+            // Identical gross returns leave no dispersion to measure.
+            return factory.zero();
+        }
+        Num standardDeviation = deviationScale
                 .multipliedBy(scaledSquaredSum.dividedBy(factory.numOf(valueArray.length)).sqrt());
         // Scale-aware per-ratio form: dividing each operand by three before
         // subtracting keeps the intermediate difference finite whether

@@ -9,6 +9,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.time.Duration;
 import java.util.List;
 
 import org.junit.Test;
@@ -16,9 +17,11 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.ReturnIndicator;
+import org.ta4j.core.indicators.averages.EWMAIndicator;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
+import org.ta4j.core.indicators.statistics.EwmaVarianceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -130,6 +133,60 @@ public class EwmaReturnForecastStateIndicatorTest
         assertThrows(IllegalArgumentException.class, () -> new EwmaReturnForecastStateIndicator(returns, 2, 1));
         assertThrows(IllegalArgumentException.class,
                 () -> new EwmaReturnForecastStateIndicator(returns, 2, Double.NaN));
+    }
+
+    @Test
+    public void sharedMeanReAnchorsWithVarianceAfterPrune() {
+        // The state must pair the variance with the same EWMA mean the
+        // variance re-anchors on prune; a separate mean estimator would keep
+        // its pre-prune recursion and publish a stale mean/drift next to the
+        // re-anchored variance.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 1.1051709180756477, 1.22140275816017, 1.3498588075760032, 1.4918246976412703,
+                        1.6487212707001282, 1.8221188003905089, 2.0137527074704766, 5.4739473917272, 14.879731724872837,
+                        40.44730436006742)
+                .build();
+        LogReturnIndicator returns = new LogReturnIndicator(series);
+        EwmaReturnForecastStateIndicator stateIndicator = new EwmaReturnForecastStateIndicator(returns, 3, 0.9,
+                EwmaReturnForecastStateIndicator.DriftMode.ROLLING_MEAN);
+
+        // Warm the caches against the full prefix so stale recursions would
+        // surface after the prune.
+        assertTrue(stateIndicator.getValue(10).isStable());
+
+        series.setMaximumBarCount(6);
+        series.addBar(series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
+                .openPrice(42.52108155356342)
+                .highPrice(42.52108155356342)
+                .lowPrice(42.52108155356342)
+                .closePrice(42.52108155356342)
+                .build());
+        series.addBar(series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
+                .openPrice(44.70118357203251)
+                .highPrice(44.70118357203251)
+                .lowPrice(44.70118357203251)
+                .closePrice(44.70118357203251)
+                .build());
+        series.addBar(series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
+                .openPrice(46.99306319730219)
+                .highPrice(46.99306319730219)
+                .lowPrice(46.99306319730219)
+                .closePrice(46.99306319730219)
+                .build());
+
+        ReturnForecastState state = stateIndicator.getValue(13);
+        assertTrue(state.isStable());
+
+        // Fresh estimators built after the prune re-anchor from the retained
+        // head; the stale full-history mean (~0.26) would fail this check.
+        assertNumEquals(new EWMAIndicator(returns, 3, 0.9).getValue(13), state.mean(), 1e-9);
+        assertNumEquals(new EwmaVarianceIndicator(returns, 3, 0.9).getValue(13), state.variance(), 1e-9);
     }
 
     private static final class FixedReturnIndicator extends FixedIndicator<Num> implements ReturnIndicator {

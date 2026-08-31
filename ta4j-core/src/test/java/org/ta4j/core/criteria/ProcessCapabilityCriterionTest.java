@@ -184,6 +184,29 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void hugeOpposingReturnsKeepFiniteCapability() {
+        // Three long positions earning MAX and one short position losing
+        // (2 - MAX) give a mean near MAX / 2 and a population sigma of
+        // sqrt(3) / 2 * MAX. Subtracting the mean from the losing return
+        // overflows DoubleNum (|2 - MAX - MAX / 2| = 1.5 * MAX), so the
+        // deviation pass must scale before subtracting; the true Cpk with
+        // limits 0 and MAX is 1 / (3 * sqrt(3)).
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, Double.MAX_VALUE, 1, Double.MAX_VALUE, 1, Double.MAX_VALUE, 1, Double.MAX_VALUE)
+                .build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series),
+                Trade.sellAt(6, series), Trade.buyAt(7, series));
+
+        AnalysisCriterion cpk = getCriterion(0, Double.MAX_VALUE);
+        Num capability = cpk.calculate(series, tradingRecord);
+
+        assertTrue(Num.isFinite(capability));
+        assertNumEquals(numFactory.numOf(1).dividedBy(numFactory.numOf(3).multipliedBy(numFactory.numOf(Math.sqrt(3)))),
+                capability, 1e-9);
+    }
+
+    @Test
     public void rejectsInvalidSpecificationLimits() {
         assertThrows(NullPointerException.class, () -> new ProcessCapabilityCriterion(null));
         assertThrows(IllegalArgumentException.class, () -> new ProcessCapabilityCriterion(Double.NaN));
