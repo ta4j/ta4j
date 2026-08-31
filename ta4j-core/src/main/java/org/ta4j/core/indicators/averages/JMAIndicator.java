@@ -157,12 +157,11 @@ public class JMAIndicator extends CachedIndicator<Num> {
      * reset inside {@link #calculate(int)} when the observed begin index changed,
      * which runs under {@link #jmaMapLock}.
      *
-     * @param firstRetainedIndex the first retained bar index after the advance
-     * @return {@link Integer#MAX_VALUE}, so no cached value survives
+     * @return {@code true}, so no cached value survives
      */
     @Override
-    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
-        return Integer.MAX_VALUE;
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
     }
 
     private Num calculateE0(NumFactory numFactory, Num currentPrice, JmaData previousJMA) {

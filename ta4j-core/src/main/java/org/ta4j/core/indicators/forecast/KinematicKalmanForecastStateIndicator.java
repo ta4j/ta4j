@@ -185,7 +185,9 @@ public final class KinematicKalmanForecastStateIndicator extends CachedIndicator
     private final class StateIndicator extends RecursiveCachedIndicator<State> {
 
         private StateIndicator() {
-            super(KinematicKalmanForecastStateIndicator.this.indicator);
+            super(KinematicKalmanForecastStateIndicator.this.indicator,
+                    KinematicKalmanForecastStateIndicator.this.processNoiseIndicator,
+                    KinematicKalmanForecastStateIndicator.this.measurementNoiseIndicator);
         }
 
         @Override

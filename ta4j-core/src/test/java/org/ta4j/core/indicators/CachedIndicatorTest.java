@@ -1361,8 +1361,15 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
     private final static class HeadAdvanceDiscardingIndicator extends CachedIndicator<Num> {
 
+        private final int unstableBars;
+
         private HeadAdvanceDiscardingIndicator(BarSeries series) {
+            this(series, 0);
+        }
+
+        private HeadAdvanceDiscardingIndicator(BarSeries series, int unstableBars) {
             super(series);
+            this.unstableBars = unstableBars;
         }
 
         @Override
@@ -1378,12 +1385,12 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         @Override
         public int getCountOfUnstableBars() {
-            return 0;
+            return unstableBars;
         }
 
         @Override
-        protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
-            return Integer.MAX_VALUE;
+        protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+            return true;
         }
     }
 
@@ -1922,6 +1929,24 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         assertEquals(0, dependent.minimumCacheableIndexAfterHeadAdvance(0));
         assertEquals(1, shared.getDependenciesInvocations());
+    }
+
+    @Test
+    public void propagatesExplicitFullInvalidationWhenDefaultFloorSaturates() {
+        HeadAdvanceDiscardingIndicator source = new HeadAdvanceDiscardingIndicator(series, Integer.MAX_VALUE);
+        CachedIndicator<Num> dependent = new CachedIndicator<Num>(source) {
+            @Override
+            protected Num calculate(int index) {
+                return NaN.NaN;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+
+        assertEquals(Integer.MAX_VALUE, dependent.minimumCacheableIndexAfterHeadAdvance(Integer.MAX_VALUE - 1));
     }
 
     @Test

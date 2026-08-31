@@ -66,12 +66,12 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   floor and are recomputed like any windowed indicator.
 - Conditionally recursive indicators (recursion only along special
   stretches, e.g. flat windows or equal-basis Klinger trend stretches)
-  override `minimumCacheableIndexAfterHeadAdvance(int)` to return
-  `Integer.MAX_VALUE`: every value is recomputable from the retained
-  window, so the whole cache is discarded on head advance instead of
-  preserving stale pre-advance results. `StochasticIndicator` follows
-  this policy and extends `RecursiveCachedIndicator` so the inherited
-  prefill rebuilds long flat stretches iteratively after the eviction.
+  override `requiresFullCacheInvalidationAfterHeadAdvance()` to return
+  `true`: every value is recomputable from the retained window, so the
+  whole cache is discarded on head advance instead of preserving stale
+  pre-advance results. `StochasticIndicator` follows this policy and
+  extends `RecursiveCachedIndicator` so the inherited prefill rebuilds
+  long flat stretches iteratively after the eviction.
 - Head-advance invalidation must cover every downstream component of a
   rebaselining chain, not only the recursive core. The Klinger volume
   oscillator applies `Integer.MAX_VALUE` eviction to the trend direction,

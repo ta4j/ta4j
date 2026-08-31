@@ -110,12 +110,11 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
      * their caches on a head advance: keeping any band here would preserve results
      * derived from bars that no longer exist.
      *
-     * @param firstRetainedIndex the first series index that remains available
-     * @return {@link Integer#MAX_VALUE} to evict the whole cache
+     * @return {@code true} to evict the whole cache
      */
     @Override
-    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
-        return Integer.MAX_VALUE;
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
     }
 
     private record Config(Indicator<Num> indicator, int fastPeriod, EMAIndicator stcSmoothed, int slowPeriod,
@@ -140,8 +139,8 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
         }
 
         @Override
-        protected int minimumCacheableIndexAfterHeadAdvance(final int firstRetainedIndex) {
-            return Integer.MAX_VALUE;
+        protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+            return true;
         }
     }
 }

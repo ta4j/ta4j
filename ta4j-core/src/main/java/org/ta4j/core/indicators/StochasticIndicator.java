@@ -108,12 +108,11 @@ public class StochasticIndicator extends RecursiveCachedIndicator<Num> {
      * eviction the inherited {@link RecursiveCachedIndicator} prefill rebuilds long
      * flat stretches iteratively instead of recursing.
      *
-     * @param firstRetainedIndex the first series index that remains available
-     * @return {@link Integer#MAX_VALUE}, evicting every cached entry
+     * @return {@code true}, evicting every cached entry
      */
     @Override
-    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
-        return Integer.MAX_VALUE;
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
     }
 
 }

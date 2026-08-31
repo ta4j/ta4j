@@ -359,6 +359,21 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     }
 
     /**
+     * Reports whether every cached value must be discarded after the series head
+     * advances.
+     *
+     * <p>
+     * Subclasses use this policy when all values are recomputable from the retained
+     * window, but preserving any cached value could combine pre-advance and
+     * post-advance inputs.
+     *
+     * @return {@code true} when no cached value survives a head advance
+     */
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return false;
+    }
+
+    /**
      * Selects the cache floor applied after the series head advanced, i.e. the
      * lowest cached index that stays valid once {@code removedThroughIndex} grew.
      * Entries below the floor are evicted and recomputed against the retained
@@ -383,9 +398,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * calculation against the retained window. A subclass whose values are always
      * recomputable from the retained window, including any portion that only
      * conditionally recurses (for example {@link StochasticIndicator}), overrides
-     * this method and returns {@link Integer#MAX_VALUE} to discard the whole cache:
-     * keeping only the recursively derived band would preserve stale results
-     * computed from evicted bars.
+     * {@link #requiresFullCacheInvalidationAfterHeadAdvance()} so the whole cache
+     * is discarded: keeping only the recursively derived band would preserve stale
+     * results computed from evicted bars.
      * </p>
      *
      * @param firstRetainedIndex the first series index that remains available
@@ -407,6 +422,9 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     }
 
     private int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex, Set<Indicator<?>> visited) {
+        if (requiresFullCacheInvalidationAfterHeadAdvance()) {
+            return Integer.MAX_VALUE;
+        }
         for (Indicator<?> sourceIndicator : sourceIndicators) {
             if (sourceGraphRebaselinesBeyondDefaultBand(sourceIndicator, firstRetainedIndex, visited)) {
                 return Integer.MAX_VALUE;
@@ -418,8 +436,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     /**
      * Whether any indicator in the source graph rooted at {@code source} applies a
      * cache floor above its own default unstable-range band after the series head
-     * advanced to {@code firstRetainedIndex}. A direct {@link CachedIndicator}
-     * source is checked like before; any other source is traversed through
+     * advanced to {@code firstRetainedIndex}. Explicit full-cache policies are
+     * checked before comparing saturated numeric floors, so a
+     * {@link Integer#MAX_VALUE} default band cannot hide a source that requires
+     * full invalidation. Every source is traversed through
      * {@link Indicator#getDependencies()}, so a rebaselining source hidden behind
      * non-cached wrappers (for example a stochastic inside a
      * {@code BinaryOperationIndicator}) still invalidates the whole cache.
@@ -438,14 +458,18 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         if (!visited.add(source)) {
             return false;
         }
-        if (source instanceof CachedIndicator<?> cachedSource) {
-            long defaultBandFloor = (long) firstRetainedIndex + cachedSource.getCountOfUnstableBars();
-            return cachedSource.minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex) > defaultBandFloor;
+        if (source instanceof CachedIndicator<?> cachedSource
+                && cachedSource.requiresFullCacheInvalidationAfterHeadAdvance()) {
+            return true;
         }
         for (Indicator<?> dependency : source.getDependencies()) {
             if (sourceGraphRebaselinesBeyondDefaultBand(dependency, firstRetainedIndex, visited)) {
                 return true;
             }
+        }
+        if (source instanceof CachedIndicator<?> cachedSource) {
+            int defaultBandFloor = cachedSource.unstableRangeFloor(firstRetainedIndex);
+            return cachedSource.minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex) > defaultBandFloor;
         }
         return false;
     }

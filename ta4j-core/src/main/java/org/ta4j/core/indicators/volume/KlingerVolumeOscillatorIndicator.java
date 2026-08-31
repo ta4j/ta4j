@@ -252,12 +252,11 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
      * cache makes post-advance reads recompute from the freshly rebuilt downstream
      * chain.
      *
-     * @param firstRetainedIndex the first series index that remains available
-     * @return {@link Integer#MAX_VALUE}, evicting every cached entry
+     * @return {@code true}, evicting every cached entry
      */
     @Override
-    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
-        return Integer.MAX_VALUE;
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
     }
 
     /**
@@ -367,8 +366,8 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
          * stale one.
          */
         @Override
-        protected int minimumCacheableIndexAfterHeadAdvance(final int firstRetainedIndex) {
-            return Integer.MAX_VALUE;
+        protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+            return true;
         }
 
         @Override
@@ -441,12 +440,11 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
          * stale magnitude; discarding the cache makes post-advance reads recompute from
          * the freshly rebuilt chain.
          *
-         * @param firstRetainedIndex the first series index that remains available
-         * @return {@link Integer#MAX_VALUE}, evicting every cached entry
+         * @return {@code true}, evicting every cached entry
          */
         @Override
-        protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
-            return Integer.MAX_VALUE;
+        protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+            return true;
         }
 
         @Override
@@ -473,12 +471,11 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
          * stale volume-force inputs; discarding the cache makes post-advance reads
          * recurse through freshly recomputed volume-force values.
          *
-         * @param firstRetainedIndex the first series index that remains available
-         * @return {@link Integer#MAX_VALUE}, evicting every cached entry
+         * @return {@code true}, evicting every cached entry
          */
         @Override
-        protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
-            return Integer.MAX_VALUE;
+        protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+            return true;
         }
     }
 
@@ -588,10 +585,12 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
          * retained window; the whole cache is discarded on head advance so that a
          * direction computed from evicted bars cannot carry into the cumulative
          * measurement and volume-force calculations.
+         *
+         * @return {@code true}, evicting every cached entry
          */
         @Override
-        protected int minimumCacheableIndexAfterHeadAdvance(final int firstRetainedIndex) {
-            return Integer.MAX_VALUE;
+        protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+            return true;
         }
 
     }
