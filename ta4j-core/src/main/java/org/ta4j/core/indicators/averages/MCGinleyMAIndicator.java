@@ -4,7 +4,7 @@
 package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -19,7 +19,7 @@ import org.ta4j.core.num.Num;
  * and stable markets.
  *
  */
-public class MCGinleyMAIndicator extends CachedIndicator<Num> {
+public class MCGinleyMAIndicator extends RecursiveCachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
@@ -40,8 +40,11 @@ public class MCGinleyMAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        if (index == 0) {
-            return indicator.getValue(0);
+        if (index <= getBarSeries().getBeginIndex()) {
+            // Seed at the first retained bar: for a full series this is the
+            // first data point; for a bounded series it re-anchors the
+            // recursion after a head advance evicted the previous seed.
+            return indicator.getValue(index);
         }
 
         // McGinley_t = McGinley_(t-1) + (Price_t - McGinley_(t-1)) / (barCount *
@@ -70,11 +73,6 @@ public class MCGinleyMAIndicator extends CachedIndicator<Num> {
     @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;
-    }
-
-    @Override
-    protected boolean hasRecursiveDependencies() {
-        return true;
     }
 
 }
