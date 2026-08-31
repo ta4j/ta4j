@@ -13,6 +13,8 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 
 import java.util.List;
 
+import java.math.BigDecimal;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -141,6 +143,29 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         // to 0.06, so tolerate the rounding drift.
         assertTrue(Num.isFinite(coarseCusum.getValue(2)));
         assertNumEquals(coarseSeries.numFactory().numOf(0.045), coarseCusum.getValue(2), 0.02);
+    }
+
+    @Test
+    public void acceptsArbitraryPrecisionDecayOutsideDoubleRange() {
+        // BigDecimal decays whose doubleValue() collapses to 0.0 or 1.0 are
+        // still inside (0, 1): the interval must be validated on the raw
+        // value without primitive narrowing, and the complement must survive
+        // so the EWMA scale weight stays meaningful and the CUSUM remains
+        // finite.
+        NumFactory decimalFactory = DecimalNumFactory.getInstance(10);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(decimalFactory).withData(1, 2, 3).build();
+        MockIndicator decimalSource = new MockIndicator(series, 0, decimalFactory.numOf(0.010),
+                decimalFactory.numOf(0.010), decimalFactory.numOf(-0.100));
+
+        CusumIndicator tinyDecay = new CusumIndicator(decimalSource, 0, 0.005, 3.0, new BigDecimal("1e-400"));
+        assertTrue(Num.isFinite(tinyDecay.getValue(2)));
+
+        CusumIndicator nearOneDecay = new CusumIndicator(decimalSource, 0, 0.005, 3.0,
+                new BigDecimal("0.999999999999999999999"));
+        assertTrue(Num.isFinite(nearOneDecay.getValue(2)));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new CusumIndicator(decimalSource, 0, 0.005, 3.0, new BigDecimal("1.000000000000000000001")));
     }
 
     @Test

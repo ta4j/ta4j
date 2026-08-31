@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.statistics;
 
 import java.util.Objects;
+import java.math.BigDecimal;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -167,15 +168,25 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         Objects.requireNonNull(scaleDecay, "scaleDecay must not be null");
         // Validate the raw value before it passes through the factory: a
         // low-precision factory can round an in-range value such as 0.9999 to
-        // its boundary 1. The complement is converted first because 1 - decay
-        // stays representable where the decay itself rounds to one, keeping
-        // the EWMA weight meaningful under coarse precision, and decay plus
-        // complement sums to exactly one.
-        double rawScaleDecay = scaleDecay.doubleValue();
-        if (!Double.isFinite(rawScaleDecay) || rawScaleDecay <= 0d || rawScaleDecay >= 1d) {
+        // its boundary 1, and narrowing an arbitrary-precision BigDecimal
+        // such as 1e-400 through doubleValue() collapses it to zero.
+        // BigDecimal comparison keeps the (0, 1) interval check exact. The
+        // complement is converted first because 1 - decay stays representable
+        // where the decay itself rounds to one, keeping the EWMA weight
+        // meaningful under coarse precision, and decay plus complement sums
+        // to exactly one.
+        double narrowed = scaleDecay.doubleValue();
+        if (!Double.isFinite(narrowed)) {
             throw new IllegalArgumentException("scaleDecay must be in (0, 1)");
         }
-        Num oneMinusScaleDecay = factory.numOf(1d - rawScaleDecay);
+        BigDecimal rawScaleDecay = scaleDecay instanceof BigDecimal ? (BigDecimal) scaleDecay
+                : BigDecimal.valueOf(narrowed);
+        if (rawScaleDecay.compareTo(BigDecimal.ZERO) <= 0 || rawScaleDecay.compareTo(BigDecimal.ONE) >= 0) {
+            throw new IllegalArgumentException("scaleDecay must be in (0, 1)");
+        }
+        BigDecimal complement = narrowed > 0d && narrowed < 1d ? BigDecimal.valueOf(1d - narrowed)
+                : BigDecimal.ONE.subtract(rawScaleDecay);
+        Num oneMinusScaleDecay = factory.numOf(complement);
         return factory.one().minus(oneMinusScaleDecay);
     }
 
