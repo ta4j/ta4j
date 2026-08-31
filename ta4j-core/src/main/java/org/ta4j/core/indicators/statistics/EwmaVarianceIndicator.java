@@ -127,7 +127,11 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
                 resetForRetainedHead(removedBarsCount);
             }
             Num value = super.getValue(index);
-            if (series.getRemovedBarsCount() == observedRemovedBarsCount) {
+            // Validate against the locally captured snapshot, not the shared
+            // observed count: another reader may have re-anchored after this
+            // read, and the shared field would then match the series while
+            // this value still belongs to the discarded prefix.
+            if (series.getRemovedBarsCount() == removedBarsCount) {
                 return value;
             }
             // A prune raced the cached read, so the value may still be
@@ -254,19 +258,20 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             + "in place on prune re-anchoring, never mutated after construction")
     public Indicator<Num> getMeanIndicator() {
         BarSeries series = getBarSeries();
-        int removedBarsCount = series.getRemovedBarsCount();
-        if (removedBarsCount != observedRemovedBarsCount) {
-            resetForRetainedHead(removedBarsCount);
+        while (true) {
+            int removedBarsCount = series.getRemovedBarsCount();
+            if (removedBarsCount != observedRemovedBarsCount) {
+                resetForRetainedHead(removedBarsCount);
+            }
+            Indicator<Num> current = meanIndicator;
+            // Validate against the locally captured snapshot, not the shared
+            // field: another reader may have re-anchored the estimator after
+            // this read, and a value anchored to the discarded prefix must
+            // never be handed out.
+            if (series.getRemovedBarsCount() == removedBarsCount) {
+                return current;
+            }
         }
-        Indicator<Num> current = meanIndicator;
-        // Same bounded re-check as getValue: a prune between the check and
-        // the reference read would hand out an estimator anchored to the
-        // discarded prefix, so re-check and retry once.
-        if (series.getRemovedBarsCount() != observedRemovedBarsCount) {
-            resetForRetainedHead(series.getRemovedBarsCount());
-            return meanIndicator;
-        }
-        return current;
     }
 
     @Override

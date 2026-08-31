@@ -102,7 +102,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
                 resetForRetainedHead(removedBarsCount);
             }
             Num value = super.getValue(index);
-            if (series.getRemovedBarsCount() == observedRemovedBarsCount) {
+            if (series.getRemovedBarsCount() == removedBarsCount) {
                 return value;
             }
             // A prune raced the cached read, so the value may still be
