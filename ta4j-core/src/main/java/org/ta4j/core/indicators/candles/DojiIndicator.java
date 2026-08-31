@@ -107,6 +107,14 @@ public class DojiIndicator extends CandlePatternIndicator {
             // leave the body magnitude undefined: conservatively not a doji.
             return false;
         }
+        if (rangeFactor == 0d) {
+            // A zero range factor admits only a body with no magnitude at all.
+            // The ratio comparison below would underflow a nonzero subnormal
+            // body to zero under DoubleNum and misclassify it as a doji, so
+            // compare the raw body magnitude directly; it is zero on every
+            // Num implementation exactly when open equals close.
+            return !open.minus(close).abs().isPositive();
+        }
         final Num priorAverage = thresholds.priorAverageRange().getValue(index);
         if (!Num.isFinite(priorAverage)) {
             // A non-finite prior average (e.g. a DoubleNum SMA accumulator that

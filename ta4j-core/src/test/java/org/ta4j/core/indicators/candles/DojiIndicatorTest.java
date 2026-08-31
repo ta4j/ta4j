@@ -240,6 +240,31 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
     }
 
     @Test
+    public void zeroRangeFactorOnlyQualifiesZeroBody() {
+        // A zero range factor admits only a body with no magnitude at all. Under
+        // DoubleNum the ratio below would underflow a nonzero subnormal body to
+        // zero against the huge baseline and misclassify it as a doji, so the raw
+        // body magnitude decides: a MIN_VALUE body is rejected, a zero body
+        // qualifies, and DecimalNum's exact ratio agrees on both.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(0).closePrice(0).highPrice(Double.MAX_VALUE / 2).lowPrice(0).add(); // index 0:
+                                                                                                          // baseline
+                                                                                                          // range MAX /
+                                                                                                          // 2
+        series.barBuilder().openPrice(0).closePrice(Double.MIN_VALUE).highPrice(Double.MAX_VALUE / 2).lowPrice(0).add(); // index
+                                                                                                                         // 1:
+                                                                                                                         // subnormal
+                                                                                                                         // body
+        series.barBuilder().openPrice(0).closePrice(0).highPrice(Double.MAX_VALUE / 2).lowPrice(0).add(); // index 2:
+                                                                                                          // zero body
+
+        DojiIndicator doji = new DojiIndicator(series, 1, 0d);
+
+        assertFalse(doji.getValue(1));
+        assertTrue(doji.getValue(2));
+    }
+
+    @Test
     public void rejectsInvalidParameters() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
