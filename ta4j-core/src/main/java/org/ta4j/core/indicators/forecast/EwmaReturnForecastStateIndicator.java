@@ -25,9 +25,10 @@ import org.ta4j.core.num.Num;
  * The published mean and the variance are computed around one shared EWMA mean
  * estimator owned by the {@link EwmaVarianceIndicator}: when the backing series
  * prunes its retained head the estimator is re-anchored together with the
- * variance, and the enclosing state cache is invalidated, so retained-index
- * reads recompute from the re-anchored estimators and never return moments
- * still computed from the discarded prefix.
+ * variance, the enclosing state cache and the observation-count recursion are
+ * invalidated, and the count restarts at the new head, so retained-index reads
+ * recompute from the re-anchored estimators and never return moments or
+ * observation counts still computed from the discarded prefix.
  *
  * @since 0.22.9
  */
@@ -35,7 +36,7 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
         implements ReturnForecastStateIndicator<ReturnForecastState> {
     private final ReturnIndicator returnIndicator;
     private final EwmaVarianceIndicator varianceIndicator;
-    private final Indicator<Integer> observationCountIndicator;
+    private final ValidObservationCountIndicator observationCountIndicator;
     private final DriftMode driftMode;
     private volatile transient int observedRemovedBarsCount = getBarSeries().getRemovedBarsCount();
 
@@ -103,9 +104,10 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
     private synchronized void resetForRetainedHead(int removedBarsCount) {
         if (removedBarsCount != observedRemovedBarsCount) {
             // Invalidate first, publish last: a concurrent reader that
-            // observes the new count must never see a state still computed
-            // from the discarded prefix.
+            // observes the new count must never see a state or an
+            // observation count still computed from the discarded prefix.
             invalidateCache();
+            observationCountIndicator.invalidateForRetainedHead();
             observedRemovedBarsCount = removedBarsCount;
         }
     }
@@ -195,12 +197,18 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
             this.indicator = indicator;
         }
 
+        private void invalidateForRetainedHead() {
+            invalidateCache();
+        }
+
         @Override
         protected Integer calculate(int index) {
-            if (index < indicator.getCountOfUnstableBars() || !Num.isFinite(indicator.getValue(index))) {
+            int beginIndex = getBarSeries().getBeginIndex();
+            if (index < beginIndex || index < indicator.getCountOfUnstableBars()
+                    || !Num.isFinite(indicator.getValue(index))) {
                 return 0;
             }
-            return index == 0 ? 1 : getValue(index - 1) + 1;
+            return index == beginIndex ? 1 : getValue(index - 1) + 1;
         }
 
         @Override

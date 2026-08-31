@@ -140,7 +140,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         this.outlierClipFactor = parameters.outlierClipFactor();
         this.scaleDecay = parameters.scaleDecay();
         this.deviationScale = new DeviationScaleIndicator(this.indicator, this.targetMean, this.allowance,
-                this.scaleDecay);
+                this.scaleDecay, parameters.oneMinusScaleDecay());
     }
 
     private static Parameters validateParameters(Indicator<Num> indicator, Number targetMean, Number allowance,
@@ -153,7 +153,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         Num validatedTargetMean = requireFiniteNum(targetMean, "targetMean", factory);
         Num validatedAllowance = requireFiniteNum(allowance, "allowance", factory);
         Num validatedOutlierClipFactor = requireFiniteNum(outlierClipFactor, "outlierClipFactor", factory);
-        Num validatedScaleDecay = validateScaleDecay(scaleDecay, factory);
+        ValidatedScaleDecay validatedScaleDecay = validateScaleDecay(scaleDecay, factory);
         if (validatedAllowance.isNegative()) {
             throw new IllegalArgumentException("allowance must be >= 0");
         }
@@ -161,20 +161,22 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             throw new IllegalArgumentException("outlierClipFactor must be > 0");
         }
         return new Parameters(indicator, validatedTargetMean, validatedAllowance, validatedOutlierClipFactor,
-                validatedScaleDecay);
+                validatedScaleDecay.scaleDecay(), validatedScaleDecay.oneMinusScaleDecay());
     }
 
-    private static Num validateScaleDecay(Number scaleDecay, NumFactory factory) {
+    private static ValidatedScaleDecay validateScaleDecay(Number scaleDecay, NumFactory factory) {
         Objects.requireNonNull(scaleDecay, "scaleDecay must not be null");
         // Validate the raw value before it passes through the factory: a
         // low-precision factory can round an in-range value such as 0.9999 to
         // its boundary 1, and narrowing an arbitrary-precision BigDecimal
         // such as 1e-400 through doubleValue() collapses it to zero.
         // BigDecimal comparison keeps the (0, 1) interval check exact. The
-        // complement is converted first because 1 - decay stays representable
-        // where the decay itself rounds to one, keeping the EWMA weight
-        // meaningful under coarse precision, and decay plus complement sums
-        // to exactly one.
+        // complement is converted from the raw value first because 1 - decay
+        // stays representable where the decay itself rounds to one, keeping
+        // the EWMA weight meaningful under coarse precision, and decay plus
+        // complement sums to exactly one. Both numbers are carried into the
+        // deviation-scale recursion, so the complement is never recomputed
+        // from the already rounded decay.
         double narrowed = scaleDecay.doubleValue();
         if (!Double.isFinite(narrowed)) {
             throw new IllegalArgumentException("scaleDecay must be in (0, 1)");
@@ -187,11 +189,14 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         BigDecimal complement = narrowed > 0d && narrowed < 1d ? BigDecimal.valueOf(1d - narrowed)
                 : BigDecimal.ONE.subtract(rawScaleDecay);
         Num oneMinusScaleDecay = factory.numOf(complement);
-        return factory.one().minus(oneMinusScaleDecay);
+        return new ValidatedScaleDecay(factory.one().minus(oneMinusScaleDecay), oneMinusScaleDecay);
+    }
+
+    private record ValidatedScaleDecay(Num scaleDecay, Num oneMinusScaleDecay) {
     }
 
     private record Parameters(Indicator<Num> indicator, Num targetMean, Num allowance, Num outlierClipFactor,
-            Num scaleDecay) {
+            Num scaleDecay, Num oneMinusScaleDecay) {
     }
 
     @Override
@@ -254,9 +259,10 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
 
     /**
      * Exponentially smoothed mean absolute deviation of the raw CUSUM increment
-     * {@code mu0 - X_t - k}, using the parent's {@code scaleDecay}. Follows the
-     * parent's non-finite convention: gaps carry the previous scale forward and are
-     * seeded at zero on the first addressable bar.
+     * {@code mu0 - X_t - k}, using the parent's {@code scaleDecay} and its
+     * separately converted complement. Follows the parent's non-finite convention:
+     * gaps carry the previous scale forward and are seeded at zero on the first
+     * addressable bar.
      */
     private static final class DeviationScaleIndicator extends RecursiveCachedIndicator<Num> {
 
@@ -266,13 +272,14 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         private final Num scaleDecay;
         private final Num oneMinusScaleDecay;
 
-        private DeviationScaleIndicator(Indicator<Num> indicator, Num targetMean, Num allowance, Num scaleDecay) {
+        private DeviationScaleIndicator(Indicator<Num> indicator, Num targetMean, Num allowance, Num scaleDecay,
+                Num oneMinusScaleDecay) {
             super(indicator);
             this.indicator = indicator;
             this.targetMean = targetMean;
             this.allowance = allowance;
             this.scaleDecay = scaleDecay;
-            this.oneMinusScaleDecay = indicator.getBarSeries().numFactory().one().minus(scaleDecay);
+            this.oneMinusScaleDecay = oneMinusScaleDecay;
         }
 
         private void invalidateForRetainedHead() {

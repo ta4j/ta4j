@@ -146,6 +146,28 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
+    public void zeroScaleBootstrapsFromRawIncrementUnderCoarsePrecision() {
+        // When every prior raw increment was exactly zero the deviation scale
+        // is zero and the first non-zero deviation is fully damped; its raw
+        // magnitude must then bootstrap the scale through the separately
+        // converted complement. With scaleDecay 0.9999 on a precision-1
+        // factory the decay rounds to 1, so recomputing the complement as
+        // 1 - roundedDecay collapses to zero and the scale never bootstraps,
+        // suppressing the CUSUM indefinitely.
+        BarSeries coarseSeries = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance(1))
+                .withData(1, 2, 3)
+                .build();
+        MockIndicator coarseSource = new MockIndicator(coarseSeries, 0, coarseSeries.numFactory().numOf(-0.005),
+                coarseSeries.numFactory().numOf(-0.100), coarseSeries.numFactory().numOf(-0.100));
+
+        CusumIndicator coarseCusum = new CusumIndicator(coarseSource, 0, 0.005, 3.0, 0.9999);
+
+        assertNumEquals(0, coarseCusum.getValue(0));
+        assertNumEquals(0, coarseCusum.getValue(1));
+        assertTrue(coarseCusum.getValue(2).isPositive());
+    }
+
+    @Test
     public void acceptsArbitraryPrecisionDecayOutsideDoubleRange() {
         // BigDecimal decays whose doubleValue() collapses to 0.0 or 1.0 are
         // still inside (0, 1): the interval must be validated on the raw

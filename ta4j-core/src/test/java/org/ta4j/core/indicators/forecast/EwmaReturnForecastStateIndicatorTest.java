@@ -173,6 +173,9 @@ public class EwmaReturnForecastStateIndicatorTest
                 .build());
         ReturnForecastState state = stateIndicator.getValue(12);
         assertTrue(state.isStable());
+        // The observation count re-anchors at the retained head: seven bars
+        // were pruned, so the sixth retained bar reports six observations.
+        assertEquals(6, state.observationCount());
 
         // Fresh estimators built after the prune re-anchor from the retained
         // head; the stale full-history mean (~0.26) would fail this check.
@@ -186,6 +189,7 @@ public class EwmaReturnForecastStateIndicatorTest
         assertTrue(retainedState.isStable());
         assertNumEquals(new EWMAIndicator(returns, 3, 0.9).getValue(10), retainedState.mean(), 1e-9);
         assertNumEquals(new EwmaVarianceIndicator(returns, 3, 0.9).getValue(10), retainedState.variance(), 1e-9);
+        assertEquals(4, retainedState.observationCount());
     }
 
     private static final class FixedReturnIndicator extends FixedIndicator<Num> implements ReturnIndicator {
