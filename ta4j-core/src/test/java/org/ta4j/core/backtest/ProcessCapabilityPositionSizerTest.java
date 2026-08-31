@@ -346,54 +346,7 @@ public class ProcessCapabilityPositionSizerTest {
         // to a non-finite value; the safe path returns it unchanged, so the
         // final double-range cap must saturate at the float ceiling instead
         // of handing BarSeriesManager a non-finite amount.
-        NumFactory floatBackedFactory = new NumFactory() {
-            private final NumFactory delegate = DoubleNumFactory.getInstance();
-
-            @Override
-            public Num minusOne() {
-                return delegate.minusOne();
-            }
-
-            @Override
-            public Num zero() {
-                return delegate.zero();
-            }
-
-            @Override
-            public Num one() {
-                return delegate.one();
-            }
-
-            @Override
-            public Num two() {
-                return delegate.two();
-            }
-
-            @Override
-            public Num three() {
-                return delegate.three();
-            }
-
-            @Override
-            public Num hundred() {
-                return delegate.hundred();
-            }
-
-            @Override
-            public Num thousand() {
-                return delegate.thousand();
-            }
-
-            @Override
-            public Num numOf(Number number) {
-                return Math.abs(number.doubleValue()) > Float.MAX_VALUE ? NaN.NaN : delegate.numOf(number);
-            }
-
-            @Override
-            public Num numOf(String number) {
-                return numOf(Double.valueOf(number));
-            }
-        };
+        NumFactory floatBackedFactory = floatBackedFactory();
         BarSeries decimalSeries = new MockBarSeriesBuilder().withNumFactory(DECIMAL_NUM_FACTORY).withData(1, 2).build();
         FixedIndicator<Num> statistic = new FixedIndicator<>(decimalSeries, DECIMAL_NUM_FACTORY.numOf(0), NaN.NaN);
         PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, 1e39, 10);
@@ -403,6 +356,23 @@ public class ProcessCapabilityPositionSizerTest {
 
         assertTrue(Num.isFinite(amount));
         assertNumEquals(Float.MAX_VALUE, amount);
+    }
+
+    @Test
+    public void narrowContextPreservesRepresentableDampedQuotient() {
+        // A DecimalNum statistic/controlLimit ratio of 1e39 is finite as a
+        // primitive double but overflows a float-backed context factory. The
+        // damped quotient (baseAmount 1e38 over the 1e39 ratio) is
+        // representable, so the sizer must compute it in double space and
+        // coerce the result instead of collapsing to the context epsilon.
+        BarSeries decimalSeries = new MockBarSeriesBuilder().withNumFactory(DECIMAL_NUM_FACTORY).withData(1, 2).build();
+        FixedIndicator<Num> statistic = new FixedIndicator<>(decimalSeries, DECIMAL_NUM_FACTORY.numOf(0),
+                DECIMAL_NUM_FACTORY.numOf(new BigDecimal("1e39")));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, new BigDecimal("1e38"), 1);
+
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatBackedFactory()).withData(1, 2).build();
+
+        assertNumEquals(0.1, sizer.amount(context(series, 1, 1)));
     }
 
     @Test
@@ -452,6 +422,62 @@ public class ProcessCapabilityPositionSizerTest {
         assertThrows(IllegalArgumentException.class, () -> new ProcessCapabilityPositionSizer(statistic, 100, 0));
         assertThrows(IllegalArgumentException.class,
                 () -> new ProcessCapabilityPositionSizer(statistic, 100, Double.NaN));
+    }
+
+    /**
+     * A float-range factory: any magnitude above the float ceiling coerces to a
+     * non-finite value, mimicking a float-backed context in an otherwise
+     * double-based test suite.
+     */
+    private NumFactory floatBackedFactory() {
+        return new NumFactory() {
+            private final NumFactory delegate = DoubleNumFactory.getInstance();
+
+            @Override
+            public Num minusOne() {
+                return delegate.minusOne();
+            }
+
+            @Override
+            public Num zero() {
+                return delegate.zero();
+            }
+
+            @Override
+            public Num one() {
+                return delegate.one();
+            }
+
+            @Override
+            public Num two() {
+                return delegate.two();
+            }
+
+            @Override
+            public Num three() {
+                return delegate.three();
+            }
+
+            @Override
+            public Num hundred() {
+                return delegate.hundred();
+            }
+
+            @Override
+            public Num thousand() {
+                return delegate.thousand();
+            }
+
+            @Override
+            public Num numOf(Number number) {
+                return Math.abs(number.doubleValue()) > Float.MAX_VALUE ? NaN.NaN : delegate.numOf(number);
+            }
+
+            @Override
+            public Num numOf(String number) {
+                return numOf(Double.valueOf(number));
+            }
+        };
     }
 
     private PositionSizer.Context context(BarSeries series, int signalIndex, int entryIndex) {

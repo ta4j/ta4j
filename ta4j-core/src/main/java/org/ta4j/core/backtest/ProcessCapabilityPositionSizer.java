@@ -145,7 +145,17 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
         } else {
             standardizedValue = coerceToContextFactory(factory, standardized);
         }
-        Num damped = baseAmountValue.multipliedBy(factory.one().dividedBy(factory.one().plus(standardizedValue)));
+        Num damped;
+        if (!Num.isFinite(standardizedValue) && Double.isFinite(standardized.doubleValue())) {
+            // The true ratio is finite as a primitive double but overflows the
+            // narrower context factory (for example a 1e39 ratio in a
+            // float-backed context). The damped quotient is still representable,
+            // so compute it in double space and coerce the result instead of
+            // collapsing to the context epsilon.
+            damped = factory.numOf(baseAmountValue.doubleValue() / (1.0 + standardized.doubleValue()));
+        } else {
+            damped = baseAmountValue.multipliedBy(factory.one().dividedBy(factory.one().plus(standardizedValue)));
+        }
         if (!Num.isFinite(damped) || damped.isZero()) {
             return factory.epsilon().min(baseAmountValue);
         }
