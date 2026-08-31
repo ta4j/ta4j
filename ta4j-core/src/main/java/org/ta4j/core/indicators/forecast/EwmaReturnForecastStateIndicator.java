@@ -29,7 +29,10 @@ import org.ta4j.core.num.Num;
  * invalidated, and the count restarts at the first source value computed
  * entirely within the retained window, so retained-index reads recompute from
  * the re-anchored estimators and never return moments or observation counts
- * still computed from the discarded prefix.
+ * still computed from the discarded prefix. Reads bracket the removal count
+ * across the cached read and repeat until it is stable, so a concurrently
+ * pruning series can never publish a state computed against the discarded
+ * prefix.
  *
  * @since 0.22.9
  */
@@ -95,19 +98,21 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
     @Override
     public ReturnForecastState getValue(int index) {
         BarSeries series = getBarSeries();
-        int removedBarsCount = series.getRemovedBarsCount();
-        if (removedBarsCount != observedRemovedBarsCount) {
-            resetForRetainedHead(removedBarsCount);
+        while (true) {
+            int removedBarsCount = series.getRemovedBarsCount();
+            if (removedBarsCount != observedRemovedBarsCount) {
+                resetForRetainedHead(removedBarsCount);
+            }
+            ReturnForecastState value = super.getValue(index);
+            if (series.getRemovedBarsCount() == observedRemovedBarsCount) {
+                return value;
+            }
+            // A prune raced the cached read, so the state may still be
+            // computed against the discarded prefix: reset and read again
+            // until a full read completes against a stable removal count. The
+            // cached read is cheap once re-anchored, so this settles as soon
+            // as the series stops pruning concurrently.
         }
-        ReturnForecastState value = super.getValue(index);
-        // A prune between the check above and the cached read can deliver a
-        // state computed against the discarded prefix: re-check the count and
-        // retry once so the published state always matches the retained head.
-        if (series.getRemovedBarsCount() != observedRemovedBarsCount) {
-            resetForRetainedHead(series.getRemovedBarsCount());
-            return super.getValue(index);
-        }
-        return value;
     }
 
     private synchronized void resetForRetainedHead(int removedBarsCount) {

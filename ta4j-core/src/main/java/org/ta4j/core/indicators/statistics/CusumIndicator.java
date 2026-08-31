@@ -69,7 +69,9 @@ import org.ta4j.core.num.NumFactory;
  * {@link org.ta4j.core.BarSeries#setMaximumBarCount(int)}), the recursion is
  * re-anchored at the new first addressable bar: cached values computed against
  * the discarded prefix are dropped and the statistic resumes from the new head
- * as if the series had started there.
+ * as if the series had started there. Reads bracket the removal count across
+ * the cached read and repeat until it is stable, so a concurrently pruning
+ * series can never publish a value computed against the discarded prefix.
  *
  * <p>
  * Typical use is a statistical control-limit kill switch on an equity curve or
@@ -94,19 +96,21 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     public Num getValue(int index) {
         BarSeries series = getBarSeries();
-        int removedBarsCount = series.getRemovedBarsCount();
-        if (removedBarsCount != observedRemovedBarsCount) {
-            resetForRetainedHead(removedBarsCount);
+        while (true) {
+            int removedBarsCount = series.getRemovedBarsCount();
+            if (removedBarsCount != observedRemovedBarsCount) {
+                resetForRetainedHead(removedBarsCount);
+            }
+            Num value = super.getValue(index);
+            if (series.getRemovedBarsCount() == observedRemovedBarsCount) {
+                return value;
+            }
+            // A prune raced the cached read, so the value may still be
+            // computed against the discarded prefix: reset and read again
+            // until a full read completes against a stable removal count. The
+            // cached read is cheap once re-anchored, so this settles as soon
+            // as the series stops pruning concurrently.
         }
-        Num value = super.getValue(index);
-        // A prune between the check above and the cached read can deliver a
-        // value computed against the discarded prefix: re-check the count and
-        // retry once so the published value always matches the retained head.
-        if (series.getRemovedBarsCount() != observedRemovedBarsCount) {
-            resetForRetainedHead(series.getRemovedBarsCount());
-            return super.getValue(index);
-        }
-        return value;
     }
 
     private synchronized void resetForRetainedHead(int removedBarsCount) {

@@ -158,21 +158,17 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void reseedsOnlyFromFiniteSeedVariance() {
-        // A seed window whose own population variance overflows (DoubleNum)
-        // must publish NaN instead of a non-finite seed.
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(-100, -100, -100, 2e154, 2e154)
-                .build();
-        EwmaVarianceIndicator extreme = new EwmaVarianceIndicator(
-                new MockIndicator(series, 0, numOf(-100), numOf(-100), numOf(-100), numOf(2e154), numOf(2e154)), 3,
-                0.5);
+        // A non-finite bar collapses both legs of the recursion: the EWMA
+        // mean goes NaN and so does the variance. The indicator then falls
+        // back to the rolling window variance seed, and a non-finite seed
+        // (the window still spans the NaN bar) must publish NaN instead of
+        // leaking a non-finite or stale value.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1, 1, 1).build();
+        EwmaVarianceIndicator collapsed = new EwmaVarianceIndicator(
+                new MockIndicator(series, 0, numOf(1), numOf(1), NaN.NaN, numOf(1), numOf(1)), 3, 0.5);
 
-        Num reseeded = extreme.getValue(4);
-        if (numFactory instanceof DoubleNumFactory) {
-            assertTrue(reseeded.isNaN());
-        } else {
-            assertTrue(Num.isFinite(reseeded));
-        }
+        Num reseeded = collapsed.getValue(4);
+        assertTrue(reseeded.isNaN());
     }
 
     @Test
@@ -285,22 +281,54 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
         // Three -100 bars warm up; the 2e154 bar then produces a deviation
         // whose square (4e308) overflows DoubleNum and collapses the
         // variance leg to NaN while the EWMA mean stays finite. The next
-        // bars must re-anchor the variance on the seed window measured
-        // around the retained EWMA mean (1.5e154 at index 4), publishing
-        // 2.5e307 at index 5 instead of the rolling window variance (zero,
-        // because the window holds three equal bars).
+        // bar re-anchors the variance on the seed window measured around
+        // the retained EWMA mean (1e154 at index 4), publishing about
+        // 1e308 at index 4 instead of the rolling window variance
+        // (non-finite, because the window spans -100 and 2e154). Index 5
+        // then continues the normal recursion from the recovered variance:
+        // 0.5 * 1e308 + 0.5 * (2e154 - 1.5e154)^2 = 6.25e307.
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(-100, -100, -100, 2e154, 2e154, 2e154)
                 .build();
         EwmaVarianceIndicator variance = new EwmaVarianceIndicator(new MockIndicator(series, 0, numOf(-100),
                 numOf(-100), numOf(-100), numOf(2e154), numOf(2e154), numOf(2e154)), 3, 0.5);
 
-        Num value = variance.getValue(5);
+        Num recovered = variance.getValue(4);
+
+        assertTrue(Num.isFinite(recovered));
+        assertTrue(recovered.isPositive());
+        if (numFactory instanceof DoubleNumFactory) {
+            assertNumEquals(numOf(1e308), recovered, 1e308 * 1e-9);
+        }
+
+        Num continued = variance.getValue(5);
+
+        assertTrue(Num.isFinite(continued));
+        assertTrue(continued.isPositive());
+        if (numFactory instanceof DoubleNumFactory) {
+            assertNumEquals(numOf(6.25e307), continued, 6.25e307 * 1e-9);
+        }
+    }
+
+    @Test
+    public void recoveryScalesTermsBeforeSquaring() {
+        // Zero warm-up; the 2e154 bar collapses the variance leg (its
+        // deviation squared, 4e308, overflows DoubleNum) while the EWMA
+        // mean stays finite (1e154). The following zero bar re-anchors on
+        // the seed window [0, 2e154, 0] around the retained mean: each
+        // squared deviation is 1e308 and their sum overflows, but the
+        // per-term scaled accumulation keeps the averaged population
+        // variance 1e308 finite.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(0, 0, 0, 2e154, 0).build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(
+                new MockIndicator(series, 0, numOf(0), numOf(0), numOf(0), numOf(2e154), numOf(0)), 3, 0.5);
+
+        Num value = variance.getValue(4);
 
         assertTrue(Num.isFinite(value));
         assertTrue(value.isPositive());
         if (numFactory instanceof DoubleNumFactory) {
-            assertNumEquals(numOf(2.5e307), value, 2.5e307 * 1e-9);
+            assertNumEquals(numOf(1e308), value, 1e308 * 1e-9);
         }
     }
 

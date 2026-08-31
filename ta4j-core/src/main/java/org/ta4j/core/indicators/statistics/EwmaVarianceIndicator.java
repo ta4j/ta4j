@@ -56,7 +56,10 @@ import java.util.Objects;
  * retained seed window), and the recursion re-anchors with the first full seed
  * window available at the retained head; indices before that window, and any
  * index still inside the source's own warm-up, publish {@code NaN} so no future
- * bar or source-unstable bar leaks into a historical value.
+ * bar or source-unstable bar leaks into a historical value. Reads bracket the
+ * removal count across the cached read and repeat until it is stable, so a
+ * concurrently pruning series can never publish a value computed against the
+ * discarded prefix.
  *
  * <p>
  * Combined with {@link CusumIndicator} this provides the volatility leg of a
@@ -118,19 +121,21 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     public Num getValue(int index) {
         BarSeries series = getBarSeries();
-        int removedBarsCount = series.getRemovedBarsCount();
-        if (removedBarsCount != observedRemovedBarsCount) {
-            resetForRetainedHead(removedBarsCount);
+        while (true) {
+            int removedBarsCount = series.getRemovedBarsCount();
+            if (removedBarsCount != observedRemovedBarsCount) {
+                resetForRetainedHead(removedBarsCount);
+            }
+            Num value = super.getValue(index);
+            if (series.getRemovedBarsCount() == observedRemovedBarsCount) {
+                return value;
+            }
+            // A prune raced the cached read, so the value may still be
+            // computed against the discarded prefix: reset and read again
+            // until a full read completes against a stable removal count. The
+            // cached read is cheap once re-anchored, so this settles as soon
+            // as the series stops pruning concurrently.
         }
-        Num value = super.getValue(index);
-        // A prune between the check above and the cached read can deliver a
-        // value computed against the discarded prefix: re-check the count and
-        // retry once so the published value always matches the retained head.
-        if (series.getRemovedBarsCount() != observedRemovedBarsCount) {
-            resetForRetainedHead(series.getRemovedBarsCount());
-            return super.getValue(index);
-        }
-        return value;
     }
 
     private synchronized void resetForRetainedHead(int removedBarsCount) {
@@ -210,12 +215,17 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
     private Num windowVarianceAround(int index, Num center) {
         int windowBegin = Math.max(index - barCount + 1, getBarSeries().getBeginIndex());
         NumFactory factory = getBarSeries().numFactory();
-        Num squaredSum = factory.zero();
+        Num barCountNum = factory.numOf(barCount);
+        Num scaledSquareSum = factory.zero();
         for (int windowIndex = windowBegin; windowIndex <= index; windowIndex++) {
             Num deviation = indicator.getValue(windowIndex).minus(center);
-            squaredSum = squaredSum.plus(deviation.multipliedBy(deviation));
+            // Scale one deviation factor by the window size before completing
+            // the product: each squared deviation can overflow even when the
+            // averaged recovery variance deviation^2 / barCount is
+            // representable, so per-term scaling keeps the re-anchor finite.
+            scaledSquareSum = scaledSquareSum.plus(deviation.multipliedBy(deviation.dividedBy(barCountNum)));
         }
-        return squaredSum.dividedBy(factory.numOf(barCount));
+        return scaledSquareSum;
     }
 
     /**
