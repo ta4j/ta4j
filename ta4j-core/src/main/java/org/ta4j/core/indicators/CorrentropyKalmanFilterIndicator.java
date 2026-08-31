@@ -338,15 +338,14 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Covariance-whitened correntropy kernel weight: {@code exp(-e^2 / (2 * sigma^2 * scaleVariance))} where the raw
-     * error {@code e} is whitened by {@code scaleVariance} (predicted covariance for the prior error, measurement
-     * noise for the measurement error). Squared exponents above {@link #KERNEL_EXPONENT_BOUND} saturate to a zero
-     * weight.
+     * Covariance-whitened correntropy kernel weight:
+     * {@code exp(-e^2 / (2 * sigma^2 * scaleVariance))} where the raw error
+     * {@code e} is whitened by {@code scaleVariance} (predicted covariance for the
+     * prior error, measurement noise for the measurement error). Squared exponents
+     * above {@link #KERNEL_EXPONENT_BOUND} saturate to a zero weight.
      */
     private Num kernelWeight(Num error, Num scaleVariance) {
-        Num exponent = error.multipliedBy(error)
-                .dividedBy(scaleVariance)
-                .dividedBy(twoSigmaSquared);
+        Num exponent = error.multipliedBy(error).dividedBy(scaleVariance).dividedBy(twoSigmaSquared);
         if (exponent.isGreaterThan(kernelExponentBound)) {
             return getBarSeries().numFactory().zero();
         }
