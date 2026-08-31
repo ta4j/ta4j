@@ -89,13 +89,7 @@ public class HangingManIndicator extends CandlePatternIndicator {
         }
         final var bodyTop = open.max(close);
         return thresholds.isShortBody(index) && thresholds.isLongShadow(index, lowerShadow)
-                && thresholds.isShortShadow(index, upperShadow)
-                && !bodyTop.minus(priorHigh)
-                        .abs()
-                        .isGreaterThan(thresholds.priorAverageRange()
-                                .getValue(index)
-                                .multipliedBy(
-                                        getBarSeries().numFactory().numOf(CandleThresholdSupport.NEAR_RANGE_FACTOR)));
+                && thresholds.isShortShadow(index, upperShadow) && thresholds.isNear(index, bodyTop, priorHigh);
     }
 
     @Override

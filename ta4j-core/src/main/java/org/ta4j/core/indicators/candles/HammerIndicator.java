@@ -90,13 +90,7 @@ public class HammerIndicator extends CandlePatternIndicator {
         final var bodyBottom = open.min(close);
 
         return thresholds.isShortBody(index) && thresholds.isLongShadow(index, lowerShadow)
-                && thresholds.isShortShadow(index, upperShadow)
-                && !bodyBottom.minus(priorLow)
-                        .abs()
-                        .isGreaterThan(thresholds.priorAverageRange()
-                                .getValue(index)
-                                .multipliedBy(
-                                        getBarSeries().numFactory().numOf(CandleThresholdSupport.NEAR_RANGE_FACTOR)));
+                && thresholds.isShortShadow(index, upperShadow) && thresholds.isNear(index, bodyBottom, priorLow);
     }
 
     @Override

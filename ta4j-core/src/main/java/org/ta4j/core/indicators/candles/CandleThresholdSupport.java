@@ -692,10 +692,34 @@ final class CandleThresholdSupport {
         if (firstValue == null || secondValue == null) {
             return false;
         }
-        final Num halfDifference = halfDifference(firstValue, secondValue, series.numFactory());
+        return isNear(index, firstValue, secondValue);
+    }
+
+    /**
+     * Whether the absolute difference between two measurements is at most
+     * {@value #NEAR_RANGE_FACTOR} of the prior average range.
+     *
+     * <p>
+     * Both the difference and the baseline are computed at half scale, so a raw
+     * difference or mean that would overflow stays decidable across
+     * {@link NumFactory}s, and a subnormal difference is not erased by the halving.
+     *
+     * @param index  the candle index
+     * @param first  the first measurement
+     * @param second the second measurement
+     * @return {@code true} when the two measurements are near each other,
+     *         {@code false} below the warm-up boundary, when they diverge, or for a
+     *         non-finite measurement
+     * @since 0.24.2
+     */
+    boolean isNear(int index, Num first, Num second) {
+        if (!isValid(index)) {
+            return false;
+        }
+        final Num halfDifference = halfDifference(first, second, series.numFactory());
         final Num baseline = halfPriorAverageRange.getValue(index).multipliedBy(nearRangeFactor);
-        return Num.isFinite(firstValue) && Num.isFinite(secondValue) && Num.isFinite(halfDifference)
-                && Num.isFinite(baseline) && !halfDifference.isGreaterThan(baseline);
+        return Num.isFinite(first) && Num.isFinite(second) && Num.isFinite(halfDifference) && Num.isFinite(baseline)
+                && !halfDifference.isGreaterThan(baseline);
     }
 
     /**

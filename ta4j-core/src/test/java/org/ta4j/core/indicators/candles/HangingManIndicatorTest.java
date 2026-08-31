@@ -165,6 +165,22 @@ public class HangingManIndicatorTest extends AbstractIndicatorTest<Indicator<Boo
         assertTrue(indicator.getValue(15));
     }
 
+    @Test
+    public void nearBaselineOverflowDoesNotAcceptFarBodyTop() {
+        // A period-1 prior candle spanning 2 * Double.MAX_VALUE overflows the
+        // restored full-scale prior average range to infinity, which made the
+        // full-scale near check trivially pass and falsely accept this far
+        // body top as a hanging man; the half-scale comparison must reject it.
+        final double max = Double.MAX_VALUE;
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(0.5 * max).closePrice(0.4 * max).highPrice(max).lowPrice(-max).add();
+        series.barBuilder().openPrice(0.48 * max).closePrice(0.5 * max).highPrice(0.58 * max).lowPrice(0.1 * max).add();
+
+        HangingManIndicator hangingMan = new HangingManIndicator(series, 1);
+
+        assertFalse(hangingMan.getValue(1));
+    }
+
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);

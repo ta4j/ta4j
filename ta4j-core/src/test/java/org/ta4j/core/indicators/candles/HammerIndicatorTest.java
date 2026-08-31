@@ -165,6 +165,22 @@ public class HammerIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean
         assertTrue(indicator.getValue(15));
     }
 
+    @Test
+    public void nearBaselineOverflowDoesNotAcceptFarBodyBottom() {
+        // A period-1 prior candle spanning 2 * Double.MAX_VALUE overflows the
+        // restored full-scale prior average range to infinity, which made the
+        // full-scale near check trivially pass and falsely accept this far
+        // body bottom as a hammer; the half-scale comparison must reject it.
+        final double max = Double.MAX_VALUE;
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(0).closePrice(0.8 * max).highPrice(max).lowPrice(-max).add();
+        series.barBuilder().openPrice(0.9 * max).closePrice(0.8 * max).highPrice(0.95 * max).lowPrice(-max).add();
+
+        HammerIndicator hammer = new HammerIndicator(series, 1);
+
+        assertFalse(hammer.getValue(1));
+    }
+
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);
