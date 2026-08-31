@@ -6,6 +6,8 @@ package org.ta4j.core.indicators;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.lang.reflect.Field;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -31,6 +33,23 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
     @Test
     public void shouldRetainLegacyTwoArgumentConstructor() throws NoSuchMethodException {
         assertThat(AbstractRecentSwingIndicator.class.getDeclaredConstructor(Indicator.class, int.class)).isNotNull();
+    }
+
+    @Test
+    public void shouldInvalidateCacheAfterReleasingSwingTrackerOnHistoryReset()
+            throws NoSuchFieldException, IllegalAccessException {
+        final BarSeries series = seriesFromCloses(1, 2, 3, 4, 5);
+        final int[] latestSwingIndexes = { -1, -1, 2, 2, 2 };
+        final LockCheckingSwingIndicator indicator = new LockCheckingSwingIndicator(new ClosePriceIndicator(series),
+                latestSwingIndexes);
+        indicator.captureSwingPointTracker();
+        indicator.getSwingPointIndexesUpTo(series.getEndIndex());
+
+        series.setMaximumBarCount(3);
+
+        indicator.getSwingPointIndexesUpTo(series.getEndIndex());
+
+        assertThat(indicator.wasInvalidatedOutsideTrackerMonitor()).isTrue();
     }
 
     @Test
@@ -296,6 +315,32 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
                 return latestSwingIndexes.get(latestSwingIndexes.size() - 1);
             }
             return latestSwingIndexes.get(index);
+        }
+    }
+
+    private static final class LockCheckingSwingIndicator extends FixedSwingIndicator {
+
+        private Object swingPointTrackerMonitor;
+        private boolean invalidatedOutsideTrackerMonitor;
+
+        private LockCheckingSwingIndicator(Indicator<Num> priceIndicator, int[] latestSwingIndexes) {
+            super(priceIndicator, latestSwingIndexes);
+        }
+
+        private void captureSwingPointTracker() throws NoSuchFieldException, IllegalAccessException {
+            final Field swingPointsField = AbstractRecentSwingIndicator.class.getDeclaredField("swingPoints");
+            swingPointsField.setAccessible(true);
+            swingPointTrackerMonitor = swingPointsField.get(this);
+        }
+
+        @Override
+        protected void invalidateCache() {
+            invalidatedOutsideTrackerMonitor = !Thread.holdsLock(swingPointTrackerMonitor);
+            super.invalidateCache();
+        }
+
+        private boolean wasInvalidatedOutsideTrackerMonitor() {
+            return invalidatedOutsideTrackerMonitor;
         }
     }
 
