@@ -21,10 +21,11 @@ import static org.ta4j.core.num.NaN.NaN;
  */
 public class EDMAIndicator extends CachedIndicator<Num> {
 
+    private final Indicator<Num> indicator;
     private final int barCount;
     private final int displacement;
-    private final EMAIndicator ema;
-    private final int unstableBars;
+    private final transient EMAIndicator ema;
+    private final transient int unstableBars;
 
     /**
      * Constructor.
@@ -37,6 +38,7 @@ public class EDMAIndicator extends CachedIndicator<Num> {
         // The source is registered so a rebaselining input (e.g., a stochastic)
         // invalidates the whole displaced cache after a series head advance.
         super(indicator);
+        this.indicator = indicator;
         this.barCount = barCount;
         this.displacement = displacement;
         this.ema = new EMAIndicator(indicator, barCount);
