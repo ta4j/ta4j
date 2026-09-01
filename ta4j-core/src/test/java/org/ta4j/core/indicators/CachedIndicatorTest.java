@@ -2504,7 +2504,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
                 new SMAIndicator(new ClosePriceIndicator(seriesB), 1));
 
         Num before = distance.getValue(2);
-        seriesB.addPrice(numOf(300));
+        seriesB.getLastBar().addPrice(numOf(300));
         Num after = distance.getValue(2);
 
         DistanceFromMAIndicator freshDistance = new DistanceFromMAIndicator(seriesA,
