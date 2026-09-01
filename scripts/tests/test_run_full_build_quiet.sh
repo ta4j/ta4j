@@ -417,16 +417,16 @@ test_progressing_build_is_not_killed_at_timeout_boundary() {
 #!/usr/bin/env bash
 printf '%s\n' "$@" > "$FAKE_MAVEN_ARGS"
 echo "[INFO] Slow fixture started"
-sleep 1
+sleep 2
 echo "[INFO] Slow fixture still progressing"
-sleep 1
+sleep 2
 echo "[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0"
 echo "[INFO] BUILD SUCCESS"
 EOF
   chmod +x "$TMP/bin/mvn"
 
   local output
-  output="$(QUIET_BUILD_TIMEOUT_SECONDS=1 QUIET_BUILD_STALL_SECONDS=2 run_quiet_build scripts/run-full-build-quiet.sh)"
+  output="$(QUIET_BUILD_TIMEOUT_SECONDS=1 QUIET_BUILD_STALL_SECONDS=3 run_quiet_build scripts/run-full-build-quiet.sh)"
 
   expect_contains "$output" "Build: success" "progressing Maven output should extend the watchdog past the hard timeout boundary"
   expect_file_contains_line "$TMP/maven-args.txt" "verify" "progressing timeout fixture should still run the canonical Maven command"

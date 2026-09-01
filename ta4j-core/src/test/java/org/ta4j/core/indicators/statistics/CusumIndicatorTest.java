@@ -415,11 +415,12 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     public void subnormalScaleDecaysToZeroAndClipsLaterAdmissions() {
         // A subnormal scale increment followed by a zero increment must decay
         // the winsorization scale to zero: the difference-form update stalls
-        // at MIN_VALUE when the weighted delta underflows, and the stall check
-        // reroutes through the convex combination. DoubleNum collapses the
-        // scale to zero, so the next admission is clipped to a zero bound and
-        // the CUSUM stays at MIN_VALUE; DecimalNum keeps the exact subnormal
-        // scale, whose clip bound admits the deviation unclipped.
+        // at MIN_VALUE when the weighted delta underflows, and the
+        // subnormal-magnitude recovery recombines the exact weighted sum.
+        // DoubleNum correctly rounds that scale to zero, so the next admission
+        // is clipped to a zero bound and the CUSUM stays at MIN_VALUE;
+        // DecimalNum keeps its exact subnormal scale, whose clip bound admits
+        // the deviation unclipped.
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(0, Double.MIN_VALUE, 0)
                 .build();
@@ -429,6 +430,68 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
 
         Num expected = numFactory instanceof DoubleNumFactory ? numOf(Double.MIN_VALUE)
                 : numOf(Double.MIN_VALUE).multipliedBy(numOf(2));
+
+        assertNumEquals(expected, cusum.getValue(2));
+    }
+
+    @Test
+    public void stalledSubnormalScaleRoundsOnceBeforeClipping() {
+        // Deviations [MIN_VALUE, 2 * MIN_VALUE, 3 * MIN_VALUE] with clip 2
+        // leave the second value on the initial bound. At index 1, the scale
+        // update has previous MIN_VALUE and increment 2 * MIN_VALUE: its
+        // difference product rounds 0.5 * MIN_VALUE to zero. The former
+        // fallback rounded the convex products separately and retained
+        // MIN_VALUE instead of fl(1.5 * MIN_VALUE) = 2 * MIN_VALUE. The
+        // corrected scale admits the final 3 * MIN_VALUE deviation, producing
+        // a cumulative CUSUM of 6 * MIN_VALUE instead of 5 * MIN_VALUE.
+        Num minimum = numOf(new BigDecimal(Double.MIN_VALUE));
+        Num twiceMinimum = minimum.multipliedBy(numFactory.two());
+        Num negativeMinimum = minimum.multipliedBy(numFactory.minusOne());
+        Num negativeTwiceMinimum = twiceMinimum.multipliedBy(numFactory.minusOne());
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(0, -Double.MIN_VALUE, -2 * Double.MIN_VALUE)
+                .build();
+        CusumIndicator cusum = new CusumIndicator(
+                new MockIndicator(series, 0, numFactory.zero(), negativeMinimum, negativeTwiceMinimum),
+                minimum.bigDecimalValue(), BigDecimal.ZERO, BigDecimal.valueOf(2), BigDecimal.valueOf(0.5));
+
+        Num firstDeviation = minimum.minus(negativeMinimum);
+        Num secondDeviation = minimum.minus(negativeTwiceMinimum);
+        Num expected = minimum.plus(firstDeviation).plus(secondDeviation);
+
+        assertNumEquals(expected, cusum.getValue(2));
+    }
+
+    @Test
+    public void nonStallingSubnormalScaleRoundsOnceBeforeClipping() {
+        // Deviations [MIN_VALUE, 4 * MIN_VALUE, 9 * MIN_VALUE] with clip 4
+        // make the index-1 scale update non-stalling: the difference form
+        // publishes 3 * MIN_VALUE although the exact combination 2.5 *
+        // MIN_VALUE rounds once to 2 * MIN_VALUE for DoubleNum. The corrected
+        // bound clips the final deviation to 8 * MIN_VALUE, producing 13 *
+        // MIN_VALUE. DecimalNum retains 2.5 * MIN_VALUE, so it admits the
+        // final deviation and has its own exact 16-digit expected sequence.
+        Num minimum = numOf(new BigDecimal(Double.MIN_VALUE));
+        Num threeMinimum = minimum.multipliedBy(numFactory.three());
+        Num eightMinimum = minimum.multipliedBy(numOf(8));
+        Num negativeThreeMinimum = threeMinimum.multipliedBy(numFactory.minusOne());
+        Num negativeEightMinimum = eightMinimum.multipliedBy(numFactory.minusOne());
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(0, -3 * Double.MIN_VALUE, -8 * Double.MIN_VALUE)
+                .build();
+        CusumIndicator cusum = new CusumIndicator(
+                new MockIndicator(series, 0, numFactory.zero(), negativeThreeMinimum, negativeEightMinimum),
+                minimum.bigDecimalValue(), BigDecimal.ZERO, BigDecimal.valueOf(4), BigDecimal.valueOf(0.5));
+
+        Num firstDeviation = minimum.minus(negativeThreeMinimum);
+        Num secondDeviation = minimum.minus(negativeEightMinimum);
+        Num expected;
+        if (numFactory instanceof DoubleNumFactory) {
+            expected = minimum.plus(firstDeviation).plus(eightMinimum);
+        } else {
+            Num initialBound = minimum.multipliedBy(numOf(4));
+            expected = minimum.plus(initialBound).plus(secondDeviation);
+        }
 
         assertNumEquals(expected, cusum.getValue(2));
     }

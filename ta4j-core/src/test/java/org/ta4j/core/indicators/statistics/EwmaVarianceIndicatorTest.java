@@ -363,6 +363,63 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void nonStallingSubnormalMeanRoundsOnce() {
+        // With previous mean MIN_VALUE and current 4 * MIN_VALUE at decay 0.5,
+        // the difference form adds fl(1.5 * MIN_VALUE) = 2 * MIN_VALUE to the
+        // previous mean and publishes 3 * MIN_VALUE. The exact convex mean is
+        // 2.5 * MIN_VALUE, which rounds once to 2 * MIN_VALUE for DoubleNum.
+        // Use the exact binary expansion as DecimalNum's source so both
+        // factory-specific expected values retain the same mathematical inputs.
+        Num minimum = numOf(new BigDecimal(Double.MIN_VALUE));
+        Num fourMinimum = minimum.multipliedBy(numOf(4));
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(0, 0).build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(new MockIndicator(series, 0, minimum, fourMinimum),
+                1, 0.5);
+
+        Num expected = minimum.multipliedBy(numOf(2.5));
+
+        assertNumEquals(expected, variance.getMeanIndicator().getValue(1));
+    }
+
+    @Test
+    public void subnormalVarianceRoundsOnceWithNonzeroTerms() {
+        // With barCount 1 and decay 0.5, source [-s / 2, s / 2, s] for
+        // s = sqrt(2 * MIN_VALUE) has variance MIN_VALUE at index 1 and
+        // deviation s at index 2. The exact index-2 update is
+        // 0.5 * MIN_VALUE + 0.5 * s^2 = 1.5 * MIN_VALUE, which rounds once
+        // to 2 * MIN_VALUE. Separately rounded double products publish
+        // MIN_VALUE instead.
+        double scale = Math.sqrt(2 * Double.MIN_VALUE);
+        Num exactScale = numOf(new BigDecimal(scale));
+        Num halfScale = exactScale.multipliedBy(numOf(0.5));
+        Num negativeHalfScale = halfScale.multipliedBy(numFactory.minusOne());
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(-0.5 * scale, 0.5 * scale, scale)
+                .build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(
+                new MockIndicator(series, 0, negativeHalfScale, halfScale, exactScale), 1, 0.5);
+
+        Num value = variance.getValue(2);
+
+        if (numFactory instanceof DoubleNumFactory) {
+            assertNumEquals(numOf(2 * Double.MIN_VALUE), value);
+        } else {
+            // DecimalNum preserves a factory-specific 16-digit sequence.
+            // Compute it directly from the exact delegates: index 1 narrows
+            // 0.5 * (s / 2 - (-s / 2))^2 once, then index 2 narrows the
+            // exact weighted sum of that stored state and s^2 once.
+            BigDecimal half = new BigDecimal(0.5);
+            Num firstDeviation = halfScale.minus(negativeHalfScale);
+            Num firstVariance = numFactory.numOf(firstDeviation.bigDecimalValue().pow(2).multiply(half));
+            Num expected = numFactory.numOf(firstVariance.bigDecimalValue()
+                    .multiply(half)
+                    .add(exactScale.bigDecimalValue().pow(2).multiply(half)));
+
+            assertNumEquals(expected, value);
+        }
+    }
+
+    @Test
     public void decimalOperandsBeyondDoubleRangeCombineExactly() {
         // A precision-1 DecimalNum mean of 1E1000 with current 2E1000 at
         // decay 0.9 stalls the difference form (the 0.1-weighted delta 1E999

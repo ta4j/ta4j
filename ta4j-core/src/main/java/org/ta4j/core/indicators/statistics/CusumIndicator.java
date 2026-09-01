@@ -421,18 +421,18 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             // finite operands keep their raw difference finite, and a same-sign
             // subnormal pair (a constant Double.MIN_VALUE increment at decay
             // 0.5) would otherwise round both convex operands to zero although
-            // their exact sum is representable. A collapsed scale zeroes the
-            // parent's winsorization bound and clips every later deviation.
+            // their exact sum is representable. A difference-form result of
+            // subnormal magnitude can misround on the subnormal grid: each
+            // separately rounded product carries up to half a subnormal ulp of
+            // error, and the published scale drives the parent's winsorization
+            // bound. Such results recombine the exact products without
+            // intermediate rounding and narrow once.
             Num delta = increment.minus(previous);
             Num updated = previous.plus(delta.multipliedBy(oneMinusScaleDecay));
-            if (updated.isEqual(previous) && !delta.isZero()) {
-                // The weighted difference underflowed the context epsilon (a
-                // subnormal scale decaying toward zero): the difference form
-                // would stall at previous, keeping a nonzero bound that admits
-                // later deviations. The convex combination decays correctly
-                // here: both operands are non-negative and finite, so neither
-                // product can overflow the sum.
-                return previous.multipliedBy(scaleDecay).plus(increment.multipliedBy(oneMinusScaleDecay));
+            if (ExactDecimalArithmetic.isSubnormalMagnitude(updated)) {
+                return ExactDecimalArithmetic.exactWeightedSum(getBarSeries().numFactory(),
+                        ExactDecimalArithmetic.exactValueOf(previous), scaleDecay.doubleValue(),
+                        ExactDecimalArithmetic.exactValueOf(increment), oneMinusScaleDecay.doubleValue());
             }
             return updated;
         }

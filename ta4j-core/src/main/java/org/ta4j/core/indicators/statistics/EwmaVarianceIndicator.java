@@ -8,7 +8,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -259,16 +258,19 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         // available to control-limit consumers.
         Num updatedVariance = previousVariance.multipliedBy(decay)
                 .plus(deviation.multipliedBy(deviation.multipliedBy(oneMinusDecay)));
-        if (updatedVariance.isZero() && (!previousVariance.isZero() || !deviation.isZero())) {
-            // Both nonnegative terms rounded to zero although their exact
-            // sum is representable (a subnormal variance carried by two
-            // half-subnormal contributions): recombine the exact binary
-            // products without intermediate rounding and narrow once.
-            BigDecimal recovered = new BigDecimal(previousVariance.doubleValue())
-                    .multiply(new BigDecimal(decay.doubleValue()))
-                    .add(new BigDecimal(deviation.doubleValue()).multiply(new BigDecimal(deviation.doubleValue()))
-                            .multiply(new BigDecimal(oneMinusDecay.doubleValue())));
-            updatedVariance = getBarSeries().numFactory().numOf(recovered);
+        if (ExactDecimalArithmetic.isSubnormalMagnitude(updatedVariance) && Num.isFinite(deviation)) {
+            // A difference-form result of subnormal magnitude can misround on
+            // the subnormal grid: each separately rounded product carries up
+            // to half a subnormal ulp of error, so both nonnegative terms can
+            // collapse to zero although their exact sum is representable, and
+            // nonzero half-subnormal ties can land on the wrong side.
+            // Recombine the exact products without intermediate rounding and
+            // narrow once. The deviation must be finite because BigDecimal
+            // rejects non-finite conversions; the return below already drops
+            // non-finite deviations before this recovery matters.
+            updatedVariance = ExactDecimalArithmetic.exactWeightedSum(getBarSeries().numFactory(),
+                    ExactDecimalArithmetic.exactValueOf(previousVariance), decay.doubleValue(),
+                    ExactDecimalArithmetic.exactValueOf(deviation).pow(2), oneMinusDecay.doubleValue());
         }
         return Num.isFinite(deviation) && Num.isFinite(updatedVariance) ? updatedVariance : NaN.NaN;
     }
@@ -508,16 +510,17 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             // Double.MIN_VALUE source at decay 0.5) from rounding both convex
             // operands to zero although their exact sum is representable.
             // Opposite-extreme finite bars overflow the raw difference, and a
-            // subnormal delta underflows its weight and stalls the recursion
-            // (both when the mean decays toward zero and when it grows past a
-            // half-subnormal step), so both failures fall back to one exactly
-            // combined convex sum.
+            // difference-form result of subnormal magnitude can misround:
+            // each separately rounded product carries up to half a subnormal
+            // ulp of error, so a tie on the subnormal grid can land on the
+            // wrong side. Both failures fall back to one exactly combined
+            // convex sum.
             Num delta = current.minus(previousMean);
             if (!Num.isFinite(delta)) {
                 return combinedMean(previousMean, current);
             }
             Num updated = previousMean.plus(delta.multipliedBy(oneMinusDecay));
-            if (updated.isEqual(previousMean) && !delta.isZero()) {
+            if (ExactDecimalArithmetic.isSubnormalMagnitude(updated)) {
                 return combinedMean(previousMean, current);
             }
             return updated;
@@ -526,8 +529,8 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         private Num combinedMean(Num previousMean, Num current) {
             if (!Num.isFinite(previousMean) || !Num.isFinite(current)) {
                 // Non-finite operands (NaN bars) propagate through the convex
-                // form; the decimal recovery below converts operands to
-                // doubles and BigDecimal rejects non-finite conversions.
+                // form; the exact recovery below requires finite BigDecimal
+                // expansions.
                 return previousMean.multipliedBy(decay).plus(current.multipliedBy(oneMinusDecay));
             }
             // Exact expansions of the operands and weights are combined
@@ -538,18 +541,9 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             // MIN_VALUE). DecimalNum operands use their exact decimal
             // expansion, which can exceed the double range, so the conversion
             // must not go through doubleValue().
-            BigDecimal weightedSum = exactValueOf(previousMean).multiply(new BigDecimal(decay.doubleValue()))
-                    .add(exactValueOf(current).multiply(new BigDecimal(oneMinusDecay.doubleValue())));
-            return getBarSeries().numFactory().numOf(weightedSum);
-        }
-
-        private static BigDecimal exactValueOf(Num value) {
-            // DoubleNum carries the exact binary value; DecimalNum carries an
-            // exact decimal that may lie beyond the double range.
-            if (value instanceof DoubleNum) {
-                return new BigDecimal(value.doubleValue());
-            }
-            return value.bigDecimalValue();
+            return ExactDecimalArithmetic.exactWeightedSum(getBarSeries().numFactory(),
+                    ExactDecimalArithmetic.exactValueOf(previousMean), decay.doubleValue(),
+                    ExactDecimalArithmetic.exactValueOf(current), oneMinusDecay.doubleValue());
         }
 
         @Override
