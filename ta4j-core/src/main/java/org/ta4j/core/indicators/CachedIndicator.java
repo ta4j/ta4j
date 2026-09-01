@@ -233,6 +233,25 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         }
     }
 
+    /**
+     * Whether the current thread holds the cache's write lock.
+     *
+     * <p>
+     * Retained-head indicators use this to defer a destructive cache reset while a
+     * recursive {@link #calculate(int)} is still in flight: resetting and
+     * publishing the removal count inside the locked computation would let that
+     * computation repopulate the cache with a mixed-head result, and the retry loop
+     * would then observe the already-published count and reuse it. Deferring keeps
+     * the observed count stale so the top-level read performs the reset once the
+     * write lock is released.
+     *
+     * @return {@code true} if the current thread holds the cache write lock
+     * @since 0.24.2
+     */
+    protected final boolean isCacheWriteLockedByCurrentThread() {
+        return cache.isWriteLockedByCurrentThread();
+    }
+
     private static boolean sameSeriesState(BarSeriesChangeSnapshot left, BarSeriesChangeSnapshot right) {
         return left.revision() == right.revision() && left.removedThroughIndex() == right.removedThroughIndex()
                 && left.maximumBarCount() == right.maximumBarCount() && left.endIndex() == right.endIndex();

@@ -19,6 +19,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.statistics.FloatNumFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.mocks.MockBarBuilder;
@@ -60,7 +61,8 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
                 .build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series));
-        AnalysisCriterion cpk = getCriterion(0.9, 1.15);
+        ProcessCapabilityCriterion cpk = new ProcessCapabilityCriterion(0.9, 1.15);
+        assertEquals(ReturnRepresentation.MULTIPLICATIVE, cpk.getReturnRepresentation().orElseThrow());
         Num expected = cpk.calculate(series, tradingRecord);
 
         ReturnRepresentation original = ReturnRepresentationPolicy.getDefaultRepresentation();
@@ -345,6 +347,54 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
         assertTrue(Num.isFinite(capability));
         assertTrue(capability.isPositive());
         assertTrue(capability.isLessThanOrEqual(numFactory.numOf(10)));
+    }
+
+    @Test
+    public void grossReturnRatioOverflowKeepsRepresentableCapability() {
+        // Entry 1e-300 and exit 1e300 / 2e300 produce gross returns 1e600 and
+        // 2e600: both ratios overflow DoubleNum to infinity, but the mean
+        // (1.5e600), dispersion (0.5e600) and one-sided Cpk against LSL 0
+        // (1) are all representable. The decimal-space recovery from the raw
+        // prices must preserve the score instead of zeroing it. DecimalNum
+        // keeps the ratios finite, so its honest score is the same 1.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1e-300, 1e300, 1e-300, 2e300)
+                .build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series));
+
+        AnalysisCriterion cpk = getCriterion(0);
+        assertNumEquals(1, cpk.calculate(series, tradingRecord));
+    }
+
+    @Test
+    public void shortGrossReturnRatioOverflowKeepsRepresentableCapability() {
+        // Short entries at 1e-300 covered at 1e300 / 2e300 produce
+        // multiplicative returns 2 - 1e600 and 2 - 2e600. Both overflow
+        // DoubleNum, while the one-sided Cpk against LSL -3e600 remains 1.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1e-300, 1e300, 1e-300, 2e300)
+                .build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
+                Trade.sellAt(2, series), Trade.buyAt(3, series));
+
+        AnalysisCriterion cpk = getCriterion(new BigDecimal("-3e600"));
+        assertNumEquals(1, cpk.calculate(series, tradingRecord));
+    }
+
+    @Test
+    public void floatGrossReturnRatioOverflowKeepsRepresentableCapability() {
+        NumFactory floatFactory = FloatNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory)
+                .withData(1e-30, 1e30, 1e-30, 2e30)
+                .build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series));
+
+        Num capability = new ProcessCapabilityCriterion(0).calculate(series, tradingRecord);
+
+        assertTrue(Num.isFinite(capability));
+        assertNumEquals(1, capability);
     }
 
     @Test

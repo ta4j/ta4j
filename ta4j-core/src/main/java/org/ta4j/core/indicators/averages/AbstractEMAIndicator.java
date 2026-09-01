@@ -57,10 +57,12 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
     }
 
     private synchronized void resetForRetainedHead(int removedBarsCount) {
-        if (removedBarsCount != observedRemovedBarsCount) {
+        if (removedBarsCount != observedRemovedBarsCount && !isCacheWriteLockedByCurrentThread()) {
             // A recursive EMA's retained values depend on its discarded prefix.
             // Invalidate first, then publish the count so a concurrent reader
-            // never observes a new head with an old recurrence cache.
+            // never observes a new head with an old recurrence cache. When the
+            // cache write lock is held by this thread the call is recursive
+            // from an in-flight calculate(), so defer to the top-level read.
             invalidateCache();
             observedRemovedBarsCount = removedBarsCount;
         }

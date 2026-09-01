@@ -8,6 +8,7 @@ import java.math.MathContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
@@ -132,6 +133,16 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             return factory.zero();
         }
         Num[] valueArray = values.toArray(new Num[0]);
+        for (Num value : valueArray) {
+            if (!Num.isFinite(value)) {
+                // A gross return overflowed the factory's representation (for
+                // example finite non-zero entry and exit prices whose ratio
+                // exceeds the double range). Recompute the capability entirely
+                // in decimal space from the raw trade prices: the final Cpk is
+                // representable even though the individual returns are not.
+                return calculateOverflowedCpk(series, tradingRecord, factory);
+            }
+        }
         Num mean = compensatedSum(valueArray, factory).dividedBy(factory.numOf(valueArray.length));
         if (!Num.isFinite(mean)) {
             Num maxAbsValue = factory.zero();
@@ -263,6 +274,7 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
                     upperCapability = upperRatio.dividedBy(threeScaledSigma);
                 } else {
                     upperCapability = upperDistance.dividedBy(deviationScale.multipliedBy(threeScaledSigma));
+
                 }
             } else {
                 upperCapability = uslNum.dividedBy(deviationScale)
@@ -271,6 +283,73 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             }
         }
         return lowerCapability.min(upperCapability);
+    }
+
+    /**
+     * Recomputes Cpk entirely in decimal space when a gross return overflows the
+     * active {@link Num} representation.
+     *
+     * <p>
+     * Gross returns are quotients of trade prices; a finite non-zero entry and exit
+     * whose ratio exceeds the representation range produces a non-finite
+     * {@code Num}, but the final capability can still be representable (a DoubleNum
+     * pair of returns 1e608 and 2e608 has mean 1.5e608, sigma 0.5e608 and Cpk 1).
+     * Prices with zero or non-finite magnitude are not ratio overflow: they are
+     * genuinely degenerate, so the criterion keeps its zero-score behavior for
+     * them.
+     *
+     * @param series        the bar series (source of the price numerics)
+     * @param tradingRecord the record whose closed positions supply the prices
+     * @param factory       the series' numeric factory, used only for the final
+     *                      narrowed result
+     * @return the capability computed from lossless decimal gross returns
+     */
+    private Num calculateOverflowedCpk(BarSeries series, TradingRecord tradingRecord, NumFactory factory) {
+        MathContext context = recoveryMathContext(factory);
+        List<BigDecimal> returns = new ArrayList<>();
+        for (Position position : tradingRecord.getPositions()) {
+            if (!position.isClosed()) {
+                continue;
+            }
+            Num entryPrice = position.getEntry().getPricePerAsset(series);
+            Num exitPrice = position.getExit().getPricePerAsset(series);
+            if (!Num.isFinite(entryPrice) || !Num.isFinite(exitPrice) || entryPrice.isZero()) {
+                // A zero entry or non-finite price makes the gross return
+                // genuinely undefined, not merely unrepresentable.
+                return factory.zero();
+            }
+            BigDecimal ratio = exitPrice.bigDecimalValue().divide(entryPrice.bigDecimalValue(), context);
+            if (position.getEntry().isBuy()) {
+                returns.add(ratio);
+            } else {
+                returns.add(BigDecimal.valueOf(2).subtract(ratio, context));
+            }
+        }
+        if (returns.isEmpty()) {
+            return factory.zero();
+        }
+        BigDecimal sum = BigDecimal.ZERO;
+        for (BigDecimal value : returns) {
+            sum = sum.add(value, context);
+        }
+        BigDecimal mean = sum.divide(BigDecimal.valueOf(returns.size()), context);
+        BigDecimal squaredSum = BigDecimal.ZERO;
+        for (BigDecimal value : returns) {
+            BigDecimal deviation = value.subtract(mean, context);
+            squaredSum = squaredSum.add(deviation.multiply(deviation, context), context);
+        }
+        BigDecimal threeSigma = squaredSum.divide(BigDecimal.valueOf(returns.size()), context)
+                .sqrt(context)
+                .multiply(BigDecimal.valueOf(3), context);
+        if (threeSigma.signum() == 0) {
+            return factory.zero();
+        }
+        BigDecimal lowerCapability = mean.subtract(lsl, context).divide(threeSigma, context);
+        if (usl == null) {
+            return factory.numOf(lowerCapability);
+        }
+        BigDecimal upperCapability = usl.subtract(mean, context).divide(threeSigma, context);
+        return factory.numOf(lowerCapability.min(upperCapability));
     }
 
     private static Num scaledDistance(BigDecimal rawDistance, Num deviationScale, Num threeScaledSigma,
@@ -318,6 +397,11 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             sum = next;
         }
         return sum.plus(compensation);
+    }
+
+    @Override
+    public Optional<ReturnRepresentation> getReturnRepresentation() {
+        return Optional.of(ReturnRepresentation.MULTIPLICATIVE);
     }
 
     @Override

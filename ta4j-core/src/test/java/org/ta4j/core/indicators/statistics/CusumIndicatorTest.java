@@ -657,11 +657,66 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         }
     }
 
+    @Test
+    public void reentrantPruneDuringCalculateDoesNotDoubleCountHeadDeviation() {
+        // A source read inside calculate() prunes the series so that the index
+        // being computed becomes the retained head. The outer computation then
+        // recurses into getValue(index - 1), which re-enters the retained-head
+        // reset while the cache write lock is held. The reset must defer to the
+        // top-level read; otherwise the in-flight computation repopulates the
+        // cache with the head deviation added twice (once by the re-anchored
+        // recursion, once by the stale-prefix outer path).
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1, 1).build();
+        PruningIndicator source = new PruningIndicator(series, numFactory.one(), 2);
+        CusumIndicator cusum = new CusumIndicator(source, 2, 0, 3.0, 0.94);
+
+        // After pruning, index 2 is the head with deviation 2 - 1 - 0 = 1 and a
+        // single count CUSUM of 1. A double-counted bug publishes 2.
+        assertNumEquals(1, cusum.getValue(2));
+    }
+
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);
         ClosePriceIndicator close = new ClosePriceIndicator(series);
 
         return List.of(serializationFixture(series, new CusumIndicator(close, 0, 0.005), stableIndexes(series)));
+    }
+
+    /**
+     * A source indicator that prunes its series to {@code maximumBarCount} bars on
+     * the first read, simulating a mid-computation window shrink.
+     */
+    private static final class PruningIndicator implements Indicator<Num> {
+
+        private final BarSeries series;
+        private final Num value;
+        private final int maximumBarCount;
+        private boolean pruned;
+
+        PruningIndicator(BarSeries series, Num value, int maximumBarCount) {
+            this.series = series;
+            this.value = value;
+            this.maximumBarCount = maximumBarCount;
+        }
+
+        @Override
+        public Num getValue(int index) {
+            if (!pruned) {
+                pruned = true;
+                series.setMaximumBarCount(maximumBarCount);
+            }
+            return value;
+        }
+
+        @Override
+        public BarSeries getBarSeries() {
+            return series;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
     }
 }

@@ -42,8 +42,10 @@ import java.math.BigDecimal;
  * The value is {@code NaN} while warming up, with
  * {@code getCountOfUnstableBars() = indicator.getCountOfUnstableBars() +
  * barCount - 1}, and non-finite inputs or extreme regime changes whose derived
- * deviation overflows the numeric representation yield {@code NaN} until the
- * next finite bar re-seeds the variance. The weighted squared deviation
+ * deviation overflows the numeric representation yield {@code NaN}. With
+ * {@code barCount > 1} the rolling seed window still contains the gap bar, so
+ * the value stays {@code NaN} until the gap leaves the complete seed window
+ * rather than recovering at the next finite bar. The weighted squared deviation
  * {@code (1 - decayFactor) * deviation^2} is accumulated by scaling one
  * deviation factor by the complement weight before completing the product, so a
  * deviation whose square overflows still yields a finite weighted contribution.
@@ -178,10 +180,14 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     private synchronized void resetForRetainedHead(int removedBarsCount) {
-        if (removedBarsCount != observedRemovedBarsCount) {
+        if (removedBarsCount != observedRemovedBarsCount && !isCacheWriteLockedByCurrentThread()) {
             // Invalidate first, publish last: a concurrent reader that
             // observes the new count must never see caches still computed
-            // from the discarded prefix.
+            // from the discarded prefix. When the cache write lock is held by
+            // this thread the call is recursive from an in-flight calculate(),
+            // so defer to the top-level read: resetting here would let the
+            // in-flight computation repopulate the cache with a mixed-head
+            // result after this reset, and the retry loop would then reuse it.
             this.meanIndicator = new SharedMeanIndicator(indicator, barCount, decay, oneMinusDecay);
             reseedIndex = (int) Math.min((long) getBarSeries().getBeginIndex() + barCount - 1L, Integer.MAX_VALUE);
             invalidateCache();

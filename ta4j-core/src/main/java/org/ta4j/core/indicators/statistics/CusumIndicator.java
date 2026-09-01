@@ -119,10 +119,14 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     private synchronized void resetForRetainedHead(int removedBarsCount) {
-        if (removedBarsCount != observedRemovedBarsCount) {
+        if (removedBarsCount != observedRemovedBarsCount && !isCacheWriteLockedByCurrentThread()) {
             // Invalidate first, publish last: a concurrent reader that
             // observes the new count must never see caches still computed
-            // from the discarded prefix.
+            // from the discarded prefix. When the cache write lock is held by
+            // this thread the call is recursive from an in-flight calculate(),
+            // so defer to the top-level read: resetting here would let the
+            // in-flight computation repopulate the cache with a mixed-head
+            // result after this reset, and the retry loop would then reuse it.
             invalidateCache();
             deviationScale.invalidateForRetainedHead();
             observedRemovedBarsCount = removedBarsCount;
