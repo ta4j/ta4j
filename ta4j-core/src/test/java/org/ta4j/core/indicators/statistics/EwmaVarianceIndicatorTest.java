@@ -413,6 +413,37 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void subnormalFloatDeltaRecombinesNormalMean() {
+        // The updated mean is normal, but the source delta is subnormal. The
+        // float difference form publishes 0x00800d0d; a single exact rounding
+        // must publish 0x00800d0e instead.
+        NumFactory floatFactory = FloatNumFactory.getInstance();
+        Num previousMean = floatFactory.numOf(Float.intBitsToFloat(0x00801037));
+        Num current = floatFactory.numOf(Float.intBitsToFloat(0x008009e4));
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory).withData(0, 0).build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(new MockIndicator(series, 0, previousMean, current),
+                1, 0.5);
+
+        assertEquals(0x00800d0e, Float.floatToRawIntBits(variance.getMeanIndicator().getValue(1).floatValue()));
+    }
+
+    @Test
+    public void recoveryDerivesDecayFromAppliedComplement() {
+        // A precision-1 factory stores 0.94 as 0.9 but preserves the applied
+        // complement 0.06. Exact recovery must derive the first weight as
+        // 1 - 0.06; multiplying stored 0.9 and 0.06 separately yields -8E-400
+        // instead of the correctly rounded -9E-400.
+        NumFactory precisionOne = DecimalNumFactory.getInstance(1);
+        Num previousMean = precisionOne.numOf(new BigDecimal("-9E-400"));
+        Num current = precisionOne.numOf(new BigDecimal("-6E-400"));
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(precisionOne).withData(0, 0).build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(new MockIndicator(series, 0, previousMean, current),
+                1, 0.94);
+
+        assertNumEquals(previousMean, variance.getMeanIndicator().getValue(1));
+    }
+
+    @Test
     public void nonStallingSubnormalMeanRoundsOnce() {
         // With previous mean MIN_VALUE and current 4 * MIN_VALUE at decay 0.5,
         // the difference form adds fl(1.5 * MIN_VALUE) = 2 * MIN_VALUE to the

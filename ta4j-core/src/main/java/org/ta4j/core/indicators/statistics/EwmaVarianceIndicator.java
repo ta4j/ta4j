@@ -118,16 +118,13 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         this.indicator = parameters.indicator();
         this.barCount = parameters.barCount();
         this.decayFactor = parameters.decayFactor();
-        // The complement is the exact BigDecimal difference 1 - rawDecay and
-        // the decay is derived from it, mirroring CusumIndicator's scale-decay
-        // conversion: computing the complement in primitive double first
-        // injects the binary rounding artifact (1d - 0.06), and deriving it
-        // from the already rounded decay collapses to zero where the decay
-        // rounds to one (DecimalNumFactory precision 1 rounds 0.9999 to 1),
-        // so the exact subtraction keeps decay plus complement summing to
-        // exactly one under every factory precision. The mean recursion
-        // consumes the same complement, so the mean and variance legs always
-        // apply identical decay weights.
+        // Preserve the update complement as the exact BigDecimal difference
+        // before factory narrowing: computing it in primitive double injects a
+        // binary artifact, while deriving it from rounded decay can collapse it
+        // to zero when the decay rounds to one. The mean recurrence applies
+        // this complement directly, and exact recovery derives its matching
+        // first weight from the same applied value rather than independently
+        // rounded weights.
         BigDecimal rawDecay = BigDecimal.valueOf(decayFactor);
         this.oneMinusDecay = indicator.getBarSeries().numFactory().numOf(BigDecimal.ONE.subtract(rawDecay));
         this.decay = indicator.getBarSeries().numFactory().one().minus(this.oneMinusDecay);
@@ -261,17 +258,16 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         Num updatedVariance = previousVariance.multipliedBy(decay)
                 .plus(deviation.multipliedBy(deviation.multipliedBy(oneMinusDecay)));
         if (ExactDecimalArithmetic.isSubnormalMagnitude(updatedVariance) && Num.isFinite(deviation)) {
-            // A difference-form result of subnormal magnitude can misround on
-            // the subnormal grid: each separately rounded product carries up
-            // to half a subnormal ulp of error, so both nonnegative terms can
-            // collapse to zero although their exact sum is representable, and
-            // nonzero half-subnormal ties can land on the wrong side.
-            // Recombine the exact products without intermediate rounding and
-            // narrow once. The deviation must be finite because BigDecimal
-            // rejects non-finite conversions; the return below already drops
-            // non-finite deviations before this recovery matters.
+            // A nonnegative product sum of subnormal magnitude can misround on
+            // the subnormal grid: each separately rounded term carries up to
+            // half a subnormal ulp of error, so both terms can collapse to zero
+            // although their exact sum is representable. Recombine the exact
+            // products without intermediate rounding and narrow once. The
+            // deviation must be finite because BigDecimal rejects non-finite
+            // conversions; the return below already drops non-finite
+            // deviations before this recovery matters.
             updatedVariance = ExactDecimalArithmetic.exactWeightedSum(getBarSeries().numFactory(),
-                    ExactDecimalArithmetic.exactValueOf(previousVariance), decay,
+                    ExactDecimalArithmetic.exactValueOf(previousVariance),
                     ExactDecimalArithmetic.exactValueOf(deviation).pow(2), oneMinusDecay);
         }
         return Num.isFinite(deviation) && Num.isFinite(updatedVariance) ? updatedVariance : NaN.NaN;
@@ -512,17 +508,15 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             // Double.MIN_VALUE source at decay 0.5) from rounding both convex
             // operands to zero although their exact sum is representable.
             // Opposite-extreme finite bars overflow the raw difference, and a
-            // difference-form result of subnormal magnitude can misround:
-            // each separately rounded product carries up to half a subnormal
-            // ulp of error, so a tie on the subnormal grid can land on the
-            // wrong side. Both failures fall back to one exactly combined
+            // low-magnitude result or finite delta can misround on the active
+            // primitive grid. Both failures fall back to one exactly combined
             // convex sum.
             Num delta = current.minus(previousMean);
             if (!Num.isFinite(delta)) {
                 return combinedMean(previousMean, current);
             }
             Num updated = previousMean.plus(delta.multipliedBy(oneMinusDecay));
-            if (ExactDecimalArithmetic.isSubnormalMagnitude(updated)) {
+            if (ExactDecimalArithmetic.requiresExactRecovery(updated, delta)) {
                 return combinedMean(previousMean, current);
             }
             return updated;
@@ -535,17 +529,15 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
                 // expansions.
                 return previousMean.multipliedBy(decay).plus(current.multipliedBy(oneMinusDecay));
             }
-            // Exact expansions of the operands and weights are combined
-            // without intermediate rounding and narrowed once: the separately
-            // rounded products discard a half-subnormal contribution although
-            // the correctly rounded mean is representable (an exact 1.5 *
-            // MIN_VALUE mean rounds up to 2 * MIN_VALUE instead of stalling at
-            // MIN_VALUE). DecimalNum operands use their exact decimal
-            // expansion, which can exceed the double range, so the conversion
+            // Exact expansions of the operands combine without intermediate
+            // rounding and narrow once. The first factor is derived as the
+            // exact complement of the actual delta weight, so a coarse factory
+            // cannot turn independently rounded weights into a non-convex sum.
+            // DecimalNum operands can exceed the double range, so conversion
             // must not go through doubleValue().
             return ExactDecimalArithmetic.exactWeightedSum(getBarSeries().numFactory(),
-                    ExactDecimalArithmetic.exactValueOf(previousMean), decay,
-                    ExactDecimalArithmetic.exactValueOf(current), oneMinusDecay);
+                    ExactDecimalArithmetic.exactValueOf(previousMean), ExactDecimalArithmetic.exactValueOf(current),
+                    oneMinusDecay);
         }
 
         @Override

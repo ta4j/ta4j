@@ -202,7 +202,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         this.outlierClipFactor = parameters.outlierClipFactor();
         this.scaleDecay = parameters.rawScaleDecay();
         this.deviationScale = new DeviationScaleIndicator(this.indicator, this.targetMean, this.allowance,
-                parameters.scaleDecay(), parameters.oneMinusScaleDecay());
+                parameters.oneMinusScaleDecay());
     }
 
     private static Parameters validateParameters(Indicator<Num> indicator, Number targetMean, Number allowance,
@@ -223,8 +223,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             throw new IllegalArgumentException("outlierClipFactor must be > 0");
         }
         return new Parameters(indicator, validatedTargetMean, validatedAllowance, validatedOutlierClipFactor,
-                validatedScaleDecay.rawScaleDecay(), validatedScaleDecay.scaleDecay(),
-                validatedScaleDecay.oneMinusScaleDecay());
+                validatedScaleDecay.rawScaleDecay(), validatedScaleDecay.oneMinusScaleDecay());
     }
 
     private static ValidatedScaleDecay validateScaleDecay(Number scaleDecay, NumFactory factory) {
@@ -238,13 +237,12 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         // computing it in primitive double first injects the binary rounding
         // artifact (1d - 0.94 = 0.060000000000000005), and deriving it from
         // the already rounded decay collapses to zero where the decay rounds
-        // to one, so the exact subtraction keeps the EWMA weight meaningful
-        // under coarse precision and decay plus complement sums to exactly
-        // one. Both numbers are carried into the deviation-scale recursion,
-        // so the complement is never recomputed from the already rounded
-        // decay, and the raw value is retained on the indicator so the
-        // descriptor / JSON round trip serializes the in-range parameter
-        // instead of its rounded boundary.
+        // to one. Carrying this applied update weight preserves meaningful
+        // scale updates under coarse precision; exact recovery derives its
+        // matching first factor from the same value instead of multiplying
+        // independently rounded weights. The raw value is retained on the
+        // indicator so the descriptor / JSON round trip serializes the in-range
+        // parameter instead of its rounded boundary.
         double narrowed = scaleDecay.doubleValue();
         if (!Double.isFinite(narrowed)) {
             throw new IllegalArgumentException("scaleDecay must be in (0, 1)");
@@ -256,14 +254,14 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         }
         BigDecimal complement = BigDecimal.ONE.subtract(rawScaleDecay);
         Num oneMinusScaleDecay = factory.numOf(complement);
-        return new ValidatedScaleDecay(rawScaleDecay, factory.one().minus(oneMinusScaleDecay), oneMinusScaleDecay);
+        return new ValidatedScaleDecay(rawScaleDecay, oneMinusScaleDecay);
     }
 
-    private record ValidatedScaleDecay(BigDecimal rawScaleDecay, Num scaleDecay, Num oneMinusScaleDecay) {
+    private record ValidatedScaleDecay(BigDecimal rawScaleDecay, Num oneMinusScaleDecay) {
     }
 
     private record Parameters(Indicator<Num> indicator, Num targetMean, Num allowance, Num outlierClipFactor,
-            BigDecimal rawScaleDecay, Num scaleDecay, Num oneMinusScaleDecay) {
+            BigDecimal rawScaleDecay, Num oneMinusScaleDecay) {
     }
 
     @Override
@@ -367,26 +365,23 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
 
     /**
      * Exponentially smoothed mean absolute deviation of the raw CUSUM increment
-     * {@code mu0 - X_t - k}, using the parent's {@code scaleDecay} and its
-     * separately converted complement. Follows the parent's non-finite convention:
-     * gaps carry the previous scale forward and are seeded at zero on the first
-     * addressable bar.
+     * {@code mu0 - X_t - k}, using the parent's exact-complement update weight.
+     * Follows the parent's non-finite convention: gaps carry the previous scale
+     * forward and are seeded at zero on the first addressable bar.
      */
     private static final class DeviationScaleIndicator extends RecursiveCachedIndicator<Num> {
 
         private final Indicator<Num> indicator;
         private final Num targetMean;
         private final Num allowance;
-        private final Num scaleDecay;
         private final Num oneMinusScaleDecay;
 
-        private DeviationScaleIndicator(Indicator<Num> indicator, Num targetMean, Num allowance, Num scaleDecay,
+        private DeviationScaleIndicator(Indicator<Num> indicator, Num targetMean, Num allowance,
                 Num oneMinusScaleDecay) {
             super(indicator);
             this.indicator = indicator;
             this.targetMean = targetMean;
             this.allowance = allowance;
-            this.scaleDecay = scaleDecay;
             this.oneMinusScaleDecay = oneMinusScaleDecay;
         }
 
@@ -421,22 +416,17 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             if (!Num.isFinite(previous)) {
                 return increment;
             }
-            // Weight the difference before combining: the two non-negative
-            // finite operands keep their raw difference finite, and a same-sign
-            // subnormal pair (a constant Double.MIN_VALUE increment at decay
-            // 0.5) would otherwise round both convex operands to zero although
-            // their exact sum is representable. A difference-form result of
-            // subnormal magnitude can misround on the subnormal grid: each
-            // separately rounded product carries up to half a subnormal ulp of
-            // error, and the published scale drives the parent's winsorization
-            // bound. Such results recombine the exact products without
-            // intermediate rounding and narrow once.
+            // Weight the finite difference before combining. A low-magnitude
+            // result or delta can misround on the active primitive grid, and
+            // the published scale drives the parent's winsorization bound.
+            // Such updates recombine exact operands without intermediate
+            // rounding and narrow once.
             Num delta = increment.minus(previous);
             Num updated = previous.plus(delta.multipliedBy(oneMinusScaleDecay));
-            if (ExactDecimalArithmetic.isSubnormalMagnitude(updated)) {
+            if (ExactDecimalArithmetic.requiresExactRecovery(updated, delta)) {
                 return ExactDecimalArithmetic.exactWeightedSum(getBarSeries().numFactory(),
-                        ExactDecimalArithmetic.exactValueOf(previous), scaleDecay,
-                        ExactDecimalArithmetic.exactValueOf(increment), oneMinusScaleDecay);
+                        ExactDecimalArithmetic.exactValueOf(previous), ExactDecimalArithmetic.exactValueOf(increment),
+                        oneMinusScaleDecay);
             }
             return updated;
         }

@@ -14,17 +14,17 @@ import org.ta4j.core.num.NumFactory;
  *
  * <p>
  * The difference-form EWMA-style update
- * {@code previous + (1 - decay) * (current - previous)} computes each convex
- * product with its own intermediate rounding. Each product carries at most half
- * an ulp of error, which a normal-magnitude result absorbs, but a
- * subnormal-magnitude result sits on the coarsest representable primitive grid.
- * On the double grid, the ulp of a subnormal is {@code Double.MIN_VALUE}
- * itself, so the accumulated error can move an exact tie to the wrong side:
- * {@code 0.5 * MIN_VALUE} collapses to zero and {@code 1.5 * MIN_VALUE}
- * publishes {@code MIN_VALUE} although the correctly rounded single-rounding
- * results are {@code 0} and {@code 2 * MIN_VALUE}. The recovery paths also
- * cover one active-grid ulp above the minimum-normal boundary, where an
- * intermediate product can misround a correctly minimum-normal result.
+ * {@code previous + (1 - decay) * (current - previous)} computes its product
+ * with intermediate rounding. At the lower active primitive grid, a
+ * subnormal-magnitude result or update difference can move a later
+ * normal-magnitude result by one grid ulp. On the double grid, the ulp of a
+ * subnormal is {@code Double.MIN_VALUE} itself, so the accumulated error can
+ * move an exact tie to the wrong side: {@code 0.5 * MIN_VALUE} collapses to
+ * zero and {@code 1.5 * MIN_VALUE} publishes {@code MIN_VALUE} although the
+ * correctly rounded single-rounding results are {@code 0} and
+ * {@code 2 * MIN_VALUE}. The recovery paths also cover one active-grid ulp
+ * above the minimum-normal boundary, where an intermediate product can misround
+ * a correctly minimum-normal result.
  *
  * <p>
  * The exact operands are {@link BigDecimal} expansions: {@link Float} and
@@ -60,6 +60,20 @@ final class ExactDecimalArithmetic {
     }
 
     /**
+     * Tests a difference-form update for low-magnitude active-grid arithmetic that
+     * requires an exactly recombined fallback. A finite low-magnitude difference
+     * can perturb a normal result by one grid ulp, so checking only the already
+     * rounded result is insufficient.
+     *
+     * @param result       the rounded difference-form result
+     * @param intermediate the finite difference-form intermediate
+     * @return {@code true} when either operand needs exact recovery
+     */
+    static boolean requiresExactRecovery(Num result, Num intermediate) {
+        return isSubnormalMagnitude(result) || isSubnormalMagnitude(intermediate);
+    }
+
+    /**
      * Exact expansion of {@code value} as a {@link BigDecimal}: the exact binary
      * value for a {@link Float} or {@link Double} delegate, the exact decimal
      * expansion for any other {@link Num} implementation.
@@ -76,49 +90,21 @@ final class ExactDecimalArithmetic {
     }
 
     /**
-     * The convex combination {@code first * firstWeight + second *
+     * The convex combination {@code first * (1 - secondWeight) + second *
      * secondWeight}, combined without intermediate rounding and narrowed once
-     * through {@code factory}. The weights are primitive doubles and are expanded
-     * as exact binary values (never through {@link NumFactory#numOf(Number)}, whose
-     * coarse factory precision can round an in-range weight such as {@code 0.99} to
-     * its boundary), so the combined sum uses the same weights the per-product Num
-     * arithmetic applied.
+     * through {@code factory}. The first exact weight is derived from the supplied,
+     * actually applied second weight: independently narrowed complementary
+     * {@link Num} values need not sum to one in a coarse factory.
      *
      * @param factory      the factory that narrows the exact sum
      * @param first        the exact expansion of the first operand
-     * @param firstWeight  the first convex weight
      * @param second       the exact expansion of the second operand
-     * @param secondWeight the second convex weight
+     * @param secondWeight the actually applied second convex weight
      * @return the exactly combined, once-narrowed weighted sum
      */
-    static Num exactWeightedSum(NumFactory factory, BigDecimal first, double firstWeight, BigDecimal second,
-            double secondWeight) {
-        return narrowWeightedSum(factory, first, new BigDecimal(firstWeight), second, new BigDecimal(secondWeight));
-    }
-
-    /**
-     * The convex combination {@code first * firstWeight + second *
-     * secondWeight}, combined without intermediate rounding and narrowed once
-     * through {@code factory}. {@link Float} and {@link Double} delegate weights
-     * retain their exact binary value; other {@link Num} implementations retain
-     * their exact decimal expansion instead of an underflowing primitive-double
-     * projection.
-     *
-     * @param factory      the factory that narrows the exact sum
-     * @param first        the exact expansion of the first operand
-     * @param firstWeight  the first convex weight
-     * @param second       the exact expansion of the second operand
-     * @param secondWeight the second convex weight
-     * @return the exactly combined, once-narrowed weighted sum
-     */
-    static Num exactWeightedSum(NumFactory factory, BigDecimal first, Num firstWeight, BigDecimal second,
-            Num secondWeight) {
-        return narrowWeightedSum(factory, first, exactValueOf(firstWeight), second, exactValueOf(secondWeight));
-    }
-
-    private static Num narrowWeightedSum(NumFactory factory, BigDecimal first, BigDecimal firstWeight,
-            BigDecimal second, BigDecimal secondWeight) {
-        BigDecimal sum = first.multiply(firstWeight).add(second.multiply(secondWeight));
-        return factory.numOf(sum);
+    static Num exactWeightedSum(NumFactory factory, BigDecimal first, BigDecimal second, Num secondWeight) {
+        BigDecimal exactSecondWeight = exactValueOf(secondWeight);
+        BigDecimal exactFirstWeight = BigDecimal.ONE.subtract(exactSecondWeight);
+        return factory.numOf(first.multiply(exactFirstWeight).add(second.multiply(exactSecondWeight)));
     }
 }

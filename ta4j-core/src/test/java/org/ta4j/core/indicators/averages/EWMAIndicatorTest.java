@@ -52,4 +52,25 @@ public class EWMAIndicatorTest extends AbstractIndicatorTest<MockIndicator, Num>
 
         assertEquals(4, ewma.getCountOfUnstableBars());
     }
+
+    @Test
+    public void cachedValuesReanchorAfterPruningRegardlessOfAccessOrder() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 3, 5).build();
+        MockIndicator indicator = new MockIndicator(series, 0, numOf(1), numOf(3), numOf(5));
+        EWMAIndicator ewma = new EWMAIndicator(indicator, 2, 0.5);
+
+        assertNumEquals(2, ewma.getValue(1));
+        assertNumEquals(3.5, ewma.getValue(2));
+
+        series.setMaximumBarCount(2);
+
+        // Index 2 must be rebuilt from the retained [3, 5] seed even when it
+        // is requested before the retained warm-up index.
+        assertNumEquals(4, ewma.getValue(2));
+        assertTrue(ewma.getValue(1).isNaN());
+
+        EWMAIndicator fresh = new EWMAIndicator(indicator, 2, 0.5);
+        assertTrue(fresh.getValue(1).isNaN());
+        assertNumEquals(4, fresh.getValue(2));
+    }
 }

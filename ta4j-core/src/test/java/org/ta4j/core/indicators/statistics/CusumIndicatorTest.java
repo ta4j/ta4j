@@ -527,6 +527,23 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
+    public void scaleRecoveryDerivesDecayFromAppliedComplement() {
+        // At precision 1, the stored decay is 0.9 while the applied complement
+        // is 0.06. A scale update from 9E-400 to 6E-400 must keep the scale at
+        // 9E-400; separately multiplying stored 0.9 and 0.06 reduces it to
+        // 8E-400, clips the next admission at 7E-399, and leaves 9E-399 rather
+        // than the correct 1E-398 CUSUM.
+        NumFactory precisionOne = DecimalNumFactory.getInstance(1);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(precisionOne).withData(0, 0, 0).build();
+        MockIndicator source = new MockIndicator(series, 0, precisionOne.numOf(new BigDecimal("-9E-400")),
+                precisionOne.numOf(new BigDecimal("-6E-400")), precisionOne.numOf(new BigDecimal("-1E-398")));
+        CusumIndicator cusum = new CusumIndicator(source, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.valueOf(9),
+                new BigDecimal("0.94"));
+
+        assertNumEquals(precisionOne.numOf(new BigDecimal("1E-398")), cusum.getValue(2));
+    }
+
+    @Test
     public void barSeriesConstructorsMonitorClosePrice() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
         CusumIndicator threeArg = new CusumIndicator(series, 0, 0.005);
