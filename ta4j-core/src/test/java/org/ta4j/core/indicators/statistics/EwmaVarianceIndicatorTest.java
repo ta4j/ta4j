@@ -375,6 +375,26 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void minimumNormalBoundaryRoundsOnceOnTheFloatGrid() {
+        // The fast variance recursion rounds to Float.MIN_NORMAL, but the exact
+        // weighted sum rounds once to the largest subnormal float.
+        NumFactory floatFactory = FloatNumFactory.getInstance();
+        float first = Float.intBitsToFloat(541355142);
+        float second = Float.intBitsToFloat(542526778);
+        Num firstValue = floatFactory.numOf(first);
+        Num secondValue = floatFactory.numOf(second);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory).withData(0, 0, 0).build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(
+                new MockIndicator(series, 0, floatFactory.zero(), firstValue, secondValue), 1, 0.5);
+        Num expected = floatFactory.numOf(Math.nextDown(Float.MIN_NORMAL));
+
+        assertNumEquals(expected, variance.getValue(2));
+        assertTrue(ExactDecimalArithmetic.isSubnormalMagnitude(floatFactory.numOf(Float.MIN_NORMAL)));
+        assertTrue(
+                ExactDecimalArithmetic.isSubnormalMagnitude(DoubleNumFactory.getInstance().numOf(Double.MIN_NORMAL)));
+    }
+
+    @Test
     public void nonStallingSubnormalMeanRoundsOnce() {
         // With previous mean MIN_VALUE and current 4 * MIN_VALUE at decay 0.5,
         // the difference form adds fl(1.5 * MIN_VALUE) = 2 * MIN_VALUE to the

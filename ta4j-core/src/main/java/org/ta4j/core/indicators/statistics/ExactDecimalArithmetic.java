@@ -23,8 +23,8 @@ import org.ta4j.core.num.NumFactory;
  * {@code 0.5 * MIN_VALUE} collapses to zero and {@code 1.5 * MIN_VALUE}
  * publishes {@code MIN_VALUE} although the correctly rounded single-rounding
  * results are {@code 0} and {@code 2 * MIN_VALUE}. The recovery paths detect
- * results of subnormal magnitude and recombine the exact operands without
- * intermediate rounding, narrowing once on that active grid.
+ * results at or below the minimum-normal boundary and recombine the exact
+ * operands without intermediate rounding, narrowing once on that active grid.
  *
  * <p>
  * The exact operands are {@link BigDecimal} expansions: {@link Float} and
@@ -41,21 +41,22 @@ final class ExactDecimalArithmetic {
     }
 
     /**
-     * Tests the active primitive grid to identify the subnormal magnitude: a
-     * {@link Float} delegate uses the smallest positive normal float, while all
-     * other values retain the double-grid classification. Zero is included;
-     * non-finite and NaN values are excluded. This is a classification rather than
-     * validation, so finite decimal values beyond the double range simply return
-     * {@code false}.
+     * Tests the active primitive grid to identify subnormal magnitude and the
+     * minimum-normal boundary: a {@link Float} delegate uses the smallest positive
+     * normal float, while all other values retain the double-grid classification.
+     * Zero is included; non-finite and NaN values are excluded. This is a recovery
+     * classification rather than validation, so finite decimal values beyond the
+     * double range simply return {@code false}.
      *
      * @param value the value to classify
-     * @return {@code true} when the magnitude is subnormal
+     * @return {@code true} when the magnitude is subnormal or exactly minimum
+     *         normal
      */
     static boolean isSubnormalMagnitude(Num value) {
         if (value.getDelegate() instanceof Float floatValue) {
-            return Math.abs(floatValue) < Float.MIN_NORMAL;
+            return Math.abs(floatValue) <= Float.MIN_NORMAL;
         }
-        return Math.abs(value.doubleValue()) < Double.MIN_NORMAL;
+        return Math.abs(value.doubleValue()) <= Double.MIN_NORMAL;
     }
 
     /**
