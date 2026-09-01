@@ -403,7 +403,7 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void floatSubnormalMeanRoundsOnTheFloatGrid() {
-        NumFactory floatFactory = FloatNumFactory.getInstance();
+        NumFactory floatFactory = SinglePrecisionNumFactory.getInstance();
         Num minimum = floatFactory.numOf(Float.MIN_VALUE);
         Num twiceMinimum = minimum.multipliedBy(floatFactory.two());
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory).withData(0, 0).build();
@@ -417,7 +417,7 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     public void minimumNormalBoundaryRoundsOnceOnTheFloatGrid() {
         // The fast variance recursion rounds to Float.MIN_NORMAL, but the exact
         // weighted sum rounds once to the largest subnormal float.
-        NumFactory floatFactory = FloatNumFactory.getInstance();
+        NumFactory floatFactory = SinglePrecisionNumFactory.getInstance();
         float first = Float.intBitsToFloat(541355142);
         float second = Float.intBitsToFloat(542526778);
         Num firstValue = floatFactory.numOf(first);
@@ -438,7 +438,7 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
         // The difference form rounds 0.5 * 0x1ff to 0x100 and publishes
         // 0x00800001. The exact convex mean is 0x00800000.5, which rounds
         // ties-to-even to Float.MIN_NORMAL on the float grid.
-        NumFactory floatFactory = FloatNumFactory.getInstance();
+        NumFactory floatFactory = SinglePrecisionNumFactory.getInstance();
         Num previousMean = floatFactory.numOf(Float.intBitsToFloat(0x007fff01));
         Num current = floatFactory.numOf(Float.intBitsToFloat(0x00800100));
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory).withData(0, 0).build();
@@ -456,7 +456,7 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
         // The updated mean is normal, but the source delta is subnormal. The
         // float difference form publishes 0x00800d0d; a single exact rounding
         // must publish 0x00800d0e instead.
-        NumFactory floatFactory = FloatNumFactory.getInstance();
+        NumFactory floatFactory = SinglePrecisionNumFactory.getInstance();
         Num previousMean = floatFactory.numOf(Float.intBitsToFloat(0x00801037));
         Num current = floatFactory.numOf(Float.intBitsToFloat(0x008009e4));
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory).withData(0, 0).build();
@@ -472,7 +472,7 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
         // the float grid while delta * oneMinusDecay is subnormal. Recovery
         // must key off the weighted delta; the difference form publishes
         // 0x01dce616, and a single exact rounding must publish 0x01dce617.
-        NumFactory floatFactory = FloatNumFactory.getInstance();
+        NumFactory floatFactory = SinglePrecisionNumFactory.getInstance();
         Num previousMean = floatFactory.numOf(Float.intBitsToFloat(0x01dc5cfa));
         Num current = floatFactory.numOf(Float.intBitsToFloat(0x05d213a5));
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory).withData(0, 0).build();
@@ -584,7 +584,7 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
         // rounding in the subnormal term: separately rounded float products
         // publish 0x0085990b, but a single exact rounding must publish
         // 0x0085990c.
-        NumFactory floatFactory = FloatNumFactory.getInstance();
+        NumFactory floatFactory = SinglePrecisionNumFactory.getInstance();
         float a = Float.intBitsToFloat(0x1f519a47);
         float d = Float.intBitsToFloat(0x20315b2f);
         Num negativeA = floatFactory.numOf(-a);
@@ -606,7 +606,7 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
         // while the weighted squared-deviation product and their sum are normal.
         // Separately rounding the decayed state publishes 0x00800005; exact
         // recombination of both products must publish 0x00800006.
-        NumFactory floatFactory = FloatNumFactory.getInstance();
+        NumFactory floatFactory = SinglePrecisionNumFactory.getInstance();
         float a = Float.intBitsToFloat(0x1a35048f);
         float d = Float.intBitsToFloat(0x203504f7);
         Num negativeA = floatFactory.numOf(-a);

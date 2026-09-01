@@ -33,7 +33,7 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
-import org.ta4j.core.indicators.statistics.FloatNumFactory;
+import org.ta4j.core.indicators.statistics.SinglePrecisionNumFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -459,7 +459,7 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
 
     @Test
     public void floatSubnormalScaleRoundsOnTheFloatGrid() {
-        NumFactory floatFactory = FloatNumFactory.getInstance();
+        NumFactory floatFactory = SinglePrecisionNumFactory.getInstance();
         Num minimum = floatFactory.numOf(Float.MIN_VALUE);
         Num negativeMinimum = minimum.multipliedBy(floatFactory.minusOne());
         Num negativeTwiceMinimum = negativeMinimum.multipliedBy(floatFactory.two());
@@ -480,7 +480,7 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         // path publishes a one-ulp-low scale (0x01dce616) whose clip bound
         // shifts the final CUSUM to 0x3782d27, while exact recovery publishes
         // 0x3782d28.
-        NumFactory floatFactory = FloatNumFactory.getInstance();
+        NumFactory floatFactory = SinglePrecisionNumFactory.getInstance();
         Num first = floatFactory.numOf(-Float.intBitsToFloat(0x01dc5cfa));
         Num second = floatFactory.numOf(-Float.intBitsToFloat(0x05d213a5));
         Num third = floatFactory.numOf(-1.0f);

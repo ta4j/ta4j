@@ -19,7 +19,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.statistics.FloatNumFactory;
+import org.ta4j.core.indicators.statistics.SinglePrecisionNumFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.mocks.MockBarBuilder;
@@ -471,7 +471,7 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void floatGrossReturnRatioOverflowKeepsRepresentableCapability() {
-        NumFactory floatFactory = FloatNumFactory.getInstance();
+        NumFactory floatFactory = SinglePrecisionNumFactory.getInstance();
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory)
                 .withData(1e-30, 1e30, 1e-30, 2e30)
                 .build();
