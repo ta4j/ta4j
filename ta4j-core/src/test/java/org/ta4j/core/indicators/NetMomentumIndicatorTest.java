@@ -722,6 +722,8 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         assertTrue(subject.getValue(beginIndex + 1).isEqual(numOf(-24)));
         assertTrue(subject.getValue(beginIndex + 2).isEqual(numOf(-36)));
     }
+
+    @Test
     public void recomputedBandAnchorsExpirationAtRetainedHead() {
         BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         movingSeries.setMaximumBarCount(5);

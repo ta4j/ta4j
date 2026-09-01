@@ -515,8 +515,8 @@ final class CandleThresholdSupport {
      * @return the validated series
      * @throws NullPointerException     if {@code series} is null
      * @throws IllegalArgumentException if {@code averagePeriod} is outside the
-     *                                  supported range, {@code penetration} is
-     *                                  not finite or outside (0, 1), or
+     *                                  supported range, {@code penetration} is not
+     *                                  finite or outside (0, 1), or
      *                                  {@code penetration} equals 1 (a full-body
      *                                  penetration engulfs the first body and can
      *                                  never match either pattern)

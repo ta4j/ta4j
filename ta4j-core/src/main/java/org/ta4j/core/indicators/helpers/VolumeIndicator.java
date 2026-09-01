@@ -79,7 +79,6 @@ public class VolumeIndicator extends RecursiveCachedIndicator<Num> {
         return newSum;
     }
 
-
     /**
      * The declared unstable range covers the full {@code barCount} look-back, so
      * the default floor would evict the band below it while retaining the cached
