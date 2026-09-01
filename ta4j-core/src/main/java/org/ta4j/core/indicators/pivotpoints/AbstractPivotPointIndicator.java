@@ -9,7 +9,7 @@ import java.util.List;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -22,7 +22,7 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.20
  */
-public abstract class AbstractPivotPointIndicator extends RecursiveCachedIndicator<Num> {
+public abstract class AbstractPivotPointIndicator extends CachedIndicator<Num> {
 
     /** The time level for pivot calculation. */
     protected final TimeLevel timeLevel;
@@ -48,19 +48,6 @@ public abstract class AbstractPivotPointIndicator extends RecursiveCachedIndicat
     @Override
     public int getCountOfUnstableBars() {
         return 0;
-    }
-
-    /**
-     * Pivot values aggregate a preceding period, which can be truncated by a
-     * retained-head advance. Rebuild every cached value against the retained range
-     * rather than retaining a mixture of pre- and post-advance periods.
-     *
-     * @return {@code true} because no cached pivot remains valid after a head
-     *         advance
-     */
-    @Override
-    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
-        return true;
     }
 
     /**
@@ -166,28 +153,41 @@ public abstract class AbstractPivotPointIndicator extends RecursiveCachedIndicat
     }
 
     /**
-     * Pivot levels are computed from the bars of the previous calendar period and
-     * do not depend on earlier pivot values, so the recursive default is opted out.
-     *
-     * @return {@code false}
-     */
-    @Override
-    protected boolean hasRecursiveDependencies() {
-        return false;
-    }
-
-    /**
-     * The calendar look-back spans an unbounded number of bars, so the zero stable
-     * count would retain pivot values that still depend on evicted bars: the whole
-     * cache is discarded on head advance so that every retained index is recomputed
-     * from the bars that remain available.
+     * A head advance can truncate the first retained calendar period and thereby
+     * change pivot values in both that period and the following period. The second
+     * following period reads only the intact following period, so its cached values
+     * remain valid. Bar-based pivots only read the preceding bar.
      *
      * @param firstRetainedIndex the first series index that remains available
-     * @return {@link Integer#MAX_VALUE}, evicting every cached entry
+     * @return the first cache index independent of evicted bars
      */
     @Override
     protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
-        return Integer.MAX_VALUE;
+        if (timeLevel == TimeLevel.BARBASED) {
+            return firstRetainedIndex == Integer.MAX_VALUE ? Integer.MAX_VALUE : firstRetainedIndex + 1;
+        }
+        return firstIndexAfterAffectedCalendarPeriods(firstRetainedIndex);
+    }
+
+    private int firstIndexAfterAffectedCalendarPeriods(int firstRetainedIndex) {
+        int endIndex = getBarSeries().getEndIndex();
+        if (firstRetainedIndex >= endIndex) {
+            return Integer.MAX_VALUE;
+        }
+        int index = firstRetainedIndex;
+        long firstPeriod = getPeriod(getBarSeries().getBar(index));
+        while (index < endIndex && getPeriod(getBarSeries().getBar(index + 1)) == firstPeriod) {
+            index++;
+        }
+        if (index == endIndex) {
+            return Integer.MAX_VALUE;
+        }
+        index++;
+        long followingPeriod = getPeriod(getBarSeries().getBar(index));
+        while (index < endIndex && getPeriod(getBarSeries().getBar(index + 1)) == followingPeriod) {
+            index++;
+        }
+        return index == endIndex ? Integer.MAX_VALUE : index + 1;
     }
 
 }

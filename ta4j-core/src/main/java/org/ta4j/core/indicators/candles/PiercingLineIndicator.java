@@ -50,6 +50,7 @@ public class PiercingLineIndicator extends CandlePatternIndicator {
     private final int averagePeriod;
     private final double penetration;
     private final transient Num penetrationValue;
+    private final transient Num oneMinusPenetrationValue;
 
     /**
      * Constructor with the default period of 5 and a penetration of 0.5.
@@ -63,6 +64,7 @@ public class PiercingLineIndicator extends CandlePatternIndicator {
         this.averagePeriod = CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD;
         this.penetration = DEFAULT_PENETRATION;
         this.penetrationValue = getBarSeries().numFactory().numOf(penetration);
+        this.oneMinusPenetrationValue = getBarSeries().numFactory().one().minus(penetrationValue);
     }
 
     @Override
@@ -89,6 +91,7 @@ public class PiercingLineIndicator extends CandlePatternIndicator {
         this.averagePeriod = averagePeriod;
         this.penetration = penetration;
         this.penetrationValue = getBarSeries().numFactory().numOf(penetration);
+        this.oneMinusPenetrationValue = getBarSeries().numFactory().one().minus(penetrationValue);
     }
 
     @Override
@@ -109,10 +112,12 @@ public class PiercingLineIndicator extends CandlePatternIndicator {
                 && Num.isFinite(secondOpen) && !(secondOpen.isZero() && firstLow.isZero())
                 && secondOpen.isLessThan(firstLow)) {
             Num firstBodyBottom = firstBar.getOpenPrice().min(firstBar.getClosePrice());
-            Num firstBody = firstBar.getClosePrice().minus(firstBar.getOpenPrice()).abs();
-            Num requiredClose = firstBodyBottom.plus(firstBody.multipliedBy(penetrationValue));
-            return secondBar.getClosePrice().isLessThan(firstBar.getOpenPrice())
-                    && secondBar.getClosePrice().isGreaterThanOrEqual(requiredClose);
+            Num firstBodyTop = firstBar.getOpenPrice().max(firstBar.getClosePrice());
+            Num secondClose = secondBar.getClosePrice();
+            Num requiredClose = CandleThresholdSupport.weightedPoint(firstBodyBottom, oneMinusPenetrationValue,
+                    firstBodyTop, penetrationValue);
+            return !(secondClose.isZero() && firstBodyTop.isZero()) && secondClose.isLessThan(firstBodyTop)
+                    && secondClose.isGreaterThanOrEqual(requiredClose);
         }
         return false;
     }

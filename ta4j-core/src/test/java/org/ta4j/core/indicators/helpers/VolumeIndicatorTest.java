@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
@@ -129,6 +130,31 @@ public class VolumeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         // iteratively from the new begin index rather than recursively walking
         // ten thousand values back toward it.
         assertNumEquals(barCount - 1, volumeIndicator.getValue(barCount - 1));
+    }
+
+    @Test
+    public void retainsCachedSuffixAfterHeadAdvance() {
+        final int length = 128;
+        final BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(length);
+        for (int index = 0; index < length; index++) {
+            series.barBuilder().closePrice(index).volume(index + 1).add();
+        }
+        final java.util.concurrent.atomic.AtomicInteger calculations = new java.util.concurrent.atomic.AtomicInteger();
+        final VolumeIndicator volumeIndicator = new VolumeIndicator(series) {
+            @Override
+            protected Num calculate(int index) {
+                calculations.incrementAndGet();
+                return super.calculate(index);
+            }
+        };
+        volumeIndicator.getValue(series.getEndIndex());
+        calculations.set(0);
+
+        series.barBuilder().closePrice(length).volume(length + 1).add();
+
+        assertNumEquals(length + 1, volumeIndicator.getValue(series.getEndIndex()));
+        assertTrue(calculations.get() < 4);
     }
 
     @Test

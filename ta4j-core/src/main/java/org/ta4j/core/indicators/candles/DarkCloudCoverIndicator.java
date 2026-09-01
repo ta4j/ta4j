@@ -50,6 +50,7 @@ public class DarkCloudCoverIndicator extends CandlePatternIndicator {
     private final int averagePeriod;
     private final double penetration;
     private final transient Num penetrationValue;
+    private final transient Num oneMinusPenetrationValue;
 
     /**
      * Constructor with the default period of 5 and a penetration of 0.5.
@@ -63,6 +64,7 @@ public class DarkCloudCoverIndicator extends CandlePatternIndicator {
         this.averagePeriod = CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD;
         this.penetration = DEFAULT_PENETRATION;
         this.penetrationValue = getBarSeries().numFactory().numOf(penetration);
+        this.oneMinusPenetrationValue = getBarSeries().numFactory().one().minus(penetrationValue);
     }
 
     @Override
@@ -89,6 +91,7 @@ public class DarkCloudCoverIndicator extends CandlePatternIndicator {
         this.averagePeriod = averagePeriod;
         this.penetration = penetration;
         this.penetrationValue = getBarSeries().numFactory().numOf(penetration);
+        this.oneMinusPenetrationValue = getBarSeries().numFactory().one().minus(penetrationValue);
     }
 
     @Override
@@ -109,10 +112,12 @@ public class DarkCloudCoverIndicator extends CandlePatternIndicator {
                 && Num.isFinite(secondOpen) && !(secondOpen.isZero() && firstHigh.isZero())
                 && secondOpen.isGreaterThan(firstHigh)) {
             Num firstBodyTop = firstBar.getOpenPrice().max(firstBar.getClosePrice());
-            Num firstBody = firstBar.getClosePrice().minus(firstBar.getOpenPrice()).abs();
-            Num requiredClose = firstBodyTop.minus(firstBody.multipliedBy(penetrationValue));
-            return secondBar.getClosePrice().isGreaterThan(firstBar.getOpenPrice())
-                    && secondBar.getClosePrice().isLessThanOrEqual(requiredClose);
+            Num firstBodyBottom = firstBar.getOpenPrice().min(firstBar.getClosePrice());
+            Num secondClose = secondBar.getClosePrice();
+            Num requiredClose = CandleThresholdSupport.weightedPoint(firstBodyTop, oneMinusPenetrationValue,
+                    firstBodyBottom, penetrationValue);
+            return !(secondClose.isZero() && firstBodyBottom.isZero()) && secondClose.isGreaterThan(firstBodyBottom)
+                    && secondClose.isLessThanOrEqual(requiredClose);
         }
         return false;
     }

@@ -18,6 +18,7 @@ import static org.ta4j.core.indicators.pivotpoints.TimeLevel.YEAR;
 import static org.ta4j.core.num.NaN.NaN;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertTrue;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -25,6 +26,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -1900,6 +1902,49 @@ public class PivotPointIndicatorTest {
         assertNumEquals(freshStandard.getValue(targetIndex), cachedStandard.getValue(targetIndex));
         assertNumEquals(freshFibonacci.getValue(targetIndex), cachedFibonacci.getValue(targetIndex));
         assertNumEquals(freshDeMark.getValue(targetIndex), cachedDeMark.getValue(targetIndex));
+    }
+
+    @Test
+    public void retainsUnaffectedCalendarCacheSuffixAfterHeadAdvance() {
+        final int length = 128;
+        final LocalDate startDate = LocalDate.of(2024, 1, 1);
+        final BarSeries series = new MockBarSeriesBuilder().withName("PivotCacheSuffix").build();
+        series.setMaximumBarCount(length);
+        for (int index = 0; index < length; index++) {
+            series.barBuilder()
+                    .endTime(startDate.plusDays(index).atStartOfDay(ZoneOffset.UTC).toInstant())
+                    .openPrice(10.0)
+                    .highPrice(20.0)
+                    .lowPrice(5.0)
+                    .closePrice(15.0)
+                    .volume(1_000)
+                    .add();
+        }
+        final AtomicInteger calculations = new AtomicInteger();
+        final PivotPointIndicator pivot = new PivotPointIndicator(series, DAY) {
+            @Override
+            protected Num calculate(int index) {
+                calculations.incrementAndGet();
+                return super.calculate(index);
+            }
+        };
+        for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
+            pivot.getValue(index);
+        }
+        calculations.set(0);
+
+        series.barBuilder()
+                .endTime(startDate.plusDays(length).atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(10.0)
+                .highPrice(20.0)
+                .lowPrice(5.0)
+                .closePrice(15.0)
+                .volume(1_000)
+                .add();
+
+        final Num cachedResult = pivot.getValue(series.getEndIndex());
+        assertNumEquals(new PivotPointIndicator(series, DAY).getValue(series.getEndIndex()), cachedResult);
+        assertTrue(calculations.get() < 4);
     }
 
     @Test

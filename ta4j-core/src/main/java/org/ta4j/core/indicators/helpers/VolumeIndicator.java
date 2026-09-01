@@ -79,24 +79,6 @@ public class VolumeIndicator extends RecursiveCachedIndicator<Num> {
         return newSum;
     }
 
-    /**
-     * The declared unstable range covers the full {@code barCount} look-back, so
-     * the default floor would evict the band below it while retaining the cached
-     * suffix: for windows larger than the recursive prefill threshold, reads inside
-     * the evicted band then recurse one entry per bar from the read index down to
-     * the suffix and stack overflow. The whole cache is discarded on head advance
-     * instead, so every retained index is recomputed iteratively against the
-     * retained window; the fixed trailing window makes the recomputation
-     * value-neutral.
-     *
-     * @param firstRetainedIndex the first series index that remains available
-     * @return {@link Integer#MAX_VALUE}
-     */
-    @Override
-    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
-        return Integer.MAX_VALUE;
-    }
-
     /** @return {@link #barCount} */
     @Override
     public int getCountOfUnstableBars() {

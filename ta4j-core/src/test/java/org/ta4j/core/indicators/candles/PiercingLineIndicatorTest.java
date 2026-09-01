@@ -146,6 +146,25 @@ public class PiercingLineIndicatorTest extends AbstractIndicatorTest<Indicator<B
     }
 
     @Test
+    public void detectsFiniteExtremePenetrationWithoutOverflow() {
+        // The first body's finite span overflows DoubleNum when subtracted, but
+        // its half-way penetration point is exactly zero.
+        PiercingLineIndicator indicator = new PiercingLineIndicator(
+                piercingSeries(9e307, -9e307, -Double.MAX_VALUE, 0));
+
+        assertThat(indicator.getValue(6)).isTrue();
+    }
+
+    @Test
+    public void signedZeroCloseCannotSatisfyAntiEngulfing() {
+        // DoubleNum orders -0.0 below +0.0, but both close/open values are
+        // numerically equal and must not meet the strict anti-engulfing clause.
+        PiercingLineIndicator indicator = new PiercingLineIndicator(piercingSeries(+0.0, -20, -25, -0.0));
+
+        assertThat(indicator.getValue(6)).isFalse();
+    }
+
+    @Test
     public void shouldRespectConfiguredPenetration() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (int i = 0; i < 5; i++) {
