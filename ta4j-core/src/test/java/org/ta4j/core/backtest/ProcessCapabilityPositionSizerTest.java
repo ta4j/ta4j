@@ -276,7 +276,7 @@ public class ProcessCapabilityPositionSizerTest {
         Num amount = sizer.amount(context(series, 1, 1));
 
         assertTrue(amount.isPositive());
-        assertNumEquals(1e-12, amount);
+        assertNumEquals(floatBackedFactory().epsilon(), amount);
     }
 
     @Test

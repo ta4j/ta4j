@@ -336,6 +336,6 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " baseAmount: " + baseAmount + " controlLimit: " + rawControlLimit;
+        return getClass().getSimpleName() + " baseAmount: " + rawBaseAmount + " controlLimit: " + rawControlLimit;
     }
 }

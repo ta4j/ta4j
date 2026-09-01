@@ -231,7 +231,7 @@ public class EwmaReturnForecastStateIndicatorTest
         // and the count restarts at index 5 (head + one log-return bar);
         // only two bars are retained, so index 5 is the last readable one.
         ReturnForecastState headState = stateIndicator.getValue(4);
-        assertTrue(!headState.isStable());
+        assertFalse(headState.isStable());
         assertEquals(0, headState.observationCount());
         assertEquals(1, stateIndicator.getValue(5).observationCount());
     }
@@ -255,6 +255,82 @@ public class EwmaReturnForecastStateIndicatorTest
         ReturnForecastState after = stateIndicator.getValue(3);
         assertTrue(after.isStable());
         assertFalse(after.mean().isEqual(before.mean()));
+    }
+
+    @Test
+    public void publishedBarReplacedBetweenMeanAndVarianceReadsRetriesToConsistentState() {
+        // A concurrent writer replacing the published end bar mid-read must not
+        // publish a state whose mean was read from the superseded close while the
+        // variance was read from the replacement close. The MutatingReturnIndicator
+        // replaces the close only after the observation-count and mean reads have
+        // consumed the superseded value, so the retry bracket in getValue(3) must
+        // re-read against the new revision and match a reference built over the
+        // post-replacement close sequence.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 121, 133.1).build();
+        MutatingReturnIndicator mutatingReturns = new MutatingReturnIndicator(series, 3, numFactory.numOf(120));
+        EwmaReturnForecastStateIndicator stateIndicator = new EwmaReturnForecastStateIndicator(mutatingReturns, 2, 0.5,
+                EwmaReturnForecastStateIndicator.DriftMode.ROLLING_MEAN);
+
+        ReturnForecastState result = stateIndicator.getValue(3);
+
+        BarSeries referenceSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 110, 121, 120)
+                .build();
+        EwmaReturnForecastStateIndicator referenceIndicator = new EwmaReturnForecastStateIndicator(
+                new LogReturnIndicator(referenceSeries), 2, 0.5,
+                EwmaReturnForecastStateIndicator.DriftMode.ROLLING_MEAN);
+        ReturnForecastState reference = referenceIndicator.getValue(3);
+
+        assertTrue(result.isStable());
+        assertTrue(reference.isStable());
+        assertNumEquals(reference.mean(), result.mean());
+        assertNumEquals(reference.variance(), result.variance());
+    }
+
+    private static final class MutatingReturnIndicator implements ReturnIndicator {
+
+        private final LogReturnIndicator delegate;
+        private final BarSeries series;
+        private final int targetIndex;
+        private final Num staleReturn;
+        private final Num replacementClose;
+        private int targetIndexReads;
+
+        private MutatingReturnIndicator(BarSeries series, int targetIndex, Num replacementClose) {
+            this.series = series;
+            this.delegate = new LogReturnIndicator(series);
+            this.targetIndex = targetIndex;
+            this.staleReturn = delegate.getValue(targetIndex);
+            this.replacementClose = replacementClose;
+        }
+
+        @Override
+        public Num getValue(int index) {
+            // Replace the published end bar only on the second read of the target
+            // index, so the mean consumes the superseded close while the variance
+            // (read third) consumes the replacement close. This is the torn state
+            // the retry bracket must not publish.
+            if (index == targetIndex && ++targetIndexReads == 2) {
+                series.addPrice(replacementClose);
+                return staleReturn;
+            }
+            return delegate.getValue(index);
+        }
+
+        @Override
+        public BarSeries getBarSeries() {
+            return series;
+        }
+
+        @Override
+        public ReturnRepresentation getReturnRepresentation() {
+            return ReturnRepresentation.LOG;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return delegate.getCountOfUnstableBars();
+        }
     }
 
     private static final class FixedReturnIndicator extends FixedIndicator<Num> implements ReturnIndicator {
