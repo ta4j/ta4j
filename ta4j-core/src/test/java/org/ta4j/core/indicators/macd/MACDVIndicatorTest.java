@@ -281,9 +281,9 @@ public class MACDVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     /**
      * MACD-V lazily creates VWMA and ATR sub-indicators that are not
      * constructor-registered dependencies. A rebaselining source inside those
-     * chains (the TR inside the ATRs discards the whole cache on head advance)
-     * must still propagate a whole-cache discard into MACD-V, so cached values
-     * above its own unstable-range floor are recomputed after the head advance.
+     * chains (the TR inside the ATRs discards the whole cache on head advance) must
+     * still propagate a whole-cache discard into MACD-V, so cached values above its
+     * own unstable-range floor are recomputed after the head advance.
      */
     @Test
     public void headAdvanceDiscardsWholeCacheThroughDerivedAtrChain() {

@@ -229,10 +229,11 @@ public class SuperTrendLowerBandIndicatorTest extends AbstractIndicatorTest<BarS
         series.barBuilder().openPrice(90).closePrice(85).highPrice(91).lowPrice(84).add();
         return series;
     }
+
     /**
      * The three-argument constructor must bind the given series, not the ATR's
-     * series, so the median price and the multiplier share the band series'
-     * num factory even when the ATR is backed by a different series.
+     * series, so the median price and the multiplier share the band series' num
+     * factory even when the ATR is backed by a different series.
      */
     @Test
     public void explicitSeriesCtorBindsGivenSeriesNotAtrSeries() {

@@ -601,8 +601,8 @@ public class AnalogReturnProjectionIndicatorTest
     }
 
     /**
-     * The projection must register both its state source and its return source
-     * as dependencies so cross-series rebaselines inside non-restarting state
+     * The projection must register both its state source and its return source as
+     * dependencies so cross-series rebaselines inside non-restarting state
      * indicators (for example Kalman plus Stochastic) propagate into its cache.
      */
     @Test

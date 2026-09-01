@@ -3,10 +3,30 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.*;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.TestUtils.saturatedRetainedWindowSeries;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.*;
+import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.averages.EDMAIndicator;
+import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.averages.SMMAIndicator;
 import org.ta4j.core.indicators.averages.VIDYAIndicator;
@@ -20,8 +40,8 @@ import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
-import org.ta4j.core.indicators.volume.KlingerVolumeOscillatorIndicator;
 import org.ta4j.core.indicators.statistics.PearsonCorrelationIndicator;
+import org.ta4j.core.indicators.volume.KlingerVolumeOscillatorIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
 import org.ta4j.core.mocks.MockBarBuilder;
 import org.ta4j.core.mocks.MockBarBuilderFactory;
@@ -32,25 +52,6 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
-
-import java.time.Duration;
-import java.time.Instant;
-import org.ta4j.core.indicators.averages.EMAIndicator;
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.*;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-import static org.ta4j.core.TestUtils.saturatedRetainedWindowSeries;
 
 public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -1907,6 +1908,10 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         private int getDependenciesInvocations() {
             return dependenciesInvocations;
         }
+
+        private void resetDependenciesInvocations() {
+            dependenciesInvocations = 0;
+        }
     }
 
     @Test(timeout = 5000)
@@ -1962,6 +1967,9 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
                 return 0;
             }
         };
+        // Construction-time dependency observation also traverses the graph; only
+        // the reconciliation walk must share one visited set.
+        shared.resetDependenciesInvocations();
         assertEquals(0, dependent.minimumCacheableIndexAfterHeadAdvance(0));
         // The shared node is inspected once across both sources instead of once
         // per source.
@@ -1986,6 +1994,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
                 return 0;
             }
         };
+        shared.resetDependenciesInvocations();
 
         assertEquals(0, dependent.minimumCacheableIndexAfterHeadAdvance(0));
         assertEquals(1, shared.getDependenciesInvocations());
@@ -2050,6 +2059,32 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         // true range at the far end must follow instead of serving the stale
         // high-source band value.
         assertNumEquals(60, trueRange.getValue(4));
+    }
+
+    @Test
+    public void dependentDiscardsWholeCacheWhenSourceRebaselinesBeyondDefaultBand() {
+        // The true range evicts its stale first-retained entry after a head
+        // advance, applying a floor above its own default unstable-range band.
+        // A dependent cannot bound the taint propagation with a finite floor
+        // (its read depth below each cached index is unknown), so it must
+        // discard its whole cache and rebuild against the retained window.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d)
+                .build();
+        TRIndicator trueRange = new TRIndicator(barSeries);
+        CachedIndicator<Num> dependent = new CachedIndicator<Num>(trueRange) {
+            @Override
+            protected Num calculate(int index) {
+                return trueRange.getValue(index);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+
+        assertEquals(Integer.MAX_VALUE, dependent.minimumCacheableIndexAfterHeadAdvance(1));
     }
 
     @Test
@@ -2342,6 +2377,35 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         assertEquals(2, dependency.calculations());
     }
 
+    @Test
+    public void sameSeriesDependencyViewKeepsRetainedCacheAfterHeadAdvance() {
+        BaseBarSeries barSeries = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 4d, 5d)
+                .build();
+        Indicator<Num> close = new ClosePriceIndicator(barSeries);
+        AtomicInteger calculations = new AtomicInteger();
+        CachedIndicator<Num> dependent = new CachedIndicator<Num>(barSeries, close) {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            protected Num calculate(int index) {
+                calculations.incrementAndGet();
+                return close.getValue(index);
+            }
+        };
+
+        assertNumEquals("3", dependent.getValue(2));
+        assertEquals(1, calculations.get());
+
+        barSeries.setMaximumBarCount(4);
+
+        assertNumEquals("3", dependent.getValue(2));
+        assertEquals(1, calculations.get());
+    }
+
     /**
      * A historical mutation in a cross-series dependency invalidates dependent
      * cache entries at and above the mutated index even though neither series
@@ -2359,13 +2423,155 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         Num before = dependent.getValue(1);
         assertNumEquals("22", before);
 
-        Bar replaced = new MockBarBuilder(seriesB.numFactory())
-                .openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).build();
+        Bar replaced = new MockBarBuilder(seriesB.numFactory()).openPrice(100d)
+                .highPrice(100d)
+                .lowPrice(100d)
+                .closePrice(100d)
+                .build();
         seriesB.replaceBar(1, replaced);
         Num after = dependent.getValue(1);
 
         assertNumEquals("102", after); // close(1) + dependency value at 1 with removedBarsCount 0
         assertEquals(2, dependency.calculations());
+    }
+
+    /**
+     * A cross-series dependency reached only through an intermediate indicator
+     * backed by the consumer's own series must still be observed: the EMA consumes
+     * a distance indicator on seriesA whose moving average reads seriesB, so
+     * advancing seriesB alone must recompute the cached EMA values.
+     */
+    @Test
+    public void nestedCrossSeriesDependencyHeadAdvanceInvalidatesDependentCache() {
+        BarSeries seriesA = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d, 5d).build();
+        BaseBarSeries seriesB = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 20d, 30d, 40d, 50d, 60d)
+                .build();
+        DistanceFromMAIndicator distance = new DistanceFromMAIndicator(seriesA,
+                new SMAIndicator(new ClosePriceIndicator(seriesB), 2));
+        EMAIndicator ema = new EMAIndicator(distance, 2);
+        Num before2 = ema.getValue(2);
+        Num before3 = ema.getValue(3);
+        seriesB.setMaximumBarCount(4); // head advances; the EMA never reads seriesB directly
+        Num after2 = ema.getValue(2);
+        Num after3 = ema.getValue(3);
+
+        DistanceFromMAIndicator freshDistance = new DistanceFromMAIndicator(seriesA,
+                new SMAIndicator(new ClosePriceIndicator(seriesB), 2));
+        EMAIndicator freshEma = new EMAIndicator(freshDistance, 2);
+        assertNumEquals(freshEma.getValue(2), after2);
+        assertNumEquals(freshEma.getValue(3), after3);
+        assertThat(after2).isNotEqualTo(before2);
+        assertThat(after3).isNotEqualTo(before3);
+    }
+
+    /**
+     * The direct cross-series registration itself must reconcile the dependency:
+     * advancing the moving average's series rebuilds the cached distance values
+     * even though the distance indicator's own series never changes.
+     */
+    @Test
+    public void distanceFromMovingAverageRecomputesWhenMovingAverageSeriesAdvances() {
+        BarSeries seriesA = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d, 5d).build();
+        BaseBarSeries seriesB = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 20d, 30d, 40d, 50d, 60d)
+                .build();
+        DistanceFromMAIndicator distance = new DistanceFromMAIndicator(seriesA,
+                new SMAIndicator(new ClosePriceIndicator(seriesB), 2));
+
+        Num before = distance.getValue(2);
+        seriesB.setMaximumBarCount(4); // moving-average series advances alone
+        Num after = distance.getValue(2);
+
+        DistanceFromMAIndicator freshDistance = new DistanceFromMAIndicator(seriesA,
+                new SMAIndicator(new ClosePriceIndicator(seriesB), 2));
+        assertNumEquals(freshDistance.getValue(2), after);
+        assertThat(after).isNotEqualTo(before);
+    }
+
+    /**
+     * Dependency groups must be keyed by series identity: two distinct series
+     * instances that compare equal must each produce their own observation, so a
+     * mutation in the second one still invalidates the dependent cache.
+     */
+    @Test
+    public void equalsCollidingDependencySeriesAreObservedSeparately() {
+        BarSeries seriesA = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        BaseBarSeries seriesB = TestUtils.equalsCollidingSeries("B", collidingSeriesBars(10d, 20d, 30d), numFactory);
+        BaseBarSeries seriesC = TestUtils.equalsCollidingSeries("C", collidingSeriesBars(10d, 20d, 30d), numFactory);
+        SumDependenciesIndicator dependent = new SumDependenciesIndicator(seriesA,
+                new RawSeriesClosePriceIndicator(seriesB), new RawSeriesClosePriceIndicator(seriesC));
+
+        Num before = dependent.getValue(1);
+        assertNumEquals("40", before);
+
+        Bar replaced = new MockBarBuilder(numFactory).openPrice(100d)
+                .highPrice(100d)
+                .lowPrice(100d)
+                .closePrice(100d)
+                .build();
+        seriesC.replaceBar(1, replaced);
+        Num after = dependent.getValue(1);
+
+        assertNumEquals("120", after);
+    }
+
+    private List<Bar> collidingSeriesBars(double... closes) {
+        List<Bar> bars = new java.util.ArrayList<>();
+        for (double close : closes) {
+            bars.add(new MockBarBuilder(numFactory).openPrice(close)
+                    .highPrice(close)
+                    .lowPrice(close)
+                    .closePrice(close)
+                    .build());
+        }
+        return bars;
+    }
+
+    private static final class RawSeriesClosePriceIndicator implements Indicator<Num> {
+
+        private final BarSeries series;
+
+        private RawSeriesClosePriceIndicator(BarSeries series) {
+            this.series = series;
+        }
+
+        @Override
+        public Num getValue(int index) {
+            return series.getBar(index).getClosePrice();
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        @Override
+        public BarSeries getBarSeries() {
+            return series;
+        }
+    }
+
+    private static final class SumDependenciesIndicator extends CachedIndicator<Num> {
+
+        private final Indicator<Num> left;
+        private final Indicator<Num> right;
+
+        SumDependenciesIndicator(BarSeries series, Indicator<Num> left, Indicator<Num> right) {
+            super(series, left, right);
+            this.left = left;
+            this.right = right;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            return left.getValue(index).plus(right.getValue(index));
+        }
     }
 
     private static final class CrossSeriesDependentIndicator extends CachedIndicator<Num> {
@@ -2417,6 +2623,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             return calculations.get();
         }
     }
+
     /**
      * Guards the head-advance reconciliation contract for saturated series whose
      * retained window legitimately reaches {@link Integer#MAX_VALUE}, where the

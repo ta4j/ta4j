@@ -602,8 +602,8 @@ public class MACDVIndicator extends CachedIndicator<Num> {
     /**
      * Treats the lazily created VWMA and ATR sub-indicators as part of this
      * indicator's source graph. A rebaselining source inside those chains (for
-     * example an ATR whose TR source requires full invalidation) must propagate
-     * a whole-cache discard here even though the sub-indicators are not
+     * example an ATR whose TR source requires full invalidation) must propagate a
+     * whole-cache discard here even though the sub-indicators are not
      * constructor-registered dependencies.
      */
     @Override

@@ -103,6 +103,13 @@ public class RecentZigZagSwingLowIndicator extends AbstractRecentSwingIndicator 
 
     @Override
     protected int detectLatestSwingIndex(int index) {
+        if (index == getBarSeries().getBeginIndex()) {
+            // The state at the first retained index is the beginIndex base
+            // case (lastLowIndex = -1), so no confirmed swing can exist
+            // there. Skipping the read avoids rebuilding the evicted boundary
+            // band in every tracker copy after a head advance.
+            return -1;
+        }
         final ZigZagState state = stateIndicator.getValue(index);
         return state.getLastLowIndex();
     }
