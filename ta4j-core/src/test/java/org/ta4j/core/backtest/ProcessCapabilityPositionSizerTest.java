@@ -199,6 +199,22 @@ public class ProcessCapabilityPositionSizerTest {
     }
 
     @Test
+    public void directDampingAvoidsReciprocalRounding() {
+        NumFactory precisionTenFactory = DecimalNumFactory.getInstance(10);
+        BarSeries indicatorSeries = new MockBarSeriesBuilder().withNumFactory(precisionTenFactory)
+                .withData(1, 2)
+                .build();
+        FixedIndicator<Num> statistic = new FixedIndicator<>(indicatorSeries, precisionTenFactory.numOf(0),
+                precisionTenFactory.numOf(new BigDecimal("3.141592653")));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, new BigDecimal("0.2"), BigDecimal.ONE);
+
+        runWithNumFactory(precisionTenFactory, () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+            assertNumEquals(numFactory.numOf(new BigDecimal("0.04829060141")), sizer.amount(context(series, 1, 1)), 0);
+        });
+    }
+
+    @Test
     public void controlLimitSurvivesCoarseCapabilityFactoryRounding() {
         // A precision-1 capability factory collapses the configured limit
         // 3.14159 to 3; sizing must coerce the lossless raw limit through the

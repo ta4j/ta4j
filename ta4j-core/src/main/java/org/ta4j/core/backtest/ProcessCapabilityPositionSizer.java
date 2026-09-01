@@ -182,7 +182,7 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
                     MathContext.DECIMAL128);
             return floorOrCapRecoveredQuotient(factory, baseAmountValue, dampedQuotient);
         } else {
-            damped = baseAmountValue.multipliedBy(factory.one().dividedBy(factory.one().plus(standardized)));
+            damped = baseAmountValue.dividedBy(factory.one().plus(standardized));
         }
         if (!Num.isFinite(damped)) {
             // The true damped quotient exceeds the context factory's range:
