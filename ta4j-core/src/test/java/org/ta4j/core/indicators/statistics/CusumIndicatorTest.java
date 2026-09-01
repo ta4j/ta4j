@@ -239,6 +239,24 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
+    public void underflowedDecayStillRetainsFirstScaleOperand() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        Num positiveExtreme = doubleFactory.numOf(1e308);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory).withData(0, 0, 0).build();
+        MockIndicator source = new MockIndicator(series, 0, positiveExtreme, doubleFactory.zero(),
+                doubleFactory.minusOne());
+        CusumIndicator cusum = new CusumIndicator(source, 0, 0, 3.0, Double.MIN_VALUE);
+
+        // Absolute deviations are 1e308, 0, and 1. Although 1 - scaleDecay
+        // rounds to one under DoubleNum, the positive raw decay leaves a scale
+        // of about 4.9e-16 before the third sample. Its non-zero clipping bound
+        // admits that amount instead of suppressing the deviation completely.
+        Num expectedScale = doubleFactory.numOf(new BigDecimal(1e308).multiply(BigDecimal.valueOf(Double.MIN_VALUE)));
+        assertNumEquals(doubleFactory.zero(), cusum.getValue(1));
+        assertNumEquals(expectedScale.multipliedBy(doubleFactory.three()), cusum.getValue(2));
+    }
+
+    @Test
     public void scaleDecayComplementAvoidsDoubleRoundingArtifact() {
         // The complement must be the exact BigDecimal difference 1 - decay: a
         // double-computed complement carries the binary rounding artifact

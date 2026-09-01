@@ -540,12 +540,15 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         /**
          * The exact convex weight the scale update applies. A complement that
          * underflows the active factory to zero (a decay within {@code 1e-308} of one
-         * on the double grid) would freeze the scale at its seed: recovery re-applies
-         * the raw exact complement so a finite delta can still bootstrap the
-         * winsorization bound.
+         * on the double grid) would freeze the scale at its seed. Conversely, a
+         * positive decay below the active grid can make the complement round to one and
+         * erase the first operand. Recovery re-applies the raw exact complement at
+         * either boundary so both convex weights remain effective.
          */
         private BigDecimal appliedScaleWeight() {
-            if (oneMinusScaleDecay.isZero() && rawComplementScaleDecay.signum() != 0) {
+            if ((oneMinusScaleDecay.isZero() && rawComplementScaleDecay.signum() != 0)
+                    || (oneMinusScaleDecay.isEqual(getBarSeries().numFactory().one())
+                            && rawComplementScaleDecay.compareTo(BigDecimal.ONE) < 0)) {
                 return rawComplementScaleDecay;
             }
             return ExactDecimalArithmetic.exactValueOf(oneMinusScaleDecay);

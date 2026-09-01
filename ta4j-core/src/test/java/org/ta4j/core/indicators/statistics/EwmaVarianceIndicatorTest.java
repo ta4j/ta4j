@@ -229,6 +229,26 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void minimumPositiveDecayRetainsPreviousSharedMeanWeight() {
+        // For Double.MIN_VALUE, 1 - decay rounds to exactly one. Deriving the
+        // first weight from that rounded complement would erase the positive
+        // decay and update this mean to zero instead of the representable
+        // residual near 4.94e-16.
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        Num maximum = doubleFactory.numOf(1e308);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory).withData(1e308, 0).build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(
+                new MockIndicator(series, 0, maximum, doubleFactory.zero()), 1, Double.MIN_VALUE);
+        Indicator<Num> sharedMean = variance.getMeanIndicator();
+
+        assertNumEquals(maximum, sharedMean.getValue(0), 0);
+        Num updatedMean = sharedMean.getValue(1);
+        assertTrue(Num.isFinite(updatedMean));
+        assertTrue(updatedMean.isPositive());
+        assertNumEquals(doubleFactory.numOf(1e308 * Double.MIN_VALUE), updatedMean, 0);
+    }
+
+    @Test
     public void seedWindowOfMaximumBarsPublishesFiniteZeroVariance() {
         // Three Double.MAX_VALUE bars: each scaled quotient is finite, but
         // the naive window sum rounds the mean off MAX and the resulting

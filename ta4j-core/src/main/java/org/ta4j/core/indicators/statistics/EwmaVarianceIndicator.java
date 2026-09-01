@@ -84,6 +84,7 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
     private volatile transient SharedMeanIndicator meanIndicator;
     private final transient Num decay;
     private final transient Num oneMinusDecay;
+    private final transient BigDecimal exactOneMinusDecay;
     private volatile transient int observedRemovedBarsCount = getBarSeries().getRemovedBarsCount();
     private volatile transient int reseedIndex = -1;
 
@@ -124,14 +125,23 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         // Preserve the update complement as the exact BigDecimal difference
         // before factory narrowing: computing it in primitive double injects a
         // binary artifact, while deriving it from rounded decay can collapse it
-        // to zero when the decay rounds to one. The mean recurrence applies
-        // this complement directly, and exact recovery derives its matching
-        // first weight from the same applied value rather than independently
-        // rounded weights.
+        // to zero when the decay rounds to one. Normally exact recovery derives
+        // its matching first weight from that applied complement. If the
+        // complement itself rounds to one, however, preserve the positive raw
+        // decay and derive the exact complement from that retained first weight
+        // so neither side of the convex update disappears.
         BigDecimal rawDecay = BigDecimal.valueOf(decayFactor);
-        this.oneMinusDecay = indicator.getBarSeries().numFactory().numOf(BigDecimal.ONE.subtract(rawDecay));
-        this.decay = indicator.getBarSeries().numFactory().one().minus(this.oneMinusDecay);
-        this.meanIndicator = new SharedMeanIndicator(indicator, barCount, decay, oneMinusDecay);
+        NumFactory factory = indicator.getBarSeries().numFactory();
+        this.oneMinusDecay = factory.numOf(BigDecimal.ONE.subtract(rawDecay));
+        if (this.oneMinusDecay.isEqual(factory.one())) {
+            this.decay = factory.numOf(rawDecay);
+            BigDecimal exactDecay = this.decay.isZero() ? rawDecay : ExactDecimalArithmetic.exactValueOf(this.decay);
+            this.exactOneMinusDecay = BigDecimal.ONE.subtract(exactDecay);
+        } else {
+            this.decay = factory.one().minus(this.oneMinusDecay);
+            this.exactOneMinusDecay = ExactDecimalArithmetic.exactValueOf(this.oneMinusDecay);
+        }
+        this.meanIndicator = new SharedMeanIndicator(indicator, barCount, decay, oneMinusDecay, exactOneMinusDecay);
     }
 
     private static Parameters validateParameters(Indicator<Num> indicator, int barCount, double decayFactor) {
@@ -197,7 +207,7 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             // so defer to the top-level read: resetting here would let the
             // in-flight computation repopulate the cache with a mixed-head
             // result after this reset, and the retry loop would then reuse it.
-            this.meanIndicator = new SharedMeanIndicator(indicator, barCount, decay, oneMinusDecay);
+            this.meanIndicator = new SharedMeanIndicator(indicator, barCount, decay, oneMinusDecay, exactOneMinusDecay);
             reseedIndex = (int) Math.min((long) getBarSeries().getBeginIndex() + barCount - 1L, Integer.MAX_VALUE);
             invalidateCache();
             observedRemovedBarsCount = removedBarsCount;
@@ -283,13 +293,13 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             // of error, which can move a normal-magnitude result by one grid
             // ulp. An exact zero prior carries no term to recover and stays
             // on the fast path. Recombine the exact products without
-            // intermediate rounding and narrow once.
-            // The deviation must be finite because BigDecimal rejects
-            // non-finite conversions; the return below already drops
-            // non-finite deviations before this recovery matters.
+            // intermediate rounding and narrow once. The deviation must be
+            // finite because BigDecimal rejects non-finite conversions; the
+            // return below already drops non-finite deviations before this
+            // recovery matters.
             updatedVariance = ExactDecimalArithmetic.exactWeightedSum(getBarSeries().numFactory(),
                     ExactDecimalArithmetic.exactValueOf(previousVariance),
-                    ExactDecimalArithmetic.exactValueOf(deviation).pow(2), oneMinusDecay);
+                    ExactDecimalArithmetic.exactValueOf(deviation).pow(2), exactOneMinusDecay);
         }
         return Num.isFinite(deviation) && Num.isFinite(updatedVariance) ? updatedVariance : NaN.NaN;
     }
@@ -479,13 +489,16 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         private final int barCount;
         private final Num decay;
         private final Num oneMinusDecay;
+        private final BigDecimal exactOneMinusDecay;
 
-        private SharedMeanIndicator(Indicator<Num> indicator, int barCount, Num decay, Num oneMinusDecay) {
+        private SharedMeanIndicator(Indicator<Num> indicator, int barCount, Num decay, Num oneMinusDecay,
+                BigDecimal exactOneMinusDecay) {
             super(indicator);
             this.indicator = indicator;
             this.barCount = barCount;
             this.decay = decay;
             this.oneMinusDecay = oneMinusDecay;
+            this.exactOneMinusDecay = exactOneMinusDecay;
         }
 
         @Override
@@ -549,14 +562,14 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
                 return previousMean.multipliedBy(decay).plus(current.multipliedBy(oneMinusDecay));
             }
             // Exact expansions of the operands combine without intermediate
-            // rounding and narrow once. The first factor is derived as the
-            // exact complement of the actual delta weight, so a coarse factory
-            // cannot turn independently rounded weights into a non-convex sum.
-            // DecimalNum operands can exceed the double range, so conversion
-            // must not go through doubleValue().
+            // rounding and narrow once. The exact second weight normally
+            // reflects the applied delta weight; when that weight rounded to
+            // one, it instead retains the positive first weight supplied by
+            // the caller. DecimalNum operands can exceed the double range, so
+            // conversion must not go through doubleValue().
             return ExactDecimalArithmetic.exactWeightedSum(getBarSeries().numFactory(),
                     ExactDecimalArithmetic.exactValueOf(previousMean), ExactDecimalArithmetic.exactValueOf(current),
-                    oneMinusDecay);
+                    exactOneMinusDecay);
         }
 
         @Override
