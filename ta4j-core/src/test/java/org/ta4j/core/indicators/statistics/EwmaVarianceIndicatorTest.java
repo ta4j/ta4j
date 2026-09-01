@@ -428,6 +428,22 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void weightedSubnormalDeltaRecombinesNormalMean() {
+        // decay 0.99999 makes oneMinusDecay ~1e-5: the raw delta is normal on
+        // the float grid while delta * oneMinusDecay is subnormal. Recovery
+        // must key off the weighted delta; the difference form publishes
+        // 0x01dce616, and a single exact rounding must publish 0x01dce617.
+        NumFactory floatFactory = FloatNumFactory.getInstance();
+        Num previousMean = floatFactory.numOf(Float.intBitsToFloat(0x01dc5cfa));
+        Num current = floatFactory.numOf(Float.intBitsToFloat(0x05d213a5));
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory).withData(0, 0).build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(new MockIndicator(series, 0, previousMean, current),
+                1, 0.99999);
+
+        assertEquals(0x01dce617, Float.floatToRawIntBits(variance.getMeanIndicator().getValue(1).floatValue()));
+    }
+
+    @Test
     public void recoveryDerivesDecayFromAppliedComplement() {
         // A precision-1 factory stores 0.94 as 0.9 but preserves the applied
         // complement 0.06. Exact recovery must derive the first weight as

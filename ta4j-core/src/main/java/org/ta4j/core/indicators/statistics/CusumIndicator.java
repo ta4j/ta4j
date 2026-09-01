@@ -243,12 +243,20 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         // independently rounded weights. The raw value is retained on the
         // indicator so the descriptor / JSON round trip serializes the in-range
         // parameter instead of its rounded boundary.
-        double narrowed = scaleDecay.doubleValue();
-        if (!Double.isFinite(narrowed)) {
-            throw new IllegalArgumentException("scaleDecay must be in (0, 1)");
+        BigDecimal rawScaleDecay;
+        if (scaleDecay instanceof BigDecimal decimalScaleDecay) {
+            // Exact decimal: narrow only through the exact BigDecimal interval
+            // check. A doubleValue() round trip collapses 1e-400 to zero and a
+            // near-one value such as 0.999999999999999999999 to one, which
+            // would either misvalidate or needlessly reject an in-range decay.
+            rawScaleDecay = decimalScaleDecay;
+        } else {
+            double narrowed = scaleDecay.doubleValue();
+            if (!Double.isFinite(narrowed)) {
+                throw new IllegalArgumentException("scaleDecay must be in (0, 1)");
+            }
+            rawScaleDecay = BigDecimal.valueOf(narrowed);
         }
-        BigDecimal rawScaleDecay = scaleDecay instanceof BigDecimal ? (BigDecimal) scaleDecay
-                : BigDecimal.valueOf(narrowed);
         if (rawScaleDecay.compareTo(BigDecimal.ZERO) <= 0 || rawScaleDecay.compareTo(BigDecimal.ONE) >= 0) {
             throw new IllegalArgumentException("scaleDecay must be in (0, 1)");
         }
@@ -422,8 +430,9 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             // Such updates recombine exact operands without intermediate
             // rounding and narrow once.
             Num delta = increment.minus(previous);
-            Num updated = previous.plus(delta.multipliedBy(oneMinusScaleDecay));
-            if (ExactDecimalArithmetic.requiresExactRecovery(updated, delta)) {
+            Num weightedDelta = delta.multipliedBy(oneMinusScaleDecay);
+            Num updated = previous.plus(weightedDelta);
+            if (ExactDecimalArithmetic.requiresExactRecovery(updated, weightedDelta)) {
                 return ExactDecimalArithmetic.exactWeightedSum(getBarSeries().numFactory(),
                         ExactDecimalArithmetic.exactValueOf(previous), ExactDecimalArithmetic.exactValueOf(increment),
                         oneMinusScaleDecay);

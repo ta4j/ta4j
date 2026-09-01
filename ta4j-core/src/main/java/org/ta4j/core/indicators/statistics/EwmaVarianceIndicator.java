@@ -515,8 +515,9 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             if (!Num.isFinite(delta)) {
                 return combinedMean(previousMean, current);
             }
-            Num updated = previousMean.plus(delta.multipliedBy(oneMinusDecay));
-            if (ExactDecimalArithmetic.requiresExactRecovery(updated, delta)) {
+            Num weightedDelta = delta.multipliedBy(oneMinusDecay);
+            Num updated = previousMean.plus(weightedDelta);
+            if (ExactDecimalArithmetic.requiresExactRecovery(updated, weightedDelta)) {
                 return combinedMean(previousMean, current);
             }
             return updated;

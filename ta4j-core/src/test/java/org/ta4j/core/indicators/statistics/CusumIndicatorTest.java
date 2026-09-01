@@ -310,6 +310,25 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
+    public void weightedSubnormalScaleDeltaRoundsOnTheFloatGrid() {
+        // scaleDecay 0.99999 makes oneMinusScaleDecay ~1e-5: the raw scale
+        // delta is normal on the float grid while delta * oneMinusScaleDecay
+        // is subnormal. Recovery must key off the weighted delta; the fast
+        // path publishes a one-ulp-low scale (0x01dce616) whose clip bound
+        // shifts the final CUSUM to 0x3782d27, while exact recovery publishes
+        // 0x3782d28.
+        NumFactory floatFactory = FloatNumFactory.getInstance();
+        Num first = floatFactory.numOf(-Float.intBitsToFloat(0x01dc5cfa));
+        Num second = floatFactory.numOf(-Float.intBitsToFloat(0x05d213a5));
+        Num third = floatFactory.numOf(-1.0f);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory).withData(0, 0, 0).build();
+        CusumIndicator cusum = new CusumIndicator(new MockIndicator(series, 0, first, second, third), 0, 0, 4.0,
+                0.99999);
+
+        assertEquals(0x3782d28, Float.floatToRawIntBits(cusum.getValue(2).floatValue()));
+    }
+
+    @Test
     public void deviationScaleReanchorsAfterRetainedHeadPrunes() {
         // The winsorization scale must also reseed at the new retained head:
         // a stale scale would clip the deviation against a bound derived from
