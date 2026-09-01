@@ -5,6 +5,7 @@ package org.ta4j.core.indicators.candles;
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -346,6 +347,34 @@ final class CandleThresholdSupport {
      */
     static final double RANGE_SCALE = 10.0;
 
+    /**
+     * Calculates a weighted point without forming an intermediate endpoint
+     * difference or sum that can overflow.
+     *
+     * <p>
+     * Callers provide finite endpoints and complementary, non-negative weights.
+     * Scaling both endpoints by their larger magnitude makes the weighted sum
+     * bounded before restoring its original scale.
+     *
+     * @param first        the first endpoint
+     * @param firstWeight  the first endpoint's weight
+     * @param second       the second endpoint
+     * @param secondWeight the second endpoint's weight
+     * @return {@code first * firstWeight + second * secondWeight}
+     */
+    static Num weightedPoint(Num first, Num firstWeight, Num second, Num secondWeight) {
+        final Num firstMagnitude = first.abs();
+        final Num secondMagnitude = second.abs();
+        final Num scale = firstMagnitude.isGreaterThan(secondMagnitude) ? firstMagnitude : secondMagnitude;
+        if (scale.isZero()) {
+            return scale;
+        }
+        return first.dividedBy(scale)
+                .multipliedBy(firstWeight)
+                .plus(second.dividedBy(scale).multipliedBy(secondWeight))
+                .multipliedBy(scale);
+    }
+
     private final BarSeries series;
     private final int averagePeriod;
     private final Indicator<Num> body;
@@ -626,14 +655,14 @@ final class CandleThresholdSupport {
      *
      * <p>
      * The comparison {@code body < factor * priorBody} is evaluated as
-     * {@code body / factor < priorBody} on the raw-scale operands whenever both are
-     * finite: dividing by the power-of-two factor doubles the body exactly, whereas
-     * multiplying an odd subnormal baseline by the factor can round it onto the
-     * measured body and lose the strict ordering. Otherwise the comparison is
-     * performed at half scale: the half body is measured against the half-scale
-     * prior average body, so a finite half body stays decidable against a baseline
-     * whose raw mean would overflow. An unavailable (NaN) measurement is never
-     * classified.
+     * {@code body / factor < priorBody} on raw-scale operands whenever both are
+     * finite. At a binary boundary within one ULP, the underlying {@link DoubleNum}
+     * values are rechecked from their canonical decimal rendering so strict
+     * comparisons agree with {@code DecimalNum}; that rare path walks the prior
+     * window. Otherwise the comparison is performed at half scale: the half body is
+     * measured against the half-scale prior average body, so a finite half body
+     * stays decidable against a baseline whose raw mean would overflow. An
+     * unavailable (NaN) measurement is never classified.
      *
      * @param index the candle index
      * @return {@code true} for a short body, {@code false} below the warm-up
@@ -651,7 +680,7 @@ final class CandleThresholdSupport {
         final Num rawBody = body.getValue(index);
         final Num rawBaseline = rawPriorAverageBody.getValue(index);
         if (Num.isFinite(rawBody) && Num.isFinite(rawBaseline)) {
-            return rawBody.dividedBy(shortBodyFactor).isLessThan(rawBaseline);
+            return isStrictlyShorterThanRawBaseline(index, rawBody, rawBaseline);
         }
         return bodyValue.isLessThan(baseline);
     }
@@ -939,6 +968,34 @@ final class CandleThresholdSupport {
         final Num halfDifference = halfDifference(first, second, series.numFactory());
         final Num baseline = halfPriorAverageRange.getValue(index).multipliedBy(nearRangeFactor);
         return Num.isFinite(halfDifference) && Num.isFinite(baseline) && !halfDifference.isGreaterThan(baseline);
+    }
+
+    /**
+     * Resolves a strict short-body comparison at the one-ULP boundary where the
+     * rounded raw average can disagree with the canonical decimal values exposed by
+     * {@link DoubleNum}. The full window is visited only on that boundary.
+     */
+    private boolean isStrictlyShorterThanRawBaseline(int index, Num rawBody, Num rawBaseline) {
+        final Num scaledBody = rawBody.dividedBy(shortBodyFactor);
+        final boolean shorter = scaledBody.isLessThan(rawBaseline);
+        if (!(rawBody instanceof DoubleNum doubleBody) || !(rawBaseline instanceof DoubleNum doubleBaseline)
+                || !isWithinOneUlp(scaledBody.doubleValue(), doubleBaseline.getDelegate())) {
+            return shorter;
+        }
+        BigDecimal scaledCanonicalBody = BigDecimal.valueOf(doubleBody.getDelegate())
+                .multiply(BigDecimal.valueOf(2L))
+                .multiply(BigDecimal.valueOf(averagePeriod));
+        BigDecimal priorCanonicalBodySum = BigDecimal.ZERO;
+        for (int priorIndex = index - averagePeriod; priorIndex < index; priorIndex++) {
+            priorCanonicalBodySum = priorCanonicalBodySum
+                    .add(BigDecimal.valueOf(body.getValue(priorIndex).doubleValue()));
+        }
+        return scaledCanonicalBody.compareTo(priorCanonicalBodySum) < 0;
+    }
+
+    private static boolean isWithinOneUlp(double first, double second) {
+        return Double.isFinite(first) && Double.isFinite(second)
+                && Math.abs(first - second) <= Math.max(Math.ulp(first), Math.ulp(second));
     }
 
     /**

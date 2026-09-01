@@ -81,6 +81,20 @@ public class CandleThresholdSupportTest {
     }
 
     @Test
+    public void shortBodyBoundaryUsesCanonicalDecimalValuesAcrossFactories() {
+        // The mean of 0.1 and 0.2 is exactly 0.15 in decimal notation, so the
+        // 0.075 body sits exactly at the strict half-average boundary.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addBar(series, 0.1, 0, 0);
+            addBar(series, 0.2, 0, 0);
+            addBar(series, 0.075, 0, 0);
+
+            assertFalse(new CandleThresholdSupport(series, 2).isShortBody(2));
+        }
+    }
+
+    @Test
     public void dojiBoundaryIsInclusive() {
         CandleThresholdSupport atBoundary = support(10, 0, 0, 1, 9, 0);
         CandleThresholdSupport aboveBoundary = support(10, 0, 0, 1.01, 8.99, 0);

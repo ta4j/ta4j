@@ -30,7 +30,8 @@ import org.ta4j.core.num.NumFactory;
  * data never qualifies. The explicit zero-factor branch remains an exact
  * zero-body check.
  * <p>
- * A finite body difference outside the subnormal-ratio region is compared by
+ * For a custom positive range factor other than the standard one tenth, a
+ * finite body difference outside the subnormal-ratio region is compared by
  * rescaling the body with the positive range factor,
  * {@code |open_i - close_i| / rangeFactor <= priorAverage}. This avoids
  * rounding a body above its inclusive threshold down onto the ratio boundary. A
@@ -44,6 +45,11 @@ import org.ta4j.core.num.NumFactory;
  * {@code |open_i / priorAverage - close_i / priorAverage| <= rangeFactor},
  * which preserves the exact ordering under overflow, mirroring DecimalNum's
  * exact arithmetic under DoubleNum.
+ *
+ * <p>
+ * The standard one-tenth factor delegates to {@link CandleThresholdSupport},
+ * whose fused raw-tenfold comparison preserves an inclusive boundary that a
+ * rounded quotient would otherwise erase under {@code DoubleNum}.
  *
  * A finite raw full-scale prior average is used directly instead of being
  * reconstructed from its half-scale representation, so representable subnormal
@@ -150,6 +156,9 @@ public class DojiIndicator extends CandlePatternIndicator {
             // compare the raw body magnitude directly; it is zero on every
             // Num implementation exactly when open equals close.
             return !bodyMagnitude.isPositive();
+        }
+        if (rangeFactor == CandleThresholdSupport.DOJI_RANGE_FACTOR) {
+            return thresholds.isDoji(index);
         }
         final Num rawPriorAverage = thresholds.rawPriorAverageRange().getValue(index);
         final Num priorAverage = Num.isFinite(rawPriorAverage) ? rawPriorAverage

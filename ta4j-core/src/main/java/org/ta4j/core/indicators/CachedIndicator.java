@@ -214,17 +214,45 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     /**
      * One cross-series dependency observation: the dependency series and the last
-     * applied snapshot, kept in a CAS-updatable reference.
+     * applied structural and last-bar state, kept in a CAS-updatable reference.
      */
     private static final class ObservedSeries {
         @Serial
         private static final long serialVersionUID = 1L;
         private final BarSeries series;
-        private final AtomicReference<BarSeriesChangeSnapshot> observedSnapshot;
+        private final AtomicReference<ObservedSeriesState> observedState;
 
         ObservedSeries(BarSeries series) {
             this.series = series;
-            this.observedSnapshot = new AtomicReference<>(series.getBarSeriesChangeSnapshot(-1L));
+            this.observedState = new AtomicReference<>(ObservedSeriesState.capture(series, -1L));
+        }
+    }
+
+    private record ObservedSeriesState(BarSeriesChangeSnapshot snapshot, LastBarState lastBar) {
+
+        private static ObservedSeriesState capture(BarSeries series, long sinceRevision) {
+            BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(sinceRevision);
+            return new ObservedSeriesState(snapshot, LastBarState.capture(series, snapshot.endIndex()));
+        }
+    }
+
+    /**
+     * Identifies a dependency's mutable last bar. Bar mutations do not publish a
+     * {@link BarSeriesChangeSnapshot}, so cross-series observations retain this
+     * fingerprint alongside the structural snapshot.
+     */
+    private record LastBarState(Bar bar, long tradeCount, Num closePrice) {
+
+        private static LastBarState capture(BarSeries series, int endIndex) {
+            if (endIndex < 0) {
+                return new LastBarState(null, 0L, null);
+            }
+            Bar bar = series.getLastBar();
+            return new LastBarState(bar, bar.getTrades(), bar.getClosePrice());
+        }
+
+        private boolean isSameAs(LastBarState other) {
+            return bar == other.bar && tradeCount == other.tradeCount && equalsNum(closePrice, other.closePrice);
         }
     }
 
@@ -512,26 +540,28 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      */
     private static final class DependencyObservation {
         private final ObservedSeries observed;
-        private final BarSeriesChangeSnapshot snapshot;
-        private final BarSeriesChangeSnapshot sinceSnapshot;
-        private final boolean changed;
+        private final ObservedSeriesState state;
+        private final ObservedSeriesState sinceState;
+        private final boolean snapshotChanged;
+        private final boolean lastBarChanged;
 
         static DependencyObservation of(ObservedSeries observed) {
-            BarSeriesChangeSnapshot since = observed.observedSnapshot.get();
-            BarSeriesChangeSnapshot current = observed.series.getBarSeriesChangeSnapshot(since.revision());
-            return new DependencyObservation(observed, current, since, !sameSeriesState(current, since));
+            ObservedSeriesState since = observed.observedState.get();
+            ObservedSeriesState current = ObservedSeriesState.capture(observed.series, since.snapshot().revision());
+            return new DependencyObservation(observed, current, since);
         }
 
-        private DependencyObservation(ObservedSeries observed, BarSeriesChangeSnapshot snapshot,
-                BarSeriesChangeSnapshot sinceSnapshot, boolean changed) {
+        private DependencyObservation(ObservedSeries observed, ObservedSeriesState state,
+                ObservedSeriesState sinceState) {
             this.observed = observed;
-            this.snapshot = snapshot;
-            this.sinceSnapshot = sinceSnapshot;
-            this.changed = changed;
+            this.state = state;
+            this.sinceState = sinceState;
+            snapshotChanged = !sameSeriesState(state.snapshot(), sinceState.snapshot());
+            lastBarChanged = !state.lastBar().isSameAs(sinceState.lastBar());
         }
 
         boolean changed() {
-            return changed;
+            return snapshotChanged || lastBarChanged;
         }
 
         /**
@@ -540,21 +570,24 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
          *         index-range invalidation (pure append)
          */
         int invalidateFrom() {
-            if (!changed) {
+            if (!changed()) {
                 return -1;
             }
-            int earliestChanged = snapshot.earliestChangedIndex();
-            if (earliestChanged >= 0) {
-                return earliestChanged;
+            if (snapshotChanged) {
+                int earliestChanged = state.snapshot().earliestChangedIndex();
+                if (earliestChanged >= 0) {
+                    return earliestChanged;
+                }
+                // Pure append without a journaled change index: values cached above
+                // the previous end index were computed against the dependency's last
+                // bar and may change now that those indexes exist.
+                if (state.snapshot().endIndex() > sinceState.snapshot().endIndex()) {
+                    long previousEnd = sinceState.snapshot().endIndex();
+                    return previousEnd >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) previousEnd + 1;
+                }
+                return -1;
             }
-            // Pure append without a journaled change index: values cached above
-            // the previous end index were computed against the dependency's last
-            // bar and may change now that those indexes exist.
-            if (snapshot.endIndex() > sinceSnapshot.endIndex()) {
-                long previousEnd = sinceSnapshot.endIndex();
-                return previousEnd >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) previousEnd + 1;
-            }
-            return -1;
+            return state.snapshot().endIndex();
         }
 
         /**
@@ -562,19 +595,19 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
          *         or {@link Integer#MAX_VALUE} when nothing survives
          */
         int cacheFloor() {
-            if (!changed) {
+            if (!changed()) {
                 return -1;
             }
-            if (snapshot.removedThroughIndex() != sinceSnapshot.removedThroughIndex()) {
+            if (state.snapshot().removedThroughIndex() != sinceState.snapshot().removedThroughIndex()) {
                 // A dependency-series head advance can rebase every consumer
                 // value, so no previously cached consumer result is reusable.
                 return Integer.MAX_VALUE;
             }
-            return snapshot.removedThroughIndex() + 1;
+            return state.snapshot().removedThroughIndex() + 1;
         }
 
         boolean commitObservation() {
-            return observed.observedSnapshot.compareAndSet(sinceSnapshot, snapshot);
+            return observed.observedState.compareAndSet(sinceState, state);
         }
     }
 

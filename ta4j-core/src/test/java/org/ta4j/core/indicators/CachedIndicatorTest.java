@@ -2490,6 +2490,30 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     /**
+     * A dependency's mutable last bar does not publish a structural series change.
+     * Its mutation must still invalidate a cached consumer value that is historical
+     * in the consumer's own series.
+     */
+    @Test
+    public void distanceFromMovingAverageRecomputesWhenMovingAverageLastBarMutates() {
+        BarSeries seriesA = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d, 5d).build();
+        BaseBarSeries seriesB = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 20d, 30d)
+                .build();
+        DistanceFromMAIndicator distance = new DistanceFromMAIndicator(seriesA,
+                new SMAIndicator(new ClosePriceIndicator(seriesB), 1));
+
+        Num before = distance.getValue(2);
+        seriesB.addPrice(numOf(300));
+        Num after = distance.getValue(2);
+
+        DistanceFromMAIndicator freshDistance = new DistanceFromMAIndicator(seriesA,
+                new SMAIndicator(new ClosePriceIndicator(seriesB), 1));
+        assertNumEquals(freshDistance.getValue(2), after);
+        assertThat(after).isNotEqualTo(before);
+    }
+
+    /**
      * Dependency groups must be keyed by series identity: two distinct series
      * instances that compare equal must each produce their own observation, so a
      * mutation in the second one still invalidates the dependent cache.

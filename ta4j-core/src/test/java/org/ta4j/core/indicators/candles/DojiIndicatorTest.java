@@ -378,6 +378,32 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
     }
 
     @Test
+    public void rejectsFiniteBodyAboveOneTenthBoundaryAcrossFactories() {
+        // The exact decimal body is just above one tenth of the prior range.
+        // DoubleNum's quotient rounds down onto the boundary, while DecimalNum
+        // preserves the strict ordering.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance(34))) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            Num priorRange = factory.numOf("7.677504280563276e258");
+            Num currentBody = factory.numOf("7.677504280563277e257");
+            series.barBuilder()
+                    .openPrice(factory.zero())
+                    .closePrice(factory.zero())
+                    .highPrice(priorRange)
+                    .lowPrice(factory.zero())
+                    .add();
+            series.barBuilder()
+                    .openPrice(currentBody)
+                    .closePrice(factory.zero())
+                    .highPrice(currentBody)
+                    .lowPrice(factory.zero())
+                    .add();
+
+            assertFalse(new DojiIndicator(series, 1, 0.1).getValue(1));
+        }
+    }
+
+    @Test
     public void rawSubnormalRangeBaselinePreservesInclusiveOrderingAcrossFactories() {
         for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
             BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
