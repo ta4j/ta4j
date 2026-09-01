@@ -41,8 +41,16 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
         this.multiplier = getBarSeries().numFactory().numOf(multiplier);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Serializes the retained-head check with the complete recursive cache read so
+     * the indicator monitor is always acquired before the cache write lock.
+     * Recursive reads safely reenter the monitor.
+     */
     @Override
-    public Num getValue(int index) {
+    public synchronized Num getValue(int index) {
         BarSeries series = getBarSeries();
         while (true) {
             int removedBarsCount = series.getRemovedBarsCount();
