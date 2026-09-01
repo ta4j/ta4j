@@ -415,6 +415,39 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void scaledVarianceSummationIsOrderStableAcrossRecords() {
+        // Precision-2 DecimalNum retains the ten 0.01 squared deviations
+        // only when they precede the two unit deviations under naive
+        // accumulation. Both records represent the same returns, so Cpk must
+        // be identical regardless of their position order.
+        NumFactory precisionTwo = DecimalNumFactory.getInstance(2);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(precisionTwo)
+                .withData(1, 10, 1, -10, 1, 1, 1, -1, 1, 1, 1, -1, 1, 1, 1, -1, 1, 1, 1, -1, 1, 1, 1, -1)
+                .build();
+        TradingRecord largeFirst = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series),
+                Trade.buyAt(6, series), Trade.sellAt(7, series), Trade.buyAt(8, series), Trade.sellAt(9, series),
+                Trade.buyAt(10, series), Trade.sellAt(11, series), Trade.buyAt(12, series), Trade.sellAt(13, series),
+                Trade.buyAt(14, series), Trade.sellAt(15, series), Trade.buyAt(16, series), Trade.sellAt(17, series),
+                Trade.buyAt(18, series), Trade.sellAt(19, series), Trade.buyAt(20, series), Trade.sellAt(21, series),
+                Trade.buyAt(22, series), Trade.sellAt(23, series));
+        TradingRecord smallFirst = new BaseTradingRecord(Trade.buyAt(4, series), Trade.sellAt(5, series),
+                Trade.buyAt(6, series), Trade.sellAt(7, series), Trade.buyAt(8, series), Trade.sellAt(9, series),
+                Trade.buyAt(10, series), Trade.sellAt(11, series), Trade.buyAt(12, series), Trade.sellAt(13, series),
+                Trade.buyAt(14, series), Trade.sellAt(15, series), Trade.buyAt(16, series), Trade.sellAt(17, series),
+                Trade.buyAt(18, series), Trade.sellAt(19, series), Trade.buyAt(20, series), Trade.sellAt(21, series),
+                Trade.buyAt(22, series), Trade.sellAt(23, series), Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series));
+
+        AnalysisCriterion cpk = new ProcessCapabilityCriterion(-1);
+
+        Num largeFirstCapability = cpk.calculate(series, largeFirst);
+        Num smallFirstCapability = cpk.calculate(series, smallFirst);
+
+        assertNumEquals(largeFirstCapability, smallFirstCapability);
+    }
+
+    @Test
     public void coarseFactoryRoundingKeepsPositiveSpecificationGap() {
         // A precision-2 DecimalNum factory rounds the retained LSL 0.999
         // onto the mean 1.0, collapsing the positive capability (about

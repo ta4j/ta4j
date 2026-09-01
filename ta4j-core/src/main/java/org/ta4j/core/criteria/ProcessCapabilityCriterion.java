@@ -163,11 +163,11 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             return factory.zero();
         }
         Num scaledMean = mean.dividedBy(deviationScale);
-        Num scaledSquaredSum = factory.zero();
-        for (Num value : valueArray) {
-            Num scaledDeviation = value.dividedBy(deviationScale).minus(scaledMean);
-            scaledSquaredSum = scaledSquaredSum.plus(scaledDeviation.multipliedBy(scaledDeviation));
+        for (int i = 0; i < valueArray.length; i++) {
+            Num scaledDeviation = valueArray[i].dividedBy(deviationScale).minus(scaledMean);
+            valueArray[i] = scaledDeviation.multipliedBy(scaledDeviation);
         }
+        Num scaledSquaredSum = compensatedSum(valueArray, factory);
         if (scaledSquaredSum.isZero()) {
             // Identical gross returns leave no dispersion to measure.
             return factory.zero();
