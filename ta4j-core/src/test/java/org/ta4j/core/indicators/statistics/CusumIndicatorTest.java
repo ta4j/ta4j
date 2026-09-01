@@ -219,6 +219,25 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
+    public void underflowedScaleStillProducesRepresentableClippingBound() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        Num minimum = doubleFactory.numOf(Double.MIN_VALUE);
+        Num negativeMinimum = minimum.negate();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory).withData(0, 0, 0).build();
+        MockIndicator source = new MockIndicator(series, 0, doubleFactory.zero(), negativeMinimum, negativeMinimum);
+        BigDecimal updateWeight = new BigDecimal("1e-100");
+        CusumIndicator cusum = new CusumIndicator(source, 0, 0, new BigDecimal("1e100"),
+                BigDecimal.ONE.subtract(updateWeight));
+
+        // The first persistent deviation updates the exact scale to
+        // Double.MIN_VALUE * 1e-100, which narrows to zero. The next clipping
+        // bound reverses that intermediate underflow by multiplying the retained
+        // exact scale by 1e100, admitting one representable minimum increment.
+        assertNumEquals(doubleFactory.zero(), cusum.getValue(1));
+        assertNumEquals(minimum, cusum.getValue(2));
+    }
+
+    @Test
     public void scaleDecayComplementAvoidsDoubleRoundingArtifact() {
         // The complement must be the exact BigDecimal difference 1 - decay: a
         // double-computed complement carries the binary rounding artifact
@@ -589,15 +608,11 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
-    public void subnormalScaleDecaysToZeroAndClipsLaterAdmissions() {
-        // A subnormal scale increment followed by a zero increment must decay
-        // the winsorization scale to zero: the difference-form update stalls
-        // at MIN_VALUE when the weighted delta underflows, and the
-        // subnormal-magnitude recovery recombines the exact weighted sum.
-        // DoubleNum correctly rounds that scale to zero, so the next admission
-        // is clipped to a zero bound and the CUSUM stays at MIN_VALUE;
-        // DecimalNum keeps its exact subnormal scale, whose clip bound admits
-        // the deviation unclipped.
+    public void underflowedSubnormalScaleRecoversRepresentableBound() {
+        // A subnormal scale increment followed by a zero increment makes the
+        // published DoubleNum scale zero. Its retained exact half-MIN_VALUE state
+        // still produces a representable bound when multiplied by the clip factor,
+        // so the next minimum deviation is admitted just as it is for DecimalNum.
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(0, Double.MIN_VALUE, 0)
                 .build();
@@ -605,10 +620,7 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
                 new MockIndicator(series, 0, numOf(0), numOf(Double.MIN_VALUE), numOf(0)), Double.MIN_VALUE, 0, 3.0,
                 0.5);
 
-        Num expected = numFactory instanceof DoubleNumFactory ? numOf(Double.MIN_VALUE)
-                : numOf(Double.MIN_VALUE).multipliedBy(numOf(2));
-
-        assertNumEquals(expected, cusum.getValue(2));
+        assertNumEquals(numOf(Double.MIN_VALUE).multipliedBy(numOf(2)), cusum.getValue(2));
     }
 
     @Test

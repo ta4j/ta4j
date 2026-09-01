@@ -3,6 +3,10 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.util.Objects;
+
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -11,9 +15,6 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
-
-import java.util.Objects;
-import java.math.BigDecimal;
 
 /**
  * Exponentially weighted moving variance (EWMA variance).
@@ -356,13 +357,12 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
 
     /**
      * Mean of the window {@code [index - barCount + 1, index]}, accumulated with
-     * compensated (Neumaier) summation and re-scaled by the largest absolute bar
-     * when the compensated sum overflows. A window of bars near the representation
-     * ceiling (three {@code Double.MAX_VALUE} bars) sums to a non-finite running
-     * total even though the exact mean is representable, so the re-scaled pass
-     * divides every bar by the largest absolute bar, sums the normalized values
-     * (each bounded by one), and multiplies back, which keeps the mean finite and
-     * exact for equal bars. Non-finite bars publish {@code NaN}.
+     * compensated (Neumaier) summation. When that fast path overflows, finite
+     * window values are summed as exact decimal expansions and divided before the
+     * mean is narrowed once. This preserves representable cancellation residuals
+     * that max-absolute scaling would underflow, such as a small final bar after
+     * opposite-sign {@code Double.MAX_VALUE} pairs. Non-finite bars publish
+     * {@code NaN}.
      */
     private static Num windowMean(Indicator<Num> source, int windowBarCount, int index) {
         BarSeries series = source.getBarSeries();
@@ -383,18 +383,16 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         }
         // The exact window mean is representable (it is bounded by the
         // largest absolute bar value), so a non-finite compensated sum is a
-        // summation artifact: re-scale every bar by the largest absolute bar
-        // and accumulate the normalized values instead. The values are
-        // validated finite above, so the scale is positive and finite.
-        Num maxAbsValue = factory.zero();
+        // summation artifact. Accumulate exact operand expansions before
+        // dividing and narrow only the complete mean: scaling each term by
+        // the largest absolute value can underflow a representable residual
+        // left by opposite-sign cancellation.
+        BigDecimal exactSum = BigDecimal.ZERO;
         for (Num value : windowValues) {
-            maxAbsValue = maxAbsValue.max(value.abs());
+            exactSum = exactSum.add(ExactDecimalArithmetic.exactValueOf(value));
         }
-        Num[] scaledValues = new Num[windowLength];
-        for (int i = 0; i < windowLength; i++) {
-            scaledValues[i] = windowValues[i].dividedBy(maxAbsValue);
-        }
-        return compensatedSum(scaledValues, factory).dividedBy(factory.numOf(windowLength)).multipliedBy(maxAbsValue);
+        BigDecimal exactMean = exactSum.divide(BigDecimal.valueOf(windowLength), MathContext.DECIMAL128);
+        return factory.numOf(exactMean);
     }
 
     /**

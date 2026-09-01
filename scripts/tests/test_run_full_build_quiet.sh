@@ -421,9 +421,9 @@ printf '%s\n' "$@" > "$FAKE_MAVEN_ARGS"
 echo "[INFO] Slow fixture started"
 for tick in 1 2 3 4 5; do
   /bin/sleep 0.05
+  echo "[INFO] Slow fixture still progressing"
   printf '%s\n' "$tick" > "${QUIET_BUILD_TEST_CLOCK_FILE}.next"
   /bin/mv "${QUIET_BUILD_TEST_CLOCK_FILE}.next" "$QUIET_BUILD_TEST_CLOCK_FILE"
-  echo "[INFO] Slow fixture still progressing"
 done
 echo "[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0"
 echo "[INFO] BUILD SUCCESS"

@@ -5,6 +5,7 @@ package org.ta4j.core.indicators.statistics;
 
 import java.math.BigDecimal;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -41,13 +42,16 @@ import org.ta4j.core.num.NumFactory;
  * winsorization bound is zero: the first non-zero deviation is fully damped and
  * its raw magnitude bootstraps {@code sigmaHat}, so a single outlier cannot
  * trip the statistic right after a perfectly on-target run.
- * 
+ *
+ * <p>
  * The raw {@code outlierClipFactor} and {@code scaleDecay} parameters are
  * retained separately from their factory-rounded arithmetic values. A coarse
  * factory may round an in-range decay such as {@code 0.9999} to its boundary
  * {@code 1}, while an extreme clipping factor may underflow to zero or overflow
- * to a non-finite value. Retaining the raw values preserves both arithmetic and
- * descriptor / JSON round trips.
+ * to a non-finite value. Deviation-scale updates that underflow are also
+ * retained exactly until the clipping factor is applied, allowing a
+ * representable completed bound to survive. Retaining the raw parameters
+ * preserves both arithmetic and descriptor / JSON round trips.
  *
  * <p>
  * While the source indicator is warming up ({@code index - beginIndex <
@@ -314,7 +318,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         if (index > beginIndex) {
             Num previousScale = deviationScale.getValue(index - 1);
             if (Num.isFinite(previousScale)) {
-                Num bound = clippingBound(previousScale);
+                Num bound = clippingBound(previousScale, index - 1);
                 deviation = deviation.max(bound.negate()).min(bound);
             }
         }
@@ -369,18 +373,22 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
     /**
      * Multiplies the prior deviation scale by the retained raw clipping factor. The
      * usual {@link Num} multiplication remains the fast path. Exact decimal
-     * recovery is used only when factor conversion underflowed, overflowed, was
-     * saturated, or the completed multiplication overflowed; only the final bound
-     * is narrowed or saturated.
+     * recovery is used only when the scale update underflowed, factor conversion
+     * underflowed, overflowed, was saturated, or the completed multiplication
+     * overflowed; only the final bound is narrowed or saturated.
      */
-    private Num clippingBound(Num previousScale) {
-        if (!exactOutlierClipFactorArithmetic) {
+    private Num clippingBound(Num previousScale, int scaleIndex) {
+        BigDecimal exactScale = previousScale.isZero() ? deviationScale.exactUnderflowedValue(scaleIndex) : null;
+        if (exactScale == null && !exactOutlierClipFactorArithmetic) {
             Num bound = previousScale.multipliedBy(appliedOutlierClipFactor);
             if (Num.isFinite(bound)) {
                 return bound;
             }
         }
-        BigDecimal exactBound = ExactDecimalArithmetic.exactValueOf(previousScale).multiply(outlierClipFactor);
+        if (exactScale == null) {
+            exactScale = ExactDecimalArithmetic.exactValueOf(previousScale);
+        }
+        BigDecimal exactBound = exactScale.multiply(outlierClipFactor);
         NumFactory factory = getBarSeries().numFactory();
         Num narrowed = factory.numOf(exactBound);
         if (Num.isFinite(narrowed)) {
@@ -432,6 +440,8 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         private final BigDecimal allowance;
         private final Num oneMinusScaleDecay;
         private final BigDecimal rawComplementScaleDecay;
+        private final ConcurrentHashMap<Integer, BigDecimal> exactUnderflowedValues = new ConcurrentHashMap<>();
+        private volatile boolean hasExactUnderflowedValues;
 
         private DeviationScaleIndicator(Indicator<Num> indicator, BigDecimal targetMean, BigDecimal allowance,
                 Num oneMinusScaleDecay, BigDecimal rawComplementScaleDecay) {
@@ -445,6 +455,12 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
 
         private void invalidateForRetainedHead() {
             invalidateCache();
+            exactUnderflowedValues.clear();
+            hasExactUnderflowedValues = false;
+        }
+
+        private BigDecimal exactUnderflowedValue(int index) {
+            return hasExactUnderflowedValues ? exactUnderflowedValues.get(index) : null;
         }
 
         @Override
@@ -458,9 +474,15 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             if (index - beginIndex < getCountOfUnstableBars()) {
                 return NaN.NaN;
             }
+            if (hasExactUnderflowedValues) {
+                exactUnderflowedValues.remove(index);
+            }
             Num current = indicator.getValue(index);
             if (!Num.isFinite(current)) {
                 Num previous = index == beginIndex ? getBarSeries().numFactory().zero() : getValue(index - 1);
+                if (index > beginIndex) {
+                    carryExactUnderflow(index - 1, index, previous);
+                }
                 return Num.isFinite(previous) ? previous : getBarSeries().numFactory().zero();
             }
             // Exact deviation keeps cancellation between raw out-of-range
@@ -477,16 +499,42 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             // result or delta can misround on the active primitive grid, and
             // the published scale drives the parent's winsorization bound.
             // Such updates recombine exact operands without intermediate
-            // rounding and narrow once.
+            // rounding and narrow once. If the exact update itself underflows,
+            // retain it alongside the public Num cache so a later multiplication
+            // by the clipping factor can recover a representable bound.
             Num delta = increment.minus(previous);
             Num weightedDelta = delta.multipliedBy(oneMinusScaleDecay);
             Num updated = previous.plus(weightedDelta);
-            if (ExactDecimalArithmetic.requiresExactRecovery(updated, weightedDelta)) {
-                return ExactDecimalArithmetic.exactWeightedSum(getBarSeries().numFactory(),
-                        ExactDecimalArithmetic.exactValueOf(previous), ExactDecimalArithmetic.exactValueOf(increment),
-                        appliedScaleWeight());
+            BigDecimal exactPrevious = previous.isZero() ? exactUnderflowedValue(index - 1) : null;
+            if (exactPrevious != null || ExactDecimalArithmetic.requiresExactRecovery(updated, weightedDelta)) {
+                return recoverExactUpdate(index, previous, exactPrevious, increment);
             }
             return updated;
+        }
+
+        private Num recoverExactUpdate(int index, Num previous, BigDecimal exactPrevious, Num increment) {
+            if (exactPrevious == null) {
+                exactPrevious = ExactDecimalArithmetic.exactValueOf(previous);
+            }
+            BigDecimal updateWeight = appliedScaleWeight();
+            BigDecimal exactUpdated = exactPrevious.multiply(BigDecimal.ONE.subtract(updateWeight))
+                    .add(ExactDecimalArithmetic.exactValueOf(increment).multiply(updateWeight));
+            Num narrowed = getBarSeries().numFactory().numOf(exactUpdated);
+            if (narrowed.isZero() && exactUpdated.signum() != 0) {
+                exactUnderflowedValues.put(index, exactUpdated);
+                hasExactUnderflowedValues = true;
+            }
+            return narrowed;
+        }
+
+        private void carryExactUnderflow(int previousIndex, int index, Num previous) {
+            if (!previous.isZero()) {
+                return;
+            }
+            BigDecimal exactPrevious = exactUnderflowedValue(previousIndex);
+            if (exactPrevious != null) {
+                exactUnderflowedValues.put(index, exactPrevious);
+            }
         }
 
         /**

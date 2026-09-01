@@ -47,17 +47,19 @@ import org.ta4j.core.num.NumFactory;
  * deviation. If finite returns overflow the active representation only while
  * their mean is accumulated, the complete capability calculation is recovered
  * in wider decimal precision and only its final representable Cpk is narrowed.
- * Otherwise, the mean uses compensated (Neumaier) summation so it stays
- * order-stable across the record. Gross returns with non-finite magnitude are
- * treated as decimals. When a limit overflows the active representation (for
- * example an LSL of -1e400 on a {@code DoubleNum} series) or factory narrowing
- * alters the retained limit (for example a precision-2 LSL of 0.944 becoming
- * 0.94), the mean-to-limit distance is computed in decimal space and narrowed
- * once against the complete 3-sigma denominator. Decimal factories retain their
- * configured finite precision during this recovery, so representable
- * capabilities stay finite and a limit only marginally beyond the
- * representation range or the rounding gap still scores its full positive
- * capability instead of collapsing to zero.
+ * Recovery performs centered-return additions and subtractions exactly before
+ * applying its finite {@link MathContext}, preserving small means produced by
+ * cancellation between very large long and short returns. The regular path uses
+ * compensated (Neumaier) summation and remains order-stable across the record.
+ * Gross returns with non-finite magnitude are treated as decimals. When a limit
+ * overflows the active representation (for example an LSL of -1e400 on a
+ * {@code DoubleNum} series) or factory narrowing alters the retained limit (for
+ * example a precision-2 LSL of 0.944 becoming 0.94), the mean-to-limit distance
+ * is computed in decimal space and narrowed once against the complete 3-sigma
+ * denominator. Decimal factories retain their configured finite precision
+ * during this recovery, so representable capabilities stay finite and a limit
+ * only marginally beyond the representation range or the rounding gap still
+ * scores its full positive capability instead of collapsing to zero.
  *
  * @since 0.24.2
  */
@@ -305,8 +307,10 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
      * produce a ratio above the representation range or below its minimum magnitude
      * even though the final capability remains representable. The same recovery
      * preserves separation between finite returns when only their sum overflows.
-     * Raw zero or non-finite prices are genuinely degenerate, so the criterion
-     * keeps its zero-score behavior for them.
+     * Mixed long/short returns share a center of one, so their large ratio terms
+     * cancel exactly before bounded-precision mean and capability arithmetic;
+     * all-short returns retain their center of two. Raw zero or non-finite prices
+     * are genuinely degenerate, so the criterion keeps its zero-score behavior.
      *
      * @param series        the bar series (source of the price numerics)
      * @param tradingRecord the record whose closed positions supply the prices
@@ -316,13 +320,18 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
      */
     private Num calculateDecimalCpk(BarSeries series, TradingRecord tradingRecord, NumFactory factory) {
         MathContext context = recoveryMathContext(factory);
-        boolean centerShortReturns = true;
+        boolean hasLongReturns = false;
+        boolean hasShortReturns = false;
         for (Position position : tradingRecord.getPositions()) {
-            if (position.isClosed() && position.getEntry().isBuy()) {
-                centerShortReturns = false;
-                break;
+            if (position.isClosed()) {
+                hasLongReturns |= position.getEntry().isBuy();
+                hasShortReturns |= !position.getEntry().isBuy();
             }
         }
+        boolean mixedDirections = hasLongReturns && hasShortReturns;
+        BigDecimal returnCenter = mixedDirections ? BigDecimal.ONE
+                : hasShortReturns ? BigDecimal.valueOf(2) : BigDecimal.ZERO;
+        BigDecimal shortReturnBase = BigDecimal.valueOf(2).subtract(returnCenter);
         List<BigDecimal> returns = new ArrayList<>();
         for (Position position : tradingRecord.getPositions()) {
             if (!position.isClosed()) {
@@ -337,29 +346,34 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             }
             BigDecimal ratio = exitPrice.bigDecimalValue().divide(entryPrice.bigDecimalValue(), context);
             if (position.getEntry().isBuy()) {
-                returns.add(ratio);
-            } else if (centerShortReturns) {
-                // Center every all-short return at two before subtraction. This
-                // preserves ratios below the factory/context magnitude:
-                // (2 - ratio) - 2 = -ratio.
-                returns.add(ratio.negate());
+                // Mixed-direction returns share a center of one:
+                // ratio - 1 and (2 - ratio) - 1 are exact opposites when
+                // their ratios match, so cancellation retains the base.
+                returns.add(returnCenter.signum() == 0 ? ratio : ratio.subtract(returnCenter));
             } else {
-                returns.add(BigDecimal.valueOf(2).subtract(ratio, context));
+                // All-short returns stay centered at two, preserving ratios
+                // below the factory/context magnitude as -ratio. Mixed returns
+                // center at one, producing 1 - ratio without ever constructing
+                // the precision-losing 2 - ratio intermediate.
+                returns.add(shortReturnBase.subtract(ratio));
             }
         }
         if (returns.isEmpty()) {
             return factory.zero();
         }
-        BigDecimal centeredLsl = centerShortReturns ? lsl.subtract(BigDecimal.valueOf(2)) : lsl;
-        BigDecimal centeredUsl = centerShortReturns && usl != null ? usl.subtract(BigDecimal.valueOf(2)) : usl;
+        BigDecimal centeredLsl = lsl.subtract(returnCenter);
+        BigDecimal centeredUsl = usl == null ? null : usl.subtract(returnCenter);
         BigDecimal sum = BigDecimal.ZERO;
         for (BigDecimal value : returns) {
-            sum = sum.add(value, context);
+            // Exact addition lets opposing long and short ratios cancel before
+            // the finite recovery context rounds their much smaller remainder.
+            // Same-direction recovery keeps its existing bounded-precision path.
+            sum = mixedDirections ? sum.add(value) : sum.add(value, context);
         }
         BigDecimal mean = sum.divide(BigDecimal.valueOf(returns.size()), context);
         BigDecimal squaredSum = BigDecimal.ZERO;
         for (BigDecimal value : returns) {
-            BigDecimal deviation = value.subtract(mean, context);
+            BigDecimal deviation = mixedDirections ? value.subtract(mean) : value.subtract(mean, context);
             squaredSum = squaredSum.add(deviation.multiply(deviation, context), context);
         }
         BigDecimal threeSigma = squaredSum.divide(BigDecimal.valueOf(returns.size()), context)

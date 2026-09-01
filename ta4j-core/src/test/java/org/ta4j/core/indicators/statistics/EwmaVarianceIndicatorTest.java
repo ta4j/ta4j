@@ -233,9 +233,9 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
         // Three Double.MAX_VALUE bars: each scaled quotient is finite, but
         // the naive window sum rounds the mean off MAX and the resulting
         // deviations square to a non-finite seed even though the true
-        // population variance is zero. The compensated mean with its
-        // max-absolute re-scaling recovers the exact mean, so the seed
-        // publishes the finite zero variance and the shared mean reproduces
+        // population variance is zero. The compensated mean with its exact
+        // overflow recovery reproduces the seed mean, so the seed publishes the
+        // finite zero variance and the shared mean reproduces
         // the bar value exactly (asserted as Num equality, since the
         // DecimalNum representation of Double.MAX_VALUE exceeds the double
         // range and its doubleValue() would overflow).
@@ -251,6 +251,26 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
         assertTrue(Num.isFinite(variance.getValue(3)));
         assertNumEquals(numOf(0), variance.getValue(3), 0);
         assertNumEquals(numOf(Double.MAX_VALUE), variance.getMeanIndicator().getValue(2));
+    }
+
+    @Test
+    public void seedMeanPreservesSmallResidualAfterOppositeSignOverflow() {
+        // The compensated DoubleNum sum overflows before the four extreme values
+        // cancel. Scaling every term by MAX_VALUE avoids that overflow but rounds
+        // the 1e-100 residual to zero. Exact fallback summation must instead narrow
+        // the complete seed mean once, so the shared EWMA state starts at 2e-101.
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        Num maximum = doubleFactory.numOf(Double.MAX_VALUE);
+        Num residual = doubleFactory.numOf(1e-100);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory)
+                .withData(Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE, 1e-100)
+                .build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(
+                new MockIndicator(series, 0, maximum, maximum, maximum.negate(), maximum.negate(), residual), 5, 0.5);
+        Indicator<Num> sharedMean = variance.getMeanIndicator();
+
+        assertTrue(sharedMean.getValue(3).isNaN());
+        assertNumEquals(doubleFactory.numOf(2e-101), sharedMean.getValue(4), 0);
     }
 
     @Test

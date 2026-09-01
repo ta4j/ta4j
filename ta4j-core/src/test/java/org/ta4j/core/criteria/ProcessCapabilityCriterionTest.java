@@ -403,6 +403,26 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void mixedDirectionOverflowingRatiosPreserveCancellationResidual() {
+        // The exact multiplicative returns are 1e309 and 2 - 1e309. Their
+        // mean is 1 and sigma is approximately 1e309, so lower-only Cpk is
+        // approximately 1 / 3e309. Decimal recovery must retain the fixed
+        // short-return base through cancellation before narrowing to DoubleNum.
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory)
+                .withData(0.1, 1e308, 0.1, 1e308)
+                .build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.sellAt(2, series), Trade.buyAt(3, series));
+
+        Num capability = new ProcessCapabilityCriterion(0).calculate(series, tradingRecord);
+
+        assertTrue(Num.isFinite(capability));
+        assertTrue(capability.isPositive());
+        assertNumEquals("3.333333333333333333333333333333333E-310", capability);
+    }
+
+    @Test
     public void grossReturnRatioUnderflowKeepsRepresentableCapability() {
         // Entry 1e300 and exits 1e-308 / 2e-308 produce long gross returns
         // 1e-608 and 2e-608. DoubleNum rounds both ratios to zero, but their
