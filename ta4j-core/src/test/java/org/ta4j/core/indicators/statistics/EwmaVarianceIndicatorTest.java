@@ -11,6 +11,7 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
 
 import java.util.List;
+import java.math.BigDecimal;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -359,6 +360,27 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
             assertTrue(mean.isPositive());
             assertTrue(mean.isGreaterThan(numOf(Double.MIN_VALUE)));
         }
+    }
+
+    @Test
+    public void decimalOperandsBeyondDoubleRangeCombineExactly() {
+        // A precision-1 DecimalNum mean of 1E1000 with current 2E1000 at
+        // decay 0.9 stalls the difference form (the 0.1-weighted delta 1E999
+        // rounds the sum back to 1E1000) and falls back to the exact convex
+        // sum 1.1E1000, which rounds to 1E1000. The operands' doubleValue()
+        // is infinite, so the fallback must use the exact decimal expansion
+        // instead of the binary one (BigDecimal rejects non-finite
+        // conversions).
+        NumFactory precisionOne = DecimalNumFactory.getInstance(1);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(precisionOne).build();
+        series.barBuilder().closePrice(precisionOne.numOf(new BigDecimal("1E1000"))).add();
+        series.barBuilder().closePrice(precisionOne.numOf(new BigDecimal("2E1000"))).add();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(new MockIndicator(series, 0,
+                precisionOne.numOf(new BigDecimal("1E1000")), precisionOne.numOf(new BigDecimal("2E1000"))), 1, 0.9);
+
+        Num mean = variance.getMeanIndicator().getValue(1);
+
+        assertNumEquals(precisionOne.numOf(new BigDecimal("1E1000")), mean);
     }
 
     @Test

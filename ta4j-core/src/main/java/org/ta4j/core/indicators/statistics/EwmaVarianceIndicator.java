@@ -8,6 +8,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -523,16 +524,32 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         }
 
         private Num combinedMean(Num previousMean, Num current) {
-            // Exact binary expansions of the finite operands and weights are
-            // combined without intermediate rounding and narrowed once: the
-            // separately rounded products discard a half-subnormal
-            // contribution although the correctly rounded mean is
-            // representable (an exact 1.5 * MIN_VALUE mean rounds up to
-            // 2 * MIN_VALUE instead of stalling at MIN_VALUE).
-            BigDecimal weightedSum = new BigDecimal(previousMean.doubleValue())
-                    .multiply(new BigDecimal(decay.doubleValue()))
-                    .add(new BigDecimal(current.doubleValue()).multiply(new BigDecimal(oneMinusDecay.doubleValue())));
+            if (!Num.isFinite(previousMean) || !Num.isFinite(current)) {
+                // Non-finite operands (NaN bars) propagate through the convex
+                // form; the decimal recovery below converts operands to
+                // doubles and BigDecimal rejects non-finite conversions.
+                return previousMean.multipliedBy(decay).plus(current.multipliedBy(oneMinusDecay));
+            }
+            // Exact expansions of the operands and weights are combined
+            // without intermediate rounding and narrowed once: the separately
+            // rounded products discard a half-subnormal contribution although
+            // the correctly rounded mean is representable (an exact 1.5 *
+            // MIN_VALUE mean rounds up to 2 * MIN_VALUE instead of stalling at
+            // MIN_VALUE). DecimalNum operands use their exact decimal
+            // expansion, which can exceed the double range, so the conversion
+            // must not go through doubleValue().
+            BigDecimal weightedSum = exactValueOf(previousMean).multiply(new BigDecimal(decay.doubleValue()))
+                    .add(exactValueOf(current).multiply(new BigDecimal(oneMinusDecay.doubleValue())));
             return getBarSeries().numFactory().numOf(weightedSum);
+        }
+
+        private static BigDecimal exactValueOf(Num value) {
+            // DoubleNum carries the exact binary value; DecimalNum carries an
+            // exact decimal that may lie beyond the double range.
+            if (value instanceof DoubleNum) {
+                return new BigDecimal(value.doubleValue());
+            }
+            return value.bigDecimalValue();
         }
 
         @Override
