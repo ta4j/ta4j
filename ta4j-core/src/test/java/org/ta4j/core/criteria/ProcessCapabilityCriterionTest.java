@@ -436,6 +436,27 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void nonzeroRoundedLimitDistanceKeepsRawCapability() {
+        // A precision-2 DecimalNum factory rounds the retained LSL 0.944 to
+        // 0.94 without reaching the mean 1.0: the rounded distance 0.06
+        // scores Cpk about 0.20 while the raw 0.056 distance scores about
+        // 0.19. The finite nonzero branch must recover the raw distance too,
+        // not only the zero-gap branch. The USL 1.056 mirrors the case.
+        NumFactory precisionTwo = DecimalNumFactory.getInstance(2);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(precisionTwo).withData(1, 0.9, 1, 1.1).build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series));
+
+        AnalysisCriterion lowerOnly = getCriterion(new BigDecimal("0.944"));
+        Num lowerCapability = lowerOnly.calculate(series, tradingRecord);
+        assertNumEquals(0.19, lowerCapability);
+
+        AnalysisCriterion twoSided = getCriterion(0.9, new BigDecimal("1.056"));
+        Num twoSidedCapability = twoSided.calculate(series, tradingRecord);
+        assertNumEquals(0.19, twoSidedCapability);
+    }
+
+    @Test
     public void oversizedDecimalMeanWithRoundedLimitKeepsPositiveCapability() {
         // A DecimalNum factory preserves means beyond the double range:
         // gross returns 1e400 and 1.2e400 have mean 1.1e400, and a retained

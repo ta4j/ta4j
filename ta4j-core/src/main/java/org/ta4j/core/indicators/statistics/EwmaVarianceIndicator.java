@@ -258,6 +258,17 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         // available to control-limit consumers.
         Num updatedVariance = previousVariance.multipliedBy(decay)
                 .plus(deviation.multipliedBy(deviation.multipliedBy(oneMinusDecay)));
+        if (updatedVariance.isZero() && (!previousVariance.isZero() || !deviation.isZero())) {
+            // Both nonnegative terms rounded to zero although their exact
+            // sum is representable (a subnormal variance carried by two
+            // half-subnormal contributions): recombine the exact binary
+            // products without intermediate rounding and narrow once.
+            BigDecimal recovered = new BigDecimal(previousVariance.doubleValue())
+                    .multiply(new BigDecimal(decay.doubleValue()))
+                    .add(new BigDecimal(deviation.doubleValue()).multiply(new BigDecimal(deviation.doubleValue()))
+                            .multiply(new BigDecimal(oneMinusDecay.doubleValue())));
+            updatedVariance = getBarSeries().numFactory().numOf(recovered);
+        }
         return Num.isFinite(deviation) && Num.isFinite(updatedVariance) ? updatedVariance : NaN.NaN;
     }
 
@@ -461,6 +472,13 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         @Override
         protected Num calculate(int index) {
             int beginIndex = getBarSeries().getBeginIndex();
+            if (index == 0 && beginIndex > 0) {
+                // Removed-index reads anchor at the retained head, mirroring
+                // the parent recursion: after pruning, the mean read at
+                // index 0 belongs to the first retained bar, not the
+                // discarded one.
+                index = beginIndex;
+            }
             if (index - beginIndex < getCountOfUnstableBars()) {
                 return NaN.NaN;
             }
@@ -482,33 +500,39 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
                 return windowMean(indicator, barCount, index);
             }
             // The update is the convex combination decay * previousMean +
-            // (1 - decay) * current, evaluated as previousMean + (1 - decay) *
-            // (current - previousMean) whenever the raw difference is finite:
-            // weighting the difference before combining keeps a same-sign
-            // subnormal pair (a constant Double.MIN_VALUE source at decay 0.5)
-            // from rounding both convex operands to zero although their exact
-            // sum is representable. Opposite-extreme finite bars overflow the
-            // raw difference under DoubleNum even though the weighted mean is
-            // representable; for those, the convex combination of finite
-            // values with weights summing to one never overflows. A subnormal
-            // mean decaying toward zero stalls the difference form (the
-            // weighted delta underflows before the addition), which the stall
-            // check below reroutes through the convex combination.
+            // (1 - decay) * current, evaluated in the difference form
+            // previousMean + (1 - decay) * (current - previousMean) while the
+            // raw difference is finite: weighting the difference before
+            // combining keeps a same-sign subnormal pair (a constant
+            // Double.MIN_VALUE source at decay 0.5) from rounding both convex
+            // operands to zero although their exact sum is representable.
+            // Opposite-extreme finite bars overflow the raw difference, and a
+            // subnormal delta underflows its weight and stalls the recursion
+            // (both when the mean decays toward zero and when it grows past a
+            // half-subnormal step), so both failures fall back to one exactly
+            // combined convex sum.
             Num delta = current.minus(previousMean);
             if (!Num.isFinite(delta)) {
-                return previousMean.multipliedBy(decay).plus(current.multipliedBy(oneMinusDecay));
+                return combinedMean(previousMean, current);
             }
             Num updated = previousMean.plus(delta.multipliedBy(oneMinusDecay));
             if (updated.isEqual(previousMean) && !delta.isZero()) {
-                // The weighted difference underflowed the context epsilon (a
-                // subnormal mean decaying toward zero): the difference form
-                // would stall at previousMean although the correctly-rounded
-                // mean decays below it. The convex combination decays
-                // correctly here because at least one operand stays
-                // representable.
-                return previousMean.multipliedBy(decay).plus(current.multipliedBy(oneMinusDecay));
+                return combinedMean(previousMean, current);
             }
             return updated;
+        }
+
+        private Num combinedMean(Num previousMean, Num current) {
+            // Exact binary expansions of the finite operands and weights are
+            // combined without intermediate rounding and narrowed once: the
+            // separately rounded products discard a half-subnormal
+            // contribution although the correctly rounded mean is
+            // representable (an exact 1.5 * MIN_VALUE mean rounds up to
+            // 2 * MIN_VALUE instead of stalling at MIN_VALUE).
+            BigDecimal weightedSum = new BigDecimal(previousMean.doubleValue())
+                    .multiply(new BigDecimal(decay.doubleValue()))
+                    .add(new BigDecimal(current.doubleValue()).multiply(new BigDecimal(oneMinusDecay.doubleValue())));
+            return getBarSeries().numFactory().numOf(weightedSum);
         }
 
         @Override

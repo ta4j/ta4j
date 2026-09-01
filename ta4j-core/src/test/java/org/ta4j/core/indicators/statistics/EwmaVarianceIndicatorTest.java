@@ -307,6 +307,61 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void subnormalVarianceSumCombinesBeforeRounding() {
+        // barCount 1, decay 0.5, source [0, a, a / 2 + b] with
+        // a = sqrt(2 * MIN_VALUE) and b = sqrt(MIN_VALUE): index 1 publishes
+        // variance MIN_VALUE and index 2 deviates by essentially b, so the
+        // exact update 0.5 * MIN_VALUE + 0.5 * b^2 is MIN_VALUE while each
+        // product (previousVariance * 0.5 and b * (b * 0.5)) rounds to zero
+        // in double. The exact binary combination must round once.
+        double a = Math.sqrt(2 * Double.MIN_VALUE);
+        double b = Math.sqrt(Double.MIN_VALUE);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(0, a, a / 2 + b).build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(
+                new MockIndicator(series, 0, numOf(0), numOf(a), numOf(a / 2 + b)), 1, 0.5);
+
+        Num value = variance.getValue(2);
+
+        if (numFactory instanceof DoubleNumFactory) {
+            assertNumEquals(numOf(Double.MIN_VALUE), value);
+        } else {
+            // DecimalNum keeps both contributions at full precision and never
+            // collapses; only positivity and the magnitude bound are
+            // meaningful.
+            assertTrue(Num.isFinite(value));
+            assertTrue(value.isPositive());
+            assertTrue(value.isLessThanOrEqual(numOf(2 * Double.MIN_VALUE)));
+        }
+    }
+
+    @Test
+    public void increasingSubnormalSourceKeepsMeanGrowing() {
+        // previousMean MIN_VALUE with current 2 * MIN_VALUE at decay 0.5 has
+        // exact mean 1.5 * MIN_VALUE, which rounds to 2 * MIN_VALUE: the
+        // difference form stalls at MIN_VALUE (the weighted half-min delta
+        // underflows) and a double convex fallback returns MIN_VALUE (both
+        // products round down), so the published mean never grows. The exact
+        // binary combination must round once to 2 * MIN_VALUE.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(Double.MIN_VALUE, 2 * Double.MIN_VALUE)
+                .build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(
+                new MockIndicator(series, 0, numOf(Double.MIN_VALUE), numOf(2 * Double.MIN_VALUE)), 1, 0.5);
+
+        Num mean = variance.getMeanIndicator().getValue(1);
+
+        if (numFactory instanceof DoubleNumFactory) {
+            assertNumEquals(numOf(2 * Double.MIN_VALUE), mean);
+        } else {
+            // DecimalNum keeps the exact convex mean 1.5 * MIN_VALUE without
+            // ever stalling; only growth and positivity are meaningful.
+            assertTrue(Num.isFinite(mean));
+            assertTrue(mean.isPositive());
+            assertTrue(mean.isGreaterThan(numOf(Double.MIN_VALUE)));
+        }
+    }
+
+    @Test
     public void reanchorsAfterRetainedHeadPrunes() {
         // Retained-head pruning invalidates the caches and rebuilds the
         // control mean: values computed against the discarded prefix must not
@@ -332,6 +387,23 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
         // 1.25. A stale cached value (2.8359375 from the discarded prefix)
         // would surface otherwise.
         assertNumEquals(1.25, pruned.getValue(4));
+    }
+
+    @Test
+    public void sharedMeanReadAtRemovedIndexAnchorsAtRetainedHead() {
+        // A consumer reading the shared mean at a removed index must receive
+        // the first retained bar's seed, not NaN from the warm-up guard
+        // evaluating a discarded prefix index. With barCount 1 the retained
+        // head is its own seed window.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
+        EwmaVarianceIndicator pruned = new EwmaVarianceIndicator(
+                new MockIndicator(series, 0, numOf(1), numOf(2), numOf(3), numOf(4), numOf(5)), 1, 0.5);
+
+        pruned.getValue(4);
+
+        series.setMaximumBarCount(3);
+
+        assertNumEquals(numOf(3), pruned.getMeanIndicator().getValue(0));
     }
 
     @Test

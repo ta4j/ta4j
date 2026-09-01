@@ -47,12 +47,13 @@ import org.ta4j.core.num.NumFactory;
  * returns of 1e308 and 1.4e308 still yield their exact Cpk); the mean is
  * accumulated with compensated (Neumaier) summation so it stays order-stable
  * across the record; gross returns with non-finite magnitude are treated as
- * incapable and score {@code zero()}. Specification limits are kept as raw
  * decimals, and when a limit itself overflows the active representation (for
- * example an LSL of -1e400 on a {@code DoubleNum} series) the mean-to-limit
- * distance is computed in decimal space and narrowed once against the complete
- * 3-sigma denominator, so representable capabilities stay finite and a limit
- * only marginally beyond the representation range still scores its positive
+ * example an LSL of -1e400 on a {@code DoubleNum} series) or the factory's
+ * narrowing rounds the retained limit (for example a precision-2 LSL of 0.944
+ * becoming 0.94) the mean-to-limit distance is computed in decimal space and
+ * narrowed once against the complete 3-sigma denominator, so representable
+ * capabilities stay finite and a limit only marginally beyond the
+ * representation range or the rounding gap still scores its full positive
  * capability instead of collapsing to zero.
  *
  * @since 0.24.2
@@ -196,12 +197,16 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             lowerCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory);
         } else {
             Num lowerDistance = mean.minus(lslNum);
-            if (lowerDistance.isZero()) {
+            if (lowerDistance.isZero() || lslNum.bigDecimalValue().compareTo(lsl) != 0) {
                 // Narrowing the retained limit can round it onto the mean
                 // and erase a representable capability gap (a precision-2
                 // limit of 0.999 against a mean of 1.0 collapses the
-                // distance to zero). Recompute the distance from the
-                // lossless retained limit before the factory narrows it.
+                // distance to zero), or round it short of the mean and
+                // shrink the gap (a precision-2 limit of 0.944 against a
+                // mean of 1.0 loses 0.004 of its 0.056 distance). Whenever
+                // the factory-rounded limit differs from the retained
+                // decimal, the distance is recomputed from the lossless
+                // retained limit before any narrowing.
                 BigDecimal rawDistance = mean.bigDecimalValue().subtract(lsl, MathContext.DECIMAL128);
                 lowerCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory);
             } else if (Num.isFinite(lowerDistance)) {
@@ -236,10 +241,10 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             upperCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory);
         } else {
             Num upperDistance = uslNum.minus(mean);
-            if (upperDistance.isZero()) {
+            if (upperDistance.isZero() || uslNum.bigDecimalValue().compareTo(usl) != 0) {
                 // Mirror of the lower-limit recovery: a limit the factory
-                // rounded onto the mean must not erase a representable
-                // capability gap.
+                // rounded onto the mean, or short of it, must not erase or
+                // shrink a representable capability gap.
                 BigDecimal rawDistance = usl.subtract(mean.bigDecimalValue(), MathContext.DECIMAL128);
                 upperCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory);
             } else if (Num.isFinite(upperDistance)) {
@@ -263,9 +268,9 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         // The raw decimal distance is narrowed once against the complete
         // 3 * sigma denominator instead of rounding separate limit/scale and
         // mean/scale quotients. Both call sites retain the limit losslessly
-        // (out-of-range limits and limits the factory rounded onto the
-        // mean); the mean and scale terms are finite, and the deviation
-        // scale is finite and nonzero here.
+        // (out-of-range limits and limits the factory narrows at all); the
+        // mean and scale terms are finite, and the deviation scale is finite
+        // and nonzero here.
         // The operands stay in decimal space end to end: DecimalNum means can
         // exceed the double range (1.1e400), and their doubleValue() would be
         // infinite, making BigDecimal.valueOf throw NumberFormatException.
