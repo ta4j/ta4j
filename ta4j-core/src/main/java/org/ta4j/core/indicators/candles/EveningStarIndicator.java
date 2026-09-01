@@ -119,12 +119,8 @@ public class EveningStarIndicator extends CandlePatternIndicator {
         Bar thirdBar = series.getBar(index);
         Num firstBodyTop = bodyTop(firstBar);
         Num firstBodyBottom = bodyBottom(firstBar);
-        // The level is a convex combination of the two finite endpoints, so it
-        // stays within the first body's hull and remains finite even when the
-        // raw |open - close| body magnitude overflows the Num type (for example
-        // a DoubleNum bullish first candle from -MAX to MAX/2).
-        Num penetrationLevel = firstBodyTop.multipliedBy(oneMinusPenetrationFactor)
-                .plus(firstBodyBottom.multipliedBy(penetrationFactor));
+        Num penetrationLevel = CandleThresholdSupport.weightedPoint(firstBodyTop, oneMinusPenetrationFactor,
+                firstBodyBottom, penetrationFactor);
         Num thirdClose = thirdBar.getClosePrice();
         // Signed zero is normalized at the strict gap and the inclusive
         // penetration boundary: DoubleNum orders -0.0 below +0.0, so two
