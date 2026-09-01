@@ -10,14 +10,28 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
 
-import java.util.List;
 import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -610,6 +624,78 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void concurrentPruneDoesNotDeadlockRecursiveRead() throws Exception {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
+        series.setMaximumBarCount(4);
+        CountDownLatch calculationStarted = new CountDownLatch(1);
+        CountDownLatch allowCalculation = new CountDownLatch(1);
+        AtomicBoolean blockCurrentIndex = new AtomicBoolean(true);
+        Indicator<Num> source = new AbstractIndicator<Num>(series) {
+            @Override
+            public Num getValue(int index) {
+                if (index == 3 && blockCurrentIndex.compareAndSet(true, false)) {
+                    calculationStarted.countDown();
+                    try {
+                        assertTrue("recursive calculation was not released",
+                                allowCalculation.await(5, TimeUnit.SECONDS));
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new AssertionError(e);
+                    }
+                }
+                return getBarSeries().getBar(index).getClosePrice();
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(source, 1, 0.5);
+        ExecutorService executor = Executors.newFixedThreadPool(2, task -> {
+            Thread thread = new Thread(task, "ewma-variance-prune-regression");
+            thread.setDaemon(true);
+            return thread;
+        });
+        CountDownLatch resetReaderStarted = new CountDownLatch(1);
+        AtomicReference<Thread> resetReaderThread = new AtomicReference<>();
+
+        try {
+            Future<Num> recursiveRead = executor.submit(() -> variance.getValue(3));
+            assertTrue("recursive calculation never started", calculationStarted.await(5, TimeUnit.SECONDS));
+            series.barBuilder().endTime(series.getLastBar().getEndTime().plusSeconds(1)).closePrice(5).add();
+
+            Future<Num> resetRead = executor.submit(() -> {
+                resetReaderThread.set(Thread.currentThread());
+                resetReaderStarted.countDown();
+                return variance.getValue(4);
+            });
+            assertTrue("reset reader never started", resetReaderStarted.await(5, TimeUnit.SECONDS));
+
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            Thread.State resetReaderState;
+            do {
+                resetReaderState = resetReaderThread.get().getState();
+                if (resetReaderState == Thread.State.BLOCKED || resetReaderState == Thread.State.WAITING
+                        || resetReaderState == Thread.State.TIMED_WAITING) {
+                    break;
+                }
+                Thread.onSpinWait();
+            } while (System.nanoTime() < deadline);
+            assertTrue("reset reader did not reach the retained-head synchronization boundary",
+                    resetReaderState == Thread.State.BLOCKED || resetReaderState == Thread.State.WAITING
+                            || resetReaderState == Thread.State.TIMED_WAITING);
+
+            allowCalculation.countDown();
+            assertTrue(Num.isFinite(recursiveRead.get(5, TimeUnit.SECONDS)));
+            assertTrue(Num.isFinite(resetRead.get(5, TimeUnit.SECONDS)));
+        } finally {
+            allowCalculation.countDown();
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
     public void sharedMeanReadAtRemovedIndexAnchorsAtRetainedHead() {
         // A consumer reading the shared mean at a removed index must receive
         // the first retained bar's seed, not NaN from the warm-up guard
@@ -794,6 +880,27 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void restoredSingleBarAtIntegerMaximumSeedsWithoutWrapping() throws Exception {
+        BarSeries series = restoredSeries(Integer.MAX_VALUE, 7);
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(series, 1, 0.5);
+
+        assertNumEquals(numOf(0), getValueWithin(variance, Integer.MAX_VALUE));
+        assertNumEquals(numOf(7), getValueWithin(variance.getMeanIndicator(), Integer.MAX_VALUE));
+    }
+
+    @Test
+    public void restoredSeriesRecoveryAtIntegerMaximumDoesNotWrapRetainedMeanWindow() throws Exception {
+        if (!(numFactory instanceof DoubleNumFactory)) {
+            return;
+        }
+        BarSeries series = restoredSeries(Integer.MAX_VALUE - 3, 0, 0, 2e154, 0);
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(series, 2, 0.5);
+
+        assertTrue(variance.getValue(Integer.MAX_VALUE - 1).isNaN());
+        assertNumEquals(1e308, getValueWithin(variance, Integer.MAX_VALUE));
+    }
+
+    @Test
     public void barSeriesConstructorMonitorsClosePrice() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
         EwmaVarianceIndicator fromSeries = new EwmaVarianceIndicator(series, 2, 0.5);
@@ -807,6 +914,32 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
             } else {
                 assertNumEquals(expected, actual);
             }
+        }
+    }
+
+    private BarSeries restoredSeries(int beginIndex, double... values) {
+        Duration period = Duration.ofMinutes(1);
+        Instant firstEnd = Instant.parse("2026-01-01T00:01:00Z");
+        List<Bar> bars = new ArrayList<>(values.length);
+        for (int i = 0; i < values.length; i++) {
+            bars.add(new TimeBarBuilder(numFactory).timePeriod(period)
+                    .endTime(firstEnd.plus(period.multipliedBy(i)))
+                    .closePrice(values[i])
+                    .build());
+        }
+        return new BaseBarSeriesBuilder().withBars(bars).withBeginIndex(beginIndex).build();
+    }
+
+    private Num getValueWithin(Indicator<Num> indicator, int index) throws Exception {
+        ExecutorService executor = Executors.newSingleThreadExecutor(task -> {
+            Thread thread = new Thread(task, "ewma-variance-terminal-index-regression");
+            thread.setDaemon(true);
+            return thread;
+        });
+        try {
+            return executor.submit(() -> indicator.getValue(index)).get(5, TimeUnit.SECONDS);
+        } finally {
+            executor.shutdownNow();
         }
     }
 

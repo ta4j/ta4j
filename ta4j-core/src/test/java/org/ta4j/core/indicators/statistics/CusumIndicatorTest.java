@@ -12,10 +12,15 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
 
-import java.util.List;
-
 import java.math.BigDecimal;
-
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -23,14 +28,15 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
-import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -251,14 +257,12 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
-    public void scaledDeviationKeepsRepresentableCancellation() {
+    public void exactDeviationKeepsRepresentableCancellation() {
         // targetMean - current - allowance = 1.7e308 - (-1e308) - 1.7e308 =
         // 1e308 is representable, but the naive three-term subtraction
-        // overflows its intermediate sum to infinity for DoubleNum and
-        // saturating that overflow would publish a CUSUM of MAX instead of
-        // the true 1e308. The scaled computation must publish the true
-        // increment, and the deviation scale feeding the winsorization bound
-        // must stay at the true magnitude instead of saturating at MAX.
+        // overflows its intermediate sum to infinity for DoubleNum. Combining
+        // all operands exactly before the final factory narrowing must publish
+        // the true increment and clipping scale.
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(-1e308).build();
         CusumIndicator cusum = new CusumIndicator(new MockIndicator(series, 0, numOf(-1e308)), 1.7e308, 1.7e308);
 
@@ -266,6 +270,22 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
 
         assertTrue(Num.isFinite(value));
         assertNumEquals(numOf(1e308), value, 1e308 * 1e-9);
+    }
+
+    @Test
+    public void rawOutOfRangeParametersCancelBeforeFinalNarrowing() {
+        BigDecimal allowance = new BigDecimal("1e400");
+        BigDecimal targetMean = allowance.add(new BigDecimal("1e308"));
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(0).build();
+        CusumIndicator cusum = new CusumIndicator(new ClosePriceIndicator(series), targetMean, allowance);
+
+        // Narrowing each raw parameter first collapses both to the same ceiling
+        // under DoubleNum and incorrectly yields zero. Their exact difference is
+        // representable on both the DoubleNum and DecimalNum test factories.
+        assertNumEquals(numFactory.numOf(new BigDecimal("1e308")), cusum.getValue(0));
+        assertEquals(targetMean.toPlainString(), cusum.toDescriptor().getParameters().get("targetMean").toString());
+        assertEquals(allowance.toPlainString(), cusum.toDescriptor().getParameters().get("allowance").toString());
+        assertIndicatorRoundTrips(series, cusum, stableIndexes(series));
     }
 
     @Test
@@ -654,6 +674,77 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             assertNumEquals(threeArgReference.getValue(i), threeArg.getValue(i));
             assertNumEquals(fiveArgReference.getValue(i), fiveArg.getValue(i));
+        }
+    }
+
+    @Test
+    public void concurrentPruneDoesNotDeadlockRecursiveRead() throws Exception {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
+        series.setMaximumBarCount(4);
+        CountDownLatch calculationStarted = new CountDownLatch(1);
+        CountDownLatch allowCalculation = new CountDownLatch(1);
+        AtomicBoolean blockCurrentIndex = new AtomicBoolean(true);
+        Indicator<Num> blockingSource = new AbstractIndicator<Num>(series) {
+            @Override
+            public Num getValue(int index) {
+                if (index == 3 && blockCurrentIndex.compareAndSet(true, false)) {
+                    calculationStarted.countDown();
+                    try {
+                        assertTrue("recursive calculation was not released",
+                                allowCalculation.await(5, TimeUnit.SECONDS));
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new AssertionError(e);
+                    }
+                }
+                return getBarSeries().getBar(index).getClosePrice();
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        CusumIndicator cusum = new CusumIndicator(blockingSource, 10, 0, 3.0, 0.5);
+        ExecutorService executor = Executors.newFixedThreadPool(2, task -> {
+            Thread thread = new Thread(task, "cusum-prune-regression");
+            thread.setDaemon(true);
+            return thread;
+        });
+        CountDownLatch resetReaderStarted = new CountDownLatch(1);
+        AtomicReference<Thread> resetReaderThread = new AtomicReference<>();
+
+        try {
+            Future<Num> recursiveRead = executor.submit(() -> cusum.getValue(3));
+            assertTrue("recursive calculation never started", calculationStarted.await(5, TimeUnit.SECONDS));
+            series.barBuilder().endTime(series.getLastBar().getEndTime().plusSeconds(1)).closePrice(5).add();
+
+            Future<Num> resetRead = executor.submit(() -> {
+                resetReaderThread.set(Thread.currentThread());
+                resetReaderStarted.countDown();
+                return cusum.getValue(4);
+            });
+            assertTrue("reset reader never started", resetReaderStarted.await(5, TimeUnit.SECONDS));
+
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            Thread.State resetReaderState;
+            do {
+                resetReaderState = resetReaderThread.get().getState();
+                if (resetReaderState == Thread.State.BLOCKED || resetReaderState == Thread.State.WAITING
+                        || resetReaderState == Thread.State.TIMED_WAITING) {
+                    break;
+                }
+                Thread.onSpinWait();
+            } while (System.nanoTime() < deadline);
+            assertTrue("reset reader did not contend with the recursive read", resetReaderState == Thread.State.BLOCKED
+                    || resetReaderState == Thread.State.WAITING || resetReaderState == Thread.State.TIMED_WAITING);
+
+            allowCalculation.countDown();
+            assertNumEquals(21, recursiveRead.get(5, TimeUnit.SECONDS));
+            assertNumEquals(26, resetRead.get(5, TimeUnit.SECONDS));
+        } finally {
+            allowCalculation.countDown();
+            executor.shutdownNow();
         }
     }
 

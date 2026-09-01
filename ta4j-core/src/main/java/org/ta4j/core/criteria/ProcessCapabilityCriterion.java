@@ -44,18 +44,18 @@ import org.ta4j.core.num.NumFactory;
  * {@code zero()}: with no variation there is no evidence of capability, and the
  * criterion is neutral rather than infinitely good. The population standard
  * deviation is computed with each deviation normalized by the largest absolute
- * deviation, and a mean whose naive accumulation overflows is recomputed with
- * each value normalized by the largest absolute value, so wide but finite
- * returns of 1e308 and 1.4e308 still yield their exact Cpk); the mean is
- * accumulated with compensated (Neumaier) summation so it stays order-stable
- * across the record; gross returns with non-finite magnitude are treated as
- * decimals, and when a limit itself overflows the active representation (for
- * example an LSL of -1e400 on a {@code DoubleNum} series) or the factory's
- * narrowing rounds the retained limit (for example a precision-2 LSL of 0.944
- * becoming 0.94) the mean-to-limit distance is computed in decimal space and
- * narrowed once against the complete 3-sigma denominator. Decimal factories
- * retain their configured finite precision during this recovery, so
- * representable capabilities stay finite and a limit only marginally beyond the
+ * deviation. If finite returns overflow the active representation only while
+ * their mean is accumulated, the complete capability calculation is recovered
+ * in wider decimal precision and only its final representable Cpk is narrowed.
+ * Otherwise, the mean uses compensated (Neumaier) summation so it stays
+ * order-stable across the record. Gross returns with non-finite magnitude are
+ * treated as decimals. When a limit overflows the active representation (for
+ * example an LSL of -1e400 on a {@code DoubleNum} series) or factory narrowing
+ * alters the retained limit (for example a precision-2 LSL of 0.944 becoming
+ * 0.94), the mean-to-limit distance is computed in decimal space and narrowed
+ * once against the complete 3-sigma denominator. Decimal factories retain their
+ * configured finite precision during this recovery, so representable
+ * capabilities stay finite and a limit only marginally beyond the
  * representation range or the rounding gap still scores its full positive
  * capability instead of collapsing to zero.
  *
@@ -140,24 +140,16 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
                 // exceeds the double range). Recompute the capability entirely
                 // in decimal space from the raw trade prices: the final Cpk is
                 // representable even though the individual returns are not.
-                return calculateOverflowedCpk(series, tradingRecord, factory);
+                return calculateDecimalCpk(series, tradingRecord, factory);
             }
         }
         Num mean = compensatedSum(valueArray, factory).dividedBy(factory.numOf(valueArray.length));
         if (!Num.isFinite(mean)) {
-            Num maxAbsValue = factory.zero();
-            for (Num value : valueArray) {
-                maxAbsValue = maxAbsValue.max(value.abs());
-            }
-            if (!Num.isFinite(maxAbsValue) || maxAbsValue.isZero()) {
-                return factory.zero();
-            }
-            Num[] scaledArray = new Num[valueArray.length];
-            for (int i = 0; i < valueArray.length; i++) {
-                scaledArray[i] = valueArray[i].dividedBy(maxAbsValue);
-            }
-            mean = compensatedSum(scaledArray, factory).dividedBy(factory.numOf(valueArray.length))
-                    .multipliedBy(maxAbsValue);
+            // Rescaling a mean that was first averaged in the normalized Num
+            // domain can round adjacent ceiling-sized returns together. Keep
+            // their raw decimal separation through mean, variance, and Cpk,
+            // narrowing only the final result.
+            return calculateDecimalCpk(series, tradingRecord, factory);
         }
         // Scale-aware deviation pass: value - mean can overflow even though
         // the mean and every value are finite (a return near -MAX against a
@@ -286,17 +278,18 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * Recomputes Cpk entirely in decimal space when a gross return overflows the
-     * active {@link Num} representation.
+     * Recomputes Cpk entirely in decimal space when a gross return or its aggregate
+     * exceeds the active {@link Num} representation.
      *
      * <p>
      * Gross returns are quotients of trade prices; a finite non-zero entry and exit
      * whose ratio exceeds the representation range produces a non-finite
      * {@code Num}, but the final capability can still be representable (a DoubleNum
      * pair of returns 1e608 and 2e608 has mean 1.5e608, sigma 0.5e608 and Cpk 1).
-     * Prices with zero or non-finite magnitude are not ratio overflow: they are
-     * genuinely degenerate, so the criterion keeps its zero-score behavior for
-     * them.
+     * The same recovery preserves separation between finite returns when only their
+     * sum overflows. Prices with zero or non-finite magnitude are not arithmetic
+     * overflow: they are genuinely degenerate, so the criterion keeps its
+     * zero-score behavior for them.
      *
      * @param series        the bar series (source of the price numerics)
      * @param tradingRecord the record whose closed positions supply the prices
@@ -304,7 +297,7 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
      *                      narrowed result
      * @return the capability computed from lossless decimal gross returns
      */
-    private Num calculateOverflowedCpk(BarSeries series, TradingRecord tradingRecord, NumFactory factory) {
+    private Num calculateDecimalCpk(BarSeries series, TradingRecord tradingRecord, NumFactory factory) {
         MathContext context = recoveryMathContext(factory);
         List<BigDecimal> returns = new ArrayList<>();
         for (Position position : tradingRecord.getPositions()) {

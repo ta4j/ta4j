@@ -133,13 +133,48 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
     public void meanOverflowDoesNotCollapseCapability() {
         // Gross returns 1e308 and 1.4e308 with limits 0 and 1.7e308: Cpk is
         // 5/6, but the naive mean sum overflows DoubleNum to infinity; the
-        // normalized mean recomputation must preserve the score.
+        // decimal-space mean recovery must preserve the score.
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1e308, 1, 1.4e308).build();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(3, series));
 
         AnalysisCriterion cpk = getCriterion(0, 1.7e308);
         assertNumEquals(numOf(5).dividedBy(numOf(6)), cpk.calculate(series, tradingRecord), 1e-9);
+    }
+
+    @Test
+    public void adjacentMaximumReturnsRecoverOverflowingMeanInDecimal() {
+        // The two finite long returns are adjacent doubles whose sum overflows.
+        // Averaging after normalizing each return by MAX rounds both normalized
+        // values to a mean of 1 and yields the wrong Cpk (about 4.25e15). For two
+        // observations, population sigma is half their absolute difference, so
+        // (x1 + x2) / (3 * |x1 - x2|) independently gives approximately 6.00e15.
+        double upperReturn = Double.MAX_VALUE;
+        double lowerReturn = Math.nextDown(upperReturn);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, upperReturn, 1, lowerReturn)
+                .build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series));
+
+        Num capability = getCriterion(0).calculate(series, tradingRecord);
+
+        assertTrue(Num.isFinite(capability));
+        if (numFactory instanceof DoubleNumFactory) {
+            BigDecimal upper = BigDecimal.valueOf(upperReturn);
+            BigDecimal lower = BigDecimal.valueOf(lowerReturn);
+            BigDecimal expected = upper.add(lower)
+                    .divide(upper.subtract(lower).abs().multiply(BigDecimal.valueOf(3)), MathContext.DECIMAL128);
+            double tolerance = expected.doubleValue() * 1e-12;
+            assertEquals(expected.doubleValue(), capability.doubleValue(), tolerance);
+            assertTrue(capability.isGreaterThan(numOf(5.9e15)));
+            assertTrue(capability.isLessThan(numOf(6.1e15)));
+        } else {
+            // Default DecimalNum precision narrows both input doubles to the same
+            // value before criterion evaluation, so its honest result remains the
+            // zero-dispersion convention rather than entering mean recovery.
+            assertTrue(capability.isZero());
+        }
     }
 
     @Test

@@ -155,8 +155,16 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
     private record Parameters(Indicator<Num> indicator, int barCount, double decayFactor) {
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Serializes the retained-head check with the complete recursive cache read so
+     * the indicator monitor is always acquired before the cache write lock.
+     * Recursive reads safely reenter the monitor.
+     */
     @Override
-    public Num getValue(int index) {
+    public synchronized Num getValue(int index) {
         BarSeries series = getBarSeries();
         while (true) {
             int removedBarsCount = series.getRemovedBarsCount();
@@ -301,8 +309,8 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         // DoubleNum while the variance 1.7e308 is representable).
         Num scale = factory.zero();
         Num sumOfSquares = factory.zero();
-        for (int windowIndex = windowBegin; windowIndex <= index; windowIndex++) {
-            Num deviation = indicator.getValue(windowIndex).minus(center);
+        for (long windowIndex = windowBegin; windowIndex <= (long) index; windowIndex++) {
+            Num deviation = indicator.getValue((int) windowIndex).minus(center);
             Num magnitude = deviation.abs();
             if (magnitude.isZero()) {
                 continue;
@@ -362,12 +370,12 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         NumFactory factory = series.numFactory();
         int windowLength = index - windowBegin + 1;
         Num[] windowValues = new Num[windowLength];
-        for (int windowIndex = windowBegin; windowIndex <= index; windowIndex++) {
-            Num value = source.getValue(windowIndex);
+        for (long windowIndex = windowBegin; windowIndex <= (long) index; windowIndex++) {
+            Num value = source.getValue((int) windowIndex);
             if (!Num.isFinite(value)) {
                 return NaN.NaN;
             }
-            windowValues[windowIndex - windowBegin] = value;
+            windowValues[(int) (windowIndex - windowBegin)] = value;
         }
         Num mean = compensatedSum(windowValues, factory).dividedBy(factory.numOf(windowLength));
         if (Num.isFinite(mean)) {
