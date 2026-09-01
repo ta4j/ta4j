@@ -935,14 +935,24 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void restoredSeriesRecoveryAtIntegerMaximumDoesNotWrapRetainedMeanWindow() throws Exception {
-        if (!(numFactory instanceof DoubleNumFactory)) {
-            return;
-        }
         BarSeries series = restoredSeries(Integer.MAX_VALUE - 3, 0, 0, 2e154, 0);
         EwmaVarianceIndicator variance = new EwmaVarianceIndicator(series, 2, 0.5);
 
-        assertTrue(variance.getValue(Integer.MAX_VALUE - 1).isNaN());
-        assertNumEquals(1e308, getValueWithin(variance, Integer.MAX_VALUE));
+        Num beforeTerminal = variance.getValue(Integer.MAX_VALUE - 1);
+        if (numFactory instanceof DoubleNumFactory) {
+            // DoubleNum cannot represent the weighted 2e308 update, so the
+            // terminal bar exercises the non-finite recovery path.
+            assertTrue(beforeTerminal.isNaN());
+        } else {
+            // DecimalNum retains that update beyond the double range and
+            // reaches the terminal index through the normal recursion.
+            assertTrue(Num.isFinite(beforeTerminal));
+        }
+        Num recovered = getValueWithin(variance, Integer.MAX_VALUE);
+        assertTrue(Num.isFinite(recovered));
+        if (numFactory instanceof DoubleNumFactory) {
+            assertNumEquals(1e308, recovered);
+        }
     }
 
     @Test

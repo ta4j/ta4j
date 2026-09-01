@@ -475,6 +475,9 @@ run_with_timeout() {
             if ! [[ "$last_progress_size" =~ ^[0-9]+$ ]]; then
                 last_progress_size=0
             fi
+            if ((last_progress_size > 0)); then
+                last_progress_epoch="$(watchdog_epoch "$test_clock_file")"
+            fi
         fi
         trap 'if [[ -n "${sleep_pid:-}" ]]; then kill "$sleep_pid" >/dev/null 2>&1 || true; fi; exit 0' TERM INT
         while true; do
