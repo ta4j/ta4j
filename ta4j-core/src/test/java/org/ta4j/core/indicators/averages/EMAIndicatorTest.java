@@ -52,6 +52,53 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
+    public void negativeIndexRemainsNaNDuringWarmup() {
+        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(data), 2);
+
+        assertThat(Double.isNaN(ema.getValue(-1).doubleValue())).isTrue();
+    }
+
+    @Test
+    public void removedIndicesMapToFirstStableRetainedEmaValue() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
+        series.setMaximumBarCount(5);
+        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(series), 2);
+
+        assertEquals(1, series.getBeginIndex());
+        assertNumEquals(4, ema.getValue(0));
+        assertThat(Double.isNaN(ema.getValue(1).doubleValue())).isTrue();
+        assertThat(Double.isNaN(ema.getValue(2).doubleValue())).isTrue();
+        assertNumEquals(4, ema.getValue(3));
+    }
+
+    @Test
+    public void removedIndexReadRefreshesWhenFirstStableBarIsReplaced() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
+        series.setMaximumBarCount(3);
+        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(series), 2);
+
+        assertNumEquals(4, ema.getValue(0));
+
+        series.addBar(series.barBuilder().endTime(series.getLastBar().getEndTime()).closePrice(8).build(), true);
+
+        assertNumEquals(8, ema.getValue(0));
+    }
+
+    @Test
+    public void removedIndexReadRefreshesWhenFirstStableBarBecomesAvailable() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
+        series.setMaximumBarCount(3);
+        EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(series), 3);
+
+        assertThat(Double.isNaN(ema.getValue(0).doubleValue())).isTrue();
+
+        series.setMaximumBarCount(4);
+        series.barBuilder().endTime(series.getLastBar().getEndTime().plusSeconds(1)).closePrice(5).add();
+
+        assertNumEquals(5, ema.getValue(0));
+    }
+
+    @Test
     public void usingBarCount10UsingClosePrice() {
         Indicator<Num> indicator = getIndicator(new ClosePriceIndicator(data), 10);
         // Index 9 is in unstable period (barCount=10, so indices 0-9 are unstable)

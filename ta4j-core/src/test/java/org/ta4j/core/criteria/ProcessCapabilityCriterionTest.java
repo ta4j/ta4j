@@ -3,11 +3,15 @@
  */
 package org.ta4j.core.criteria;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
+
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseBarSeriesBuilder;
@@ -454,6 +458,27 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
         AnalysisCriterion twoSided = getCriterion(0.9, new BigDecimal("1.056"));
         Num twoSidedCapability = twoSided.calculate(series, tradingRecord);
         assertNumEquals(0.19, twoSidedCapability);
+    }
+
+    @Test
+    public void rawLimitRecoveryRetainsDecimalFactoryPrecision() {
+        MathContext context = new MathContext(50, RoundingMode.HALF_UP);
+        NumFactory precisionFifty = DecimalNumFactory.getInstance(context);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(precisionFifty).withData(1, 0.9, 1, 1.1).build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series));
+
+        Num lowerCapability = new ProcessCapabilityCriterion(
+                new BigDecimal("0.944444444444444444444444444444444444444444444444444444"))
+                .calculate(series, tradingRecord);
+        assertTrue(Num.isFinite(lowerCapability));
+        assertEquals(context.getPrecision(), lowerCapability.bigDecimalValue().precision());
+
+        Num upperCapability = new ProcessCapabilityCriterion(new BigDecimal("0.9"),
+                new BigDecimal("1.055555555555555555555555555555555555555555555555555555"))
+                .calculate(series, tradingRecord);
+        assertTrue(Num.isFinite(upperCapability));
+        assertEquals(context.getPrecision(), upperCapability.bigDecimalValue().precision());
     }
 
     @Test

@@ -14,6 +14,7 @@ import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.NumFactory;
 
 /**
@@ -51,8 +52,9 @@ import org.ta4j.core.num.NumFactory;
  * example an LSL of -1e400 on a {@code DoubleNum} series) or the factory's
  * narrowing rounds the retained limit (for example a precision-2 LSL of 0.944
  * becoming 0.94) the mean-to-limit distance is computed in decimal space and
- * narrowed once against the complete 3-sigma denominator, so representable
- * capabilities stay finite and a limit only marginally beyond the
+ * narrowed once against the complete 3-sigma denominator. Decimal factories
+ * retain their configured finite precision during this recovery, so
+ * representable capabilities stay finite and a limit only marginally beyond the
  * representation range or the rounding gap still scores its full positive
  * capability instead of collapsing to zero.
  *
@@ -195,8 +197,9 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             // mean by the same scale separately rounds both quotients for a
             // limit only marginally beyond the double range, which can
             // collapse a positive capability to zero.
-            BigDecimal rawDistance = mean.bigDecimalValue().subtract(lsl, MathContext.DECIMAL128);
-            lowerCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory);
+            MathContext recoveryContext = recoveryMathContext(factory);
+            BigDecimal rawDistance = mean.bigDecimalValue().subtract(lsl, recoveryContext);
+            lowerCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory, recoveryContext);
         } else {
             Num lowerDistance = mean.minus(lslNum);
             if (lowerDistance.isZero() || lslNum.bigDecimalValue().compareTo(lsl) != 0) {
@@ -209,8 +212,10 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
                 // the factory-rounded limit differs from the retained
                 // decimal, the distance is recomputed from the lossless
                 // retained limit before any narrowing.
-                BigDecimal rawDistance = mean.bigDecimalValue().subtract(lsl, MathContext.DECIMAL128);
-                lowerCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory);
+                MathContext recoveryContext = recoveryMathContext(factory);
+                BigDecimal rawDistance = mean.bigDecimalValue().subtract(lsl, recoveryContext);
+                lowerCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory,
+                        recoveryContext);
             } else if (Num.isFinite(lowerDistance)) {
                 Num lowerRatio = lowerDistance.dividedBy(deviationScale);
                 if (Num.isFinite(lowerRatio)) {
@@ -239,16 +244,19 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         Num uslNum = factory.numOf(usl);
         Num upperCapability;
         if (!Num.isFinite(uslNum)) {
-            BigDecimal rawDistance = usl.subtract(mean.bigDecimalValue(), MathContext.DECIMAL128);
-            upperCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory);
+            MathContext recoveryContext = recoveryMathContext(factory);
+            BigDecimal rawDistance = usl.subtract(mean.bigDecimalValue(), recoveryContext);
+            upperCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory, recoveryContext);
         } else {
             Num upperDistance = uslNum.minus(mean);
             if (upperDistance.isZero() || uslNum.bigDecimalValue().compareTo(usl) != 0) {
                 // Mirror of the lower-limit recovery: a limit the factory
                 // rounded onto the mean, or short of it, must not erase or
                 // shrink a representable capability gap.
-                BigDecimal rawDistance = usl.subtract(mean.bigDecimalValue(), MathContext.DECIMAL128);
-                upperCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory);
+                MathContext recoveryContext = recoveryMathContext(factory);
+                BigDecimal rawDistance = usl.subtract(mean.bigDecimalValue(), recoveryContext);
+                upperCapability = scaledDistance(rawDistance, deviationScale, threeScaledSigma, factory,
+                        recoveryContext);
             } else if (Num.isFinite(upperDistance)) {
                 Num upperRatio = upperDistance.dividedBy(deviationScale);
                 if (Num.isFinite(upperRatio)) {
@@ -266,7 +274,7 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
     }
 
     private static Num scaledDistance(BigDecimal rawDistance, Num deviationScale, Num threeScaledSigma,
-            NumFactory factory) {
+            NumFactory factory, MathContext mathContext) {
         // The raw decimal distance is narrowed once against the complete
         // 3 * sigma denominator instead of rounding separate limit/scale and
         // mean/scale quotients. Both call sites retain the limit losslessly
@@ -277,8 +285,18 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         // exceed the double range (1.1e400), and their doubleValue() would be
         // infinite, making BigDecimal.valueOf throw NumberFormatException.
         BigDecimal rawDenominator = deviationScale.bigDecimalValue()
-                .multiply(threeScaledSigma.bigDecimalValue(), MathContext.DECIMAL128);
-        return factory.numOf(rawDistance.divide(rawDenominator, MathContext.DECIMAL128));
+                .multiply(threeScaledSigma.bigDecimalValue(), mathContext);
+        return factory.numOf(rawDistance.divide(rawDenominator, mathContext));
+    }
+
+    private static MathContext recoveryMathContext(NumFactory factory) {
+        if (factory.one() instanceof DecimalNum decimalNum) {
+            MathContext mathContext = decimalNum.getMathContext();
+            if (mathContext.getPrecision() > 0) {
+                return mathContext;
+            }
+        }
+        return MathContext.DECIMAL128;
     }
 
     private static Num compensatedSum(Num[] values, NumFactory factory) {
