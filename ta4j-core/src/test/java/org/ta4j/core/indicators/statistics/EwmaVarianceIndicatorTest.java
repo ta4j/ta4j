@@ -363,6 +363,18 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void floatSubnormalMeanRoundsOnTheFloatGrid() {
+        NumFactory floatFactory = FloatNumFactory.getInstance();
+        Num minimum = floatFactory.numOf(Float.MIN_VALUE);
+        Num twiceMinimum = minimum.multipliedBy(floatFactory.two());
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory).withData(0, 0).build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(new MockIndicator(series, 0, minimum, twiceMinimum),
+                1, 0.5);
+
+        assertNumEquals(twiceMinimum, variance.getMeanIndicator().getValue(1));
+    }
+
+    @Test
     public void nonStallingSubnormalMeanRoundsOnce() {
         // With previous mean MIN_VALUE and current 4 * MIN_VALUE at decay 0.5,
         // the difference form adds fl(1.5 * MIN_VALUE) = 2 * MIN_VALUE to the

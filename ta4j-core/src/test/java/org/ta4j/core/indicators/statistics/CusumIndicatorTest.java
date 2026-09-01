@@ -295,6 +295,21 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
+    public void floatSubnormalScaleRoundsOnTheFloatGrid() {
+        NumFactory floatFactory = FloatNumFactory.getInstance();
+        Num minimum = floatFactory.numOf(Float.MIN_VALUE);
+        Num negativeMinimum = minimum.multipliedBy(floatFactory.minusOne());
+        Num negativeTwiceMinimum = negativeMinimum.multipliedBy(floatFactory.two());
+        Num sixMinimum = minimum.multipliedBy(floatFactory.numOf(6));
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory).withData(0, 0, 0).build();
+        CusumIndicator cusum = new CusumIndicator(
+                new MockIndicator(series, 0, floatFactory.zero(), negativeMinimum, negativeTwiceMinimum),
+                minimum.bigDecimalValue(), BigDecimal.ZERO, BigDecimal.valueOf(2), BigDecimal.valueOf(0.5));
+
+        assertNumEquals(sixMinimum, cusum.getValue(2));
+    }
+
+    @Test
     public void deviationScaleReanchorsAfterRetainedHeadPrunes() {
         // The winsorization scale must also reseed at the new retained head:
         // a stale scale would clip the deviation against a bound derived from

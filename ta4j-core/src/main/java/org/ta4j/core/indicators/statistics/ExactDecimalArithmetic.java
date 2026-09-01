@@ -5,7 +5,6 @@ package org.ta4j.core.indicators.statistics;
 
 import java.math.BigDecimal;
 
-import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -18,21 +17,22 @@ import org.ta4j.core.num.NumFactory;
  * {@code previous + (1 - decay) * (current - previous)} computes each convex
  * product with its own intermediate rounding. Each product carries at most half
  * an ulp of error, which a normal-magnitude result absorbs, but a
- * subnormal-magnitude result sits on the coarsest representable grid (the ulp
- * of a subnormal is {@code Double.MIN_VALUE} itself), so the accumulated error
- * can move an exact tie to the wrong side: {@code 0.5 * MIN_VALUE} collapses to
- * zero and {@code 1.5 * MIN_VALUE} publishes {@code MIN_VALUE} although the
- * correctly rounded single-rounding results are {@code 0} and
- * {@code 2 * MIN_VALUE}. The recovery paths detect results of subnormal
- * magnitude and recombine the exact operands without intermediate rounding,
- * narrowing once.
+ * subnormal-magnitude result sits on the coarsest representable primitive grid.
+ * On the double grid, the ulp of a subnormal is {@code Double.MIN_VALUE}
+ * itself, so the accumulated error can move an exact tie to the wrong side:
+ * {@code 0.5 * MIN_VALUE} collapses to zero and {@code 1.5 * MIN_VALUE}
+ * publishes {@code MIN_VALUE} although the correctly rounded single-rounding
+ * results are {@code 0} and {@code 2 * MIN_VALUE}. The recovery paths detect
+ * results of subnormal magnitude and recombine the exact operands without
+ * intermediate rounding, narrowing once on that active grid.
  *
  * <p>
- * The exact operands are {@link BigDecimal} expansions: {@link DoubleNum}
- * carries the exact binary value and {@link org.ta4j.core.num.DecimalNum}
- * carries an exact decimal that may lie beyond the double range. Exact operand
- * expansion must never go through {@link Num#doubleValue()}; only the
- * subnormal-grid classification deliberately uses that primitive projection.
+ * The exact operands are {@link BigDecimal} expansions: {@link Float} and
+ * {@link Double} delegates carry exact binary values and
+ * {@link org.ta4j.core.num.DecimalNum} carries an exact decimal that may lie
+ * beyond the double range. Exact operand expansion must never go through
+ * {@link Num#doubleValue()}; only subnormal-grid classification deliberately
+ * consults a primitive delegate.
  */
 final class ExactDecimalArithmetic {
 
@@ -41,30 +41,35 @@ final class ExactDecimalArithmetic {
     }
 
     /**
-     * Tests the primitive-double projection only to identify the subnormal grid:
-     * its absolute value is strictly below the smallest positive normal double
-     * (zero included, non-finite and NaN values excluded). This is a classification
-     * rather than validation, so finite decimal values beyond the double range
-     * simply return {@code false}.
+     * Tests the active primitive grid to identify the subnormal magnitude: a
+     * {@link Float} delegate uses the smallest positive normal float, while all
+     * other values retain the double-grid classification. Zero is included;
+     * non-finite and NaN values are excluded. This is a classification rather than
+     * validation, so finite decimal values beyond the double range simply return
+     * {@code false}.
      *
      * @param value the value to classify
      * @return {@code true} when the magnitude is subnormal
      */
     static boolean isSubnormalMagnitude(Num value) {
+        if (value.getDelegate() instanceof Float floatValue) {
+            return Math.abs(floatValue) < Float.MIN_NORMAL;
+        }
         return Math.abs(value.doubleValue()) < Double.MIN_NORMAL;
     }
 
     /**
      * Exact expansion of {@code value} as a {@link BigDecimal}: the exact binary
-     * value for {@link DoubleNum}, the exact decimal expansion for any other
-     * {@link Num} implementation.
+     * value for a {@link Float} or {@link Double} delegate, the exact decimal
+     * expansion for any other {@link Num} implementation.
      *
      * @param value the finite value to expand
      * @return the exact decimal expansion
      */
     static BigDecimal exactValueOf(Num value) {
-        if (value instanceof DoubleNum) {
-            return new BigDecimal(value.doubleValue());
+        Number delegate = value.getDelegate();
+        if (delegate instanceof Double || delegate instanceof Float) {
+            return new BigDecimal(delegate.doubleValue());
         }
         return value.bigDecimalValue();
     }
@@ -93,9 +98,10 @@ final class ExactDecimalArithmetic {
     /**
      * The convex combination {@code first * firstWeight + second *
      * secondWeight}, combined without intermediate rounding and narrowed once
-     * through {@code factory}. {@link DoubleNum} weights retain their exact binary
-     * value; other {@link Num} implementations retain their exact decimal expansion
-     * instead of an underflowing primitive-double projection.
+     * through {@code factory}. {@link Float} and {@link Double} delegate weights
+     * retain their exact binary value; other {@link Num} implementations retain
+     * their exact decimal expansion instead of an underflowing primitive-double
+     * projection.
      *
      * @param factory      the factory that narrows the exact sum
      * @param first        the exact expansion of the first operand
