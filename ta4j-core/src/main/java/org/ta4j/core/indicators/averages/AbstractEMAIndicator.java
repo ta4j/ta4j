@@ -3,7 +3,6 @@
  */
 package org.ta4j.core.indicators.averages;
 
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
@@ -40,47 +39,13 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
     }
 
     @Override
-    public Num getValue(int index) {
-        if (index < 0) {
-            return super.getValue(index);
-        }
-
-        BarSeries series = getBarSeries();
-        while (true) {
-            int removedBarsCount = series.getRemovedBarsCount();
-            if (index >= removedBarsCount) {
-                return super.getValue(index);
-            }
-
-            int beginIndex = series.getBeginIndex();
-            long firstStableIndex = (long) beginIndex + getCountOfUnstableBars();
-            if (firstStableIndex > series.getEndIndex()) {
-                if (series.getRemovedBarsCount() == removedBarsCount && firstStableIndex > series.getEndIndex()) {
-                    return NaN;
-                }
-                continue;
-            }
-
-            // Do not use CachedIndicator's synthetic first-bar cache: this
-            // value depends on a later stable EMA index, whose changes need not
-            // advance the retained head.
-            Num value = super.getValue((int) firstStableIndex);
-            if (series.getRemovedBarsCount() == removedBarsCount) {
-                return value;
-            }
-            // A prune raced the cached read, so resolve the first stable index
-            // again against the retained head that remains.
-        }
-    }
-
-    @Override
     protected Num calculate(int index) {
         int beginIndex = getBarSeries().getBeginIndex();
         long firstStableIndex = (long) beginIndex + getCountOfUnstableBars();
-        // CachedIndicator can reach calculate(0) when a prune races the
-        // normalized getValue path. Keep that synthetic fallback safe.
+        // CachedIndicator maps unavailable history to calculate(0). Preserve the
+        // retained head's warm-up value instead of looking ahead to a stable EMA.
         if (index < beginIndex) {
-            index = (int) Math.min(firstStableIndex, getBarSeries().getEndIndex());
+            index = Math.min(beginIndex, getBarSeries().getEndIndex());
         }
         if (index < firstStableIndex) {
             return NaN;

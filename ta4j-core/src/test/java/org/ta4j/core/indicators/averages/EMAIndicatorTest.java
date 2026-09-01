@@ -59,33 +59,36 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     }
 
     @Test
-    public void removedIndicesMapToFirstStableRetainedEmaValue() {
+    public void removedIndicesMapToRetainedHeadWarmupValue() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
         series.setMaximumBarCount(5);
         EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(series), 2);
 
         assertEquals(1, series.getBeginIndex());
-        assertNumEquals(4, ema.getValue(0));
+        assertThat(Double.isNaN(ema.getValue(0).doubleValue())).isTrue();
         assertThat(Double.isNaN(ema.getValue(1).doubleValue())).isTrue();
         assertThat(Double.isNaN(ema.getValue(2).doubleValue())).isTrue();
         assertNumEquals(4, ema.getValue(3));
     }
 
     @Test
-    public void removedIndexReadRefreshesWhenFirstStableBarIsReplaced() {
+    public void removedIndexReadRefreshesToNewRetainedHeadAfterPrune() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
         series.setMaximumBarCount(3);
         EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(series), 2);
 
-        assertNumEquals(4, ema.getValue(0));
+        assertThat(Double.isNaN(ema.getValue(0).doubleValue())).isTrue();
 
-        series.addBar(series.barBuilder().endTime(series.getLastBar().getEndTime()).closePrice(8).build(), true);
+        series.barBuilder().endTime(series.getLastBar().getEndTime().plusSeconds(1)).closePrice(8).add();
 
-        assertNumEquals(8, ema.getValue(0));
+        assertEquals(2, series.getBeginIndex());
+        assertThat(Double.isNaN(ema.getValue(0).doubleValue())).isTrue();
+        assertThat(Double.isNaN(ema.getValue(series.getBeginIndex()).doubleValue())).isTrue();
+        assertNumEquals(8, ema.getValue(4));
     }
 
     @Test
-    public void removedIndexReadRefreshesWhenFirstStableBarBecomesAvailable() {
+    public void removedIndexReadDoesNotLookAheadWhenStableBarBecomesAvailable() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
         series.setMaximumBarCount(3);
         EMAIndicator ema = new EMAIndicator(new ClosePriceIndicator(series), 3);
@@ -95,7 +98,9 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         series.setMaximumBarCount(4);
         series.barBuilder().endTime(series.getLastBar().getEndTime().plusSeconds(1)).closePrice(5).add();
 
-        assertNumEquals(5, ema.getValue(0));
+        assertThat(Double.isNaN(ema.getValue(0).doubleValue())).isTrue();
+        assertThat(Double.isNaN(ema.getValue(series.getBeginIndex()).doubleValue())).isTrue();
+        assertNumEquals(5, ema.getValue(4));
     }
 
     @Test
