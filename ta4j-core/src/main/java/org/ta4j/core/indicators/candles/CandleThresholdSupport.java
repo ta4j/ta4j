@@ -348,13 +348,11 @@ final class CandleThresholdSupport {
     static final double RANGE_SCALE = 10.0;
 
     /**
-     * Calculates a weighted point without forming an intermediate endpoint
-     * difference or sum that can overflow.
-     *
-     * <p>
-     * Callers provide finite endpoints and complementary, non-negative weights.
-     * Scaling both endpoints by their larger magnitude makes the weighted sum
-     * bounded before restoring its original scale.
+     * Calculates a weighted point without an overflowing intermediate endpoint sum.
+     * The ordinary direct calculation is retained whenever it is finite, preserving
+     * each {@link Num} implementation's established boundary rounding. If that sum
+     * overflows, the finite endpoints are scaled by their larger magnitude before
+     * the weighted sum is restored to its original scale.
      *
      * @param first        the first endpoint
      * @param firstWeight  the first endpoint's weight
@@ -363,6 +361,10 @@ final class CandleThresholdSupport {
      * @return {@code first * firstWeight + second * secondWeight}
      */
     static Num weightedPoint(Num first, Num firstWeight, Num second, Num secondWeight) {
+        final Num directPoint = first.multipliedBy(firstWeight).plus(second.multipliedBy(secondWeight));
+        if (Num.isFinite(directPoint)) {
+            return directPoint;
+        }
         final Num firstMagnitude = first.abs();
         final Num secondMagnitude = second.abs();
         final Num scale = firstMagnitude.isGreaterThan(secondMagnitude) ? firstMagnitude : secondMagnitude;
