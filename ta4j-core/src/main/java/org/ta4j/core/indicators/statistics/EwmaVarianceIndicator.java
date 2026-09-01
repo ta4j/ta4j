@@ -271,18 +271,22 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         // one), so this multiplication order keeps finite EWMA variances
         // available to control-limit consumers.
         Num weightedSquaredDeviation = deviation.multipliedBy(deviation.multipliedBy(oneMinusDecay));
-        Num updatedVariance = previousVariance.multipliedBy(decay).plus(weightedSquaredDeviation);
-        if (ExactDecimalArithmetic.requiresExactRecovery(updatedVariance, weightedSquaredDeviation)
-                && Num.isFinite(deviation)) {
+        Num decayedPreviousVariance = previousVariance.multipliedBy(decay);
+        Num updatedVariance = decayedPreviousVariance.plus(weightedSquaredDeviation);
+        boolean decayedPreviousNeedsExactRecovery = !previousVariance.isZero()
+                && ExactDecimalArithmetic.isSubnormalMagnitude(decayedPreviousVariance);
+        if ((ExactDecimalArithmetic.requiresExactRecovery(updatedVariance, weightedSquaredDeviation)
+                || decayedPreviousNeedsExactRecovery) && Num.isFinite(deviation)) {
             // A nonnegative product sum can misround on the active primitive
-            // grid even when its result is normal: a subnormal-magnitude
-            // weighted term carries up to half a subnormal ulp of error per
-            // separately rounded product, which can move a normal-magnitude
-            // result by one grid ulp. Recombine the exact products without
-            // intermediate rounding and narrow once. The deviation must be
-            // finite because BigDecimal rejects non-finite conversions; the
-            // return below already drops non-finite deviations before this
-            // recovery matters.
+            // grid even when its result is normal: either nonzero
+            // subnormal-magnitude product carries up to half a subnormal ulp
+            // of error, which can move a normal-magnitude result by one grid
+            // ulp. An exact zero prior carries no term to recover and stays
+            // on the fast path. Recombine the exact products without
+            // intermediate rounding and narrow once.
+            // The deviation must be finite because BigDecimal rejects
+            // non-finite conversions; the return below already drops
+            // non-finite deviations before this recovery matters.
             updatedVariance = ExactDecimalArithmetic.exactWeightedSum(getBarSeries().numFactory(),
                     ExactDecimalArithmetic.exactValueOf(previousVariance),
                     ExactDecimalArithmetic.exactValueOf(deviation).pow(2), oneMinusDecay);

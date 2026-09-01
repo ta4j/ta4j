@@ -600,6 +600,26 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void decayedSubnormalPreviousVarianceRecombinesNormalVariance() {
+        // barCount 2 with decay 0.5 and float-backed source [-a, a, d] seeds
+        // variance a^2 at index 1. Its decayed product is subnormal at index 2
+        // while the weighted squared-deviation product and their sum are normal.
+        // Separately rounding the decayed state publishes 0x00800005; exact
+        // recombination of both products must publish 0x00800006.
+        NumFactory floatFactory = FloatNumFactory.getInstance();
+        float a = Float.intBitsToFloat(0x1a35048f);
+        float d = Float.intBitsToFloat(0x203504f7);
+        Num negativeA = floatFactory.numOf(-a);
+        Num positiveA = floatFactory.numOf(a);
+        Num deviation = floatFactory.numOf(d);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory).withData(0, 0, 0).build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(
+                new MockIndicator(series, 0, negativeA, positiveA, deviation), 2, 0.5);
+
+        assertEquals(0x00800006, Float.floatToRawIntBits(variance.getValue(2).floatValue()));
+    }
+
+    @Test
     public void decimalOperandsBeyondDoubleRangeCombineExactly() {
         // A precision-1 DecimalNum mean of 1E1000 with current 2E1000 at
         // decay 0.9 stalls the difference form (the 0.1-weighted delta 1E999
