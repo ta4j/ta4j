@@ -143,7 +143,12 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
                 new MockIndicator(series, 0, numOf(-100), numOf(-100), numOf(-100), numOf(2e154)), 3, 0.5);
 
         Num variance = extreme.getValue(3);
-        assertTrue(variance.isNaN() || Num.isFinite(variance));
+        if (numFactory instanceof DoubleNumFactory) {
+            assertTrue(variance.isNaN());
+        } else {
+            assertTrue(Num.isFinite(variance));
+            assertTrue(variance.isPositive());
+        }
     }
 
     @Test
