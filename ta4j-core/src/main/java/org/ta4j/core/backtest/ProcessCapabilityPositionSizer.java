@@ -260,11 +260,6 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
 
     private static BigDecimal requirePositiveFiniteRaw(Number value, String name) {
         Objects.requireNonNull(value, name + " must not be null");
-        if (value instanceof Double || value instanceof Float) {
-            if (!Double.isFinite(value.doubleValue())) {
-                throw new IllegalArgumentException(name + " must be finite");
-            }
-        }
         BigDecimal raw;
         if (value instanceof BigDecimal) {
             raw = (BigDecimal) value;
@@ -277,7 +272,11 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
             // one ulp).
             raw = BigDecimal.valueOf(value.longValue());
         } else {
-            raw = BigDecimal.valueOf(value.doubleValue());
+            double doubleValue = value.doubleValue();
+            if (!Double.isFinite(doubleValue)) {
+                throw new IllegalArgumentException(name + " must be finite");
+            }
+            raw = BigDecimal.valueOf(doubleValue);
         }
         if (raw.signum() <= 0) {
             throw new IllegalArgumentException(name + " must be > 0");

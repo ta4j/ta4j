@@ -419,6 +419,22 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void shortGrossReturnRatioUnderflowKeepsRepresentableCapability() {
+        // Short entries 1e300 covered at 1e-308 / 2e-308 produce returns
+        // 2 - 1e-608 and 2 - 2e-608. DoubleNum rounds both to 2, but their
+        // one-sided Cpk against USL 2 remains 1. DecimalNum preserves the tiny
+        // ratios and yields the same score.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1e300, 1e-308, 1e300, 2e-308)
+                .build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
+                Trade.sellAt(2, series), Trade.buyAt(3, series));
+
+        AnalysisCriterion cpk = getCriterion(0, 2);
+        assertNumEquals(1, cpk.calculate(series, tradingRecord));
+    }
+
+    @Test
     public void shortGrossReturnRatioOverflowKeepsRepresentableCapability() {
         // Short entries at 1e-300 covered at 1e300 / 2e300 produce
         // multiplicative returns 2 - 1e600 and 2 - 2e600. Both overflow

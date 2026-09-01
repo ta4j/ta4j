@@ -338,15 +338,57 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
 
     @Test
     public void negativeFiniteOutlierClipFactorBeyondFactoryRangeIsRejected() {
-        // outlierClipFactor = -1e400 saturates to the negative ceiling, which
-        // still fails the > 0 validation instead of flipping to the positive
-        // ceiling and being accepted.
+        // outlierClipFactor = -1e400 remains exactly negative during validation,
+        // so it fails the > 0 contract even when the active factory cannot
+        // represent its magnitude.
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
 
         IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
                 () -> new CusumIndicator(series, 0, 0, new BigDecimal("-1e400"), 0.94));
 
         assertEquals("outlierClipFactor must be > 0", thrown.getMessage());
+    }
+
+    @Test
+    public void positiveUnderflowingOutlierClipFactorKeepsRepresentableCompletedBound() {
+        BigDecimal rawFactor = new BigDecimal("1e-400");
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1e308, -1).build();
+        CusumIndicator cusum = new CusumIndicator(series, 0, 0, rawFactor, 0.5);
+
+        // The factor itself underflows to zero under DoubleNum, but the completed
+        // bound 1e308 * 1e-400 = 1e-92 is representable. Decimal-space
+        // multiplication must narrow only that completed bound.
+        assertNumEquals(numFactory.numOf(new BigDecimal("1e-92")), cusum.getValue(1));
+        assertEquals(rawFactor.toPlainString(),
+                cusum.toDescriptor().getParameters().get("outlierClipFactor").toString());
+        assertIndicatorRoundTrips(series, cusum, stableIndexes(series));
+    }
+
+    @Test
+    public void negativeOverflowingFactorIsRejectedWhenFactoryConversionWouldLoseItsSign() {
+        NumFactory nanOnOverflowFactory = nanOnOverflowFactory();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(nanOnOverflowFactory).withData(1, 2).build();
+
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> new CusumIndicator(series, 0, 0, new BigDecimal("-1e400"), 0.5));
+
+        assertEquals("outlierClipFactor must be > 0", thrown.getMessage());
+    }
+
+    @Test
+    public void positiveOverflowingFactorUsesRawMagnitudeWithNaNOnOverflowFactory() {
+        NumFactory nanOnOverflowFactory = nanOnOverflowFactory();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(nanOnOverflowFactory)
+                .withData(1e-308, -1e100)
+                .build();
+        CusumIndicator cusum = new CusumIndicator(series, 0, 0, new BigDecimal("1e400"), 0.5);
+
+        // The factory returns NaN for the raw factor, but the completed bound is
+        // finite: 1e-308 * 1e400 = 1e92. Substituting a saturated factor would
+        // instead produce a bound near one.
+        BigDecimal expectedBound = ExactDecimalArithmetic.exactValueOf(series.getBar(0).getClosePrice())
+                .multiply(new BigDecimal("1e400"));
+        assertNumEquals(nanOnOverflowFactory.numOf(expectedBound), cusum.getValue(1));
     }
 
     @Test
@@ -764,6 +806,57 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         // After pruning, index 2 is the head with deviation 2 - 1 - 0 = 1 and a
         // single count CUSUM of 1. A double-counted bug publishes 2.
         assertNumEquals(1, cusum.getValue(2));
+    }
+
+    private static NumFactory nanOnOverflowFactory() {
+        NumFactory delegate = DoubleNumFactory.getInstance();
+        return new NumFactory() {
+
+            @Override
+            public Num minusOne() {
+                return delegate.minusOne();
+            }
+
+            @Override
+            public Num zero() {
+                return delegate.zero();
+            }
+
+            @Override
+            public Num one() {
+                return delegate.one();
+            }
+
+            @Override
+            public Num two() {
+                return delegate.two();
+            }
+
+            @Override
+            public Num three() {
+                return delegate.three();
+            }
+
+            @Override
+            public Num hundred() {
+                return delegate.hundred();
+            }
+
+            @Override
+            public Num thousand() {
+                return delegate.thousand();
+            }
+
+            @Override
+            public Num numOf(Number number) {
+                return Double.isFinite(number.doubleValue()) ? delegate.numOf(number) : NaN.NaN;
+            }
+
+            @Override
+            public Num numOf(String number) {
+                return numOf(new BigDecimal(number));
+            }
+        };
     }
 
     @Override

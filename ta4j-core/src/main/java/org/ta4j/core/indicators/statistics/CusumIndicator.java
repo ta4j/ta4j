@@ -3,8 +3,8 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import java.util.Objects;
 import java.math.BigDecimal;
+import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -42,12 +42,12 @@ import org.ta4j.core.num.NumFactory;
  * its raw magnitude bootstraps {@code sigmaHat}, so a single outlier cannot
  * trip the statistic right after a perfectly on-target run.
  * 
- * <p>
- * The raw {@code scaleDecay} parameter is retained separately from its
- * factory-rounded arithmetic value: a coarse factory may round an in-range
- * decay such as {@code 0.9999} to its boundary {@code 1}, and the descriptor /
- * JSON round trip must reconstruct the logical indicator from the raw value
- * instead of the rounded one.
+ * The raw {@code outlierClipFactor} and {@code scaleDecay} parameters are
+ * retained separately from their factory-rounded arithmetic values. A coarse
+ * factory may round an in-range decay such as {@code 0.9999} to its boundary
+ * {@code 1}, while an extreme clipping factor may underflow to zero or overflow
+ * to a non-finite value. Retaining the raw values preserves both arithmetic and
+ * descriptor / JSON round trips.
  *
  * <p>
  * While the source indicator is warming up ({@code index - beginIndex <
@@ -93,7 +93,9 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
     private final Indicator<Num> indicator;
     private final BigDecimal targetMean;
     private final BigDecimal allowance;
-    private final Num outlierClipFactor;
+    private final BigDecimal outlierClipFactor;
+    private final transient Num appliedOutlierClipFactor;
+    private final transient boolean exactOutlierClipFactorArithmetic;
     private final BigDecimal scaleDecay;
     private final transient DeviationScaleIndicator deviationScale;
     private volatile transient int observedRemovedBarsCount = getBarSeries().getRemovedBarsCount();
@@ -212,6 +214,8 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         this.targetMean = parameters.targetMean();
         this.allowance = parameters.allowance();
         this.outlierClipFactor = parameters.outlierClipFactor();
+        this.appliedOutlierClipFactor = parameters.appliedOutlierClipFactor();
+        this.exactOutlierClipFactorArithmetic = parameters.exactOutlierClipFactorArithmetic();
         this.scaleDecay = parameters.rawScaleDecay();
         this.deviationScale = new DeviationScaleIndicator(this.indicator, this.targetMean, this.allowance,
                 parameters.oneMinusScaleDecay(), parameters.rawComplementScaleDecay());
@@ -226,17 +230,20 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         NumFactory factory = indicator.getBarSeries().numFactory();
         BigDecimal validatedTargetMean = requireFiniteDecimal(targetMean, "targetMean");
         BigDecimal validatedAllowance = requireFiniteDecimal(allowance, "allowance");
-        Num validatedOutlierClipFactor = requireFiniteNum(outlierClipFactor, "outlierClipFactor", factory);
+        BigDecimal validatedOutlierClipFactor = requireFiniteDecimal(outlierClipFactor, "outlierClipFactor");
         ValidatedScaleDecay validatedScaleDecay = validateScaleDecay(scaleDecay, factory);
         if (validatedAllowance.signum() < 0) {
             throw new IllegalArgumentException("allowance must be >= 0");
         }
-        if (!validatedOutlierClipFactor.isPositive()) {
+        if (validatedOutlierClipFactor.signum() <= 0) {
             throw new IllegalArgumentException("outlierClipFactor must be > 0");
         }
+        Num appliedOutlierClipFactor = factory.numOf(validatedOutlierClipFactor);
+        boolean exactOutlierClipFactorArithmetic = requiresExactFactorArithmetic(validatedOutlierClipFactor,
+                appliedOutlierClipFactor, factory);
         return new Parameters(indicator, validatedTargetMean, validatedAllowance, validatedOutlierClipFactor,
-                validatedScaleDecay.rawScaleDecay(), validatedScaleDecay.rawComplementScaleDecay(),
-                validatedScaleDecay.oneMinusScaleDecay());
+                appliedOutlierClipFactor, exactOutlierClipFactorArithmetic, validatedScaleDecay.rawScaleDecay(),
+                validatedScaleDecay.rawComplementScaleDecay(), validatedScaleDecay.oneMinusScaleDecay());
     }
 
     private static ValidatedScaleDecay validateScaleDecay(Number scaleDecay, NumFactory factory) {
@@ -283,8 +290,8 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
     }
 
     private record Parameters(Indicator<Num> indicator, BigDecimal targetMean, BigDecimal allowance,
-            Num outlierClipFactor, BigDecimal rawScaleDecay, BigDecimal rawComplementScaleDecay,
-            Num oneMinusScaleDecay) {
+            BigDecimal outlierClipFactor, Num appliedOutlierClipFactor, boolean exactOutlierClipFactorArithmetic,
+            BigDecimal rawScaleDecay, BigDecimal rawComplementScaleDecay, Num oneMinusScaleDecay) {
     }
 
     @Override
@@ -307,7 +314,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         if (index > beginIndex) {
             Num previousScale = deviationScale.getValue(index - 1);
             if (Num.isFinite(previousScale)) {
-                Num bound = previousScale.multipliedBy(outlierClipFactor);
+                Num bound = clippingBound(previousScale);
                 deviation = deviation.max(bound.negate()).min(bound);
             }
         }
@@ -350,22 +357,37 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         return BigDecimal.valueOf(narrowed);
     }
 
-    private static Num requireFiniteNum(Number value, String name, NumFactory factory) {
-        Objects.requireNonNull(value, name + " must not be null");
-        if (value instanceof Double || value instanceof Float) {
-            if (!Double.isFinite(value.doubleValue())) {
-                throw new IllegalArgumentException(name + " must be finite");
+    private static boolean requiresExactFactorArithmetic(BigDecimal rawFactor, Num appliedFactor, NumFactory factory) {
+        if (!Num.isFinite(appliedFactor) || !appliedFactor.isPositive()) {
+            return true;
+        }
+        Num saturation = saturationMagnitude(factory);
+        return appliedFactor.isEqual(saturation)
+                && ExactDecimalArithmetic.exactValueOf(appliedFactor).compareTo(rawFactor) != 0;
+    }
+
+    /**
+     * Multiplies the prior deviation scale by the retained raw clipping factor. The
+     * usual {@link Num} multiplication remains the fast path. Exact decimal
+     * recovery is used only when factor conversion underflowed, overflowed, was
+     * saturated, or the completed multiplication overflowed; only the final bound
+     * is narrowed or saturated.
+     */
+    private Num clippingBound(Num previousScale) {
+        if (!exactOutlierClipFactorArithmetic) {
+            Num bound = previousScale.multipliedBy(appliedOutlierClipFactor);
+            if (Num.isFinite(bound)) {
+                return bound;
             }
         }
-        Num num = factory.numOf(value);
-        if (!Num.isFinite(num)) {
-            // The raw value is finite but overflows the factory's active
-            // primitive. Preserve its sign while narrowing the clipping factor
-            // to the active factory's finite ceiling.
-            Num ceiling = saturationMagnitude(factory);
-            return num.isNegative() ? ceiling.negate() : ceiling;
+        BigDecimal exactBound = ExactDecimalArithmetic.exactValueOf(previousScale).multiply(outlierClipFactor);
+        NumFactory factory = getBarSeries().numFactory();
+        Num narrowed = factory.numOf(exactBound);
+        if (Num.isFinite(narrowed)) {
+            return narrowed;
         }
-        return num;
+        Num magnitude = saturationMagnitude(factory);
+        return exactBound.signum() < 0 ? magnitude.negate() : magnitude;
     }
 
     /**

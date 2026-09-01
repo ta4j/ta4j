@@ -105,10 +105,12 @@ public class ProcessCapabilityPositionSizerTest {
             FixedIndicator<Num> statistic = new FixedIndicator<>(series, DECIMAL_NUM_FACTORY.numOf(0),
                     DECIMAL_NUM_FACTORY.numOf(5));
             PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, 100, new BigDecimal("1e400"));
+            PositionSizer bigIntegerSizer = new ProcessCapabilityPositionSizer(statistic, 100, BigInteger.TEN.pow(400));
 
             // DecimalNum carries 1e400 exactly; the denominator 1 + 5/1e400
             // rounds back to 1, leaving the full base amount.
             assertNumEquals(100, sizer.amount(context(series, 1, 1)));
+            assertNumEquals(100, bigIntegerSizer.amount(context(series, 1, 1)));
         });
     }
 
@@ -709,6 +711,63 @@ public class ProcessCapabilityPositionSizerTest {
         assertThrows(IllegalArgumentException.class, () -> new ProcessCapabilityPositionSizer(statistic, 100, 0));
         assertThrows(IllegalArgumentException.class,
                 () -> new ProcessCapabilityPositionSizer(statistic, 100, Double.NaN));
+    }
+
+    @Test
+    public void rejectsNonFiniteCustomNumbersWithDocumentedMessage() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        FixedIndicator<Num> statistic = new FixedIndicator<>(series, numOf(0), numOf(5), numOf(15));
+
+        for (double value : new double[] { Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY }) {
+            Number customNumber = new DoubleValueNumber(value);
+            IllegalArgumentException baseError = assertThrows(IllegalArgumentException.class,
+                    () -> new ProcessCapabilityPositionSizer(statistic, customNumber, 10));
+            assertEquals("baseAmount must be finite", baseError.getMessage());
+            IllegalArgumentException limitError = assertThrows(IllegalArgumentException.class,
+                    () -> new ProcessCapabilityPositionSizer(statistic, 100, customNumber));
+            assertEquals("controlLimit must be finite", limitError.getMessage());
+        }
+    }
+
+    @Test
+    public void acceptsFiniteCustomNumber() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        FixedIndicator<Num> statistic = new FixedIndicator<>(series, numOf(0), numOf(5), numOf(15));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, new DoubleValueNumber(12.5),
+                new DoubleValueNumber(2.5));
+
+        assertNumEquals(12.5, sizer.amount(context(series, 0, 0)));
+    }
+
+    private static final class DoubleValueNumber extends Number {
+
+        private static final long serialVersionUID = 1L;
+
+        private final double value;
+
+        private DoubleValueNumber(double value) {
+            this.value = value;
+        }
+
+        @Override
+        public int intValue() {
+            return (int) value;
+        }
+
+        @Override
+        public long longValue() {
+            return (long) value;
+        }
+
+        @Override
+        public float floatValue() {
+            return (float) value;
+        }
+
+        @Override
+        public double doubleValue() {
+            return value;
+        }
     }
 
     /**

@@ -40,6 +40,7 @@
 - **Cpk decimal recovery retains configured precision**: `ProcessCapabilityCriterion` now carries a finite `DecimalNum` factory math context through raw limit recovery instead of collapsing results to `DECIMAL128`; `DoubleNum` and unlimited decimal contexts retain the safe `DECIMAL128` division fallback.
 - **Cpk variance retains small scaled deviations**: `ProcessCapabilityCriterion` now uses compensated accumulation for scaled squared deviations, so a low-precision `DecimalNum` no longer loses small variance terms merely because they follow large closed-position returns.
 - **SPC extreme-value and retained-head recovery stays exact and bounded**: `CusumIndicator` and `EwmaVarianceIndicator` serialize retained-head resets with their full recursive reads to prevent prune-time lock inversion; CUSUM combines raw target and allowance parameters before narrowing, Cpk recovers over/underflowing finite returns and overflowing finite-return means in decimal space, and EWMA seed windows use overflow-safe counters through `Integer.MAX_VALUE`.
+- **SPC raw numeric inputs preserve magnitude and polarity**: `ProcessCapabilityPositionSizer` validates arbitrary `Number` implementations for finite values before decimal conversion while retaining lossless `BigDecimal`/`BigInteger` inputs; CUSUM keeps the raw clipping factor through sign validation and scale multiplication; all-short Cpk recovery centers multiplicative returns at two so tiny finite cover/entry ratios remain distinct.
 
 ## 0.24.1 (2026-08-10)
 

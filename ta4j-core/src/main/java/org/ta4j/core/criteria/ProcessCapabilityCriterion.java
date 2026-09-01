@@ -116,16 +116,18 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * Tests whether a finite non-zero long price ratio was rounded to zero by the
-     * active numeric factory.
+     * Tests whether a finite non-zero price ratio was rounded onto the long or
+     * short gross-return boundary by the active numeric factory.
      *
      * @param series      the source series
      * @param position    the closed position
      * @param grossReturn the factory-domain gross return
      * @return {@code true} when decimal recovery is required
      */
-    private static boolean isUnderflowedLongReturn(BarSeries series, Position position, Num grossReturn) {
-        if (!position.getEntry().isBuy() || !grossReturn.isZero()) {
+    private static boolean isUnderflowedGrossReturn(BarSeries series, Position position, Num grossReturn) {
+        boolean roundedBoundary = position.getEntry().isBuy() ? grossReturn.isZero()
+                : grossReturn.isEqual(series.numFactory().two());
+        if (!roundedBoundary) {
             return false;
         }
         Num entryPrice = position.getEntry().getPricePerAsset(series);
@@ -147,7 +149,7 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
                 continue;
             }
             Num grossReturn = grossReturnCriterion.calculate(series, position);
-            if (!Num.isFinite(grossReturn) || isUnderflowedLongReturn(series, position, grossReturn)) {
+            if (!Num.isFinite(grossReturn) || isUnderflowedGrossReturn(series, position, grossReturn)) {
                 // A finite price ratio overflowed or underflowed the factory's
                 // representation. Recompute the capability entirely in decimal
                 // space from raw trade prices: the final Cpk can remain
@@ -314,6 +316,13 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
      */
     private Num calculateDecimalCpk(BarSeries series, TradingRecord tradingRecord, NumFactory factory) {
         MathContext context = recoveryMathContext(factory);
+        boolean centerShortReturns = true;
+        for (Position position : tradingRecord.getPositions()) {
+            if (position.isClosed() && position.getEntry().isBuy()) {
+                centerShortReturns = false;
+                break;
+            }
+        }
         List<BigDecimal> returns = new ArrayList<>();
         for (Position position : tradingRecord.getPositions()) {
             if (!position.isClosed()) {
@@ -329,6 +338,11 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             BigDecimal ratio = exitPrice.bigDecimalValue().divide(entryPrice.bigDecimalValue(), context);
             if (position.getEntry().isBuy()) {
                 returns.add(ratio);
+            } else if (centerShortReturns) {
+                // Center every all-short return at two before subtraction. This
+                // preserves ratios below the factory/context magnitude:
+                // (2 - ratio) - 2 = -ratio.
+                returns.add(ratio.negate());
             } else {
                 returns.add(BigDecimal.valueOf(2).subtract(ratio, context));
             }
@@ -336,6 +350,8 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         if (returns.isEmpty()) {
             return factory.zero();
         }
+        BigDecimal centeredLsl = centerShortReturns ? lsl.subtract(BigDecimal.valueOf(2)) : lsl;
+        BigDecimal centeredUsl = centerShortReturns && usl != null ? usl.subtract(BigDecimal.valueOf(2)) : usl;
         BigDecimal sum = BigDecimal.ZERO;
         for (BigDecimal value : returns) {
             sum = sum.add(value, context);
@@ -352,11 +368,11 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         if (threeSigma.signum() == 0) {
             return factory.zero();
         }
-        BigDecimal lowerCapability = mean.subtract(lsl, context).divide(threeSigma, context);
-        if (usl == null) {
+        BigDecimal lowerCapability = mean.subtract(centeredLsl, context).divide(threeSigma, context);
+        if (centeredUsl == null) {
             return factory.numOf(lowerCapability);
         }
-        BigDecimal upperCapability = usl.subtract(mean, context).divide(threeSigma, context);
+        BigDecimal upperCapability = centeredUsl.subtract(mean, context).divide(threeSigma, context);
         return factory.numOf(lowerCapability.min(upperCapability));
     }
 
