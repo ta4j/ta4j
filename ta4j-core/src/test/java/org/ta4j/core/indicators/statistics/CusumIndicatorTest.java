@@ -286,6 +286,50 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
+    public void negativeFiniteTargetMeanBeyondFactoryRangeStaysAtZero() {
+        // targetMean = -1e400 is finite but overflows a primitive-backed
+        // factory; saturation must preserve the raw sign. A negative extreme
+        // target saturates to the negative ceiling, so every deviation is
+        // hugely negative and the CUSUM clamps at zero instead of flipping to
+        // the positive ceiling and reporting a maximum positive shift.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        MockIndicator drift = new MockIndicator(series, 0, numOf(0.010), numOf(0.010), numOf(0.010));
+        CusumIndicator beyondRange = new CusumIndicator(drift, new BigDecimal("-1e400"), 0.005);
+
+        Num value = beyondRange.getValue(2);
+
+        assertTrue(Num.isFinite(value));
+        assertNumEquals(0, value);
+    }
+
+    @Test
+    public void negativeFiniteAllowanceBeyondFactoryRangeIsRejected() {
+        // allowance = -1e400 saturates to the negative ceiling, which is still
+        // negative and therefore fails the >= 0 validation instead of flipping
+        // to the positive ceiling and being accepted.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        MockIndicator drift = new MockIndicator(series, 0, numOf(0.010), numOf(0.010), numOf(0.010));
+
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> new CusumIndicator(drift, 0, new BigDecimal("-1e400")));
+
+        assertEquals("allowance must be >= 0", thrown.getMessage());
+    }
+
+    @Test
+    public void negativeFiniteOutlierClipFactorBeyondFactoryRangeIsRejected() {
+        // outlierClipFactor = -1e400 saturates to the negative ceiling, which
+        // still fails the > 0 validation instead of flipping to the positive
+        // ceiling and being accepted.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> new CusumIndicator(series, 0, 0, new BigDecimal("-1e400"), 0.94));
+
+        assertEquals("outlierClipFactor must be > 0", thrown.getMessage());
+    }
+
+    @Test
     public void reanchorsAfterRetainedHeadPrunes() {
         // Retained-head pruning invalidates the recursion: the CUSUM must
         // reseed at the new head instead of publishing values cached against

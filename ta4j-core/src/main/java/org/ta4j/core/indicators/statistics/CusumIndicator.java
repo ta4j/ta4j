@@ -334,8 +334,12 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             // factory). The indicator documents finite saturation for
             // deviations that exceed the active representation, so publish the
             // factory's finite ceiling rather than rejecting a valid extreme
-            // target as non-finite.
-            return saturationMagnitude(factory);
+            // target as non-finite. Saturation preserves the raw sign: a
+            // negative extreme saturates to the negative ceiling so allowance
+            // and outlierClipFactor sign validation (and the CUSUM direction)
+            // remain correct.
+            Num ceiling = saturationMagnitude(factory);
+            return num.isNegative() ? ceiling.negate() : ceiling;
         }
         return num;
     }
