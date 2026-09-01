@@ -18,6 +18,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -186,6 +187,20 @@ public class EveningStarIndicatorTest extends AbstractIndicatorTest<Indicator<Bo
         addBar(series, 29, 25, 30, 24); // third: close exactly at penetration level 25
 
         assertTrue(new EveningStarIndicator(series).getValue(PATTERN_INDEX));
+    }
+
+    @Test
+    public void customPenetrationBoundaryUsesFactoryArithmetic() {
+        NumFactory highPrecisionFactory = DecimalNumFactory.getInstance(34);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(highPrecisionFactory).build();
+        for (int i = 0; i < 3; i++) {
+            addBar(series, 1, 1.2, 1.3, 0.9);
+        }
+        addBar(series, 0.3, 1.3, 1.4, 0.2); // first: bullish long body
+        addBar(series, 1.4, 1.5, 1.55, 1.35); // star: short body, real body gaps up
+        addBar(series, 1.2, 0.4, 1.3, 0.3); // third: bearish close at the 90% penetration boundary
+
+        assertTrue(new EveningStarIndicator(series, 3, 0.9).getValue(5));
     }
 
     @Test

@@ -77,7 +77,7 @@ public class EveningStarIndicator extends CandlePatternIndicator {
         this.averagePeriod = CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD;
         this.penetration = DEFAULT_PENETRATION;
         this.penetrationFactor = getBarSeries().numFactory().numOf(penetration);
-        this.oneMinusPenetrationFactor = getBarSeries().numFactory().numOf(1d - penetration);
+        this.oneMinusPenetrationFactor = getBarSeries().numFactory().one().minus(penetrationFactor);
     }
 
     @Override
@@ -105,7 +105,7 @@ public class EveningStarIndicator extends CandlePatternIndicator {
         this.averagePeriod = averagePeriod;
         this.penetration = penetration;
         this.penetrationFactor = getBarSeries().numFactory().numOf(penetration);
-        this.oneMinusPenetrationFactor = getBarSeries().numFactory().numOf(1d - penetration);
+        this.oneMinusPenetrationFactor = getBarSeries().numFactory().one().minus(penetrationFactor);
     }
 
     @Override

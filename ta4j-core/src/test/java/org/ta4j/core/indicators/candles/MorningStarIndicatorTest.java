@@ -18,6 +18,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -201,6 +202,20 @@ public class MorningStarIndicatorTest extends AbstractIndicatorTest<Indicator<Bo
         addBar(series, 19, 25, 27, 18); // third: close exactly at penetration level 25
 
         assertTrue(new MorningStarIndicator(series).getValue(PATTERN_INDEX));
+    }
+
+    @Test
+    public void customPenetrationBoundaryUsesFactoryArithmetic() {
+        NumFactory highPrecisionFactory = DecimalNumFactory.getInstance(34);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(highPrecisionFactory).build();
+        for (int i = 0; i < 3; i++) {
+            addBar(series, 1, 1.2, 1.3, 0.9);
+        }
+        addBar(series, 1.3, 0.3, 1.4, 0.2); // first: bearish long body
+        addBar(series, 0.1, 0.2, 0.25, 0.05); // star: short body, real body gaps down
+        addBar(series, 0.5, 1.0, 1.1, 0.4); // third: bullish close at the 70% penetration boundary
+
+        assertTrue(new MorningStarIndicator(series, 3, 0.7).getValue(5));
     }
 
     @Test
