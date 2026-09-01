@@ -497,6 +497,21 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
+    public void decimalSubdoubleScaleDecayPreservesItsExactWeightDuringRecovery() {
+        NumFactory precise = DecimalNumFactory.getInstance(500);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(precise).withData(0, 0, 0).build();
+        CusumIndicator cusum = new CusumIndicator(
+                new MockIndicator(series, 0, precise.numOf(new BigDecimal("-1E-1000")),
+                        precise.numOf(new BigDecimal("-2E-1000")), precise.numOf(new BigDecimal("-3E-1000"))),
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ONE, new BigDecimal("1E-400"));
+
+        Num expectedScale = precise.numOf(new BigDecimal("2E-1000").subtract(new BigDecimal("1E-1400")));
+        Num expected = precise.numOf(new BigDecimal("2E-1000").add(expectedScale.bigDecimalValue()));
+
+        assertNumEquals(expected, cusum.getValue(2));
+    }
+
+    @Test
     public void barSeriesConstructorsMonitorClosePrice() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
         CusumIndicator threeArg = new CusumIndicator(series, 0, 0.005);

@@ -69,6 +69,7 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
      * Constructor for a one-sided, lower specification limit.
      *
      * @param lsl the lower specification limit; must not be null and must be finite
+     * @since 0.24.2
      */
     public ProcessCapabilityCriterion(Number lsl) {
         this(new Limits(decimalValue(lsl, "lsl"), null));
@@ -80,6 +81,7 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
      * @param lsl the lower specification limit; must not be null and must be finite
      * @param usl the upper specification limit; may be null and must be finite and
      *            greater than {@code lsl}
+     * @since 0.24.2
      */
     public ProcessCapabilityCriterion(Number lsl, Number usl) {
         this(new Limits(decimalValue(lsl, "lsl"), usl == null ? null : decimalValue(usl, "usl")));

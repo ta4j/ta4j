@@ -136,6 +136,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
      * @param series     bar series
      * @param targetMean the in-control process mean {@code mu0}; must be finite
      * @param allowance  the tolerable deviation {@code k}; must be >= 0
+     * @since 0.24.2
      */
     public CusumIndicator(BarSeries series, Number targetMean, Number allowance) {
         this(validateParameters(closePrice(series), targetMean, allowance, 3.0, 0.94));
@@ -151,6 +152,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
      * @param outlierClipFactor the winsorization factor; must be > 0
      * @param scaleDecay        the EWMA decay of the deviation scale; must be in
      *                          (0, 1)
+     * @since 0.24.2
      */
     public CusumIndicator(BarSeries series, Number targetMean, Number allowance, Number outlierClipFactor,
             Number scaleDecay) {
@@ -168,6 +170,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
      * @param indicator  the indicator to monitor for mean shifts
      * @param targetMean the in-control process mean {@code mu0}
      * @param allowance  the tolerable deviation {@code k}; must be >= 0
+     * @since 0.24.2
      */
     public CusumIndicator(Indicator<Num> indicator, Number targetMean, Number allowance) {
         this(validateParameters(indicator, targetMean, allowance, 3.0, 0.94));
@@ -183,6 +186,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
      * @param outlierClipFactor the winsorization factor; must be > 0
      * @param scaleDecay        the EWMA decay of the deviation scale; must be in
      *                          (0, 1)
+     * @since 0.24.2
      */
     public CusumIndicator(Indicator<Num> indicator, Number targetMean, Number allowance, Number outlierClipFactor,
             Number scaleDecay) {
@@ -431,8 +435,8 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             Num updated = previous.plus(delta.multipliedBy(oneMinusScaleDecay));
             if (ExactDecimalArithmetic.isSubnormalMagnitude(updated)) {
                 return ExactDecimalArithmetic.exactWeightedSum(getBarSeries().numFactory(),
-                        ExactDecimalArithmetic.exactValueOf(previous), scaleDecay.doubleValue(),
-                        ExactDecimalArithmetic.exactValueOf(increment), oneMinusScaleDecay.doubleValue());
+                        ExactDecimalArithmetic.exactValueOf(previous), scaleDecay,
+                        ExactDecimalArithmetic.exactValueOf(increment), oneMinusScaleDecay);
             }
             return updated;
         }

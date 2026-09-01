@@ -413,20 +413,28 @@ EOF
 test_progressing_build_is_not_killed_at_timeout_boundary() {
   echo "Running test_progressing_build_is_not_killed_at_timeout_boundary"
   create_test_repo
+  local watchdog_clock="$TMP/watchdog-clock"
+  printf '%s\n' 0 > "$watchdog_clock"
   cat > "$TMP/bin/mvn" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$@" > "$FAKE_MAVEN_ARGS"
 echo "[INFO] Slow fixture started"
-sleep 2
-echo "[INFO] Slow fixture still progressing"
-sleep 2
+for tick in 1 2 3 4 5; do
+  /bin/sleep 0.05
+  printf '%s\n' "$tick" > "${QUIET_BUILD_TEST_CLOCK_FILE}.next"
+  /bin/mv "${QUIET_BUILD_TEST_CLOCK_FILE}.next" "$QUIET_BUILD_TEST_CLOCK_FILE"
+  echo "[INFO] Slow fixture still progressing"
+done
 echo "[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0"
 echo "[INFO] BUILD SUCCESS"
 EOF
   chmod +x "$TMP/bin/mvn"
 
   local output
-  output="$(QUIET_BUILD_TIMEOUT_SECONDS=1 QUIET_BUILD_STALL_SECONDS=3 run_quiet_build scripts/run-full-build-quiet.sh)"
+  output="$(QUIET_BUILD_TIMEOUT_SECONDS=1 QUIET_BUILD_STALL_SECONDS=3 \
+    QUIET_BUILD_TEST_CLOCK_FILE="$watchdog_clock" \
+    QUIET_BUILD_TEST_WATCHDOG_POLL_SECONDS=0.01 \
+    run_quiet_build scripts/run-full-build-quiet.sh)"
 
   expect_contains "$output" "Build: success" "progressing Maven output should extend the watchdog past the hard timeout boundary"
   expect_file_contains_line "$TMP/maven-args.txt" "verify" "progressing timeout fixture should still run the canonical Maven command"

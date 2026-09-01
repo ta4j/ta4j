@@ -90,6 +90,7 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
      * @param series      bar series
      * @param barCount    the seed window length; must be >= 1
      * @param decayFactor the EWMA decay factor; must be in (0, 1)
+     * @since 0.24.2
      */
     public EwmaVarianceIndicator(BarSeries series, int barCount, double decayFactor) {
         this(validateParameters(closePrice(series), barCount, decayFactor));
@@ -105,6 +106,7 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
      * @param indicator   the indicator whose variance is monitored
      * @param barCount    the seed window length; must be >= 1
      * @param decayFactor the EWMA decay factor; must be in (0, 1)
+     * @since 0.24.2
      */
     public EwmaVarianceIndicator(Indicator<Num> indicator, int barCount, double decayFactor) {
         this(validateParameters(indicator, barCount, decayFactor));
@@ -269,8 +271,8 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             // rejects non-finite conversions; the return below already drops
             // non-finite deviations before this recovery matters.
             updatedVariance = ExactDecimalArithmetic.exactWeightedSum(getBarSeries().numFactory(),
-                    ExactDecimalArithmetic.exactValueOf(previousVariance), decay.doubleValue(),
-                    ExactDecimalArithmetic.exactValueOf(deviation).pow(2), oneMinusDecay.doubleValue());
+                    ExactDecimalArithmetic.exactValueOf(previousVariance), decay,
+                    ExactDecimalArithmetic.exactValueOf(deviation).pow(2), oneMinusDecay);
         }
         return Num.isFinite(deviation) && Num.isFinite(updatedVariance) ? updatedVariance : NaN.NaN;
     }
@@ -542,8 +544,8 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             // expansion, which can exceed the double range, so the conversion
             // must not go through doubleValue().
             return ExactDecimalArithmetic.exactWeightedSum(getBarSeries().numFactory(),
-                    ExactDecimalArithmetic.exactValueOf(previousMean), decay.doubleValue(),
-                    ExactDecimalArithmetic.exactValueOf(current), oneMinusDecay.doubleValue());
+                    ExactDecimalArithmetic.exactValueOf(previousMean), decay,
+                    ExactDecimalArithmetic.exactValueOf(current), oneMinusDecay);
         }
 
         @Override

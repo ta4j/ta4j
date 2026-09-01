@@ -108,6 +108,7 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
      *                            collapse 3.14159 to 3, and a limit of 1e400 is
      *                            representable by a DecimalNum context but not a
      *                            DoubleNum capability)
+     * @since 0.24.2
      */
     public ProcessCapabilityPositionSizer(Indicator<Num> capabilityIndicator, Number baseAmount, Number controlLimit) {
         this.capabilityIndicator = Objects.requireNonNull(capabilityIndicator, "capabilityIndicator must not be null");

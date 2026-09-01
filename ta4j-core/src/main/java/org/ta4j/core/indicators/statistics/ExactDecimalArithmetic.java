@@ -87,7 +87,31 @@ final class ExactDecimalArithmetic {
      */
     static Num exactWeightedSum(NumFactory factory, BigDecimal first, double firstWeight, BigDecimal second,
             double secondWeight) {
-        BigDecimal sum = first.multiply(new BigDecimal(firstWeight)).add(second.multiply(new BigDecimal(secondWeight)));
+        return narrowWeightedSum(factory, first, new BigDecimal(firstWeight), second, new BigDecimal(secondWeight));
+    }
+
+    /**
+     * The convex combination {@code first * firstWeight + second *
+     * secondWeight}, combined without intermediate rounding and narrowed once
+     * through {@code factory}. {@link DoubleNum} weights retain their exact binary
+     * value; other {@link Num} implementations retain their exact decimal expansion
+     * instead of an underflowing primitive-double projection.
+     *
+     * @param factory      the factory that narrows the exact sum
+     * @param first        the exact expansion of the first operand
+     * @param firstWeight  the first convex weight
+     * @param second       the exact expansion of the second operand
+     * @param secondWeight the second convex weight
+     * @return the exactly combined, once-narrowed weighted sum
+     */
+    static Num exactWeightedSum(NumFactory factory, BigDecimal first, Num firstWeight, BigDecimal second,
+            Num secondWeight) {
+        return narrowWeightedSum(factory, first, exactValueOf(firstWeight), second, exactValueOf(secondWeight));
+    }
+
+    private static Num narrowWeightedSum(NumFactory factory, BigDecimal first, BigDecimal firstWeight,
+            BigDecimal second, BigDecimal secondWeight) {
+        BigDecimal sum = first.multiply(firstWeight).add(second.multiply(secondWeight));
         return factory.numOf(sum);
     }
 }
