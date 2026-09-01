@@ -460,6 +460,25 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void normalVarianceUpdateDerivesDecayFromAppliedComplement() {
+        // A precision-1 factory stores decay 0.94 as 0.9 but preserves the
+        // applied complement 0.06. The normal update 0.9 * 6 = 5.4 would round
+        // to 5; the complement-implied 0.94 * 6 = 5.64 must recombine exactly
+        // to 6. The zero weighted squared deviation (once the mean lands on the
+        // current value) keys recovery, which derives the first weight from the
+        // applied complement rather than the stored, independently rounded one.
+        NumFactory precisionOne = DecimalNumFactory.getInstance(1);
+        Num zero = precisionOne.numOf(0);
+        Num ten = precisionOne.numOf(10);
+        Num pointSix = precisionOne.numOf(0.6);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(precisionOne).withData(0, 0, 0).build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(new MockIndicator(series, 0, zero, ten, pointSix), 1,
+                0.94);
+
+        assertNumEquals(precisionOne.numOf(6), variance.getValue(2));
+    }
+
+    @Test
     public void nonStallingSubnormalMeanRoundsOnce() {
         // With previous mean MIN_VALUE and current 4 * MIN_VALUE at decay 0.5,
         // the difference form adds fl(1.5 * MIN_VALUE) = 2 * MIN_VALUE to the

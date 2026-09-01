@@ -202,7 +202,7 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         this.outlierClipFactor = parameters.outlierClipFactor();
         this.scaleDecay = parameters.rawScaleDecay();
         this.deviationScale = new DeviationScaleIndicator(this.indicator, this.targetMean, this.allowance,
-                parameters.oneMinusScaleDecay());
+                parameters.oneMinusScaleDecay(), parameters.rawComplementScaleDecay());
     }
 
     private static Parameters validateParameters(Indicator<Num> indicator, Number targetMean, Number allowance,
@@ -223,7 +223,8 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             throw new IllegalArgumentException("outlierClipFactor must be > 0");
         }
         return new Parameters(indicator, validatedTargetMean, validatedAllowance, validatedOutlierClipFactor,
-                validatedScaleDecay.rawScaleDecay(), validatedScaleDecay.oneMinusScaleDecay());
+                validatedScaleDecay.rawScaleDecay(), validatedScaleDecay.rawComplementScaleDecay(),
+                validatedScaleDecay.oneMinusScaleDecay());
     }
 
     private static ValidatedScaleDecay validateScaleDecay(Number scaleDecay, NumFactory factory) {
@@ -262,14 +263,15 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         }
         BigDecimal complement = BigDecimal.ONE.subtract(rawScaleDecay);
         Num oneMinusScaleDecay = factory.numOf(complement);
-        return new ValidatedScaleDecay(rawScaleDecay, oneMinusScaleDecay);
+        return new ValidatedScaleDecay(rawScaleDecay, complement, oneMinusScaleDecay);
     }
 
-    private record ValidatedScaleDecay(BigDecimal rawScaleDecay, Num oneMinusScaleDecay) {
+    private record ValidatedScaleDecay(BigDecimal rawScaleDecay, BigDecimal rawComplementScaleDecay,
+            Num oneMinusScaleDecay) {
     }
 
     private record Parameters(Indicator<Num> indicator, Num targetMean, Num allowance, Num outlierClipFactor,
-            BigDecimal rawScaleDecay, Num oneMinusScaleDecay) {
+            BigDecimal rawScaleDecay, BigDecimal rawComplementScaleDecay, Num oneMinusScaleDecay) {
     }
 
     @Override
@@ -390,14 +392,16 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         private final Num targetMean;
         private final Num allowance;
         private final Num oneMinusScaleDecay;
+        private final BigDecimal rawComplementScaleDecay;
 
-        private DeviationScaleIndicator(Indicator<Num> indicator, Num targetMean, Num allowance,
-                Num oneMinusScaleDecay) {
+        private DeviationScaleIndicator(Indicator<Num> indicator, Num targetMean, Num allowance, Num oneMinusScaleDecay,
+                BigDecimal rawComplementScaleDecay) {
             super(indicator);
             this.indicator = indicator;
             this.targetMean = targetMean;
             this.allowance = allowance;
             this.oneMinusScaleDecay = oneMinusScaleDecay;
+            this.rawComplementScaleDecay = rawComplementScaleDecay;
         }
 
         private void invalidateForRetainedHead() {
@@ -442,9 +446,23 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             if (ExactDecimalArithmetic.requiresExactRecovery(updated, weightedDelta)) {
                 return ExactDecimalArithmetic.exactWeightedSum(getBarSeries().numFactory(),
                         ExactDecimalArithmetic.exactValueOf(previous), ExactDecimalArithmetic.exactValueOf(increment),
-                        oneMinusScaleDecay);
+                        appliedScaleWeight());
             }
             return updated;
+        }
+
+        /**
+         * The exact convex weight the scale update applies. A complement that
+         * underflows the active factory to zero (a decay within {@code 1e-308} of one
+         * on the double grid) would freeze the scale at its seed: recovery re-applies
+         * the raw exact complement so a finite delta can still bootstrap the
+         * winsorization bound.
+         */
+        private BigDecimal appliedScaleWeight() {
+            if (oneMinusScaleDecay.isZero() && rawComplementScaleDecay.signum() != 0) {
+                return rawComplementScaleDecay;
+            }
+            return ExactDecimalArithmetic.exactValueOf(oneMinusScaleDecay);
         }
     }
 }

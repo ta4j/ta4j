@@ -193,6 +193,26 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
+    public void underflowedComplementStillBootstrapsWinsorizationScale() {
+        // A decay within 1e-308 of one (1 - 1e-400) has an exact complement of
+        // 1e-400, which underflows to zero on the double grid. Narrowing the
+        // complement before weighting the delta would freeze the scale at its
+        // zero seed and suppress the CUSUM indefinitely; recombining with the
+        // raw exact complement bootstraps the bound so the clipped increment
+        // (~3e-92) survives.
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory).withData(0, -1e308, -1).build();
+        MockIndicator doubleSource = new MockIndicator(series, 0, doubleFactory.numOf(0), doubleFactory.numOf(-1e308),
+                doubleFactory.numOf(-1));
+
+        CusumIndicator cusum = new CusumIndicator(doubleSource, 0, 0, 3.0,
+                BigDecimal.ONE.subtract(new BigDecimal("1e-400")));
+
+        Num expected = doubleFactory.numOf(new BigDecimal("1e-92")).multipliedBy(doubleFactory.numOf(3));
+        assertNumEquals(expected, cusum.getValue(2));
+    }
+
+    @Test
     public void scaleDecayComplementAvoidsDoubleRoundingArtifact() {
         // The complement must be the exact BigDecimal difference 1 - decay: a
         // double-computed complement carries the binary rounding artifact

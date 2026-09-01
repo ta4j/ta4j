@@ -103,7 +103,24 @@ final class ExactDecimalArithmetic {
      * @return the exactly combined, once-narrowed weighted sum
      */
     static Num exactWeightedSum(NumFactory factory, BigDecimal first, BigDecimal second, Num secondWeight) {
-        BigDecimal exactSecondWeight = exactValueOf(secondWeight);
+        return exactWeightedSum(factory, first, second, exactValueOf(secondWeight));
+    }
+
+    /**
+     * The convex combination {@code first * (1 - exactSecondWeight) + second *
+     * exactSecondWeight}, combined without intermediate rounding and narrowed once
+     * through {@code factory}. Unlike the {@link Num} overload, the second weight
+     * is already an exact {@link BigDecimal}, so a decay complement such as
+     * {@code 1e-400} that narrows to zero under every active primitive factory
+     * still drives the exact update.
+     *
+     * @param factory           the factory that narrows the exact sum
+     * @param first             the exact expansion of the first operand
+     * @param second            the exact expansion of the second operand
+     * @param exactSecondWeight the exact second convex weight
+     * @return the exactly combined, once-narrowed weighted sum
+     */
+    static Num exactWeightedSum(NumFactory factory, BigDecimal first, BigDecimal second, BigDecimal exactSecondWeight) {
         BigDecimal exactFirstWeight = BigDecimal.ONE.subtract(exactSecondWeight);
         return factory.numOf(first.multiply(exactFirstWeight).add(second.multiply(exactSecondWeight)));
     }

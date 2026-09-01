@@ -451,18 +451,23 @@ run_with_timeout() {
     fi
     : >"$timeout_marker_file"
 
+    # Capture the initial clock before launching so the timeout counts from build
+    # start rather than the watcher's first poll. A fast fake Maven that advances
+    # the test clock to completion before the watcher first polls would otherwise
+    # freeze elapsed at zero and never exercise the timeout boundary.
+    local start_epoch
+    start_epoch="$(watchdog_epoch "$test_clock_file")"
+
     "$@" &
     local command_pid=$!
 
     (
         local elapsed=0
         local sleep_pid=""
-        local start_epoch
         local now_epoch
         local last_progress_epoch
         local last_heartbeat_epoch
         local last_progress_size=0
-        start_epoch="$(watchdog_epoch "$test_clock_file")"
         last_progress_epoch="$start_epoch"
         last_heartbeat_epoch="$start_epoch"
         if [[ -f "$progress_file" ]]; then
