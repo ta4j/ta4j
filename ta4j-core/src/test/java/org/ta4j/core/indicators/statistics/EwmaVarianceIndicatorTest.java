@@ -395,6 +395,24 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void oneUlpAboveMinimumNormalRecombinesFloatMean() {
+        // The difference form rounds 0.5 * 0x1ff to 0x100 and publishes
+        // 0x00800001. The exact convex mean is 0x00800000.5, which rounds
+        // ties-to-even to Float.MIN_NORMAL on the float grid.
+        NumFactory floatFactory = FloatNumFactory.getInstance();
+        Num previousMean = floatFactory.numOf(Float.intBitsToFloat(0x007fff01));
+        Num current = floatFactory.numOf(Float.intBitsToFloat(0x00800100));
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory).withData(0, 0).build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(new MockIndicator(series, 0, previousMean, current),
+                1, 0.5);
+
+        assertNumEquals(floatFactory.numOf(Float.MIN_NORMAL), variance.getMeanIndicator().getValue(1));
+        assertTrue(ExactDecimalArithmetic.isSubnormalMagnitude(floatFactory.numOf(Math.nextUp(Float.MIN_NORMAL))));
+        assertTrue(ExactDecimalArithmetic
+                .isSubnormalMagnitude(DoubleNumFactory.getInstance().numOf(Math.nextUp(Double.MIN_NORMAL))));
+    }
+
+    @Test
     public void nonStallingSubnormalMeanRoundsOnce() {
         // With previous mean MIN_VALUE and current 4 * MIN_VALUE at decay 0.5,
         // the difference form adds fl(1.5 * MIN_VALUE) = 2 * MIN_VALUE to the
