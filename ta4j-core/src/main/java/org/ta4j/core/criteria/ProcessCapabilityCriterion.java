@@ -115,6 +115,24 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         }
     }
 
+    /**
+     * Tests whether a finite non-zero long price ratio was rounded to zero by the
+     * active numeric factory.
+     *
+     * @param series      the source series
+     * @param position    the closed position
+     * @param grossReturn the factory-domain gross return
+     * @return {@code true} when decimal recovery is required
+     */
+    private static boolean isUnderflowedLongReturn(BarSeries series, Position position, Num grossReturn) {
+        if (!position.getEntry().isBuy() || !grossReturn.isZero()) {
+            return false;
+        }
+        Num entryPrice = position.getEntry().getPricePerAsset(series);
+        Num exitPrice = position.getExit().getPricePerAsset(series);
+        return Num.isFinite(entryPrice) && Num.isFinite(exitPrice) && !entryPrice.isZero() && !exitPrice.isZero();
+    }
+
     @Override
     public Num calculate(BarSeries series, Position position) {
         return series.numFactory().zero();
@@ -125,24 +143,23 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         NumFactory factory = series.numFactory();
         List<Num> values = new ArrayList<>();
         for (Position position : tradingRecord.getPositions()) {
-            if (position.isClosed()) {
-                values.add(grossReturnCriterion.calculate(series, position));
+            if (!position.isClosed()) {
+                continue;
             }
+            Num grossReturn = grossReturnCriterion.calculate(series, position);
+            if (!Num.isFinite(grossReturn) || isUnderflowedLongReturn(series, position, grossReturn)) {
+                // A finite price ratio overflowed or underflowed the factory's
+                // representation. Recompute the capability entirely in decimal
+                // space from raw trade prices: the final Cpk can remain
+                // representable even when individual returns are not.
+                return calculateDecimalCpk(series, tradingRecord, factory);
+            }
+            values.add(grossReturn);
         }
         if (values.isEmpty()) {
             return factory.zero();
         }
         Num[] valueArray = values.toArray(new Num[0]);
-        for (Num value : valueArray) {
-            if (!Num.isFinite(value)) {
-                // A gross return overflowed the factory's representation (for
-                // example finite non-zero entry and exit prices whose ratio
-                // exceeds the double range). Recompute the capability entirely
-                // in decimal space from the raw trade prices: the final Cpk is
-                // representable even though the individual returns are not.
-                return calculateDecimalCpk(series, tradingRecord, factory);
-            }
-        }
         Num mean = compensatedSum(valueArray, factory).dividedBy(factory.numOf(valueArray.length));
         if (!Num.isFinite(mean)) {
             // Rescaling a mean that was first averaged in the normalized Num
@@ -282,14 +299,12 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
      * exceeds the active {@link Num} representation.
      *
      * <p>
-     * Gross returns are quotients of trade prices; a finite non-zero entry and exit
-     * whose ratio exceeds the representation range produces a non-finite
-     * {@code Num}, but the final capability can still be representable (a DoubleNum
-     * pair of returns 1e608 and 2e608 has mean 1.5e608, sigma 0.5e608 and Cpk 1).
-     * The same recovery preserves separation between finite returns when only their
-     * sum overflows. Prices with zero or non-finite magnitude are not arithmetic
-     * overflow: they are genuinely degenerate, so the criterion keeps its
-     * zero-score behavior for them.
+     * Gross returns are quotients of trade prices. Finite non-zero prices can
+     * produce a ratio above the representation range or below its minimum magnitude
+     * even though the final capability remains representable. The same recovery
+     * preserves separation between finite returns when only their sum overflows.
+     * Raw zero or non-finite prices are genuinely degenerate, so the criterion
+     * keeps its zero-score behavior for them.
      *
      * @param series        the bar series (source of the price numerics)
      * @param tradingRecord the record whose closed positions supply the prices

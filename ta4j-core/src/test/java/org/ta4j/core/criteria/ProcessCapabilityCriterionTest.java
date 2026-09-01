@@ -403,6 +403,22 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void grossReturnRatioUnderflowKeepsRepresentableCapability() {
+        // Entry 1e300 and exits 1e-308 / 2e-308 produce long gross returns
+        // 1e-608 and 2e-608. DoubleNum rounds both ratios to zero, but their
+        // one-sided Cpk against LSL 0 remains 1. DecimalNum keeps the ratios
+        // finite and yields the same score.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1e300, 1e-308, 1e300, 2e-308)
+                .build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series));
+
+        AnalysisCriterion cpk = getCriterion(0);
+        assertNumEquals(1, cpk.calculate(series, tradingRecord));
+    }
+
+    @Test
     public void shortGrossReturnRatioOverflowKeepsRepresentableCapability() {
         // Short entries at 1e-300 covered at 1e300 / 2e300 produce
         // multiplicative returns 2 - 1e600 and 2 - 2e600. Both overflow
