@@ -255,17 +255,19 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         // representable (a deviation near sqrt(MAX) against a decay near
         // one), so this multiplication order keeps finite EWMA variances
         // available to control-limit consumers.
-        Num updatedVariance = previousVariance.multipliedBy(decay)
-                .plus(deviation.multipliedBy(deviation.multipliedBy(oneMinusDecay)));
-        if (ExactDecimalArithmetic.isSubnormalMagnitude(updatedVariance) && Num.isFinite(deviation)) {
-            // A nonnegative product sum of subnormal magnitude can misround on
-            // the subnormal grid: each separately rounded term carries up to
-            // half a subnormal ulp of error, so both terms can collapse to zero
-            // although their exact sum is representable. Recombine the exact
-            // products without intermediate rounding and narrow once. The
-            // deviation must be finite because BigDecimal rejects non-finite
-            // conversions; the return below already drops non-finite
-            // deviations before this recovery matters.
+        Num weightedSquaredDeviation = deviation.multipliedBy(deviation.multipliedBy(oneMinusDecay));
+        Num updatedVariance = previousVariance.multipliedBy(decay).plus(weightedSquaredDeviation);
+        if (ExactDecimalArithmetic.requiresExactRecovery(updatedVariance, weightedSquaredDeviation)
+                && Num.isFinite(deviation)) {
+            // A nonnegative product sum can misround on the active primitive
+            // grid even when its result is normal: a subnormal-magnitude
+            // weighted term carries up to half a subnormal ulp of error per
+            // separately rounded product, which can move a normal-magnitude
+            // result by one grid ulp. Recombine the exact products without
+            // intermediate rounding and narrow once. The deviation must be
+            // finite because BigDecimal rejects non-finite conversions; the
+            // return below already drops non-finite deviations before this
+            // recovery matters.
             updatedVariance = ExactDecimalArithmetic.exactWeightedSum(getBarSeries().numFactory(),
                     ExactDecimalArithmetic.exactValueOf(previousVariance),
                     ExactDecimalArithmetic.exactValueOf(deviation).pow(2), oneMinusDecay);

@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.backtest;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -537,6 +538,26 @@ public class ProcessCapabilityPositionSizerTest {
 
         assertTrue(Num.isFinite(amount));
         assertNumEquals(numOf(Float.MAX_VALUE), amount);
+    }
+
+    @Test
+    public void coarseDecimalContextSaturatesBeyondDoubleRangeAtTrueCeiling() {
+        // A precision-2 DecimalNum context rounds Double.MAX_VALUE
+        // (1.7977e308) up to 1.8e308, whose doubleValue is non-finite, so the
+        // largest context value that still round-trips to a finite double is
+        // 1.7e308. The saturated amount must publish that ceiling instead of
+        // the conservative 9.0e307 a Double.MAX_VALUE / 2 fallback yields.
+        NumFactory precisionTwoFactory = DecimalNumFactory.getInstance(2);
+        BarSeries decimalSeries = new MockBarSeriesBuilder().withNumFactory(DECIMAL_NUM_FACTORY).withData(1, 2).build();
+        FixedIndicator<Num> statistic = new FixedIndicator<>(decimalSeries, DECIMAL_NUM_FACTORY.numOf(0),
+                DECIMAL_NUM_FACTORY.numOf(0));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, new BigDecimal("1e400"), 10);
+
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(precisionTwoFactory).withData(1, 2).build();
+        Num amount = sizer.amount(context(series, 1, 1));
+
+        assertTrue(Num.isFinite(amount));
+        assertEquals(1.7e308, amount.doubleValue(), 0.0);
     }
 
     @Test

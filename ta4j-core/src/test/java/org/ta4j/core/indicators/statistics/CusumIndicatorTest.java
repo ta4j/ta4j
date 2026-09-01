@@ -249,6 +249,23 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
     }
 
     @Test
+    public void finiteTargetMeanBeyondFactoryRangeSaturatesInsteadOfRejecting() {
+        // targetMean = 1e400 is finite but overflows a primitive-backed
+        // factory; only genuinely non-finite sources should be rejected. The
+        // deviation scales up to and saturates at the representation ceiling,
+        // so the valid extreme target must be accepted and publish a finite
+        // positive CUSUM.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        MockIndicator drift = new MockIndicator(series, 0, numOf(0.010), numOf(0.010), numOf(0.010));
+        CusumIndicator beyondRange = new CusumIndicator(drift, new BigDecimal("1e400"), 0.005);
+
+        Num value = beyondRange.getValue(2);
+
+        assertTrue(Num.isFinite(value));
+        assertTrue(value.isPositive());
+    }
+
+    @Test
     public void reanchorsAfterRetainedHeadPrunes() {
         // Retained-head pruning invalidates the recursion: the CUSUM must
         // reseed at the new head instead of publishing values cached against

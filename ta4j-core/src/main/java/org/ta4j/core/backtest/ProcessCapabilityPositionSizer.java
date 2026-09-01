@@ -288,24 +288,32 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
     /**
      * The largest magnitude the context factory can represent within the primitive
      * double range, which backtest managers validate through
-     * {@link Num#doubleValue()}: the double ceiling for double-backed factories; a
-     * just-below-ceiling value for decimal-backed factories, whose significant
-     * digits round {@code Double.MAX_VALUE} itself past the double range; and the
-     * float ceiling when the factory's backing primitive overflows to infinity or
-     * NaN.
+     * {@link Num#doubleValue()}. When the factory rounds {@code Double.MAX_VALUE}
+     * itself past that range (a float-backed factory, or a decimal context with
+     * fewer significant digits than the shortest double representation), the
+     * magnitudes are bisected against the monotone finiteness predicate to recover
+     * the exact highest context value whose {@code doubleValue()} remains finite,
+     * rather than a conservative fixed fraction of {@code Double.MAX_VALUE}.
      */
     private static Num saturationMagnitude(NumFactory factory) {
         Num ceiling = factory.numOf(Double.MAX_VALUE);
-        if (!Double.isFinite(ceiling.doubleValue())) {
-            // Retry below the rounding margin: a decimal-backed factory with
-            // fewer significant digits than Double.MAX_VALUE's shortest
-            // representation rounds it up beyond the double range.
-            ceiling = factory.numOf(Double.MAX_VALUE / 2);
+        if (Double.isFinite(ceiling.doubleValue())) {
+            return ceiling;
         }
-        if (!Double.isFinite(ceiling.doubleValue())) {
-            ceiling = factory.numOf(Float.MAX_VALUE);
+        double low = 1.0;
+        double high = Double.MAX_VALUE;
+        Num highestFinite = factory.one();
+        while (Math.nextDown(high) > low) {
+            double mid = low / 2.0 + high / 2.0;
+            Num candidate = factory.numOf(mid);
+            if (Double.isFinite(candidate.doubleValue())) {
+                highestFinite = candidate;
+                low = mid;
+            } else {
+                high = mid;
+            }
         }
-        return ceiling;
+        return highestFinite;
     }
 
     /**

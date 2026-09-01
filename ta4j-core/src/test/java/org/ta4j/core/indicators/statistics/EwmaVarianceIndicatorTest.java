@@ -517,6 +517,31 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void weightedSubnormalSquaredDeviationRecombinesNormalVariance() {
+        // barCount 2 with decay 0.5 and float-backed source [-a, a, d] seeds
+        // variance a^2 (subnormal) at index 1 and observes deviation d
+        // (normal) at index 2. The weighted squared deviation d^2 * 0.5 is
+        // subnormal while the updated variance a^2 * 0.5 + d^2 * 0.5 is
+        // normal, so a unary result-based recovery guard misses the single
+        // rounding in the subnormal term: separately rounded float products
+        // publish 0x0085990b, but a single exact rounding must publish
+        // 0x0085990c.
+        NumFactory floatFactory = FloatNumFactory.getInstance();
+        float a = Float.intBitsToFloat(0x1f519a47);
+        float d = Float.intBitsToFloat(0x20315b2f);
+        Num negativeA = floatFactory.numOf(-a);
+        Num positiveA = floatFactory.numOf(a);
+        Num deviation = floatFactory.numOf(d);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory).withData(0, 0, 0).build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(
+                new MockIndicator(series, 0, negativeA, positiveA, deviation), 2, 0.5);
+
+        // Seed is the population variance of [-a, a] = a^2.
+        assertEquals(0x001573a9, Float.floatToRawIntBits(variance.getValue(1).floatValue()));
+        assertEquals(0x0085990c, Float.floatToRawIntBits(variance.getValue(2).floatValue()));
+    }
+
+    @Test
     public void decimalOperandsBeyondDoubleRangeCombineExactly() {
         // A precision-1 DecimalNum mean of 1E1000 with current 2E1000 at
         // decay 0.9 stalls the difference form (the 0.1-weighted delta 1E999

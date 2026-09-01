@@ -81,8 +81,8 @@ import org.ta4j.core.num.NumFactory;
  * <p>
  * Typical use is a statistical control-limit kill switch on an equity curve or
  * return stream: build the CUSUM over, e.g., {@code Returns}, and stop trading
- * once {@code NumericIndicator.of(cusum).isLessThan(H)} flips, where {@code H}
- * is derived from a volatility monitor such as
+ * once {@code NumericIndicator.of(cusum).isGreaterThan(H)}, where {@code H} is
+ * derived from a volatility monitor such as
  * {@code NumericIndicator.of(ewmaVariance).sqrt().multipliedBy(h)} with
  * {@code h} around four or five.
  *
@@ -326,7 +326,14 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
         }
         Num num = factory.numOf(value);
         if (!Num.isFinite(num)) {
-            throw new IllegalArgumentException(name + " must be finite");
+            // The raw value is finite but overflows the factory's active
+            // primitive (an arbitrary-precision decimal or integer beyond the
+            // double range, or a finite value beyond a narrower float-backed
+            // factory). The indicator documents finite saturation for
+            // deviations that exceed the active representation, so publish the
+            // factory's finite ceiling rather than rejecting a valid extreme
+            // target as non-finite.
+            return saturationMagnitude(factory);
         }
         return num;
     }
