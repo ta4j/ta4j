@@ -7,6 +7,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -84,6 +85,21 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
     private volatile transient int reseedIndex = -1;
 
     /**
+     * Creates a close-price EWMA variance indicator.
+     *
+     * @param series      bar series
+     * @param barCount    the seed window length; must be >= 1
+     * @param decayFactor the EWMA decay factor; must be in (0, 1)
+     */
+    public EwmaVarianceIndicator(BarSeries series, int barCount, double decayFactor) {
+        this(validateParameters(closePrice(series), barCount, decayFactor));
+    }
+
+    private static ClosePriceIndicator closePrice(BarSeries series) {
+        return new ClosePriceIndicator(Objects.requireNonNull(series, "series must not be null"));
+    }
+
+    /**
      * Constructor.
      *
      * @param indicator   the indicator whose variance is monitored
@@ -91,10 +107,15 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
      * @param decayFactor the EWMA decay factor; must be in (0, 1)
      */
     public EwmaVarianceIndicator(Indicator<Num> indicator, int barCount, double decayFactor) {
-        super(validateParameters(indicator, barCount, decayFactor));
-        this.indicator = indicator;
-        this.barCount = barCount;
-        this.decayFactor = decayFactor;
+        this(validateParameters(indicator, barCount, decayFactor));
+    }
+
+    private EwmaVarianceIndicator(Parameters parameters) {
+        super(parameters.indicator());
+
+        this.indicator = parameters.indicator();
+        this.barCount = parameters.barCount();
+        this.decayFactor = parameters.decayFactor();
         // The complement is the exact BigDecimal difference 1 - rawDecay and
         // the decay is derived from it, mirroring CusumIndicator's scale-decay
         // conversion: computing the complement in primitive double first
@@ -111,7 +132,7 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         this.meanIndicator = new SharedMeanIndicator(indicator, barCount, decay, oneMinusDecay);
     }
 
-    private static Indicator<Num> validateParameters(Indicator<Num> indicator, int barCount, double decayFactor) {
+    private static Parameters validateParameters(Indicator<Num> indicator, int barCount, double decayFactor) {
         Objects.requireNonNull(indicator, "indicator must not be null");
         if (indicator.getBarSeries() == null) {
             throw new IllegalArgumentException("indicator must be bound to a BarSeries");
@@ -127,7 +148,10 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
         if (barCount - 1 > Integer.MAX_VALUE - unstableBars) {
             throw new IllegalArgumentException("barCount must not overflow the unstable-bar count");
         }
-        return indicator;
+        return new Parameters(indicator, barCount, decayFactor);
+    }
+
+    private record Parameters(Indicator<Num> indicator, int barCount, double decayFactor) {
     }
 
     @Override
@@ -169,6 +193,12 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         int beginIndex = getBarSeries().getBeginIndex();
+        if (index == 0 && beginIndex > 0) {
+            // Removed-index reads map to the synthetic zero; anchor at the
+            // retained head like CusumIndicator so the warm-up guard below
+            // treats it as the first retained bar instead of the pruned 0.
+            index = beginIndex;
+        }
         int unstableBars = getCountOfUnstableBars();
         if (index == reseedIndex && index - beginIndex >= unstableBars) {
             // The full seed window [index - barCount + 1, index] now lies
@@ -457,17 +487,28 @@ public class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
             // weighting the difference before combining keeps a same-sign
             // subnormal pair (a constant Double.MIN_VALUE source at decay 0.5)
             // from rounding both convex operands to zero although their exact
-            // sum is representable. Consecutive finite bars of opposite
-            // extreme signs (-1e308 then 1e308) overflow the raw difference
-            // under DoubleNum even though the weighted mean (-8e307 at decay
-            // 0.9) is representable; for those, the convex combination of
-            // finite values with weights summing to one never overflows, so it
-            // is the fallback.
+            // sum is representable. Opposite-extreme finite bars overflow the
+            // raw difference under DoubleNum even though the weighted mean is
+            // representable; for those, the convex combination of finite
+            // values with weights summing to one never overflows. A subnormal
+            // mean decaying toward zero stalls the difference form (the
+            // weighted delta underflows before the addition), which the stall
+            // check below reroutes through the convex combination.
             Num delta = current.minus(previousMean);
             if (!Num.isFinite(delta)) {
                 return previousMean.multipliedBy(decay).plus(current.multipliedBy(oneMinusDecay));
             }
-            return previousMean.plus(delta.multipliedBy(oneMinusDecay));
+            Num updated = previousMean.plus(delta.multipliedBy(oneMinusDecay));
+            if (updated.isEqual(previousMean) && !delta.isZero()) {
+                // The weighted difference underflowed the context epsilon (a
+                // subnormal mean decaying toward zero): the difference form
+                // would stall at previousMean although the correctly-rounded
+                // mean decays below it. The convex combination decays
+                // correctly here because at least one operand stays
+                // representable.
+                return previousMean.multipliedBy(decay).plus(current.multipliedBy(oneMinusDecay));
+            }
+            return updated;
         }
 
         @Override

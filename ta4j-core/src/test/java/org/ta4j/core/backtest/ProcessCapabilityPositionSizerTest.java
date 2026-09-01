@@ -112,6 +112,30 @@ public class ProcessCapabilityPositionSizerTest {
     }
 
     @Test
+    public void limitOutsideCapabilityFactoryRangeSizesAgainstContextFactory() {
+        // A control limit representable only by the sizing context (a
+        // DecimalNum context carries 1e400) must be accepted even when the
+        // capability factory (DoubleNum) cannot represent it: the configured
+        // limit is retained losslessly and coerced through the context factory
+        // at sizing time instead of being validated against the capability
+        // factory's range in the constructor.
+        BarSeries capabilitySeries = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(1, 2)
+                .build();
+        FixedIndicator<Num> statistic = new FixedIndicator<>(capabilitySeries, DoubleNumFactory.getInstance().numOf(0),
+                DoubleNumFactory.getInstance().numOf(1));
+        PositionSizer sizer = new ProcessCapabilityPositionSizer(statistic, 100, new BigDecimal("1e400"));
+
+        runWithNumFactory(DECIMAL_NUM_FACTORY, () -> {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+            // DecimalNum divides the statistic ratio 1/1e400 exactly; the
+            // denominator 1 + 1e-400 rounds back to 1, leaving the full base
+            // amount.
+            assertNumEquals(numFactory.numOf(100), sizer.amount(context(series, 1, 1)));
+        });
+    }
+
+    @Test
     public void coercesStatisticIntoContextFactory() {
         // A DecimalNum capability statistic consumed in a DoubleNum backtest
         // context must be coerced instead of mixing factories.

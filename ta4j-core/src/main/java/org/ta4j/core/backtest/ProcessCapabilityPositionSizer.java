@@ -85,7 +85,6 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
     private final Num baseAmount;
     private final BigDecimal rawBaseAmount;
     private final BigDecimal rawControlLimit;
-    private final Num controlLimit;
 
     /**
      * Constructor.
@@ -102,17 +101,19 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
      *                            factory would collapse 1.2345 to 1)
      * @param controlLimit        the statistical control limit; must be > 0 and
      *                            finite. The configured value is retained
-     *                            losslessly like {@code baseAmount}, so the
-     *                            capability factory's precision never rounds it
-     *                            before the context factory sees it
+     *                            losslessly like {@code baseAmount} and coerced
+     *                            through the context factory at sizing time, so the
+     *                            capability factory's precision or range never
+     *                            rejects it (a precision-1 capability factory would
+     *                            collapse 3.14159 to 3, and a limit of 1e400 is
+     *                            representable by a DecimalNum context but not a
+     *                            DoubleNum capability)
      */
     public ProcessCapabilityPositionSizer(Indicator<Num> capabilityIndicator, Number baseAmount, Number controlLimit) {
         this.capabilityIndicator = Objects.requireNonNull(capabilityIndicator, "capabilityIndicator must not be null");
         this.rawBaseAmount = requirePositiveFiniteRaw(baseAmount, "baseAmount");
         this.baseAmount = capabilityIndicator.getBarSeries().numFactory().numOf(this.rawBaseAmount);
         this.rawControlLimit = requirePositiveFiniteRaw(controlLimit, "controlLimit");
-        this.controlLimit = requirePositiveFinite(controlLimit, "controlLimit",
-                capabilityIndicator.getBarSeries().numFactory());
     }
 
     @Override
@@ -249,9 +250,6 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
      * {@link #coerceBaseAmountToContextFactory(NumFactory)}.
      */
     private Num coerceControlLimitToContextFactory(NumFactory factory) {
-        if (factory == controlLimit.getNumFactory()) {
-            return controlLimit;
-        }
         if (factory.one().getDelegate() instanceof BigDecimal) {
             return factory.numOf(rawControlLimit);
         }
@@ -337,20 +335,6 @@ public final class ProcessCapabilityPositionSizer implements PositionSizer {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " baseAmount: " + baseAmount + " controlLimit: " + controlLimit;
-    }
-
-    private static Num requirePositiveFinite(Number value, String name, NumFactory factory) {
-        Objects.requireNonNull(value, name + " must not be null");
-        if (value instanceof Double || value instanceof Float) {
-            if (!Double.isFinite(value.doubleValue())) {
-                throw new IllegalArgumentException(name + " must be finite");
-            }
-        }
-        Num num = factory.numOf(value);
-        if (!Num.isFinite(num) || !num.isPositive()) {
-            throw new IllegalArgumentException(name + " must be > 0");
-        }
-        return num;
+        return getClass().getSimpleName() + " baseAmount: " + baseAmount + " controlLimit: " + rawControlLimit;
     }
 }

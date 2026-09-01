@@ -470,6 +470,54 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
         }
     }
 
+    @Test
+    public void subnormalMeanDecaysThroughZero() {
+        // A mean seeded at Double.MIN_VALUE followed by a zero bar must decay
+        // toward zero: the difference-form update stalls at MIN_VALUE when the
+        // weighted delta underflows, and the stall check reroutes through the
+        // convex combination, which rounds correctly for both factories.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(Double.MIN_VALUE, 0).build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(
+                new MockIndicator(series, 0, numOf(Double.MIN_VALUE), numOf(0)), 1, 0.5);
+
+        Num mean = variance.getMeanIndicator().getValue(1);
+
+        assertNumEquals(numOf(Double.MIN_VALUE).multipliedBy(numOf(0.5)), mean);
+    }
+
+    @Test
+    public void removedIndexReadAnchorsAtRetainedHead() {
+        // Reading a pruned index maps to the synthetic zero evaluation; it must
+        // anchor at the retained head instead of returning NaN for the removed
+        // index.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(
+                new MockIndicator(series, 0, numOf(1), numOf(2), numOf(3), numOf(4)), 1, 0.94);
+        variance.getValue(3);
+        series.setMaximumBarCount(1);
+
+        // The anchored read returns the variance of the single retained bar
+        // (0) instead of NaN for the removed index.
+        assertNumEquals(numOf(0), variance.getValue(0));
+    }
+
+    @Test
+    public void barSeriesConstructorMonitorsClosePrice() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
+        EwmaVarianceIndicator fromSeries = new EwmaVarianceIndicator(series, 2, 0.5);
+        EwmaVarianceIndicator fromIndicator = new EwmaVarianceIndicator(new ClosePriceIndicator(series), 2, 0.5);
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            Num expected = fromIndicator.getValue(i);
+            Num actual = fromSeries.getValue(i);
+            if (expected.isNaN()) {
+                assertTrue(actual.isNaN());
+            } else {
+                assertNumEquals(expected, actual);
+            }
+        }
+    }
+
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);

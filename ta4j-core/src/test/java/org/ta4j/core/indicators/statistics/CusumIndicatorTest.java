@@ -122,7 +122,7 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         assertThrows(IllegalArgumentException.class, () -> new CusumIndicator(source, 0, 0.005, 3.0, 1.5));
         assertThrows(IllegalArgumentException.class, () -> new CusumIndicator(source, Double.NaN, 0.005));
         assertThrows(IllegalArgumentException.class, () -> new CusumIndicator(source, Double.POSITIVE_INFINITY, 0.005));
-        assertThrows(NullPointerException.class, () -> new CusumIndicator(null, 0, 0.005));
+        assertThrows(NullPointerException.class, () -> new CusumIndicator((Indicator<Num>) null, 0, 0.005));
     }
 
     @Test
@@ -409,6 +409,42 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
 
         assertTrue(CusumIndicator.saturationMagnitude(numFactory).isGreaterThan(numOf(Float.MAX_VALUE)));
         assertNumEquals(Float.MAX_VALUE, CusumIndicator.saturationMagnitude(floatBackedFactory));
+    }
+
+    @Test
+    public void subnormalScaleDecaysToZeroAndClipsLaterAdmissions() {
+        // A subnormal scale increment followed by a zero increment must decay
+        // the winsorization scale to zero: the difference-form update stalls
+        // at MIN_VALUE when the weighted delta underflows, and the stall check
+        // reroutes through the convex combination. DoubleNum collapses the
+        // scale to zero, so the next admission is clipped to a zero bound and
+        // the CUSUM stays at MIN_VALUE; DecimalNum keeps the exact subnormal
+        // scale, whose clip bound admits the deviation unclipped.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(0, Double.MIN_VALUE, 0)
+                .build();
+        CusumIndicator cusum = new CusumIndicator(
+                new MockIndicator(series, 0, numOf(0), numOf(Double.MIN_VALUE), numOf(0)), Double.MIN_VALUE, 0, 3.0,
+                0.5);
+
+        Num expected = numFactory instanceof DoubleNumFactory ? numOf(Double.MIN_VALUE)
+                : numOf(Double.MIN_VALUE).multipliedBy(numOf(2));
+
+        assertNumEquals(expected, cusum.getValue(2));
+    }
+
+    @Test
+    public void barSeriesConstructorsMonitorClosePrice() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
+        CusumIndicator threeArg = new CusumIndicator(series, 0, 0.005);
+        CusumIndicator threeArgReference = new CusumIndicator(new ClosePriceIndicator(series), 0, 0.005);
+        CusumIndicator fiveArg = new CusumIndicator(series, 0, 0.005, 3.0, 0.94);
+        CusumIndicator fiveArgReference = new CusumIndicator(new ClosePriceIndicator(series), 0, 0.005, 3.0, 0.94);
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertNumEquals(threeArgReference.getValue(i), threeArg.getValue(i));
+            assertNumEquals(fiveArgReference.getValue(i), fiveArg.getValue(i));
+        }
     }
 
     @Override

@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -126,6 +127,38 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             deviationScale.invalidateForRetainedHead();
             observedRemovedBarsCount = removedBarsCount;
         }
+    }
+
+    /**
+     * Creates a close-price CUSUM indicator with defaults
+     * {@code outlierClipFactor = 3.0} and {@code scaleDecay = 0.94}.
+     *
+     * @param series     bar series
+     * @param targetMean the in-control process mean {@code mu0}; must be finite
+     * @param allowance  the tolerable deviation {@code k}; must be >= 0
+     */
+    public CusumIndicator(BarSeries series, Number targetMean, Number allowance) {
+        this(validateParameters(closePrice(series), targetMean, allowance, 3.0, 0.94));
+    }
+
+    /**
+     * Creates a close-price CUSUM indicator.
+     *
+     * @param series            bar series
+     * @param targetMean        the in-control process mean {@code mu0}; must be
+     *                          finite
+     * @param allowance         the tolerable deviation {@code k}; must be >= 0
+     * @param outlierClipFactor the winsorization factor; must be > 0
+     * @param scaleDecay        the EWMA decay of the deviation scale; must be in
+     *                          (0, 1)
+     */
+    public CusumIndicator(BarSeries series, Number targetMean, Number allowance, Number outlierClipFactor,
+            Number scaleDecay) {
+        this(validateParameters(closePrice(series), targetMean, allowance, outlierClipFactor, scaleDecay));
+    }
+
+    private static ClosePriceIndicator closePrice(BarSeries series) {
+        return new ClosePriceIndicator(Objects.requireNonNull(series, "series must not be null"));
     }
 
     /**
@@ -390,7 +423,18 @@ public class CusumIndicator extends RecursiveCachedIndicator<Num> {
             // 0.5) would otherwise round both convex operands to zero although
             // their exact sum is representable. A collapsed scale zeroes the
             // parent's winsorization bound and clips every later deviation.
-            return previous.plus(increment.minus(previous).multipliedBy(oneMinusScaleDecay));
+            Num delta = increment.minus(previous);
+            Num updated = previous.plus(delta.multipliedBy(oneMinusScaleDecay));
+            if (updated.isEqual(previous) && !delta.isZero()) {
+                // The weighted difference underflowed the context epsilon (a
+                // subnormal scale decaying toward zero): the difference form
+                // would stall at previous, keeping a nonzero bound that admits
+                // later deviations. The convex combination decays correctly
+                // here: both operands are non-negative and finite, so neither
+                // product can overflow the sum.
+                return previous.multipliedBy(scaleDecay).plus(increment.multipliedBy(oneMinusScaleDecay));
+            }
+            return updated;
         }
     }
 }
