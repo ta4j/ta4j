@@ -1,7 +1,5 @@
 {
   "provenance": {
-    "script": "oracles/cf-558-mckf-reference-oracle.py",
-    "command": "python3 oracles/cf-558-mckf-reference-oracle.py",
     "date": "2026-08-31",
     "algorithm": "Chen et al. 2017 arXiv:1509.04580, scalar MCKF",
     "prd_sections": [

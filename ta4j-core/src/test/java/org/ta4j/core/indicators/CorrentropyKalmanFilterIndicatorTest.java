@@ -39,9 +39,8 @@ import java.util.Map;
  * oracles produced by the covariance-whitened bounded fixed-point MCKF
  * algorithm of Chen et al. (2017) and agree across {@code DoubleNumFactory} and
  * {@code DecimalNumFactory} to the printed precision. The reference values and
- * the fixture inputs live in
- * {@code src/test/resources/oracles/cf-558-mckf-reference-oracle.py} and the
- * regenerated {@code cf-558-mckf-reference-vectors.json}.
+ * the fixture inputs live in the frozen
+ * {@code cf-558-mckf-reference-vectors.json} reference vectors.
  */
 public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 

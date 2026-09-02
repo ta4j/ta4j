@@ -22,9 +22,8 @@ import java.util.Arrays;
 /**
  * Tests for the {@link CorrentropyKalmanWeightIndicator} view of the
  * {@link CorrentropyKalmanFilterIndicator}. The reference values are produced
- * by the same oracle that backs {@link CorrentropyKalmanFilterIndicatorTest}
- * and live in
- * {@code src/test/resources/oracles/cf-558-mckf-reference-oracle.py}.
+ * by the same frozen reference vectors that back
+ * {@link CorrentropyKalmanFilterIndicatorTest}.
  */
 public class CorrentropyKalmanWeightIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
