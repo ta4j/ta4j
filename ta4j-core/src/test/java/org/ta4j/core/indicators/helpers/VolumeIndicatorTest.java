@@ -172,4 +172,41 @@ public class VolumeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         assertNumEquals(23, volumeIndicator.getValue(2));
         assertNumEquals(25, volumeIndicator.getValue(3));
     }
+
+    /**
+     * Regression: after a head advance on a bounded series, reads inside the
+     * evicted unstable band must be rebuilt iteratively. A fixed trailing window
+     * larger than the recursion prefill threshold would otherwise recurse one entry
+     * per bar from the read index down to the cached suffix, which stack overflows
+     * for large windows. The series keeps {@code barCount + 2} bars so that the
+     * cached suffix survives the advance and the band below it is genuinely evicted
+     * (with {@code barCount + 1} kept bars the floor clears the whole cache, which
+     * prefills normally and masks the recursion).
+     */
+    @Test
+    public void headAdvanceEvictsUnstableBandWithoutStackOverflow() {
+        final int barCount = 50000;
+        final int totalBars = 52000;
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(barCount + 2);
+        for (int i = 0; i < totalBars; i++) {
+            series.barBuilder().openPrice(i).closePrice(i).highPrice(i).lowPrice(i).volume(100).add();
+        }
+        VolumeIndicator volume = new VolumeIndicator(series, barCount);
+        for (int i = series.getBeginIndex(); i < totalBars; i++) {
+            volume.getValue(i);
+        }
+        series.barBuilder()
+                .openPrice(totalBars)
+                .closePrice(totalBars)
+                .highPrice(totalBars)
+                .lowPrice(totalBars)
+                .volume(100)
+                .add();
+        assertEquals(1999, series.getBeginIndex());
+        // Index 40000 sits deep inside the evicted band [1999, 51997] while the
+        // suffix [51998, 51999] stays cached: the read must rebuild the band
+        // iteratively and return the window sum over the retained bars only.
+        assertNumEquals(3800200, volume.getValue(40000));
+    }
 }

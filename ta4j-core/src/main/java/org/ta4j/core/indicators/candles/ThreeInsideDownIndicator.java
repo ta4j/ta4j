@@ -11,12 +11,18 @@ import org.ta4j.core.indicators.trend.UpTrendIndicator;
 /**
  * Three inside down candle indicator.
  *
+ * <p>
+ * The harami baseline averages the preceding
+ * {@link CandleThresholdSupport#DEFAULT_AVERAGE_PERIOD} candle bodies by
+ * default; use {@link #ThreeInsideDownIndicator(BarSeries, int)} to tune it.
+ *
  * @see <a href="https://www.investopedia.com/terms/t/three-inside-updown.asp">
  *      https://www.investopedia.com/terms/t/three-inside-updown.asp</a>
  * @since 0.22.2
  */
 public class ThreeInsideDownIndicator extends CachedIndicator<Boolean> {
 
+    private final int averagePeriod;
     private final transient UpTrendIndicator trendIndicator;
     private final transient BearishHaramiIndicator harami;
 
@@ -39,6 +45,7 @@ public class ThreeInsideDownIndicator extends CachedIndicator<Boolean> {
      */
     public ThreeInsideDownIndicator(final BarSeries series, final int averagePeriod) {
         super(series);
+        this.averagePeriod = averagePeriod;
         this.trendIndicator = new UpTrendIndicator(series);
         this.harami = new BearishHaramiIndicator(series, averagePeriod);
     }

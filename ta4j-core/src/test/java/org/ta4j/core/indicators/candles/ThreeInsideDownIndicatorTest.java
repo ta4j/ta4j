@@ -163,7 +163,8 @@ public class ThreeInsideDownIndicatorTest extends AbstractIndicatorTest<Indicato
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);
-        return List.of(serializationFixture(series, new ThreeInsideDownIndicator(series), stableIndexes(series)));
+        return List.of(serializationFixture(series, new ThreeInsideDownIndicator(series), stableIndexes(series)),
+                serializationFixture(series, new ThreeInsideDownIndicator(series, 3), stableIndexes(series)));
     }
 
     @Test
