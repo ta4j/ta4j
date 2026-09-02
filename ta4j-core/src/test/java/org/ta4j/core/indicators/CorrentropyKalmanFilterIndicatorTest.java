@@ -314,6 +314,20 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
     }
 
     @Test
+    public void finiteExtremeInnovationIsWhitenedBeforeSubtraction() {
+        double extreme = 1e308;
+        double bandwidth = 5e153;
+        BarSeries series = seriesOf(-extreme, extreme);
+        CorrentropyKalmanFilterIndicator filter = filter(new ClosePriceIndicator(series), 1e-3, Double.MAX_VALUE,
+                bandwidth);
+
+        double endpoint = extreme / Math.sqrt(Double.MAX_VALUE) / Math.sqrt(2 * bandwidth * bandwidth);
+        double expectedWeight = Math.exp(-4 * endpoint * endpoint);
+        Assert.assertEquals(-extreme, filter.getValue(1).doubleValue(), 0.0);
+        Assert.assertEquals(expectedWeight, filter.measurementWeight().getValue(1).doubleValue(), 1e-12);
+    }
+
+    @Test
     public void rejectsNoiseIndicatorsOnDifferentSeries() {
         BarSeries otherSeries = seriesOf(1, 2, 3);
         Assert.assertThrows(IllegalArgumentException.class, () -> new CorrentropyKalmanFilterIndicator(closePrice,

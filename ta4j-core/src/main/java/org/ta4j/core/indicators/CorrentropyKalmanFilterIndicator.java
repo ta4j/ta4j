@@ -68,7 +68,11 @@ import org.ta4j.core.num.NumFactory;
  * (verified for {@code DoubleNum} and {@code DecimalNum}) and makes the kernel
  * weights identical across factories. A saturated zero measurement weight is a
  * valid redescending rejection: it yields gain zero, the isolated measurement
- * is ignored, and the estimate stays at the prior state.
+ * is ignored, and the estimate stays at the prior state. Finite endpoint
+ * differences that exceed a {@link Num} implementation's range are whitened
+ * before subtraction, and the corresponding state update uses an
+ * endpoint-weighted form. This prevents representable extreme observations from
+ * becoming unavailable solely because their raw innovation overflows.
  * <p>
  * Unavailable inputs (non-finite source or non-finite/non-positive Q/R), a
  * non-converged fixed-point iteration or invalid numerical state make the
@@ -323,8 +327,8 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
         boolean converged = false;
         for (int iteration = 0; iteration < maxIterations; iteration++) {
             Num previousCandidate = candidate;
-            Num cX = kernelWeight(predicted.minus(previousCandidate), predictedCovariance);
-            Num cY = kernelWeight(measurement.minus(previousCandidate), measurementNoise);
+            Num cX = kernelWeight(predicted, previousCandidate, predictedCovariance);
+            Num cY = kernelWeight(measurement, previousCandidate, measurementNoise);
             Num numerator = predictedCovariance.multipliedBy(cY);
             Num denominator = numerator.plus(measurementNoise.multipliedBy(cX));
             if (!Num.isFinite(numerator) || !Num.isFinite(denominator)
@@ -332,7 +336,12 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
                 return previous.preserved();
             }
             gain = numerator.dividedBy(denominator);
-            candidate = predicted.plus(gain.multipliedBy(innovation));
+            if (Num.isFinite(innovation)) {
+                candidate = predicted.plus(gain.multipliedBy(innovation));
+            } else {
+                Num gainError = getBarSeries().numFactory().one().minus(gain);
+                candidate = predicted.multipliedBy(gainError).plus(measurement.multipliedBy(gain));
+            }
             if (candidate.minus(previousCandidate)
                     .abs()
                     .isLessThanOrEqual(convergenceTolerance
@@ -348,7 +357,7 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
         Num covariance = gainError.multipliedBy(gainError)
                 .multipliedBy(predictedCovariance)
                 .plus(gain.multipliedBy(gain).multipliedBy(measurementNoise));
-        Num weight = kernelWeight(measurement.minus(candidate), measurementNoise);
+        Num weight = kernelWeight(measurement, candidate, measurementNoise);
         if (!Num.isFinite(candidate) || !Num.isFinite(covariance) || !Num.isFinite(weight) || covariance.isNegative()) {
             return new KalmanState(candidate, covariance, weight, false, false);
         }
@@ -357,13 +366,26 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
 
     /**
      * Covariance-whitened correntropy kernel weight:
-     * {@code exp(-e^2 / (2 * sigma^2 * scaleVariance))} where the raw error
-     * {@code e} is whitened by {@code scaleVariance} (predicted covariance for the
-     * prior error, measurement noise for the measurement error). Squared exponents
-     * above {@link #KERNEL_EXPONENT_BOUND} saturate to a zero weight.
+     * {@code exp(-(left - right)^2 / (2 * sigma^2 * scaleVariance))}. Finite
+     * endpoints whose direct difference overflows are divided by the larger
+     * whitening scale first and only then subtracted. Squared exponents above
+     * {@link #KERNEL_EXPONENT_BOUND} saturate to a zero weight.
      */
-    private Num kernelWeight(Num error, Num scaleVariance) {
-        Num normalizedError = error.abs().dividedBy(scaleVariance.sqrt()).dividedBy(kernelScale);
+    private Num kernelWeight(Num left, Num right, Num scaleVariance) {
+        Num error = left.minus(right);
+        Num varianceScale = scaleVariance.sqrt();
+        Num normalizedError;
+        if (Num.isFinite(error)) {
+            normalizedError = error.abs().dividedBy(varianceScale).dividedBy(kernelScale);
+        } else if (Num.isFinite(left) && Num.isFinite(right)) {
+            Num largerScale = varianceScale.max(kernelScale);
+            Num smallerScale = varianceScale.min(kernelScale);
+            Num scaledLeft = left.dividedBy(largerScale).dividedBy(smallerScale);
+            Num scaledRight = right.dividedBy(largerScale).dividedBy(smallerScale);
+            normalizedError = scaledLeft.minus(scaledRight).abs();
+        } else {
+            return NaN.NaN;
+        }
         if (normalizedError.isNaN()) {
             return NaN.NaN;
         }

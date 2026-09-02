@@ -134,6 +134,9 @@ Each dynamic source/Q/R value is normalized through the series `NumFactory`,
 allowing inputs that return a different `Num` implementation when conversion
 remains finite. The residual view accepts source indicators that expose either
 the backing series or its read-only view.
+Finite extreme endpoint innovations are whitened before subtraction, so
+`DoubleNum` range limits do not turn a representable robust update into
+`NaN.NaN`.
 
 ## Suggested progression
 
