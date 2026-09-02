@@ -254,6 +254,15 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         private boolean isSameAs(LastBarState other) {
             return bar == other.bar && tradeCount == other.tradeCount && equalsNum(closePrice, other.closePrice);
         }
+
+        /**
+         * Whether the retained bar still carries the captured fingerprint. A bar
+         * displaced from the terminal position that fails this check was mutated after
+         * capture, so values computed from its pre-mutation state are stale.
+         */
+        private boolean isIntact() {
+            return bar == null || (bar.getTrades() == tradeCount && equalsNum(closePrice, bar.getClosePrice()));
+        }
     }
 
     /**
@@ -573,21 +582,32 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             if (!changed()) {
                 return -1;
             }
-            if (snapshotChanged) {
-                int earliestChanged = state.snapshot().earliestChangedIndex();
-                if (earliestChanged >= 0) {
-                    return earliestChanged;
-                }
-                // Pure append without a journaled change index: values cached above
-                // the previous end index were computed against the dependency's last
-                // bar and may change now that those indexes exist.
-                if (state.snapshot().endIndex() > sinceState.snapshot().endIndex()) {
-                    long previousEnd = sinceState.snapshot().endIndex();
-                    return previousEnd >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) previousEnd + 1;
-                }
-                return -1;
+            if (!snapshotChanged) {
+                return state.snapshot().endIndex();
             }
-            return state.snapshot().endIndex();
+            int invalidateFrom = state.snapshot().earliestChangedIndex();
+            // Pure append without a journaled change index: values cached above
+            // the previous end index were computed against the dependency's last
+            // bar and may change now that those indexes exist.
+            if (state.snapshot().endIndex() > sinceState.snapshot().endIndex()) {
+                long previousEnd = sinceState.snapshot().endIndex();
+                invalidateFrom = unionInvalidateFrom(invalidateFrom,
+                        previousEnd >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) previousEnd + 1);
+            }
+            // A terminal bar mutated directly (bypassing the series journal) and
+            // then displaced by an append journals no change index either: the
+            // retained fingerprint no longer matches the bar, so invalidate from
+            // its index rather than only the appended suffix.
+            if (formerTerminalBarMutated()) {
+                invalidateFrom = unionInvalidateFrom(invalidateFrom, sinceState.snapshot().endIndex());
+            }
+            return invalidateFrom;
+        }
+
+        private boolean formerTerminalBarMutated() {
+            LastBarState sinceLastBar = sinceState.lastBar();
+            return sinceLastBar.bar() != null && sinceLastBar.bar() != state.lastBar().bar()
+                    && !sinceLastBar.isIntact();
         }
 
         /**

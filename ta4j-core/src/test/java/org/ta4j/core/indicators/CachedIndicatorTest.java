@@ -2514,6 +2514,31 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     /**
+     * Mutating a dependency's terminal bar and then appending a bar before the next
+     * consumer read must invalidate the former terminal index, not just the newly
+     * appended suffix.
+     */
+    @Test
+    public void distanceFromMovingAverageRecomputesWhenLastBarMutatesBeforeAppend() {
+        BarSeries seriesA = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d, 5d).build();
+        BaseBarSeries seriesB = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 20d, 30d)
+                .build();
+        DistanceFromMAIndicator distance = new DistanceFromMAIndicator(seriesA,
+                new SMAIndicator(new ClosePriceIndicator(seriesB), 1));
+
+        Num before = distance.getValue(2);
+        seriesB.getLastBar().addPrice(numOf(300));
+        seriesB.addBar(seriesB.barBuilder().openPrice(40).highPrice(40).lowPrice(40).closePrice(40).build());
+        Num after = distance.getValue(2);
+
+        DistanceFromMAIndicator freshDistance = new DistanceFromMAIndicator(seriesA,
+                new SMAIndicator(new ClosePriceIndicator(seriesB), 1));
+        assertNumEquals(freshDistance.getValue(2), after);
+        assertThat(after).isNotEqualTo(before);
+    }
+
+    /**
      * Dependency groups must be keyed by series identity: two distinct series
      * instances that compare equal must each produce their own observation, so a
      * mutation in the second one still invalidates the dependent cache.
