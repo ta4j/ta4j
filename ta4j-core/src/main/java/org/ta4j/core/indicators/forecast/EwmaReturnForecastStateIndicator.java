@@ -5,16 +5,15 @@ package org.ta4j.core.indicators.forecast;
 
 import java.util.Objects;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.ReturnIndicator;
-import org.ta4j.core.indicators.averages.EWMAIndicator;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
-import org.ta4j.core.indicators.statistics.VarianceIndicator;
+import org.ta4j.core.indicators.statistics.EwmaVarianceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -22,16 +21,29 @@ import org.ta4j.core.num.Num;
  * Builds reusable log-return forecast state from EWMA mean and variance
  * indicators.
  *
+ * <p>
+ * The published mean and the variance are computed around one shared EWMA mean
+ * estimator owned by the {@link EwmaVarianceIndicator}: when the backing series
+ * prunes its retained head the estimator is re-anchored together with the
+ * variance, the enclosing state cache and the observation-count recursion are
+ * invalidated, and the count restarts at the first source value computed
+ * entirely within the retained window, so retained-index reads recompute from
+ * the re-anchored estimators and never return moments or observation counts
+ * still computed from the discarded prefix. Reads bracket the removal count and
+ * the bar-history revision across the cached read and repeat until both are
+ * stable, so a concurrently pruning or mutating series can never publish a
+ * state computed against the discarded prefix or a state mixing moments from a
+ * bar that was replaced mid-read.
+ *
  * @since 0.22.9
  */
 public final class EwmaReturnForecastStateIndicator extends CachedIndicator<ReturnForecastState>
         implements ReturnForecastStateIndicator<ReturnForecastState> {
-
     private final ReturnIndicator returnIndicator;
-    private final Indicator<Num> meanIndicator;
-    private final Indicator<Num> varianceIndicator;
-    private final Indicator<Integer> observationCountIndicator;
+    private final EwmaVarianceIndicator varianceIndicator;
+    private final ValidObservationCountIndicator observationCountIndicator;
     private final DriftMode driftMode;
+    private volatile transient int observedRemovedBarsCount = getBarSeries().getRemovedBarsCount();
 
     /**
      * Constructor using default EWMA settings and zero drift.
@@ -76,12 +88,48 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
         if (Double.isNaN(decayFactor) || decayFactor <= 0d || decayFactor >= 1d) {
             throw new IllegalArgumentException("decayFactor must be in (0, 1)");
         }
-        Indicator<Num> mean = new EWMAIndicator(returnIndicator, initializationBarCount, decayFactor);
+        EwmaVarianceIndicator variance = new EwmaVarianceIndicator(returnIndicator, initializationBarCount,
+                decayFactor);
         this.returnIndicator = returnIndicator;
-        this.meanIndicator = mean;
-        this.varianceIndicator = new EwmaVarianceIndicator(returnIndicator, mean, initializationBarCount, decayFactor);
+        this.varianceIndicator = variance;
         this.observationCountIndicator = new ValidObservationCountIndicator(returnIndicator);
         this.driftMode = Objects.requireNonNull(driftMode, "driftMode must not be null");
+    }
+
+    @Override
+    public ReturnForecastState getValue(int index) {
+        BarSeries series = getBarSeries();
+        while (true) {
+            int removedBarsCount = series.getRemovedBarsCount();
+            long barHistoryRevision = series.getBarHistoryRevision();
+            if (removedBarsCount != observedRemovedBarsCount) {
+                resetForRetainedHead(removedBarsCount);
+            }
+            ReturnForecastState value = super.getValue(index);
+            if (series.getRemovedBarsCount() == removedBarsCount
+                    && series.getBarHistoryRevision() == barHistoryRevision) {
+                return value;
+            }
+            // A prune or a bar mutation raced the cached read. A prune can
+            // leave the state computed against the discarded prefix; a
+            // mutation of the published end bar can leave a state whose
+            // mean, variance, and observation count were each read from a
+            // different bar revision. Reset and read again until a full read
+            // completes against a stable removal count and revision. The
+            // cached read is cheap once re-anchored, so this settles as soon
+            // as the series stops changing concurrently.
+        }
+    }
+
+    private synchronized void resetForRetainedHead(int removedBarsCount) {
+        if (removedBarsCount != observedRemovedBarsCount) {
+            // Invalidate first, publish last: a concurrent reader that
+            // observes the new count must never see a state or an
+            // observation count still computed from the discarded prefix.
+            invalidateCache();
+            observationCountIndicator.invalidateForRetainedHead();
+            observedRemovedBarsCount = removedBarsCount;
+        }
     }
 
     /**
@@ -118,7 +166,7 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
         if (index < getCountOfUnstableBars()) {
             return ReturnForecastState.unstable(index, observationCount, ReturnRepresentation.LOG);
         }
-        Num mean = meanIndicator.getValue(index);
+        Num mean = varianceIndicator.getMeanIndicator().getValue(index);
         Num variance = varianceIndicator.getValue(index);
         if (!Num.isFinite(mean) || !Num.isFinite(variance)) {
             return ReturnForecastState.unstable(index, observationCount, ReturnRepresentation.LOG);
@@ -134,7 +182,8 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
      */
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(meanIndicator.getCountOfUnstableBars(), varianceIndicator.getCountOfUnstableBars());
+        return Math.max(varianceIndicator.getMeanIndicator().getCountOfUnstableBars(),
+                varianceIndicator.getCountOfUnstableBars());
     }
 
     /**
@@ -168,12 +217,25 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
             this.indicator = indicator;
         }
 
+        private void invalidateForRetainedHead() {
+            invalidateCache();
+        }
+
         @Override
         protected Integer calculate(int index) {
-            if (index < indicator.getCountOfUnstableBars() || !Num.isFinite(indicator.getValue(index))) {
+            int beginIndex = getBarSeries().getBeginIndex();
+            // The count restarts past the retained head at the first index
+            // where the source is computed entirely within the retained
+            // window: the moments seed their windows at beginIndex plus the
+            // source's unstable bars, so the count anchors there too. For a
+            // lookback source such as LogReturnIndicator, the pruned head
+            // publishes an artificial zero against the removed predecessor
+            // and must not be counted.
+            long firstValidIndex = (long) beginIndex + indicator.getCountOfUnstableBars();
+            if (index < beginIndex || index < firstValidIndex || !Num.isFinite(indicator.getValue(index))) {
                 return 0;
             }
-            return index == 0 ? 1 : getValue(index - 1) + 1;
+            return index == firstValidIndex ? 1 : getValue(index - 1) + 1;
         }
 
         @Override
@@ -182,52 +244,4 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
         }
     }
 
-    private static final class EwmaVarianceIndicator extends RecursiveCachedIndicator<Num> {
-
-        private final Indicator<Num> indicator;
-        private final Indicator<Num> meanIndicator;
-        private final Indicator<Num> initialVarianceIndicator;
-        private final int barCount;
-        private final double decayFactor;
-
-        private EwmaVarianceIndicator(Indicator<Num> indicator, Indicator<Num> meanIndicator, int barCount,
-                double decayFactor) {
-            super(IndicatorUtils.requireSameSeries(indicator, meanIndicator));
-            this.indicator = indicator;
-            this.meanIndicator = meanIndicator;
-            this.initialVarianceIndicator = VarianceIndicator.ofPopulation(indicator, barCount);
-            this.barCount = barCount;
-            this.decayFactor = decayFactor;
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            if (index < getCountOfUnstableBars()) {
-                return NaN.NaN;
-            }
-            Num current = indicator.getValue(index);
-            if (!Num.isFinite(current)) {
-                return NaN.NaN;
-            }
-            Num previousVariance = getValue(index - 1);
-            Num previousMean = meanIndicator.getValue(index - 1);
-            if (!Num.isFinite(previousVariance) || !Num.isFinite(previousMean)) {
-                return initialVariance(index);
-            }
-            Num decay = getBarSeries().numFactory().numOf(decayFactor);
-            Num oneMinusDecay = getBarSeries().numFactory().one().minus(decay);
-            Num deviation = current.minus(previousMean);
-            return previousVariance.multipliedBy(decay)
-                    .plus(deviation.multipliedBy(deviation).multipliedBy(oneMinusDecay));
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return Math.max(meanIndicator.getCountOfUnstableBars(), indicator.getCountOfUnstableBars() + barCount - 1);
-        }
-
-        private Num initialVariance(int index) {
-            return initialVarianceIndicator.getValue(index);
-        }
-    }
 }
