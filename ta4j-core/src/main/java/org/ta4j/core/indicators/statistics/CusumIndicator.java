@@ -1,0 +1,557 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+package org.ta4j.core.indicators.statistics;
+
+import java.math.BigDecimal;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.num.NaN;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
+
+/**
+ * One-sided, winsorized cumulative sum (CUSUM) statistic.
+ *
+ * <p>
+ * CUSUM detects a shift of the monitored value away from a target mean
+ * {@code targetMean}. At each addressable index {@code t} it accumulates the
+ * shortfall
+ *
+ * <pre>
+ * S_t = max(0, S_{t-1} + clip(mu0 - X_t - k, +-clipFactor * sigmaHat_{t-1}))
+ * </pre>
+ *
+ * where {@code mu0} is the {@code targetMean}, {@code k} the {@code allowance},
+ * and {@code S} is seeded with {@code max(0, mu0 - X_begin - k)} on the first
+ * addressable bar. The raw increment is winsorized against the exponentially
+ * smoothed mean absolute deviation
+ *
+ * <pre>
+ * sigmaHat_t = scaleDecay * sigmaHat_{t-1} + (1 - scaleDecay) * |mu0 - X_t - k|
+ * </pre>
+ *
+ * so isolated outliers do not dominate the accumulated statistic; only
+ * persistent deviations from the target raise {@code S}. When the previous
+ * deviation scale is zero (all raw increments so far were exactly zero), the
+ * winsorization bound is zero: the first non-zero deviation is fully damped and
+ * its raw magnitude bootstraps {@code sigmaHat}, so a single outlier cannot
+ * trip the statistic right after a perfectly on-target run.
+ *
+ * <p>
+ * The raw {@code outlierClipFactor} and {@code scaleDecay} parameters are
+ * retained separately from their factory-rounded arithmetic values. A coarse
+ * factory may round an in-range decay such as {@code 0.9999} to its boundary
+ * {@code 1}, while an extreme clipping factor may underflow to zero or overflow
+ * to a non-finite value. Deviation-scale updates that underflow are also
+ * retained exactly until the clipping factor is applied, allowing a
+ * representable completed bound to survive. Retaining the raw parameters
+ * preserves both arithmetic and descriptor / JSON round trips.
+ *
+ * <p>
+ * While the source indicator is warming up ({@code index - beginIndex <
+ * getCountOfUnstableBars()}) the value is {@code NaN}. Non-finite inputs carry
+ * the previous CUSUM value forward (seeded at zero on the first addressable
+ * bar) and leave the deviation scale unchanged, so a gap in the data neither
+ * triggers nor resets the statistic.
+ *
+ * If the derived deviation, the deviation scale, or the accumulated CUSUM
+ * overflows the numeric representation (a {@code DoubleNum} series jumping
+ * between opposite extremes), the overflowing term saturates at the largest
+ * finite magnitude the active factory can represent (the double ceiling for
+ * double- and decimal-backed factories, the float ceiling for float-backed
+ * ones) instead of publishing infinity, so a composed kill switch still reacts
+ * to the extreme observation and the winsorization bound is never silently
+ * disabled by a non-finite scale. The raw finite target mean and allowance are
+ * combined with the current value in exact decimal space, then narrowed only
+ * once. This preserves a representable difference even when both parameters
+ * individually exceed the active factory's range (for example
+ * {@code (1e400 + 1e308) - 0 - 1e400 = 1e308}).
+ *
+ * <p>
+ * When the backing series prunes its retained head (for example through
+ * {@link org.ta4j.core.BarSeries#setMaximumBarCount(int)}), the recursion is
+ * re-anchored at the new first addressable bar: cached values computed against
+ * the discarded prefix are dropped and the statistic resumes from the new head
+ * as if the series had started there. The retained-head check and complete
+ * recursive cache read are serialized on this indicator, enforcing a consistent
+ * monitor-before-cache-write lock order while a concurrent prune is reconciled.
+ *
+ * <p>
+ * Typical use is a statistical control-limit kill switch on an equity curve or
+ * return stream: build the CUSUM over, e.g., {@code Returns}, and stop trading
+ * once {@code NumericIndicator.of(cusum).isGreaterThan(H)}, where {@code H} is
+ * derived from a volatility monitor such as
+ * {@code NumericIndicator.of(ewmaVariance).sqrt().multipliedBy(h)} with
+ * {@code h} around four or five.
+ *
+ * @since 0.24.2
+ */
+public class CusumIndicator extends RecursiveCachedIndicator<Num> {
+
+    private final Indicator<Num> indicator;
+    private final BigDecimal targetMean;
+    private final BigDecimal allowance;
+    private final BigDecimal outlierClipFactor;
+    private final transient Num appliedOutlierClipFactor;
+    private final transient boolean exactOutlierClipFactorArithmetic;
+    private final BigDecimal scaleDecay;
+    private final transient DeviationScaleIndicator deviationScale;
+    private volatile transient int observedRemovedBarsCount = getBarSeries().getRemovedBarsCount();
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Serializes the retained-head check with the complete recursive cache read so
+     * this indicator's monitor is always acquired before either recursive cache
+     * write lock. Recursive reads safely reenter the monitor.
+     */
+    @Override
+    public synchronized Num getValue(int index) {
+        BarSeries series = getBarSeries();
+        while (true) {
+            int removedBarsCount = series.getRemovedBarsCount();
+            if (removedBarsCount != observedRemovedBarsCount) {
+                resetForRetainedHead(removedBarsCount);
+            }
+            Num value = super.getValue(index);
+            if (series.getRemovedBarsCount() == removedBarsCount) {
+                return value;
+            }
+            // A prune raced the cached read, so the value may still be
+            // computed against the discarded prefix: reset and read again
+            // until a full read completes against a stable removal count. The
+            // cached read is cheap once re-anchored, so this settles as soon
+            // as the series stops pruning concurrently.
+        }
+    }
+
+    private synchronized void resetForRetainedHead(int removedBarsCount) {
+        if (removedBarsCount != observedRemovedBarsCount && !isCacheWriteLockedByCurrentThread()) {
+            // Invalidate first, publish last: a concurrent reader that
+            // observes the new count must never see caches still computed
+            // from the discarded prefix. When the cache write lock is held by
+            // this thread the call is recursive from an in-flight calculate(),
+            // so defer to the top-level read: resetting here would let the
+            // in-flight computation repopulate the cache with a mixed-head
+            // result after this reset, and the retry loop would then reuse it.
+            invalidateCache();
+            deviationScale.invalidateForRetainedHead();
+            observedRemovedBarsCount = removedBarsCount;
+        }
+    }
+
+    /**
+     * Creates a close-price CUSUM indicator with defaults
+     * {@code outlierClipFactor = 3.0} and {@code scaleDecay = 0.94}.
+     *
+     * @param series     bar series
+     * @param targetMean the in-control process mean {@code mu0}; must be finite
+     * @param allowance  the tolerable deviation {@code k}; must be >= 0
+     * @since 0.24.2
+     */
+    public CusumIndicator(BarSeries series, Number targetMean, Number allowance) {
+        this(validateParameters(closePrice(series), targetMean, allowance, 3.0, 0.94));
+    }
+
+    /**
+     * Creates a close-price CUSUM indicator.
+     *
+     * @param series            bar series
+     * @param targetMean        the in-control process mean {@code mu0}; must be
+     *                          finite
+     * @param allowance         the tolerable deviation {@code k}; must be >= 0
+     * @param outlierClipFactor the winsorization factor; must be > 0
+     * @param scaleDecay        the EWMA decay of the deviation scale; must be in
+     *                          (0, 1)
+     * @since 0.24.2
+     */
+    public CusumIndicator(BarSeries series, Number targetMean, Number allowance, Number outlierClipFactor,
+            Number scaleDecay) {
+        this(validateParameters(closePrice(series), targetMean, allowance, outlierClipFactor, scaleDecay));
+    }
+
+    private static ClosePriceIndicator closePrice(BarSeries series) {
+        return new ClosePriceIndicator(Objects.requireNonNull(series, "series must not be null"));
+    }
+
+    /**
+     * Constructor with defaults {@code outlierClipFactor = 3.0} and
+     * {@code scaleDecay = 0.94}.
+     *
+     * @param indicator  the indicator to monitor for mean shifts
+     * @param targetMean the in-control process mean {@code mu0}
+     * @param allowance  the tolerable deviation {@code k}; must be >= 0
+     * @since 0.24.2
+     */
+    public CusumIndicator(Indicator<Num> indicator, Number targetMean, Number allowance) {
+        this(validateParameters(indicator, targetMean, allowance, 3.0, 0.94));
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param indicator         the indicator to monitor for mean shifts
+     * @param targetMean        the in-control process mean {@code mu0}; must be
+     *                          finite
+     * @param allowance         the tolerable deviation {@code k}; must be >= 0
+     * @param outlierClipFactor the winsorization factor; must be > 0
+     * @param scaleDecay        the EWMA decay of the deviation scale; must be in
+     *                          (0, 1)
+     * @since 0.24.2
+     */
+    public CusumIndicator(Indicator<Num> indicator, Number targetMean, Number allowance, Number outlierClipFactor,
+            Number scaleDecay) {
+        this(validateParameters(indicator, targetMean, allowance, outlierClipFactor, scaleDecay));
+    }
+
+    private CusumIndicator(Parameters parameters) {
+        super(parameters.indicator());
+
+        this.indicator = parameters.indicator();
+        this.targetMean = parameters.targetMean();
+        this.allowance = parameters.allowance();
+        this.outlierClipFactor = parameters.outlierClipFactor();
+        this.appliedOutlierClipFactor = parameters.appliedOutlierClipFactor();
+        this.exactOutlierClipFactorArithmetic = parameters.exactOutlierClipFactorArithmetic();
+        this.scaleDecay = parameters.rawScaleDecay();
+        this.deviationScale = new DeviationScaleIndicator(this.indicator, this.targetMean, this.allowance,
+                parameters.oneMinusScaleDecay(), parameters.rawComplementScaleDecay());
+    }
+
+    private static Parameters validateParameters(Indicator<Num> indicator, Number targetMean, Number allowance,
+            Number outlierClipFactor, Number scaleDecay) {
+        Objects.requireNonNull(indicator, "indicator must not be null");
+        if (indicator.getBarSeries() == null) {
+            throw new IllegalArgumentException("indicator must be bound to a BarSeries");
+        }
+        NumFactory factory = indicator.getBarSeries().numFactory();
+        BigDecimal validatedTargetMean = requireFiniteDecimal(targetMean, "targetMean");
+        BigDecimal validatedAllowance = requireFiniteDecimal(allowance, "allowance");
+        BigDecimal validatedOutlierClipFactor = requireFiniteDecimal(outlierClipFactor, "outlierClipFactor");
+        ValidatedScaleDecay validatedScaleDecay = validateScaleDecay(scaleDecay, factory);
+        if (validatedAllowance.signum() < 0) {
+            throw new IllegalArgumentException("allowance must be >= 0");
+        }
+        if (validatedOutlierClipFactor.signum() <= 0) {
+            throw new IllegalArgumentException("outlierClipFactor must be > 0");
+        }
+        Num appliedOutlierClipFactor = factory.numOf(validatedOutlierClipFactor);
+        boolean exactOutlierClipFactorArithmetic = requiresExactFactorArithmetic(validatedOutlierClipFactor,
+                appliedOutlierClipFactor, factory);
+        return new Parameters(indicator, validatedTargetMean, validatedAllowance, validatedOutlierClipFactor,
+                appliedOutlierClipFactor, exactOutlierClipFactorArithmetic, validatedScaleDecay.rawScaleDecay(),
+                validatedScaleDecay.rawComplementScaleDecay(), validatedScaleDecay.oneMinusScaleDecay());
+    }
+
+    private static ValidatedScaleDecay validateScaleDecay(Number scaleDecay, NumFactory factory) {
+        Objects.requireNonNull(scaleDecay, "scaleDecay must not be null");
+        // Validate the raw value before it passes through the factory: a
+        // low-precision factory can round an in-range value such as 0.9999 to
+        // its boundary 1, and narrowing an arbitrary-precision BigDecimal
+        // such as 1e-400 through doubleValue() collapses it to zero.
+        // BigDecimal comparison keeps the (0, 1) interval check exact. The
+        // complement is the exact BigDecimal difference 1 - rawDecay:
+        // computing it in primitive double first injects the binary rounding
+        // artifact (1d - 0.94 = 0.060000000000000005), and deriving it from
+        // the already rounded decay collapses to zero where the decay rounds
+        // to one. Carrying this applied update weight preserves meaningful
+        // scale updates under coarse precision; exact recovery derives its
+        // matching first factor from the same value instead of multiplying
+        // independently rounded weights. The raw value is retained on the
+        // indicator so the descriptor / JSON round trip serializes the in-range
+        // parameter instead of its rounded boundary.
+        BigDecimal rawScaleDecay;
+        if (scaleDecay instanceof BigDecimal decimalScaleDecay) {
+            // Exact decimal: narrow only through the exact BigDecimal interval
+            // check. A doubleValue() round trip collapses 1e-400 to zero and a
+            // near-one value such as 0.999999999999999999999 to one, which
+            // would either misvalidate or needlessly reject an in-range decay.
+            rawScaleDecay = decimalScaleDecay;
+        } else {
+            double narrowed = scaleDecay.doubleValue();
+            if (!Double.isFinite(narrowed)) {
+                throw new IllegalArgumentException("scaleDecay must be in (0, 1)");
+            }
+            rawScaleDecay = BigDecimal.valueOf(narrowed);
+        }
+        if (rawScaleDecay.compareTo(BigDecimal.ZERO) <= 0 || rawScaleDecay.compareTo(BigDecimal.ONE) >= 0) {
+            throw new IllegalArgumentException("scaleDecay must be in (0, 1)");
+        }
+        BigDecimal complement = BigDecimal.ONE.subtract(rawScaleDecay);
+        Num oneMinusScaleDecay = factory.numOf(complement);
+        return new ValidatedScaleDecay(rawScaleDecay, complement, oneMinusScaleDecay);
+    }
+
+    private record ValidatedScaleDecay(BigDecimal rawScaleDecay, BigDecimal rawComplementScaleDecay,
+            Num oneMinusScaleDecay) {
+    }
+
+    private record Parameters(Indicator<Num> indicator, BigDecimal targetMean, BigDecimal allowance,
+            BigDecimal outlierClipFactor, Num appliedOutlierClipFactor, boolean exactOutlierClipFactorArithmetic,
+            BigDecimal rawScaleDecay, BigDecimal rawComplementScaleDecay, Num oneMinusScaleDecay) {
+    }
+
+    @Override
+    protected Num calculate(int index) {
+        int beginIndex = getBarSeries().getBeginIndex();
+        if (index == 0 && beginIndex > 0) {
+            // Removed-index reads map to the synthetic zero; anchor at the
+            // retained head so the recursion never backtracks into pruned bars.
+            index = beginIndex;
+        }
+        if (index - beginIndex < getCountOfUnstableBars()) {
+            return NaN.NaN;
+        }
+        Num current = indicator.getValue(index);
+        if (!Num.isFinite(current)) {
+            Num previous = index == beginIndex ? getBarSeries().numFactory().zero() : getValue(index - 1);
+            return Num.isFinite(previous) ? previous : getBarSeries().numFactory().zero();
+        }
+        Num deviation = exactDeviation(targetMean, current, allowance);
+        if (index > beginIndex) {
+            Num previousScale = deviationScale.getValue(index - 1);
+            if (Num.isFinite(previousScale)) {
+                Num bound = clippingBound(previousScale, index - 1);
+                deviation = deviation.max(bound.negate()).min(bound);
+            }
+        }
+        Num previous = index == beginIndex ? getBarSeries().numFactory().zero() : getValue(index - 1);
+        if (!Num.isFinite(previous)) {
+            previous = getBarSeries().numFactory().zero();
+        }
+        Num updated = previous.plus(deviation);
+        if (!Num.isFinite(updated)) {
+            updated = saturationMagnitude(getBarSeries().numFactory());
+        }
+        return updated.max(getBarSeries().numFactory().zero());
+    }
+
+    @Override
+    public int getCountOfUnstableBars() {
+        return indicator.getCountOfUnstableBars();
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " targetMean: " + targetMean + " allowance: " + allowance;
+    }
+
+    private static BigDecimal requireFiniteDecimal(Number value, String name) {
+        Objects.requireNonNull(value, name + " must not be null");
+        if (value instanceof BigDecimal decimal) {
+            return decimal;
+        }
+        if (value instanceof java.math.BigInteger integer) {
+            return new BigDecimal(integer);
+        }
+        if (value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long) {
+            return BigDecimal.valueOf(value.longValue());
+        }
+        double narrowed = value.doubleValue();
+        if (!Double.isFinite(narrowed)) {
+            throw new IllegalArgumentException(name + " must be finite");
+        }
+        return BigDecimal.valueOf(narrowed);
+    }
+
+    private static boolean requiresExactFactorArithmetic(BigDecimal rawFactor, Num appliedFactor, NumFactory factory) {
+        if (!Num.isFinite(appliedFactor) || !appliedFactor.isPositive()) {
+            return true;
+        }
+        Num saturation = saturationMagnitude(factory);
+        return appliedFactor.isEqual(saturation)
+                && ExactDecimalArithmetic.exactValueOf(appliedFactor).compareTo(rawFactor) != 0;
+    }
+
+    /**
+     * Multiplies the prior deviation scale by the retained raw clipping factor. The
+     * usual {@link Num} multiplication remains the fast path. Exact decimal
+     * recovery is used only when the scale update underflowed, factor conversion
+     * underflowed, overflowed, was saturated, or the completed multiplication
+     * overflowed; only the final bound is narrowed or saturated.
+     */
+    private Num clippingBound(Num previousScale, int scaleIndex) {
+        BigDecimal exactScale = previousScale.isZero() ? deviationScale.exactUnderflowedValue(scaleIndex) : null;
+        if (exactScale == null && !exactOutlierClipFactorArithmetic) {
+            Num bound = previousScale.multipliedBy(appliedOutlierClipFactor);
+            if (Num.isFinite(bound)) {
+                return bound;
+            }
+        }
+        if (exactScale == null) {
+            exactScale = ExactDecimalArithmetic.exactValueOf(previousScale);
+        }
+        BigDecimal exactBound = exactScale.multiply(outlierClipFactor);
+        NumFactory factory = getBarSeries().numFactory();
+        Num narrowed = factory.numOf(exactBound);
+        if (Num.isFinite(narrowed)) {
+            return narrowed;
+        }
+        Num magnitude = saturationMagnitude(factory);
+        return exactBound.signum() < 0 ? magnitude.negate() : magnitude;
+    }
+
+    /**
+     * The largest finite magnitude the active factory can represent: the double
+     * ceiling for double- and decimal-backed factories, and the float ceiling when
+     * the factory's backing primitive overflows {@code Double.MAX_VALUE} to
+     * infinity, so the documented finite saturation holds for every delegate type.
+     */
+    static Num saturationMagnitude(NumFactory factory) {
+        Num doubleCeiling = factory.numOf(Double.MAX_VALUE);
+        return Num.isFinite(doubleCeiling) ? doubleCeiling : factory.numOf(Float.MAX_VALUE);
+    }
+
+    /**
+     * Computes {@code targetMean - current - allowance} from the retained raw
+     * parameters and the exact finite source value, narrowing only the final
+     * deviation through the active factory. This preserves cancellation between
+     * distinct out-of-range parameters; only a genuinely unrepresentable final
+     * deviation saturates.
+     */
+    static Num exactDeviation(BigDecimal targetMean, Num current, BigDecimal allowance) {
+        BigDecimal exact = targetMean.subtract(ExactDecimalArithmetic.exactValueOf(current)).subtract(allowance);
+        NumFactory factory = current.getNumFactory();
+        Num narrowed = factory.numOf(exact);
+        if (Num.isFinite(narrowed)) {
+            return narrowed;
+        }
+        Num magnitude = saturationMagnitude(factory);
+        return exact.signum() < 0 ? magnitude.negate() : magnitude;
+    }
+
+    /**
+     * Exponentially smoothed mean absolute deviation of the raw CUSUM increment
+     * {@code mu0 - X_t - k}, using the parent's exact-complement update weight.
+     * Follows the parent's non-finite convention: gaps carry the previous scale
+     * forward and are seeded at zero on the first addressable bar.
+     */
+    private static final class DeviationScaleIndicator extends RecursiveCachedIndicator<Num> {
+
+        private final Indicator<Num> indicator;
+        private final BigDecimal targetMean;
+        private final BigDecimal allowance;
+        private final Num oneMinusScaleDecay;
+        private final BigDecimal rawComplementScaleDecay;
+        private final ConcurrentHashMap<Integer, BigDecimal> exactUnderflowedValues = new ConcurrentHashMap<>();
+        private volatile boolean hasExactUnderflowedValues;
+
+        private DeviationScaleIndicator(Indicator<Num> indicator, BigDecimal targetMean, BigDecimal allowance,
+                Num oneMinusScaleDecay, BigDecimal rawComplementScaleDecay) {
+            super(indicator);
+            this.indicator = indicator;
+            this.targetMean = targetMean;
+            this.allowance = allowance;
+            this.oneMinusScaleDecay = oneMinusScaleDecay;
+            this.rawComplementScaleDecay = rawComplementScaleDecay;
+        }
+
+        private void invalidateForRetainedHead() {
+            invalidateCache();
+            exactUnderflowedValues.clear();
+            hasExactUnderflowedValues = false;
+        }
+
+        private BigDecimal exactUnderflowedValue(int index) {
+            return hasExactUnderflowedValues ? exactUnderflowedValues.get(index) : null;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return indicator.getCountOfUnstableBars();
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            int beginIndex = getBarSeries().getBeginIndex();
+            if (index - beginIndex < getCountOfUnstableBars()) {
+                return NaN.NaN;
+            }
+            if (hasExactUnderflowedValues) {
+                exactUnderflowedValues.remove(index);
+            }
+            Num current = indicator.getValue(index);
+            if (!Num.isFinite(current)) {
+                Num previous = index == beginIndex ? getBarSeries().numFactory().zero() : getValue(index - 1);
+                if (index > beginIndex) {
+                    carryExactUnderflow(index - 1, index, previous);
+                }
+                return Num.isFinite(previous) ? previous : getBarSeries().numFactory().zero();
+            }
+            // Exact deviation keeps cancellation between raw out-of-range
+            // parameters intact for both the CUSUM and its clipping scale.
+            Num increment = CusumIndicator.exactDeviation(targetMean, current, allowance).abs();
+            if (index == beginIndex) {
+                return increment;
+            }
+            Num previous = getValue(index - 1);
+            if (!Num.isFinite(previous)) {
+                return increment;
+            }
+            // Weight the finite difference before combining. A low-magnitude
+            // result or delta can misround on the active primitive grid, and
+            // the published scale drives the parent's winsorization bound.
+            // Such updates recombine exact operands without intermediate
+            // rounding and narrow once. If the exact update itself underflows,
+            // retain it alongside the public Num cache so a later multiplication
+            // by the clipping factor can recover a representable bound.
+            Num delta = increment.minus(previous);
+            Num weightedDelta = delta.multipliedBy(oneMinusScaleDecay);
+            Num updated = previous.plus(weightedDelta);
+            BigDecimal exactPrevious = previous.isZero() ? exactUnderflowedValue(index - 1) : null;
+            if (exactPrevious != null || ExactDecimalArithmetic.requiresExactRecovery(updated, weightedDelta)) {
+                return recoverExactUpdate(index, previous, exactPrevious, increment);
+            }
+            return updated;
+        }
+
+        private Num recoverExactUpdate(int index, Num previous, BigDecimal exactPrevious, Num increment) {
+            if (exactPrevious == null) {
+                exactPrevious = ExactDecimalArithmetic.exactValueOf(previous);
+            }
+            BigDecimal updateWeight = appliedScaleWeight();
+            BigDecimal exactUpdated = exactPrevious.multiply(BigDecimal.ONE.subtract(updateWeight))
+                    .add(ExactDecimalArithmetic.exactValueOf(increment).multiply(updateWeight));
+            Num narrowed = getBarSeries().numFactory().numOf(exactUpdated);
+            if (narrowed.isZero() && exactUpdated.signum() != 0) {
+                exactUnderflowedValues.put(index, exactUpdated);
+                hasExactUnderflowedValues = true;
+            }
+            return narrowed;
+        }
+
+        private void carryExactUnderflow(int previousIndex, int index, Num previous) {
+            if (!previous.isZero()) {
+                return;
+            }
+            BigDecimal exactPrevious = exactUnderflowedValue(previousIndex);
+            if (exactPrevious != null) {
+                exactUnderflowedValues.put(index, exactPrevious);
+            }
+        }
+
+        /**
+         * The exact convex weight the scale update applies. A complement that
+         * underflows the active factory to zero (a decay within {@code 1e-308} of one
+         * on the double grid) would freeze the scale at its seed. Conversely, a
+         * positive decay below the active grid can make the complement round to one and
+         * erase the first operand. Recovery re-applies the raw exact complement at
+         * either boundary so both convex weights remain effective.
+         */
+        private BigDecimal appliedScaleWeight() {
+            if ((oneMinusScaleDecay.isZero() && rawComplementScaleDecay.signum() != 0)
+                    || (oneMinusScaleDecay.isEqual(getBarSeries().numFactory().one())
+                            && rawComplementScaleDecay.compareTo(BigDecimal.ONE) < 0)) {
+                return rawComplementScaleDecay;
+            }
+            return ExactDecimalArithmetic.exactValueOf(oneMinusScaleDecay);
+        }
+    }
+}
