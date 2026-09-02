@@ -21,14 +21,26 @@ public class ThreeInsideDownIndicator extends CachedIndicator<Boolean> {
     private final transient BearishHaramiIndicator harami;
 
     /**
-     * Constructor.
+     * Constructor with the default average period.
      *
      * @param series the bar series
      */
     public ThreeInsideDownIndicator(final BarSeries series) {
+        this(series, CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD);
+    }
+
+    /**
+     * Constructor with a custom average period for the harami body baselines.
+     *
+     * @param series        the bar series
+     * @param averagePeriod the number of preceding candles averaged into the harami
+     *                      body baselines (at least 1)
+     * @since 0.24.2
+     */
+    public ThreeInsideDownIndicator(final BarSeries series, final int averagePeriod) {
         super(series);
         this.trendIndicator = new UpTrendIndicator(series);
-        this.harami = new BearishHaramiIndicator(series);
+        this.harami = new BearishHaramiIndicator(series, averagePeriod);
     }
 
     @Override

@@ -83,6 +83,20 @@ public class ThreeInsideUpIndicatorTest extends AbstractIndicatorTest<Indicator<
     }
 
     @Test
+    public void customAveragePeriodGatesPatternOnExtendedBaseline() {
+        series.barBuilder().openPrice(29).closePrice(23).highPrice(29).lowPrice(23).add();
+        series.barBuilder().openPrice(28).closePrice(18).highPrice(29).lowPrice(17).add();
+        series.barBuilder().openPrice(24).closePrice(27).highPrice(27).lowPrice(24).add();
+        series.barBuilder().openPrice(26).closePrice(29).highPrice(29).lowPrice(26).add();
+        series.barBuilder().openPrice(27).closePrice(30).highPrice(31).lowPrice(27).add();
+
+        assertTrue(new ThreeInsideUpIndicator(series, CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD).getValue(20));
+        // A 20-candle baseline cannot complete behind the harami at index 19,
+        // so the forwarded period suppresses the otherwise-matching pattern.
+        assertFalse(new ThreeInsideUpIndicator(series, 20).getValue(20));
+    }
+
+    @Test
     public void getValueWhenIndexBelowUnstableBars() {
         var tiu = new ThreeInsideUpIndicator(series);
         assertFalse(tiu.getValue(0));
