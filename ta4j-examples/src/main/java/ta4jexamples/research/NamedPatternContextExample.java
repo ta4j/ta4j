@@ -31,6 +31,13 @@ import org.ta4j.core.rules.UnderIndicatorRule;
  * interpretation without hiding any trend model inside the pattern indicator.
  * </p>
  * <p>
+ * Rules compare raw indicator values and do not enforce indicator unstable-bar
+ * counts, so the composed rule can signal while the shifted context average is
+ * still a partial window. {@link #firstReliableIndex(BarSeries)} exposes the
+ * combined warm-up boundary (index 21 for this setup); {@code main} applies it
+ * by never evaluating the rule below that index.
+ * </p>
+ * <p>
  * This class and its {@code main} method are public because ta4j-examples is a
  * runnable demo catalog: examples are executed directly as JVM entry points
  * ({@code java ta4jexamples.research.NamedPatternContextExample}), which
@@ -57,10 +64,12 @@ public class NamedPatternContextExample {
         Rule pattern = pattern(series);
         Rule priorDowntrend = priorDowntrend(series);
         Rule reversalCandidate = pattern.and(priorDowntrend);
-        int index = series.getEndIndex();
+        int firstReliableIndex = firstReliableIndex(series);
+        int index = Math.max(firstReliableIndex, series.getEndIndex());
 
-        LOG.info("index={} pattern={} priorDowntrend={} reversalCandidate={}", index, pattern.isSatisfied(index),
-                priorDowntrend.isSatisfied(index), reversalCandidate.isSatisfied(index));
+        LOG.info("firstReliableIndex={} index={} pattern={} priorDowntrend={} reversalCandidate={}", firstReliableIndex,
+                index, pattern.isSatisfied(index), priorDowntrend.isSatisfied(index),
+                reversalCandidate.isSatisfied(index));
     }
 
     static BarSeries buildSeries() {
@@ -96,8 +105,27 @@ public class NamedPatternContextExample {
     static Rule priorDowntrend(BarSeries series) {
         Indicator<Num> close = new ClosePriceIndicator(series);
         Indicator<Num> closeBeforePattern = new PreviousValueIndicator(close, PATTERN_WIDTH);
-        Indicator<Num> averageBeforePattern = new PreviousValueIndicator(new SMAIndicator(close, CONTEXT_PERIOD),
-                PATTERN_WIDTH);
+        Indicator<Num> averageBeforePattern = averageBeforePattern(close);
         return new UnderIndicatorRule(closeBeforePattern, averageBeforePattern);
+    }
+
+    /**
+     * The first index whose context average covers the full
+     * {@value #CONTEXT_PERIOD}-bar window shifted {@value #PATTERN_WIDTH} bars
+     * before the pattern: the later of the pattern's and the shifted average's
+     * unstable-bar counts. Signals at lower indexes read a partial context window
+     * and must be skipped.
+     *
+     * @param series the bar series
+     * @return the first index at which the composed rule is meaningful
+     */
+    static int firstReliableIndex(BarSeries series) {
+        Indicator<Num> close = new ClosePriceIndicator(series);
+        return Math.max(new PiercingLineIndicator(series).getCountOfUnstableBars(),
+                averageBeforePattern(close).getCountOfUnstableBars());
+    }
+
+    private static Indicator<Num> averageBeforePattern(Indicator<Num> close) {
+        return new PreviousValueIndicator(new SMAIndicator(close, CONTEXT_PERIOD), PATTERN_WIDTH);
     }
 }

@@ -69,7 +69,7 @@ public class ThreeInsideUpIndicator extends CandlePatternIndicator {
                 CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD),
                 CandleThresholdSupport.forSeries(series, CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD));
         this.averagePeriod = CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD;
-        this.harami = new BullishHaramiIndicator(getBarSeries(), averagePeriod);
+        this.harami = new BullishHaramiIndicator(series, averagePeriod);
     }
 
     /**
@@ -86,7 +86,7 @@ public class ThreeInsideUpIndicator extends CandlePatternIndicator {
         super(CandleThresholdSupport.validateSeriesAndAveragePeriod(series, averagePeriod),
                 CandleThresholdSupport.forSeries(series, averagePeriod));
         this.averagePeriod = averagePeriod;
-        this.harami = new BullishHaramiIndicator(getBarSeries(), averagePeriod);
+        this.harami = new BullishHaramiIndicator(series, averagePeriod);
     }
 
     @Override

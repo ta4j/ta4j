@@ -21,4 +21,11 @@ public class NamedPatternContextExampleTest {
         Assert.assertTrue(priorDowntrend.isSatisfied(index));
         Assert.assertTrue(pattern.and(priorDowntrend).isSatisfied(index));
     }
+
+    @Test
+    public void combinedWarmUpBoundaryMatchesTheDocumentedIndex() {
+        BarSeries series = NamedPatternContextExample.buildSeries();
+
+        Assert.assertEquals(21, NamedPatternContextExample.firstReliableIndex(series));
+    }
 }

@@ -82,10 +82,12 @@
  *
  * <p>
  * Pattern-specific gaps and reversal crossings are strict. Containment and
- * penetration endpoints are inclusive, except the crows' containment:
+ * penetration endpoints are inclusive. One exception sits in the crows:
  * {@link org.ta4j.core.indicators.candles.ThreeBlackCrowsIndicator
- * ThreeBlackCrowsIndicator} requires each current open to be strictly inside
- * the previous body, rejecting opens exactly on either boundary.
+ * ThreeBlackCrowsIndicator} requires the second and third crow to open strictly
+ * inside the previous crow's body, rejecting opens exactly on either boundary;
+ * the first crow only has to open strictly below the preceding bar's high, so
+ * its open may sit above the prior body.
  * </p>
  *
  * <h2>Compose morphology with explicit context</h2>
