@@ -104,6 +104,20 @@ public class CandleThresholdSupportTest {
     }
 
     @Test
+    public void oneTenthThresholdsAcceptOrdinaryInclusiveBoundaryAcrossFactories() {
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(series, 0, 0, 1, 0);
+            addExtremeCandle(series, 0, 0.1, 0.2, 0);
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertTrue(support.isDoji(1));
+            assertTrue(support.isShortShadow(1, support.upperShadow()));
+            assertTrue(support.isNear(1, factory.numOf(0.1), factory.zero()));
+        }
+    }
+
+    @Test
     public void longShadowIsStrictAgainstPriorAverageBody() {
         BarSeries atBoundarySeries = new MockBarSeriesBuilder().build();
         addBars(atBoundarySeries, 5, 10, 0, 0);

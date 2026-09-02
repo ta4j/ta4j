@@ -72,6 +72,28 @@ public class DojiIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>,
     }
 
     @Test
+    public void customFactorKeepsCanonicalOrderingAcrossFactories() {
+        // Prior average range 7.677504280563276e258 with factor 0.1 makes the
+        // threshold 7.677504280563276e257. DoubleNum rounds the quotient
+        // body / 0.1 onto the baseline double for both candidate bodies, so a
+        // quotient comparison cannot tell them apart; the canonical decimal
+        // recheck keeps the body one canonical step above the threshold
+        // rejected while the boundary body stays an inclusive doji.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries boundarySeries = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addBar(boundarySeries, 0, 7.677504280563276e258, 0);
+            addBar(boundarySeries, 7.677504280563276e257, 0, 0);
+
+            BarSeries aboveSeries = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addBar(aboveSeries, 0, 7.677504280563276e258, 0);
+            addBar(aboveSeries, 7.677504280563277e257, 0, 0);
+
+            assertTrue(new DojiIndicator(boundarySeries, 1, 0.1).getValue(1));
+            assertFalse(new DojiIndicator(aboveSeries, 1, 0.1).getValue(1));
+        }
+    }
+
+    @Test
     public void zeroBodyAgainstZeroBaselineIsDoji() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (int i = 0; i < 6; i++) {

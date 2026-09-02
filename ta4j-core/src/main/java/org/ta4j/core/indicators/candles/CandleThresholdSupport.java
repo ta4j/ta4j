@@ -720,7 +720,7 @@ final class CandleThresholdSupport {
         if (Num.isFinite(rawBody) && Num.isFinite(rawBaseline)) {
             final Num scaledBody = rawBody.multipliedBy(rangeScale);
             if (Num.isFinite(scaledBody)) {
-                return isAtMostScaledRawBaseline(rawBody, scaledBody, rawBaseline);
+                return isAtMostScaledRawBaseline(index, rawBody, scaledBody, rawBaseline, DOJI_RANGE_FACTOR);
             }
         }
         return !bodyValue.isGreaterThan(baseline);
@@ -850,7 +850,8 @@ final class CandleThresholdSupport {
         if (Num.isFinite(rawBaseline)) {
             final Num scaledShadow = shadowValue.multipliedBy(rangeScale);
             if (Num.isFinite(scaledShadow)) {
-                return isAtMostScaledRawBaseline(shadowValue, scaledShadow, rawBaseline);
+                return isAtMostScaledRawBaseline(index, shadowValue, scaledShadow, rawBaseline,
+                        SHORT_SHADOW_RANGE_FACTOR);
             }
         }
         return !shadowValue.isGreaterThan(baseline);
@@ -963,7 +964,8 @@ final class CandleThresholdSupport {
             if (Num.isFinite(rawDifference) && Num.isFinite(rawBaseline)) {
                 final Num scaledDifference = rawDifference.multipliedBy(rangeScale);
                 if (Num.isFinite(scaledDifference)) {
-                    return isAtMostScaledRawBaseline(rawDifference, scaledDifference, rawBaseline);
+                    return isAtMostScaledRawBaseline(index, rawDifference, scaledDifference, rawBaseline,
+                            NEAR_RANGE_FACTOR);
                 }
             }
         }
@@ -1001,23 +1003,62 @@ final class CandleThresholdSupport {
     }
 
     /**
+     * Whether a rounded finite {@link DoubleNum} comparison sits on the one-ULP
+     * boundary zone: outside it the rounded ordering is decisive, inside it the
+     * verdict is rechecked against canonical decimal operands so it agrees with
+     * {@link DecimalNum} at inclusive boundaries and one canonical step above them.
+     */
+    static boolean isWithinOneUlpBoundary(Num scaledLeft, Num scaledRight) {
+        return scaledLeft instanceof DoubleNum && scaledRight instanceof DoubleNum
+                && isWithinOneUlp(scaledLeft.doubleValue(), scaledRight.doubleValue());
+    }
+
+    /**
      * Resolves an inclusive raw range comparison after reciprocal scaling. The
-     * tenfold product preserves subnormal ordering; a fused tenfold difference
-     * prevents a finite {@link DoubleNum} measurement just above the boundary from
-     * rounding onto it.
+     * tenfold product preserves subnormal ordering; inside the one-ULP boundary
+     * zone the verdict is rechecked against canonical decimal operands so a
+     * measurement on the inclusive boundary is accepted and one a canonical step
+     * above it is rejected, matching {@link DecimalNum} ordering.
      *
+     * @param index             bar index whose preceding window supplies the
+     *                          baseline
      * @param measurement       the finite raw measurement
      * @param scaledMeasurement the finite reciprocal-scaled measurement
      * @param rawBaseline       the finite raw baseline
+     * @param canonicalFactor   threshold factor against the prior average range
      * @return whether the measurement is at most one tenth of the baseline
      */
-    private static boolean isAtMostScaledRawBaseline(Num measurement, Num scaledMeasurement, Num rawBaseline) {
-        if (measurement instanceof DoubleNum doubleMeasurement && rawBaseline instanceof DoubleNum doubleBaseline) {
-            final double difference = Math.fma(doubleMeasurement.getDelegate(), RANGE_SCALE,
-                    -doubleBaseline.getDelegate());
-            return difference <= 0d;
+    private boolean isAtMostScaledRawBaseline(int index, Num measurement, Num scaledMeasurement, Num rawBaseline,
+            double canonicalFactor) {
+        if (isWithinOneUlpBoundary(scaledMeasurement, rawBaseline)) {
+            return isAtMostCanonicalFactorOfPriorAverageRange(index, measurement.doubleValue(), canonicalFactor);
         }
         return !scaledMeasurement.isGreaterThan(rawBaseline);
+    }
+
+    /**
+     * Inclusive {@code measurement <= factor * priorAverageRange(index)} rechecked
+     * from the canonical decimal rendering of the {@link DoubleNum} operands.
+     * Scaling both sides by {@code averagePeriod} keeps the comparison in exact
+     * decimal arithmetic: a measurement whose canonical value sits on the boundary
+     * stays inclusive (agreeing with {@link DecimalNum}), while one a canonical
+     * step above it stays rejected; a rounded double quotient cannot preserve that
+     * ordering.
+     *
+     * @param index       bar index whose preceding window supplies the baseline
+     * @param measurement full-scale measurement under evaluation
+     * @param factor      threshold factor against the prior average range
+     * @return whether the measurement is at most {@code factor} times the prior
+     *         average range
+     */
+    boolean isAtMostCanonicalFactorOfPriorAverageRange(int index, double measurement, double factor) {
+        final BigDecimal scaledMeasurement = BigDecimal.valueOf(measurement)
+                .multiply(BigDecimal.valueOf((long) averagePeriod));
+        BigDecimal scaledBaseline = BigDecimal.ZERO;
+        for (int priorIndex = index - averagePeriod; priorIndex < index; priorIndex++) {
+            scaledBaseline = scaledBaseline.add(BigDecimal.valueOf(range.getValue(priorIndex).doubleValue()));
+        }
+        return scaledMeasurement.compareTo(scaledBaseline.multiply(BigDecimal.valueOf(factor))) <= 0;
     }
 
     /**

@@ -157,7 +157,7 @@ public class DojiIndicator extends CandlePatternIndicator {
             // Num implementation exactly when open equals close.
             return !bodyMagnitude.isPositive();
         }
-        if (rangeFactor == CandleThresholdSupport.DOJI_RANGE_FACTOR) {
+        if (Double.compare(rangeFactor, CandleThresholdSupport.DOJI_RANGE_FACTOR) == 0) {
             return thresholds.isDoji(index);
         }
         final Num rawPriorAverage = thresholds.rawPriorAverageRange().getValue(index);
@@ -203,9 +203,18 @@ public class DojiIndicator extends CandlePatternIndicator {
                 // scaled comparison still yields the doji verdict.
                 final Num ratioScale = numFactory.numOf(RATIO_SCALE);
                 final Num scaledRatio = bodyMagnitude.multipliedBy(ratioScale).dividedBy(priorAverage);
-                return !scaledRatio.isGreaterThan(factor.multipliedBy(ratioScale));
+                final Num scaledFactor = factor.multipliedBy(ratioScale);
+                if (CandleThresholdSupport.isWithinOneUlpBoundary(scaledRatio, scaledFactor)) {
+                    return thresholds.isAtMostCanonicalFactorOfPriorAverageRange(index, bodyMagnitude.doubleValue(),
+                            rangeFactor);
+                }
+                return !scaledRatio.isGreaterThan(scaledFactor);
             }
             final Num scaledBodyMagnitude = bodyMagnitude.dividedBy(factor);
+            if (CandleThresholdSupport.isWithinOneUlpBoundary(scaledBodyMagnitude, priorAverage)) {
+                return thresholds.isAtMostCanonicalFactorOfPriorAverageRange(index, bodyMagnitude.doubleValue(),
+                        rangeFactor);
+            }
             return !scaledBodyMagnitude.isGreaterThan(priorAverage);
         }
         // The raw difference overflows the numeric type although the endpoints
