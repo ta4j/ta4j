@@ -13,6 +13,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -64,14 +65,14 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
 
     private FixedIndicator<Num> constant(BarSeries series, double value) {
         Num[] values = new Num[series.getBarCount()];
-        Arrays.fill(values, numOf(value));
+        Arrays.fill(values, series.numFactory().numOf(value));
         return new FixedIndicator<>(series, values);
     }
 
     private FixedIndicator<Num> fixed(BarSeries series, double... values) {
         Num[] nums = new Num[values.length];
         for (int i = 0; i < values.length; i++) {
-            nums[i] = numOf(values[i]);
+            nums[i] = series.numFactory().numOf(values[i]);
         }
         return new FixedIndicator<>(series, nums);
     }
@@ -326,6 +327,66 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
     }
 
     @Test
+    public void normalizesBandwidthToSeriesNumFactory() {
+        BarSeries series = seriesOf(10, 10.2, 10.1, 10.3);
+        NumFactory foreignFactory = numFactory == DoubleNumFactory.getInstance() ? DecimalNumFactory.getInstance()
+                : DoubleNumFactory.getInstance();
+        CorrentropyKalmanFilterIndicator filter = new CorrentropyKalmanFilterIndicator(new ClosePriceIndicator(series),
+                constant(series, 1e-3), constant(series, 1e-2), foreignFactory.numOf(2.0));
+
+        assertValues(new double[] { 10.0, 10.104985931110, 10.103074789595, 10.160638902480 }, filter, 1e-9);
+    }
+
+    @Test
+    public void rejectsBandwidthWhoseSquaredScaleIsNotRepresentableBySeriesFactory() {
+        BaseBarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(10, 10.2, 10.1, 10.3)
+                .build();
+        Indicator<Num> source = new ClosePriceIndicator(series);
+        Indicator<Num> q = constant(series, 1e-3);
+        Indicator<Num> r = constant(series, 1e-2);
+        NumFactory foreignFactory = DecimalNumFactory.getInstance();
+
+        Assert.assertThrows(IllegalArgumentException.class,
+                () -> new CorrentropyKalmanFilterIndicator(source, q, r, foreignFactory.numOf(1e-200)));
+        Assert.assertThrows(IllegalArgumentException.class,
+                () -> new CorrentropyKalmanFilterIndicator(source, q, r, foreignFactory.numOf(1e200)));
+    }
+
+    @Test
+    public void recursiveStateStartsAtTheAbsoluteFirstStableIndex() {
+        BarSeries series = seriesOf(1000, 1000, 10, 10.2, 50, 10.4);
+        MockIndicator source = new MockIndicator(series, 2, numOf(1000), numOf(1000), numOf(10), numOf(10.2), numOf(50),
+                numOf(10.4));
+        CorrentropyKalmanFilterIndicator filter = filter(source, 1e-3, 0.2, 2);
+
+        assertNaNAt(filter, 0, 1);
+        assertNaNAt(filter.measurementWeight(), 0, 1);
+        Assert.assertEquals(10.0, filter.getValue(2).doubleValue(), 0.0);
+        Assert.assertEquals(1.0, filter.measurementWeight().getValue(2).doubleValue(), 0.0);
+        Assert.assertEquals(10.091153928197, filter.getValue(3).doubleValue(), 1e-9);
+        Assert.assertEquals(10.091153928197, filter.getValue(4).doubleValue(), 1e-9);
+        Assert.assertEquals(10.188312327114, filter.getValue(5).doubleValue(), 1e-9);
+    }
+
+    @Test
+    public void retainedSeriesInitializesWhenBeginIndexIsPastTheStableBoundary() {
+        BaseBarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 10.1, 10.2, 10.3, 50, 10.4)
+                .build();
+        MockIndicator source = new MockIndicator(series, 3, numOf(10), numOf(10.1), numOf(10.2), numOf(10.3), numOf(50),
+                numOf(10.4));
+        Indicator<Num> q = constant(series, 1e-3);
+        Indicator<Num> r = constant(series, 0.2);
+        series.setMaximumBarCount(2);
+        CorrentropyKalmanFilterIndicator filter = new CorrentropyKalmanFilterIndicator(source, q, r, numOf(2));
+
+        Assert.assertEquals(4, series.getBeginIndex());
+        Assert.assertEquals(50.0, filter.getValue(4).doubleValue(), 0.0);
+        Assert.assertEquals(1.0, filter.measurementWeight().getValue(4).doubleValue(), 0.0);
+    }
+
+    @Test
     public void unstableBarsAreTheMaximumOfTheConsumedIndicators() {
         BarSeries series = seriesOf(1, 2, 3);
         MockIndicator unstableSource = new MockIndicator(series, 3, Arrays.asList(numOf(1), numOf(2), numOf(3)));
@@ -425,26 +486,26 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
         // isolated_outlier: index 2 is a saturated rejection (zero weight) and
         // its fixed point is not a maximum of the correntropy objective.
         assertDiagnostics(byName.get("isolated_outlier"), booleans(true, true, true, true),
-                booleans(false, false, true, false), booleans(true, true, false, true), ints(0, 1, 0, 1));
+                booleans(false, false, true, false), booleans(true, true, false, true), ints(0, 1, 2, 1));
         // tight_measurement_noise: R << P^- makes the objective bimodal; indices 1-3
         // settle at the predict-side stationary point while only index 0 is maximal.
         assertDiagnostics(byName.get("tight_measurement_noise"), booleans(true, true, true, true),
-                booleans(false, true, false, true), booleans(true, false, false, false), ints(0, 1, 2, 1));
+                booleans(false, true, false, true), booleans(true, false, false, false), ints(0, 2, 2, 2));
         // long_outlier_run: the final accumulated deviation saturates the kernel.
         assertDiagnostics(byName.get("long_outlier_run"), booleans(true, true, true, true),
-                booleans(false, false, false, true), booleans(true, true, true, false), ints(0, 1, 1, 0));
+                booleans(false, false, false, true), booleans(true, true, true, false), ints(0, 1, 1, 2));
         // increasing_impulse: growing deviations reject progressively until the
         // source returns to the trusted level.
         assertDiagnostics(byName.get("increasing_impulse"), booleans(true, true, true, true, true, true),
                 booleans(false, false, false, true, true, false), booleans(true, true, false, false, false, true),
-                ints(0, 1, 2, 0, 0, 1));
+                ints(0, 1, 2, 2, 2, 1));
         // nan_warmup: the three leading invalid observations carry no diagnostics,
         // the following indices converge, and the saturated tail ends at weight zero.
         assertDiagnostics(byName.get("nan_warmup"),
                 booleans(null, null, null, true, true, true, true, true, true, true),
                 booleans(null, null, null, false, false, false, false, true, true, true),
                 booleans(null, null, null, true, false, false, false, false, false, false),
-                ints(null, null, null, 0, 1, 1, 0, 0, 0, 0));
+                ints(null, null, null, 0, 2, 2, 2, 2, 2, 2));
         // large_bandwidth: the objective is flat; converged acceptances are mostly
         // non-maximal with large local-maxima counts.
         assertDiagnostics(byName.get("large_bandwidth"), booleans(true, true, true, true),

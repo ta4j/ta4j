@@ -15,7 +15,6 @@ import org.ta4j.core.indicators.CorrentropyKalmanWeightIndicator;
 import org.ta4j.core.indicators.KalmanNoiseIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 
@@ -94,7 +93,7 @@ public final class CorrentropyKalmanExample {
                 measurementNoise, series.numFactory().numOf(KERNEL_BANDWIDTH));
         CorrentropyKalmanWeightIndicator weight = filter.measurementWeight();
         Indicator<Num> residual = filter.residual();
-        Indicator<Num> rejectionWeightedResidual = BinaryOperationIndicator.product(residual, weight);
+        Indicator<Num> rejectionWeightedResidual = rejectionWeightedResidual(residual, weight);
         SMAIndicator smoothedResidualMagnitude = new SMAIndicator(NumericIndicator.of(residual).abs(),
                 SUSTAINED_WINDOW);
 
@@ -129,7 +128,7 @@ public final class CorrentropyKalmanExample {
         }
 
         LOG.info(
-                "Downstream evidence composition (no trading strategy): rejection-weighted residual product={} at {}, "
+                "Downstream evidence composition (no trading strategy): rejection-factor-weighted residual={} at {}, "
                         + "SMA({}) of |residual|={} at {}, latest close={}",
                 rejectionWeightedResidual.getValue(endIndex), endIndex, SUSTAINED_WINDOW,
                 smoothedResidualMagnitude.getValue(endIndex), endIndex, close.getValue(endIndex));
@@ -138,8 +137,21 @@ public final class CorrentropyKalmanExample {
     static BarSeries loadSeries() {
         BarSeries full = Objects.requireNonNull(JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(SP500_RESOURCE),
                 "S&P 500 resource was not available");
-        int start = Math.max(0, full.getBarCount() - WALK_BARS);
-        return full.getSubSeries(start, full.getEndIndex());
+        int endExclusive = full.getEndIndex() + 1;
+        int start = Math.max(full.getBeginIndex(), endExclusive - WALK_BARS);
+        return full.getSubSeries(start, endExclusive);
+    }
+
+    /**
+     * Scales residuals by the rejected share of each measurement.
+     *
+     * @param residual          the filter residual
+     * @param measurementWeight the accepted measurement share in {@code [0, 1]}
+     * @return {@code residual * (1 - measurementWeight)}
+     */
+    static Indicator<Num> rejectionWeightedResidual(Indicator<Num> residual, Indicator<Num> measurementWeight) {
+        NumericIndicator rejectionFactor = NumericIndicator.of(measurementWeight).multipliedBy(-1).plus(1);
+        return NumericIndicator.of(residual).multipliedBy(rejectionFactor);
     }
 
     private static int largestSingleBarMoveIndex(ClosePriceIndicator close, int fromIndex, int toIndex) {

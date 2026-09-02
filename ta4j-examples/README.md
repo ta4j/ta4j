@@ -126,8 +126,9 @@ weekly series:
 This example derives illustrative squared-price Q/R variances from ATR,
 smooths the close with the correntropy Kalman filter (dimensionless kernel
 bandwidth), and logs the robust estimate, residual, and measurement weight at
-an isolated wick, across a sustained move, and as rejection-weighted residual
-evidence without activating a trading strategy.
+an isolated wick, across a sustained move, and as rejected-residual evidence
+using `(1 - measurement weight) * residual`, without activating a trading
+strategy.
 
 ## Suggested progression
 

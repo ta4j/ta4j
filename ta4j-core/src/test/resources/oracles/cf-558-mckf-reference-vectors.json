@@ -198,19 +198,19 @@
       "local_maxima": [
         0,
         1,
-        0,
+        2,
         1
       ],
       "optimizer_argmax": [
         10.0,
         10.091153940513891,
-        NaN,
+        null,
         10.188312453749226
       ],
       "optimizer_dev": [
         0.0,
         1.2317007858086981e-08,
-        NaN,
+        null,
         1.2663554116443265e-07
       ],
       "grad": [
@@ -303,21 +303,21 @@
       ],
       "local_maxima": [
         0,
-        1,
         2,
-        1
+        2,
+        2
       ],
       "optimizer_argmax": [
         10.0,
-        NaN,
-        NaN,
-        NaN
+        null,
+        null,
+        null
       ],
       "optimizer_dev": [
         0.0,
-        NaN,
-        NaN,
-        NaN
+        null,
+        null,
+        null
       ],
       "grad": [
         0.0,
@@ -411,19 +411,19 @@
         0,
         1,
         1,
-        0
+        2
       ],
       "optimizer_argmax": [
         10.0,
         10.02273396879497,
         10.031262315831926,
-        NaN
+        null
       ],
       "optimizer_dev": [
         0.0,
         1.1461379401112026e-08,
         1.1732012694665173e-08,
-        NaN
+        null
       ],
       "grad": [
         0.0,
@@ -516,19 +516,19 @@
       "local_maxima": [
         0,
         1,
-        0,
+        2,
         1
       ],
       "optimizer_argmax": [
         10.0,
         10.091153940513891,
-        NaN,
+        null,
         10.188312453749226
       ],
       "optimizer_dev": [
         0.0,
         1.2317007858086981e-08,
-        NaN,
+        null,
         1.2663554116443265e-07
       ],
       "grad": [
@@ -645,24 +645,24 @@
         0,
         1,
         2,
-        0,
-        0,
+        2,
+        2,
         1
       ],
       "optimizer_argmax": [
         10.0,
         10.045599584308551,
-        NaN,
-        NaN,
-        NaN,
+        null,
+        null,
+        null,
         10.162917160577228
       ],
       "optimizer_dev": [
         0.0,
         1.3221974626276278e-08,
-        NaN,
-        NaN,
-        NaN,
+        null,
+        null,
+        null,
         5.751623177729925e-09
       ],
       "grad": [
@@ -1089,9 +1089,9 @@
       "name": "nan_warmup",
       "sigma": 2.0,
       "data": [
-        NaN,
-        NaN,
-        NaN,
+        null,
+        null,
+        null,
         50.0,
         60.0,
         70.0,
@@ -1225,36 +1225,36 @@
         null,
         null,
         0,
-        1,
-        1,
-        0,
-        0,
-        0,
-        0
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
       ],
       "optimizer_argmax": [
         null,
         null,
         null,
         50.0,
-        NaN,
-        NaN,
-        NaN,
-        NaN,
-        NaN,
-        NaN
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
       ],
       "optimizer_dev": [
         null,
         null,
         null,
         0.0,
-        NaN,
-        NaN,
-        NaN,
-        NaN,
-        NaN,
-        NaN
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
       ],
       "grad": [
         null,
@@ -1370,15 +1370,15 @@
       ],
       "optimizer_argmax": [
         10.0,
-        NaN,
-        NaN,
-        NaN
+        null,
+        null,
+        null
       ],
       "optimizer_dev": [
         0.0,
-        NaN,
-        NaN,
-        NaN
+        null,
+        null,
+        null
       ],
       "grad": [
         0.0,
@@ -1664,15 +1664,15 @@
         1,
         1,
         1,
+        2,
         1,
         1,
         1,
+        2,
+        2,
+        2,
         1,
-        0,
-        0,
-        0,
-        1,
-        1,
+        2,
         1,
         1,
         1,
@@ -1687,15 +1687,15 @@
         10.179152379444048,
         10.222504062266886,
         10.20148301808592,
-        NaN,
+        null,
         10.213319849790572,
         10.19759644827877,
         10.184564653487996,
-        NaN,
-        NaN,
-        NaN,
+        null,
+        null,
+        null,
         10.173416494522257,
-        NaN,
+        null,
         10.182353417965668,
         10.17296897577137,
         10.164770465855774,
@@ -1710,15 +1710,15 @@
         1.1179697523289178e-07,
         2.072579619039061e-08,
         4.124968810970131e-09,
-        NaN,
+        null,
         2.7085036435892107e-09,
         4.855742474774161e-09,
         3.955076266493052e-09,
-        NaN,
-        NaN,
-        NaN,
+        null,
+        null,
+        null,
         5.9649991612786835e-09,
-        NaN,
+        null,
         1.360445978093594e-09,
         5.482885256924419e-09,
         5.085890819600536e-09,

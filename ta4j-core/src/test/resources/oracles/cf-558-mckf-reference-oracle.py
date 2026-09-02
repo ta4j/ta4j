@@ -184,6 +184,10 @@ def _dense_unimodality_scan(f: Callable[[float], float], lo: float, hi: float, n
             local_maxima += 1
             rising = False
         prev_v = v
+    if vals[0] > vals[1]:
+        local_maxima += 1
+    if vals[-1] > vals[-2]:
+        local_maxima += 1
     return maximal, local_maxima, xs[best]
 
 
@@ -384,6 +388,17 @@ def run_all() -> list:
     return fixtures
 
 
+def _json_safe(value):
+    """Recursively convert non-finite floats to strict-JSON null values."""
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    return value
+
+
 def main() -> int:
     out = Path(__file__).resolve().parent / "cf-558-mckf-reference-vectors.json"
     fixtures = run_all()
@@ -401,7 +416,7 @@ def main() -> int:
         "fixtures": fixtures,
     }
     with out.open("w") as fh:
-        json.dump(payload, fh, indent=2)
+        json.dump(_json_safe(payload), fh, indent=2, allow_nan=False)
         fh.write("\n")
     print(f"wrote {out}")
     return 0

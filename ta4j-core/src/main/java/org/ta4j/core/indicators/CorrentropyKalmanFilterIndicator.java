@@ -6,9 +6,10 @@ package org.ta4j.core.indicators;
 import java.util.Objects;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Correntropy Kalman filter indicator based on the maximum correntropy
@@ -67,10 +68,11 @@ import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
  * valid redescending rejection: it yields gain zero, the isolated measurement
  * is ignored, and the estimate stays at the prior state.
  * <p>
- * Unavailable inputs (non-finite or non-positive source/Q/R), a non-converged
- * fixed-point iteration or invalid numerical state make the public estimate,
- * weight and residual {@code NaN.NaN} for that index; the last initialized
- * valid state is preserved internally and later valid indices recover.
+ * Unavailable inputs (non-finite source or non-finite/non-positive Q/R), a
+ * non-converged fixed-point iteration or invalid numerical state make the
+ * public estimate, weight and residual {@code NaN.NaN} for that index; the last
+ * initialized valid state is preserved internally and later valid indices
+ * recover.
  *
  * <p>
  * While the source stays pinned at an extreme value or keeps producing
@@ -120,16 +122,17 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
      * @param processNoiseVariance     the dynamic process-noise variance indicator
      * @param measurementNoiseVariance the dynamic measurement-noise variance
      *                                 indicator
-     * @param bandwidth                the dimensionless correntropy kernel
+     * @param kernelBandwidth          the dimensionless correntropy kernel
      *                                 bandwidth (sigma)
      * @throws NullPointerException     if {@code kernelBandwidth} is {@code null}
-     * @throws IllegalArgumentException if {@code kernelBandwidth} is not finite or
-     *                                  not positive
+     * @throws IllegalArgumentException if {@code kernelBandwidth} does not remain
+     *                                  finite and positive when converted and
+     *                                  squared in the series {@link NumFactory}
      */
     public CorrentropyKalmanFilterIndicator(Indicator<Num> indicator, Indicator<Num> processNoiseVariance,
             Indicator<Num> measurementNoiseVariance, Num kernelBandwidth) {
-        this(indicator, processNoiseVariance, measurementNoiseVariance, validateBandwidth(kernelBandwidth),
-                DEFAULT_MAX_ITERATIONS);
+        this(validateBandwidth(indicator, kernelBandwidth), DEFAULT_MAX_ITERATIONS, indicator, processNoiseVariance,
+                measurementNoiseVariance);
     }
 
     /**
@@ -142,12 +145,22 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
      * @param processNoiseVariance     the dynamic process-noise variance indicator
      * @param measurementNoiseVariance the dynamic measurement-noise variance
      *                                 indicator
-     * @param bandwidth                the dimensionless correntropy kernel
+     * @param kernelBandwidth          the dimensionless correntropy kernel
      *                                 bandwidth (sigma)
      * @param maxIterations            the maximum number of fixed-point iterations
+     * @throws NullPointerException     if {@code kernelBandwidth} is {@code null}
+     * @throws IllegalArgumentException if {@code kernelBandwidth} does not remain
+     *                                  finite and positive when converted and
+     *                                  squared in the series {@link NumFactory}
      */
     CorrentropyKalmanFilterIndicator(Indicator<Num> indicator, Indicator<Num> processNoiseVariance,
             Indicator<Num> measurementNoiseVariance, Num kernelBandwidth, int maxIterations) {
+        this(validateBandwidth(indicator, kernelBandwidth), maxIterations, indicator, processNoiseVariance,
+                measurementNoiseVariance);
+    }
+
+    private CorrentropyKalmanFilterIndicator(Num kernelBandwidth, int maxIterations, Indicator<Num> indicator,
+            Indicator<Num> processNoiseVariance, Indicator<Num> measurementNoiseVariance) {
         super(IndicatorUtils.requireSameSeries(indicator, processNoiseVariance, measurementNoiseVariance));
         this.indicator = indicator;
         this.processNoiseIndicator = processNoiseVariance;
@@ -376,6 +389,9 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
 
         @Override
         protected KalmanState calculate(int index) {
+            if (index < getCountOfUnstableBars()) {
+                return KalmanState.UNINITIALIZED;
+            }
             if (index == getBarSeries().getBeginIndex()) {
                 Num measurement = indicator.getValue(index);
                 Num processNoise = processNoiseIndicator.getValue(index);
@@ -413,11 +429,26 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
                 && Num.isFinite(measurementNoise) && measurementNoise.isPositive();
     }
 
-    private static Num validateBandwidth(Num bandwidth) {
-        Num validated = Objects.requireNonNull(bandwidth, "kernelBandwidth must not be null");
-        if (!Num.isFinite(validated) || validated.isZero() || validated.isNegative()) {
-            throw new IllegalArgumentException("kernelBandwidth must be a finite positive Num, but was " + validated);
+    private static Num validateBandwidth(Indicator<Num> indicator, Num bandwidth) {
+        Num supplied = Objects.requireNonNull(bandwidth, "kernelBandwidth must not be null");
+        if (!Num.isFinite(supplied) || !supplied.isPositive()) {
+            throw new IllegalArgumentException("kernelBandwidth must be a finite positive Num, but was " + supplied);
         }
-        return validated;
+
+        NumFactory numFactory = Objects.requireNonNull(indicator, "indicator must not be null")
+                .getBarSeries()
+                .numFactory();
+        Num normalized = numFactory.numOf(supplied.bigDecimalValue());
+        if (!Num.isFinite(normalized) || !normalized.isPositive()) {
+            throw new IllegalArgumentException(
+                    "kernelBandwidth must remain finite and positive in the series NumFactory, but was " + supplied);
+        }
+        Num squaredScale = normalized.multipliedBy(normalized).multipliedBy(numFactory.numOf(2.0));
+        if (!Num.isFinite(squaredScale) || !squaredScale.isPositive()) {
+            throw new IllegalArgumentException(
+                    "kernelBandwidth squared scale must remain finite and positive in the series NumFactory, but was "
+                            + supplied);
+        }
+        return normalized;
     }
 }
