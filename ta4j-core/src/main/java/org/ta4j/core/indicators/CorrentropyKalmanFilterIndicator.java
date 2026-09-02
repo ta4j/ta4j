@@ -215,7 +215,10 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
 
     /**
      * Returns an indicator of the difference between the source indicator and this
-     * filter, i.e. the residual {@code y_t - x_t}.
+     * filter, i.e. the residual {@code y_t - x_t}. The view reports {@link NaN NaN}
+     * when the series is empty, when the measurement or the filter's estimate is
+     * unavailable at the requested index, or when their difference is not
+     * representable in the series {@link org.ta4j.core.num.NumFactory}.
      *
      * @return the residual indicator
      * @since 0.24.2
@@ -283,9 +286,9 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
      * Package-private scalar accessor used by the shared residual view.
      *
      * @param index the index
-     * @return the measurement residual at the given index, or {@link NaN NaN}
-     *         when the measurement or the filter's current estimate is
-     *         unavailable or their difference is not representable
+     * @return the measurement residual at the given index, or {@link NaN NaN} when
+     *         the measurement or the filter's current estimate is unavailable or
+     *         their difference is not representable
      */
     Num residualAt(int index) {
         Num measurement = normalizeInput(indicator.getValue(index), getBarSeries().numFactory());

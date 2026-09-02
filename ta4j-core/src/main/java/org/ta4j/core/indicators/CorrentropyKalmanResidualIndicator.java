@@ -7,7 +7,8 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
- * Measurement residual indicator of the {@link CorrentropyKalmanFilterIndicator}.
+ * Measurement residual indicator of the
+ * {@link CorrentropyKalmanFilterIndicator}.
  * <p>
  * At each index this indicator returns the residual
  *
@@ -16,9 +17,9 @@ import org.ta4j.core.num.Num;
  * </pre>
  *
  * between the source measurement and the robust estimate accepted by the
- * filter's fixed-point update. Whenever the measurement or the filter's
- * current estimate is unavailable, or their difference is not representable in
- * the series {@link NumFactory}, this indicator returns {@link NaN NaN}.
+ * filter's fixed-point update. Whenever the measurement or the filter's current
+ * estimate is unavailable, or their difference is not representable in the
+ * series {@link NumFactory}, this indicator returns {@link NaN NaN}.
  * <p>
  * The view delegates series and unstable-bar count to the filter, shares the
  * filter's private recursive state and does not rerun the fixed-point
@@ -27,7 +28,7 @@ import org.ta4j.core.num.Num;
  * @see CorrentropyKalmanFilterIndicator
  * @since 0.24.2
  */
-public class CorrentropyKalmanResidualIndicator extends CachedIndicator<Num> {
+class CorrentropyKalmanResidualIndicator extends CachedIndicator<Num> {
 
     private final CorrentropyKalmanFilterIndicator filter;
 
@@ -47,9 +48,8 @@ public class CorrentropyKalmanResidualIndicator extends CachedIndicator<Num> {
      * given index.
      *
      * @param index the index for which to calculate the residual
-     * @return the measurement residual at the given index, or {@link NaN NaN}
-     *         when the series is empty or the index is inside the unstable-bar
-     *         window
+     * @return the measurement residual at the given index, or {@link NaN NaN} when
+     *         the series is empty or the index is inside the unstable-bar window
      */
     @Override
     protected Num calculate(int index) {

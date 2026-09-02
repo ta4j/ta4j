@@ -500,8 +500,8 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
         Indicator<Num> r = constant(series, 0.2);
         series.setMaximumBarCount(2);
         Assert.assertEquals(4, series.getBeginIndex());
-        CorrentropyKalmanFilterIndicator filter = new CorrentropyKalmanFilterIndicator(
-                new ClosePriceIndicator(series), q, r, numOf(2));
+        CorrentropyKalmanFilterIndicator filter = new CorrentropyKalmanFilterIndicator(new ClosePriceIndicator(series),
+                q, r, numOf(2));
 
         // CachedIndicator maps pruned requests to the first available bar; the
         // filter must answer with the retained state instead of NaN.
