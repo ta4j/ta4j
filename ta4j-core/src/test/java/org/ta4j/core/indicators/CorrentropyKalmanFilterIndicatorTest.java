@@ -490,6 +490,28 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
     }
 
     @Test
+    public void prunedRequestsAliasTheFirstAvailableBar() {
+        BaseBarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 10.1, 10.2, 10.3, 50, 10.4)
+                .build();
+        // Build the noise constants while the series still holds all bars: the
+        // test helper captures values at construction time.
+        Indicator<Num> q = constant(series, 1e-3);
+        Indicator<Num> r = constant(series, 0.2);
+        series.setMaximumBarCount(2);
+        Assert.assertEquals(4, series.getBeginIndex());
+        CorrentropyKalmanFilterIndicator filter = new CorrentropyKalmanFilterIndicator(
+                new ClosePriceIndicator(series), q, r, numOf(2));
+
+        // CachedIndicator maps pruned requests to the first available bar; the
+        // filter must answer with the retained state instead of NaN.
+        Assert.assertEquals(50.0, filter.getValue(0).doubleValue(), 0.0);
+        Assert.assertEquals(50.0, filter.getValue(4).doubleValue(), 0.0);
+        Assert.assertEquals(1.0, filter.measurementWeight().getValue(0).doubleValue(), 0.0);
+        Assert.assertEquals(0.0, filter.residual().getValue(0).doubleValue(), 0.0);
+    }
+
+    @Test
     public void unstableBarsAreTheMaximumOfTheConsumedIndicators() {
         BarSeries series = seriesOf(1, 2, 3);
         MockIndicator unstableSource = new MockIndicator(series, 3, Arrays.asList(numOf(1), numOf(2), numOf(3)));
@@ -589,6 +611,28 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             Assert.assertEquals(original.getValue(i), descriptorCopy.getValue(i));
             Assert.assertEquals(original.getValue(i), jsonCopy.getValue(i));
+        }
+    }
+
+    @Test
+    public void residualViewDescriptorAndJsonRoundTrip() {
+        BarSeries series = closePrice.getBarSeries();
+        CorrentropyKalmanFilterIndicator original = new CorrentropyKalmanFilterIndicator(closePrice,
+                constant(series, 1e-3), constant(series, 1e-2), numOf(3.5));
+        CorrentropyKalmanResidualIndicator residual = (CorrentropyKalmanResidualIndicator) original.residual();
+        ComponentDescriptor descriptor = residual.toDescriptor();
+
+        // The residual view is a first-class serializable indicator: the descriptor
+        // and JSON round trips reconstruct an equivalent view backed by a fresh
+        // filter instance.
+        Indicator<?> descriptorCopy = IndicatorSerialization.fromDescriptor(series, descriptor);
+        Indicator<?> jsonCopy = Indicator.fromJson(series, residual.toJson());
+
+        Assert.assertEquals(descriptor, descriptorCopy.toDescriptor());
+        Assert.assertEquals(descriptor, jsonCopy.toDescriptor());
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            Assert.assertEquals(residual.getValue(i), descriptorCopy.getValue(i));
+            Assert.assertEquals(residual.getValue(i), jsonCopy.getValue(i));
         }
     }
 

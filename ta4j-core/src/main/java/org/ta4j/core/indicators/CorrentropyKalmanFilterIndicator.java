@@ -226,7 +226,7 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
             synchronized (this) {
                 current = residualIndicator;
                 if (current == null) {
-                    current = new ResidualIndicator();
+                    current = new CorrentropyKalmanResidualIndicator(this);
                     residualIndicator = current;
                 }
             }
@@ -277,6 +277,24 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
         return state.weight();
+    }
+
+    /**
+     * Package-private scalar accessor used by the shared residual view.
+     *
+     * @param index the index
+     * @return the measurement residual at the given index, or {@link NaN NaN}
+     *         when the measurement or the filter's current estimate is
+     *         unavailable or their difference is not representable
+     */
+    Num residualAt(int index) {
+        Num measurement = normalizeInput(indicator.getValue(index), getBarSeries().numFactory());
+        Num estimate = getValue(index);
+        if (!Num.isFinite(measurement) || !Num.isFinite(estimate)) {
+            return NaN.NaN;
+        }
+        Num residual = measurement.minus(estimate);
+        return Num.isFinite(residual) ? residual : NaN.NaN;
     }
 
     private StateIndicator stateIndicator() {
@@ -416,32 +434,6 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
         }
     }
 
-    private final class ResidualIndicator extends CachedIndicator<Num> {
-
-        private ResidualIndicator() {
-            super(CorrentropyKalmanFilterIndicator.this.getBarSeries());
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            if (getBarSeries().getBarCount() == 0 || index < getCountOfUnstableBars()) {
-                return NaN.NaN;
-            }
-            Num measurement = normalizeInput(indicator.getValue(index), getBarSeries().numFactory());
-            Num estimate = CorrentropyKalmanFilterIndicator.this.getValue(index);
-            if (!Num.isFinite(measurement) || !Num.isFinite(estimate)) {
-                return NaN.NaN;
-            }
-            Num residual = measurement.minus(estimate);
-            return Num.isFinite(residual) ? residual : NaN.NaN;
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return CorrentropyKalmanFilterIndicator.this.getCountOfUnstableBars();
-        }
-    }
-
     private final class StateIndicator extends RecursiveCachedIndicator<KalmanState> {
 
         private StateIndicator() {
@@ -450,28 +442,29 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
 
         @Override
         protected KalmanState calculate(int index) {
-            if (index < getCountOfUnstableBars()) {
+            // Pruned requests alias the first available bar (CachedIndicator maps
+            // them to calculate(0)): compute against the begin index so the
+            // retained state is preserved.
+            int effectiveIndex = Math.max(index, getBarSeries().getBeginIndex());
+            if (effectiveIndex < getCountOfUnstableBars()) {
                 return KalmanState.UNINITIALIZED;
             }
-            if (index == getBarSeries().getBeginIndex()) {
+            if (effectiveIndex == getBarSeries().getBeginIndex()) {
                 NumFactory numFactory = getBarSeries().numFactory();
-                Num measurement = normalizeInput(indicator.getValue(index), numFactory);
-                Num processNoise = normalizeInput(processNoiseIndicator.getValue(index), numFactory);
-                Num measurementNoise = normalizeInput(measurementNoiseIndicator.getValue(index), numFactory);
+                Num measurement = normalizeInput(indicator.getValue(effectiveIndex), numFactory);
+                Num processNoise = normalizeInput(processNoiseIndicator.getValue(effectiveIndex), numFactory);
+                Num measurementNoise = normalizeInput(measurementNoiseIndicator.getValue(effectiveIndex), numFactory);
                 if (isValidJointObservation(measurement, processNoise, measurementNoise)) {
                     return initialize(measurement, processNoise, measurementNoise);
                 }
                 return KalmanState.UNINITIALIZED;
             }
-            if (index < getBarSeries().getBeginIndex()) {
-                return KalmanState.UNINITIALIZED;
-            }
 
             NumFactory numFactory = getBarSeries().numFactory();
-            Num measurement = normalizeInput(indicator.getValue(index), numFactory);
-            Num processNoise = normalizeInput(processNoiseIndicator.getValue(index), numFactory);
-            Num measurementNoise = normalizeInput(measurementNoiseIndicator.getValue(index), numFactory);
-            KalmanState previous = getValue(index - 1);
+            Num measurement = normalizeInput(indicator.getValue(effectiveIndex), numFactory);
+            Num processNoise = normalizeInput(processNoiseIndicator.getValue(effectiveIndex), numFactory);
+            Num measurementNoise = normalizeInput(measurementNoiseIndicator.getValue(effectiveIndex), numFactory);
+            KalmanState previous = getValue(effectiveIndex - 1);
             if (!isValidJointObservation(measurement, processNoise, measurementNoise)) {
                 return previous.preserved();
             }
