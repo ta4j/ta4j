@@ -130,6 +130,11 @@ an isolated wick, across a sustained move, and as rejected-residual evidence
 using `(1 - measurement weight) * residual`, without activating a trading
 strategy.
 
+Each dynamic source/Q/R value is normalized through the series `NumFactory`,
+allowing inputs that return a different `Num` implementation when conversion
+remains finite. The residual view accepts source indicators that expose either
+the backing series or its read-only view.
+
 ## Suggested progression
 
 1. `ta4jexamples.Quickstart`

@@ -6,7 +6,6 @@ package org.ta4j.core.indicators;
 import java.util.Objects;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -28,7 +27,10 @@ import org.ta4j.core.num.NumFactory;
  * measurement-noise variance and {@code y_t} the source indicator value. The
  * correntropy kernel down-weights large innovations in a redescending fashion,
  * so a single outlier or a run of outliers cannot drag the estimate away from
- * the underlying level. With dynamic Q and R indicators this is a useful robust
+ * the underlying level. Values produced by the source, Q and R indicators are
+ * normalized through the series {@link NumFactory} before validation and
+ * arithmetic, so compatible inputs may use different {@link Num}
+ * implementations. With dynamic Q and R indicators this is a useful robust
  * alternative to {@link KalmanFilterIndicator} for noisy or outlier-prone
  * source indicators.
  * <p>
@@ -108,8 +110,8 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
     private transient volatile CorrentropyKalmanWeightIndicator measurementWeightIndicator;
     private transient volatile Indicator<Num> residualIndicator;
     private final transient int maxIterations;
-    private final transient Num twoSigmaSquared;
-    private final transient Num kernelExponentBound;
+    private final transient Num kernelErrorBound;
+    private final transient Num kernelScale;
     private final transient Num convergenceTolerance;
 
     /**
@@ -167,10 +169,11 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
         this.measurementNoiseIndicator = measurementNoiseVariance;
         this.kernelBandwidth = kernelBandwidth;
         this.maxIterations = maxIterations;
-        this.twoSigmaSquared = kernelBandwidth.multipliedBy(kernelBandwidth)
-                .multipliedBy(getBarSeries().numFactory().numOf(2.0));
-        this.convergenceTolerance = getBarSeries().numFactory().numOf(CONVERGENCE_TOLERANCE);
-        this.kernelExponentBound = getBarSeries().numFactory().numOf(KERNEL_EXPONENT_BOUND);
+        NumFactory numFactory = getBarSeries().numFactory();
+        Num twoSigmaSquared = kernelBandwidth.multipliedBy(kernelBandwidth).multipliedBy(numFactory.numOf(2.0));
+        this.kernelScale = twoSigmaSquared.sqrt();
+        this.convergenceTolerance = numFactory.numOf(CONVERGENCE_TOLERANCE);
+        this.kernelErrorBound = numFactory.numOf(KERNEL_EXPONENT_BOUND).sqrt();
     }
 
     /**
@@ -212,6 +215,7 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
      * filter, i.e. the residual {@code y_t - x_t}.
      *
      * @return the residual indicator
+     * @since 0.24.2
      */
     public Indicator<Num> residual() {
         Indicator<Num> current = residualIndicator;
@@ -219,7 +223,7 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
             synchronized (this) {
                 current = residualIndicator;
                 if (current == null) {
-                    current = BinaryOperationIndicator.difference(indicator, this);
+                    current = new ResidualIndicator();
                     residualIndicator = current;
                 }
             }
@@ -238,6 +242,7 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
      * repeated use; it does not rerun the fixed-point iteration.
      *
      * @return the measurement-weight indicator
+     * @since 0.24.2
      */
     public CorrentropyKalmanWeightIndicator measurementWeight() {
         CorrentropyKalmanWeightIndicator current = measurementWeightIndicator;
@@ -358,10 +363,14 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
      * above {@link #KERNEL_EXPONENT_BOUND} saturate to a zero weight.
      */
     private Num kernelWeight(Num error, Num scaleVariance) {
-        Num exponent = error.multipliedBy(error).dividedBy(scaleVariance).dividedBy(twoSigmaSquared);
-        if (exponent.isGreaterThan(kernelExponentBound)) {
+        Num normalizedError = error.abs().dividedBy(scaleVariance.sqrt()).dividedBy(kernelScale);
+        if (normalizedError.isNaN()) {
+            return NaN.NaN;
+        }
+        if (!Num.isFinite(normalizedError) || normalizedError.isGreaterThan(kernelErrorBound)) {
             return getBarSeries().numFactory().zero();
         }
+        Num exponent = normalizedError.multipliedBy(normalizedError);
         return exponent.negate().exp();
     }
 
@@ -381,6 +390,31 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
         }
     }
 
+    private final class ResidualIndicator extends CachedIndicator<Num> {
+
+        private ResidualIndicator() {
+            super(CorrentropyKalmanFilterIndicator.this.getBarSeries());
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            if (index < getCountOfUnstableBars()) {
+                return NaN.NaN;
+            }
+            Num measurement = normalizeInput(indicator.getValue(index), getBarSeries().numFactory());
+            Num estimate = CorrentropyKalmanFilterIndicator.this.getValue(index);
+            if (!Num.isFinite(measurement) || !Num.isFinite(estimate)) {
+                return NaN.NaN;
+            }
+            return measurement.minus(estimate);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return CorrentropyKalmanFilterIndicator.this.getCountOfUnstableBars();
+        }
+    }
+
     private final class StateIndicator extends RecursiveCachedIndicator<KalmanState> {
 
         private StateIndicator() {
@@ -393,9 +427,10 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
                 return KalmanState.UNINITIALIZED;
             }
             if (index == getBarSeries().getBeginIndex()) {
-                Num measurement = indicator.getValue(index);
-                Num processNoise = processNoiseIndicator.getValue(index);
-                Num measurementNoise = measurementNoiseIndicator.getValue(index);
+                NumFactory numFactory = getBarSeries().numFactory();
+                Num measurement = normalizeInput(indicator.getValue(index), numFactory);
+                Num processNoise = normalizeInput(processNoiseIndicator.getValue(index), numFactory);
+                Num measurementNoise = normalizeInput(measurementNoiseIndicator.getValue(index), numFactory);
                 if (isValidJointObservation(measurement, processNoise, measurementNoise)) {
                     return initialize(measurement, processNoise, measurementNoise);
                 }
@@ -405,9 +440,10 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
                 return KalmanState.UNINITIALIZED;
             }
 
-            Num measurement = indicator.getValue(index);
-            Num processNoise = processNoiseIndicator.getValue(index);
-            Num measurementNoise = measurementNoiseIndicator.getValue(index);
+            NumFactory numFactory = getBarSeries().numFactory();
+            Num measurement = normalizeInput(indicator.getValue(index), numFactory);
+            Num processNoise = normalizeInput(processNoiseIndicator.getValue(index), numFactory);
+            Num measurementNoise = normalizeInput(measurementNoiseIndicator.getValue(index), numFactory);
             KalmanState previous = getValue(index - 1);
             if (!isValidJointObservation(measurement, processNoise, measurementNoise)) {
                 return previous.preserved();
@@ -422,6 +458,13 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
         public int getCountOfUnstableBars() {
             return CorrentropyKalmanFilterIndicator.this.getCountOfUnstableBars();
         }
+    }
+
+    private static Num normalizeInput(Num value, NumFactory numFactory) {
+        if (!Num.isFinite(value)) {
+            return NaN.NaN;
+        }
+        return numFactory.numOf(value.bigDecimalValue());
     }
 
     private static boolean isValidJointObservation(Num measurement, Num processNoise, Num measurementNoise) {

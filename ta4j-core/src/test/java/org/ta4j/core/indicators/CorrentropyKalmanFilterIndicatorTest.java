@@ -303,6 +303,17 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
     }
 
     @Test
+    public void kernelWhiteningAvoidsOverflowBeforeSquaring() {
+        double measurement = 1.4e154;
+        BarSeries series = seriesOf(0, measurement);
+        CorrentropyKalmanFilterIndicator filter = filter(new ClosePriceIndicator(series), 1e-3, Double.MAX_VALUE, 2);
+
+        double normalizedError = measurement / Math.sqrt(Double.MAX_VALUE) / Math.sqrt(8.0);
+        double expectedWeight = Math.exp(-normalizedError * normalizedError);
+        Assert.assertEquals(expectedWeight, filter.measurementWeight().getValue(1).doubleValue(), 1e-12);
+    }
+
+    @Test
     public void rejectsNoiseIndicatorsOnDifferentSeries() {
         BarSeries otherSeries = seriesOf(1, 2, 3);
         Assert.assertThrows(IllegalArgumentException.class, () -> new CorrentropyKalmanFilterIndicator(closePrice,
@@ -333,6 +344,23 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
                 : DoubleNumFactory.getInstance();
         CorrentropyKalmanFilterIndicator filter = new CorrentropyKalmanFilterIndicator(new ClosePriceIndicator(series),
                 constant(series, 1e-3), constant(series, 1e-2), foreignFactory.numOf(2.0));
+
+        assertValues(new double[] { 10.0, 10.104985931110, 10.103074789595, 10.160638902480 }, filter, 1e-9);
+    }
+
+    @Test
+    public void normalizesDynamicInputsToSeriesNumFactory() {
+        BarSeries series = seriesOf(10, 10.2, 10.1, 10.3);
+        NumFactory foreignFactory = numFactory == DoubleNumFactory.getInstance() ? DecimalNumFactory.getInstance()
+                : DoubleNumFactory.getInstance();
+        Indicator<Num> source = new FixedIndicator<>(series, foreignFactory.numOf(10), foreignFactory.numOf(10.2),
+                foreignFactory.numOf(10.1), foreignFactory.numOf(10.3));
+        Indicator<Num> processNoise = new FixedIndicator<>(series, foreignFactory.numOf(1e-3),
+                foreignFactory.numOf(1e-3), foreignFactory.numOf(1e-3), foreignFactory.numOf(1e-3));
+        Indicator<Num> measurementNoise = new FixedIndicator<>(series, foreignFactory.numOf(1e-2),
+                foreignFactory.numOf(1e-2), foreignFactory.numOf(1e-2), foreignFactory.numOf(1e-2));
+        CorrentropyKalmanFilterIndicator filter = new CorrentropyKalmanFilterIndicator(source, processNoise,
+                measurementNoise, numOf(2));
 
         assertValues(new double[] { 10.0, 10.104985931110, 10.103074789595, 10.160638902480 }, filter, 1e-9);
     }
@@ -408,6 +436,31 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
         Assert.assertEquals(filter.getBarSeries(), first.getBarSeries());
         Assert.assertEquals(0.992622679915, first.getValue(1).doubleValue(), 1e-9);
         Assert.assertEquals(0.0, first.getValue(2).doubleValue(), 0.0);
+    }
+
+    @Test
+    public void residualSupportsSourcesThatExposeTheBackingSeries() {
+        BarSeries series = seriesOf(10, 10.2, 10.1, 10.3);
+        Indicator<Num> source = new Indicator<>() {
+
+            @Override
+            public Num getValue(int index) {
+                return series.getBar(index).getClosePrice();
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            public BarSeries getBarSeries() {
+                return series;
+            }
+        };
+        CorrentropyKalmanFilterIndicator filter = filter(source, 1e-3, 1e-2, 2);
+
+        assertValues(new double[] { 0.0, 0.095014, -0.003075, 0.139361 }, filter.residual(), 1e-5);
     }
 
     @Test
