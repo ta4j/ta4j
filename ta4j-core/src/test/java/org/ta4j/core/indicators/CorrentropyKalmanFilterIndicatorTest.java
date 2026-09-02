@@ -527,7 +527,8 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
         CorrentropyKalmanFilterIndicator filter = new CorrentropyKalmanFilterIndicator(new ClosePriceIndicator(series),
                 q, r, numOf(2));
 
-        // Evaluate with the full history first so the begin-index state is retained in the
+        // Evaluate with the full history first so the begin-index state is retained in
+        // the
         // cache before the series is pruned.
         Num retained = filter.getValue(4);
 

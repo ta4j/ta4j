@@ -19,7 +19,8 @@ import org.ta4j.core.num.Num;
  * between the source measurement and the robust estimate accepted by the
  * filter's fixed-point update. Whenever the measurement or the filter's current
  * estimate is unavailable, or their difference is not representable in the
- * series {@link org.ta4j.core.num.NumFactory}, this indicator returns {@link NaN NaN}.
+ * series {@link org.ta4j.core.num.NumFactory}, this indicator returns
+ * {@link NaN NaN}.
  * <p>
  * The view delegates series and unstable-bar count to the filter, shares the
  * filter's private recursive state and does not rerun the fixed-point
