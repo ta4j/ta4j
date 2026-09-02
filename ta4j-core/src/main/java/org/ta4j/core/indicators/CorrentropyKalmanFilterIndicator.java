@@ -115,7 +115,7 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
     private transient volatile Indicator<Num> residualIndicator;
     private final transient int maxIterations;
     private final transient Num kernelErrorBound;
-    private final transient Num kernelScale;
+    private final transient Num sqrtTwo;
     private final transient Num convergenceTolerance;
 
     /**
@@ -132,8 +132,8 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
      *                                 bandwidth (sigma)
      * @throws NullPointerException     if {@code kernelBandwidth} is {@code null}
      * @throws IllegalArgumentException if {@code kernelBandwidth} does not remain
-     *                                  finite and positive when converted and
-     *                                  squared in the series {@link NumFactory}
+     *                                  finite and positive when converted in the
+     *                                  series {@link NumFactory}
      */
     public CorrentropyKalmanFilterIndicator(Indicator<Num> indicator, Indicator<Num> processNoiseVariance,
             Indicator<Num> measurementNoiseVariance, Num kernelBandwidth) {
@@ -156,8 +156,8 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
      * @param maxIterations            the maximum number of fixed-point iterations
      * @throws NullPointerException     if {@code kernelBandwidth} is {@code null}
      * @throws IllegalArgumentException if {@code kernelBandwidth} does not remain
-     *                                  finite and positive when converted and
-     *                                  squared in the series {@link NumFactory}
+     *                                  finite and positive when converted in the
+     *                                  series {@link NumFactory}
      */
     CorrentropyKalmanFilterIndicator(Indicator<Num> indicator, Indicator<Num> processNoiseVariance,
             Indicator<Num> measurementNoiseVariance, Num kernelBandwidth, int maxIterations) {
@@ -174,8 +174,7 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
         this.kernelBandwidth = kernelBandwidth;
         this.maxIterations = maxIterations;
         NumFactory numFactory = getBarSeries().numFactory();
-        Num twoSigmaSquared = kernelBandwidth.multipliedBy(kernelBandwidth).multipliedBy(numFactory.numOf(2.0));
-        this.kernelScale = twoSigmaSquared.sqrt();
+        this.sqrtTwo = numFactory.numOf(2.0).sqrt();
         this.convergenceTolerance = numFactory.numOf(CONVERGENCE_TOLERANCE);
         this.kernelErrorBound = numFactory.numOf(KERNEL_EXPONENT_BOUND).sqrt();
     }
@@ -366,20 +365,24 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
 
     /**
      * Covariance-whitened correntropy kernel weight:
-     * {@code exp(-(left - right)^2 / (2 * sigma^2 * scaleVariance))}. Finite
-     * endpoints whose direct difference overflows are divided by the larger
-     * whitening scale first and only then subtracted. Squared exponents above
-     * {@link #KERNEL_EXPONENT_BOUND} saturate to a zero weight.
+     * {@code exp(-(left - right)^2 / (2 * sigma^2 * scaleVariance))}. The absolute
+     * error is divided by the larger and then the smaller of
+     * {@code sqrt(scaleVariance)} and {@code sigma}, and finally by
+     * {@code sqrt(2)}; keeping {@code sigma} and {@code sqrt(2)} as separate
+     * factors keeps the intermediate arithmetic overflow-free for any finite
+     * accepted bandwidth. Finite endpoints whose direct difference overflows are
+     * divided by the two scales first and only then subtracted. Squared exponents
+     * above {@link #KERNEL_EXPONENT_BOUND} saturate to a zero weight.
      */
     private Num kernelWeight(Num left, Num right, Num scaleVariance) {
         Num error = left.minus(right);
         Num varianceScale = scaleVariance.sqrt();
+        Num largerScale = varianceScale.max(kernelBandwidth);
+        Num smallerScale = varianceScale.min(kernelBandwidth);
         Num normalizedError;
         if (Num.isFinite(error)) {
-            normalizedError = error.abs().dividedBy(varianceScale).dividedBy(kernelScale);
+            normalizedError = error.abs().dividedBy(largerScale).dividedBy(smallerScale);
         } else if (Num.isFinite(left) && Num.isFinite(right)) {
-            Num largerScale = varianceScale.max(kernelScale);
-            Num smallerScale = varianceScale.min(kernelScale);
             Num scaledLeft = left.dividedBy(largerScale).dividedBy(smallerScale);
             Num scaledRight = right.dividedBy(largerScale).dividedBy(smallerScale);
             normalizedError = scaledLeft.minus(scaledRight).abs();
@@ -389,6 +392,7 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
         if (normalizedError.isNaN()) {
             return NaN.NaN;
         }
+        normalizedError = normalizedError.dividedBy(sqrtTwo);
         if (!Num.isFinite(normalizedError) || normalizedError.isGreaterThan(kernelErrorBound)) {
             return getBarSeries().numFactory().zero();
         }
@@ -507,12 +511,6 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
         if (!Num.isFinite(normalized) || !normalized.isPositive()) {
             throw new IllegalArgumentException(
                     "kernelBandwidth must remain finite and positive in the series NumFactory, but was " + supplied);
-        }
-        Num squaredScale = normalized.multipliedBy(normalized).multipliedBy(numFactory.numOf(2.0));
-        if (!Num.isFinite(squaredScale) || !squaredScale.isPositive()) {
-            throw new IllegalArgumentException(
-                    "kernelBandwidth squared scale must remain finite and positive in the series NumFactory, but was "
-                            + supplied);
         }
         return normalized;
     }

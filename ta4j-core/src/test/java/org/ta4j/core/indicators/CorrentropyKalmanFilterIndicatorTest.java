@@ -380,7 +380,7 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
     }
 
     @Test
-    public void rejectsBandwidthWhoseSquaredScaleIsNotRepresentableBySeriesFactory() {
+    public void acceptsBandwidthsWhoseSquaredScaleIsNotRepresentableBySeriesFactory() {
         BaseBarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(10, 10.2, 10.1, 10.3)
                 .build();
@@ -389,10 +389,40 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
         Indicator<Num> r = constant(series, 1e-2);
         NumFactory foreignFactory = DecimalNumFactory.getInstance();
 
-        Assert.assertThrows(IllegalArgumentException.class,
-                () -> new CorrentropyKalmanFilterIndicator(source, q, r, foreignFactory.numOf(1e-200)));
-        Assert.assertThrows(IllegalArgumentException.class,
-                () -> new CorrentropyKalmanFilterIndicator(source, q, r, foreignFactory.numOf(1e200)));
+        // A bandwidth whose square is not representable in the series NumFactory is
+        // still accepted: only the converted bandwidth itself must stay finite and
+        // positive. The tiny kernel rejects every subsequent innovation (the
+        // estimate pins at the first value with zero weight).
+        CorrentropyKalmanFilterIndicator pinned = new CorrentropyKalmanFilterIndicator(source, q, r,
+                foreignFactory.numOf(1e-200));
+        assertValues(new double[] { 10.0, 10.0, 10.0, 10.0 }, pinned, 0.0);
+        assertValues(new double[] { 1.0, 0.0, 0.0, 0.0 }, pinned.measurementWeight(), 0.0);
+
+        // A huge finite bandwidth converts cleanly and the MCKF update collapses to
+        // the ordinary Kalman recursion (same oracle as the 1e6 collapse test).
+        CorrentropyKalmanFilterIndicator collapsed = new CorrentropyKalmanFilterIndicator(source, q, r,
+                foreignFactory.numOf(1e200));
+        assertValues(new double[] { 10.0, 10.104311201552, 10.102658681866, 10.166958671113 }, collapsed, 1e-9);
+        assertValues(new double[] { 1.0, 1.0, 1.0, 1.0 }, collapsed.measurementWeight(), 1e-9);
+    }
+
+    @Test
+    public void nearDoubleLimitBandwidthKeepsExtremeResidualDownweighted() {
+        // sigma close to Double.MAX_VALUE used to overflow the kernel scale
+        // (sigma * sqrt(2)) and collapse every weight to one. The kernel must
+        // normalize by sigma and sqrt(2) as separate factors so the whitened
+        // residual keeps its genuine weight in (1/2, 1): the squared exponent
+        // (2e308 / (2 * (1.7e308)^2) ~= 0.69) is bounded by 0.5 and sqrt(15).
+        double extreme = 1e308;
+        double sigma = 1.7e308;
+        BarSeries series = seriesOf(-extreme, extreme);
+        CorrentropyKalmanFilterIndicator filter = filter(new ClosePriceIndicator(series), 1e-3, 1.0, sigma, 1000);
+
+        Num estimate = filter.getValue(1);
+        Assert.assertFalse("estimate must stay finite at the extreme residual", estimate.isNaN());
+        double weight = filter.measurementWeight().getValue(1).doubleValue();
+        Assert.assertTrue("kernel must genuinely downweight the extreme residual, was " + weight,
+                weight > 0.5 && weight < 1.0);
     }
 
     @Test
