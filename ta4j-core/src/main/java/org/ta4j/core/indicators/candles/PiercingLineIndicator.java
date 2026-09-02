@@ -116,8 +116,12 @@ public class PiercingLineIndicator extends CandlePatternIndicator {
             Num secondClose = secondBar.getClosePrice();
             Num requiredClose = CandleThresholdSupport.weightedPoint(firstBodyBottom, oneMinusPenetrationValue,
                     firstBodyTop, penetrationValue);
+            // The inclusive penetration boundary normalizes signed zero like
+            // the strict clauses: DoubleNum orders -0.0 below +0.0, so two
+            // numerically zero closes must compare equal here.
             return !(secondClose.isZero() && firstBodyTop.isZero()) && secondClose.isLessThan(firstBodyTop)
-                    && secondClose.isGreaterThanOrEqual(requiredClose);
+                    && (secondClose.isZero() && requiredClose.isZero()
+                            || secondClose.isGreaterThanOrEqual(requiredClose));
         }
         return false;
     }

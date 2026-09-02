@@ -137,6 +137,15 @@ public class PiercingLineIndicatorTest extends AbstractIndicatorTest<Indicator<B
     }
 
     @Test
+    public void shouldAcceptSignedZeroCloseExactlyOnPenetration() {
+        // DoubleNum orders -0.0 below +0.0: a midpoint close of -0.0 is
+        // numerically equal to the +0.0 required close and the inclusive
+        // boundary must accept it, regardless of num factory.
+        PiercingLineIndicator indicator = new PiercingLineIndicator(piercingSeries(20, -20, -40, -0.0));
+        assertThat(indicator.getValue(6)).isTrue();
+    }
+
+    @Test
     public void shouldNotDetectPatternWhenCloseEngulfsFirstOpen() {
         // the close must stay strictly below the first open, otherwise the
         // second body engulfs the first and the pattern is not a piercing line
