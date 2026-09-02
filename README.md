@@ -412,6 +412,7 @@ The `ta4j-examples` module is organized as progressive learning tracks:
 | Execution semantics | [`TradingRecordParityBacktest`](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradingRecordParityBacktest.java), [`TradeFillRecordingExample`](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradeFillRecordingExample.java) |
 | Parameter research | [`SimpleMovingAverageRangeBacktest`](ta4j-examples/src/main/java/ta4jexamples/backtesting/SimpleMovingAverageRangeBacktest.java), [`RelationshipObjectiveSearchExample`](ta4j-examples/src/main/java/ta4jexamples/research/RelationshipObjectiveSearchExample.java) |
 | Forecasting and calibration | [`RollingConformalForecastExample`](ta4j-examples/src/main/java/ta4jexamples/analysis/forecast/RollingConformalForecastExample.java), [`KinematicKalmanForecastExample`](ta4j-examples/src/main/java/ta4jexamples/analysis/forecast/KinematicKalmanForecastExample.java) |
+| Forecasting and robustness | [`CorrentropyKalmanExample`](ta4j-examples/src/main/java/ta4jexamples/analysis/forecast/CorrentropyKalmanExample.java) demonstrates ATR-derived Q/R, the robust estimate, residual, and measurement weight on an ossified S&P 500 weekly series |
 | Charting and diagnostics | [`IndicatorsToChart`](ta4j-examples/src/main/java/ta4jexamples/indicators/IndicatorsToChart.java), [`CashFlowToChart`](ta4j-examples/src/main/java/ta4jexamples/analysis/CashFlowToChart.java) |
 
 See [`ta4j-examples/README.md`](ta4j-examples/README.md) for the complete learning sequence and runnable commands.
