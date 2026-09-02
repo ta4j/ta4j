@@ -424,7 +424,7 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
 
         @Override
         protected Num calculate(int index) {
-            if (index < getCountOfUnstableBars()) {
+            if (getBarSeries().getBarCount() == 0 || index < getCountOfUnstableBars()) {
                 return NaN.NaN;
             }
             Num measurement = normalizeInput(indicator.getValue(index), getBarSeries().numFactory());
@@ -432,7 +432,8 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
             if (!Num.isFinite(measurement) || !Num.isFinite(estimate)) {
                 return NaN.NaN;
             }
-            return measurement.minus(estimate);
+            Num residual = measurement.minus(estimate);
+            return Num.isFinite(residual) ? residual : NaN.NaN;
         }
 
         @Override

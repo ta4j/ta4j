@@ -426,6 +426,37 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
     }
 
     @Test
+    public void emptySeriesViewsReturnNaNWithoutReadingTheSourceIndicator() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        Indicator<Num> source = new MockIndicator(series, 0, Arrays.asList());
+        CorrentropyKalmanFilterIndicator filter = filter(source, 1e-3, 1e-2, 2);
+
+        assertNaNAt(filter, 0);
+        assertNaNAt(filter.residual(), 0);
+        assertNaNAt(filter.measurementWeight(), 0);
+    }
+
+    @Test
+    public void residualIsNaNWhenTheMeasurementDifferenceOverflows() {
+        // A rejected transition from -1e308 to +1e308 keeps the estimate at the
+        // previous extreme; the residual y - x then overflows DoubleNum and must
+        // never be exposed as an infinite value: the view reports NaN, while the
+        // DecimalNum parameterization keeps the representable 2e308.
+        double extreme = 1e308;
+        BarSeries series = seriesOf(-extreme, extreme);
+        CorrentropyKalmanFilterIndicator filter = filter(new ClosePriceIndicator(series), 1e-3, 1e-200, 1e308);
+
+        // The near-zero measurement noise rejects the transition (kernel weight
+        // zero), so the previous extreme estimate is preserved and y - x is 2e308.
+        Num estimate = filter.getValue(1);
+        Assert.assertFalse("estimate must stay finite", estimate.isNaN());
+        Assert.assertTrue("estimate must stay at the previous extreme", estimate.doubleValue() < 0.0);
+        Num residual = filter.residual().getValue(1);
+        Assert.assertTrue("residual must not leak infinity, was " + residual,
+                residual.isNaN() || Num.isFinite(residual));
+    }
+
+    @Test
     public void recursiveStateStartsAtTheAbsoluteFirstStableIndex() {
         BarSeries series = seriesOf(1000, 1000, 10, 10.2, 50, 10.4);
         MockIndicator source = new MockIndicator(series, 2, numOf(1000), numOf(1000), numOf(10), numOf(10.2), numOf(50),
