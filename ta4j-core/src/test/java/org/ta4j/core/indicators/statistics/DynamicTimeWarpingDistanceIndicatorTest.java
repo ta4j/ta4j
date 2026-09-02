@@ -1083,7 +1083,7 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         // scaled total overflows to infinity and the final mean is not
         // finite. With the Float.MAX_VALUE ceiling, the scaled accumulation
         // halves the operands and reports the finite mean instead of NaN.
-        NumFactory floatFactory = FloatNumFactory.getInstance();
+        NumFactory floatFactory = SinglePrecisionNumFactory.getInstance();
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory)
                 .withData(new double[] { 0.0, 0.0 })
                 .build();
@@ -1115,7 +1115,7 @@ public class DynamicTimeWarpingDistanceIndicatorTest extends AbstractIndicatorTe
         // reconstruction split the scale at the Double exponent bound (1023),
         // materializing pow2(128) as float infinity and reporting NaN. The
         // split must honor the delegate's own exponent bound (127 for Float).
-        NumFactory floatFactory = FloatNumFactory.getInstance();
+        NumFactory floatFactory = SinglePrecisionNumFactory.getInstance();
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory)
                 .withData(new double[] { 0.0, 0.0, 0.0 })
                 .build();

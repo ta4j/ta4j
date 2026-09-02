@@ -11,6 +11,11 @@ import org.ta4j.core.indicators.CachedIndicator;
  * Three inside up candle indicator.
  *
  * <p>
+ * The harami baseline averages the preceding
+ * {@link CandleThresholdSupport#DEFAULT_AVERAGE_PERIOD} candle bodies by
+ * default; use {@link #ThreeInsideUpIndicator(BarSeries, int)} to tune it.
+ *
+ * <p>
  * Matches the documented three-candle three-inside-up morphology at
  * {@code index} for the candles at {@code index - 2} (first), {@code index - 1}
  * (second), and {@code index} (third):
