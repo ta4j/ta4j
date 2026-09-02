@@ -487,6 +487,12 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
         Assert.assertEquals(4, series.getBeginIndex());
         Assert.assertEquals(50.0, filter.getValue(4).doubleValue(), 0.0);
         Assert.assertEquals(1.0, filter.measurementWeight().getValue(4).doubleValue(), 0.0);
+
+        // A pruned request aliases the first available bar; with a non-zero
+        // unstable-bar count the residual view must remap the index before the
+        // warm-up check instead of reporting NaN for an otherwise stable state.
+        Assert.assertEquals(0.0, filter.residual().getValue(0).doubleValue(), 0.0);
+        Assert.assertEquals(0.0, filter.residual().getValue(4).doubleValue(), 0.0);
     }
 
     @Test
@@ -679,9 +685,10 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
                 booleans(null, null, null, true, false, false, false, false, false, false),
                 ints(null, null, null, 0, 2, 2, 2, 2, 2, 2));
         // large_bandwidth: the objective is flat; converged acceptances are mostly
-        // non-maximal with large local-maxima counts.
+        // non-maximal and the scan tolerance collapses ulp-level ripples, so the
+        // local-maxima counts are stably zero across platforms.
         assertDiagnostics(byName.get("large_bandwidth"), booleans(true, true, true, true),
-                booleans(false, false, false, false), booleans(true, false, false, false), ints(0, 1810, 5, 1043));
+                booleans(false, false, false, false), booleans(true, false, false, false), ints(0, 0, 0, 0));
         // invalid_q_at_1: index 1 is skipped entirely (no diagnostics) because the
         // process noise is zero there.
         assertDiagnostics(byName.get("invalid_q_at_1"), booleans(true, null, true, true),

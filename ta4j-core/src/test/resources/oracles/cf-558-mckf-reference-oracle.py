@@ -173,20 +173,27 @@ def _dense_unimodality_scan(f: Callable[[float], float], lo: float, hi: float, n
             if vals[k + 1] > vals[k]:
                 maximal = False
                 break
+    # Count local maxima against a tolerance relative to the objective scale:
+    # an almost-flat objective (large_bandwidth fixture) oscillates by a few
+    # ulps across platforms, and strict comparisons would count those rounding
+    # artifacts as maxima. Genuine peaks/basins are far above the tolerance,
+    # so counts are platform-stable.
+    scale = max(1.0, max(abs(v) for v in vals))
+    tol = 1e-12 * scale
     local_maxima = 0
     rising = False
     prev_v = vals[0]
     for k in range(1, n):
         v = vals[k]
-        if prev_v < v:
+        if v - prev_v > tol:
             rising = True
-        elif prev_v > v and rising:
+        elif prev_v - v > tol and rising:
             local_maxima += 1
             rising = False
         prev_v = v
-    if vals[0] > vals[1]:
+    if vals[0] - vals[1] > tol:
         local_maxima += 1
-    if vals[-1] > vals[-2]:
+    if vals[-1] - vals[-2] > tol:
         local_maxima += 1
     return maximal, local_maxima, xs[best]
 

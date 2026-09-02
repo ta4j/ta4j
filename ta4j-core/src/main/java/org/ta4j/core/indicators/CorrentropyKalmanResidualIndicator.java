@@ -19,7 +19,7 @@ import org.ta4j.core.num.Num;
  * between the source measurement and the robust estimate accepted by the
  * filter's fixed-point update. Whenever the measurement or the filter's current
  * estimate is unavailable, or their difference is not representable in the
- * series {@link NumFactory}, this indicator returns {@link NaN NaN}.
+ * series {@link org.ta4j.core.num.NumFactory}, this indicator returns {@link NaN NaN}.
  * <p>
  * The view delegates series and unstable-bar count to the filter, shares the
  * filter's private recursive state and does not rerun the fixed-point
@@ -53,10 +53,14 @@ class CorrentropyKalmanResidualIndicator extends CachedIndicator<Num> {
      */
     @Override
     protected Num calculate(int index) {
-        if (getBarSeries().getBarCount() == 0 || index < getCountOfUnstableBars()) {
+        if (getBarSeries().getBarCount() == 0) {
             return NaN.NaN;
         }
-        return filter.residualAt(index);
+        int effectiveIndex = Math.max(index, getBarSeries().getBeginIndex());
+        if (effectiveIndex < getCountOfUnstableBars()) {
+            return NaN.NaN;
+        }
+        return filter.residualAt(effectiveIndex);
     }
 
     /**
