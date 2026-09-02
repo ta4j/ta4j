@@ -449,6 +449,13 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
             // them to calculate(0)): compute against the begin index so the
             // retained state is preserved.
             int effectiveIndex = Math.max(index, getBarSeries().getBeginIndex());
+            if (effectiveIndex != index) {
+                // An aliased request must answer with the state cached for the
+                // begin index (the retained history) instead of reinitializing
+                // from the begin-index measurement, so pruned and live readings
+                // agree.
+                return getValue(effectiveIndex);
+            }
             if (effectiveIndex < getCountOfUnstableBars()) {
                 return KalmanState.UNINITIALIZED;
             }

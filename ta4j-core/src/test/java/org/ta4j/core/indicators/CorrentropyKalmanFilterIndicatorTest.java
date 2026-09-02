@@ -518,6 +518,30 @@ public class CorrentropyKalmanFilterIndicatorTest extends AbstractIndicatorTest<
     }
 
     @Test
+    public void prunedRequestsAfterEvaluationUseTheRetainedState() {
+        BaseBarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 10.1, 10.2, 10.3, 50, 10.4)
+                .build();
+        Indicator<Num> q = constant(series, 1e-3);
+        Indicator<Num> r = constant(series, 0.2);
+        CorrentropyKalmanFilterIndicator filter = new CorrentropyKalmanFilterIndicator(new ClosePriceIndicator(series),
+                q, r, numOf(2));
+
+        // Evaluate with the full history first so the begin-index state is retained in the
+        // cache before the series is pruned.
+        Num retained = filter.getValue(4);
+
+        series.setMaximumBarCount(2);
+        Assert.assertEquals(4, series.getBeginIndex());
+
+        // A pruned request aliases the first available bar; it must answer with the
+        // retained state (history intact) instead of reinitializing from the
+        // begin-index measurement.
+        Assert.assertEquals(retained.doubleValue(), filter.getValue(0).doubleValue(), 0.0);
+        Assert.assertEquals(retained.doubleValue(), filter.getValue(4).doubleValue(), 0.0);
+    }
+
+    @Test
     public void unstableBarsAreTheMaximumOfTheConsumedIndicators() {
         BarSeries series = seriesOf(1, 2, 3);
         MockIndicator unstableSource = new MockIndicator(series, 3, Arrays.asList(numOf(1), numOf(2), numOf(3)));
