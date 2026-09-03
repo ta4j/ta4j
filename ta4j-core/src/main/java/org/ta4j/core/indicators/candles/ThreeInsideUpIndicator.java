@@ -5,7 +5,7 @@ package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.Num;
 
 /**
  * Three inside up candle indicator.
@@ -31,7 +31,12 @@ import org.ta4j.core.indicators.CachedIndicator;
  * The harami condition reuses {@link BullishHaramiIndicator} with the same
  * {@code averagePeriod}, so a long bearish first body, a short contained second
  * body, and the shared adaptive body thresholds are all evaluated there. The
- * third-candle confirmation close and the bullish direction are strict.
+ * third-candle confirmation close and the bullish direction are strict, and a
+ * third candle with non-finite open or close never matches.
+ *
+ * <p>
+ * The default constructor uses a five-candle baseline ({@code averagePeriod} =
+ * 5).
  *
  * <p>
  * This indicator is stable after {@code averagePeriod + 2} bars, i.e. the
@@ -48,11 +53,11 @@ import org.ta4j.core.indicators.CachedIndicator;
  *      https://www.investopedia.com/terms/t/three-inside-updown.asp</a>
  * @since 0.22.2
  */
-public class ThreeInsideUpIndicator extends CachedIndicator<Boolean> {
+public class ThreeInsideUpIndicator extends CandlePatternIndicator {
 
     private final int averagePeriod;
 
-    private final transient BullishHaramiIndicator harami;
+    final transient BullishHaramiIndicator harami;
 
     /**
      * Constructor with the default average period.
@@ -61,9 +66,10 @@ public class ThreeInsideUpIndicator extends CachedIndicator<Boolean> {
      */
     public ThreeInsideUpIndicator(final BarSeries series) {
         super(CandleThresholdSupport.validateSeriesAndAveragePeriod(series,
-                CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD));
+                CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD),
+                CandleThresholdSupport.forSeries(series, CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD));
         this.averagePeriod = CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD;
-        this.harami = new BullishHaramiIndicator(getBarSeries(), averagePeriod);
+        this.harami = new BullishHaramiIndicator(series, averagePeriod);
     }
 
     /**
@@ -77,21 +83,15 @@ public class ThreeInsideUpIndicator extends CachedIndicator<Boolean> {
      * @since 0.24.2
      */
     public ThreeInsideUpIndicator(final BarSeries series, final int averagePeriod) {
-        super(CandleThresholdSupport.validateSeriesAndAveragePeriod(series, averagePeriod));
+        super(CandleThresholdSupport.validateSeriesAndAveragePeriod(series, averagePeriod),
+                CandleThresholdSupport.forSeries(series, averagePeriod));
         this.averagePeriod = averagePeriod;
-        this.harami = new BullishHaramiIndicator(getBarSeries(), averagePeriod);
+        this.harami = new BullishHaramiIndicator(series, averagePeriod);
     }
 
     @Override
-    public Boolean getValue(final int index) {
-        // The harami evaluated at index - 1 needs its own baseline window
-        // complete; gate pre-cache so a retained result cannot outlive it.
-        final BarSeries series = getBarSeries();
-        if (series != null && index >= series.getBeginIndex() && index <= series.getEndIndex()
-                && !harami.thresholds.isValid(harami.latestBaselineIndex(index - 1))) {
-            return false;
-        }
-        return super.getValue(index);
+    int latestBaselineIndex(final int index) {
+        return index - 2;
     }
 
     @Override
@@ -103,8 +103,9 @@ public class ThreeInsideUpIndicator extends CachedIndicator<Boolean> {
         Bar firstBar = series.getBar(index - 2);
         Bar thirdBar = series.getBar(index);
 
-        return harami.getValue(index - 1) && thirdBar.getClosePrice().isGreaterThan(firstBar.getOpenPrice())
-                && thirdBar.isBullish();
+        return harami.getValue(index - 1) && Num.isFinite(thirdBar.getOpenPrice())
+                && Num.isFinite(thirdBar.getClosePrice())
+                && thirdBar.getClosePrice().isGreaterThan(firstBar.getOpenPrice()) && thirdBar.isBullish();
     }
 
     @Override

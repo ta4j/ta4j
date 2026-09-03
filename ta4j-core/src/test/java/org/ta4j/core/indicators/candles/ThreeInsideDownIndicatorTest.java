@@ -5,6 +5,7 @@ package org.ta4j.core.indicators.candles;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
@@ -17,6 +18,8 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.NonFiniteBar;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -146,6 +149,33 @@ public class ThreeInsideDownIndicatorTest extends AbstractIndicatorTest<Indicato
     }
 
     @Test
+    public void thirdBarWithNonFiniteOpenDoesNotMatch() {
+        DoubleNumFactory doubleFactory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory).build();
+        addBaselineBars(series, 10);
+        addBar(series, 20, 30, 31, 19);
+        addBar(series, 27.5, 27, 28, 26.5);
+        series.addBar(
+                new NonFiniteBar(series.getBar(series.getEndIndex()).getEndTime(), doubleFactory.numOf(Double.NaN),
+                        doubleFactory.numOf(23), doubleFactory.numOf(17), doubleFactory.numOf(18))); // third: NaN open
+
+        assertFalse(new ThreeInsideDownIndicator(series).getValue(PATTERN_INDEX));
+    }
+
+    @Test
+    public void thirdBarWithNonFiniteCloseDoesNotMatch() {
+        DoubleNumFactory doubleFactory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory).build();
+        addBaselineBars(series, 10);
+        addBar(series, 20, 30, 31, 19);
+        addBar(series, 27.5, 27, 28, 26.5);
+        series.addBar(new NonFiniteBar(series.getBar(series.getEndIndex()).getEndTime(), doubleFactory.numOf(22),
+                doubleFactory.numOf(23), doubleFactory.numOf(17), doubleFactory.numOf(Double.NaN))); // third: NaN close
+
+        assertFalse(new ThreeInsideDownIndicator(series).getValue(PATTERN_INDEX));
+    }
+
+    @Test
     public void contextBeforeBaselineDoesNotChangeResult() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (int i = 0; i < 5; i++) {
@@ -204,9 +234,36 @@ public class ThreeInsideDownIndicatorTest extends AbstractIndicatorTest<Indicato
     }
 
     @Test
+    public void cachedMatchIsInvalidatedWhenBaselineWindowRollsPast() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 15; i++) {
+            addBar(series, 0, 10, 10, 0); // baseline bodies at 10..14
+        }
+        addBar(series, 5, 25, 25, 5); // first at index 15
+        addBar(series, 22, 20, 22, 20); // second at index 16
+        addBar(series, 4, 1, 4, 1); // third at index 17
+        for (int i = 0; i < 5; i++) {
+            addBar(series, 0, 10, 10, 0);
+        }
+        ThreeInsideDownIndicator indicator = new ThreeInsideDownIndicator(series);
+        assertTrue(indicator.getValue(17));
+        series.setMaximumBarCount(9); // beginIndex advances past the baseline window
+        assertFalse(indicator.getValue(17));
+    }
+
+    @Test
     public void rejectsInvalidAveragePeriod() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         assertThrows(IllegalArgumentException.class, () -> new ThreeInsideDownIndicator(series, 0));
+    }
+
+    @Test
+    public void nestedHaramiSharesTheInternedThresholdSupport() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBaselineBars(series, 3);
+        ThreeInsideDownIndicator indicator = new ThreeInsideDownIndicator(series, 3);
+
+        assertSame(CandleThresholdSupport.forSeries(series, 3), indicator.harami.thresholds);
     }
 
     @Override
