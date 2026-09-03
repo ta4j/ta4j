@@ -114,9 +114,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     private boolean lastBarComputationInProgress;
     private int lastBarComputationIndex = -1;
     private long lastBarCacheInvalidationCount;
-    private volatile Bar lastBarRef;
-    private volatile long lastBarTradeCount;
-    private volatile Num lastBarClosePrice;
+    private volatile LastBarState lastBarState;
     private volatile T lastBarCachedResult;
     private volatile int lastBarCachedIndex = -1;
 
@@ -241,18 +239,23 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * {@link BarSeriesChangeSnapshot}, so cross-series observations retain this
      * fingerprint alongside the structural snapshot.
      */
-    private record LastBarState(Bar bar, long tradeCount, Num closePrice) {
+    private record LastBarState(Bar bar, long tradeCount, Num openPrice, Num highPrice, Num lowPrice, Num closePrice,
+            Num volume, Num amount) {
 
         private static LastBarState capture(BarSeries series, int endIndex) {
             if (endIndex < 0) {
-                return new LastBarState(null, 0L, null);
+                return new LastBarState(null, 0L, null, null, null, null, null, null);
             }
             Bar bar = series.getLastBar();
-            return new LastBarState(bar, bar.getTrades(), bar.getClosePrice());
+            return new LastBarState(bar, bar.getTrades(), bar.getOpenPrice(), bar.getHighPrice(), bar.getLowPrice(),
+                    bar.getClosePrice(), bar.getVolume(), bar.getAmount());
         }
 
         private boolean isSameAs(LastBarState other) {
-            return bar == other.bar && tradeCount == other.tradeCount && equalsNum(closePrice, other.closePrice);
+            return other != null && bar == other.bar && tradeCount == other.tradeCount
+                    && equalsNum(openPrice, other.openPrice) && equalsNum(highPrice, other.highPrice)
+                    && equalsNum(lowPrice, other.lowPrice) && equalsNum(closePrice, other.closePrice)
+                    && equalsNum(volume, other.volume) && equalsNum(amount, other.amount);
         }
 
         /**
@@ -261,7 +264,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
          * capture, so values computed from its pre-mutation state are stale.
          */
         private boolean isIntact() {
-            return bar == null || (bar.getTrades() == tradeCount && equalsNum(closePrice, bar.getClosePrice()));
+            return bar == null || (bar.getTrades() == tradeCount && equalsNum(openPrice, bar.getOpenPrice())
+                    && equalsNum(highPrice, bar.getHighPrice()) && equalsNum(lowPrice, bar.getLowPrice())
+                    && equalsNum(closePrice, bar.getClosePrice()) && equalsNum(volume, bar.getVolume())
+                    && equalsNum(amount, bar.getAmount()));
         }
     }
 
@@ -961,30 +967,20 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @return the indicator value
      */
     private T getLastBarValue(int index, BarSeries series) {
-        Bar snapshotBar;
-        long snapshotTradeCount;
-        Num snapshotClosePrice;
+        LastBarState snapshotState;
         long snapshotInvalidationCount;
 
         boolean ownsComputation = false;
         boolean timedOut = false;
         while (true) {
             synchronized (lastBarLock) {
-                Bar bar1 = series.getLastBar();
-                long tradeCount1 = bar1.getTrades();
-                Num closePrice1 = bar1.getClosePrice();
+                LastBarState state1 = LastBarState.capture(series, index);
+                LastBarState state2 = LastBarState.capture(series, index);
 
-                Bar bar2 = series.getLastBar();
-                long tradeCount2 = bar2.getTrades();
-                Num closePrice2 = bar2.getClosePrice();
+                boolean stableRead = state1.isSameAs(state2);
+                LastBarState currentState = stableRead ? state1 : state2;
 
-                boolean stableRead = bar1 == bar2 && tradeCount1 == tradeCount2 && equalsNum(closePrice1, closePrice2);
-                Bar currentBar = stableRead ? bar1 : bar2;
-                long currentTradeCount = stableRead ? tradeCount1 : tradeCount2;
-                Num currentClosePrice = stableRead ? closePrice1 : closePrice2;
-
-                if (stableRead && index == lastBarCachedIndex && currentBar == lastBarRef
-                        && currentTradeCount == lastBarTradeCount && equalsNum(currentClosePrice, lastBarClosePrice)) {
+                if (stableRead && index == lastBarCachedIndex && currentState.isSameAs(lastBarState)) {
                     return lastBarCachedResult;
                 }
 
@@ -993,9 +989,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 // we must bypass caching to avoid advancing highestResultIndex while the
                 // main cache doesn't have the value stored.
                 if (cache.isWriteLockedByCurrentThread()) {
-                    snapshotBar = currentBar;
-                    snapshotTradeCount = currentTradeCount;
-                    snapshotClosePrice = currentClosePrice;
+                    snapshotState = currentState;
                     snapshotInvalidationCount = -1;
                     break;
                 }
@@ -1004,9 +998,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     lastBarComputationInProgress = true;
                     lastBarComputationIndex = index;
                     ownsComputation = true;
-                    snapshotBar = currentBar;
-                    snapshotTradeCount = currentTradeCount;
-                    snapshotClosePrice = currentClosePrice;
+                    snapshotState = currentState;
                     snapshotInvalidationCount = lastBarCacheInvalidationCount;
                     break;
                 }
@@ -1014,9 +1006,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 // If we already timed out waiting for another computation, compute
                 // independently to prevent indefinite blocking
                 if (timedOut) {
-                    snapshotBar = currentBar;
-                    snapshotTradeCount = currentTradeCount;
-                    snapshotClosePrice = currentClosePrice;
+                    snapshotState = currentState;
                     snapshotInvalidationCount = -1;
                     break;
                 }
@@ -1034,9 +1024,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    snapshotBar = currentBar;
-                    snapshotTradeCount = currentTradeCount;
-                    snapshotClosePrice = currentClosePrice;
+                    snapshotState = currentState;
                     snapshotInvalidationCount = -1;
                     break;
                 }
@@ -1072,25 +1060,13 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         synchronized (lastBarLock) {
             try {
                 if (snapshotInvalidationCount == lastBarCacheInvalidationCount) {
-                    Bar bar1 = series.getLastBar();
-                    long tradeCount1 = bar1.getTrades();
-                    Num closePrice1 = bar1.getClosePrice();
+                    LastBarState state1 = LastBarState.capture(series, index);
+                    LastBarState state2 = LastBarState.capture(series, index);
 
-                    Bar bar2 = series.getLastBar();
-                    long tradeCount2 = bar2.getTrades();
-                    Num closePrice2 = bar2.getClosePrice();
+                    boolean stableRead = state1.isSameAs(state2);
 
-                    boolean stableRead = bar1 == bar2 && tradeCount1 == tradeCount2
-                            && equalsNum(closePrice1, closePrice2);
-                    Bar currentBar = stableRead ? bar1 : bar2;
-                    long currentTradeCount = stableRead ? tradeCount1 : tradeCount2;
-                    Num currentClosePrice = stableRead ? closePrice1 : closePrice2;
-
-                    if (stableRead && currentBar == snapshotBar && currentTradeCount == snapshotTradeCount
-                            && equalsNum(currentClosePrice, snapshotClosePrice)) {
-                        lastBarRef = snapshotBar;
-                        lastBarTradeCount = snapshotTradeCount;
-                        lastBarClosePrice = snapshotClosePrice;
+                    if (stableRead && state1.isSameAs(snapshotState)) {
+                        lastBarState = snapshotState;
                         lastBarCachedResult = computed;
                         lastBarCachedIndex = index;
                         updateHighestResultIndex(index);
@@ -1169,9 +1145,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     private void clearLastBarCacheLocked() {
         lastBarCacheInvalidationCount++;
-        lastBarRef = null;
-        lastBarTradeCount = 0;
-        lastBarClosePrice = null;
+        lastBarState = null;
         lastBarCachedResult = null;
         lastBarCachedIndex = -1;
     }
