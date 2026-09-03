@@ -125,8 +125,8 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         BarSeries ySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         var now = Instant.now();
         for (int j = 0; j < 5; j++) {
-            xSeries.barBuilder().endTime(now.minusSeconds(2 * (4 - j))).closePrice(2 * (j + 1)).add();
-            ySeries.barBuilder().endTime(now.minusSeconds(2 * (4 - j))).closePrice(5 * (j + 1)).add();
+            xSeries.barBuilder().endTime(now.minusSeconds(2L * (4 - j))).closePrice(2 * (j + 1)).add();
+            ySeries.barBuilder().endTime(now.minusSeconds(2L * (4 - j))).closePrice(5 * (j + 1)).add();
         }
 
         var covar = new CovarianceIndicator(new ClosePriceIndicator(xSeries), new ClosePriceIndicator(ySeries), 5);
