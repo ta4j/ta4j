@@ -34,6 +34,10 @@ import org.ta4j.core.num.NumFactory;
 public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Forecast>
         implements ForecastProjectionIndicator {
 
+    static {
+        AccelerationRuntime.registerPlanner(new MonteCarloShockPathPlanner());
+    }
+
     private static final int MAX_EXPONENT = 700;
 
     private final Indicator<Num> priceIndicator;
@@ -199,22 +203,63 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
     }
 
     /**
-     * Returns the read-only configuration and source indicators needed by optional
-     * batch acceleration adapters.
+     * Exposes the price source to the core-owned shock-path planner.
      *
-     * <p>
-     * The returned specification is descriptive only. It does not authorize
-     * arbitrary graph compilation; an accelerator adapter must still validate the
-     * concrete graph, source series, numeric representation, and provider
-     * capability before using it.
-     *
-     * @return acceleration specification for this forecast indicator
+     * @return price source
      * @since 0.24.2
      */
-    public MonteCarloPriceForecastSpec accelerationSpec() {
-        return new MonteCarloPriceForecastSpec(priceIndicator, stateIndicator, settings.horizon(),
-                settings.iterationCount(), settings.lookbackBarCount(), settings.seed(), shockModel,
-                volatilityUpdateMode, volatilityDecayFactor, settings.quantileProbabilities());
+    Indicator<Num> kernelPriceIndicator() {
+        return priceIndicator;
+    }
+
+    /**
+     * Exposes the moment state source to the core-owned shock-path planner.
+     *
+     * @return moment state source
+     * @since 0.24.2
+     */
+    ReturnForecastStateIndicator<? extends ReturnMomentState> kernelStateIndicator() {
+        return stateIndicator;
+    }
+
+    /**
+     * Exposes the validated settings to the core-owned shock-path planner.
+     *
+     * @return simulation settings
+     * @since 0.24.2
+     */
+    MonteCarloSettings kernelSettings() {
+        return settings;
+    }
+
+    /**
+     * Exposes the shock model to the core-owned shock-path planner.
+     *
+     * @return shock model
+     * @since 0.24.2
+     */
+    MonteCarloReturnProjectionIndicator.ShockModel kernelShockModel() {
+        return shockModel;
+    }
+
+    /**
+     * Exposes the volatility update mode to the core-owned shock-path planner.
+     *
+     * @return volatility update mode
+     * @since 0.24.2
+     */
+    MonteCarloReturnProjectionIndicator.VolatilityUpdateMode kernelVolatilityUpdateMode() {
+        return volatilityUpdateMode;
+    }
+
+    /**
+     * Exposes the volatility decay factor to the core-owned shock-path planner.
+     *
+     * @return volatility decay factor
+     * @since 0.24.2
+     */
+    double kernelVolatilityDecayFactor() {
+        return volatilityDecayFactor;
     }
 
     private static Indicator<Num> sourceIndicator(

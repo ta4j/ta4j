@@ -8,6 +8,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
 import org.junit.Test;
+import org.ta4j.core.acceleration.AccelerationRuntime;
 
 public class MonteCarloSimulationTest {
 
@@ -43,7 +44,7 @@ public class MonteCarloSimulationTest {
         assertThrows(IllegalArgumentException.class,
                 () -> MonteCarloSimulation.DeterministicRandom.forPath(1L, 0, 1, -1));
         assertThrows(IllegalArgumentException.class, () -> stream().nextInt(0));
-        assertEquals(1, MonteCarloPriceForecastSpec.RNG_VERSION);
+        assertEquals(1, AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1.version());
     }
 
     private static void assertVector(int bound, int... expected) {

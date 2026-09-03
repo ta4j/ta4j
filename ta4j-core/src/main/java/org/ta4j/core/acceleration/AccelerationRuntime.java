@@ -6,9 +6,11 @@ package org.ta4j.core.acceleration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.ServiceConfigurationError;
@@ -20,43 +22,57 @@ import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.num.NumFactory;
 
 /**
- * Transparent, opt-in execution boundary for batched indicator acceleration.
+ * Scoped entry point for accelerated indicator evaluation.
  *
  * <p>
- * Applications do not call this type directly. {@code BarSeriesManager} opens a
- * bounded execution scope for every backtest run, and explicitly supported
- * indicators ask the current scope for an accelerated value before falling back
- * to scalar {@link Indicator#getValue(int)} evaluation. Optional providers are
- * discovered through {@link ServiceLoader} only after
- * {@code -Dta4j.acceleration=auto} and an eligible indicator request. Omitting
- * the property, or setting it to {@code off}, retains the ordinary scalar path
- * without provider discovery.
+ * Providers never observe ta4j domain graphs. Core-internal planners lower a
+ * supported calculation into an immutable versioned {@link KernelRequest} built
+ * exclusively from primitives, workload shapes, and numeric contracts.
+ * Providers answer with raw primitives ({@link KernelResult}); the runtime
+ * validates the raw output, reconstructs domain values through the owning
+ * {@link NumFactory}, and falls back to the scalar lane on any failure. An
+ * indicator that no planner claims never reaches provider code, and assessment
+ * never initializes native code.
  *
  * <p>
- * This deliberately is not a general indicator graph compiler. Providers must
- * reject every graph family they do not understand, and scalar
- * {@link Indicator#getValue(int)} evaluation remains the fallback oracle.
- *
- * <p>
- * Cached accelerated batches are bound to
- * {@link BarSeries.BarSeriesChangeSnapshot} change snapshots: any revision,
- * retained-range, capacity, or end-index change invalidates the batch before
- * the next cached read, and series that do not track revisions are never
- * accelerated.
+ * Selection is cost-based. Every discovered provider is assessed; supported
+ * assessments are ranked by predicted end-to-end cost with a documented stable
+ * tie-break, compared against the planner's scalar baseline (CPU crossover),
+ * and executed best-first with per-attempt fallback. Failure isolation is keyed
+ * by provider, device, and operation version.
  *
  * @since 0.24.2
  */
 public final class AccelerationRuntime {
 
-    /** JVM property controlling transparent acceleration. */
-    public static final String PROPERTY = "ta4j.acceleration";
+    /**
+     * System property selecting the scoped acceleration runtime ({@code off},
+     * {@code auto}).
+     */
+    public static final String PROPERTY = "ta4j.acceleration.enabled";
+
+    /**
+     * System property capping the per-request device memory estimate, in bytes,
+     * before any provider is contacted. Defaults to 1 GiB.
+     */
+    public static final String MAX_DEVICE_BYTES_PROPERTY = "ta4j.acceleration.maxDeviceBytes";
 
     private static final Logger LOG = LoggerFactory.getLogger(AccelerationRuntime.class);
+
+    private static final long DEFAULT_MAX_DEVICE_BYTES = 1L << 30;
+
+    /**
+     * Safety margin applied to the CPU-crossover comparison: the best accelerator
+     * must beat the scalar baseline by more than this fraction.
+     */
+    private static final double CPU_SAFETY_MARGIN = 0.10;
+
     private static final ThreadLocal<Context> CURRENT = new ThreadLocal<>();
-    private static final Scope DISABLED_SCOPE = () -> {
-    };
+
+    private static final List<OperationPlanner> PLANNERS = new ArrayList<>();
 
     private static volatile List<Provider> discoveredProviders;
 
@@ -64,26 +80,46 @@ public final class AccelerationRuntime {
     }
 
     /**
-     * Opens a bounded acceleration scope for one backtest execution.
+     * Registers a core-internal operation planner.
      *
-     * @param series        series being evaluated
-     * @param fromInclusive first run index
-     * @param toInclusive   last run index
-     * @return scope to close after execution
+     * <p>
+     * Core-internal extension point: planners are core-owned lowering code, not
+     * provider extensions. Provider artifacts must implement {@link Provider}
+     * instead and must never call this method. Registration is additive and
+     * idempotent per planner class.
+     *
+     * @param planner planner to register
      * @since 0.24.2
      */
-    public static Scope open(BarSeries series, int fromInclusive, int toInclusive) {
+    public static synchronized void registerPlanner(OperationPlanner planner) {
+        Objects.requireNonNull(planner, "planner must not be null");
+        for (OperationPlanner registered : PLANNERS) {
+            if (registered.getClass() == planner.getClass()) {
+                return;
+            }
+        }
+        PLANNERS.add(planner);
+    }
+
+    /**
+     * Opens an acceleration scope for a backtest run range and binds it to the
+     * current thread.
+     *
+     * @param series the backing series
+     * @param from   inclusive run begin index
+     * @param to     inclusive run end index
+     * @return scope handle closing back to the enclosing scope
+     * @since 0.24.2
+     */
+    public static Scope open(BarSeries series, int from, int to) {
         Objects.requireNonNull(series, "series must not be null");
         if (!enabled()) {
             Context previous = CURRENT.get();
-            if (previous == null) {
-                return DISABLED_SCOPE;
-            }
             CURRENT.remove();
             return () -> CURRENT.set(previous);
         }
         Context previous = CURRENT.get();
-        Context context = new Context(fromInclusive, toInclusive, previous);
+        Context context = new Context(series, from, to, previous);
         CURRENT.set(context);
         return context;
     }
@@ -104,6 +140,41 @@ public final class AccelerationRuntime {
             return Optional.empty();
         }
         return context.value(indicator, index);
+    }
+
+    /**
+     * Returns the latest diagnostic of the current scope, if a scope is open.
+     *
+     * @return current diagnostic, or empty without an open scope
+     * @since 0.24.2
+     */
+    public static Optional<Diagnostic> lastDiagnostic() {
+        Context context = CURRENT.get();
+        return context == null ? Optional.empty() : Optional.of(context.diagnostic);
+    }
+
+    static long maxDeviceBytes() {
+        String configured = System.getProperty(MAX_DEVICE_BYTES_PROPERTY);
+        if (configured == null || configured.isBlank()) {
+            return DEFAULT_MAX_DEVICE_BYTES;
+        }
+        try {
+            long parsed = Long.parseLong(configured.trim());
+            return parsed > 0 ? parsed : DEFAULT_MAX_DEVICE_BYTES;
+        } catch (NumberFormatException exception) {
+            LOG.warn("Invalid {}='{}'; using default {}", MAX_DEVICE_BYTES_PROPERTY, configured,
+                    DEFAULT_MAX_DEVICE_BYTES);
+            return DEFAULT_MAX_DEVICE_BYTES;
+        }
+    }
+
+    static synchronized void useProvidersForTests(List<Provider> providers) {
+        discoveredProviders = List.copyOf(providers);
+    }
+
+    static synchronized void resetProvidersForTests() {
+        discoveredProviders = null;
+        CURRENT.remove();
     }
 
     private static boolean enabled() {
@@ -129,7 +200,6 @@ public final class AccelerationRuntime {
             if (providers == null) {
                 List<Provider> loaded = new ArrayList<>();
                 ServiceLoader.load(Provider.class).forEach(loaded::add);
-                loaded.sort(Comparator.comparing(provider -> provider.getClass().getName()));
                 providers = List.copyOf(loaded);
                 discoveredProviders = providers;
             }
@@ -137,12 +207,11 @@ public final class AccelerationRuntime {
         return providers;
     }
 
-    static void useProvidersForTests(List<Provider> providers) {
-        discoveredProviders = List.copyOf(providers);
-    }
-
-    static void resetProvidersForTests() {
+    static synchronized void resetProvidersForTests(boolean clearPlanners) {
         discoveredProviders = null;
+        if (clearPlanners) {
+            PLANNERS.clear();
+        }
         CURRENT.remove();
     }
 
@@ -164,159 +233,58 @@ public final class AccelerationRuntime {
     }
 
     /**
-     * Lazy ServiceLoader provider contract implemented by optional artifacts.
-     *
-     * <p>
-     * Provider constructors must not probe devices or load native libraries.
-     *
-     * @since 0.24.2
+     * Versioned accelerated operation. New operations are admitted by core only.
      */
-    public interface Provider {
+    public enum Operation {
 
-        /**
-         * Evaluates an eligible request or returns a typed non-executed result.
-         *
-         * @param request immutable request
-         * @param <T>     value type
-         * @return provider decision
-         * @since 0.24.2
-         */
-        <T> Result<T> evaluate(Request<T> request);
-    }
+        /** Monte Carlo shock-path kernel, contract version 1. */
+        MONTE_CARLO_SHOCK_PATHS_V1(1);
 
-    /**
-     * Immutable provider request.
-     *
-     * @param indicator     concrete indicator
-     * @param fromInclusive first requested index
-     * @param toInclusive   last requested index
-     * @param <T>           value type
-     * @since 0.24.2
-     */
-    public record Request<T>(Indicator<T> indicator, int fromInclusive, int toInclusive) {
+        private final int version;
 
-        /**
-         * Validates a request.
-         *
-         * @since 0.24.2
-         */
-        public Request {
-            Objects.requireNonNull(indicator, "indicator must not be null");
-            BarSeries series = Objects.requireNonNull(indicator.getBarSeries(), "indicator series must not be null");
-            if (fromInclusive < series.getBeginIndex() || toInclusive > series.getEndIndex()
-                    || fromInclusive > toInclusive) {
-                throw new IllegalArgumentException("Acceleration range [%d, %d] is outside retained series [%d, %d]"
-                        .formatted(fromInclusive, toInclusive, series.getBeginIndex(), series.getEndIndex()));
-            }
+        Operation(int version) {
+            this.version = version;
         }
 
         /**
-         * Returns the indicator's read-only series view.
+         * Returns the operation contract version.
          *
-         * @return source series for the request
+         * @return contract version
          * @since 0.24.2
          */
-        public BarSeries series() {
-            return indicator.getBarSeries();
-        }
-
-        /**
-         * @return exact number of requested values
-         * @since 0.24.2
-         */
-        public int size() {
-            return Math.addExact(Math.subtractExact(toInclusive, fromInclusive), 1);
+        public int version() {
+            return version;
         }
     }
 
-    /**
-     * Provider decision and, when executed, ordered values for the exact request.
-     *
-     * @param status            decision status
-     * @param backend           effective backend
-     * @param values            exact ordered values when executed
-     * @param nativeInitialized whether native code was initialized
-     * @param elapsedNanos      provider wall time
-     * @param diagnostic        typed decision detail
-     * @param <T>               value type
-     * @since 0.24.2
-     */
-    public record Result<T>(Status status, Backend backend, List<T> values, boolean nativeInitialized,
-            long elapsedNanos, Diagnostic diagnostic) {
+    /** Primitive numeric encoding of kernel buffers. */
+    public enum NumericEncoding {
 
-        /**
-         * Validates and defensively copies a result.
-         *
-         * @since 0.24.2
-         */
-        public Result {
-            Objects.requireNonNull(status, "status must not be null");
-            Objects.requireNonNull(backend, "backend must not be null");
-            values = List.copyOf(Objects.requireNonNull(values, "values must not be null"));
-            Objects.requireNonNull(diagnostic, "diagnostic must not be null");
-            if (elapsedNanos < 0L) {
-                throw new IllegalArgumentException("elapsedNanos must be >= 0");
-            }
-            if (status != Status.EXECUTED && !values.isEmpty()) {
-                throw new IllegalArgumentException("Non-executed acceleration results must not contain values");
-            }
-        }
-
-        /**
-         * Creates a successful provider result.
-         *
-         * @param backend           effective GPU backend
-         * @param values            exact ordered values
-         * @param nativeInitialized whether native code initialized
-         * @param elapsedNanos      provider elapsed time
-         * @param diagnostic        execution detail
-         * @param <T>               value type
-         * @return executed result
-         * @since 0.24.2
-         */
-        public static <T> Result<T> executed(Backend backend, List<T> values, boolean nativeInitialized,
-                long elapsedNanos, Diagnostic diagnostic) {
-            return new Result<>(Status.EXECUTED, backend, values, nativeInitialized, elapsedNanos, diagnostic);
-        }
-
-        /**
-         * Creates a non-executed provider decision.
-         *
-         * @param status     skipped, unavailable, or failed status
-         * @param backend    provider backend
-         * @param diagnostic decision detail
-         * @param <T>        value type
-         * @return non-executed result
-         * @since 0.24.2
-         */
-        public static <T> Result<T> notExecuted(Status status, Backend backend, Diagnostic diagnostic) {
-            if (status == Status.EXECUTED) {
-                throw new IllegalArgumentException("Use executed(...) for executed results");
-            }
-            return new Result<>(status, backend, List.of(), false, 0L, diagnostic);
-        }
+        /** IEEE-754 binary64, matching {@code DoubleNum} scalar semantics. */
+        FLOAT64
     }
 
-    /** Provider decision status. @since 0.24.2 */
-    public enum Status {
-        /** GPU values were produced. */
-        EXECUTED,
-        /** The request was valid but CPU was predicted to be faster. */
-        SKIPPED,
-        /** No usable provider/device was available. */
-        UNAVAILABLE,
-        /** Provider execution failed and scalar fallback is required. */
-        FAILED
+    /** Determinism contract a kernel result must satisfy. */
+    public enum Determinism {
+
+        /**
+         * Bitwise identical to the scalar oracle for the same request inputs.
+         */
+        BITWISE_IDENTICAL
     }
 
-    /** Effective execution backend. @since 0.24.2 */
+    /** Effective execution backend. */
     public enum Backend {
+
         /** Canonical scalar CPU fallback. */
         CPU,
+
         /** Apple Metal. */
         METAL,
+
         /** NVIDIA CUDA. */
         CUDA,
+
         /** Khronos OpenCL. */
         OPENCL
     }
@@ -331,7 +299,7 @@ public final class AccelerationRuntime {
      */
     public record Diagnostic(DiagnosticCode code, String providerId, String detail) {
 
-        /** Validates a diagnostic. @since 0.24.2 */
+        /** Validates a diagnostic. */
         public Diagnostic {
             Objects.requireNonNull(code, "code must not be null");
             Objects.requireNonNull(providerId, "providerId must not be null");
@@ -339,44 +307,258 @@ public final class AccelerationRuntime {
         }
     }
 
-    /** Stable diagnostic and fallback codes. @since 0.24.2 */
+    /** Stable diagnostic and fallback codes. */
     public enum DiagnosticCode {
-        /** GPU execution completed. */
+
+        /** Provider execution completed. */
         ACCELERATED,
+
         /** No optional provider artifact was present. */
         NO_PROVIDER,
-        /** The graph or numeric representation was unsupported. */
+
+        /** No planner claims the calculation, or the workload is ineligible. */
         UNSUPPORTED,
+
         /** A provider or device was unavailable. */
         PROVIDER_UNAVAILABLE,
+
         /** CPU was predicted to be faster. */
         CPU_FASTER,
+
         /** The series changed during provider work. */
         STALE_SERIES,
+
         /** Provider execution failed. */
         PROVIDER_FAILURE,
+
         /** Provider output did not cover the exact request. */
         INVALID_RESULT
     }
 
+    /**
+     * Immutable versioned kernel request built exclusively from primitives,
+     * workload shapes, and numeric contracts. Providers receive no indicators,
+     * series, {@code Num} graphs, or forecast types.
+     *
+     * @param operation               operation to execute
+     * @param fromInclusive           first decision index in the batch
+     * @param toInclusive             last decision index in the batch
+     * @param outputsPerIndex         raw output values per decision index
+     * @param numeric                 primitive encoding of every buffer
+     * @param determinism             determinism contract the kernel must satisfy
+     * @param seed                    base seed; per-index mixing is defined by the
+     *                                operation contract
+     * @param tolerance               numeric tolerance for validation, NaN when
+     *                                exact
+     * @param params                  operation parameters (ordinals, counts,
+     *                                factors) defined by the operation contract
+     * @param inputs                  read-only primitive input buffers
+     * @param estimatedScalarNanos    planner scalar-baseline estimate for the
+     *                                crossover comparison, non-positive when
+     *                                unknown
+     * @param peakDeviceBytesEstimate declared peak device memory in bytes
+     * @since 0.24.2
+     */
+    public record KernelRequest(Operation operation, int fromInclusive, int toInclusive, int outputsPerIndex,
+            NumericEncoding numeric, Determinism determinism, long seed, double tolerance, double[] params,
+            List<double[]> inputs, long estimatedScalarNanos, long peakDeviceBytesEstimate) {
+        /** Validates and defensively copies a kernel request. */
+        public KernelRequest {
+            Objects.requireNonNull(operation, "operation must not be null");
+            Objects.requireNonNull(numeric, "numeric must not be null");
+            Objects.requireNonNull(determinism, "determinism must not be null");
+            Objects.requireNonNull(params, "params must not be null");
+            Objects.requireNonNull(inputs, "inputs must not be null");
+            if (fromInclusive > toInclusive || outputsPerIndex < 1) {
+                throw new IllegalArgumentException(
+                        "request range [" + fromInclusive + ", " + toInclusive + "] is invalid");
+            }
+            if (peakDeviceBytesEstimate < 0) {
+                throw new IllegalArgumentException("peakDeviceBytesEstimate must be >= 0");
+            }
+            params = params.clone();
+            List<double[]> copies = new ArrayList<>(inputs.size());
+            for (double[] buffer : inputs) {
+                copies.add(Objects.requireNonNull(buffer, "input buffer must not be null").clone());
+            }
+            inputs = List.copyOf(copies);
+        }
+
+        /**
+         * Returns the number of decision indexes in the batch.
+         *
+         * @since 0.24.2
+         */
+        public int size() {
+            return Math.addExact(Math.subtractExact(toInclusive, fromInclusive), 1);
+        }
+
+        /**
+         * Returns the expected raw output length.
+         *
+         * @return {@code size() * outputsPerIndex}
+         * @since 0.24.2
+         */
+        public int expectedOutputLength() {
+            return Math.multiplyExact(size(), outputsPerIndex);
+        }
+
+        /**
+         * Returns a copy of the operation parameters.
+         *
+         * @return defensive copy, never the live buffer
+         * @since 0.24.2
+         */
+        @Override
+        public double[] params() {
+            return params.clone();
+        }
+    }
+
+    /**
+     * Raw kernel output. Values are primitives; domain reconstruction is owned by
+     * core.
+     *
+     * @param outputs           row-major raw outputs of length
+     *                          {@code request.size() * outputsPerIndex}
+     * @param nativeInitialized whether native code was initialized
+     * @param elapsedNanos      provider-measured kernel time
+     * @since 0.24.2
+     */
+    public record KernelResult(double[] outputs, boolean nativeInitialized, long elapsedNanos) {
+
+        /** Validates and defensively copies a kernel result. */
+        public KernelResult {
+            Objects.requireNonNull(outputs, "outputs must not be null");
+            outputs = outputs.clone();
+            if (elapsedNanos < 0L) {
+                throw new IllegalArgumentException("elapsedNanos must be >= 0");
+            }
+        }
+
+        /**
+         * Returns a copy of the raw kernel outputs.
+         *
+         * @return defensive copy, never the live buffer
+         * @since 0.24.2
+         */
+        @Override
+        public double[] outputs() {
+            return outputs.clone();
+        }
+    }
+
+    /**
+     * Cost assessment for one provider and request. Produced without initializing
+     * native code or performing observable side effects.
+     *
+     * @param supported           whether the provider can execute the request
+     * @param backend             backend the provider would use
+     * @param deviceId            stable device identifier
+     * @param predictedTotalNanos predicted end-to-end nanoseconds including
+     *                            transfer and launch overhead
+     * @param peakDeviceBytes     provider-confirmed peak device memory
+     * @param deterministic       whether the provider meets the request determinism
+     *                            contract
+     * @param diagnostic          explanation when unsupported
+     * @since 0.24.2
+     */
+    public record Assessment(boolean supported, Backend backend, String deviceId, long predictedTotalNanos,
+            long peakDeviceBytes, boolean deterministic, Diagnostic diagnostic) {
+
+        /** Validates an assessment. */
+        public Assessment {
+            Objects.requireNonNull(backend, "backend must not be null");
+            Objects.requireNonNull(deviceId, "deviceId must not be null");
+            Objects.requireNonNull(diagnostic, "diagnostic must not be null");
+        }
+
+        /**
+         * Creates a supported assessment.
+         *
+         * @since 0.24.2
+         */
+        public static Assessment supported(Backend backend, String deviceId, long predictedTotalNanos,
+                long peakDeviceBytes, boolean deterministic) {
+            return new Assessment(true, backend, deviceId, predictedTotalNanos, peakDeviceBytes, deterministic,
+                    new Diagnostic(DiagnosticCode.ACCELERATED, "assessed", "supported"));
+        }
+
+        /**
+         * Creates an unsupported assessment.
+         *
+         * @since 0.24.2
+         */
+        public static Assessment unsupported(Backend backend, String deviceId, DiagnosticCode code, String providerId,
+                String detail) {
+            return new Assessment(false, backend, deviceId, Long.MAX_VALUE, Long.MAX_VALUE, false,
+                    new Diagnostic(code, providerId, detail));
+        }
+    }
+
+    /**
+     * Provider service interface. Implementations observe only
+     * {@link KernelRequest} primitives and answer with raw primitives.
+     *
+     * <p>
+     * Provider constructors must not probe devices or load native libraries, and
+     * {@link #assess(KernelRequest)} must not initialize native code.
+     *
+     * @since 0.24.2
+     */
+    public interface Provider {
+
+        /**
+         * Returns the stable provider identifier, defaulting to the class name.
+         *
+         * @return provider id
+         * @since 0.24.2
+         */
+        default String providerId() {
+            return getClass().getName();
+        }
+
+        /**
+         * Assesses a request without initializing native code.
+         *
+         * @param request immutable kernel request
+         * @return cost assessment
+         * @since 0.24.2
+         */
+        Assessment assess(KernelRequest request);
+
+        /**
+         * Executes a request and returns raw primitives.
+         *
+         * @param request immutable kernel request
+         * @return raw kernel output
+         * @since 0.24.2
+         */
+        KernelResult execute(KernelRequest request);
+    }
+
     private static final class Context implements Scope {
 
+        private final BarSeries series;
         private final int fromInclusive;
         private final int toInclusive;
         private final Context previous;
         private final long startedNanos = System.nanoTime();
         private final IdentityHashMap<Indicator<?>, CachedBatch> batches = new IdentityHashMap<>();
         private final Set<Indicator<?>> scalarFallback = Collections.newSetFromMap(new IdentityHashMap<>());
+        private final Map<String, String> quarantine = new HashMap<>();
 
         private boolean suspended;
         private boolean providerAttempted;
         private Backend effectiveBackend = Backend.CPU;
+        private String providerInUse = "none";
         private boolean nativeInitialized;
         private long providerElapsedNanos;
         private Diagnostic diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none",
                 "no eligible acceleration request");
 
-        private Context(int fromInclusive, int toInclusive, Context previous) {
+        private Context(BarSeries series, int fromInclusive, int toInclusive, Context previous) {
+            this.series = series;
             this.fromInclusive = fromInclusive;
             this.toInclusive = toInclusive;
             this.previous = previous;
@@ -403,8 +585,8 @@ public final class AccelerationRuntime {
                 }
                 batches.put(indicator, cached);
             }
-            Object value = cached.value(index);
-            return value == null ? Optional.empty() : Optional.of((T) value);
+            Object decoded = cached.value(index);
+            return decoded == null ? Optional.empty() : Optional.of((T) decoded);
         }
 
         private <T> CachedBatch evaluate(Indicator<T> indicator, int index) {
@@ -413,6 +595,25 @@ public final class AccelerationRuntime {
             if (revision < 0L) {
                 diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none",
                         "series does not track bar-data revisions; accelerated batches cannot be invalidated");
+                return null;
+            }
+            PlannedOperation planned;
+            try {
+                planned = plan(indicator, index);
+            } catch (LinkageError | RuntimeException exception) {
+                diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none", "planner failed for "
+                        + indicator.getClass().getSimpleName() + ": " + failureMessage(exception));
+                return null;
+            }
+            if (planned == null) {
+                diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none",
+                        "no operation planner claims " + indicator.getClass().getSimpleName());
+                return null;
+            }
+            KernelRequest request = planned.request();
+            if (request.peakDeviceBytesEstimate() > maxDeviceBytes()) {
+                diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none", "peak device estimate "
+                        + request.peakDeviceBytesEstimate() + " exceeds budget " + maxDeviceBytes());
                 return null;
             }
             providerAttempted = true;
@@ -429,44 +630,145 @@ public final class AccelerationRuntime {
                         "no acceleration provider was discovered");
                 return null;
             }
-            Request<T> request = new Request<>(indicator, index, toInclusive);
+            List<RankedProvider> candidates = assess(request, providers);
+            if (candidates.isEmpty()) {
+                if (diagnostic.code() != DiagnosticCode.CPU_FASTER) {
+                    diagnostic = new Diagnostic(DiagnosticCode.NO_PROVIDER, "none",
+                            "no provider supports " + request.operation());
+                }
+                return null;
+            }
             BarSeriesChangeSnapshot before = indicatorSeries.getBarSeriesChangeSnapshot(revision);
-            for (Provider provider : providers) {
-                Result<T> result;
+            for (RankedProvider candidate : candidates) {
+                if (quarantine.containsKey(quarantineKey(candidate, request))) {
+                    continue;
+                }
+                KernelResult result;
                 suspended = true;
                 long started = System.nanoTime();
                 try {
-                    result = Objects.requireNonNull(provider.evaluate(request), "acceleration provider returned null");
+                    result = Objects.requireNonNull(candidate.provider.execute(request),
+                            "acceleration provider returned null");
                 } catch (LinkageError | RuntimeException exception) {
-                    diagnostic = new Diagnostic(DiagnosticCode.PROVIDER_FAILURE, provider.getClass().getName(),
+                    quarantine.put(quarantineKey(candidate, request), failureMessage(exception));
+                    diagnostic = new Diagnostic(DiagnosticCode.PROVIDER_FAILURE, candidate.provider.providerId(),
                             failureMessage(exception));
                     continue;
                 } finally {
                     providerElapsedNanos += System.nanoTime() - started;
                     suspended = false;
                 }
-                diagnostic = result.diagnostic();
                 nativeInitialized |= result.nativeInitialized();
-                if (result.status() != Status.EXECUTED) {
-                    continue;
-                }
-                if (result.backend() == Backend.CPU || result.values().size() != request.size()
-                        || result.values().stream().anyMatch(Objects::isNull)) {
-                    diagnostic = new Diagnostic(DiagnosticCode.INVALID_RESULT, result.diagnostic().providerId(),
-                            "provider result did not exactly cover [%d, %d]".formatted(request.fromInclusive(),
+                double[] rawOutputs = result.outputs();
+                if (rawOutputs.length != request.expectedOutputLength()) {
+                    quarantine.put(quarantineKey(candidate, request), "malformed raw output");
+                    diagnostic = new Diagnostic(DiagnosticCode.INVALID_RESULT, candidate.provider.providerId(),
+                            "provider output did not exactly cover [%d, %d]".formatted(request.fromInclusive(),
                                     request.toInclusive()));
                     continue;
                 }
                 BarSeriesChangeSnapshot after = indicatorSeries.getBarSeriesChangeSnapshot(revision);
                 if (!sameSeriesState(before, after)) {
-                    diagnostic = new Diagnostic(DiagnosticCode.STALE_SERIES, result.diagnostic().providerId(),
+                    diagnostic = new Diagnostic(DiagnosticCode.STALE_SERIES, candidate.provider.providerId(),
                             "series changed while the provider was evaluating");
                     continue;
                 }
-                effectiveBackend = result.backend();
-                return new CachedBatch(request.fromInclusive(), result.values(), after);
+                List<Object> decoded;
+                try {
+                    decoded = decodeAll(request, rawOutputs, planned, indicatorSeries);
+                } catch (LinkageError | RuntimeException exception) {
+                    quarantine.put(quarantineKey(candidate, request), failureMessage(exception));
+                    diagnostic = new Diagnostic(DiagnosticCode.INVALID_RESULT, candidate.provider.providerId(),
+                            failureMessage(exception));
+                    continue;
+                }
+                effectiveBackend = candidate.assessment.backend();
+                providerInUse = candidate.provider.providerId();
+                diagnostic = new Diagnostic(DiagnosticCode.ACCELERATED, providerInUse,
+                        candidate.assessment.backend().name().toLowerCase(Locale.ROOT) + "/"
+                                + candidate.assessment.deviceId() + " executed " + request.operation());
+                return new CachedBatch(request.fromInclusive(), decoded, after);
             }
             return null;
+        }
+
+        private List<RankedProvider> assess(KernelRequest request, List<Provider> providers) {
+            List<RankedProvider> candidates = new ArrayList<>();
+            boolean cpuFasterObserved = false;
+            String cpuFasterProvider = "none";
+            String cpuFasterDetail = "";
+            for (Provider provider : providers) {
+                Assessment assessment;
+                suspended = true;
+                try {
+                    assessment = provider.assess(request);
+                } catch (LinkageError | RuntimeException exception) {
+                    LOG.debug("Provider {} assessment failed: {}", provider.providerId(), exception.getMessage());
+                    continue;
+                } finally {
+                    suspended = false;
+                }
+                if (assessment == null || !assessment.supported() || !assessment.deterministic()
+                        || assessment.predictedTotalNanos() < 0 || Math.max(request.peakDeviceBytesEstimate(),
+                                assessment.peakDeviceBytes()) > maxDeviceBytes()) {
+                    continue;
+                }
+                long baseline = request.estimatedScalarNanos();
+                if (baseline > 0 && (double) assessment.predictedTotalNanos() >= baseline * (1.0 - CPU_SAFETY_MARGIN)) {
+                    cpuFasterObserved = true;
+                    cpuFasterProvider = provider.providerId();
+                    cpuFasterDetail = "predicted " + assessment.predictedTotalNanos() + "ns vs scalar baseline "
+                            + baseline + "ns";
+                    continue;
+                }
+                candidates.add(new RankedProvider(provider, assessment));
+            }
+            candidates.sort(
+                    Comparator.comparingLong((RankedProvider candidate) -> candidate.assessment.predictedTotalNanos())
+                            .thenComparing(candidate -> candidate.assessment.backend().name())
+                            .thenComparing(candidate -> candidate.assessment.deviceId())
+                            .thenComparing(candidate -> candidate.provider.providerId()));
+            if (candidates.isEmpty() && cpuFasterObserved) {
+                diagnostic = new Diagnostic(DiagnosticCode.CPU_FASTER, cpuFasterProvider, cpuFasterDetail);
+            }
+            return candidates;
+        }
+
+        private <T> PlannedOperation plan(Indicator<T> indicator, int index) {
+            List<OperationPlanner> planners;
+            synchronized (AccelerationRuntime.class) {
+                planners = List.copyOf(PLANNERS);
+            }
+            for (OperationPlanner planner : planners) {
+                PlannedOperation planned = planner.plan(indicator, index, toInclusive, series.numFactory());
+                if (planned != null) {
+                    return planned;
+                }
+            }
+            return null;
+        }
+
+        private List<Object> decodeAll(KernelRequest request, double[] rawOutputs, PlannedOperation planned,
+                BarSeries indicatorSeries) {
+            NumFactory factory = indicatorSeries.numFactory();
+            List<Object> decoded = new ArrayList<>(request.size());
+            for (int position = 0; position < request.size(); position++) {
+                int index = request.fromInclusive() + position;
+                double[] slice = new double[request.outputsPerIndex()];
+                System.arraycopy(rawOutputs, position * request.outputsPerIndex(), slice, 0, slice.length);
+                Object value = planned.decoder().decode(slice, index, factory);
+                if (value == null) {
+                    throw new IllegalStateException(
+                            "decoder returned null for index " + index + " of " + request.operation());
+                }
+                decoded.add(value);
+            }
+            return decoded;
+        }
+
+        private static String quarantineKey(RankedProvider candidate, KernelRequest request) {
+            return candidate.provider.providerId() + "|" + candidate.assessment.deviceId() + "|" + request.operation()
+                    + "/v" + request.operation().version();
         }
 
         @Override
@@ -487,6 +789,9 @@ public final class AccelerationRuntime {
                         diagnostic.detail());
             }
         }
+    }
+
+    private record RankedProvider(Provider provider, Assessment assessment) {
     }
 
     private static boolean sameSeriesState(BarSeriesChangeSnapshot left, BarSeriesChangeSnapshot right) {

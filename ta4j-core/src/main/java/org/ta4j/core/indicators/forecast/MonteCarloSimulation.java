@@ -207,10 +207,6 @@ final class MonteCarloSimulation {
      */
     static final class DeterministicRandom implements RandomGenerator {
 
-        private static final long GOLDEN_GAMMA = 0x9E3779B97F4A7C15L;
-
-        private static final double DOUBLE_UNIT = 0x1.0p-53;
-
         private long state;
 
         private DeterministicRandom(long state) {
@@ -218,20 +214,7 @@ final class MonteCarloSimulation {
         }
 
         static DeterministicRandom forPath(long seed, int decisionIndex, int horizon, int pathIndex) {
-            if (decisionIndex < 0) {
-                throw new IllegalArgumentException("decisionIndex must be >= 0");
-            }
-            if (horizon < 1) {
-                throw new IllegalArgumentException("horizon must be >= 1");
-            }
-            if (pathIndex < 0) {
-                throw new IllegalArgumentException("pathIndex must be >= 0");
-            }
-            long value = seed;
-            value = mix64(value ^ (Integer.toUnsignedLong(decisionIndex) * 0xD1B54A32D192ED03L));
-            value = mix64(value ^ (Integer.toUnsignedLong(horizon) * 0x94D049BB133111EBL));
-            value = mix64(value ^ (Integer.toUnsignedLong(pathIndex) * 0xDB4F0B9175AE2165L));
-            return new DeterministicRandom(value);
+            return new DeterministicRandom(MonteCarloKernel.initialPathState(seed, decisionIndex, horizon, pathIndex));
         }
 
         @Override
@@ -250,8 +233,7 @@ final class MonteCarloSimulation {
 
         @Override
         public double nextGaussian() {
-            double radius = StrictMath.sqrt(-2d * StrictMath.log(1d - nextDouble()));
-            return radius * StrictMath.cos(2d * StrictMath.PI * nextDouble());
+            return MonteCarloKernel.gaussian(nextDouble(), nextDouble());
         }
 
         @Override
@@ -261,13 +243,13 @@ final class MonteCarloSimulation {
 
         @Override
         public long nextLong() {
-            state += GOLDEN_GAMMA;
-            return mix64(state);
+            state += MonteCarloKernel.GOLDEN_GAMMA;
+            return MonteCarloKernel.mix64(state);
         }
 
         @Override
         public double nextDouble() {
-            return (nextLong() >>> 11) * DOUBLE_UNIT;
+            return MonteCarloKernel.toUnitDouble(nextLong());
         }
 
         @Override
@@ -278,12 +260,6 @@ final class MonteCarloSimulation {
         @Override
         public boolean nextBoolean() {
             return nextLong() < 0L;
-        }
-
-        private static long mix64(long value) {
-            value = (value ^ value >>> 30) * 0xBF58476D1CE4E5B9L;
-            value = (value ^ value >>> 27) * 0x94D049BB133111EBL;
-            return value ^ value >>> 31;
         }
     }
 }
