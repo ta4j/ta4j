@@ -51,6 +51,9 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         if (!(indicator instanceof MonteCarloPriceForecastIndicator forecast)) {
             return null;
         }
+        if (!forecast.kernelUsesStockShockPaths()) {
+            return null;
+        }
         if (!(factory instanceof DoubleNumFactory)) {
             return null;
         }

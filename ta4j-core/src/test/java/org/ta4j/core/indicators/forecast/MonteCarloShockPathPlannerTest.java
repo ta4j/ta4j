@@ -9,6 +9,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
+import java.util.List;
 
 import org.junit.After;
 import org.junit.Before;
@@ -97,6 +98,26 @@ public class MonteCarloShockPathPlannerTest {
 
         assertNull(new MonteCarloShockPathPlanner().plan(new ClosePriceIndicator(fixture.series), 2, 2,
                 fixture.series.numFactory()));
+    }
+
+    @Test
+    public void declinesCustomMonteCarloMethod() {
+        Fixture fixture = fixture(DoubleNumFactory.getInstance());
+        BarSeries series = fixture.series;
+        Indicator<Num> close = new ClosePriceIndicator(series);
+        FixedReturnIndicator returns = new FixedReturnIndicator(series, ReturnRepresentation.LOG,
+                series.numFactory().numOf(0), series.numFactory().numOf(DOWN), series.numFactory().numOf(UP),
+                series.numFactory().numOf(0));
+        FixedReturnStateIndicator state = new FixedReturnStateIndicator(returns, ReturnRepresentation.LOG);
+        MonteCarloPriceForecastIndicator indicator = MonteCarloPriceForecastIndicator.builder(close, state)
+                .horizon(1)
+                .iterationCount(2)
+                .lookbackBarCount(2)
+                .shockModel(MonteCarloReturnProjectionIndicator.ShockModel.HISTORICAL_BOOTSTRAP)
+                .monteCarloMethod(context -> List.of())
+                .build();
+
+        assertNull(new MonteCarloShockPathPlanner().plan(indicator, 2, 3, series.numFactory()));
     }
 
     private static Fixture fixture(org.ta4j.core.num.NumFactory factory) {
