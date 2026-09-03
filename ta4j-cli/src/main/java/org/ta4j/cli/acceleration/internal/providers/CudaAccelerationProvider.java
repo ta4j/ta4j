@@ -3,111 +3,63 @@
  */
 package org.ta4j.cli.acceleration.internal.providers;
 
-import java.util.List;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
-import org.ta4j.core.acceleration.AccelerationRuntime.Diagnostic;
-import org.ta4j.core.acceleration.AccelerationRuntime.DiagnosticCode;
-import org.ta4j.core.acceleration.AccelerationRuntime.Request;
-import org.ta4j.core.acceleration.AccelerationRuntime.Result;
-import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
-import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastSpec;
-import org.ta4j.core.indicators.forecast.projection.Forecast;
+import org.ta4j.core.acceleration.AccelerationRuntime.KernelRequest;
 
-final class CudaAccelerationProvider implements ForecastAccelerationProvider {
+/**
+ * NVIDIA CUDA provider for {@code MONTE_CARLO_SHOCK_PATHS_V1}.
+ *
+ * <p>
+ * The CUDA native lane returns reduced forecast rows, not per-sample terminal
+ * prices, so it cannot serve the versioned sample-output contract and always
+ * declines it with a diagnostic that says so. The provider stays installed so
+ * the fallback chain reports its presence, and so future operations with a
+ * reduced-row contract can reuse its library presence and probe machinery. The
+ * public constructor exists solely for {@link java.util.ServiceLoader} and
+ * performs no probe or native loading.
+ *
+ * @since 0.24.2
+ */
+public final class CudaAccelerationProvider extends ShockPathKernelProvider {
 
     static final String MAX_MEMORY_PROPERTY = "ta4j.acceleration.cuda.maxBytes";
 
     private static final long DEFAULT_MAX_MEMORY_BYTES = 512L * 1024L * 1024L;
 
-    private final Capability capability;
-    private final CudaNativeBridge nativeBridge;
-    private final CudaProbeResult probe;
-
-    CudaAccelerationProvider(Capability capability, CudaNativeBridge nativeBridge, CudaProbeResult probe) {
-        this.capability = capability;
-        this.nativeBridge = nativeBridge;
-        this.probe = probe;
-    }
-
-    @Override
-    public Capability capability() {
-        return capability;
-    }
-
-    @Override
-    public double predictedSpeedup(Request<Forecast> request) {
-        MonteCarloPriceForecastIndicator forecast = (MonteCarloPriceForecastIndicator) request.indicator();
-        MonteCarloPriceForecastSpec spec = forecast.accelerationSpec();
-        long decisions = (long) request.toInclusive() - request.fromInclusive() + 1L;
-        long work;
-        try {
-            work = Math.multiplyExact(Math.multiplyExact(decisions, spec.iterationCount()), spec.horizon());
-        } catch (ArithmeticException exception) {
-            return 0d;
-        }
-        return CudaCrossoverModel.predictedSpeedup(probe, work);
-    }
-
-    @Override
-    public Result<Forecast> evaluate(Request<Forecast> request) {
-        MonteCarloPriceForecastIndicator forecast = (MonteCarloPriceForecastIndicator) request.indicator();
-        return evaluateCuda(request, forecast);
-    }
-
-    private Result<Forecast> evaluateCuda(Request<Forecast> request, MonteCarloPriceForecastIndicator forecast) {
-        long started = System.nanoTime();
-        MonteCarloPriceForecastSpec spec = forecast.accelerationSpec();
-        long decisions = (long) request.toInclusive() - request.fromInclusive() + 1L;
-        validateMemoryCeiling(ForecastSnapshot.estimatedPeakBytes(decisions, spec.lookbackBarCount(),
-                spec.iterationCount(), spec.quantileProbabilities().size(), false));
-        ForecastSnapshot snapshot = ForecastSnapshot.capture(forecast, request.fromInclusive(), request.toInclusive(),
-                "CUDA");
-        CudaEvaluationResult nativeResult;
-        try {
-            nativeResult = nativeBridge.evaluate(snapshot.nativeRequest());
-        } catch (LinkageError | RuntimeException exception) {
-            throw new NativeProviderException("CUDA", exception);
-        }
-        List<Forecast> values = snapshot.materializeRows(nativeResult.rows(), "CUDA");
-        Diagnostic timing = new Diagnostic(DiagnosticCode.ACCELERATED, capability.providerId(),
-                "CUDA timings total=%.3fms transfer=%.3fms kernel=%.3fms reduction=%.3fms".formatted(
-                        nativeResult.totalMicros() / 1_000d, nativeResult.transferMicros() / 1_000d,
-                        nativeResult.kernelMicros() / 1_000d, nativeResult.reductionMicros() / 1_000d));
-        return Result.executed(Backend.CUDA, values, true, System.nanoTime() - started, timing);
-    }
-
-    private void validateMemoryCeiling(long requiredBytes) {
-        long configured = Long.getLong(MAX_MEMORY_PROPERTY, DEFAULT_MAX_MEMORY_BYTES);
-        if (configured <= 0L) {
-            throw new IllegalArgumentException(MAX_MEMORY_PROPERTY + " must be > 0");
-        }
-        long deviceCeiling = Math.max(1L, probe.freeMemoryBytes() / 2L);
-        long ceiling = Math.min(configured, deviceCeiling);
-        if (requiredBytes > ceiling) {
-            throw new IllegalArgumentException("CUDA request needs %,d bytes, above the %,d-byte provider ceiling"
-                    .formatted(requiredBytes, ceiling));
-        }
-    }
-
-}
-
-final class CudaCrossoverModel {
-
     /**
-     * Intentionally disables AUTO until Linux x86_64 hardware qualification
-     * completes.
+     * Creates a lazy CUDA provider.
      */
-    private static final long QUALIFIED_MINIMUM_WORK = Long.MAX_VALUE;
-
-    private CudaCrossoverModel() {
+    public CudaAccelerationProvider() {
+        super(Backend.CUDA, "cuda", MAX_MEMORY_PROPERTY, DEFAULT_MAX_MEMORY_BYTES, false, false, null);
     }
 
-    static double predictedSpeedup(CudaProbeResult probe, long work) {
-        if (probe.computeMajor() != 12 || probe.computeMinor() != 0 || work < QUALIFIED_MINIMUM_WORK) {
-            return 0d;
+    @Override
+    boolean libraryPresent() {
+        String configured = System.getProperty(CudaNativeLibrary.LIBRARY_PROPERTY, "").trim();
+        if (!configured.isEmpty() && Files.exists(Path.of(configured))) {
+            return true;
         }
-        return 0.25d;
+        return CudaNativeLibrary.packagedResourcePresent();
     }
 
+    @Override
+    String libraryDetail() {
+        return "CUDA library not found: set -D" + CudaNativeLibrary.LIBRARY_PROPERTY
+                + "=<path> or ship the platform classifier";
+    }
+
+    @Override
+    String accuracyDetail(KernelRequest request, boolean exact) {
+        return "cuda declines MONTE_CARLO_SHOCK_PATHS_V1: its native lane returns reduced forecast rows, "
+                + "not per-sample terminal prices";
+    }
+
+    @Override
+    SampleKernel ensureKernel() {
+        throw new NativeProviderException(
+                "cuda serves no MONTE_CARLO_SHOCK_PATHS_V1 sample kernel; assessment always declines");
+    }
 }

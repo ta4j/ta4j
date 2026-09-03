@@ -1,1 +1,3 @@
-org.ta4j.cli.acceleration.internal.providers.CliIndicatorAccelerationService
+org.ta4j.cli.acceleration.internal.providers.MetalAccelerationProvider
+org.ta4j.cli.acceleration.internal.providers.CudaAccelerationProvider
+org.ta4j.cli.acceleration.internal.providers.OpenClAccelerationProvider

@@ -13,6 +13,21 @@ final class MetalNativeLibrary {
     private MetalNativeLibrary() {
     }
 
+    /**
+     * Answers whether a packaged Metal library exists for this platform without
+     * extracting or loading native code. Assessment calls this so library presence
+     * never initializes the native lane.
+     */
+    static boolean packagedResourcePresent() {
+        String operatingSystem = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        String architecture = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);
+        if (!operatingSystem.contains("mac") || !(architecture.equals("aarch64") || architecture.equals("arm64"))) {
+            return false;
+        }
+        return MetalNativeLibrary.class
+                .getResource("/META-INF/native/macos-aarch64/libta4j-metal-accelerator.dylib") != null;
+    }
+
     static LoadResult load() {
         String operatingSystem = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         String architecture = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);

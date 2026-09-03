@@ -13,6 +13,28 @@ final class CudaNativeLibrary {
     private CudaNativeLibrary() {
     }
 
+    /**
+     * Answers whether a packaged CUDA library exists for this platform without
+     * extracting or loading native code. Assessment calls this so library presence
+     * never initializes the native lane.
+     */
+    static boolean packagedResourcePresent() {
+        String operatingSystem = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        String architecture = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);
+        if (!(architecture.equals("amd64") || architecture.equals("x86_64"))) {
+            return false;
+        }
+        if (operatingSystem.contains("windows")) {
+            return CudaNativeLibrary.class
+                    .getResource("/META-INF/native/windows-x86_64/ta4j-cuda-accelerator.dll") != null;
+        }
+        if (operatingSystem.contains("linux")) {
+            return CudaNativeLibrary.class
+                    .getResource("/META-INF/native/linux-x86_64/libta4j-cuda-accelerator.so") != null;
+        }
+        return false;
+    }
+
     static LoadResult load() {
         String operatingSystem = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         String architecture = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);

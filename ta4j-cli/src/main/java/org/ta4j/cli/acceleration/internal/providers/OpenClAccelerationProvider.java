@@ -3,141 +3,63 @@
  */
 package org.ta4j.cli.acceleration.internal.providers;
 
-import java.util.List;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
-import org.ta4j.core.acceleration.AccelerationRuntime.Diagnostic;
-import org.ta4j.core.acceleration.AccelerationRuntime.DiagnosticCode;
-import org.ta4j.core.acceleration.AccelerationRuntime.Request;
-import org.ta4j.core.acceleration.AccelerationRuntime.Result;
-import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
-import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastSpec;
-import org.ta4j.core.indicators.forecast.projection.Forecast;
+import org.ta4j.core.acceleration.AccelerationRuntime.KernelRequest;
 
-final class OpenClAccelerationProvider implements ForecastAccelerationProvider {
+/**
+ * Khronos OpenCL provider for {@code MONTE_CARLO_SHOCK_PATHS_V1}.
+ *
+ * <p>
+ * The OpenCL native lane returns reduced forecast rows, not per-sample terminal
+ * prices, so it cannot serve the versioned sample-output contract and always
+ * declines it with a diagnostic that says so. The provider stays installed so
+ * the fallback chain reports its presence, and so future operations with a
+ * reduced-row contract can reuse its library presence and probe machinery. The
+ * public constructor exists solely for {@link java.util.ServiceLoader} and
+ * performs no probe or native loading.
+ *
+ * @since 0.24.2
+ */
+public final class OpenClAccelerationProvider extends ShockPathKernelProvider {
 
     static final String MAX_MEMORY_PROPERTY = "ta4j.acceleration.opencl.maxBytes";
 
     private static final long DEFAULT_MAX_MEMORY_BYTES = 512L * 1024L * 1024L;
 
-    private final Capability capability;
-    private final OpenClNativeBridge nativeBridge;
-    private final OpenClProbeResult probe;
-
-    OpenClAccelerationProvider(Capability capability, OpenClNativeBridge nativeBridge, OpenClProbeResult probe) {
-        this.capability = capability;
-        this.nativeBridge = nativeBridge;
-        this.probe = probe;
+    /**
+     * Creates a lazy OpenCL provider.
+     */
+    public OpenClAccelerationProvider() {
+        super(Backend.OPENCL, "opencl", MAX_MEMORY_PROPERTY, DEFAULT_MAX_MEMORY_BYTES, false, false, null);
     }
 
     @Override
-    public Capability capability() {
-        return capability;
+    boolean libraryPresent() {
+        String configured = System.getProperty(OpenClNativeLibrary.LIBRARY_PROPERTY, "").trim();
+        if (!configured.isEmpty() && Files.exists(Path.of(configured))) {
+            return true;
+        }
+        return OpenClNativeLibrary.packagedResourcePresent();
     }
 
     @Override
-    public double predictedSpeedup(Request<Forecast> request) {
-        MonteCarloPriceForecastIndicator forecast = (MonteCarloPriceForecastIndicator) request.indicator();
-        MonteCarloPriceForecastSpec spec = forecast.accelerationSpec();
-        long decisions = (long) request.toInclusive() - request.fromInclusive() + 1L;
-        long work;
-        try {
-            work = Math.multiplyExact(Math.multiplyExact(decisions, spec.iterationCount()), spec.horizon());
-        } catch (ArithmeticException exception) {
-            return 0d;
-        }
-        return OpenClCrossoverModel.predictedSpeedup(probe, work);
+    String libraryDetail() {
+        return "OpenCL library not found: set -D" + OpenClNativeLibrary.LIBRARY_PROPERTY
+                + "=<path> or ship the platform classifier";
     }
 
     @Override
-    public Result<Forecast> evaluate(Request<Forecast> request) {
-        MonteCarloPriceForecastIndicator forecast = (MonteCarloPriceForecastIndicator) request.indicator();
-        return evaluateOpenCl(request, forecast);
+    String accuracyDetail(KernelRequest request, boolean exact) {
+        return "opencl declines MONTE_CARLO_SHOCK_PATHS_V1: its native lane returns reduced forecast rows, "
+                + "not per-sample terminal prices";
     }
 
-    private Result<Forecast> evaluateOpenCl(Request<Forecast> request, MonteCarloPriceForecastIndicator forecast) {
-        long started = System.nanoTime();
-        MonteCarloPriceForecastSpec spec = forecast.accelerationSpec();
-        long decisions = (long) request.toInclusive() - request.fromInclusive() + 1L;
-        // The native kernels sort samples padded to the next power of two
-        // (bitonic sort) and hold both the host staging array (padded_host) and
-        // the device sort buffer (device_samples) at paddedIterations doubles,
-        // so the ceiling must count two padded sample buffers — otherwise a
-        // request just above a power-of-two boundary allocates nearly four
-        // times its raw iteration estimate on host and device.
-        long paddedIterations = nextPowerOfTwo(spec.iterationCount());
-        long sampleBufferIterations = Math.multiplyExact(paddedIterations, 2L);
-        validateMemoryCeiling(ForecastSnapshot.estimatedPeakBytes(decisions, spec.lookbackBarCount(),
-                sampleBufferIterations, spec.quantileProbabilities().size(), false));
-        ForecastSnapshot snapshot = ForecastSnapshot.capture(forecast, request.fromInclusive(), request.toInclusive(),
-                "OpenCL");
-        OpenClEvaluationResult nativeResult;
-        try {
-            nativeResult = nativeBridge.evaluate(snapshot.nativeRequest());
-        } catch (LinkageError | RuntimeException exception) {
-            throw new NativeProviderException("OpenCL", exception);
-        }
-        List<Forecast> values = snapshot.materializeRows(nativeResult.rows(), "OpenCL");
-        Diagnostic timing = new Diagnostic(DiagnosticCode.ACCELERATED, capability.providerId(),
-                "OpenCL timings total=%.3fms transfer=%.3fms kernel=%.3fms reduction=%.3fms".formatted(
-                        nativeResult.totalMicros() / 1_000d, nativeResult.transferMicros() / 1_000d,
-                        nativeResult.kernelMicros() / 1_000d, nativeResult.reductionMicros() / 1_000d));
-        return Result.executed(Backend.OPENCL, values, true, System.nanoTime() - started, timing);
+    @Override
+    SampleKernel ensureKernel() {
+        throw new NativeProviderException(
+                "opencl serves no MONTE_CARLO_SHOCK_PATHS_V1 sample kernel; assessment always declines");
     }
-
-    private void validateMemoryCeiling(long requiredBytes) {
-        long configured = Long.getLong(MAX_MEMORY_PROPERTY, DEFAULT_MAX_MEMORY_BYTES);
-        if (configured <= 0L) {
-            throw new IllegalArgumentException(MAX_MEMORY_PROPERTY + " must be > 0");
-        }
-        long deviceCeiling = Math.max(1L, probe.freeMemoryBytes() / 2L);
-        long ceiling = Math.min(configured, deviceCeiling);
-        if (requiredBytes > ceiling) {
-            throw new IllegalArgumentException("OpenCL request needs %,d bytes, above the %,d-byte provider ceiling"
-                    .formatted(requiredBytes, ceiling));
-        }
-    }
-
-    /**
-     * Mirrors the native {@code next_power_of_two} used to size the bitonic-sort
-     * sample buffer.
-     */
-    private static long nextPowerOfTwo(long value) {
-        long power = 1L;
-        while (power < value) {
-            power <<= 1;
-        }
-        return power;
-    }
-
-}
-
-final class OpenClCrossoverModel {
-
-    /**
-     * Conservative workload floor mirroring the Metal provider's qualified minimum;
-     * placeholder pending real-GPU speedup measurement.
-     */
-    private static final long QUALIFIED_MINIMUM_WORK = 16_777_216L;
-
-    /**
-     * Minimum device global memory for auto-selection. The FP64 forecast kernels
-     * run on padded sample buffers whose size grows with the path count; devices
-     * below this floor (for example small integrated GPUs) cannot beat the JIT
-     * scalar lane and must stay on scalar execution until real-GPU measurement
-     * qualifies them.
-     */
-    private static final long QUALIFIED_MINIMUM_DEVICE_BYTES = 2L * 1024L * 1024L * 1024L;
-
-    private OpenClCrossoverModel() {
-    }
-
-    static double predictedSpeedup(OpenClProbeResult probe, long work) {
-        if (!probe.gpuDevice() || work < QUALIFIED_MINIMUM_WORK
-                || probe.freeMemoryBytes() < QUALIFIED_MINIMUM_DEVICE_BYTES) {
-            return 0d;
-        }
-        return 0.25d;
-    }
-
 }

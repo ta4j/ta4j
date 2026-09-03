@@ -13,6 +13,28 @@ final class OpenClNativeLibrary {
     private OpenClNativeLibrary() {
     }
 
+    /**
+     * Answers whether a packaged OpenCL library exists for this platform without
+     * extracting or loading native code. Assessment calls this so library presence
+     * never initializes the native lane.
+     */
+    static boolean packagedResourcePresent() {
+        String operatingSystem = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        String architecture = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);
+        if (!operatingSystem.contains("linux")) {
+            return false;
+        }
+        if (architecture.equals("amd64") || architecture.equals("x86_64")) {
+            return OpenClNativeLibrary.class
+                    .getResource("/META-INF/native/linux-x86_64/libta4j-opencl-accelerator.so") != null;
+        }
+        if (architecture.equals("aarch64") || architecture.equals("arm64")) {
+            return OpenClNativeLibrary.class
+                    .getResource("/META-INF/native/linux-aarch64/libta4j-opencl-accelerator.so") != null;
+        }
+        return false;
+    }
+
     static LoadResult load() {
         String operatingSystem = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         String architecture = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);
