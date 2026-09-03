@@ -121,6 +121,16 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
                 // retained bar instead of recursively walking back to it.
                 int startIndex = firstCachedIndex > index ? removedBarsCount
                         : Math.max(removedBarsCount, highestResultIndex);
+                if (startIndex > index && !getCache().isCached(index)) {
+                    // A backward read truncated the retained tail and left an
+                    // uncomputed hole inside the represented range. Prefill from
+                    // the first missing index so the recursive walk across the
+                    // gap stays iterative instead of overflowing the stack.
+                    int firstMissing = getCache().firstMissingIndex(firstCachedIndex, index);
+                    if (firstMissing >= 0) {
+                        startIndex = firstMissing;
+                    }
+                }
                 if (startIndex < 0) {
                     startIndex = Math.max(0, removedBarsCount);
                 }
