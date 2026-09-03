@@ -3,7 +3,7 @@
 ### Breaking
 
 - morning/evening stars, three-inside, three-black-crows, and three-white-soldiers lose their ratio/factor constructors; migrate to the default or `(series, averagePeriod)` forms (`(series, averagePeriod, penetration)` for stars).
-- engulfing, harami, kicker, dark-cloud-cover, and piercing-line lose their threshold/configuration constructors; migrate to the default or `(series, averagePeriod)` forms (`(series, averagePeriod, penetration)` for dark-cloud-cover and piercing-line). `DarkCloudIndicator`/`PiercingIndicator` are deprecated; use `DarkCloudCoverIndicator`/`PiercingLineIndicator`.
+- engulfing, harami, kicker, dark-cloud-cover, and piercing-line lose their threshold/configuration constructors; harami and kicker replace their `(series, Num)` configuration constructors with `(series, averagePeriod)` overloads, and dark-cloud-cover and piercing-line replace their `(series, Num, Num, Num)` body-threshold, gap-threshold, and penetration-threshold constructors with `(series, averagePeriod, penetration)`; engulfing construction is unchanged. `DarkCloudIndicator`/`PiercingIndicator` are deprecated; use `DarkCloudCoverIndicator`/`PiercingLineIndicator`.
 - doji, marubozu, hammer, hanging man, inverted hammer, and shooting star lose their ratio/configuration constructors; migrate to `(series, averagePeriod)` forms (`(series, averagePeriod, rangeFactor)` for doji).
 - `RealBodyIndicator` is deprecated; use `CandleBodyIndicator` plus `Bar#isBullish()`/`Bar#isBearish()` for direction.
 - `BaseBar` now rejects OHLC candles whose high/low contradict their open/close.

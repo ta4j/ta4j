@@ -96,6 +96,28 @@ public class CandleThresholdSupportTest {
     }
 
     @Test
+    public void shortBodyCanonicalBoundarySurvivesAccumulatedWindowErrorAcrossFactories() {
+        // Ten times the evaluated body still lies above the decimal sum of the
+        // five prior bodies (2 * body * period), so the strict half-average
+        // verdict is canonically not short. The double average of the window
+        // accumulated two ULPs of error under the scaled body, so a one-ULP
+        // gate would skip the canonical recheck and accept the pattern under
+        // DoubleNum while DecimalNum rejects it.
+        double[] priorBodies = { 1.91332250524033E-15, 5.7978792187533E-15, 8.0309023524238E-15, 8.1009441615777E-15,
+                2.239325718963E-15 };
+        double evaluatedBody = 2.608237395695813E-15;
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            for (double priorBody : priorBodies) {
+                addBar(series, priorBody, 0, 0);
+            }
+            addBar(series, evaluatedBody, 0, 0);
+
+            assertFalse(new CandleThresholdSupport(series, 5).isShortBody(5));
+        }
+    }
+
+    @Test
     public void dojiBoundaryIsInclusive() {
         CandleThresholdSupport atBoundary = support(10, 0, 0, 1, 9, 0);
         CandleThresholdSupport aboveBoundary = support(10, 0, 0, 1.01, 8.99, 0);
