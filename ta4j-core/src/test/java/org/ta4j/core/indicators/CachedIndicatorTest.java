@@ -41,6 +41,7 @@ import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.indicators.statistics.PearsonCorrelationIndicator;
+import org.ta4j.core.indicators.statistics.ZScoreIndicator;
 import org.ta4j.core.indicators.volume.KlingerVolumeOscillatorIndicator;
 import org.ta4j.core.indicators.zigzag.ZigZagStateIndicator;
 import org.ta4j.core.mocks.MockBarBuilder;
@@ -2596,6 +2597,59 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         DistanceFromMAIndicator freshDistance = new DistanceFromMAIndicator(seriesA,
                 new SMAIndicator(new ClosePriceIndicator(seriesB), 1));
+        assertNumEquals(freshDistance.getValue(2), after);
+        assertThat(after).isNotEqualTo(before);
+    }
+
+    /**
+     * Multi-input indicators must register every input as a logical source;
+     * constructed from the shared series alone, a source that discards its whole
+     * cache on head advance cannot propagate the full-invalidation floor through
+     * the composed indicator.
+     */
+    @Test
+    public void zScorePropagatesSourceFullInvalidationAfterHeadAdvance() {
+        HeadAdvanceDiscardingIndicator deviation = new HeadAdvanceDiscardingIndicator(series, 3);
+        HeadAdvanceDiscardingIndicator standardDeviation = new HeadAdvanceDiscardingIndicator(series, 3);
+        ZScoreIndicator zScore = new ZScoreIndicator(deviation, standardDeviation);
+
+        assertEquals(Integer.MAX_VALUE, zScore.minimumCacheableIndexAfterHeadAdvance(1));
+    }
+
+    /**
+     * Restoring a dependency's close after an intrabar move still leaves the high
+     * or low permanently changed. The last-bar fingerprint must cover the full
+     * mutable OHLCV/amount state so an extrema consumer recomputes.
+     */
+    @Test
+    public void distanceFromMovingAverageRecomputesWhenCloseRestoredButExtremaChanged() {
+        BarSeries seriesA = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d, 5d).build();
+        BaseBarSeries seriesB = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 20d, 30d)
+                .build();
+        Bar last = seriesB.getLastBar();
+        seriesB.replaceBar(2,
+                seriesB.barBuilder()
+                        .timePeriod(last.getTimePeriod())
+                        .endTime(last.getEndTime())
+                        .openPrice(30)
+                        .highPrice(30)
+                        .lowPrice(30)
+                        .closePrice(30)
+                        .volume(last.getVolume())
+                        .build());
+        DistanceFromMAIndicator distance = new DistanceFromMAIndicator(seriesA,
+                new SMAIndicator(new HighPriceIndicator(seriesB), 1));
+
+        Num before = distance.getValue(2);
+        Bar lastBar = seriesB.getLastBar();
+        Num originalClose = lastBar.getClosePrice();
+        lastBar.addPrice(numOf(300));
+        lastBar.addPrice(originalClose);
+        Num after = distance.getValue(2);
+
+        DistanceFromMAIndicator freshDistance = new DistanceFromMAIndicator(seriesA,
+                new SMAIndicator(new HighPriceIndicator(seriesB), 1));
         assertNumEquals(freshDistance.getValue(2), after);
         assertThat(after).isNotEqualTo(before);
     }
