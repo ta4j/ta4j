@@ -74,4 +74,29 @@ public class SMMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         assertNumEquals(50, smma.getValue(5));
     }
 
+    @Test
+    public void headAdvanceReanchorsChainFromRetainedHeadWithStableSource() {
+        // When the source does not itself rebaseline on a head advance, the
+        // recursive cache keeps a suffix that mixes pre- and post-advance inputs
+        // (e.g. 130.0006 at bar 14); the retained-head seed must instead discard
+        // the whole cache and rebuild from the first retained bar, matching a
+        // fresh calculation over the retained window (140 at bar 14, doubling
+        // every two bars via the 0.5 smoothing).
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i <= 19; i++) {
+            series.barBuilder().openPrice(i * 10).closePrice(i * 10).highPrice(i * 10).lowPrice(i * 10).add();
+        }
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        SMMAIndicator smma = new SMMAIndicator(close, 2);
+        smma.getValue(19);
+
+        series.setMaximumBarCount(6);
+        assertEquals(14, series.getBeginIndex());
+
+        SMMAIndicator fresh = new SMMAIndicator(close, 2);
+        for (int i = 14; i <= 19; i++) {
+            assertNumEquals(fresh.getValue(i), smma.getValue(i));
+        }
+    }
+
 }

@@ -28,7 +28,6 @@ import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.averages.EDMAIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
-import org.ta4j.core.indicators.averages.SMMAIndicator;
 import org.ta4j.core.indicators.averages.VIDYAIndicator;
 import org.ta4j.core.indicators.averages.WildersMAIndicator;
 import org.ta4j.core.indicators.averages.ZLEMAIndicator;
@@ -424,16 +423,19 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         // value is recursive by definition even when it does not extend
         // RecursiveCachedIndicator: the head-advance cache floor must not
         // evict the retained band and reseed it from a different history.
+        // SMMA is the deliberate exception: it re-anchors its chain at the
+        // retained head (see SMMAIndicatorTest), so this test uses a plain
+        // self-recursive subclass that keeps the default policy.
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1d, 2d, 3d, 4d, 5d, 6d, 7d)
                 .build();
-        SMMAIndicator smma = new SMMAIndicator(new ClosePriceIndicator(barSeries), 3);
-        Num beforeAdvance = smma.getValue(4);
+        SelfRecursiveKeepingIndicator selfRecursive = new SelfRecursiveKeepingIndicator(barSeries);
+        Num beforeAdvance = selfRecursive.getValue(4);
 
         barSeries.setMaximumBarCount(5);
         assertEquals(2, barSeries.getBeginIndex());
 
-        assertNumEquals(beforeAdvance, smma.getValue(4));
+        assertNumEquals(beforeAdvance, selfRecursive.getValue(4));
     }
 
     @Test
@@ -1483,6 +1485,29 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         // Each mutation should trigger a recomputation
         assertTrue("Should have recomputed after mutations", indicator.getCalculationCount() > 1);
+    }
+
+    private final static class SelfRecursiveKeepingIndicator extends CachedIndicator<Num> {
+
+        private final ClosePriceIndicator close;
+
+        private SelfRecursiveKeepingIndicator(BarSeries series) {
+            super(series);
+            this.close = new ClosePriceIndicator(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            if (index == 0) {
+                return close.getValue(0);
+            }
+            return getValue(index - 1).plus(close.getValue(index));
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
     }
 
     private final static class HeadAdvanceDiscardingIndicator extends CachedIndicator<Num> {
