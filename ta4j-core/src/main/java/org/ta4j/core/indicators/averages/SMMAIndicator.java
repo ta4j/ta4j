@@ -65,6 +65,20 @@ public class SMMAIndicator extends RecursiveCachedIndicator<Num> {
         return indicator.getCountOfUnstableBars() + barCount;
     }
 
+    /**
+     * The SMMA recursion seeds at the first retained bar (see
+     * {@link #calculate(int)}), so after a head advance every cached value embeds
+     * the pre-advance chain. Discard the whole cache so the retained head
+     * re-anchors the recurrence from the first retained bar instead of serving
+     * stale values.
+     *
+     * @return {@code true}
+     */
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
+    }
+
     @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;

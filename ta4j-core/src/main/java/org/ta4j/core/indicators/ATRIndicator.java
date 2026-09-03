@@ -6,6 +6,7 @@ package org.ta4j.core.indicators;
 import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.averages.AbstractEMAIndicator;
 import org.ta4j.core.indicators.averages.MMAIndicator;
 import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.num.Num;
@@ -70,6 +71,21 @@ public class ATRIndicator extends CachedIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return trueRangeUnstableBars + getBarCount();
+    }
+
+    /**
+     * The average true range re-anchors its whole chain on a head advance (see
+     * {@link AbstractEMAIndicator#getValue(int)}'s retained-head reset), so every
+     * cached value in this wrapper was derived from a recurrence that no longer
+     * exists. The re-anchored chain is recomputable from the retained window, but
+     * keeping any pre-advance value would combine the severed chain with the
+     * rebuilt one.
+     *
+     * @return {@code true}
+     */
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
     }
 
     /** @return a true range indicator for this indicator's bar series */

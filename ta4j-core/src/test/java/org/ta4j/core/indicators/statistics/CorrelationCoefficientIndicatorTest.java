@@ -148,8 +148,8 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
         BarSeries ySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         var now = Instant.now();
         for (int j = 0; j < 5; j++) {
-            xSeries.barBuilder().endTime(now.minusSeconds(2 * (4 - j))).closePrice(2 * (j + 1)).add();
-            ySeries.barBuilder().endTime(now.minusSeconds(2 * (4 - j))).closePrice(5 * (j + 1)).add();
+            xSeries.barBuilder().endTime(now.minusSeconds(2L * (4 - j))).closePrice(2 * (j + 1)).add();
+            ySeries.barBuilder().endTime(now.minusSeconds(2L * (4 - j))).closePrice(5 * (j + 1)).add();
         }
 
         var coef = new CorrelationCoefficientIndicator(new ClosePriceIndicator(xSeries),

@@ -232,4 +232,34 @@ public class ATRIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
             assertNumEquals(fresh.getValue(i), atr.getValue(i));
         }
     }
+
+    @Test
+    public void headAdvanceReanchorsOuterCacheBeyondItsOwnUnstableFloor() {
+        // The average true range re-anchors its whole chain at the first retained
+        // bar, so values cached above the wrapper's own unstable-range floor
+        // (computed from the pre-advance chain) must be discarded too: the
+        // alternating true ranges keep the smoothed value distinct from a chain
+        // rebuilt at the retained head. Without the invalidation, bar 17 serves
+        // the severed chain's tail instead of the re-anchored 12.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i <= 19; i++) {
+            int closePrice = i * 10 + 5 * (i % 2);
+            series.barBuilder()
+                    .openPrice(closePrice)
+                    .closePrice(closePrice)
+                    .highPrice(closePrice + 2)
+                    .lowPrice(closePrice - 2)
+                    .add();
+        }
+        ATRIndicator atr = new ATRIndicator(series, 2);
+        atr.getValue(19);
+
+        series.setMaximumBarCount(6);
+        assertEquals(14, series.getBeginIndex());
+
+        ATRIndicator fresh = new ATRIndicator(series, 2);
+        for (int i = 16; i <= 19; i++) {
+            assertNumEquals(fresh.getValue(i), atr.getValue(i));
+        }
+    }
 }
