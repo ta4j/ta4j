@@ -17,12 +17,15 @@ import org.ta4j.core.num.Num;
  * {@code index} (third):
  *
  * <pre>
- * first is bearish with a long body: body(first) &gt; priorAverageBody(first)
+ * first is bearish with a long body:
+ *     body(first) &gt; priorAverageBody(first)
  * star has a short body and its real body gaps strictly below the first body:
- * body(star) &lt; 0.5 * priorAverageBody(star) bodyTop(star) &lt;
- * bodyBottom(first) third is bullish, has a long body, and its close penetrates
- * the first body inclusively: body(third) &gt; priorAverageBody(third)
- * close(third) &gt;= bodyBottom(first) + penetration * body(first)
+ *     body(star) &lt; 0.5 * priorAverageBody(star)
+ *     bodyTop(star) &lt; bodyBottom(first)
+ * third is bullish, has a long body, and its close penetrates the first body
+ * inclusively:
+ *     body(third) &gt; priorAverageBody(third)
+ *     close(third) &gt;= bodyBottom(first) + penetration * body(first)
  * </pre>
  *
  * <p>
