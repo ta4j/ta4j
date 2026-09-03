@@ -120,11 +120,12 @@
  * </p>
  * <p>
  * Rules do not enforce indicator warm-up, so evaluate the combined rule only at
- * or after the boundary where every component is stable: for the default
- * periods, the shifted 20-period SMA needs 21 bars and the piercing line needs
- * 6, so indexes below 21 can emit reversal candidates from a partial context
- * window. A caller holding a finite series should gate at
- * {@code Math.max(new PreviousValueIndicator(new SMAIndicator(close, 20), 2).getCountOfUnstableBars(),
+ * or after the boundary where every component is stable. Unstable-bar counts
+ * are relative to the retained head: for a series beginning at index 0, the
+ * shifted 20-period SMA needs 21 bars and the piercing line needs 6, so indexes
+ * below 21 can emit reversal candidates from a partial context window. A caller
+ * holding a finite series should gate at
+ * {@code series.getBeginIndex() + Math.max(new PreviousValueIndicator(new SMAIndicator(close, 20), 2).getCountOfUnstableBars(),
  * new PiercingLineIndicator(series).getCountOfUnstableBars())} before
  * evaluating the rule.
  * </p>
