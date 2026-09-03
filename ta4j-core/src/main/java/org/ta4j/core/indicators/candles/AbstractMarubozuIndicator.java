@@ -3,12 +3,9 @@
  */
 package org.ta4j.core.indicators.candles;
 
-import java.util.Objects;
-
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -16,137 +13,174 @@ import org.ta4j.core.num.NumFactory;
  * Shared logic for Marubozu-style candlestick pattern indicators.
  *
  * <p>
- * A Marubozu candle is characterised by a long real body with very small upper
- * and lower shadows. Concrete subclasses decide whether the body must be
- * bullish (close &gt; open) or bearish (open &gt; close). A candle with a zero
- * body (open equals close) satisfies neither direction.
+ * A Marubozu candle at index {@code i} is a directional candle whose body is
+ * strictly greater than 1.0 (CandleThresholdSupport.LONG_BODY_FACTOR) times the
+ * average body of the {@code averagePeriod} candles preceding it, and whose
+ * upper and lower shadows are each at most 0.1
+ * (CandleThresholdSupport.SHORT_SHADOW_RANGE_FACTOR) times the average high-low
+ * range of the same preceding window:
+ *
+ * <pre>
+ * body_i &gt; 1.0 * average(body[i-averagePeriod] ... body[i-1])
+ * upperShadow_i &lt;= 0.1 * average(range[i-averagePeriod] ... range[i-1])
+ * lowerShadow_i &lt;= 0.1 * average(range[i-averagePeriod] ... range[i-1])
+ * </pre>
+ *
+ * The body comparison is <em>strict</em>; both shadow comparisons are
+ * <em>inclusive</em> at the threshold. Concrete subclasses decide whether the
+ * body must be bullish (close &gt; open) or bearish (open &gt; close). A candle
+ * with a zero body (open equals close) satisfies neither direction.
+ *
+ * <p>
+ * This indicator evaluates only candle geometry; it does not evaluate trend or
+ * direction context. A Marubozu is traditionally interpreted as a sign of
+ * strong one-direction momentum, but whether it predicts continuation depends
+ * on the context the caller composes around it.
  *
  * @since 0.19
  */
-abstract class AbstractMarubozuIndicator extends CachedIndicator<Boolean> {
+abstract class AbstractMarubozuIndicator extends CandlePatternIndicator {
 
-    static final int DEFAULT_BODY_AVERAGE_PERIOD = 5;
-    static final double DEFAULT_BODY_TO_AVERAGE_BODY_RATIO = 1d;
-    static final double DEFAULT_UPPER_SHADOW_TO_BODY_RATIO = 0.05d;
-    static final double DEFAULT_LOWER_SHADOW_TO_BODY_RATIO = 0.05d;
+    /**
+     * The number of preceding candles averaged into the body and range baselines.
+     */
+    private final int averagePeriod;
 
-    private final transient CandleBodyIndicator bodyHeightIndicator;
-    private final transient SMAIndicator averageBodyHeightIndicator;
-    private final transient UpperShadowIndicator upperShadowIndicator;
-    private final transient LowerShadowIndicator lowerShadowIndicator;
-    private final int bodyAveragePeriod;
-    private final double bodyToAverageBodyRatio;
-    private final double upperShadowToBodyRatio;
-    private final double lowerShadowToBodyRatio;
-    private final transient Num bodyToAverageBodyRatioThreshold;
-    private final transient Num upperShadowToBodyRatioThreshold;
-    private final transient Num lowerShadowToBodyRatioThreshold;
+    /**
+     * The custom body threshold, or {@code null} when this indicator uses the
+     * canonical shared thresholds.
+     */
+    private final Num bodyToAverageBodyRatio;
 
+    /** The custom upper-shadow-to-body threshold. */
+    private final Num upperShadowToBodyRatio;
+
+    /** The custom lower-shadow-to-body threshold. */
+    private final Num lowerShadowToBodyRatio;
+
+    /** The current candle's upper shadow, shared from the interned support. */
+    private final transient Indicator<Num> upperShadow;
+
+    /** The current candle's lower shadow, shared from the interned support. */
+    private final transient Indicator<Num> lowerShadow;
+
+    /**
+     * Constructor with the recommended default average period of 5 candles.
+     *
+     * @param series the bar series
+     */
     AbstractMarubozuIndicator(final BarSeries series) {
-        this(validatedConfig(series, DEFAULT_BODY_AVERAGE_PERIOD, DEFAULT_BODY_TO_AVERAGE_BODY_RATIO,
-                DEFAULT_UPPER_SHADOW_TO_BODY_RATIO, DEFAULT_LOWER_SHADOW_TO_BODY_RATIO));
+        this(series, CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD);
     }
 
-    AbstractMarubozuIndicator(final BarSeries series, final int bodyAveragePeriod, final double bodyToAverageBodyRatio,
+    /**
+     * Constructor with a custom average period.
+     *
+     * @param series        the bar series
+     * @param averagePeriod the number of preceding candles averaged into each
+     *                      baseline; must be at least 1
+     * @throws IllegalArgumentException if {@code averagePeriod} is below 1
+     */
+    AbstractMarubozuIndicator(final BarSeries series, final int averagePeriod) {
+        super(series, CandleThresholdSupport.forSeries(series, averagePeriod));
+        this.averagePeriod = averagePeriod;
+        this.upperShadow = thresholds.upperShadow();
+        this.lowerShadow = thresholds.lowerShadow();
+        this.bodyToAverageBodyRatio = null;
+        this.upperShadowToBodyRatio = null;
+        this.lowerShadowToBodyRatio = null;
+    }
+
+    /**
+     * Compatibility constructor with custom body and body-relative shadow
+     * thresholds.
+     *
+     * @param series                 the bar series
+     * @param averagePeriod          the number of preceding candles averaged into
+     *                               the body baseline; must be at least 1
+     * @param bodyToAverageBodyRatio the strictly exceeded body-to-average-body
+     *                               ratio; must be finite and positive
+     * @param upperShadowToBodyRatio the inclusive upper-shadow-to-body ratio; must
+     *                               be finite and non-negative
+     * @param lowerShadowToBodyRatio the inclusive lower-shadow-to-body ratio; must
+     *                               be finite and non-negative
+     * @throws IllegalArgumentException if a threshold is outside its valid range
+     */
+    AbstractMarubozuIndicator(final BarSeries series, final int averagePeriod, final double bodyToAverageBodyRatio,
             final double upperShadowToBodyRatio, final double lowerShadowToBodyRatio) {
-        this(validatedConfig(series, bodyAveragePeriod, bodyToAverageBodyRatio, upperShadowToBodyRatio,
+        this(validatedConfiguration(series, averagePeriod, bodyToAverageBodyRatio, upperShadowToBodyRatio,
                 lowerShadowToBodyRatio));
     }
 
-    private AbstractMarubozuIndicator(final Config config) {
-        super(config.series());
-        this.bodyAveragePeriod = config.bodyAveragePeriod();
-        this.bodyToAverageBodyRatio = config.bodyToAverageBodyRatio();
-        this.upperShadowToBodyRatio = config.upperShadowToBodyRatio();
-        this.lowerShadowToBodyRatio = config.lowerShadowToBodyRatio();
-        this.bodyHeightIndicator = config.bodyHeightIndicator();
-        this.averageBodyHeightIndicator = config.averageBodyHeightIndicator();
-        this.upperShadowIndicator = config.upperShadowIndicator();
-        this.lowerShadowIndicator = config.lowerShadowIndicator();
-        this.bodyToAverageBodyRatioThreshold = config.bodyToAverageBodyRatioThreshold();
-        this.upperShadowToBodyRatioThreshold = config.upperShadowToBodyRatioThreshold();
-        this.lowerShadowToBodyRatioThreshold = config.lowerShadowToBodyRatioThreshold();
-    }
-
-    private static Config validatedConfig(final BarSeries series, final int bodyAveragePeriod,
-            final double bodyToAverageBodyRatio, final double upperShadowToBodyRatio,
-            final double lowerShadowToBodyRatio) {
-        BarSeries validatedSeries = Objects.requireNonNull(series, "series must not be null");
-        if (bodyAveragePeriod < 1) {
-            throw new IllegalArgumentException("bodyAveragePeriod must be >= 1");
-        }
-        if (bodyToAverageBodyRatio <= 0d) {
-            throw new IllegalArgumentException("bodyToAverageBodyRatio must be > 0");
-        }
-        if (upperShadowToBodyRatio < 0d) {
-            throw new IllegalArgumentException("upperShadowToBodyRatio must be >= 0");
-        }
-        if (lowerShadowToBodyRatio < 0d) {
-            throw new IllegalArgumentException("lowerShadowToBodyRatio must be >= 0");
-        }
-        CandleBodyIndicator bodyHeightIndicator = new CandleBodyIndicator(validatedSeries);
-        SMAIndicator averageBodyHeightIndicator = new SMAIndicator(bodyHeightIndicator, bodyAveragePeriod);
-        UpperShadowIndicator upperShadowIndicator = new UpperShadowIndicator(validatedSeries);
-        LowerShadowIndicator lowerShadowIndicator = new LowerShadowIndicator(validatedSeries);
-
-        final NumFactory numFactory = validatedSeries.numFactory();
-        Num bodyToAverageBodyRatioThreshold = numFactory.numOf(bodyToAverageBodyRatio);
-        Num upperShadowToBodyRatioThreshold = numFactory.numOf(upperShadowToBodyRatio);
-        Num lowerShadowToBodyRatioThreshold = numFactory.numOf(lowerShadowToBodyRatio);
-        return new Config(validatedSeries, bodyHeightIndicator, averageBodyHeightIndicator, upperShadowIndicator,
-                lowerShadowIndicator, bodyAveragePeriod, bodyToAverageBodyRatio, upperShadowToBodyRatio,
-                lowerShadowToBodyRatio, bodyToAverageBodyRatioThreshold, upperShadowToBodyRatioThreshold,
-                lowerShadowToBodyRatioThreshold);
+    private AbstractMarubozuIndicator(final Configuration configuration) {
+        super(configuration.series(),
+                CandleThresholdSupport.forSeries(configuration.series(), configuration.averagePeriod()));
+        this.averagePeriod = configuration.averagePeriod();
+        this.bodyToAverageBodyRatio = configuration.bodyToAverageBodyRatio();
+        this.upperShadowToBodyRatio = configuration.upperShadowToBodyRatio();
+        this.lowerShadowToBodyRatio = configuration.lowerShadowToBodyRatio();
+        this.upperShadow = thresholds.upperShadow();
+        this.lowerShadow = thresholds.lowerShadow();
     }
 
     @Override
     protected Boolean calculate(final int index) {
-        if (index < this.bodyAveragePeriod) {
-            return false;
+        if (bodyToAverageBodyRatio == null) {
+            return thresholds.isLongBody(index) && thresholds.isShortShadow(index, upperShadow)
+                    && thresholds.isShortShadow(index, lowerShadow) && hasExpectedDirection(index);
         }
-
-        if (!hasExpectedBodyDirection(index)) {
-            return false;
-        }
-
-        final var bodyHeight = this.bodyHeightIndicator.getValue(index);
-        final var averageBodyHeight = this.averageBodyHeightIndicator.getValue(index - 1);
-        if (!bodyHeight.isGreaterThan(averageBodyHeight.multipliedBy(this.bodyToAverageBodyRatioThreshold))) {
-            return false;
-        }
-
-        return hasSmallShadows(index, bodyHeight);
+        return thresholds.isLongBody(index, bodyToAverageBodyRatio)
+                && thresholds.isShortShadowRelativeToBody(index, upperShadow, upperShadowToBodyRatio)
+                && thresholds.isShortShadowRelativeToBody(index, lowerShadow, lowerShadowToBodyRatio)
+                && hasExpectedDirection(index);
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return this.bodyAveragePeriod;
+        return averagePeriod;
     }
 
-    private boolean hasSmallShadows(final int index, final Num bodyHeight) {
-        final var upperShadow = this.upperShadowIndicator.getValue(index);
-        final var lowerShadow = this.lowerShadowIndicator.getValue(index);
-        final var maxUpperShadow = bodyHeight.multipliedBy(this.upperShadowToBodyRatioThreshold);
-        final var maxLowerShadow = bodyHeight.multipliedBy(this.lowerShadowToBodyRatioThreshold);
-        return upperShadow.isLessThanOrEqual(maxUpperShadow) && lowerShadow.isLessThanOrEqual(maxLowerShadow);
-    }
-
-    private boolean hasExpectedBodyDirection(final int index) {
+    private boolean hasExpectedDirection(final int index) {
         final Bar bar = getBarSeries().getBar(index);
         return isBullish() ? bar.isBullish() : bar.isBearish();
     }
 
+    private static Configuration validatedConfiguration(final BarSeries series, final int averagePeriod,
+            final double bodyToAverageBodyRatio, final double upperShadowToBodyRatio,
+            final double lowerShadowToBodyRatio) {
+        final BarSeries validatedSeries = CandleThresholdSupport.validateSeriesAndAveragePeriod(series, averagePeriod);
+        validatePositiveFactor(bodyToAverageBodyRatio, "bodyToAverageBodyRatio");
+        validateNonNegativeFactor(upperShadowToBodyRatio, "upperShadowToBodyRatio");
+        validateNonNegativeFactor(lowerShadowToBodyRatio, "lowerShadowToBodyRatio");
+
+        final NumFactory numFactory = validatedSeries.numFactory();
+        return new Configuration(validatedSeries, averagePeriod, numFactory.numOf(bodyToAverageBodyRatio),
+                numFactory.numOf(upperShadowToBodyRatio == 0d ? 0d : upperShadowToBodyRatio),
+                numFactory.numOf(lowerShadowToBodyRatio == 0d ? 0d : lowerShadowToBodyRatio));
+    }
+
+    private static void validatePositiveFactor(final double factor, final String name) {
+        if (!Double.isFinite(factor) || factor <= 0d) {
+            throw new IllegalArgumentException(name + " must be finite and > 0, but was: " + factor);
+        }
+    }
+
+    private static void validateNonNegativeFactor(final double factor, final String name) {
+        if (!Double.isFinite(factor) || factor < 0d) {
+            throw new IllegalArgumentException(name + " must be finite and >= 0, but was: " + factor);
+        }
+    }
+
+    private record Configuration(BarSeries series, int averagePeriod, Num bodyToAverageBodyRatio,
+            Num upperShadowToBodyRatio, Num lowerShadowToBodyRatio) {
+    }
+
     /**
-     * @return {@code true} if the Marubozu requires a bullish candle, {@code false}
-     *         if it requires a bearish candle.
+     * @return {@code true} if the Marubozu requires a bullish candle (close &gt;
+     *         open), {@code false} if it requires a bearish candle (open &gt;
+     *         close).
      * @since 0.19
      */
-    protected abstract boolean isBullish();
 
-    private record Config(BarSeries series, CandleBodyIndicator bodyHeightIndicator,
-            SMAIndicator averageBodyHeightIndicator, UpperShadowIndicator upperShadowIndicator,
-            LowerShadowIndicator lowerShadowIndicator, int bodyAveragePeriod, double bodyToAverageBodyRatio,
-            double upperShadowToBodyRatio, double lowerShadowToBodyRatio, Num bodyToAverageBodyRatioThreshold,
-            Num upperShadowToBodyRatioThreshold, Num lowerShadowToBodyRatioThreshold) {
-    }
+    protected abstract boolean isBullish();
 }

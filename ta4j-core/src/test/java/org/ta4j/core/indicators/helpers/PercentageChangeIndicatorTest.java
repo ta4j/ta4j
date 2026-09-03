@@ -41,6 +41,14 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
     }
 
     @Test
+    public void defaultPreviousSourceRegistersOnlyCurrentIndicator() {
+        Indicator<Num> source = new ClosePriceIndicator(barSeries);
+        PercentageChangeIndicator indicator = new PercentageChangeIndicator(source);
+
+        assertThat(indicator.getDependencies()).containsExactly(source);
+    }
+
+    @Test
     public void indicatorShouldRetrieveBarPercentageChange() {
         assertThat(priceChangePercentage.getValue(0).isNaN()).isTrue();
         for (int i = 1; i < 10; i++) {

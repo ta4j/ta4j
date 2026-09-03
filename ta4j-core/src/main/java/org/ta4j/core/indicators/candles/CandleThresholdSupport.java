@@ -5,14 +5,19 @@ package org.ta4j.core.indicators.candles;
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -30,10 +35,24 @@ import org.ta4j.core.num.NumFactory;
  * average(m[index - averagePeriod] ... m[index - 1])
  * </pre>
  *
- * implemented as
- * {@code new PreviousValueIndicator(new SMAIndicator(m, averagePeriod))}. The
- * candle under evaluation therefore never influences its own baseline, which
- * keeps the pattern evaluation causal (look-ahead free).
+ * implemented as {@code new PreviousValueIndicator(new PriorAverageIndicator(m,
+ * averagePeriod))}, where {@code m} is the half-scale source (half body or half
+ * range). {@link PriorAverageIndicator} averages half-scale values, so its
+ * intermediate sums stay finite whenever the full-scale mean is representable,
+ * and returns the half-scale mean; when the SMA accumulator still overflows
+ * into a non-finite value, the same window is re-averaged as an incremental
+ * mean. Full-scale views are derived only where a consumer still expects raw
+ * magnitudes (shadow comparisons and the baseline accessors) by doubling the
+ * half-scale mean. Body, doji, and near comparisons additionally consult raw
+ * full-scale baselines whenever both operands are finite: halving two adjacent
+ * subnormal magnitudes can collapse them onto the same half-scale value, so the
+ * raw comparison preserves the strict ordering that
+ * {@link org.ta4j.core.num.DecimalNum} observes. For the one-tenth factors, a
+ * raw tenfold comparison preserves subnormal ordering and a fused tenfold
+ * difference resolves any finite {@link DoubleNum} rounding tie at the
+ * inclusive boundary; non-finite raw operands fall back to the half-scale path.
+ * The candle under evaluation therefore never influences its own baseline,
+ * which keeps the pattern evaluation causal (look-ahead free).
  *
  * <p>
  * Recommended threshold profile (documented defaults):
@@ -189,6 +208,29 @@ final class CandleThresholdSupport {
     /** Interned supports, keyed by series identity and weak on both sides. */
     private static final WeakIdentityInternTable<BarSeries, Map<Integer, WeakReference<CandleThresholdSupport>>> INTERNED_SUPPORTS = new WeakIdentityInternTable<>();
 
+    /** Receives collected per-period support references for lazy cleanup. */
+    private static final ReferenceQueue<CandleThresholdSupport> SUPPORT_QUEUE = new ReferenceQueue<>();
+
+    /**
+     * A weak reference to an interned support that remembers the average-period key
+     * it is stored under and the map that owns the entry, so
+     * {@link #forSeries(BarSeries, int)} can drop an entry whose value has been
+     * collected without scanning the whole period map. The owner is referenced
+     * weakly: it dies together with the series it belongs to.
+     */
+    private static final class SupportReference extends WeakReference<CandleThresholdSupport> {
+
+        private final int averagePeriod;
+        private final WeakReference<Map<Integer, WeakReference<CandleThresholdSupport>>> owner;
+
+        SupportReference(CandleThresholdSupport support, int averagePeriod,
+                Map<Integer, WeakReference<CandleThresholdSupport>> owner) {
+            super(support, SUPPORT_QUEUE);
+            this.averagePeriod = averagePeriod;
+            this.owner = new WeakReference<>(owner);
+        }
+    }
+
     /**
      * Returns the interned support for the given series and average period,
      * creating it on first use. All callers with the same
@@ -214,14 +256,47 @@ final class CandleThresholdSupport {
                 byPeriod = new HashMap<>();
                 INTERNED_SUPPORTS.put(series, byPeriod);
             }
+            removeCollectedPeriods();
             final WeakReference<CandleThresholdSupport> existing = byPeriod.get(averagePeriod);
             CandleThresholdSupport support = existing == null ? null : existing.get();
             if (support == null) {
-                byPeriod.values().removeIf(reference -> reference.get() == null);
                 support = new CandleThresholdSupport(series, averagePeriod);
-                byPeriod.put(averagePeriod, new WeakReference<>(support));
+                byPeriod.put(averagePeriod, new SupportReference(support, averagePeriod, byPeriod));
             }
             return support;
+        }
+    }
+
+    /**
+     * Returns the interned period entries recorded for the given series.
+     * <p>
+     * Package-private seam: lets package-local tests verify that collected support
+     * references are removed from their owning map without reaching into private
+     * state.
+     *
+     * @param series the series whose interned periods are requested
+     * @return the interned period entries, or {@code null} when the series has none
+     */
+    static Map<Integer, WeakReference<CandleThresholdSupport>> internedPeriods(BarSeries series) {
+        synchronized (INTERNED_SUPPORTS) {
+            return INTERNED_SUPPORTS.get(series);
+        }
+    }
+
+    /**
+     * Removes the period entries whose support values have been collected, as
+     * reported by {@link #SUPPORT_QUEUE}. Each collected reference knows its own
+     * owning map, so entries of other series are cleaned from that owner rather
+     * than left behind. The removal is keyed by the exact collected reference, so a
+     * replacement stored since collection is never dropped.
+     */
+    private static void removeCollectedPeriods() {
+        SupportReference collected;
+        while ((collected = (SupportReference) SUPPORT_QUEUE.poll()) != null) {
+            final Map<Integer, WeakReference<CandleThresholdSupport>> owner = collected.owner.get();
+            if (owner != null) {
+                owner.remove(collected.averagePeriod, collected);
+            }
         }
     }
 
@@ -262,20 +337,70 @@ final class CandleThresholdSupport {
      */
     static final double NEAR_RANGE_FACTOR = 0.1;
 
+    /**
+     * Multiplicative scale applied to the measured magnitude instead of multiplying
+     * the baseline by {@link #DOJI_RANGE_FACTOR} or {@link #NEAR_RANGE_FACTOR}.
+     * Both factors are one tenth, which is not exactly representable in binary
+     * floating point, whereas scaling by ten is exact for every subnormal
+     * magnitude, so the scaled comparison preserves the ordering between adjacent
+     * subnormal magnitudes.
+     */
+    static final double RANGE_SCALE = 10.0;
+
+    /**
+     * Calculates a weighted point without an overflowing intermediate endpoint sum.
+     * The ordinary direct calculation is retained whenever it is finite, preserving
+     * each {@link Num} implementation's established boundary rounding. If that sum
+     * overflows, the finite endpoints are scaled by their larger magnitude before
+     * the weighted sum is restored to its original scale.
+     *
+     * @param first        the first endpoint
+     * @param firstWeight  the first endpoint's weight
+     * @param second       the second endpoint
+     * @param secondWeight the second endpoint's weight
+     * @return {@code first * firstWeight + second * secondWeight}
+     */
+    static Num weightedPoint(Num first, Num firstWeight, Num second, Num secondWeight) {
+        final Num directPoint = first.multipliedBy(firstWeight).plus(second.multipliedBy(secondWeight));
+        if (Num.isFinite(directPoint)) {
+            return directPoint;
+        }
+        final Num firstMagnitude = first.abs();
+        final Num secondMagnitude = second.abs();
+        final Num scale = firstMagnitude.isGreaterThan(secondMagnitude) ? firstMagnitude : secondMagnitude;
+        if (scale.isZero()) {
+            return scale;
+        }
+        return first.dividedBy(scale)
+                .multipliedBy(firstWeight)
+                .plus(second.dividedBy(scale).multipliedBy(secondWeight))
+                .multipliedBy(scale);
+    }
+
     private final BarSeries series;
     private final int averagePeriod;
     private final Indicator<Num> body;
     private final Indicator<Num> range;
     private final Indicator<Num> upperShadow;
     private final Indicator<Num> lowerShadow;
+    private final Indicator<Num> halfBody;
+    private final Indicator<Num> halfRange;
+    private final Indicator<Num> halfUpperShadow;
+    private final Indicator<Num> halfLowerShadow;
+    private final Indicator<Num> halfPriorAverageBody;
+    private final Indicator<Num> halfPriorAverageRange;
     private final Indicator<Num> priorAverageBody;
     private final Indicator<Num> priorAverageRange;
+    private final Indicator<Num> rawPriorAverageBody;
+    private final Indicator<Num> rawPriorAverageRange;
     private final Num longBodyFactor;
     private final Num shortBodyFactor;
     private final Num dojiRangeFactor;
     private final Num longShadowFactor;
     private final Num shortShadowRangeFactor;
     private final Num nearRangeFactor;
+    private final Num restoreFactor;
+    private final Num rangeScale;
 
     /**
      * Constructor with the {@link #DEFAULT_AVERAGE_PERIOD default average period}.
@@ -306,15 +431,30 @@ final class CandleThresholdSupport {
         this.range = new CandleRangeIndicator(this.series);
         this.upperShadow = new UpperShadowIndicator(this.series);
         this.lowerShadow = new LowerShadowIndicator(this.series);
-        this.priorAverageBody = new PreviousValueIndicator(new SMAIndicator(body, averagePeriod));
-        this.priorAverageRange = new PreviousValueIndicator(new SMAIndicator(range, averagePeriod));
+        this.halfBody = new HalfBodyIndicator(this.series);
+        this.halfRange = new HalfRangeIndicator(this.series);
+        this.halfUpperShadow = new HalfUpperShadowIndicator(this.series);
+        this.halfLowerShadow = new HalfLowerShadowIndicator(this.series);
+        this.halfPriorAverageBody = new PreviousValueIndicator(new PriorAverageIndicator(halfBody, averagePeriod));
+        this.halfPriorAverageRange = new PreviousValueIndicator(new PriorAverageIndicator(halfRange, averagePeriod));
+        this.priorAverageBody = new DoubledIndicator(halfPriorAverageBody);
+        this.priorAverageRange = new DoubledIndicator(halfPriorAverageRange);
         final NumFactory numFactory = this.series.numFactory();
+        // Raw full-scale rolling baselines: used only to preserve strict ordering
+        // between adjacent subnormal magnitudes that the half-scale path below
+        // collapses. Their windows can overflow, which is fine because every
+        // comparison falls back to the half-scale path when a raw operand is
+        // non-finite.
+        this.rawPriorAverageBody = new PreviousValueIndicator(new PriorAverageIndicator(body, averagePeriod));
+        this.rawPriorAverageRange = new PreviousValueIndicator(new PriorAverageIndicator(range, averagePeriod));
         this.longBodyFactor = numFactory.numOf(LONG_BODY_FACTOR);
         this.shortBodyFactor = numFactory.numOf(SHORT_BODY_FACTOR);
         this.dojiRangeFactor = numFactory.numOf(DOJI_RANGE_FACTOR);
         this.longShadowFactor = numFactory.numOf(LONG_SHADOW_FACTOR);
         this.shortShadowRangeFactor = numFactory.numOf(SHORT_SHADOW_RANGE_FACTOR);
         this.nearRangeFactor = numFactory.numOf(NEAR_RANGE_FACTOR);
+        this.restoreFactor = numFactory.numOf(2);
+        this.rangeScale = numFactory.numOf(RANGE_SCALE);
     }
 
     /**
@@ -326,11 +466,11 @@ final class CandleThresholdSupport {
      * @return the validated series
      * @throws NullPointerException     if {@code series} is null
      * @throws IllegalArgumentException if {@code averagePeriod} is below 1 or above
-     *                                  {@link #MAX_AVERAGE_PERIOD}, whose warm-up
-     *                                  additions would overflow
+     *                                  {@link #MAX_AVERAGE_PERIOD}, which bounds
+     *                                  the warm-up window and intermediate sums
      */
     static BarSeries validateSeriesAndAveragePeriod(BarSeries series, int averagePeriod) {
-        final var validatedSeries = Objects.requireNonNull(series, "series must not be null");
+        final BarSeries validatedSeries = Objects.requireNonNull(series, "series must not be null");
         if (averagePeriod < 1 || averagePeriod > MAX_AVERAGE_PERIOD) {
             throw new IllegalArgumentException(
                     "averagePeriod must be in [1, " + MAX_AVERAGE_PERIOD + "], but was: " + averagePeriod);
@@ -385,6 +525,18 @@ final class CandleThresholdSupport {
     }
 
     /**
+     * The raw full-scale shifted average of the preceding {@code averagePeriod}
+     * candle ranges. Consumers use this baseline when it is finite to retain
+     * subnormal ordering; they must fall back to the restored
+     * {@link #priorAverageRange()} when it overflows.
+     *
+     * @return the raw prior average range baseline
+     */
+    Indicator<Num> rawPriorAverageRange() {
+        return rawPriorAverageRange;
+    }
+
+    /**
      * The cached body magnitude primitive shared with every pattern indicator
      * interned over the same series.
      *
@@ -425,6 +577,18 @@ final class CandleThresholdSupport {
     }
 
     /**
+     * The half-scale shifted rolling average of the preceding {@code averagePeriod}
+     * candle ranges. Consumers apply a reducing factor to this value before
+     * restoring full scale, so a raw mean that would overflow stays decidable.
+     *
+     * @return the half-scale prior average range indicator
+     * @since 0.24.2
+     */
+    Indicator<Num> halfPriorAverageRange() {
+        return halfPriorAverageRange;
+    }
+
+    /**
      * Whether a full preceding window exists at {@code index}, i.e.
      * {@code index >= series.getBeginIndex() + averagePeriod}, evaluated in
      * {@code long} arithmetic so a large begin index cannot overflow.
@@ -440,92 +604,313 @@ final class CandleThresholdSupport {
      * Whether the candle body is greater than {@value #LONG_BODY_FACTOR} times the
      * prior average body.
      *
+     * <p>
+     * The raw body is compared against the raw-scale prior average body whenever
+     * both are finite, so two adjacent subnormal magnitudes stay strictly ordered
+     * instead of collapsing onto the same half-scale value. Otherwise the
+     * comparison is performed at half scale: the half body is measured against the
+     * half-scale prior average body, so two magnitudes whose raw values would both
+     * overflow still keep a decidable strict ordering across {@link NumFactory}s.
+     * An unavailable (NaN) measurement is never classified.
+     *
      * @param index the candle index
      * @return {@code true} for a long body, {@code false} below the warm-up
-     *         boundary, for a short body, or for a non-finite measurement
+     *         boundary, for a short body, or for an unavailable measurement
      */
     boolean isLongBody(int index) {
+        return isLongBody(index, longBodyFactor);
+    }
+
+    /**
+     * Whether the candle body is strictly greater than {@code factor} times the
+     * prior average body.
+     *
+     * <p>
+     * Raw operands retain their ordering whenever they are finite. Otherwise the
+     * comparison falls back to the shared half-scale primitives so overflowed
+     * finite source prices remain decidable.
+     *
+     * @param index  the candle index
+     * @param factor the positive body-to-average-body ratio
+     * @return {@code true} when the body is longer than the scaled baseline
+     */
+    boolean isLongBody(int index, Num factor) {
         if (!isValid(index)) {
             return false;
         }
-        final Num bodyValue = body.getValue(index);
-        final Num baseline = priorAverageBody.getValue(index).multipliedBy(longBodyFactor);
-        return Num.isFinite(bodyValue) && Num.isFinite(baseline) && bodyValue.isGreaterThan(baseline);
+        final Num rawBody = body.getValue(index);
+        final Num rawBaseline = rawPriorAverageBody.getValue(index);
+        if (Num.isFinite(rawBody) && Num.isFinite(rawBaseline)) {
+            final Num rawThreshold = rawBaseline.multipliedBy(factor);
+            if (!Num.isNaNOrNull(rawThreshold)) {
+                return rawBody.isGreaterThan(rawThreshold);
+            }
+        }
+        final Num bodyValue = halfBody.getValue(index);
+        final Num baseline = halfPriorAverageBody.getValue(index).multipliedBy(factor);
+        return !Num.isNaNOrNull(bodyValue) && !Num.isNaNOrNull(baseline) && bodyValue.isGreaterThan(baseline);
     }
 
     /**
      * Whether the candle body is less than {@value #SHORT_BODY_FACTOR} times the
      * prior average body.
      *
+     * <p>
+     * The comparison {@code body < factor * priorBody} is evaluated as
+     * {@code body / factor < priorBody} on raw-scale operands whenever both are
+     * finite. At a binary boundary within one ULP, the underlying {@link DoubleNum}
+     * values are rechecked from their canonical decimal rendering so strict
+     * comparisons agree with {@code DecimalNum}; that rare path walks the prior
+     * window. Otherwise the comparison is performed at half scale: the half body is
+     * measured against the half-scale prior average body, so a finite half body
+     * stays decidable against a baseline whose raw mean would overflow. An
+     * unavailable (NaN) measurement is never classified.
+     *
      * @param index the candle index
      * @return {@code true} for a short body, {@code false} below the warm-up
-     *         boundary, for a long body, or for a non-finite measurement
+     *         boundary, for a long body, or for an unavailable measurement
      */
     boolean isShortBody(int index) {
         if (!isValid(index)) {
             return false;
         }
-        final Num bodyValue = body.getValue(index);
-        final Num baseline = priorAverageBody.getValue(index).multipliedBy(shortBodyFactor);
-        return Num.isFinite(bodyValue) && Num.isFinite(baseline) && bodyValue.isLessThan(baseline);
+        final Num bodyValue = halfBody.getValue(index);
+        final Num baseline = halfPriorAverageBody.getValue(index).multipliedBy(shortBodyFactor);
+        if (Num.isNaNOrNull(bodyValue) || Num.isNaNOrNull(baseline)) {
+            return false;
+        }
+        final Num rawBody = body.getValue(index);
+        final Num rawBaseline = rawPriorAverageBody.getValue(index);
+        if (Num.isFinite(rawBody) && Num.isFinite(rawBaseline)) {
+            return isStrictlyShorterThanRawBaseline(index, rawBody, rawBaseline);
+        }
+        return bodyValue.isLessThan(baseline);
     }
 
     /**
      * Whether the candle body is at most {@value #DOJI_RANGE_FACTOR} of the prior
      * average range, the classic doji neighborhood.
      *
+     * <p>
+     * The comparison {@code body <= factor * range} is evaluated as
+     * {@code body * 10 <= range} on the raw-scale operands whenever both are
+     * finite: the factor is one tenth, which is not exactly representable in binary
+     * floating point, so scaling the measured body keeps two adjacent subnormal
+     * magnitudes strictly ordered instead of collapsing onto the same half-scale
+     * value. Otherwise the comparison is performed at half scale: the half body is
+     * measured against the half-scale prior average range, so an overflowed body or
+     * baseline stays decidable across {@link NumFactory}s. An unavailable (NaN)
+     * measurement is never classified.
+     *
      * @param index the candle index
      * @return {@code true} for a doji-like body, {@code false} below the warm-up
-     *         boundary, for a substantial body, or for a non-finite measurement
+     *         boundary, for a substantial body, or for an unavailable measurement
      */
     boolean isDoji(int index) {
         if (!isValid(index)) {
             return false;
         }
-        final Num bodyValue = body.getValue(index);
-        final Num baseline = priorAverageRange.getValue(index).multipliedBy(dojiRangeFactor);
-        return Num.isFinite(bodyValue) && Num.isFinite(baseline) && !bodyValue.isGreaterThan(baseline);
+        final Num bodyValue = halfBody.getValue(index);
+        final Num baseline = halfPriorAverageRange.getValue(index).multipliedBy(dojiRangeFactor);
+        if (Num.isNaNOrNull(bodyValue) || Num.isNaNOrNull(baseline)) {
+            return false;
+        }
+        final Num rawBody = body.getValue(index);
+        final Num rawBaseline = rawPriorAverageRange.getValue(index);
+        if (Num.isFinite(rawBody) && Num.isFinite(rawBaseline)) {
+            final Num scaledBody = rawBody.multipliedBy(rangeScale);
+            if (Num.isFinite(scaledBody)) {
+                return isAtMostScaledRawBaseline(index, rawBody, scaledBody, rawBaseline, DOJI_RANGE_FACTOR);
+            }
+        }
+        return !bodyValue.isGreaterThan(baseline);
     }
 
     /**
      * Whether the given shadow measurement is greater than
      * {@value #LONG_SHADOW_FACTOR} times the prior average body.
      *
+     * <p>
+     * The comparison {@code shadow > factor * baseline} is evaluated as
+     * {@code shadow > baseline * factor} on the raw-scale operands whenever the
+     * shadow is finite, so two adjacent subnormal magnitudes stay strictly ordered
+     * instead of collapsing onto the same half-scale quotient; a baseline whose
+     * doubled value overflows is definitively larger than any finite shadow, so the
+     * answer is false. A shadow whose raw magnitude overflowed into infinity from
+     * finite source prices is rebuilt exactly at half scale from the bar prices
+     * (via the interned half-scale shadow primitive matching {@code shadow}) and
+     * compared against the baseline, which stays finite for representable data; a
+     * non-finite measurement from any other shadow indicator keeps the historical
+     * decidable contract of being longer than any finite baseline. An unavailable
+     * (NaN) measurement is never classified; an overflowed shadow from non-finite
+     * source prices (missing data) is rejected: a shadow derived from an
+     * unavailable price never qualifies as long.
+     *
      * @param index  the candle index
      * @param shadow the shadow measurement to evaluate (upper or lower)
      * @return {@code true} for a long shadow, {@code false} below the warm-up
-     *         boundary, for a short shadow, or for a non-finite measurement
+     *         boundary, for a short shadow, or for an unavailable measurement
      */
     boolean isLongShadow(int index, Indicator<Num> shadow) {
         if (!isValid(index)) {
             return false;
         }
         final Num shadowValue = shadow.getValue(index);
-        final Num baseline = priorAverageBody.getValue(index).multipliedBy(longShadowFactor);
-        return Num.isFinite(shadowValue) && Num.isFinite(baseline) && shadowValue.isGreaterThan(baseline);
+        final Num baseline = priorAverageBody.getValue(index);
+        if (Num.isNaNOrNull(shadowValue) || Num.isNaNOrNull(baseline)) {
+            return false;
+        }
+        if (Num.isFinite(shadowValue)) {
+            final Num rawBaseline = rawPriorAverageBody.getValue(index).multipliedBy(longShadowFactor);
+            if (Num.isFinite(rawBaseline)) {
+                return shadowValue.isGreaterThan(rawBaseline);
+            }
+            final Num doubledBaseline = baseline.multipliedBy(longShadowFactor);
+            if (!Num.isFinite(doubledBaseline)) {
+                // Two times an overflowed baseline exceeds any finite shadow.
+                return false;
+            }
+            return shadowValue.isGreaterThan(doubledBaseline);
+        }
+        if (!hasFiniteSourcePrices(index)) {
+            // An infinite shadow from an unavailable or non-finite price is
+            // missing data, not an overflowed finite magnitude.
+            return false;
+        }
+        // Overflowed raw magnitude from finite source prices: rebuild the exact
+        // half-scale shadow and compare it against the full-scale baseline.
+        final Indicator<Num> halfShadow = shadow instanceof UpperShadowIndicator ? halfUpperShadow
+                : shadow instanceof LowerShadowIndicator ? halfLowerShadow : null;
+        if (halfShadow == null) {
+            // A non-finite measurement from an arbitrary shadow indicator: a
+            // magnitude that overflowed from finite operands stays longer than
+            // any finite baseline (a negative infinity compares false, a NaN
+            // was rejected above).
+            return shadowValue.isGreaterThan(baseline);
+        }
+        return halfShadow.getValue(index).isGreaterThan(baseline);
+    }
+
+    /**
+     * Whether all four source prices of the candle at {@code index} are finite,
+     * i.e. the bar carries no missing or non-finite OHLC value.
+     *
+     * @param index the candle index
+     * @return {@code true} when open, close, high, and low are all finite
+     */
+    private boolean hasFiniteSourcePrices(int index) {
+        final Bar bar = this.series.getBar(index);
+        return Num.isFinite(bar.getOpenPrice()) && Num.isFinite(bar.getClosePrice()) && Num.isFinite(bar.getHighPrice())
+                && Num.isFinite(bar.getLowPrice());
     }
 
     /**
      * Whether the given shadow measurement is at most
      * {@value #SHORT_SHADOW_RANGE_FACTOR} of the prior average range.
      *
+     * <p>
+     * The comparison {@code shadow <= factor * range} is evaluated as
+     * {@code shadow * 10 <= range} on the raw-scale operands whenever both are
+     * finite: the factor is one tenth, which is not exactly representable in binary
+     * floating point, so scaling the measured shadow keeps two adjacent subnormal
+     * magnitudes strictly ordered instead of collapsing onto the same half-scale
+     * value. Otherwise the factor is applied to the half-scale prior average range
+     * before the baseline is restored to full scale, so the threshold stays finite
+     * when the raw mean would overflow and a finite shadow stays decidable across
+     * {@link NumFactory}s. An unavailable (NaN) measurement is never classified; an
+     * overflowed shadow from non-finite source prices (missing data) is rejected: a
+     * shadow derived from an unavailable price never qualifies as short. A
+     * non-finite shadow from finite source prices, including an overflowed
+     * magnitude, can never qualify as a short shadow. A finite negative shadow
+     * caused by malformed OHLC ordering is likewise rejected.
+     *
      * @param index  the candle index
      * @param shadow the shadow measurement to evaluate (upper or lower)
      * @return {@code true} for a short shadow, {@code false} below the warm-up
-     *         boundary, for a long shadow, or for a non-finite measurement
+     *         boundary, for a long shadow, or for an unavailable measurement
      */
     boolean isShortShadow(int index, Indicator<Num> shadow) {
         if (!isValid(index)) {
             return false;
         }
         final Num shadowValue = shadow.getValue(index);
-        final Num baseline = priorAverageRange.getValue(index).multipliedBy(shortShadowRangeFactor);
-        return Num.isFinite(shadowValue) && Num.isFinite(baseline) && !shadowValue.isGreaterThan(baseline);
+        final Num baseline = halfPriorAverageRange.getValue(index)
+                .multipliedBy(shortShadowRangeFactor)
+                .multipliedBy(restoreFactor);
+        if (Num.isNaNOrNull(shadowValue) || Num.isNaNOrNull(baseline)) {
+            return false;
+        }
+        if (!Num.isFinite(shadowValue) || shadowValue.isNegative()) {
+            // A non-finite shadow is either missing data or an overflowed
+            // magnitude; a finite negative shadow cannot represent a candle
+            // length and indicates malformed OHLC ordering.
+            return false;
+        }
+        final Num rawBaseline = rawPriorAverageRange.getValue(index);
+        if (Num.isFinite(rawBaseline)) {
+            final Num scaledShadow = shadowValue.multipliedBy(rangeScale);
+            if (Num.isFinite(scaledShadow)) {
+                return isAtMostScaledRawBaseline(index, shadowValue, scaledShadow, rawBaseline,
+                        SHORT_SHADOW_RANGE_FACTOR);
+            }
+        }
+        return !shadowValue.isGreaterThan(baseline);
+    }
+
+    /**
+     * Whether the given shadow is at most {@code factor} times the current body.
+     *
+     * <p>
+     * The raw shared primitives preserve ordinary and subnormal comparisons. When
+     * the body overflows from finite source prices, the matching shared half-scale
+     * shadow and body primitives preserve the ratio. A malformed, unavailable, or
+     * non-finite shadow never qualifies.
+     *
+     * @param index  the candle index
+     * @param shadow the upper or lower shared shadow primitive
+     * @param factor the non-negative shadow-to-body ratio
+     * @return {@code true} when the shadow is at most the scaled body
+     */
+    boolean isShortShadowRelativeToBody(int index, Indicator<Num> shadow, Num factor) {
+        if (!isValid(index)) {
+            return false;
+        }
+        final Num shadowValue = shadow.getValue(index);
+        if (!Num.isFinite(shadowValue) || shadowValue.isNegative()) {
+            return false;
+        }
+        if (factor.isZero()) {
+            return shadowValue.isZero();
+        }
+        final Num rawBody = body.getValue(index);
+        if (Num.isFinite(rawBody)) {
+            final Num rawThreshold = rawBody.multipliedBy(factor);
+            if (!Num.isNaNOrNull(rawThreshold)) {
+                return !shadowValue.isGreaterThan(rawThreshold);
+            }
+        }
+        final Indicator<Num> halfShadow = shadow == upperShadow ? halfUpperShadow
+                : shadow == lowerShadow ? halfLowerShadow : null;
+        if (halfShadow == null) {
+            return false;
+        }
+        final Num halfShadowValue = halfShadow.getValue(index);
+        final Num halfBodyValue = halfBody.getValue(index);
+        if (!Num.isFinite(halfShadowValue) || halfShadowValue.isNegative() || !Num.isFinite(halfBodyValue)) {
+            return false;
+        }
+        final Num halfThreshold = halfBodyValue.multipliedBy(factor);
+        return !Num.isNaNOrNull(halfThreshold) && !halfShadowValue.isGreaterThan(halfThreshold);
     }
 
     /**
      * Whether the absolute difference between the two measurements is at most
      * {@value #NEAR_RANGE_FACTOR} of the prior average range.
+     *
+     * <p>
+     * Both the difference and the baseline are computed at half scale, so a raw
+     * difference or mean that would overflow stays decidable across
+     * {@link NumFactory}s, and a subnormal difference is not erased by the halving.
      *
      * @param index  the candle index
      * @param first  the first measurement
@@ -543,9 +928,399 @@ final class CandleThresholdSupport {
         if (firstValue == null || secondValue == null) {
             return false;
         }
-        final Num difference = firstValue.minus(secondValue).abs();
-        final Num baseline = priorAverageRange.getValue(index).multipliedBy(nearRangeFactor);
-        return Num.isFinite(firstValue) && Num.isFinite(secondValue) && Num.isFinite(difference)
-                && Num.isFinite(baseline) && !difference.isGreaterThan(baseline);
+        return isNear(index, firstValue, secondValue);
+    }
+
+    /**
+     * Whether the absolute difference between two measurements is at most
+     * {@value #NEAR_RANGE_FACTOR} of the prior average range.
+     *
+     * <p>
+     * The comparison {@code |first - second| <= factor * range} is evaluated as
+     * {@code |first - second| * 10 <= range} on the raw-scale operands whenever
+     * both are finite: the factor is one tenth, which is not exactly representable
+     * in binary floating point, so scaling the measured difference keeps two
+     * adjacent subnormal magnitudes strictly ordered instead of collapsing onto the
+     * same half-scale value. Otherwise both the difference and the baseline are
+     * computed at half scale, so a raw difference or mean that would overflow stays
+     * decidable across {@link NumFactory}s, and a subnormal difference is not
+     * erased by the halving.
+     *
+     * @param index  the candle index
+     * @param first  the first measurement
+     * @param second the second measurement
+     * @return {@code true} when the two measurements are near each other,
+     *         {@code false} below the warm-up boundary, when they diverge, or for a
+     *         non-finite measurement
+     * @since 0.24.2
+     */
+    boolean isNear(int index, Num first, Num second) {
+        if (!isValid(index)) {
+            return false;
+        }
+        if (Num.isFinite(first) && Num.isFinite(second)) {
+            final Num rawDifference = first.minus(second).abs();
+            final Num rawBaseline = rawPriorAverageRange.getValue(index);
+            if (Num.isFinite(rawDifference) && Num.isFinite(rawBaseline)) {
+                final Num scaledDifference = rawDifference.multipliedBy(rangeScale);
+                if (Num.isFinite(scaledDifference)) {
+                    return isAtMostScaledRawBaseline(index, rawDifference, scaledDifference, rawBaseline,
+                            NEAR_RANGE_FACTOR);
+                }
+            }
+        }
+        final Num halfDifference = halfDifference(first, second, series.numFactory());
+        final Num baseline = halfPriorAverageRange.getValue(index).multipliedBy(nearRangeFactor);
+        return Num.isFinite(halfDifference) && Num.isFinite(baseline) && !halfDifference.isGreaterThan(baseline);
+    }
+
+    /**
+     * Resolves a strict short-body comparison at the one-ULP boundary where the
+     * rounded raw average can disagree with the canonical decimal values exposed by
+     * {@link DoubleNum}. The full window is visited only on that boundary.
+     */
+    private boolean isStrictlyShorterThanRawBaseline(int index, Num rawBody, Num rawBaseline) {
+        final Num scaledBody = rawBody.dividedBy(shortBodyFactor);
+        final boolean shorter = scaledBody.isLessThan(rawBaseline);
+        if (!(rawBody instanceof DoubleNum doubleBody) || !(rawBaseline instanceof DoubleNum doubleBaseline)
+                || !isWithinUlps(scaledBody.doubleValue(), doubleBaseline.getDelegate(), averagePeriod)) {
+            return shorter;
+        }
+        BigDecimal scaledCanonicalBody = BigDecimal.valueOf(doubleBody.getDelegate())
+                .multiply(BigDecimal.valueOf(2L))
+                .multiply(BigDecimal.valueOf(averagePeriod));
+        BigDecimal priorCanonicalBodySum = BigDecimal.ZERO;
+        for (int priorIndex = index - averagePeriod; priorIndex < index; priorIndex++) {
+            priorCanonicalBodySum = priorCanonicalBodySum
+                    .add(BigDecimal.valueOf(body.getValue(priorIndex).doubleValue()));
+        }
+        return scaledCanonicalBody.compareTo(priorCanonicalBodySum) < 0;
+    }
+
+    private static boolean isWithinUlps(double first, double second, int ulps) {
+        return Double.isFinite(first) && Double.isFinite(second)
+                && Math.abs(first - second) <= ulps * Math.max(Math.ulp(first), Math.ulp(second));
+    }
+
+    /**
+     * Whether a rounded finite {@link DoubleNum} comparison sits on the
+     * accumulated-window boundary zone: outside it the rounded ordering is
+     * decisive, inside it the verdict is rechecked against canonical decimal
+     * operands so it agrees with {@link DecimalNum} at inclusive boundaries and one
+     * canonical step above them. The baseline is itself an average of
+     * {@code averagePeriod} sums, so its rounding error accumulates beyond one ULP;
+     * gating on {@code averagePeriod} ULPs keeps the canonical recheck effective
+     * for every window size.
+     */
+    boolean isWithinUlpBoundary(Num scaledLeft, Num scaledRight) {
+        return scaledLeft instanceof DoubleNum && scaledRight instanceof DoubleNum
+                && isWithinUlps(scaledLeft.doubleValue(), scaledRight.doubleValue(), averagePeriod);
+    }
+
+    /**
+     * Resolves an inclusive raw range comparison after reciprocal scaling. The
+     * tenfold product preserves subnormal ordering; inside the one-ULP boundary
+     * zone the verdict is rechecked against canonical decimal operands so a
+     * measurement on the inclusive boundary is accepted and one a canonical step
+     * above it is rejected, matching {@link DecimalNum} ordering.
+     *
+     * @param index             bar index whose preceding window supplies the
+     *                          baseline
+     * @param measurement       the finite raw measurement
+     * @param scaledMeasurement the finite reciprocal-scaled measurement
+     * @param rawBaseline       the finite raw baseline
+     * @param canonicalFactor   threshold factor against the prior average range
+     * @return whether the measurement is at most one tenth of the baseline
+     */
+    private boolean isAtMostScaledRawBaseline(int index, Num measurement, Num scaledMeasurement, Num rawBaseline,
+            double canonicalFactor) {
+        if (isWithinUlpBoundary(scaledMeasurement, rawBaseline)) {
+            return isAtMostCanonicalFactorOfPriorAverageRange(index, measurement.doubleValue(), canonicalFactor);
+        }
+        return !scaledMeasurement.isGreaterThan(rawBaseline);
+    }
+
+    /**
+     * Inclusive {@code measurement <= factor * priorAverageRange(index)} rechecked
+     * from the canonical decimal rendering of the {@link DoubleNum} operands.
+     * Scaling both sides by {@code averagePeriod} keeps the comparison in exact
+     * decimal arithmetic: a measurement whose canonical value sits on the boundary
+     * stays inclusive (agreeing with {@link DecimalNum}), while one a canonical
+     * step above it stays rejected; a rounded double quotient cannot preserve that
+     * ordering.
+     *
+     * @param index       bar index whose preceding window supplies the baseline
+     * @param measurement full-scale measurement under evaluation
+     * @param factor      threshold factor against the prior average range
+     * @return whether the measurement is at most {@code factor} times the prior
+     *         average range
+     */
+    boolean isAtMostCanonicalFactorOfPriorAverageRange(int index, double measurement, double factor) {
+        final BigDecimal scaledMeasurement = BigDecimal.valueOf(measurement)
+                .multiply(BigDecimal.valueOf((long) averagePeriod));
+        BigDecimal scaledBaseline = BigDecimal.ZERO;
+        for (int priorIndex = index - averagePeriod; priorIndex < index; priorIndex++) {
+            scaledBaseline = scaledBaseline.add(BigDecimal.valueOf(range.getValue(priorIndex).doubleValue()));
+        }
+        return scaledMeasurement.compareTo(scaledBaseline.multiply(BigDecimal.valueOf(factor))) <= 0;
+    }
+
+    /**
+     * The absolute difference of two magnitudes, each divided by two before
+     * differencing, so the result stays finite when the raw difference would
+     * overflow. When both halves underflow to zero while the operands differ, the
+     * raw difference is returned instead: it is subnormal, cannot overflow, and
+     * would otherwise be erased by the halving. Non-finite operands propagate.
+     *
+     * @param first  the first operand
+     * @param second the second operand
+     * @return the half-scale difference, or the raw difference when halving
+     *         underflows
+     * @since 0.24.2
+     */
+    private static Num halfDifference(Num first, Num second, NumFactory numFactory) {
+        final Num two = numFactory.numOf(2);
+        final Num half = first.dividedBy(two).minus(second.dividedBy(two)).abs();
+        if (!half.isZero() || first.equals(second)) {
+            return half;
+        }
+        return first.minus(second).abs();
+    }
+
+    /**
+     * Half of the candle body, i.e. {@code |open - close| / 2} computed by dividing
+     * each operand before differencing, so the result stays finite whenever the raw
+     * body magnitude would overflow the {@link Num} type; a subnormal raw body is
+     * retained instead of being erased by the halving. A non-finite endpoint yields
+     * {@link NaN#NaN}, mirroring {@link CandleBodyIndicator}.
+     */
+    private static final class HalfBodyIndicator extends CachedIndicator<Num> {
+        private HalfBodyIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            final Bar bar = getBarSeries().getBar(index);
+            final Num open = bar.getOpenPrice();
+            final Num close = bar.getClosePrice();
+            if (!Num.isFinite(open) || !Num.isFinite(close)) {
+                return NaN.NaN;
+            }
+            return halfDifference(open, close, getBarSeries().numFactory());
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    /**
+     * Half of the candle range, i.e. {@code (high - low) / 2} computed by dividing
+     * each operand before differencing, so the result stays finite whenever the raw
+     * range magnitude would overflow the {@link Num} type; a negative measurement
+     * (malformed bar) keeps its ordering. A non-finite endpoint yields
+     * {@link NaN#NaN}, mirroring {@link CandleRangeIndicator}.
+     */
+    private static final class HalfRangeIndicator extends CachedIndicator<Num> {
+        private HalfRangeIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            final Bar bar = getBarSeries().getBar(index);
+            final Num high = bar.getHighPrice();
+            final Num low = bar.getLowPrice();
+            if (!Num.isFinite(high) || !Num.isFinite(low)) {
+                return NaN.NaN;
+            }
+            return halfSignedDifference(high, low, getBarSeries().numFactory());
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    /**
+     * The signed difference of two magnitudes, each divided by two before
+     * differencing, so the result stays finite when the raw difference would
+     * overflow and a negative measurement (malformed bar) keeps its ordering. When
+     * both halves underflow to zero while the operands differ, the raw signed
+     * difference is returned instead: it is subnormal, cannot overflow, and would
+     * otherwise be erased by the halving. Non-finite operands propagate.
+     *
+     * @param first  the first operand
+     * @param second the second operand
+     * @return the half-scale signed difference, or the raw difference when halving
+     *         underflows
+     * @since 0.24.2
+     */
+    private static Num halfSignedDifference(Num first, Num second, NumFactory numFactory) {
+        final Num two = numFactory.numOf(2);
+        final Num half = first.dividedBy(two).minus(second.dividedBy(two));
+        if (!half.isZero() || first.equals(second)) {
+            return half;
+        }
+        return first.minus(second);
+    }
+
+    /**
+     * Half of the upper shadow, i.e. {@code (high - max(open, close)) / 2} computed
+     * by dividing each operand before differencing, so the result stays finite
+     * whenever the raw shadow would overflow the {@link Num} type and a negative
+     * measurement (malformed bar) keeps its ordering; a subnormal raw shadow is
+     * retained instead of being erased by the halving. A non-finite endpoint yields
+     * {@link NaN#NaN}, mirroring {@link UpperShadowIndicator}.
+     */
+    private static final class HalfUpperShadowIndicator extends CachedIndicator<Num> {
+        private HalfUpperShadowIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            final Bar bar = getBarSeries().getBar(index);
+            final Num open = bar.getOpenPrice();
+            final Num close = bar.getClosePrice();
+            final Num high = bar.getHighPrice();
+            if (!Num.isFinite(high) || !Num.isFinite(open) || !Num.isFinite(close)) {
+                return NaN.NaN;
+            }
+            final Num peak = close.isGreaterThan(open) ? close : open;
+            return halfSignedDifference(high, peak, getBarSeries().numFactory());
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    /**
+     * Half of the lower shadow, i.e. {@code (min(open, close) - low) / 2} computed
+     * by dividing each operand before differencing, so the result stays finite
+     * whenever the raw shadow would overflow the {@link Num} type and a negative
+     * measurement (malformed bar) keeps its ordering; a subnormal raw shadow is
+     * retained instead of being erased by the halving. A non-finite endpoint yields
+     * {@link NaN#NaN}, mirroring {@link LowerShadowIndicator}.
+     */
+    private static final class HalfLowerShadowIndicator extends CachedIndicator<Num> {
+        private HalfLowerShadowIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            final Bar bar = getBarSeries().getBar(index);
+            final Num open = bar.getOpenPrice();
+            final Num close = bar.getClosePrice();
+            final Num low = bar.getLowPrice();
+            if (!Num.isFinite(low) || !Num.isFinite(open) || !Num.isFinite(close)) {
+                return NaN.NaN;
+            }
+            final Num trough = close.isGreaterThan(open) ? open : close;
+            return halfSignedDifference(trough, low, getBarSeries().numFactory());
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    /**
+     * Full-scale view of a half-scale source: the source value doubled. Doubling
+     * restores the magnitude that consumers comparing raw measurements (shadows,
+     * the baseline accessors) expect, and preserves the overflow behavior those
+     * comparisons documented before the half-scale migration: a doubled magnitude
+     * that overflows stays non-finite, exactly as the raw mean did.
+     *
+     * @since 0.24.2
+     */
+    private static final class DoubledIndicator extends CachedIndicator<Num> {
+
+        private final Indicator<Num> source;
+        private final Num two;
+
+        private DoubledIndicator(Indicator<Num> source) {
+            super(source);
+            this.source = source;
+            this.two = source.getBarSeries().numFactory().numOf(2);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            return source.getValue(index).multipliedBy(two);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return source.getCountOfUnstableBars();
+        }
+    }
+
+    /**
+     * Average of the preceding {@code barCount} half-scale source values, kept at
+     * half scale, that never overflows an intermediate summation. The primary path
+     * delegates to an {@link SMAIndicator}; when the accumulator overflowed into a
+     * non-finite value (for example a {@code DoubleNum} summing several near-MAX
+     * halves), the same window is re-averaged as a scaled incremental mean. Each
+     * weighted term is divided before it is summed, so the fallback never forms an
+     * overflowing difference between opposite-sign extremes. Because every term is
+     * at most half the largest representable magnitude, the exact mean is at most
+     * the largest representable magnitude, so the half-scale mean stays finite
+     * whenever it is representable; a baseline that still overflows remains
+     * non-finite yet decidable in every comparison below. Full-scale views are
+     * derived by the owning support only where a consumer still expects raw
+     * magnitudes. Non-finite source values propagate as non-finite results.
+     */
+    private static final class PriorAverageIndicator extends CachedIndicator<Num> {
+
+        private final Indicator<Num> source;
+        private final int barCount;
+        private final SMAIndicator primary;
+
+        private PriorAverageIndicator(Indicator<Num> source, int barCount) {
+            super(source);
+
+            this.source = source;
+            this.barCount = barCount;
+            this.primary = new SMAIndicator(source, barCount);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            final Num result = primary.getValue(index);
+            if (Num.isFinite(result)) {
+                return result;
+            }
+            final NumFactory numFactory = getBarSeries().numFactory();
+            final int beginIndex = getBarSeries().getBeginIndex();
+            final int start = Math.max(beginIndex, index - barCount + 1);
+            Num mean = numFactory.zero();
+            for (int i = start; i <= index; i++) {
+                final Num value = source.getValue(i);
+                if (!Num.isFinite(value)) {
+                    return value;
+                }
+                final Num count = numFactory.numOf(i - start + 1);
+                final Num previousCount = numFactory.numOf(i - start);
+                mean = mean.dividedBy(count).multipliedBy(previousCount).plus(value.dividedBy(count));
+                if (i == index) {
+                    // Terminate before the increment could wrap past Integer.MAX_VALUE.
+                    break;
+                }
+            }
+            return mean;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return primary.getCountOfUnstableBars();
+        }
     }
 }

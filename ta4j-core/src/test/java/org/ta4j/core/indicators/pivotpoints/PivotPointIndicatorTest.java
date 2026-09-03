@@ -1763,6 +1763,74 @@ public class PivotPointIndicatorTest {
     }
 
     @Test
+    public void shouldRebuildPivotCachesWhenHeadAdvanceCutsPreviousPeriod() {
+        BarSeries cachedSeries = new MockBarSeriesBuilder().withName("PivotCacheHeadAdvance").build();
+        cachedSeries.barBuilder()
+                .endTime(LocalDate.parse("2024-01-01").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(10.0)
+                .highPrice(20.0)
+                .lowPrice(5.0)
+                .closePrice(15.0)
+                .volume(1000)
+                .add();
+        cachedSeries.barBuilder()
+                .endTime(LocalDate.parse("2024-01-02").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(10.0)
+                .highPrice(50.0)
+                .lowPrice(10.0)
+                .closePrice(20.0)
+                .volume(1000)
+                .add();
+        cachedSeries.barBuilder()
+                .endTime(LocalDate.parse("2024-01-02").atTime(12, 0).atZone(ZoneOffset.UTC).toInstant())
+                .openPrice(20.0)
+                .highPrice(30.0)
+                .lowPrice(20.0)
+                .closePrice(25.0)
+                .volume(1000)
+                .add();
+        cachedSeries.barBuilder()
+                .endTime(LocalDate.parse("2024-01-03").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(25.0)
+                .highPrice(35.0)
+                .lowPrice(25.0)
+                .closePrice(30.0)
+                .volume(1000)
+                .add();
+
+        PivotPointIndicator cachedPivot = new PivotPointIndicator(cachedSeries, DAY);
+        DeMarkPivotPointIndicator cachedDeMarkPivot = new DeMarkPivotPointIndicator(cachedSeries, DAY);
+        StandardReversalIndicator cachedStandard = new StandardReversalIndicator(cachedPivot, RESISTANCE_1);
+        FibonacciReversalIndicator cachedFibonacci = new FibonacciReversalIndicator(cachedPivot, 0.382,
+                FibonacciReversalIndicator.FibReversalTyp.RESISTANCE);
+        DeMarkReversalIndicator cachedDeMark = new DeMarkReversalIndicator(cachedDeMarkPivot,
+                DeMarkReversalIndicator.DeMarkPivotLevel.RESISTANCE);
+        int targetIndex = cachedSeries.getEndIndex();
+        Num stalePivot = cachedPivot.getValue(targetIndex);
+        cachedDeMarkPivot.getValue(targetIndex);
+        cachedStandard.getValue(targetIndex);
+        cachedFibonacci.getValue(targetIndex);
+        cachedDeMark.getValue(targetIndex);
+
+        cachedSeries.setMaximumBarCount(2);
+
+        PivotPointIndicator freshPivot = new PivotPointIndicator(cachedSeries, DAY);
+        DeMarkPivotPointIndicator freshDeMarkPivot = new DeMarkPivotPointIndicator(cachedSeries, DAY);
+        StandardReversalIndicator freshStandard = new StandardReversalIndicator(freshPivot, RESISTANCE_1);
+        FibonacciReversalIndicator freshFibonacci = new FibonacciReversalIndicator(freshPivot, 0.382,
+                FibonacciReversalIndicator.FibReversalTyp.RESISTANCE);
+        DeMarkReversalIndicator freshDeMark = new DeMarkReversalIndicator(freshDeMarkPivot,
+                DeMarkReversalIndicator.DeMarkPivotLevel.RESISTANCE);
+
+        assertFalse(stalePivot.isEqual(freshPivot.getValue(targetIndex)));
+        assertNumEquals(freshPivot.getValue(targetIndex), cachedPivot.getValue(targetIndex));
+        assertNumEquals(freshDeMarkPivot.getValue(targetIndex), cachedDeMarkPivot.getValue(targetIndex));
+        assertNumEquals(freshStandard.getValue(targetIndex), cachedStandard.getValue(targetIndex));
+        assertNumEquals(freshFibonacci.getValue(targetIndex), cachedFibonacci.getValue(targetIndex));
+        assertNumEquals(freshDeMark.getValue(targetIndex), cachedDeMark.getValue(targetIndex));
+    }
+
+    @Test
     public void pivotCopiesPreserveReversalValues() {
         int index = series5Minutes.getEndIndex();
         PivotPointIndicator pivot = new PivotPointIndicator(series5Minutes, DAY);

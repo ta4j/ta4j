@@ -111,6 +111,27 @@ public class VolumeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void partialHeadAdvancePrefillsCacheHoleWithoutRecursiveOverflow() {
+        final int barCount = 10_000;
+        final int fullLength = barCount + 100;
+        final BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < fullLength; i++) {
+            series.barBuilder().closePrice(0).volume(1).add();
+        }
+        final VolumeIndicator volumeIndicator = new VolumeIndicator(series, barCount);
+        volumeIndicator.getValue(series.getEndIndex());
+
+        // Retain the cached tail but evict the initial recursive base range.
+        series.setMaximumBarCount(fullLength - 1);
+        assertEquals(1, series.getBeginIndex());
+
+        // Index 9_999 lies below the retained cache tail. It must be rebuilt
+        // iteratively from the new begin index rather than recursively walking
+        // ten thousand values back toward it.
+        assertNumEquals(barCount - 1, volumeIndicator.getValue(barCount - 1));
+    }
+
+    @Test
     public void rollingSumRespectsBeginIndexAfterConstrainedEviction() {
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withMaxBarCount(3).build();
         series.barBuilder().closePrice(0).volume(10).add(); // index 0

@@ -8,7 +8,6 @@ import java.util.Objects;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.KalmanNoiseIndicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.forecast.state.ForecastStateIndicator;
@@ -76,7 +75,7 @@ public final class KinematicKalmanForecastStateIndicator extends CachedIndicator
      */
     public KinematicKalmanForecastStateIndicator(Indicator<Num> indicator, KalmanNoiseIndicator processNoiseIndicator,
             KalmanNoiseIndicator measurementNoiseIndicator) {
-        super(IndicatorUtils.requireSameSeries(indicator, processNoiseIndicator, measurementNoiseIndicator));
+        super(indicator, processNoiseIndicator, measurementNoiseIndicator);
         this.indicator = indicator;
         this.processNoiseIndicator = processNoiseIndicator;
         this.measurementNoiseIndicator = measurementNoiseIndicator;
@@ -186,7 +185,9 @@ public final class KinematicKalmanForecastStateIndicator extends CachedIndicator
     private final class StateIndicator extends RecursiveCachedIndicator<State> {
 
         private StateIndicator() {
-            super(KinematicKalmanForecastStateIndicator.this.indicator);
+            super(KinematicKalmanForecastStateIndicator.this.indicator,
+                    KinematicKalmanForecastStateIndicator.this.processNoiseIndicator,
+                    KinematicKalmanForecastStateIndicator.this.measurementNoiseIndicator);
         }
 
         @Override

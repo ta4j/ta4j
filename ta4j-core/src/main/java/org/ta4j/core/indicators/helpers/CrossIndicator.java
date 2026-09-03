@@ -29,7 +29,7 @@ public class CrossIndicator extends CachedIndicator<Boolean> {
      */
     public CrossIndicator(Indicator<Num> up, Indicator<Num> low) {
         // TODO: check if up series is equal to low series
-        super(up);
+        super(up, low);
         this.up = up;
         this.low = low;
     }

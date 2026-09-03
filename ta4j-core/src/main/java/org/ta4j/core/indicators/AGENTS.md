@@ -57,6 +57,27 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   - `SMAIndicator` includes upstream unstable bars in its reported count (`input + barCount - 1`), so do not add upstream again.
 - Pattern indicators that combine fixed candle lookback with trend/confirmation indicators should use the stricter boundary, for example `Math.max(patternLookback, trendIndicator.getCountOfUnstableBars())`.
 - Keep test assertions aligned with the contract: assert unstable count directly and verify warm-up boundaries (`unstable - 1` versus `unstable`).
+- The head-advance cache floor in `CachedIndicator` applies by default to
+  every indicator; only indicators with genuinely unbounded historical
+  dependencies (opting in via `hasRecursiveDependencies()`) keep their
+  pre-advance values on bounded series, so do not rely on reseeding
+  semantics for them. Fixed-window recursive indicators such as
+  `VolumeIndicator` and `PearsonCorrelationIndicator` keep the default
+  floor and are recomputed like any windowed indicator.
+- Conditionally recursive indicators (recursion only along special
+  stretches, e.g. flat windows or equal-basis Klinger trend stretches)
+  override `requiresFullCacheInvalidationAfterHeadAdvance()` to return
+  `true`: every value is recomputable from the retained window, so the
+  whole cache is discarded on head advance instead of preserving stale
+  pre-advance results. `StochasticIndicator` follows this policy and
+  extends `RecursiveCachedIndicator` so the inherited prefill rebuilds
+  long flat stretches iteratively after the eviction.
+- Head-advance invalidation must cover every downstream component of a
+  rebaselining chain, not only the recursive core. The Klinger volume
+  oscillator applies `Integer.MAX_VALUE` eviction to the trend direction,
+  cumulative measurement, volume force, both EMAs, and the outer
+  oscillator, because each downstream cache mixes fresh and stale inputs
+  once the cumulative measurement rebaselines.
 
 ## NetMomentumIndicator specifics
 

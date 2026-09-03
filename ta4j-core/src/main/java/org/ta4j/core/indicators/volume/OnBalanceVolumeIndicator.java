@@ -46,4 +46,10 @@ public class OnBalanceVolumeIndicator extends RecursiveCachedIndicator<Num> {
     public int getCountOfUnstableBars() {
         return 0;
     }
+
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
+    }
+
 }

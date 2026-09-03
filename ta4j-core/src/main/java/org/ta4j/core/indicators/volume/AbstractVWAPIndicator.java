@@ -6,7 +6,6 @@ package org.ta4j.core.indicators.volume;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -30,7 +29,7 @@ public abstract class AbstractVWAPIndicator extends CachedIndicator<Num> {
      * Creates a new AbstractVWAPIndicator instance.
      */
     protected AbstractVWAPIndicator(Indicator<Num> priceIndicator, Indicator<Num> volumeIndicator) {
-        super(IndicatorUtils.requireSameSeries(priceIndicator, volumeIndicator));
+        super(priceIndicator, volumeIndicator);
         this.priceIndicator = priceIndicator;
         this.volumeIndicator = volumeIndicator;
     }

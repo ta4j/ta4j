@@ -11,6 +11,8 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import java.time.Duration;
 import java.time.Instant;
+import java.lang.ref.WeakReference;
+import java.util.Map;
 import java.util.List;
 import org.junit.Test;
 import org.ta4j.core.Bar;
@@ -22,9 +24,11 @@ import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.NonFiniteBar;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class CandleThresholdSupportTest {
 
@@ -77,12 +81,62 @@ public class CandleThresholdSupportTest {
     }
 
     @Test
+    public void shortBodyBoundaryUsesCanonicalDecimalValuesAcrossFactories() {
+        // The mean of 0.1 and 0.2 is exactly 0.15 in decimal notation, so the
+        // 0.075 body sits exactly at the strict half-average boundary.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addBar(series, 0.1, 0, 0);
+            addBar(series, 0.2, 0, 0);
+            addBar(series, 0.075, 0, 0);
+
+            assertFalse(new CandleThresholdSupport(series, 2).isShortBody(2));
+        }
+    }
+
+    @Test
+    public void shortBodyCanonicalBoundarySurvivesAccumulatedWindowErrorAcrossFactories() {
+        // Ten times the evaluated body still lies above the decimal sum of the
+        // five prior bodies (2 * body * period), so the strict half-average
+        // verdict is canonically not short. The double average of the window
+        // accumulated two ULPs of error under the scaled body, so a one-ULP
+        // gate would skip the canonical recheck and accept the pattern under
+        // DoubleNum while DecimalNum rejects it.
+        double[] priorBodies = { 1.91332250524033E-15, 5.7978792187533E-15, 8.0309023524238E-15, 8.1009441615777E-15,
+                2.239325718963E-15 };
+        double evaluatedBody = 2.608237395695813E-15;
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            for (double priorBody : priorBodies) {
+                addBar(series, priorBody, 0, 0);
+            }
+            addBar(series, evaluatedBody, 0, 0);
+
+            assertFalse(new CandleThresholdSupport(series, 5).isShortBody(5));
+        }
+    }
+
+    @Test
     public void dojiBoundaryIsInclusive() {
         CandleThresholdSupport atBoundary = support(10, 0, 0, 1, 9, 0);
         CandleThresholdSupport aboveBoundary = support(10, 0, 0, 1.01, 8.99, 0);
 
         assertTrue(atBoundary.isDoji(5));
         assertFalse(aboveBoundary.isDoji(5));
+    }
+
+    @Test
+    public void oneTenthThresholdsAcceptOrdinaryInclusiveBoundaryAcrossFactories() {
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(series, 0, 0, 1, 0);
+            addExtremeCandle(series, 0, 0.1, 0.2, 0);
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertTrue(support.isDoji(1));
+            assertTrue(support.isShortShadow(1, support.upperShadow()));
+            assertTrue(support.isNear(1, factory.numOf(0.1), factory.zero()));
+        }
     }
 
     @Test
@@ -113,6 +167,24 @@ public class CandleThresholdSupportTest {
                 new UpperShadowIndicator(atBoundarySeries)));
         assertFalse(new CandleThresholdSupport(aboveBoundarySeries).isShortShadow(5,
                 new UpperShadowIndicator(aboveBoundarySeries)));
+    }
+
+    @Test
+    public void tenfoldRoundingDoesNotQualifyRangePredicatesAcrossFactories() {
+        final double measurement = Math.nextDown(1d);
+        final double priorRange = measurement * 10d;
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            final BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addBar(series, priorRange, 0, 0);
+            addBar(series, measurement, 0, 0);
+            final CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+            final Indicator<Num> measured = new ConstantIndicator<>(series, factory.numOf(measurement));
+            final Indicator<Num> zero = new ConstantIndicator<>(series, factory.zero());
+
+            assertFalse(support.isDoji(1));
+            assertFalse(support.isShortShadow(1, measured));
+            assertFalse(support.isNear(1, measured, zero));
+        }
     }
 
     @Test
@@ -173,23 +245,430 @@ public class CandleThresholdSupportTest {
     }
 
     @Test
-    public void nonFiniteMeasurementsAreNeverClassified() {
+    public void nanMeasurementsAreNeverClassified() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
         addBars(series, 5, 10, 0, 0);
         addBar(series, 1, 0, 0);
         CandleThresholdSupport support = new CandleThresholdSupport(series);
         Indicator<Num> body = new CandleBodyIndicator(series);
         Indicator<Num> nan = new ConstantIndicator<>(series, series.numFactory().numOf(Double.NaN));
-        Indicator<Num> infinity = new ConstantIndicator<>(series, series.numFactory().numOf(Double.POSITIVE_INFINITY));
 
         // Inclusive classifiers must not treat a NaN measurement as "not greater".
         assertFalse(support.isShortShadow(5, nan));
         assertFalse(support.isNear(5, nan, body));
         assertFalse(support.isNear(5, body, nan));
-        // Strict classifiers must not classify NaN or infinity measurements.
+        // Strict classifiers must not classify a NaN measurement.
         assertFalse(support.isLongShadow(5, nan));
-        assertFalse(support.isLongShadow(5, infinity));
+    }
+
+    @Test
+    public void overflowedMagnitudesRemainDecidable() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
+        addBars(series, 5, 10, 0, 0);
+        addBar(series, 1, 0, 0);
+        CandleThresholdSupport support = new CandleThresholdSupport(series);
+        Indicator<Num> infinity = new ConstantIndicator<>(series, series.numFactory().numOf(Double.POSITIVE_INFINITY));
+
+        // A non-finite magnitude from finite operands stays decidable: it is
+        // longer than any finite baseline, but never at most one.
+        assertTrue(support.isLongShadow(5, infinity));
         assertFalse(support.isShortShadow(5, infinity));
+    }
+
+    @Test
+    public void overflowedBodyFromFiniteEndpointsQualifiesAsLongBodyWithDoubleNum() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
+        addBars(series, 5, 10, 0, 0);
+        addExtremeCandle(series, -Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE);
+        CandleThresholdSupport support = new CandleThresholdSupport(series);
+
+        // |close - open| = 2 * Double.MAX_VALUE overflows to infinity; the
+        // strict comparison against the finite baseline stays decidable.
+        assertTrue(support.isLongBody(5));
+        assertFalse(support.isShortBody(5));
+        assertFalse(support.isDoji(5));
+    }
+
+    @Test
+    public void overflowedUpperShadowFromFiniteEndpointsQualifiesAsLongShadowWithDoubleNum() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
+        addBars(series, 5, 10, 0, 0);
+        addExtremeCandle(series, -Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE);
+        CandleThresholdSupport support = new CandleThresholdSupport(series);
+
+        // high - max(open, close) overflows to infinity from finite endpoints;
+        // it is longer than the finite baseline and never a short shadow.
+        assertTrue(support.isLongShadow(5, support.upperShadow()));
+        assertFalse(support.isShortShadow(5, support.upperShadow()));
+    }
+
+    @Test
+    public void negativeInfinityShadowNeverQualifiesAsShortShadowWithDoubleNum() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
+        addBars(series, 5, 10, 0, 0);
+        addBar(series, 1, 0, 0);
+        CandleThresholdSupport support = new CandleThresholdSupport(series);
+        Indicator<Num> negativeInfinity = new ConstantIndicator<>(series,
+                series.numFactory().numOf(Double.NEGATIVE_INFINITY));
+
+        // A negatively infinite shadow (an inverted candle range or malformed
+        // measurement) is never at most the finite baseline.
+        assertFalse(support.isShortShadow(5, negativeInfinity));
+        assertFalse(support.isLongShadow(5, negativeInfinity));
+    }
+
+    @Test
+    public void negativeFiniteShadowNeverQualifiesAsShortShadowAcrossFactories() {
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addBar(series, 1, 0, 0);
+            addBar(series, 1, 0, 0);
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+            Indicator<Num> negativeShadow = new ConstantIndicator<>(series, series.numFactory().numOf(-1));
+
+            assertFalse(support.isShortShadow(1, negativeShadow));
+        }
+    }
+
+    @Test
+    public void malformedPriorRangePreservesNegativePolarityAcrossFactories() {
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            Num zero = factory.zero();
+            series.addBar(new NonFiniteBar(Instant.EPOCH, zero, factory.numOf(-Double.MAX_VALUE),
+                    factory.numOf(Double.MAX_VALUE), zero));
+            addBar(series, 0, 0, 0);
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertTrue(support.priorAverageRange().getValue(1).isNegative());
+        }
+    }
+
+    @Test
+    public void overflowedMalformedPriorRangeNeverMakesValuesNearWithDoubleNum() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+        Num zero = factory.zero();
+        series.addBar(new NonFiniteBar(Instant.EPOCH, zero, factory.numOf(-Double.MAX_VALUE),
+                factory.numOf(Double.MAX_VALUE), zero));
+        addBar(series, 0, 0, 0);
+        CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+        assertFalse(support.isNear(1, zero, factory.numOf(0.05 * Double.MAX_VALUE)));
+    }
+
+    @Test
+    public void rangeFallbackAvoidsOppositeSignOverflowWithDoubleNum() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+        Num zero = factory.zero();
+        Num maximum = factory.numOf(Double.MAX_VALUE);
+        Num minimum = factory.numOf(-Double.MAX_VALUE);
+        series.addBar(new NonFiniteBar(Instant.EPOCH, zero, maximum, minimum, zero));
+        series.addBar(new NonFiniteBar(Instant.EPOCH.plusSeconds(1), zero, maximum, minimum, zero));
+        series.addBar(new NonFiniteBar(Instant.EPOCH.plusSeconds(2), zero, minimum, maximum, zero));
+        addBar(series, 0, 0, 0);
+        CandleThresholdSupport support = new CandleThresholdSupport(series, 3);
+
+        Num averageRange = support.priorAverageRange().getValue(3);
+        Num expectedRange = maximum.dividedBy(factory.numOf(3)).multipliedBy(factory.numOf(2));
+
+        assertTrue(Num.isFinite(averageRange));
+        assertTrue(averageRange.isEqual(expectedRange));
+        assertTrue(support.isDoji(3));
+    }
+
+    @Test
+    public void extremeCandleClassifiesIdenticallyWithDecimalNum() {
+        BarSeries bodySeries = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance()).build();
+        addBars(bodySeries, 5, 10, 0, 0);
+        addExtremeCandle(bodySeries, -Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE);
+        CandleThresholdSupport bodySupport = new CandleThresholdSupport(bodySeries);
+
+        // DecimalNum computes the magnitudes exactly; both factories must agree.
+        assertTrue(bodySupport.isLongBody(5));
+        assertFalse(bodySupport.isShortBody(5));
+        assertFalse(bodySupport.isDoji(5));
+
+        BarSeries shadowSeries = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance()).build();
+        addBars(shadowSeries, 5, 10, 0, 0);
+        addExtremeCandle(shadowSeries, -Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE);
+        CandleThresholdSupport shadowSupport = new CandleThresholdSupport(shadowSeries);
+
+        assertTrue(shadowSupport.isLongShadow(5, shadowSupport.upperShadow()));
+        assertFalse(shadowSupport.isShortShadow(5, shadowSupport.upperShadow()));
+    }
+
+    @Test
+    public void nonFiniteSourcePriceDisqualifiesLongShadow() {
+        // A bar whose high price is non-finite is missing data: the derived
+        // shadow is unavailable and must never qualify as long, even though
+        // the measurement itself is infinite.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
+        addBars(series, 5, 10, 0, 0);
+        series.barBuilder()
+                .openPrice(1)
+                .closePrice(2)
+                .highPrice(series.numFactory().numOf(Double.POSITIVE_INFINITY))
+                .lowPrice(0)
+                .add();
+        CandleThresholdSupport support = new CandleThresholdSupport(series);
+
+        assertFalse(support.isLongShadow(5, support.upperShadow()));
+    }
+
+    @Test
+    public void overflowedShadowBeatsDoubledBaselineAcrossFactories() {
+        // A period-1 baseline of 0.75 * MAX doubles to infinity under the old
+        // product comparison, collapsing the 1.8 * MAX upper shadow to the same
+        // value in DoubleNum. Dividing the shadow by the factor first preserves
+        // the strict ordering, so both factories agree.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addBar(series, 0.75 * Double.MAX_VALUE, 0, 0); // index 0: baseline body
+            addExtremeCandle(series, -0.8 * Double.MAX_VALUE, -0.8 * Double.MAX_VALUE, Double.MAX_VALUE,
+                    -0.8 * Double.MAX_VALUE); // index 1: upper shadow 1.8 * MAX
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertTrue(support.isLongShadow(1, support.upperShadow()));
+        }
+    }
+
+    @Test
+    public void overflowedShadowDoesNotBeatDoubledBaselineAcrossFactories() {
+        // A period-1 baseline of 0.95 * MAX doubles to infinity in DoubleNum,
+        // collapsing the overflowed 1.8 * MAX upper shadow onto the same
+        // value in the raw comparison; the shadow must still be rejected as
+        // not long. Rebuilding the overflowed shadow exactly at half scale
+        // keeps the strict ordering, so both factories agree.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addBar(series, 0.95 * Double.MAX_VALUE, 0, 0); // index 0: baseline body
+            addExtremeCandle(series, -0.8 * Double.MAX_VALUE, -0.8 * Double.MAX_VALUE, Double.MAX_VALUE,
+                    -0.8 * Double.MAX_VALUE); // index 1: upper shadow 1.8 * MAX
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertFalse(support.isLongShadow(1, support.upperShadow()));
+            // A separately constructed equivalent shadow must classify exactly
+            // like the interned one: the overflowed magnitude is rebuilt at
+            // half scale by type, not by reference identity.
+            assertFalse(support.isLongShadow(1, new UpperShadowIndicator(series)));
+        }
+    }
+
+    @Test
+    public void subnormalLongShadowUsesRawPriorBodyAcrossFactories() {
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(series, 0, 3 * Double.MIN_VALUE, 3 * Double.MIN_VALUE, 0);
+            addExtremeCandle(series, 0, 0, 7 * Double.MIN_VALUE, 0);
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertTrue(support.isLongShadow(1, support.upperShadow()));
+        }
+    }
+
+    @Test
+    public void subnormalShadowIsNotErasedByHalfScalingAcrossFactories() {
+        // The period-1 prior range is 19 * MIN_VALUE, so the true short-shadow
+        // threshold is 1.9 * MIN_VALUE and the 2 * MIN_VALUE upper shadow is
+        // not short. Halving the shadow underflows in DoubleNum; scaling the
+        // shadow up instead keeps the strict ordering, so both factories
+        // agree.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(series, 0, 0, 19 * Double.MIN_VALUE, 0); // index 0: range 19 * MIN
+            addExtremeCandle(series, 0, 0, 2 * Double.MIN_VALUE, 0); // index 1: upper shadow 2 * MIN
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertFalse(support.isShortShadow(1, support.upperShadow()));
+        }
+    }
+
+    @Test
+    public void overflowedPriorAndCurrentBodiesStayStrictlyDecidableAcrossFactories() {
+        // The prior baseline body and the evaluated body both overflow the raw
+        // magnitude (1.5 * MAX and 1.8 * MAX collapse to infinity in DoubleNum);
+        // the half-scale comparison keeps the strict ordering decidable so both
+        // factories agree that the larger body is long.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(series, 0.75 * Double.MAX_VALUE, -0.75 * Double.MAX_VALUE, 0.75 * Double.MAX_VALUE,
+                    -0.75 * Double.MAX_VALUE); // index 0: prior body 1.5 * MAX
+            addExtremeCandle(series, 0.9 * Double.MAX_VALUE, -0.9 * Double.MAX_VALUE, 0.9 * Double.MAX_VALUE,
+                    -0.9 * Double.MAX_VALUE); // index 1: body 1.8 * MAX
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertTrue(support.isLongBody(1));
+        }
+    }
+
+    @Test
+    public void overflowedPriorRangeKeepsShortShadowThresholdDecidableAcrossFactories() {
+        // The period-1 prior range doubles to 2 * MAX and overflows in
+        // DoubleNum; applying the short-shadow factor before restoring the
+        // full-scale baseline keeps the threshold finite (0.2 * MAX), so the
+        // 0.5 * MAX shadow is rejected as not short instead of qualifying
+        // against an infinite threshold.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(series, 0, 0, Double.MAX_VALUE, -Double.MAX_VALUE); // index 0: range 2 * MAX
+            addExtremeCandle(series, 0, 0, 0.5 * Double.MAX_VALUE, 0); // index 1: upper shadow 0.5 * MAX
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertFalse(support.isShortShadow(1, support.upperShadow()));
+        }
+    }
+
+    @Test
+    public void subnormalBodyIsNotErasedByHalfScalingAcrossFactories() {
+        // Both the prior baseline body and the evaluated body are the smallest
+        // positive magnitude; halving each endpoint underflows to zero in
+        // DoubleNum, which would erase the baseline and let the subnormal body
+        // qualify as long. The raw subnormal magnitude is retained instead, so
+        // the strict comparison fails in both factories.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(series, 0, Double.MIN_VALUE, Double.MIN_VALUE, 0); // index 0: body MIN_VALUE
+            addExtremeCandle(series, 0, Double.MIN_VALUE, Double.MIN_VALUE, 0); // index 1: body MIN_VALUE
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertFalse(support.isLongBody(1));
+        }
+    }
+
+    @Test
+    public void adjacentSubnormalBodiesStayStrictlyOrderedAcrossFactories() {
+        // The evaluated body is twice the prior baseline body, both subnormal.
+        // Halving the prior baseline underflows to zero in DoubleNum, whose
+        // half-scale comparison then collapses the doubled body onto the same
+        // smallest positive half magnitude and wrongly rejects it as long. The
+        // raw-scale comparison keeps the strict ordering in both factories.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(series, 0, Double.MIN_VALUE, Double.MIN_VALUE, 0); // index 0: body MIN_VALUE
+            addExtremeCandle(series, 0, 2 * Double.MIN_VALUE, 2 * Double.MIN_VALUE, 0); // index 1: body 2 * MIN_VALUE
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertTrue(support.isLongBody(1));
+
+            BarSeries reversed = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(reversed, 0, 2 * Double.MIN_VALUE, 2 * Double.MIN_VALUE, 0);
+            addExtremeCandle(reversed, 0, Double.MIN_VALUE, Double.MIN_VALUE, 0);
+            CandleThresholdSupport reversedSupport = new CandleThresholdSupport(reversed, 1);
+
+            assertFalse(reversedSupport.isLongBody(1));
+        }
+    }
+
+    @Test
+    public void subnormalNearDifferenceStaysStrictlyOrderedAcrossFactories() {
+        // The prior window range is 19 * MIN_VALUE, so the true near threshold is
+        // 1.9 * MIN_VALUE and a 2 * MIN_VALUE difference is not near. Halving the
+        // baseline rounds to 10 * MIN_VALUE and the one-tenth factor product
+        // rounds back to MIN_VALUE in DoubleNum, collapsing the difference onto
+        // the half-scale baseline and wrongly accepting it as near. The
+        // cross-multiplied raw comparison keeps the strict ordering.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(series, 0, 0, 19 * Double.MIN_VALUE, 0); // index 0: range 19 * MIN_VALUE
+            addExtremeCandle(series, 0, 0, 0, 0); // index 1: flat candle
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            Num first = series.numFactory().numOf(2 * Double.MIN_VALUE);
+            Num second = series.numFactory().zero();
+
+            assertFalse(support.isNear(1, first, second));
+        }
+    }
+
+    @Test
+    public void subnormalDojiBodyStaysStrictlyOrderedAcrossFactories() {
+        // The prior window range is 19 * MIN_VALUE, so the doji threshold is
+        // 1.9 * MIN_VALUE and a 2 * MIN_VALUE body is not a doji. The half-scale
+        // path collapses both the halved body and the factor product onto
+        // MIN_VALUE in DoubleNum and wrongly accepts the body as a doji. The
+        // cross-multiplied raw comparison keeps the strict ordering.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(series, 0, 0, 19 * Double.MIN_VALUE, 0); // index 0: range 19 * MIN_VALUE
+            addExtremeCandle(series, 0, 2 * Double.MIN_VALUE, 2 * Double.MIN_VALUE, 0); // index 1: body 2 * MIN_VALUE
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertFalse(support.isDoji(1));
+        }
+    }
+
+    @Test
+    public void subnormalShortBodyStaysStrictlyOrderedAcrossFactories() {
+        // The prior average body is 5 * MIN_VALUE, so the short-body threshold is
+        // 2.5 * MIN_VALUE and a 2 * MIN_VALUE body qualifies as short. Halving
+        // the 5 * MIN_VALUE baseline rounds to 2 * MIN_VALUE in DoubleNum, whose
+        // half-scale threshold collapses onto the halved body and wrongly rejects
+        // it as short. The raw-scale comparison keeps the strict ordering.
+        for (NumFactory factory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).build();
+            addExtremeCandle(series, 0, 5 * Double.MIN_VALUE, 5 * Double.MIN_VALUE, 0); // index 0: body 5 * MIN_VALUE
+            addExtremeCandle(series, 0, 2 * Double.MIN_VALUE, 2 * Double.MIN_VALUE, 0); // index 1: body 2 * MIN_VALUE
+            CandleThresholdSupport support = new CandleThresholdSupport(series, 1);
+
+            assertTrue(support.isShortBody(1));
+        }
+    }
+
+    @Test
+    public void nonFiniteSourcePriceDisqualifiesShortShadow() {
+        // A bar whose low price is non-finite is missing data: the derived
+        // lower shadow is negative-infinite and must never qualify as short,
+        // even though it is "not greater" than the baseline.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
+        addBars(series, 5, 10, 0, 0);
+        series.addBar(new NonFiniteBar(series.getBar(series.getEndIndex()).getEndTime().minus(Duration.ofHours(12)),
+                series.numFactory().numOf(1), series.numFactory().numOf(2),
+                series.numFactory().numOf(Double.POSITIVE_INFINITY), series.numFactory().numOf(2)));
+        CandleThresholdSupport support = new CandleThresholdSupport(series);
+
+        assertFalse(support.isShortShadow(5, support.lowerShadow()));
+    }
+
+    @Test
+    public void overflowedPriorRangeKeepsDojiDecidable() {
+        // The prior window contains one overflowed range (2 * MAX); the
+        // half-scale source keeps every operand representable, so the baseline
+        // stays finite and a flat candle still qualifies as a doji.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).build();
+
+        addBars(series, 4, 10, 0, 0); // indexes 0-3: body 10, range 10
+        addExtremeCandle(series, -Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE);
+        addBar(series, 0, 0, 0); // index 5: flat candle, body 0, range 0
+        CandleThresholdSupport support = new CandleThresholdSupport(series);
+
+        assertTrue(support.isDoji(5));
+        assertTrue(support.isShortBody(5));
+        assertFalse(support.isLongBody(5));
+    }
+
+    @Test
+    public void overflowedPriorRangeKeepsDojiDecidableWithDecimalNum() {
+        // DecimalNum computes the magnitudes exactly; the doji classification
+        // must agree with the overflowed DoubleNum variant.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance()).build();
+        addBars(series, 4, 10, 0, 0); // indexes 0-3: body 10, range 10
+        addExtremeCandle(series, -Double.MAX_VALUE, -Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE);
+        addBar(series, 0, 0, 0); // index 5: flat candle, body 0, range 0
+        CandleThresholdSupport support = new CandleThresholdSupport(series);
+
+        assertTrue(support.isDoji(5));
+        assertTrue(support.isShortBody(5));
+        assertFalse(support.isLongBody(5));
+    }
+
+    /**
+     * Adds a candle with the given exact prices, bypassing the shadow-based
+     * {@link #addBar(BarSeries, double, double, double)} helper.
+     */
+    private static void addExtremeCandle(BarSeries series, double open, double close, double high, double low) {
+        series.barBuilder().openPrice(open).closePrice(close).highPrice(high).lowPrice(low).add();
     }
 
     @Test
@@ -235,6 +714,43 @@ public class CandleThresholdSupportTest {
         assertSame(CandleThresholdSupport.forSeries(series, 5), CandleThresholdSupport.forSeries(series, 5));
         assertNotSame(CandleThresholdSupport.forSeries(series, 5), CandleThresholdSupport.forSeries(series, 7));
         assertNotSame(CandleThresholdSupport.forSeries(series, 5), CandleThresholdSupport.forSeries(otherSeries, 5));
+    }
+
+    @Test
+    public void forSeriesStaysInternedAcrossManyPeriods() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        addBars(series, 6, 10, 0, 0);
+
+        CandleThresholdSupport periodFive = CandleThresholdSupport.forSeries(series, 5);
+        for (int period = 1; period <= 32; period++) {
+            CandleThresholdSupport support = CandleThresholdSupport.forSeries(series, period);
+            if (period == 5) {
+                assertSame(periodFive, support);
+            } else {
+                assertNotSame(periodFive, support);
+            }
+        }
+    }
+
+    @Test
+    public void collectedReferenceOfAnotherSeriesIsCleanedFromItsOwnerMap() {
+        BarSeries first = new MockBarSeriesBuilder().build();
+        BarSeries second = new MockBarSeriesBuilder().build();
+        addBars(first, 6, 10, 0, 0);
+
+        CandleThresholdSupport expected = CandleThresholdSupport.forSeries(first, 3);
+        Map<Integer, WeakReference<CandleThresholdSupport>> firstPeriods = CandleThresholdSupport
+                .internedPeriods(first);
+        WeakReference<CandleThresholdSupport> stored = firstPeriods.get(3);
+        assertSame(expected, stored.get());
+
+        // Simulate collection of the interned support, then a lookup on another
+        // series: the drain must clean the entry from the owning map, not drop
+        // the queued reference while leaving the stale entry retained.
+        stored.enqueue();
+        CandleThresholdSupport.forSeries(second, 4);
+
+        assertFalse(firstPeriods.containsKey(3));
     }
 
     @Test

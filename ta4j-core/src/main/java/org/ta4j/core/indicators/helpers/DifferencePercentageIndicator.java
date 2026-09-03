@@ -81,6 +81,12 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
     }
 
     @Override
+    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+        lastNotification = null;
+        return super.minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex);
+    }
+
+    @Override
     protected Num calculate(int index) {
         int beginIndex = getBarSeries().getBeginIndex();
         if (beginIndex > index) {

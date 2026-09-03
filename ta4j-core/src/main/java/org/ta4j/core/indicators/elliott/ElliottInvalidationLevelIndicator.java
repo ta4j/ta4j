@@ -61,7 +61,7 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
     }
 
     private ElliottInvalidationLevelIndicator(final Config config) {
-        super(config.series());
+        super(config.scenarioIndicator());
         this.scenarioIndicator = config.scenarioIndicator();
         this.mode = config.mode();
     }

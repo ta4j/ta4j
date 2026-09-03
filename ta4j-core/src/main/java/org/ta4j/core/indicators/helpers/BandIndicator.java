@@ -59,7 +59,7 @@ public class BandIndicator extends CachedIndicator<Num> {
     }
 
     private BandIndicator(Config config) {
-        super(config.series());
+        super(config.middleIndicator(), config.widthIndicator());
         this.middleIndicator = config.middleIndicator();
         this.widthIndicator = config.widthIndicator();
         this.bandType = config.bandType();

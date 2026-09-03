@@ -263,7 +263,8 @@ public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
             return NaN;
         }
 
-        if (index == 0) {
+        if (index <= getBarSeries().getBeginIndex()) {
+            // A bounded series can discard the preceding recursive value.
             return delta;
         }
 
@@ -273,7 +274,7 @@ public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
         }
         Num decayedWithCurrent = previousValue.multipliedBy(decayFactor).plus(delta);
 
-        if (index >= timeFrame) {
+        if (index - getBarSeries().getBeginIndex() >= timeFrame) {
             int expiredIndex = index - timeFrame;
             Num expiredContribution = expiredIndex < getCountOfUnstableBars() ? zero : contribution(expiredIndex);
             if (Num.isNaNOrNull(expiredContribution)) {

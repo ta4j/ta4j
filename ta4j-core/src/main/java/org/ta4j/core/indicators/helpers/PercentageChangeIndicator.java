@@ -60,6 +60,8 @@ import static org.ta4j.core.num.NaN.NaN;
  */
 public class PercentageChangeIndicator extends CachedIndicator<Num> {
 
+    private static final Indicator<?>[] NO_ADDITIONAL_SOURCES = new Indicator<?>[0];
+
     private final Indicator<Num> indicator;
     private final Indicator<Num> previousIndicator;
     private final Num percentageThreshold;
@@ -146,7 +148,7 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
      */
     public PercentageChangeIndicator(Indicator<Num> indicator, Indicator<Num> previousIndicator,
             Num percentageThreshold) {
-        super(indicator);
+        super(indicator, previousIndicator == null ? NO_ADDITIONAL_SOURCES : new Indicator<?>[] { previousIndicator });
         this.indicator = indicator;
         this.previousIndicator = previousIndicator;
         this.percentageThreshold = percentageThreshold;

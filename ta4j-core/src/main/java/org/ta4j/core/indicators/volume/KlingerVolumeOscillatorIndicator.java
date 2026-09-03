@@ -182,7 +182,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
     }
 
     private KlingerVolumeOscillatorIndicator(Config config) {
-        super(config.series());
+        super(config.shortEmaIndicator(), config.longEmaIndicator());
         this.shortPeriod = config.shortPeriod();
         this.longPeriod = config.longPeriod();
         this.scaleMultiplier = config.scaleMultiplier();
@@ -223,8 +223,8 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
         VolumeForceIndicator volumeForceIndicator = new VolumeForceIndicator(volumeIndicator, dailyMeasurementIndicator,
                 trendDirectionIndicator, cumulativeMeasurementIndicator, resolvedScaleMultiplier);
 
-        EMAIndicator shortEmaIndicator = new EMAIndicator(volumeForceIndicator, shortPeriod);
-        EMAIndicator longEmaIndicator = new EMAIndicator(volumeForceIndicator, longPeriod);
+        EMAIndicator shortEmaIndicator = new EvictingEmaIndicator(volumeForceIndicator, shortPeriod);
+        EMAIndicator longEmaIndicator = new EvictingEmaIndicator(volumeForceIndicator, longPeriod);
         return new Config(series, highPriceIndicator, lowPriceIndicator, closePriceIndicator, volumeIndicator,
                 shortPeriod, longPeriod, resolvedScaleMultiplier, dailyMeasurementIndicator, trendDirectionIndicator,
                 cumulativeMeasurementIndicator, volumeForceIndicator, shortEmaIndicator, longEmaIndicator);
@@ -243,6 +243,20 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
         }
 
         return shortValue.minus(longValue);
+    }
+
+    /**
+     * Discards the whole oscillator cache when the series head advances. The EMA
+     * inputs rebaseline against the retained window after a head advance, so any
+     * surviving oscillator value was computed from a stale EMA tail; discarding the
+     * cache makes post-advance reads recompute from the freshly rebuilt downstream
+     * chain.
+     *
+     * @return {@code true}, evicting every cached entry
+     */
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
     }
 
     /**
@@ -309,7 +323,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
 
         private CumulativeMeasurementIndicator(final Indicator<Num> measurementIndicator,
                 final Indicator<Num> trendIndicator) {
-            super(IndicatorUtils.requireSameSeries(measurementIndicator, trendIndicator));
+            super(measurementIndicator, trendIndicator);
             this.measurementIndicator = measurementIndicator;
             this.trendIndicator = trendIndicator;
             this.unstableBars = Math.max(measurementIndicator.getCountOfUnstableBars(),
@@ -343,6 +357,19 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
             return previousMeasurement.plus(measurement);
         }
 
+        /**
+         * Equal-trend stretches recurse to the previous cumulative value and the
+         * begin-index base case returns the raw measurement, so every value is
+         * reconstructable from the retained window; the whole cache is discarded on
+         * head advance so that the post-advance cumulative measurement follows the
+         * freshly recomputed trend direction instead of values accumulated under a
+         * stale one.
+         */
+        @Override
+        protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+            return true;
+        }
+
         @Override
         public int getCountOfUnstableBars() {
             return unstableBars;
@@ -363,8 +390,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
         private VolumeForceIndicator(final Indicator<Num> volumeIndicator, final Indicator<Num> measurementIndicator,
                 final Indicator<Num> trendIndicator, final Indicator<Num> cumulativeMeasurementIndicator,
                 final Num scaleMultiplier) {
-            super(IndicatorUtils.requireSameSeries(volumeIndicator, measurementIndicator, trendIndicator,
-                    cumulativeMeasurementIndicator));
+            super(volumeIndicator, measurementIndicator, trendIndicator, cumulativeMeasurementIndicator);
 
             this.volumeIndicator = volumeIndicator;
             this.measurementIndicator = measurementIndicator;
@@ -407,6 +433,20 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
             return volume.multipliedBy(trend).multipliedBy(magnitude).multipliedBy(scaleMultiplier);
         }
 
+        /**
+         * Discards the whole cache when the series head advances. The cumulative
+         * measurement rebaselines against the retained window after a head advance, so
+         * any surviving volume-force value mixes the rebaselined measurement with a
+         * stale magnitude; discarding the cache makes post-advance reads recompute from
+         * the freshly rebuilt chain.
+         *
+         * @return {@code true}, evicting every cached entry
+         */
+        @Override
+        protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+            return true;
+        }
+
         @Override
         public int getCountOfUnstableBars() {
             return unstableBars;
@@ -415,6 +455,27 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
         @Override
         public String toString() {
             return getClass().getSimpleName() + " scaleMultiplier: " + scaleMultiplier;
+        }
+    }
+
+    private static final class EvictingEmaIndicator extends EMAIndicator {
+
+        private EvictingEmaIndicator(final Indicator<Num> indicator, final int barCount) {
+            super(indicator, barCount);
+        }
+
+        /**
+         * Discards the whole cache when the series head advances. EMA values depend on
+         * the entire retained history of the volume-force input, and the volume force
+         * rebaselines after a head advance, so any surviving EMA value mixes fresh and
+         * stale volume-force inputs; discarding the cache makes post-advance reads
+         * recurse through freshly recomputed volume-force values.
+         *
+         * @return {@code true}, evicting every cached entry
+         */
+        @Override
+        protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+            return true;
         }
     }
 
@@ -427,7 +488,10 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
 
         private DailyMeasurementIndicator(final Indicator<Num> highPriceIndicator,
                 final Indicator<Num> lowPriceIndicator) {
-            super(IndicatorUtils.requireSameSeries(highPriceIndicator, lowPriceIndicator));
+            // Both sources are registered: a rebaselining low (e.g., a stochastic)
+            // must invalidate the whole cache after a series head advance, not just
+            // the high-source unstable band.
+            super(highPriceIndicator, lowPriceIndicator);
             this.highPriceIndicator = highPriceIndicator;
             this.lowPriceIndicator = lowPriceIndicator;
             this.unstableBars = Math.max(highPriceIndicator.getCountOfUnstableBars(),
@@ -467,7 +531,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
         }
 
         private TrendDirectionIndicator(final Indicator<Num> basisIndicator) {
-            super(IndicatorUtils.requireSameSeries(basisIndicator, basisIndicator));
+            super(basisIndicator);
             this.basisIndicator = basisIndicator;
             this.one = getBarSeries().numFactory().one();
             this.minusOne = getBarSeries().numFactory().minusOne();
@@ -508,5 +572,21 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
             return BinaryOperationIndicator.sum(BinaryOperationIndicator.sum(highPriceIndicator, lowPriceIndicator),
                     closePriceIndicator);
         }
+
+        /**
+         * An equal-basis stretch recurses to the previous direction and the begin-index
+         * base case returns {@code +1}, so every direction is reconstructable from the
+         * retained window; the whole cache is discarded on head advance so that a
+         * direction computed from evicted bars cannot carry into the cumulative
+         * measurement and volume-force calculations.
+         *
+         * @return {@code true}, evicting every cached entry
+         */
+        @Override
+        protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+            return true;
+        }
+
     }
+
 }
