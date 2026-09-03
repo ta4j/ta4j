@@ -404,4 +404,20 @@ public class WildersMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         assertNumEquals(5, indicator.getValue(5));
     }
 
+    @Test
+    public void clearsCacheWhenSeriesHeadAdvances() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
+        WildersMAIndicator indicator = new WildersMAIndicator(new ClosePriceIndicator(series), 3);
+
+        // Cache values before head advance
+        indicator.getValue(5);
+
+        // Advance series head by setting maximum bar count
+        series.setMaximumBarCount(3);
+
+        // Values should match a freshly seeded indicator over retained bars [4, 5, 6]
+        assertNumEquals(4, indicator.getValue(3));
+        assertNumEquals(5, indicator.getValue(5));
+    }
+
 }
