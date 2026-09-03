@@ -167,7 +167,7 @@ public class CorrentropyKalmanFilterIndicator extends CachedIndicator<Num> {
 
     private CorrentropyKalmanFilterIndicator(Num kernelBandwidth, int maxIterations, Indicator<Num> indicator,
             Indicator<Num> processNoiseVariance, Indicator<Num> measurementNoiseVariance) {
-        super(IndicatorUtils.requireSameSeries(indicator, processNoiseVariance, measurementNoiseVariance));
+        super(indicator, processNoiseVariance, measurementNoiseVariance);
         this.indicator = indicator;
         this.processNoiseIndicator = processNoiseVariance;
         this.measurementNoiseIndicator = measurementNoiseVariance;
