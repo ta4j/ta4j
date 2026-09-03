@@ -3,161 +3,210 @@
  */
 package org.ta4j.core.indicators.candles;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.indicators.trend.UpTrendIndicator;
-import org.ta4j.core.mocks.MockBarBuilder;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 public class ThreeInsideDownIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>, Num> {
 
-    private BarSeries series;
+    /**
+     * Pattern index: bars 0-9 adaptive baseline, 10-12 pattern.
+     */
+    private static final int PATTERN_INDEX = 12;
 
     public ThreeInsideDownIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
-    private List<Bar> generateUptrend() {
-        List<Bar> bars = new ArrayList<Bar>(30);
-        for (int i = 0; i < 17; ++i) {
-            bars.add(
-                    new MockBarBuilder(numFactory).openPrice(i).closePrice(i + 6).highPrice(i + 8).lowPrice(i).build());
-        }
-
-        return bars;
-    }
-
-    @Before
-    public void setUp() {
-        series = new MockBarSeriesBuilder().withNumFactory(numFactory).withBars(generateUptrend()).build();
-    }
-
     @Test
-    public void getValue() {
-        series.barBuilder().openPrice(17).closePrice(25).highPrice(25).lowPrice(17).add();
-        series.barBuilder().openPrice(18).closePrice(26).highPrice(28).lowPrice(17).add();
-        series.barBuilder().openPrice(22).closePrice(19).highPrice(22).lowPrice(18).add();
-        series.barBuilder().openPrice(19).closePrice(14).highPrice(19).lowPrice(12).add();
-        series.barBuilder().openPrice(11).closePrice(10).highPrice(12).lowPrice(10).add();
+    public void matchesValidThreeInsideDown() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBaselineBars(series, 10);
+        addBar(series, 20, 30, 31, 19); // first: bullish long body
+        addBar(series, 27.5, 27, 28, 26.5); // second: short body inside the first body
+        addBar(series, 22, 18, 23, 17); // third: bearish close below the first open (20)
 
-        var tid = new ThreeInsideDownIndicator(series);
-        assertFalse(tid.getValue(17));
-        assertFalse(tid.getValue(18));
-        assertFalse(tid.getValue(19));
-        assertTrue(tid.getValue(20));
-        assertFalse(tid.getValue(21));
-    }
-
-    @Test
-    public void patternDoesNotSurviveHeadAdvancePastHaramiBaseline() {
-        series.barBuilder().openPrice(17).closePrice(25).highPrice(25).lowPrice(17).add();
-        series.barBuilder().openPrice(18).closePrice(26).highPrice(28).lowPrice(17).add();
-        series.barBuilder().openPrice(22).closePrice(19).highPrice(22).lowPrice(18).add();
-        series.barBuilder().openPrice(19).closePrice(14).highPrice(19).lowPrice(12).add();
-        series.barBuilder().openPrice(11).closePrice(10).highPrice(12).lowPrice(10).add();
-
-        ThreeInsideDownIndicator tid = new ThreeInsideDownIndicator(series);
-        assertTrue(tid.getValue(20));
-
-        // Advancing the head past index 14 removes the harami baseline for the
-        // harami evaluated at index 19; the retained match must not survive.
-        series.setMaximumBarCount(7);
-        assertEquals(15, series.getBeginIndex());
-        assertFalse(tid.getValue(20));
+        assertTrue(new ThreeInsideDownIndicator(series).getValue(PATTERN_INDEX));
     }
 
     @Test
     public void customAveragePeriodGatesPatternOnExtendedBaseline() {
-        series.barBuilder().openPrice(17).closePrice(25).highPrice(25).lowPrice(17).add();
-        series.barBuilder().openPrice(18).closePrice(26).highPrice(28).lowPrice(17).add();
-        series.barBuilder().openPrice(22).closePrice(19).highPrice(22).lowPrice(18).add();
-        series.barBuilder().openPrice(19).closePrice(14).highPrice(19).lowPrice(12).add();
-        series.barBuilder().openPrice(11).closePrice(10).highPrice(12).lowPrice(10).add();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBaselineBars(series, 10);
+        addBar(series, 20, 30, 31, 19);
+        addBar(series, 27.5, 27, 28, 26.5);
+        addBar(series, 22, 18, 23, 17);
 
-        assertTrue(new ThreeInsideDownIndicator(series, CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD).getValue(20));
-        // A 20-candle baseline cannot complete behind the harami at index 19,
+        assertTrue(new ThreeInsideDownIndicator(series, CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD)
+                .getValue(PATTERN_INDEX));
+        // A 20-candle baseline cannot complete behind the harami at index 11,
         // so the forwarded period suppresses the otherwise-matching pattern.
-        assertFalse(new ThreeInsideDownIndicator(series, 20).getValue(20));
+        assertFalse(new ThreeInsideDownIndicator(series, 20).getValue(PATTERN_INDEX));
     }
 
     @Test
-    public void getValueWhenIndexBelowUnstableBars() {
-        var tid = new ThreeInsideDownIndicator(series);
-        assertFalse(tid.getValue(0));
-        assertFalse(tid.getValue(1));
-        assertFalse(tid.getValue(2));
+    public void firstBarMustBeBullish() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBaselineBars(series, 10);
+        addBar(series, 30, 20, 31, 19); // first: bearish
+        addBar(series, 27.5, 27, 28, 26.5);
+        addBar(series, 22, 18, 23, 17);
+
+        assertFalse(new ThreeInsideDownIndicator(series).getValue(PATTERN_INDEX));
     }
 
     @Test
-    public void getValueWhenHaramiExistsButThirdBarDoesNotConfirm() {
-        series.barBuilder().openPrice(17).closePrice(25).highPrice(25).lowPrice(17).add();
-        series.barBuilder().openPrice(22).closePrice(19).highPrice(22).lowPrice(18).add();
-        series.barBuilder().openPrice(19).closePrice(18).highPrice(19).lowPrice(18).add();
+    public void firstBarMustHaveLongBody() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBaselineBars(series, 10);
+        addBar(series, 21, 20, 22, 19); // first: body 1, not above the average body of 2
+        addBar(series, 27.5, 27, 28, 26.5);
+        addBar(series, 22, 18, 23, 17);
 
-        var tid = new ThreeInsideDownIndicator(series);
-        assertFalse(tid.getValue(19));
+        assertFalse(new ThreeInsideDownIndicator(series).getValue(PATTERN_INDEX));
     }
 
     @Test
-    public void getValueWhenHaramiExistsButThirdBarIsBullish() {
-        series.barBuilder().openPrice(17).closePrice(25).highPrice(25).lowPrice(17).add();
-        series.barBuilder().openPrice(22).closePrice(19).highPrice(22).lowPrice(18).add();
-        series.barBuilder().openPrice(16).closePrice(18).highPrice(19).lowPrice(15).add();
+    public void secondBarMustHaveShortBody() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBaselineBars(series, 10);
+        addBar(series, 20, 30, 31, 19);
+        addBar(series, 25, 28, 28.5, 24.5); // second: body 3, short-body threshold is 1.8
+        addBar(series, 22, 18, 23, 17);
 
-        var tid = new ThreeInsideDownIndicator(series);
-        assertFalse(tid.getValue(19));
+        assertFalse(new ThreeInsideDownIndicator(series).getValue(PATTERN_INDEX));
     }
 
     @Test
-    public void getValueWhenPatternAppearsInDowntrend() {
-        BarSeries downtrendSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+    public void secondBarMustBeInsideFirstBody() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBaselineBars(series, 10);
+        addBar(series, 20, 30, 31, 19);
+        addBar(series, 18.5, 18, 19, 17.5); // second: short body outside the first body [20, 30]
+        addBar(series, 22, 18, 23, 17);
 
-        for (int i = 46; i > 29; --i) {
-            downtrendSeries.barBuilder().openPrice(i).closePrice(i - 6).highPrice(i).lowPrice(i - 8).add();
+        assertFalse(new ThreeInsideDownIndicator(series).getValue(PATTERN_INDEX));
+    }
+
+    @Test
+    public void thirdCloseBoundaryIsStrict() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBaselineBars(series, 10);
+        addBar(series, 20, 30, 31, 19);
+        addBar(series, 27.5, 27, 28, 26.5);
+        addBar(series, 21, 20, 22, 19.5); // third: close exactly at the first open 20
+
+        assertFalse(new ThreeInsideDownIndicator(series).getValue(PATTERN_INDEX));
+    }
+
+    @Test
+    public void thirdCloseJustBeyondFirstOpenMatches() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBaselineBars(series, 10);
+        addBar(series, 20, 30, 31, 19);
+        addBar(series, 27.5, 27, 28, 26.5);
+        addBar(series, 21, 19.99, 22, 19.5); // third: close just below the first open 20
+
+        assertTrue(new ThreeInsideDownIndicator(series).getValue(PATTERN_INDEX));
+    }
+
+    @Test
+    public void thirdBarMustBeBearish() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBaselineBars(series, 10);
+        addBar(series, 20, 30, 31, 19);
+        addBar(series, 27.5, 27, 28, 26.5);
+        addBar(series, 18, 19, 20, 17.5); // third: bullish, close still below the first open 20
+
+        assertFalse(new ThreeInsideDownIndicator(series).getValue(PATTERN_INDEX));
+    }
+
+    @Test
+    public void thirdCloseAboveFirstOpenFails() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBaselineBars(series, 10);
+        addBar(series, 20, 30, 31, 19);
+        addBar(series, 27.5, 27, 28, 26.5);
+        addBar(series, 22, 20.5, 23, 19.5); // third: close above the first open 20
+
+        assertFalse(new ThreeInsideDownIndicator(series).getValue(PATTERN_INDEX));
+    }
+
+    @Test
+    public void contextBeforeBaselineDoesNotChangeResult() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 5; i++) {
+            addBar(series, 50, 100, 120, 40); // free context: outside pattern and baseline windows
         }
+        addBaselineBars(series, 5);
+        addBar(series, 20, 30, 31, 19);
+        addBar(series, 27.5, 27, 28, 26.5);
+        addBar(series, 22, 18, 23, 17);
 
-        downtrendSeries.barBuilder().openPrice(23).closePrice(17).highPrice(23).lowPrice(17).add();
-        downtrendSeries.barBuilder().openPrice(19).closePrice(21).highPrice(21).lowPrice(19).add();
-        downtrendSeries.barBuilder().openPrice(20).closePrice(16).highPrice(21).lowPrice(15).add();
-
-        var tid = new ThreeInsideDownIndicator(downtrendSeries);
-        assertFalse(tid.getValue(19));
+        assertTrue(new ThreeInsideDownIndicator(series).getValue(PATTERN_INDEX));
     }
 
     @Test
-    public void getValueWhenThirdBarClosesExactlyAtFirstBarOpen() {
-        series.barBuilder().openPrice(17).closePrice(25).highPrice(25).lowPrice(17).add();
-        series.barBuilder().openPrice(22).closePrice(19).highPrice(22).lowPrice(18).add();
-        series.barBuilder().openPrice(19).closePrice(17).highPrice(19).lowPrice(17).add();
+    public void contextAfterPatternDoesNotChangeResult() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBaselineBars(series, 10);
+        addBar(series, 20, 30, 31, 19);
+        addBar(series, 27.5, 27, 28, 26.5);
+        addBar(series, 22, 18, 23, 17);
+        addBar(series, 50, 100, 120, 40); // outside the pattern window
 
-        var tid = new ThreeInsideDownIndicator(series);
-        assertFalse(tid.getValue(19));
+        assertTrue(new ThreeInsideDownIndicator(series).getValue(PATTERN_INDEX));
     }
 
     @Test
-    public void getValueWhenThirdBarClosesBarelyBelowFirstBarOpen() {
-        series.barBuilder().openPrice(17).closePrice(25).highPrice(25).lowPrice(17).add();
-        series.barBuilder().openPrice(22).closePrice(19).highPrice(22).lowPrice(18).add();
-        series.barBuilder().openPrice(19).closePrice(16.99).highPrice(19).lowPrice(16).add();
+    public void falseBeforeWarmUpBoundaryAndTrueAtBoundary() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBaselineBars(series, 5);
+        addBar(series, 20, 30, 31, 19); // index 5: first
+        addBar(series, 27.5, 27, 28, 26.5); // index 6: second
+        addBar(series, 22, 18, 23, 17); // index 7: third
 
-        var tid = new ThreeInsideDownIndicator(series);
-        assertTrue(tid.getValue(19));
+        ThreeInsideDownIndicator indicator = new ThreeInsideDownIndicator(series);
+        assertEquals(7, indicator.getCountOfUnstableBars());
+        for (int i = 0; i < indicator.getCountOfUnstableBars(); i++) {
+            assertFalse("expected false at " + i, indicator.getValue(i));
+        }
+        assertTrue(indicator.getValue(7));
+    }
+
+    @Test
+    public void matchesWithNonZeroBeginIndexAtWarmUpBoundary() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBaselineBars(series, 10); // indexes 0-9, evicted
+        addBaselineBars(series, 5); // indexes 10-14: baseline of the retained series
+        addBar(series, 20, 30, 31, 19); // index 15: first
+        addBar(series, 27.5, 27, 28, 26.5); // index 16: second
+        addBar(series, 22, 18, 23, 17); // index 17: third
+        addBaselineBars(series, 2);
+        series.setMaximumBarCount(10);
+
+        ThreeInsideDownIndicator indicator = new ThreeInsideDownIndicator(series);
+        assertFalse(indicator.getValue(16));
+        assertTrue(indicator.getValue(17));
+    }
+
+    @Test
+    public void rejectsInvalidAveragePeriod() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        assertThrows(IllegalArgumentException.class, () -> new ThreeInsideDownIndicator(series, 0));
     }
 
     @Override
@@ -167,10 +216,13 @@ public class ThreeInsideDownIndicatorTest extends AbstractIndicatorTest<Indicato
                 serializationFixture(series, new ThreeInsideDownIndicator(series, 3), stableIndexes(series)));
     }
 
-    @Test
-    public void getCountOfUnstableBarsMatchesTrendGateWarmUp() {
-        var tid = new ThreeInsideDownIndicator(series);
-        assertEquals(Math.max(2, new UpTrendIndicator(series).getCountOfUnstableBars()), tid.getCountOfUnstableBars());
+    private void addBaselineBars(BarSeries series, int count) {
+        for (int i = 0; i < count; i++) {
+            addBar(series, 10, 12, 13, 9); // bullish, body 2, range 4
+        }
     }
 
+    private void addBar(BarSeries series, double open, double close, double high, double low) {
+        series.barBuilder().openPrice(open).closePrice(close).highPrice(high).lowPrice(low).add();
+    }
 }
