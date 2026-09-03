@@ -374,6 +374,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
         public int getCountOfUnstableBars() {
             return unstableBars;
         }
+
     }
 
     private static final class VolumeForceIndicator extends CachedIndicator<Num> {
@@ -586,7 +587,6 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
         protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
             return true;
         }
-
     }
 
 }

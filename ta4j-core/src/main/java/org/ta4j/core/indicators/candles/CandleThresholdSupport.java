@@ -503,6 +503,36 @@ final class CandleThresholdSupport {
     }
 
     /**
+     * Validates the series, average period, and penetration fraction for the
+     * piercing/dark-cloud patterns, whose anti-engulfing close clause leaves no
+     * value that can satisfy a full-body penetration.
+     *
+     * @param series        the bar series to evaluate
+     * @param averagePeriod the number of preceding candles averaged into each
+     *                      baseline
+     * @param penetration   the fraction of the first body the second close must
+     *                      penetrate, below 1
+     * @return the validated series
+     * @throws NullPointerException     if {@code series} is null
+     * @throws IllegalArgumentException if {@code averagePeriod} is outside the
+     *                                  supported range, {@code penetration} is not
+     *                                  finite or outside (0, 1), or
+     *                                  {@code penetration} equals 1 (a full-body
+     *                                  penetration engulfs the first body and can
+     *                                  never match either pattern)
+     */
+    static BarSeries validateSeriesAndAveragePeriodAndPartialPenetration(BarSeries series, int averagePeriod,
+            double penetration) {
+        BarSeries validatedSeries = validateSeriesAndAveragePeriodAndPenetration(series, averagePeriod, penetration);
+        if (penetration == 1) {
+            throw new IllegalArgumentException(
+                    "penetration must be below 1: a full-body penetration engulfs the first body and can never match,"
+                            + " but was: " + penetration);
+        }
+        return validatedSeries;
+    }
+
+    /**
      * The shifted rolling average of the preceding {@code averagePeriod} candle
      * bodies, the baseline against which body-dependent thresholds are evaluated at
      * each index.

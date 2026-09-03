@@ -691,6 +691,7 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
             double primitive = value.doubleValue();
             return Double.isFinite(primitive) && (primitive != 0d || value.isZero()) ? primitive : Double.NaN;
         }
+
     }
 
     private static final class PosteriorFrame {

@@ -223,6 +223,7 @@ public final class KinematicKalmanForecastStateIndicator extends CachedIndicator
         public int getCountOfUnstableBars() {
             return KinematicKalmanForecastStateIndicator.this.getCountOfUnstableBars();
         }
+
     }
 
     private record State(Num position, Num velocity, Num positionVariance, Num positionVelocityCovariance,

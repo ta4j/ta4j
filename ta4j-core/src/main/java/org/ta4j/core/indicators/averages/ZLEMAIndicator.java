@@ -61,4 +61,5 @@ public class ZLEMAIndicator extends RecursiveCachedIndicator<Num> {
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;
     }
+
 }

@@ -653,6 +653,70 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void unannotatedRecursiveSubclassKeepsCachedValuesWhenSeriesHeadAdvances() {
+        // RecursiveCachedIndicator opts into the head-advance exemption by
+        // default: a subclass that computes each value from its predecessor
+        // keeps pre-advance values even without a hook override of its own,
+        // because those values encode removed history that a recomputed
+        // unstable band could not reproduce. Non-uniform closes keep the
+        // pre-advance cumulative (1+2+1+2+3 = 9) distinct from a reseeded
+        // chain restarted from the first retained close (1+1+2+3 = 7).
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 1d, 2d, 3d, 4d, 5d)
+                .build();
+        CumulativeRecursiveIndicator cumulative = new CumulativeRecursiveIndicator(new ClosePriceIndicator(barSeries));
+        Num beforeAdvance = cumulative.getValue(4);
+
+        barSeries.setMaximumBarCount(5);
+        assertEquals(2, barSeries.getBeginIndex());
+
+        assertNumEquals(beforeAdvance, cumulative.getValue(4));
+    }
+
+    @Test
+    public void windowedRecursiveIndicatorRecomputesStaleBandWhenSeriesHeadAdvances() {
+        // VolumeIndicator recurses only to walk its rolling accumulation; its
+        // values depend on a fixed trailing window, so after a head advance the
+        // stale band must be dropped and recomputed against the retained window
+        // like any windowed indicator. The blanket recursive exemption used to
+        // keep the pre-advance sums cached here.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 7; i++) {
+            barSeries.barBuilder().closePrice(i + 1).volume(i + 4).add();
+        }
+        VolumeIndicator volume = new VolumeIndicator(barSeries, 3);
+        assertNumEquals(15, volume.getValue(2)); // mock volumes 4 + 5 + 6
+        assertNumEquals(18, volume.getValue(3)); // mock volumes 5 + 6 + 7
+
+        barSeries.setMaximumBarCount(5);
+        assertEquals(2, barSeries.getBeginIndex());
+
+        // Fresh values cover only the retained window: bar 2 alone, then bars
+        // 2 and 3 - not the stale pre-advance sums over bars 0..2 and 0..3.
+        assertNumEquals(6, volume.getValue(2));
+        assertNumEquals(13, volume.getValue(3)); // mock volumes 6 + 7
+    }
+
+    @Test
+    public void windowedRecursiveCorrelationRecomputesAgainstRetainedWindowWhenSeriesHeadAdvances() {
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 7; i++) {
+            barSeries.barBuilder().closePrice(i + 1).volume(i + 4).add();
+        }
+        PearsonCorrelationIndicator correlation = new PearsonCorrelationIndicator(new ClosePriceIndicator(barSeries),
+                new VolumeIndicator(barSeries, 1), 3);
+        // Closes (1, 2, 3) and volumes (4, 5, 6) are perfectly correlated.
+        assertNumEquals(1, correlation.getValue(2));
+
+        barSeries.setMaximumBarCount(5);
+        assertEquals(2, barSeries.getBeginIndex());
+
+        // A single retained observation cannot define a correlation: the stale
+        // pre-advance coefficient must not survive the head advance.
+        assertTrue(correlation.getValue(2).isNaN());
+    }
+
+    @Test
     public void leaveLastBarUncached() {
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
         var smaIndicator = new SMAIndicator(new ClosePriceIndicator(barSeries), 5);
@@ -1655,6 +1719,29 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         int getCalculationCount() {
             return calculationCount.get();
+        }
+    }
+
+    private static final class CumulativeRecursiveIndicator extends RecursiveCachedIndicator<Num> {
+
+        private final Indicator<Num> source;
+
+        private CumulativeRecursiveIndicator(Indicator<Num> source) {
+            super(source);
+            this.source = source;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            if (index == 0) {
+                return source.getValue(0);
+            }
+            return getValue(index - 1).plus(source.getValue(index));
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 3;
         }
     }
 

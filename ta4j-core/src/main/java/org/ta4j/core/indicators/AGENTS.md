@@ -63,7 +63,16 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   pre-advance values on bounded series, so do not rely on reseeding
   semantics for them. Fixed-window recursive indicators such as
   `VolumeIndicator` and `PearsonCorrelationIndicator` keep the default
-  floor and are recomputed like any windowed indicator.
+  floor and are recomputed like any windowed indicator: the floor retains
+  a cached suffix while evicting the band below it, and a read inside the
+  evicted band is served by iteratively prefilling from the first missing
+  index (`RecursiveCachedIndicator` routes the read through
+  `CachedBuffer.firstMissingIndex`), so only the gap is recomputed and no
+  floor override is needed. Do not override
+  `minimumCacheableIndexAfterHeadAdvance(int)` to return
+  `Integer.MAX_VALUE` for such indicators: discarding the whole cache on
+  head advance would restore an O(`maximumBarCount`) rebuild after every
+  append to a full bounded series.
 - Conditionally recursive indicators (recursion only along special
   stretches, e.g. flat windows or equal-basis Klinger trend stretches)
   override `requiresFullCacheInvalidationAfterHeadAdvance()` to return
@@ -78,6 +87,15 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   cumulative measurement, volume force, both EMAs, and the outer
   oscillator, because each downstream cache mixes fresh and stale inputs
   once the cumulative measurement rebaselines.
+- `RecursiveCachedIndicator` opts in by default because its subclasses
+  compute each value from its predecessors; recursive subclasses over a
+  fixed trailing window, such as `VolumeIndicator` and
+  `PearsonCorrelationIndicator`, must override back to `false` so their
+  stale bands are recomputed like any windowed indicator. Direct
+  `CachedIndicator` subclasses that recurse into earlier `getValue`
+  results must override the hook back to `true`;
+  `RecursiveCachedIndicator` subclasses inherit `true` and must not
+  redeclare the override.
 
 ## NetMomentumIndicator specifics
 

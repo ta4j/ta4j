@@ -57,4 +57,5 @@ public class VolumeIndicatorRegressionTest extends AbstractIndicatorTest<org.ta4
         ChaikinMoneyFlowIndicator cmf = new ChaikinMoneyFlowIndicator(series, 20);
         assertNumEquals(-0.1211, cmf.getValue(19));
     }
+
 }

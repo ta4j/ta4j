@@ -55,9 +55,4 @@ public class NVIIndicator extends RecursiveCachedIndicator<Num> {
         return 0;
     }
 
-    @Override
-    protected boolean hasRecursiveDependencies() {
-        return true;
-    }
-
 }

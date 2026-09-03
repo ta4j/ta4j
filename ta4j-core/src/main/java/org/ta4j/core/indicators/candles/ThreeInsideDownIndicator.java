@@ -11,24 +11,55 @@ import org.ta4j.core.indicators.trend.UpTrendIndicator;
 /**
  * Three inside down candle indicator.
  *
+ * <p>
+ * The harami baseline averages the preceding
+ * {@link CandleThresholdSupport#DEFAULT_AVERAGE_PERIOD} candle bodies by
+ * default; use {@link #ThreeInsideDownIndicator(BarSeries, int)} to tune it.
+ *
  * @see <a href="https://www.investopedia.com/terms/t/three-inside-updown.asp">
  *      https://www.investopedia.com/terms/t/three-inside-updown.asp</a>
  * @since 0.22.2
  */
 public class ThreeInsideDownIndicator extends CachedIndicator<Boolean> {
 
+    private final int averagePeriod;
     private final transient UpTrendIndicator trendIndicator;
     private final transient BearishHaramiIndicator harami;
 
     /**
-     * Constructor.
+     * Constructor with the default average period.
      *
      * @param series the bar series
      */
     public ThreeInsideDownIndicator(final BarSeries series) {
+        this(series, CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD);
+    }
+
+    /**
+     * Constructor with a custom average period for the harami body baselines.
+     *
+     * @param series        the bar series
+     * @param averagePeriod the number of preceding candles averaged into the harami
+     *                      body baselines (at least 1)
+     * @since 0.24.2
+     */
+    public ThreeInsideDownIndicator(final BarSeries series, final int averagePeriod) {
         super(series);
+        this.averagePeriod = averagePeriod;
         this.trendIndicator = new UpTrendIndicator(series);
-        this.harami = new BearishHaramiIndicator(series);
+        this.harami = new BearishHaramiIndicator(series, averagePeriod);
+    }
+
+    @Override
+    public Boolean getValue(final int index) {
+        // The harami evaluated at index - 1 needs its own baseline window
+        // complete; gate pre-cache so a retained result cannot outlive it.
+        final BarSeries series = getBarSeries();
+        if (series != null && index >= series.getBeginIndex() && index <= series.getEndIndex()
+                && !harami.thresholds.isValid(harami.latestBaselineIndex(index - 1))) {
+            return false;
+        }
+        return super.getValue(index);
     }
 
     @Override

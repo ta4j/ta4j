@@ -242,6 +242,7 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
         public int getCountOfUnstableBars() {
             return indicator.getCountOfUnstableBars();
         }
+
     }
 
 }

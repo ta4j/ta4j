@@ -105,4 +105,5 @@ public class SuperTrendLowerBandIndicator extends RecursiveCachedIndicator<Num> 
     public int getCountOfUnstableBars() {
         return atrIndicator.getCountOfUnstableBars();
     }
+
 }

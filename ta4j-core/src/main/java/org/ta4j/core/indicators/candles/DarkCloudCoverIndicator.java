@@ -3,128 +3,131 @@
  */
 package org.ta4j.core.indicators.candles;
 
-import java.util.Objects;
-
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.trend.UpTrendIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Dark cloud cover candlestick pattern indicator.
+ * Dark cloud cover pattern indicator.
  *
  * <p>
- * A dark cloud cover pattern is detected when a long bullish candle in an
- * uptrend is followed by a long bearish candle that gaps up at the open and
- * closes deep into the first candle's body.
- * </p>
+ * Detected at index {@code i} when the two-candle sequence ending at {@code i}
+ * satisfies
+ *
+ * <pre>
+ * first.isBullish() &amp;&amp; isLongBody(i - 1) &amp;&amp; second.isBearish() &amp;&amp; open(i) &gt; high(i - 1) &amp;&amp; close(i) &gt; open(i - 1)
+ *         &amp;&amp; close(i) &lt;= bodyTop(i - 1) - penetration * body(i - 1)
+ * </pre>
+ *
+ * where {@code bodyTop = max(open, close)}, {@code body = |close - open|}, and
+ * {@code isLongBody} requires a body strictly greater than the
+ * {@code averagePeriod}-bar prior average body (factor 1.0). The gap above the
+ * prior high is strict ({@code >}), while the penetration of the prior body is
+ * inclusive ({@code <=}): a close exactly on the penetration threshold still
+ * matches. The close must also remain strictly above the first candle's open
+ * ({@code >}): a close at or below it engulfs the first body and is not a dark
+ * cloud cover.
  *
  * <p>
- * Invalid ratio denominators (zero or NaN in first open, second open, or first
- * close) are treated as non-pattern bars and return {@code false}.
- * </p>
+ * The default {@code averagePeriod} is
+ * {@value CandleThresholdSupport#DEFAULT_AVERAGE_PERIOD} bars and the default
+ * {@code penetration} is {@value #DEFAULT_PENETRATION}.
  *
  * <p>
- * Default thresholds:
- * </p>
- * <ul>
- * <li>{@code bigBodyThresholdPercentage = 0.03} (3%)</li>
- * <li>{@code gapThresholdPercentage = 0.0} (any strict gap up)</li>
- * <li>{@code penetrationThresholdPercentage = 0.5} (close below midpoint)</li>
- * </ul>
+ * This indicator does not evaluate trend or direction context: it reports the
+ * two-candle morphology only. The conventional bearish reversal interpretation
+ * after an uptrend is context this class does not own.
  *
- * @see <a href="https://www.investopedia.com/terms/d/darkcloudcover.asp">Dark
- *      Cloud Cover</a>
+ * @see <a href="https://www.investopedia.com/terms/d/darkcloud.asp">
+ *      https://www.investopedia.com/terms/d/darkcloud.asp</a>
  * @since 0.22.3
  */
-public class DarkCloudCoverIndicator extends CachedIndicator<Boolean> {
+public class DarkCloudCoverIndicator extends CandlePatternIndicator {
 
-    private final transient UpTrendIndicator trendIndicator;
-    private final transient CandleBodyIndicator bodyIndicator;
-    private final Num bigBodyThresholdPercentage;
-    private final Num gapThresholdPercentage;
-    private final Num penetrationThresholdPercentage;
+    private static final double DEFAULT_PENETRATION = 0.5;
+
+    private final int averagePeriod;
+    private final double penetration;
+    private final transient Num penetrationValue;
+    private final transient Num oneMinusPenetrationValue;
 
     /**
-     * Constructor using default thresholds.
+     * Constructor with the default period of 5 and a penetration of 0.5.
      *
      * @param series the bar series
      */
     public DarkCloudCoverIndicator(final BarSeries series) {
-        this(Objects.requireNonNull(series, "series must not be null"), series.numFactory().numOf(0.03),
-                series.numFactory().zero(), series.numFactory().numOf(0.5));
-    }
-
-    /**
-     * Constructor exposing all tunable thresholds.
-     *
-     * @param series                         the bar series
-     * @param bigBodyThresholdPercentage     minimum body size ratio (body/open)
-     * @param gapThresholdPercentage         minimum gap up ratio from first close
-     *                                       to second open
-     * @param penetrationThresholdPercentage minimum penetration ratio into the
-     *                                       first body measured from first close
-     *                                       downward
-     */
-    public DarkCloudCoverIndicator(final BarSeries series, final Num bigBodyThresholdPercentage,
-            final Num gapThresholdPercentage, final Num penetrationThresholdPercentage) {
-        super(Objects.requireNonNull(series, "series must not be null"));
-        this.trendIndicator = new UpTrendIndicator(getBarSeries());
-        this.bodyIndicator = new CandleBodyIndicator(getBarSeries());
-        this.bigBodyThresholdPercentage = Objects.requireNonNull(bigBodyThresholdPercentage,
-                "bigBodyThresholdPercentage must not be null");
-        this.gapThresholdPercentage = Objects.requireNonNull(gapThresholdPercentage,
-                "gapThresholdPercentage must not be null");
-        this.penetrationThresholdPercentage = Objects.requireNonNull(penetrationThresholdPercentage,
-                "penetrationThresholdPercentage must not be null");
+        super(CandleThresholdSupport.validateSeriesAndAveragePeriodAndPartialPenetration(series,
+                CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD, DEFAULT_PENETRATION),
+                CandleThresholdSupport.forSeries(series, CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD));
+        this.averagePeriod = CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD;
+        this.penetration = DEFAULT_PENETRATION;
+        this.penetrationValue = getBarSeries().numFactory().numOf(penetration);
+        this.oneMinusPenetrationValue = getBarSeries().numFactory().one().minus(penetrationValue);
     }
 
     @Override
-    protected Boolean calculate(final int index) {
-        if (index < getCountOfUnstableBars()) {
-            return false;
-        }
-
-        final Bar firstBar = getBarSeries().getBar(index - 1);
-        final Bar secondBar = getBarSeries().getBar(index);
-        final Num firstOpenPrice = firstBar.getOpenPrice();
-        final Num secondOpenPrice = secondBar.getOpenPrice();
-        final Num firstClosePrice = firstBar.getClosePrice();
-        if (isInvalidDenominator(firstOpenPrice) || isInvalidDenominator(secondOpenPrice)
-                || isInvalidDenominator(firstClosePrice)) {
-            return false;
-        }
-
-        final Num firstBodyRatio = bodyIndicator.getValue(index - 1).dividedBy(firstOpenPrice);
-        final Num secondBodyRatio = bodyIndicator.getValue(index).dividedBy(secondOpenPrice);
-
-        final Num firstBodySize = firstClosePrice.minus(firstOpenPrice);
-        final Num requiredClose = firstClosePrice.minus(firstBodySize.multipliedBy(penetrationThresholdPercentage));
-        final Num gapRatio = secondOpenPrice.minus(firstClosePrice).dividedBy(firstClosePrice);
-        if (isInvalidValue(firstBodyRatio) || isInvalidValue(secondBodyRatio) || isInvalidValue(requiredClose)
-                || isInvalidValue(gapRatio)) {
-            return false;
-        }
-
-        return firstBar.isBullish() && firstBodyRatio.isGreaterThanOrEqual(bigBodyThresholdPercentage)
-                && secondBar.isBearish() && secondBodyRatio.isGreaterThanOrEqual(bigBodyThresholdPercentage)
-                && secondOpenPrice.isGreaterThan(firstClosePrice)
-                && gapRatio.isGreaterThanOrEqual(gapThresholdPercentage)
-                && secondBar.getClosePrice().isLessThan(requiredClose)
-                && secondBar.getClosePrice().isGreaterThan(firstOpenPrice) && trendIndicator.getValue(index);
+    int latestBaselineIndex(final int index) {
+        return index - 1;
     }
 
-    private static boolean isInvalidDenominator(final Num value) {
-        return isInvalidValue(value) || value.isZero();
+    /**
+     * Constructor.
+     *
+     * @param series        the bar series
+     * @param averagePeriod the number of preceding candles averaged into the
+     *                      long-body baseline (at least 1)
+     * @param penetration   the fraction of the first body the second close must
+     *                      penetrate, exclusive 0 and below 1
+     * @throws IllegalArgumentException if {@code averagePeriod} is below 1 or
+     *                                  {@code penetration} is not finite, is not
+     *                                  positive, or is not below 1
+     * @since 0.24.2
+     */
+    public DarkCloudCoverIndicator(final BarSeries series, final int averagePeriod, final double penetration) {
+        super(CandleThresholdSupport.validateSeriesAndAveragePeriodAndPartialPenetration(series, averagePeriod,
+                penetration), CandleThresholdSupport.forSeries(series, averagePeriod));
+        this.averagePeriod = averagePeriod;
+        this.penetration = penetration;
+        this.penetrationValue = getBarSeries().numFactory().numOf(penetration);
+        this.oneMinusPenetrationValue = getBarSeries().numFactory().one().minus(penetrationValue);
     }
 
-    private static boolean isInvalidValue(final Num value) {
-        return Num.isNaNOrNull(value) || Double.isNaN(value.doubleValue());
+    @Override
+    protected Boolean calculate(int index) {
+        if (index - 1 < getBarSeries().getBeginIndex()) {
+            // Dark cloud cover is a 2-candle pattern
+            return false;
+        }
+        Bar firstBar = getBarSeries().getBar(index - 1);
+        Bar secondBar = getBarSeries().getBar(index);
+        Num firstHigh = firstBar.getHighPrice();
+        Num secondOpen = secondBar.getOpenPrice();
+        // Signed zero is normalized in the strict clause: DoubleNum orders
+        // -0.0 below +0.0, so two numerically zero endpoints must not count
+        // as a strict gap. The finite guards are evaluated first so that
+        // missing prices short-circuit before any comparison.
+        if (firstBar.isBullish() && thresholds.isLongBody(index - 1) && secondBar.isBearish() && Num.isFinite(firstHigh)
+                && Num.isFinite(secondOpen) && !(secondOpen.isZero() && firstHigh.isZero())
+                && secondOpen.isGreaterThan(firstHigh)) {
+            Num firstBodyTop = firstBar.getOpenPrice().max(firstBar.getClosePrice());
+            Num firstBodyBottom = firstBar.getOpenPrice().min(firstBar.getClosePrice());
+            Num secondClose = secondBar.getClosePrice();
+            Num requiredClose = CandleThresholdSupport.weightedPoint(firstBodyTop, oneMinusPenetrationValue,
+                    firstBodyBottom, penetrationValue);
+            // The inclusive penetration boundary normalizes signed zero like
+            // the strict clauses: DoubleNum orders -0.0 below +0.0, so two
+            // numerically zero closes must compare equal here.
+            return !(secondClose.isZero() && firstBodyBottom.isZero()) && secondClose.isGreaterThan(firstBodyBottom)
+                    && (secondClose.isZero() && requiredClose.isZero() || secondClose.isLessThanOrEqual(requiredClose));
+        }
+        return false;
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(1, trendIndicator.getCountOfUnstableBars());
+        return averagePeriod + 1;
     }
+
 }

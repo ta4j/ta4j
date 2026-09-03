@@ -175,6 +175,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
             public int getCountOfUnstableBars() {
                 return Math.max(periodHigh.getCountOfUnstableBars(), periodLow.getCountOfUnstableBars());
             }
+
         };
     }
 

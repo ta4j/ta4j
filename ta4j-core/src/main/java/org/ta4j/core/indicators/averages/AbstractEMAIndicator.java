@@ -135,4 +135,5 @@ public abstract class AbstractEMAIndicator extends RecursiveCachedIndicator<Num>
     protected Num initialValue(int index, Num current) {
         return current;
     }
+
 }

@@ -173,6 +173,7 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
         public int getCountOfUnstableBars() {
             return KalmanFilterIndicator.this.getCountOfUnstableBars();
         }
+
     }
 
     private record KalmanState(Num estimate, Num errorCovariance, boolean stateValid, boolean currentValuesValid) {

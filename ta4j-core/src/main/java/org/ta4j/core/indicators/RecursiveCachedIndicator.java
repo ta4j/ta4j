@@ -94,11 +94,15 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
     }
 
     /**
-     * Recursive values always depend on earlier values beyond the declared unstable
-     * range, so head-advance reconciliation never applies the unstable-range floor
-     * to this indicator's cache.
+     * Recursive indicators keep their pre-advance cached values by default:
+     * subclasses compute each value from its predecessors, so their values encode
+     * history that precedes any finite declared unstable range and cannot be
+     * recomputed against the retained window of a bounded series. Subclasses whose
+     * values depend only on a fixed trailing window (for example volume or
+     * correlation indicators) must override this to {@code false} so their stale
+     * bands are recomputed after a head advance.
      *
-     * @return always {@code true}
+     * @return {@code true}
      */
     @Override
     protected boolean hasRecursiveDependencies() {

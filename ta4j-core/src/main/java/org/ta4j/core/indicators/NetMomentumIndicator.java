@@ -276,6 +276,13 @@ public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
 
         if (index - getBarSeries().getBeginIndex() >= timeFrame) {
             int expiredIndex = index - timeFrame;
+            if (expiredIndex < getBarSeries().getBeginIndex()) {
+                // The expired contribution belongs to evicted history. The
+                // retained window has no record of it, so the partial window
+                // sum stops at the retained head instead of subtracting a
+                // contribution that was never accumulated.
+                return decayedWithCurrent;
+            }
             Num expiredContribution = expiredIndex < getCountOfUnstableBars() ? zero : contribution(expiredIndex);
             if (Num.isNaNOrNull(expiredContribution)) {
                 expiredContribution = zero;
@@ -296,6 +303,18 @@ public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
         Num distance = rawDistance.abs();
         Num convexDistance = distance.plus(distance.pow(2).dividedBy(convexityScale));
         return rawDistance.isNegative() ? convexDistance : convexDistance.negate();
+    }
+
+    /**
+     * The running total covers the fixed {@code timeFrame} trailing window, so the
+     * recursive default is opted out: after a head advance the stale band is
+     * recomputed against the retained window like any windowed indicator.
+     *
+     * @return {@code false}
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return false;
     }
 
     @Override

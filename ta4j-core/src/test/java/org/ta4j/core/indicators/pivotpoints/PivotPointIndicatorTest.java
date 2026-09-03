@@ -18,6 +18,7 @@ import static org.ta4j.core.indicators.pivotpoints.TimeLevel.YEAR;
 import static org.ta4j.core.num.NaN.NaN;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertTrue;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -25,6 +26,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -1762,6 +1764,78 @@ public class PivotPointIndicatorTest {
         assertNumEquals(107.33333333333333, pp.getValue(3));
     }
 
+    /**
+     * Regression: a head advance that evicts source bars invalidates the whole
+     * calendar look-back cache. Values computed before the advance must not survive
+     * as stale entries at or after the new beginIndex.
+     */
+    @Test
+    public void shouldRecomputePivotValuesAfterHeadAdvanceEvictsSourceBars() {
+        var series = new MockBarSeriesBuilder().withName("HeadAdvanceTest").build();
+
+        // Day 1
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-01").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(100.0)
+                .highPrice(105.0)
+                .lowPrice(95.0)
+                .closePrice(102.0)
+                .volume(1000)
+                .add();
+
+        // Day 2
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-02").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(102.0)
+                .highPrice(108.0)
+                .lowPrice(100.0)
+                .closePrice(106.0)
+                .volume(1200)
+                .add();
+
+        // Day 3
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-03").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(106.0)
+                .highPrice(110.0)
+                .lowPrice(104.0)
+                .closePrice(108.0)
+                .volume(800)
+                .add();
+
+        // Day 4
+        series.barBuilder()
+                .endTime(LocalDate.parse("2024-01-04").atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(108.0)
+                .highPrice(112.0)
+                .lowPrice(106.0)
+                .closePrice(110.0)
+                .volume(900)
+                .add();
+
+        var pp = new PivotPointIndicator(series, DAY);
+        var deMarkpp = new DeMarkPivotPointIndicator(series, DAY);
+        var deMarkResistance = new DeMarkReversalIndicator(deMarkpp,
+                DeMarkReversalIndicator.DeMarkPivotLevel.RESISTANCE);
+        var resistance1 = new StandardReversalIndicator(pp, RESISTANCE_1);
+
+        // Cache non-NaN values at the day-3 bar while the series is unbounded.
+        assertNumEquals(104.66666666666667, pp.getValue(2));
+        assertNumEquals(105.5, deMarkpp.getValue(2));
+        assertNumEquals(111.0, deMarkResistance.getValue(2));
+        assertNumEquals(109.33333333333333, resistance1.getValue(2));
+
+        // Bounding removes the only previous day: index 2 becomes the new
+        // beginIndex and the look-back has no previous period anymore.
+        series.setMaximumBarCount(2);
+        assertEquals(2, series.getBeginIndex());
+
+        assertEquals(NaN, pp.getValue(2));
+        assertEquals(NaN, deMarkpp.getValue(2));
+        assertEquals(NaN, deMarkResistance.getValue(2));
+        assertEquals(NaN, resistance1.getValue(2));
+    }
+
     @Test
     public void shouldRebuildPivotCachesWhenHeadAdvanceCutsPreviousPeriod() {
         BarSeries cachedSeries = new MockBarSeriesBuilder().withName("PivotCacheHeadAdvance").build();
@@ -1828,6 +1902,49 @@ public class PivotPointIndicatorTest {
         assertNumEquals(freshStandard.getValue(targetIndex), cachedStandard.getValue(targetIndex));
         assertNumEquals(freshFibonacci.getValue(targetIndex), cachedFibonacci.getValue(targetIndex));
         assertNumEquals(freshDeMark.getValue(targetIndex), cachedDeMark.getValue(targetIndex));
+    }
+
+    @Test
+    public void retainsUnaffectedCalendarCacheSuffixAfterHeadAdvance() {
+        final int length = 128;
+        final LocalDate startDate = LocalDate.of(2024, 1, 1);
+        final BarSeries series = new MockBarSeriesBuilder().withName("PivotCacheSuffix").build();
+        series.setMaximumBarCount(length);
+        for (int index = 0; index < length; index++) {
+            series.barBuilder()
+                    .endTime(startDate.plusDays(index).atStartOfDay(ZoneOffset.UTC).toInstant())
+                    .openPrice(10.0)
+                    .highPrice(20.0)
+                    .lowPrice(5.0)
+                    .closePrice(15.0)
+                    .volume(1_000)
+                    .add();
+        }
+        final AtomicInteger calculations = new AtomicInteger();
+        final PivotPointIndicator pivot = new PivotPointIndicator(series, DAY) {
+            @Override
+            protected Num calculate(int index) {
+                calculations.incrementAndGet();
+                return super.calculate(index);
+            }
+        };
+        for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
+            pivot.getValue(index);
+        }
+        calculations.set(0);
+
+        series.barBuilder()
+                .endTime(startDate.plusDays(length).atStartOfDay(ZoneOffset.UTC).toInstant())
+                .openPrice(10.0)
+                .highPrice(20.0)
+                .lowPrice(5.0)
+                .closePrice(15.0)
+                .volume(1_000)
+                .add();
+
+        final Num cachedResult = pivot.getValue(series.getEndIndex());
+        assertNumEquals(new PivotPointIndicator(series, DAY).getValue(series.getEndIndex()), cachedResult);
+        assertTrue(calculations.get() < 4);
     }
 
     @Test

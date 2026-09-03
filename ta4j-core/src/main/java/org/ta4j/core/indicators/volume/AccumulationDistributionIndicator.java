@@ -45,9 +45,4 @@ public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<
         return 0;
     }
 
-    @Override
-    protected boolean hasRecursiveDependencies() {
-        return true;
-    }
-
 }
