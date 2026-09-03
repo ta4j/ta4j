@@ -57,7 +57,7 @@ public class ThreeInsideDownIndicator extends CandlePatternIndicator {
 
     private final int averagePeriod;
 
-    private final transient BearishHaramiIndicator harami;
+    final transient BearishHaramiIndicator harami;
 
     /**
      * Constructor with the default average period.

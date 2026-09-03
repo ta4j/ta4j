@@ -11,7 +11,6 @@ import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
 
-import java.lang.reflect.Field;
 import java.util.List;
 
 import org.junit.Test;
@@ -259,16 +258,12 @@ public class ThreeInsideDownIndicatorTest extends AbstractIndicatorTest<Indicato
     }
 
     @Test
-    public void nestedHaramiSharesTheInternedThresholdSupport() throws Exception {
+    public void nestedHaramiSharesTheInternedThresholdSupport() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         addBaselineBars(series, 3);
         ThreeInsideDownIndicator indicator = new ThreeInsideDownIndicator(series, 3);
 
-        Field haramiField = ThreeInsideDownIndicator.class.getDeclaredField("harami");
-        haramiField.setAccessible(true);
-        CandlePatternIndicator harami = (CandlePatternIndicator) haramiField.get(indicator);
-
-        assertSame(CandleThresholdSupport.forSeries(series, 3), harami.thresholds);
+        assertSame(CandleThresholdSupport.forSeries(series, 3), indicator.harami.thresholds);
     }
 
     @Override

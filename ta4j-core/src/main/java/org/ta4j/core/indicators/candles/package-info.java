@@ -118,6 +118,16 @@
  * The two-bar shift means both context values end at the bar immediately before
  * the two-candle pattern begins.
  * </p>
+ * <p>
+ * Rules do not enforce indicator warm-up, so evaluate the combined rule only at
+ * or after the boundary where every component is stable: for the default
+ * periods, the shifted 20-period SMA needs 21 bars and the piercing line needs
+ * 6, so indexes below 21 can emit reversal candidates from a partial context
+ * window. A caller holding a finite series should gate at
+ * {@code Math.max(new PreviousValueIndicator(new SMAIndicator(close, 20), 2).getCountOfUnstableBars(),
+ * new PiercingLineIndicator(series).getCountOfUnstableBars())} before
+ * evaluating the rule.
+ * </p>
  *
  * <h2>Raw custom morphology</h2>
  * <p>
