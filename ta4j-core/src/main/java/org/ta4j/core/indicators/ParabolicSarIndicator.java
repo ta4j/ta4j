@@ -231,4 +231,5 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
         }
         return cur_af;
     }
+
 }

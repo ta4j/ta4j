@@ -340,6 +340,26 @@ public class SuperTrendIndicatorTest extends AbstractIndicatorTest<BarSeries, Nu
         }
     }
 
+    @Test
+    public void cachedValuesRebuildWhenAtrRebasesAfterHeadAdvance() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(0).closePrice(0).highPrice(0).lowPrice(-3).add();
+        series.barBuilder().openPrice(10).closePrice(10).highPrice(10).lowPrice(7).add();
+        series.barBuilder().openPrice(20).closePrice(20).highPrice(20).lowPrice(17).add();
+        series.barBuilder().openPrice(30).closePrice(30).highPrice(30).lowPrice(27).add();
+        series.barBuilder().openPrice(40).closePrice(40).highPrice(40).lowPrice(37).add();
+        series.barBuilder().openPrice(50).closePrice(50).highPrice(50).lowPrice(47).add();
+        SuperTrendIndicator cached = new SuperTrendIndicator(series, 2, 2d);
+        cached.getValue(series.getEndIndex());
+
+        series.setMaximumBarCount(3);
+
+        SuperTrendIndicator fresh = new SuperTrendIndicator(series, 2, 2d);
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertNumEquals(fresh.getValue(i), cached.getValue(i));
+        }
+    }
+
     private BarSeries buildSeries() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(10).closePrice(11).highPrice(12).lowPrice(10).add();

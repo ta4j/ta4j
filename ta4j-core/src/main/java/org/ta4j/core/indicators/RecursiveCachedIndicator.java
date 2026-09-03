@@ -59,10 +59,54 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
     /**
      * Constructor.
      *
-     * @param indicator the indicator (with its bar series)
+     * @param indicator the indicator (with its bar series); retained so full-tail
+     *                  invalidations propagate to this indicator
      */
     protected RecursiveCachedIndicator(Indicator<?> indicator) {
-        this(indicator.getBarSeries());
+        super(indicator);
+    }
+
+    /**
+     * Constructor for recursive indicators that read from several related
+     * indicators.
+     *
+     * @param firstSource       a related indicator (with a bar series); retained so
+     *                          full-tail invalidations propagate to this indicator
+     * @param additionalSources further related indicators retained for the same
+     *                          propagation
+     * @since 0.24.2
+     */
+    protected RecursiveCachedIndicator(Indicator<?> firstSource, Indicator<?>... additionalSources) {
+        super(firstSource, additionalSources);
+    }
+
+    /**
+     * Constructor for recursive indicators bound to an explicit bar series that
+     * also read related indicators possibly backed by a different series.
+     *
+     * @param series       the backing bar series
+     * @param dependencies related indicators retained so full-tail invalidations
+     *                     propagate to this indicator
+     * @since 0.24.3
+     */
+    protected RecursiveCachedIndicator(BarSeries series, Indicator<?>... dependencies) {
+        super(series, dependencies);
+    }
+
+    /**
+     * Recursive indicators keep their pre-advance cached values by default:
+     * subclasses compute each value from its predecessors, so their values encode
+     * history that precedes any finite declared unstable range and cannot be
+     * recomputed against the retained window of a bounded series. Subclasses whose
+     * values depend only on a fixed trailing window (for example volume or
+     * correlation indicators) must override this to {@code false} so their stale
+     * bands are recomputed after a head advance.
+     *
+     * @return {@code true}
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
     }
 
     @Override
@@ -74,7 +118,23 @@ public abstract class RecursiveCachedIndicator<T> extends CachedIndicator<T> {
             if (index <= seriesEndIndex) {
                 // We are not after the end of the series
                 final int removedBarsCount = snapshot.removedThroughIndex() + 1;
-                int startIndex = Math.max(removedBarsCount, highestResultIndex);
+                final int firstCachedIndex = getCache().getFirstCachedIndex();
+                // A head advance can retain a later cache tail while evicting its
+                // lower recursive base range. That tail is not a usable predecessor
+                // for a read below it; rebuild the missing prefix from the first
+                // retained bar instead of recursively walking back to it.
+                int startIndex = firstCachedIndex > index ? removedBarsCount
+                        : Math.max(removedBarsCount, highestResultIndex);
+                if (startIndex > index && !getCache().isCached(index)) {
+                    // A backward read truncated the retained tail and left an
+                    // uncomputed hole inside the represented range. Prefill from
+                    // the first missing index so the recursive walk across the
+                    // gap stays iterative instead of overflowing the stack.
+                    int firstMissing = getCache().firstMissingIndex(firstCachedIndex, index);
+                    if (firstMissing >= 0) {
+                        startIndex = firstMissing;
+                    }
+                }
                 if (startIndex < 0) {
                     startIndex = Math.max(0, removedBarsCount);
                 }

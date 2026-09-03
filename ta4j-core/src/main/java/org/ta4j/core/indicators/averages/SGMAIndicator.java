@@ -48,7 +48,9 @@ public class SGMAIndicator extends CachedIndicator<Num> {
     }
 
     private SGMAIndicator(Config config) {
-        super(config.indicator().getBarSeries());
+        // Register the source indicator (not just its series) so its rebase
+        // policy participates in cache invalidation after a head advance.
+        super(config.indicator());
         this.barCount = config.barCount();
         this.indicator = config.indicator();
         this.polynomialOrder = config.polynomialOrder();

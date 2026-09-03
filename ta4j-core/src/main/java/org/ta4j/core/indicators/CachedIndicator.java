@@ -3,9 +3,17 @@
  */
 package org.ta4j.core.indicators;
 
+import java.io.Serial;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.Objects;
 import java.util.function.IntConsumer;
 import java.util.function.IntFunction;
 
@@ -58,6 +66,34 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     private final CachedBuffer<T> cache;
     private final long lastBarWaitTimeoutMs;
     private final AtomicReference<BarSeriesChangeSnapshot> observedSeriesSnapshot;
+    /**
+     * Shared empty source array for indicators constructed directly from a
+     * {@link BarSeries}.
+     */
+    private static final Indicator<?>[] NO_SOURCES = new Indicator<?>[0];
+
+    /**
+     * Per-thread source traversal context. It preserves virtual cache-floor
+     * overrides while nested base cached indicators share their visited set.
+     */
+    private static final ThreadLocal<Set<Indicator<?>>> HEAD_ADVANCE_VISITED = new ThreadLocal<>();
+
+    /**
+     * The source indicators whose full-tail invalidations propagate to this
+     * indicator on head advance (see
+     * {@link #minimumCacheableIndexAfterHeadAdvance(int)}). Empty when constructed
+     * directly from a {@link BarSeries}.
+     */
+    private final Indicator<?>[] sourceIndicators;
+
+    /**
+     * Cross-series dependencies grouped by their backing series, observed so a
+     * change to a dependency series - and not only to this indicator's own series -
+     * invalidates cached values computed from the previous dependency state (see
+     * {@link #synchronizeCacheWithSeries(BarSeries)}). Empty when every dependency
+     * is backed by this indicator's own series.
+     */
+    private final ObservedSeries[] observedDependencySeries;
 
     private final IntFunction<T> calculator = this::calculate;
     private final IntConsumer computedIndexRecorder = this::updateHighestResultIndex;
@@ -78,9 +114,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     private boolean lastBarComputationInProgress;
     private int lastBarComputationIndex = -1;
     private long lastBarCacheInvalidationCount;
-    private volatile Bar lastBarRef;
-    private volatile long lastBarTradeCount;
-    private volatile Num lastBarClosePrice;
+    private volatile LastBarState lastBarState;
     private volatile T lastBarCachedResult;
     private volatile int lastBarCachedIndex = -1;
 
@@ -100,19 +134,21 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @param series the bar series
      */
     protected CachedIndicator(BarSeries series) {
-        this(validatedConfig(series, LAST_BAR_WAIT_TIMEOUT_MS));
+        this(validatedConfig(series, LAST_BAR_WAIT_TIMEOUT_MS), NO_SOURCES);
     }
 
     CachedIndicator(BarSeries series, long lastBarWaitTimeoutMs) {
-        this(validatedConfig(series, lastBarWaitTimeoutMs));
+        this(validatedConfig(series, lastBarWaitTimeoutMs), NO_SOURCES);
     }
 
-    private CachedIndicator(Config config) {
+    private CachedIndicator(Config config, Indicator<?>[] sourceIndicators) {
         super(config.series());
         BarSeriesChangeSnapshot snapshot = config.snapshot();
         this.cache = CachedBuffer.of(snapshot.maximumBarCount());
         this.lastBarWaitTimeoutMs = config.lastBarWaitTimeoutMs();
         this.observedSeriesSnapshot = new AtomicReference<>(snapshot);
+        this.sourceIndicators = sourceIndicators;
+        this.observedDependencySeries = collectObservedDependencySeries(config.series(), sourceIndicators);
     }
 
     private static Config validatedConfig(BarSeries series, long lastBarWaitTimeoutMs) {
@@ -127,12 +163,204 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     }
 
     /**
+     * Groups every source graph node by its backing series, dropping nodes backed
+     * by {@code backingSeries} itself (those are reconciled through the main series
+     * snapshot path). The walk traverses {@link Indicator#getDependencies()}
+     * iteratively, so a cross-series source hidden behind an intermediate wrapper
+     * still produces an observation. Series objects are unwrapped before identity
+     * grouping, so a source's read-only view of the backing series remains on the
+     * main snapshot path. Distinct series that compare equal must not merge their
+     * observations.
+     */
+    private static ObservedSeries[] collectObservedDependencySeries(BarSeries backingSeries,
+            Indicator<?>[] sourceIndicators) {
+        BarSeries unwrappedBackingSeries = AbstractIndicator.unwrapBarSeries(backingSeries);
+        List<ObservedSeries> observed = new ArrayList<>(sourceIndicators.length);
+        Set<Indicator<?>> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+        Deque<Indicator<?>> pendingSources = new ArrayDeque<>();
+        for (Indicator<?> source : sourceIndicators) {
+            pendingSources.addLast(source);
+        }
+        while (!pendingSources.isEmpty()) {
+            Indicator<?> source = pendingSources.removeLast();
+            if (!visited.add(source)) {
+                continue;
+            }
+            BarSeries sourceSeries = AbstractIndicator.unwrapBarSeries(source.getBarSeries());
+            if (sourceSeries != unwrappedBackingSeries) {
+                ObservedSeries group = findBySeriesIdentity(observed, sourceSeries);
+                if (group == null) {
+                    group = new ObservedSeries(sourceSeries);
+                    observed.add(group);
+                }
+            }
+            for (Indicator<?> dependency : source.getDependencies()) {
+                pendingSources.addLast(dependency);
+            }
+        }
+        return observed.toArray(new ObservedSeries[0]);
+    }
+
+    private static ObservedSeries findBySeriesIdentity(List<ObservedSeries> observed, BarSeries series) {
+        for (ObservedSeries group : observed) {
+            if (group.series == series) {
+                return group;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * One cross-series dependency observation: the dependency series and the last
+     * applied structural and last-bar state, kept in a CAS-updatable reference.
+     */
+    private static final class ObservedSeries {
+        @Serial
+        private static final long serialVersionUID = 1L;
+        private final BarSeries series;
+        private final AtomicReference<ObservedSeriesState> observedState;
+
+        ObservedSeries(BarSeries series) {
+            this.series = series;
+            this.observedState = new AtomicReference<>(ObservedSeriesState.capture(series, -1L));
+        }
+    }
+
+    private record ObservedSeriesState(BarSeriesChangeSnapshot snapshot, LastBarState lastBar) {
+
+        private static ObservedSeriesState capture(BarSeries series, long sinceRevision) {
+            BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(sinceRevision);
+            return new ObservedSeriesState(snapshot, LastBarState.capture(series, snapshot.endIndex()));
+        }
+    }
+
+    /**
+     * Identifies a dependency's mutable last bar. Bar mutations do not publish a
+     * {@link BarSeriesChangeSnapshot}, so cross-series observations retain this
+     * fingerprint alongside the structural snapshot.
+     */
+    private record LastBarState(Bar bar, long tradeCount, Num openPrice, Num highPrice, Num lowPrice, Num closePrice,
+            Num volume, Num amount) {
+
+        private static LastBarState capture(BarSeries series, int endIndex) {
+            if (endIndex < 0) {
+                return new LastBarState(null, 0L, null, null, null, null, null, null);
+            }
+            Bar bar = series.getLastBar();
+            try {
+                return new LastBarState(bar, bar.getTrades(), bar.getOpenPrice(), bar.getHighPrice(), bar.getLowPrice(),
+                        bar.getClosePrice(), bar.getVolume(), bar.getAmount());
+            } catch (RuntimeException uncapturable) {
+                // A bar whose accessors throw (e.g. a non-finite mock with a null
+                // field) cannot be fingerprinted. Returning null tells callers the
+                // state is unknown: never serve a last-bar cache hit and treat the
+                // dependency as changed.
+                return null;
+            }
+        }
+
+        private boolean isSameAs(LastBarState other) {
+            return other != null && bar == other.bar && tradeCount == other.tradeCount
+                    && equalsNum(openPrice, other.openPrice) && equalsNum(highPrice, other.highPrice)
+                    && equalsNum(lowPrice, other.lowPrice) && equalsNum(closePrice, other.closePrice)
+                    && equalsNum(volume, other.volume) && equalsNum(amount, other.amount);
+        }
+
+        /**
+         * Whether the retained bar still carries the captured fingerprint. A bar
+         * displaced from the terminal position that fails this check was mutated after
+         * capture, so values computed from its pre-mutation state are stale.
+         */
+        private boolean isIntact() {
+            return bar == null || (bar.getTrades() == tradeCount && equalsNum(openPrice, bar.getOpenPrice())
+                    && equalsNum(highPrice, bar.getHighPrice()) && equalsNum(lowPrice, bar.getLowPrice())
+                    && equalsNum(closePrice, bar.getClosePrice()) && equalsNum(volume, bar.getVolume())
+                    && equalsNum(amount, bar.getAmount()));
+        }
+    }
+
+    /**
      * Constructor.
      *
-     * @param indicator a related indicator (with a bar series)
+     * @param indicator a related indicator (with a bar series); retained so
+     *                  full-tail invalidations propagate to this indicator
      */
     protected CachedIndicator(Indicator<?> indicator) {
-        this(validatedConfig(indicator, LAST_BAR_WAIT_TIMEOUT_MS));
+        this(validatedConfig(indicator, LAST_BAR_WAIT_TIMEOUT_MS), new Indicator<?>[] { indicator });
+    }
+
+    /**
+     * Constructor for indicators that read from an array of related indicators.
+     *
+     * @param sourceIndicators related indicators retained so full-tail
+     *                         invalidations propagate to this indicator
+     * @since 0.24.2
+     */
+    protected CachedIndicator(Indicator<?>[] sourceIndicators) {
+        this(validatedConfig(sourceIndicators, LAST_BAR_WAIT_TIMEOUT_MS), sourceIndicators);
+    }
+
+    /**
+     * Constructor for indicators bound to an explicit bar series that also read
+     * related indicators.
+     *
+     * <p>
+     * The series becomes this indicator's backing series, so calculations read its
+     * bars directly while the dependencies may be backed by a different series.
+     * Dependencies are retained so full-tail invalidations propagate to this
+     * indicator on head advance.
+     *
+     * @param series       the backing bar series
+     * @param dependencies related indicators retained so full-tail invalidations
+     *                     propagate to this indicator
+     * @since 0.24.2
+     */
+    protected CachedIndicator(BarSeries series, Indicator<?>... dependencies) {
+        this(validatedConfig(Objects.requireNonNull(series, "series"), LAST_BAR_WAIT_TIMEOUT_MS),
+                validatedDependencies(dependencies));
+    }
+
+    private static Indicator<?>[] validatedDependencies(Indicator<?>... dependencies) {
+        Indicator<?>[] validated = Objects.requireNonNull(dependencies, "dependencies");
+        for (Indicator<?> dependency : validated) {
+            Objects.requireNonNull(dependency, "dependency");
+        }
+        return validated;
+    }
+
+    /**
+     * Constructor for indicators that read from several related indicators.
+     *
+     * @param firstSource       a related indicator (with a bar series); retained so
+     *                          full-tail invalidations propagate to this indicator
+     * @param additionalSources further related indicators retained for the same
+     *                          propagation
+     * @since 0.24.2
+     */
+    protected CachedIndicator(Indicator<?> firstSource, Indicator<?>... additionalSources) {
+        this(validatedConfig(firstSource, additionalSources, LAST_BAR_WAIT_TIMEOUT_MS),
+                flattened(firstSource, additionalSources));
+    }
+
+    private static Indicator<?>[] flattened(Indicator<?> firstSource, Indicator<?>[] additionalSources) {
+        Indicator<?>[] sources = new Indicator<?>[additionalSources.length + 1];
+        sources[0] = firstSource;
+        System.arraycopy(additionalSources, 0, sources, 1, additionalSources.length);
+        return sources;
+    }
+
+    /**
+     * Returns the source indicators this indicator reads, in registration order.
+     * Full-tail invalidations propagate through these sources on series head
+     * advance, so reporting them keeps dependency traversal truthful.
+     *
+     * @return the registered source indicators; empty when constructed directly
+     *         from a {@link BarSeries}
+     * @since 0.24.2
+     */
+    @Override
+    public List<Indicator<?>> getDependencies() {
+        return List.<Indicator<?>>of(sourceIndicators);
     }
 
     private record Config(BarSeries series, BarSeriesChangeSnapshot snapshot, long lastBarWaitTimeoutMs) {
@@ -140,6 +368,19 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     private static Config validatedConfig(Indicator<?> indicator, long lastBarWaitTimeoutMs) {
         return validatedConfig(Objects.requireNonNull(indicator, "indicator").getBarSeries(), lastBarWaitTimeoutMs);
+    }
+
+    private static Config validatedConfig(Indicator<?>[] sourceIndicators, long lastBarWaitTimeoutMs) {
+        Indicator<?>[] nonNullSourceIndicators = Objects.requireNonNull(sourceIndicators, "sourceIndicators");
+        return validatedConfig(nonNullSourceIndicators[0], nonNullSourceIndicators, lastBarWaitTimeoutMs);
+    }
+
+    private static Config validatedConfig(Indicator<?> firstSource, Indicator<?>[] additionalSources,
+            long lastBarWaitTimeoutMs) {
+        // The existing validator requires a second source. Reusing the first
+        // source validates every registered source without copying the varargs.
+        return validatedConfig(IndicatorUtils.requireSameSeries(firstSource, firstSource, additionalSources),
+                lastBarWaitTimeoutMs);
     }
 
     /**
@@ -193,7 +434,47 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         while (true) {
             BarSeriesChangeSnapshot sinceSnapshot = observedSeriesSnapshot.get();
             BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(sinceSnapshot.revision());
-            if (!reconciliationRequired && sameSeriesState(snapshot, sinceSnapshot)) {
+
+            // Cross-series dependencies are reconciled in the same pass so a
+            // dependency-series change invalidates the cache region that may have
+            // consumed the previous dependency state, even while this indicator's
+            // own series is unchanged. Every observation is CAS-committed after
+            // the cache is synchronized; a racing dependency change re-enters the
+            // loop and re-applies the idempotent invalidation. Observation must
+            // precede the early return below, or a pure dependency change with an
+            // unchanged backing series would be missed entirely.
+            DependencyObservation[] dependencyObservations = observeDependencySeries();
+            boolean dependenciesChanged = false;
+            int invalidateFrom = snapshot.earliestChangedIndex();
+            int firstRetainedIndex = snapshot.removedThroughIndex() + 1;
+            // When the series head advanced, entries cached at indexes whose
+            // preceding window is no longer fully available were computed from
+            // bars that have since been removed. Drop them so reads after the
+            // advance recompute against the retained window; the eviction floor
+            // is chosen by minimumCacheableIndexAfterHeadAdvance(int).
+            boolean headAdvanced = snapshot.removedThroughIndex() != sinceSnapshot.removedThroughIndex();
+            int minimumCacheableIndex = !headAdvanced ? firstRetainedIndex
+                    : minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex);
+            // The floor contract uses Integer.MAX_VALUE as a sentinel meaning
+            // "discard every cached entry". It must never be consumed as an
+            // inclusive eviction floor: when the retained window legitimately
+            // reaches Integer.MAX_VALUE, a cached entry at that index would
+            // otherwise survive both the ring trim and the last-bar cache.
+            boolean discardWholeCache = headAdvanced && minimumCacheableIndex == Integer.MAX_VALUE;
+            for (DependencyObservation dependencyObservation : dependencyObservations) {
+                if (!dependencyObservation.changed()) {
+                    continue;
+                }
+                dependenciesChanged = true;
+                invalidateFrom = unionInvalidateFrom(invalidateFrom, dependencyObservation.invalidateFrom());
+                int dependencyFloor = dependencyObservation.cacheFloor();
+                if (dependencyFloor == Integer.MAX_VALUE) {
+                    discardWholeCache = true;
+                }
+                minimumCacheableIndex = Math.max(minimumCacheableIndex, dependencyFloor);
+            }
+
+            if (!reconciliationRequired && sameSeriesState(snapshot, sinceSnapshot) && !dependenciesChanged) {
                 return snapshot;
             }
 
@@ -208,9 +489,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 return snapshot;
             }
 
-            int invalidateFrom = snapshot.earliestChangedIndex();
-            int firstRetainedIndex = snapshot.removedThroughIndex() + 1;
-            int lastBarIndex = synchronizeLastBarCache(snapshot, invalidateFrom, firstRetainedIndex);
+            int lastBarIndex = synchronizeLastBarCache(snapshot, invalidateFrom, minimumCacheableIndex);
 
             // The first-bar cache holds the indicator value for the first available
             // bar, i.e. series index firstRetainedIndex. Any published change at or
@@ -218,19 +497,363 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             // the cache must be cleared whenever such a change is observed - not only
             // when index 0 changes (a replaced first available bar at index
             // removedBarsCount > 0 would otherwise keep serving the stale value).
+            // Dependency changes clear it as well: its value may have been computed
+            // from the dependency's previous state.
             if (snapshot.removedThroughIndex() != sinceSnapshot.removedThroughIndex()
-                    || (invalidateFrom >= 0 && invalidateFrom <= firstRetainedIndex)) {
+                    || (invalidateFrom >= 0 && invalidateFrom <= firstRetainedIndex) || dependenciesChanged) {
                 clearFirstBarCache();
             }
 
-            int cacheHighest = cache.synchronize(firstRetainedIndex, snapshot.maximumBarCount(), invalidateFrom);
+            if (discardWholeCache) {
+                cache.clear();
+            }
+            int cacheHighest = cache.synchronize(minimumCacheableIndex, snapshot.maximumBarCount(), invalidateFrom);
             highestResultIndex = Math.max(cacheHighest, lastBarIndex);
 
-            if (observedSeriesSnapshot.compareAndSet(sinceSnapshot, snapshot)) {
-                return snapshot;
+            if (!observedSeriesSnapshot.compareAndSet(sinceSnapshot, snapshot)) {
+                reconciliationRequired = true;
+                continue;
             }
-            reconciliationRequired = true;
+            // The main-series snapshot is committed; a previous failed CAS no
+            // longer requires reconciliation. Only dependency-observation
+            // commit failures below re-enter the loop.
+            reconciliationRequired = false;
+            for (DependencyObservation dependencyObservation : dependencyObservations) {
+                if (!dependencyObservation.commitObservation()) {
+                    reconciliationRequired = true;
+                }
+            }
+            if (reconciliationRequired) {
+                continue;
+            }
+            return snapshot;
         }
+    }
+
+    /**
+     * Observes every registered cross-series dependency against its last applied
+     * snapshot, returning one observation per dependency.
+     */
+    private DependencyObservation[] observeDependencySeries() {
+        DependencyObservation[] observations = new DependencyObservation[observedDependencySeries.length];
+        for (int i = 0; i < observedDependencySeries.length; i++) {
+            observations[i] = DependencyObservation.of(observedDependencySeries[i]);
+        }
+        return observations;
+    }
+
+    /**
+     * Widens the invalidation window to include a dependency's changed range.
+     * {@code -1} means "nothing to invalidate" on either side.
+     */
+    private static int unionInvalidateFrom(int backingInvalidateFrom, int dependencyInvalidateFrom) {
+        if (dependencyInvalidateFrom < 0) {
+            return backingInvalidateFrom;
+        }
+        if (backingInvalidateFrom < 0) {
+            return dependencyInvalidateFrom;
+        }
+        return Math.min(backingInvalidateFrom, dependencyInvalidateFrom);
+    }
+
+    /**
+     * A single dependency series observation: the current snapshot compared against
+     * the last applied one, with the invalidation range and cache floor the
+     * difference requires.
+     */
+    private static final class DependencyObservation {
+        private final ObservedSeries observed;
+        private final ObservedSeriesState state;
+        private final ObservedSeriesState sinceState;
+        private final boolean snapshotChanged;
+        private final boolean lastBarChanged;
+
+        static DependencyObservation of(ObservedSeries observed) {
+            ObservedSeriesState since = observed.observedState.get();
+            ObservedSeriesState current = ObservedSeriesState.capture(observed.series, since.snapshot().revision());
+            return new DependencyObservation(observed, current, since);
+        }
+
+        private DependencyObservation(ObservedSeries observed, ObservedSeriesState state,
+                ObservedSeriesState sinceState) {
+            this.observed = observed;
+            this.state = state;
+            this.sinceState = sinceState;
+            snapshotChanged = !sameSeriesState(state.snapshot(), sinceState.snapshot());
+            lastBarChanged = state.lastBar() == null || sinceState.lastBar() == null
+                    || !state.lastBar().isSameAs(sinceState.lastBar());
+        }
+
+        boolean changed() {
+            return snapshotChanged || lastBarChanged;
+        }
+
+        /**
+         * @return the lowest index in the dependency series whose cached consumer
+         *         values must be dropped, or {@code -1} when the change carries no
+         *         index-range invalidation (pure append)
+         */
+        int invalidateFrom() {
+            if (!changed()) {
+                return -1;
+            }
+            if (!snapshotChanged) {
+                return state.snapshot().endIndex();
+            }
+            int invalidateFrom = state.snapshot().earliestChangedIndex();
+            // Pure append without a journaled change index: values cached above
+            // the previous end index were computed against the dependency's last
+            // bar and may change now that those indexes exist.
+            if (state.snapshot().endIndex() > sinceState.snapshot().endIndex()) {
+                long previousEnd = sinceState.snapshot().endIndex();
+                invalidateFrom = unionInvalidateFrom(invalidateFrom,
+                        previousEnd >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) previousEnd + 1);
+            }
+            // A terminal bar mutated directly (bypassing the series journal) and
+            // then displaced by an append journals no change index either: the
+            // retained fingerprint no longer matches the bar, so invalidate from
+            // its index rather than only the appended suffix.
+            if (formerTerminalBarMutated()) {
+                invalidateFrom = unionInvalidateFrom(invalidateFrom, sinceState.snapshot().endIndex());
+            }
+            return invalidateFrom;
+        }
+
+        private boolean formerTerminalBarMutated() {
+            LastBarState sinceLastBar = sinceState.lastBar();
+            return sinceLastBar != null && state.lastBar() != null && sinceLastBar.bar() != null
+                    && sinceLastBar.bar() != state.lastBar().bar() && !sinceLastBar.isIntact();
+        }
+
+        /**
+         * @return the lowest consumer cache index that survives the dependency change,
+         *         or {@link Integer#MAX_VALUE} when nothing survives
+         */
+        int cacheFloor() {
+            if (!changed()) {
+                return -1;
+            }
+            if (state.snapshot().removedThroughIndex() != sinceState.snapshot().removedThroughIndex()) {
+                // A dependency-series head advance can rebase every consumer
+                // value, so no previously cached consumer result is reusable.
+                return Integer.MAX_VALUE;
+            }
+            return state.snapshot().removedThroughIndex() + 1;
+        }
+
+        boolean commitObservation() {
+            return observed.observedState.compareAndSet(sinceState, state);
+        }
+    }
+
+    /**
+     * Returns the lowest index whose cached value remains trustworthy after the
+     * series head advanced to {@code firstRetainedIndex}: the unstable range
+     * declared by {@link #getCountOfUnstableBars()} was computed from bars that no
+     * longer exist and must be recomputed against the retained window.
+     *
+     * @param firstRetainedIndex the first series index that remains available
+     * @return the cache floor for the retained range
+     */
+    private int unstableRangeFloor(int firstRetainedIndex) {
+        final long unstableBars = getCountOfUnstableBars();
+        if (unstableBars <= 0L) {
+            return firstRetainedIndex;
+        }
+        final long floor = (long) firstRetainedIndex + unstableBars;
+        return floor >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) floor;
+    }
+
+    /**
+     * Reports whether values of this indicator depend, directly or through
+     * recursion, on history that precedes any finite declared unstable range. Only
+     * indicators with genuinely unbounded historical dependencies (for example
+     * {@code AbstractEMAIndicator} or Kalman-style state filters) return
+     * {@code true}; their cached values cannot be recomputed against the retained
+     * window of a bounded series, so head-advance reconciliation keeps them instead
+     * of applying the unstable-range floor. The default is {@code false}: a plain
+     * indicator whose unstable range declares all of its lookback is invalidated
+     * like any windowed indicator. {@link RecursiveCachedIndicator} overrides this
+     * to {@code true}, because subclasses extend it precisely to compute each value
+     * from its predecessors. Recursive subclasses over a fixed trailing window (for
+     * example {@link VolumeIndicator} or {@link PearsonCorrelationIndicator}) must
+     * override it back to {@code false} so their stale bands are recomputed.
+     * Classes that extend {@code CachedIndicator} directly and compute each value
+     * from earlier {@code getValue} results are recursive by the same criterion and
+     * must override this method to {@code true}, or the band below the unstable
+     * floor is recomputed from the retained head instead of the values' original
+     * history.
+     *
+     * @return {@code true} when values depend on earlier values beyond the declared
+     *         unstable range
+     */
+    protected boolean hasRecursiveDependencies() {
+        return false;
+    }
+
+    /**
+     * Reports whether every cached value must be discarded after the series head
+     * advances.
+     *
+     * <p>
+     * Subclasses use this policy when all values are recomputable from the retained
+     * window, but preserving any cached value could combine pre-advance and
+     * post-advance inputs.
+     *
+     * @return {@code true} when no cached value survives a head advance
+     */
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return false;
+    }
+
+    /**
+     * Selects the cache floor applied after the series head advanced, i.e. the
+     * lowest cached index that stays valid once {@code removedThroughIndex} grew.
+     * Entries below the floor are evicted and recomputed against the retained
+     * window on the next read; entries at or above it are kept.
+     *
+     * <p>
+     * The default resolves one of two policies, after propagating source
+     * invalidations: when the source graph - traversed through
+     * {@link Indicator#getDependencies()} so non-cached wrappers are not a barrier
+     * - contains a {@link CachedIndicator} that applies a floor above its own
+     * default unstable-range floor (for example a rebaselining source such as
+     * {@link StochasticIndicator} discarding its whole cache), this indicator
+     * discards its whole cache too, because its cached values were derived from
+     * source values that no longer exist. A source whose floor merely covers its
+     * own declared unstable band does not trigger propagation, because that floor
+     * is the band's default eviction and dependents already tolerate it. Indicators
+     * with unbounded historical dependencies ({@link #hasRecursiveDependencies()}
+     * returns {@code true}) and no such source keep every cached value, because
+     * their results cannot be recomputed from the retained window alone; all other
+     * indicators evict the declared unstable range ({@code firstRetainedIndex} plus
+     * {@link #getCountOfUnstableBars()}) so that re-seeded values match a fresh
+     * calculation against the retained window. A subclass whose values are always
+     * recomputable from the retained window, including any portion that only
+     * conditionally recurses (for example {@link StochasticIndicator}), overrides
+     * {@link #requiresFullCacheInvalidationAfterHeadAdvance()} so the whole cache
+     * is discarded: keeping only the recursively derived band would preserve stale
+     * results computed from evicted bars.
+     * </p>
+     *
+     * @param firstRetainedIndex the first series index that remains available
+     * @return the lowest cached index that stays valid after the head advance;
+     *         {@link Integer#MAX_VALUE} discards every cached entry
+     */
+    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+        return minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex, NO_SOURCES);
+    }
+
+    /**
+     * Selects the cache floor for the retained range with additional derived
+     * sources treated as part of this indicator's source graph even though they are
+     * not constructor-registered dependencies (lazily created sub-indicators, for
+     * example {@link MACDVIndicator}'s moving averages). Subclasses with such
+     * sources override {@link #minimumCacheableIndexAfterHeadAdvance(int)} and pass
+     * them here after initialization.
+     *
+     * @param firstRetainedIndex the first series index that remains available
+     * @param derivedSources     additional sources in this indicator's source graph
+     * @return the lowest cached index that stays valid after the head advance;
+     *         {@link Integer#MAX_VALUE} discards every cached entry
+     */
+    protected final int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex, Indicator<?>... derivedSources) {
+        Set<Indicator<?>> visited = HEAD_ADVANCE_VISITED.get();
+        if (visited != null) {
+            return minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex, derivedSources, visited);
+        }
+        Set<Indicator<?>> rootVisited = Collections.newSetFromMap(new IdentityHashMap<>());
+        HEAD_ADVANCE_VISITED.set(rootVisited);
+        try {
+            return minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex, derivedSources, rootVisited);
+        } finally {
+            HEAD_ADVANCE_VISITED.remove();
+        }
+    }
+
+    private int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex, Indicator<?>[] derivedSources,
+            Set<Indicator<?>> visited) {
+        if (requiresFullCacheInvalidationAfterHeadAdvance()) {
+            return Integer.MAX_VALUE;
+        }
+        for (Indicator<?> sourceIndicator : sourceIndicators) {
+            if (sourceGraphRebaselinesBeyondDefaultBand(sourceIndicator, firstRetainedIndex, visited)) {
+                return Integer.MAX_VALUE;
+            }
+        }
+        for (Indicator<?> derivedSource : derivedSources) {
+            if (sourceGraphRebaselinesBeyondDefaultBand(derivedSource, firstRetainedIndex, visited)) {
+                return Integer.MAX_VALUE;
+            }
+        }
+        return hasRecursiveDependencies() ? firstRetainedIndex : unstableRangeFloor(firstRetainedIndex);
+    }
+
+    /**
+     * Whether any indicator in the source graph rooted at {@code source} applies a
+     * cache floor above its own default unstable-range band after the series head
+     * advanced to {@code firstRetainedIndex}. Explicit full-cache policies are
+     * checked before comparing saturated numeric floors, so a
+     * {@link Integer#MAX_VALUE} default band cannot hide a source that requires
+     * full invalidation. Every source is traversed through
+     * {@link Indicator#getDependencies()}, so a rebaselining source hidden behind
+     * non-cached wrappers (for example a stochastic inside a
+     * {@code BinaryOperationIndicator}) still invalidates the whole cache.
+     * <p>
+     * The traversal is iterative and tracks visited nodes by identity, so deep
+     * composition chains do not consume call-stack depth, shared subgraphs are
+     * inspected once, and dependency cycles terminate.
+     *
+     * @param source             the source indicator to inspect
+     * @param firstRetainedIndex the first series index that remains available
+     * @return {@code true} when a rebaselining source lies in the graph
+     */
+    private static boolean sourceGraphRebaselinesBeyondDefaultBand(Indicator<?> source, int firstRetainedIndex,
+            Set<Indicator<?>> visited) {
+        Deque<Indicator<?>> pendingSources = new ArrayDeque<>();
+        List<CachedIndicator<?>> cachedSources = new ArrayList<>();
+        pendingSources.addLast(source);
+        while (!pendingSources.isEmpty()) {
+            Indicator<?> currentSource = pendingSources.removeLast();
+            if (!visited.add(currentSource)) {
+                continue;
+            }
+            if (currentSource instanceof CachedIndicator<?> cachedSource) {
+                if (cachedSource.requiresFullCacheInvalidationAfterHeadAdvance()) {
+                    return true;
+                }
+                cachedSources.add(cachedSource);
+            }
+            for (Indicator<?> dependency : currentSource.getDependencies()) {
+                pendingSources.addLast(dependency);
+            }
+        }
+        for (CachedIndicator<?> cachedSource : cachedSources) {
+            int defaultBandFloor = cachedSource.unstableRangeFloor(firstRetainedIndex);
+            if (cachedSource.minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex) > defaultBandFloor) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Whether the current thread holds the cache's write lock.
+     *
+     * <p>
+     * Retained-head indicators use this to defer a destructive cache reset while a
+     * recursive {@link #calculate(int)} is still in flight: resetting and
+     * publishing the removal count inside the locked computation would let that
+     * computation repopulate the cache with a mixed-head result, and the retry loop
+     * would then observe the already-published count and reuse it. Deferring keeps
+     * the observed count stale so the top-level read performs the reset once the
+     * write lock is released.
+     *
+     * @return {@code true} if the current thread holds the cache write lock
+     * @since 0.24.2
+     */
+    protected final boolean isCacheWriteLockedByCurrentThread() {
+        return cache.isWriteLockedByCurrentThread();
     }
 
     private static boolean sameSeriesState(BarSeriesChangeSnapshot left, BarSeriesChangeSnapshot right) {
@@ -240,12 +863,16 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     private int synchronizeLastBarCache(BarSeriesChangeSnapshot snapshot, int invalidateFrom, int firstRetainedIndex) {
         synchronized (lastBarLock) {
+            // Integer.MAX_VALUE is the head-advance sentinel meaning "discard
+            // everything", never an inclusive retention floor.
+            boolean discardAll = firstRetainedIndex == Integer.MAX_VALUE;
             boolean cachedIndexChangedRole = lastBarCachedIndex >= 0 && lastBarCachedIndex != snapshot.endIndex();
-            boolean cachedIndexInvalid = lastBarCachedIndex >= 0 && (lastBarCachedIndex < firstRetainedIndex
-                    || invalidateFrom >= 0 && lastBarCachedIndex >= invalidateFrom);
-            boolean computationInvalid = lastBarComputationInProgress
-                    && (lastBarComputationIndex != snapshot.endIndex() || lastBarComputationIndex < firstRetainedIndex
-                            || invalidateFrom >= 0 && lastBarComputationIndex >= invalidateFrom);
+            boolean cachedIndexInvalid = lastBarCachedIndex >= 0
+                    && (discardAll || lastBarCachedIndex < firstRetainedIndex
+                            || invalidateFrom >= 0 && lastBarCachedIndex >= invalidateFrom);
+            boolean computationInvalid = lastBarComputationInProgress && (discardAll
+                    || lastBarComputationIndex != snapshot.endIndex() || lastBarComputationIndex < firstRetainedIndex
+                    || invalidateFrom >= 0 && lastBarComputationIndex >= invalidateFrom);
             if (cachedIndexChangedRole || cachedIndexInvalid || computationInvalid) {
                 clearLastBarCacheLocked();
             }
@@ -349,30 +976,20 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @return the indicator value
      */
     private T getLastBarValue(int index, BarSeries series) {
-        Bar snapshotBar;
-        long snapshotTradeCount;
-        Num snapshotClosePrice;
+        LastBarState snapshotState;
         long snapshotInvalidationCount;
 
         boolean ownsComputation = false;
         boolean timedOut = false;
         while (true) {
             synchronized (lastBarLock) {
-                Bar bar1 = series.getLastBar();
-                long tradeCount1 = bar1.getTrades();
-                Num closePrice1 = bar1.getClosePrice();
+                LastBarState state1 = LastBarState.capture(series, index);
+                LastBarState state2 = LastBarState.capture(series, index);
 
-                Bar bar2 = series.getLastBar();
-                long tradeCount2 = bar2.getTrades();
-                Num closePrice2 = bar2.getClosePrice();
+                boolean stableRead = state1 != null && state1.isSameAs(state2);
+                LastBarState currentState = stableRead ? state1 : null;
 
-                boolean stableRead = bar1 == bar2 && tradeCount1 == tradeCount2 && equalsNum(closePrice1, closePrice2);
-                Bar currentBar = stableRead ? bar1 : bar2;
-                long currentTradeCount = stableRead ? tradeCount1 : tradeCount2;
-                Num currentClosePrice = stableRead ? closePrice1 : closePrice2;
-
-                if (stableRead && index == lastBarCachedIndex && currentBar == lastBarRef
-                        && currentTradeCount == lastBarTradeCount && equalsNum(currentClosePrice, lastBarClosePrice)) {
+                if (stableRead && index == lastBarCachedIndex && currentState.isSameAs(lastBarState)) {
                     return lastBarCachedResult;
                 }
 
@@ -381,9 +998,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 // we must bypass caching to avoid advancing highestResultIndex while the
                 // main cache doesn't have the value stored.
                 if (cache.isWriteLockedByCurrentThread()) {
-                    snapshotBar = currentBar;
-                    snapshotTradeCount = currentTradeCount;
-                    snapshotClosePrice = currentClosePrice;
+                    snapshotState = currentState;
                     snapshotInvalidationCount = -1;
                     break;
                 }
@@ -392,9 +1007,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     lastBarComputationInProgress = true;
                     lastBarComputationIndex = index;
                     ownsComputation = true;
-                    snapshotBar = currentBar;
-                    snapshotTradeCount = currentTradeCount;
-                    snapshotClosePrice = currentClosePrice;
+                    snapshotState = currentState;
                     snapshotInvalidationCount = lastBarCacheInvalidationCount;
                     break;
                 }
@@ -402,9 +1015,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 // If we already timed out waiting for another computation, compute
                 // independently to prevent indefinite blocking
                 if (timedOut) {
-                    snapshotBar = currentBar;
-                    snapshotTradeCount = currentTradeCount;
-                    snapshotClosePrice = currentClosePrice;
+                    snapshotState = currentState;
                     snapshotInvalidationCount = -1;
                     break;
                 }
@@ -422,9 +1033,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     }
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    snapshotBar = currentBar;
-                    snapshotTradeCount = currentTradeCount;
-                    snapshotClosePrice = currentClosePrice;
+                    snapshotState = currentState;
                     snapshotInvalidationCount = -1;
                     break;
                 }
@@ -460,25 +1069,13 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         synchronized (lastBarLock) {
             try {
                 if (snapshotInvalidationCount == lastBarCacheInvalidationCount) {
-                    Bar bar1 = series.getLastBar();
-                    long tradeCount1 = bar1.getTrades();
-                    Num closePrice1 = bar1.getClosePrice();
+                    LastBarState state1 = LastBarState.capture(series, index);
+                    LastBarState state2 = LastBarState.capture(series, index);
 
-                    Bar bar2 = series.getLastBar();
-                    long tradeCount2 = bar2.getTrades();
-                    Num closePrice2 = bar2.getClosePrice();
+                    boolean stableRead = state1 != null && state1.isSameAs(state2);
 
-                    boolean stableRead = bar1 == bar2 && tradeCount1 == tradeCount2
-                            && equalsNum(closePrice1, closePrice2);
-                    Bar currentBar = stableRead ? bar1 : bar2;
-                    long currentTradeCount = stableRead ? tradeCount1 : tradeCount2;
-                    Num currentClosePrice = stableRead ? closePrice1 : closePrice2;
-
-                    if (stableRead && currentBar == snapshotBar && currentTradeCount == snapshotTradeCount
-                            && equalsNum(currentClosePrice, snapshotClosePrice)) {
-                        lastBarRef = snapshotBar;
-                        lastBarTradeCount = snapshotTradeCount;
-                        lastBarClosePrice = snapshotClosePrice;
+                    if (stableRead && state1.isSameAs(snapshotState)) {
+                        lastBarState = snapshotState;
                         lastBarCachedResult = computed;
                         lastBarCachedIndex = index;
                         updateHighestResultIndex(index);
@@ -557,9 +1154,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     private void clearLastBarCacheLocked() {
         lastBarCacheInvalidationCount++;
-        lastBarRef = null;
-        lastBarTradeCount = 0;
-        lastBarClosePrice = null;
+        lastBarState = null;
         lastBarCachedResult = null;
         lastBarCachedIndex = -1;
     }

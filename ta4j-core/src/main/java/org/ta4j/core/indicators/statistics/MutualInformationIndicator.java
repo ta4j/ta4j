@@ -54,7 +54,7 @@ public class MutualInformationIndicator extends CachedIndicator<Num> {
      * @since 0.22.7
      */
     public MutualInformationIndicator(Indicator<Num> first, Indicator<Num> second, int barCount, int binCount) {
-        super(first);
+        super(first, second);
         IndicatorUtils.requireSameSeries(first, second);
         this.first = first;
         this.second = second;

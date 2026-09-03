@@ -46,7 +46,7 @@ public class VolumeIndicatorRegressionTest extends AbstractIndicatorTest<org.ta4
         series.barBuilder().highPrice(58.25).lowPrice(57.83).closePrice(58.07).volume(3766.006).add();
         series.barBuilder().highPrice(58.35).lowPrice(57.53).closePrice(58.13).volume(4239.335).add();
         series.barBuilder().highPrice(59.86).lowPrice(58.58).closePrice(58.94).volume(8039.979).add();
-        series.barBuilder().openPrice(0).highPrice(59.53).lowPrice(58.30).closePrice(59.10).volume(6956.717).add();
+        series.barBuilder().openPrice(58.30).highPrice(59.53).lowPrice(58.30).closePrice(59.10).volume(6956.717).add();
         series.barBuilder().highPrice(62.10).lowPrice(58.53).closePrice(61.92).volume(18171.552).add();
         series.barBuilder().highPrice(62.16).lowPrice(59.80).closePrice(61.37).volume(22225.894).add();
         series.barBuilder().highPrice(62.67).lowPrice(60.93).closePrice(61.68).volume(14613.509).add();
@@ -57,4 +57,5 @@ public class VolumeIndicatorRegressionTest extends AbstractIndicatorTest<org.ta4
         ChaikinMoneyFlowIndicator cmf = new ChaikinMoneyFlowIndicator(series, 20);
         assertNumEquals(-0.1211, cmf.getValue(19));
     }
+
 }

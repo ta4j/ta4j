@@ -10,6 +10,8 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.num.Num;
 
+import java.util.List;
+
 /**
  * Kairi Relative Index (KRI) indicator by LazyBear.
  *
@@ -39,6 +41,11 @@ public class KRIIndicator extends AbstractIndicator<Num> {
     @Override
     public Num getValue(int index) {
         return kriIndicator.getValue(index);
+    }
+
+    @Override
+    public List<Indicator<?>> getDependencies() {
+        return List.of(kriIndicator);
     }
 
     @Override

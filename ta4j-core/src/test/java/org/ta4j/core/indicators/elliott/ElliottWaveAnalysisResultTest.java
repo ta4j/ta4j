@@ -262,7 +262,7 @@ class ElliottWaveAnalysisResultTest {
         BarSeries series = new BaseBarSeriesBuilder().withName("anchored-corrective-window").build();
         addBar(series, "2024-01-01T00:00:00Z", 102, 112, 100, 106);
         addBar(series, "2024-01-02T00:00:00Z", 106, 106, 94, 96);
-        addBar(series, "2024-01-03T00:00:00Z", 96, 95, 65, 70);
+        addBar(series, "2024-01-03T00:00:00Z", 95, 95, 65, 70);
         addBar(series, "2024-01-04T00:00:00Z", 70, 101, 66, 100);
         addBar(series, "2024-01-05T00:00:00Z", 100, 112, 72, 80);
         addBar(series, "2024-01-06T00:00:00Z", 80, 110, 74, 78);

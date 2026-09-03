@@ -31,7 +31,7 @@ public class ChaikinMoneyFlowIndicatorTest {
         series.barBuilder().highPrice(58.25).lowPrice(57.83).closePrice(58.07).volume(3766.006).add();
         series.barBuilder().highPrice(58.35).lowPrice(57.53).closePrice(58.13).volume(4239.335).add();
         series.barBuilder().highPrice(59.86).lowPrice(58.58).closePrice(58.94).volume(8039.979).add();
-        series.barBuilder().openPrice(0).highPrice(59.53).lowPrice(58.30).closePrice(59.10).volume(6956.717).add();
+        series.barBuilder().openPrice(58.30).highPrice(59.53).lowPrice(58.30).closePrice(59.10).volume(6956.717).add();
         series.barBuilder().highPrice(62.10).lowPrice(58.53).closePrice(61.92).volume(18171.552).add();
         series.barBuilder().highPrice(62.16).lowPrice(59.80).closePrice(61.37).volume(22225.894).add();
 
@@ -40,7 +40,7 @@ public class ChaikinMoneyFlowIndicatorTest {
         series.barBuilder().highPrice(63.73).lowPrice(62.26).closePrice(62.89).volume(15007.690).add();
         series.barBuilder().highPrice(63.85).lowPrice(63.00).closePrice(63.53).volume(8879.667).add();
         series.barBuilder().highPrice(66.15).lowPrice(63.58).closePrice(64.01).volume(22693.812).add();
-        series.barBuilder().openPrice(0).highPrice(65.34).lowPrice(64.07).closePrice(64.77).volume(10191.814).add();
+        series.barBuilder().openPrice(64.07).highPrice(65.34).lowPrice(64.07).closePrice(64.77).volume(10191.814).add();
         series.barBuilder().highPrice(66.48).lowPrice(65.20).closePrice(65.22).volume(10074.152).add();
         series.barBuilder().highPrice(65.23).lowPrice(63.21).closePrice(63.28).volume(9411.620).add();
         series.barBuilder().highPrice(63.40).lowPrice(61.88).closePrice(62.40).volume(10391.690).add();

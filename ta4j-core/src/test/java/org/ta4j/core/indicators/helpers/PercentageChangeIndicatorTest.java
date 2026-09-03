@@ -41,6 +41,14 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
     }
 
     @Test
+    public void defaultPreviousSourceRegistersOnlyCurrentIndicator() {
+        Indicator<Num> source = new ClosePriceIndicator(barSeries);
+        PercentageChangeIndicator indicator = new PercentageChangeIndicator(source);
+
+        assertThat(indicator.getDependencies()).containsExactly(source);
+    }
+
+    @Test
     public void indicatorShouldRetrieveBarPercentageChange() {
         assertThat(priceChangePercentage.getValue(0).isNaN()).isTrue();
         for (int i = 1; i < 10; i++) {
@@ -73,7 +81,7 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
                 .timePeriod(duration)
                 .endTime(endTime)
                 .openPrice(2.8)
-                .highPrice(1)
+                .highPrice(2.9)
                 .lowPrice(1)
                 .closePrice(2.9)
                 .add();
@@ -81,7 +89,7 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
                 .timePeriod(duration)
                 .endTime(endTime.plusSeconds(1))
                 .openPrice(2.5)
-                .highPrice(2)
+                .highPrice(2.5)
                 .lowPrice(2)
                 .closePrice(2.4)
                 .add();
@@ -89,7 +97,7 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
                 .timePeriod(duration)
                 .endTime(endTime.plusSeconds(2))
                 .openPrice(2.0)
-                .highPrice(1)
+                .highPrice(3.0)
                 .lowPrice(1)
                 .closePrice(3.0)
                 .add();
@@ -97,7 +105,7 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
                 .timePeriod(duration)
                 .endTime(endTime.plusSeconds(3))
                 .openPrice(3)
-                .highPrice(3)
+                .highPrice(3.2)
                 .lowPrice(3)
                 .closePrice(3.2)
                 .add();
@@ -106,7 +114,7 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
                 .endTime(endTime.plusSeconds(4))
                 .openPrice(4)
                 .highPrice(4)
-                .lowPrice(4)
+                .lowPrice(3.5)
                 .closePrice(3.5)
                 .add();
 

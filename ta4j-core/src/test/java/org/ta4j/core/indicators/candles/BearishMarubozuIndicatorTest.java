@@ -3,12 +3,14 @@
  */
 package org.ta4j.core.indicators.candles;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
 
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -20,57 +22,175 @@ import org.ta4j.core.num.NumFactory;
 
 public class BearishMarubozuIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>, Num> {
 
-    public BearishMarubozuIndicatorTest(final NumFactory numFactory) {
+    public BearishMarubozuIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
     @Test
-    public void detectsBearishMarubozuWithDefaultThresholds() {
-        final var series = buildSeriesWithLastBar(15.5, 12.0, 15.6, 11.9);
-        final var indicator = new BearishMarubozuIndicator(series);
+    public void detectsBearishMarubozuWithDefaults() {
+        // Baseline of five body-10 candles yields a prior average body of 10, so a
+        // body strictly above 10 with no shadows satisfies the pattern.
+        BarSeries series = marubozuSeries(5, 10.1, 0, 0, false);
+        BearishMarubozuIndicator indicator = new BearishMarubozuIndicator(series);
 
-        assertThat(indicator.getValue(5)).as("bearish marubozu detected").isTrue();
+        assertFalse(indicator.getValue(4));
+        assertTrue(indicator.getValue(5));
+    }
+
+    @Test
+    public void bodyBoundaryIsStrict() {
+        assertTrue(new BearishMarubozuIndicator(marubozuSeries(5, 10.1, 0, 0, false)).getValue(5));
+        assertFalse(new BearishMarubozuIndicator(marubozuSeries(5, 10.0, 0, 0, false)).getValue(5));
+        assertFalse(new BearishMarubozuIndicator(marubozuSeries(5, 9.9, 0, 0, false)).getValue(5));
+    }
+
+    @Test
+    public void overflowingBaselineAveragesStillQualify() {
+        // Two baseline candles with body 0.75 * Double.MAX_VALUE overflow the
+        // DoubleNum SMA accumulator when summed directly; the divide-first
+        // baseline keeps the average finite, so the MAX_VALUE body still
+        // qualifies as a long body with short shadows.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        final double baselineBody = 0.75 * Double.MAX_VALUE;
+        addBearishBar(series, baselineBody, 0, 0);
+        addBearishBar(series, baselineBody, 0, 0);
+        addBearishBar(series, Double.MAX_VALUE, 0, 0);
+        BearishMarubozuIndicator indicator = new BearishMarubozuIndicator(series, 2);
+
+        assertTrue(indicator.getValue(2));
     }
 
     @Test
     public void doesNotTriggerForBullishCandle() {
-        final var series = buildSeriesWithLastBar(12.0, 15.5, 15.6, 11.9);
-        final var indicator = new BearishMarubozuIndicator(series);
-
-        assertThat(indicator.getValue(5)).as("bullish candle is not bearish marubozu").isFalse();
+        assertFalse(new BearishMarubozuIndicator(marubozuSeries(5, 10.1, 0, 0, true)).getValue(5));
     }
 
     @Test
-    public void doesNotTriggerWhenBodyIsNotLongEnough() {
-        final var series = buildSeriesWithLastBar(12.3, 12.0, 12.35, 11.95);
-        final var indicator = new BearishMarubozuIndicator(series);
-
-        assertThat(indicator.getValue(5)).as("body must be longer than average").isFalse();
+    public void shadowBoundaryIsInclusive() {
+        assertTrue(new BearishMarubozuIndicator(marubozuSeries(5, 10.1, 1.0, 1.0, false)).getValue(5));
+        assertFalse(new BearishMarubozuIndicator(marubozuSeries(5, 10.1, 1.01, 0, false)).getValue(5));
+        assertFalse(new BearishMarubozuIndicator(marubozuSeries(5, 10.1, 0, 1.01, false)).getValue(5));
     }
 
     @Test
-    public void respectsCustomBodyRatio() {
-        final var series = buildSeriesWithLastBar(15.5, 12.0, 15.6, 11.9);
-        final var indicator = new BearishMarubozuIndicator(series, 5, 2d, 0.05d, 0.05d);
+    public void customAveragePeriodShiftsWarmUpBoundary() {
+        BarSeries series = marubozuSeries(3, 10.1, 0, 0, false);
+        BearishMarubozuIndicator indicator = new BearishMarubozuIndicator(series, 3);
+        assertEquals(3, indicator.getCountOfUnstableBars());
 
-        assertThat(indicator.getValue(5)).as("body comfortably exceeds custom ratio").isTrue();
+        assertFalse(indicator.getValue(2));
+        assertTrue(indicator.getValue(3));
     }
 
-    private BarSeries buildSeriesWithLastBar(final double openPrice, final double closePrice, final double highPrice,
-            final double lowPrice) {
-        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        for (int i = 0; i < 5; i++) {
-            final double base = 10d + i;
-            series.barBuilder().openPrice(base).closePrice(base + 0.4d).highPrice(base + 0.4d).lowPrice(base).add();
+    @Test
+    public void customThresholdsUseBodyRelativeShadowRatios() {
+        BarSeries series = marubozuSeries(5, 10.1, 0.75, 0.75, false);
+
+        BearishMarubozuIndicator relaxed = new BearishMarubozuIndicator(series, 5, 1.0, 0.1, 0.1);
+        BearishMarubozuIndicator strict = new BearishMarubozuIndicator(series, 5, 1.0, 0.05, 0.05);
+
+        assertTrue(relaxed.getValue(5));
+        assertFalse(strict.getValue(5));
+    }
+
+    @Test
+    public void rejectsAveragePeriodBelowOne() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+
+        assertThrows(IllegalArgumentException.class, () -> new BearishMarubozuIndicator(series, 0));
+    }
+
+    @Test
+    public void contextBeforeBaselineWindowDoesNotChangeResult() {
+        // Pattern candle at index 6 with period 3: the baseline window is [3, 5],
+        // so bars before index 3 must not influence the result.
+        BarSeries control = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 3; i++) {
+            addBar(control, 10, 0, 0);
         }
-        series.barBuilder().openPrice(openPrice).closePrice(closePrice).highPrice(highPrice).lowPrice(lowPrice).add();
-        return series;
+        for (int i = 0; i < 3; i++) {
+            addBar(control, 10, 0, 0);
+        }
+        addBearishBar(control, 10.1, 0, 0);
+
+        BarSeries varied = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBar(varied, 50, 10, 10);
+        addBar(varied, 2, 4, 22);
+        addBar(varied, 99, 2, 9);
+        for (int i = 0; i < 3; i++) {
+            addBar(varied, 10, 0, 0);
+        }
+        addBearishBar(varied, 10.1, 0, 0);
+
+        BearishMarubozuIndicator controlIndicator = new BearishMarubozuIndicator(control, 3);
+        BearishMarubozuIndicator variedIndicator = new BearishMarubozuIndicator(varied, 3);
+
+        assertTrue(controlIndicator.getValue(6));
+        assertTrue(variedIndicator.getValue(6));
+    }
+
+    @Test
+    public void rollingSeriesWithNonzeroBeginIndex() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 10; i++) {
+            addBar(series, 10, 0, 0);
+        }
+        for (int i = 0; i < 5; i++) {
+            addBar(series, 10, 0, 0);
+        }
+        addBearishBar(series, 10.1, 0, 0);
+        for (int i = 0; i < 4; i++) {
+            addBar(series, 10, 0, 0);
+        }
+        series.setMaximumBarCount(10);
+
+        BearishMarubozuIndicator indicator = new BearishMarubozuIndicator(series);
+
+        assertEquals(10, series.getBeginIndex());
+        assertFalse(indicator.getValue(14));
+        assertTrue(indicator.getValue(15));
     }
 
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);
-        return List.of(serializationFixture(series, new BearishMarubozuIndicator(series), stableIndexes(series)));
+        return List.of(serializationFixture(series, new BearishMarubozuIndicator(series), stableIndexes(series)),
+                serializationFixture(series, new BearishMarubozuIndicator(series, 5), stableIndexes(series)),
+                serializationFixture(series, new BearishMarubozuIndicator(series, 5, 1.0, 0.1, 0.1),
+                        stableIndexes(series)));
     }
 
+    /**
+     * Builds {@code period} body-10 baseline candles followed by one pattern candle
+     * with the given body, shadows, and direction (open 0/close body for bullish,
+     * open body/close 0 for bearish).
+     */
+    private BarSeries marubozuSeries(int period, double body, double upperShadow, double lowerShadow, boolean bullish) {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < period; i++) {
+            addBar(series, 10, 0, 0);
+        }
+        final double open = bullish ? 0 : body;
+        final double close = bullish ? body : 0;
+        final double high = Math.max(open, close) + upperShadow;
+        final double low = Math.min(open, close) - lowerShadow;
+        series.barBuilder().openPrice(open).closePrice(close).highPrice(high).lowPrice(low).add();
+        return series;
+    }
+
+    private void addBearishBar(BarSeries series, double body, double upperShadow, double lowerShadow) {
+        final double open = body;
+        final double close = 0;
+        final double high = open + upperShadow;
+        final double low = close - lowerShadow;
+        series.barBuilder().openPrice(open).closePrice(close).highPrice(high).lowPrice(low).add();
+    }
+
+    private void addBar(BarSeries series, double body, double upperShadow, double lowerShadow) {
+        final double open = 0;
+        final double close = body;
+        final double high = close + upperShadow;
+        final double low = open - lowerShadow;
+        series.barBuilder().openPrice(open).closePrice(close).highPrice(high).lowPrice(low).add();
+    }
 }

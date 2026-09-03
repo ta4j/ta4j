@@ -10,7 +10,6 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.acceleration.AccelerationRuntime;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.ReturnIndicator;
 import org.ta4j.core.analysis.montecarlo.MonteCarloMethod;
 import org.ta4j.core.analysis.montecarlo.ShockPathMonteCarloMethod;
@@ -93,7 +92,7 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
     }
 
     private MonteCarloPriceForecastIndicator(Builder builder) {
-        super(IndicatorUtils.requireSameSeries(builder.priceIndicator, builder.stateIndicator));
+        super(builder.priceIndicator, builder.stateIndicator);
         this.priceIndicator = builder.priceIndicator;
         this.stateIndicator = builder.stateIndicator;
         this.settings = builder.settings();
@@ -172,6 +171,21 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(priceIndicator.getCountOfUnstableBars(), simulation.getCountOfUnstableBars());
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Online change-point states restart their estimation after a head advance, so
+     * every cached forecast must be discarded and recomputed from the restarted
+     * posterior.
+     *
+     * @since 0.24.2
+     */
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return simulation.stateRestartsAfterHeadAdvance();
     }
 
     /**

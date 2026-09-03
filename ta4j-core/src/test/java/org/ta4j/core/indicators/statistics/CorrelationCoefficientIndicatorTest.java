@@ -142,6 +142,23 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
         assertNumEquals(0.3029, new CorrelationCoefficientIndicator(close, volume, 6).getValue(9));
     }
 
+    @Test
+    public void acceptsAlignedInputsFromSeparateSeries() {
+        BarSeries xSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries ySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        var now = Instant.now();
+        for (int j = 0; j < 5; j++) {
+            xSeries.barBuilder().endTime(now.minusSeconds(2L * (4 - j))).closePrice(2 * (j + 1)).add();
+            ySeries.barBuilder().endTime(now.minusSeconds(2L * (4 - j))).closePrice(5 * (j + 1)).add();
+        }
+
+        var coef = new CorrelationCoefficientIndicator(new ClosePriceIndicator(xSeries),
+                new ClosePriceIndicator(ySeries), 5);
+
+        // Perfectly linear pairs (2,5), (4,10), (6,15), (8,20), (10,25)
+        assertNumEquals(1, coef.getValue(4));
+    }
+
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);

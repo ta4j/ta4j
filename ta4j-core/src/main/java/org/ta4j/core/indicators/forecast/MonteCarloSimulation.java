@@ -62,6 +62,17 @@ final class MonteCarloSimulation {
         IndicatorUtils.requireSameSeries(returnIndicator, this.stateIndicator);
     }
 
+    /**
+     * Whether the underlying state restarts its estimation after a head advance,
+     * forcing dependent projections to discard their full caches.
+     *
+     * @return {@code true} when the state restarts after a head advance
+     * @since 0.24.2
+     */
+    boolean stateRestartsAfterHeadAdvance() {
+        return stateIndicator.restartsAfterHeadAdvance();
+    }
+
     Forecast project(int index, TerminalValueMapper mapper) {
         if (index < getCountOfUnstableBars()) {
             return Forecast.unstable(index, settings.horizon());
