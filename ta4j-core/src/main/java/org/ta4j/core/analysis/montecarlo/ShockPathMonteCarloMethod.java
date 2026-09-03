@@ -83,7 +83,8 @@ public final class ShockPathMonteCarloMethod implements MonteCarloMethod {
 
         List<Num> terminalReturns = new ArrayList<>(context.iterationCount());
         for (int iteration = 0; iteration < context.iterationCount(); iteration++) {
-            Num cumulativeReturn = simulatePath(context, sampler, state, ewmaUpdate, decay, oneMinusDecay);
+            Num cumulativeReturn = simulatePath(context, context.randomForPath(iteration), sampler, state, ewmaUpdate,
+                    decay, oneMinusDecay);
             if (!Num.isFinite(cumulativeReturn)) {
                 return null;
             }
@@ -92,8 +93,8 @@ public final class ShockPathMonteCarloMethod implements MonteCarloMethod {
         return terminalReturns;
     }
 
-    private Num simulatePath(MonteCarloContext context, ShockSampler sampler, ProjectionState startingState,
-            boolean ewmaUpdate, Num decay, Num oneMinusDecay) {
+    private Num simulatePath(MonteCarloContext context, RandomGenerator random, ShockSampler sampler,
+            ProjectionState startingState, boolean ewmaUpdate, Num decay, Num oneMinusDecay) {
         NumFactory numFactory = context.numFactory();
         Num cumulativeReturn = numFactory.zero();
         Num drift = startingState.drift();
@@ -101,7 +102,7 @@ public final class ShockPathMonteCarloMethod implements MonteCarloMethod {
         Num variance = startingState.variance();
         Num volatility = startingState.volatility();
         for (int step = 0; step < context.horizon(); step++) {
-            Num shock = sampler.sample(context.random());
+            Num shock = sampler.sample(random);
             Num stepReturn = shockModel == ShockModel.HISTORICAL_BOOTSTRAP ? shock
                     : drift.plus(volatility.multipliedBy(shock));
             cumulativeReturn = cumulativeReturn.plus(stepReturn);

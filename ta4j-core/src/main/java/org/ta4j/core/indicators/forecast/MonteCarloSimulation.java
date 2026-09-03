@@ -8,13 +8,14 @@ import java.util.List;
 import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.TreeSet;
+import java.util.function.IntFunction;
 import java.util.random.RandomGenerator;
 
+import org.ta4j.core.analysis.montecarlo.MonteCarloContext;
+import org.ta4j.core.analysis.montecarlo.MonteCarloMethod;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.ReturnIndicator;
-import org.ta4j.core.analysis.montecarlo.MonteCarloContext;
-import org.ta4j.core.analysis.montecarlo.MonteCarloMethod;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.state.ReturnMomentState;
@@ -30,8 +31,22 @@ import org.ta4j.core.num.NumFactory;
  * window assembly, deterministic seed derivation, terminal value mapping, and
  * forecast assembly. The swappable {@link MonteCarloMethod} receives a prepared
  * {@link MonteCarloContext} and generates the terminal samples.
+ *
+ * <p>
+ * The engine also selects the forecast RNG stream: by default the historical
+ * shared {@link SplittableRandom} stream is handed to the method, while RNG
+ * version {@code 1} provides independent per-path streams so that forecasts are
+ * reproducible regardless of path execution order -- the mode required for
+ * accelerated and native-parity evaluation.
  */
 final class MonteCarloSimulation {
+
+    /**
+     * Selects the forecast RNG stream. Version {@code 0} (default) restores the
+     * historical shared stream per decision index; version {@code 1} selects the
+     * deterministic per-path stream used for native parity and acceleration.
+     */
+    static final String RNG_VERSION_PROPERTY = "ta4j.forecast.rngVersion";
 
     private final ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator;
     private final ReturnIndicator returnIndicator;
@@ -78,8 +93,10 @@ final class MonteCarloSimulation {
         }
 
         RandomGenerator random = new SplittableRandom(mixSeed(settings.seed(), index, settings.horizon()));
+        IntFunction<RandomGenerator> perPathRandoms = legacyStreamRequested() ? null
+                : path -> DeterministicRandom.forPath(settings.seed(), index, settings.horizon(), path);
         List<Num> terminalSamples = method.terminalReturns(new MonteCarloContext(index, settings.horizon(),
-                settings.iterationCount(), historicalReturns, moments, random, numFactory));
+                settings.iterationCount(), historicalReturns, moments, random, numFactory, perPathRandoms));
         if (terminalSamples == null || terminalSamples.size() != settings.iterationCount()) {
             return Forecast.unstable(index, settings.horizon());
         }
@@ -114,21 +131,39 @@ final class MonteCarloSimulation {
         return settings.horizon();
     }
 
-    private List<Num> historicalReturns(int index, NumFactory numFactory) {
-        int startIndex = index - settings.lookbackBarCount() + 1;
-        List<Num> values = new ArrayList<>(settings.lookbackBarCount());
-        for (int i = startIndex; i <= index; i++) {
-            Num value = returnIndicator.getValue(i);
-            if (!Num.isFinite(value)) {
-                return List.of();
-            }
-            Num normalized = normalize(value, numFactory);
-            if (!Num.isFinite(normalized)) {
-                return List.of();
-            }
-            values.add(normalized);
+    private static boolean legacyStreamRequested() {
+        String configured = System.getProperty(RNG_VERSION_PROPERTY);
+        if (configured == null || configured.isBlank()) {
+            return true;
         }
-        return values;
+        return switch (configured.trim()) {
+        case "0" -> true;
+        case "1" -> false;
+        default -> throw new IllegalArgumentException(
+                RNG_VERSION_PROPERTY + " must be '0' or '1', but was '" + configured + "'");
+        };
+    }
+
+    /**
+     * Whether the explicit per-path stream was selected via
+     * {@code -Dta4j.forecast.rngVersion=1}. Accelerated evaluation may only run
+     * when this mode is active because it relies on path-order-independent
+     * reproducibility.
+     */
+    static boolean isPerPathRngSelected() {
+        return !legacyStreamRequested();
+    }
+
+    private List<Num> historicalReturns(int index, NumFactory numFactory) {
+        List<Num> historicalReturns = new ArrayList<>(settings.lookbackBarCount());
+        for (int barIndex = index - settings.lookbackBarCount() + 1; barIndex <= index; barIndex++) {
+            Num value = normalize(returnIndicator.getValue(barIndex), numFactory);
+            if (value == null) {
+                return List.of();
+            }
+            historicalReturns.add(value);
+        }
+        return historicalReturns;
     }
 
     private static ReturnForecastStateIndicator<? extends ReturnMomentState> validateStateIndicator(
@@ -164,5 +199,67 @@ final class MonteCarloSimulation {
     @FunctionalInterface
     interface TerminalValueMapper {
         Num map(Num cumulativeReturn);
+    }
+
+    /**
+     * Counter-based deterministic random generator whose stream for one simulated
+     * path depends only on the seed derivation inputs, never on execution order.
+     */
+    static final class DeterministicRandom implements RandomGenerator {
+
+        private long state;
+
+        private DeterministicRandom(long state) {
+            this.state = state;
+        }
+
+        static DeterministicRandom forPath(long seed, int decisionIndex, int horizon, int pathIndex) {
+            return new DeterministicRandom(MonteCarloKernel.initialPathState(seed, decisionIndex, horizon, pathIndex));
+        }
+
+        @Override
+        public int nextInt(int bound) {
+            if (bound <= 0) {
+                throw new IllegalArgumentException("bound must be > 0");
+            }
+            long candidate = nextLong() >>> 1;
+            long remainder = candidate % bound;
+            while (candidate - remainder + bound - 1 < 0L) {
+                candidate = nextLong() >>> 1;
+                remainder = candidate % bound;
+            }
+            return (int) remainder;
+        }
+
+        @Override
+        public double nextGaussian() {
+            return MonteCarloKernel.gaussian(nextDouble(), nextDouble());
+        }
+
+        @Override
+        public int nextInt() {
+            return (int) nextLong();
+        }
+
+        @Override
+        public long nextLong() {
+            state += MonteCarloKernel.GOLDEN_GAMMA;
+            return MonteCarloKernel.mix64(state);
+        }
+
+        @Override
+        public double nextDouble() {
+            return MonteCarloKernel.toUnitDouble(nextLong());
+        }
+
+        @Override
+        public float nextFloat() {
+            return (float) nextDouble();
+        }
+
+        @Override
+        public boolean nextBoolean() {
+            return nextLong() < 0L;
+        }
     }
 }
