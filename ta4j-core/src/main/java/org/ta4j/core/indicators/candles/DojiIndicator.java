@@ -204,14 +204,14 @@ public class DojiIndicator extends CandlePatternIndicator {
                 final Num ratioScale = numFactory.numOf(RATIO_SCALE);
                 final Num scaledRatio = bodyMagnitude.multipliedBy(ratioScale).dividedBy(priorAverage);
                 final Num scaledFactor = factor.multipliedBy(ratioScale);
-                if (CandleThresholdSupport.isWithinOneUlpBoundary(scaledRatio, scaledFactor)) {
+                if (thresholds.isWithinUlpBoundary(scaledRatio, scaledFactor)) {
                     return thresholds.isAtMostCanonicalFactorOfPriorAverageRange(index, bodyMagnitude.doubleValue(),
                             rangeFactor);
                 }
                 return !scaledRatio.isGreaterThan(scaledFactor);
             }
             final Num scaledBodyMagnitude = bodyMagnitude.dividedBy(factor);
-            if (CandleThresholdSupport.isWithinOneUlpBoundary(scaledBodyMagnitude, priorAverage)) {
+            if (thresholds.isWithinUlpBoundary(scaledBodyMagnitude, priorAverage)) {
                 return thresholds.isAtMostCanonicalFactorOfPriorAverageRange(index, bodyMagnitude.doubleValue(),
                         rangeFactor);
             }

@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
@@ -20,19 +21,32 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
     private final transient SMAIndicator sma2;
 
     /**
-     * Constructor.
+     * Constructor for indicators backed by a shared bar series.
+     *
+     * @param series     the bar series underlying both indicators
+     * @param indicator1 the first indicator
+     * @param indicator2 the second indicator
+     * @param barCount   the time frame
+     * @since 0.24.3
+     */
+    public CovarianceIndicator(BarSeries series, Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
+        super(series, indicator1, indicator2);
+        this.indicator1 = indicator1;
+        this.indicator2 = indicator2;
+        this.barCount = barCount;
+        this.sma1 = new SMAIndicator(indicator1, barCount);
+        this.sma2 = new SMAIndicator(indicator2, barCount);
+    }
+
+    /**
+     * Constructor. The underlying series is the first indicator's series.
      *
      * @param indicator1 the first indicator
      * @param indicator2 the second indicator
      * @param barCount   the time frame
      */
     public CovarianceIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
-        super(indicator1, indicator2);
-        this.indicator1 = indicator1;
-        this.indicator2 = indicator2;
-        this.barCount = barCount;
-        this.sma1 = new SMAIndicator(indicator1, barCount);
-        this.sma2 = new SMAIndicator(indicator2, barCount);
+        this(indicator1.getBarSeries(), indicator1, indicator2, barCount);
     }
 
     @Override

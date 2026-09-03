@@ -118,4 +118,21 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         // Window [4..9]: sum of products = 13.5 over 6 observations
         assertNumEquals(2.25, covar.getValue(9));
     }
+
+    @Test
+    public void acceptsAlignedInputsFromSeparateSeries() {
+        BarSeries xSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries ySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        var now = Instant.now();
+        for (int j = 0; j < 5; j++) {
+            xSeries.barBuilder().endTime(now.minusSeconds(2 * (4 - j))).closePrice(2 * (j + 1)).add();
+            ySeries.barBuilder().endTime(now.minusSeconds(2 * (4 - j))).closePrice(5 * (j + 1)).add();
+        }
+
+        var covar = new CovarianceIndicator(new ClosePriceIndicator(xSeries), new ClosePriceIndicator(ySeries), 5);
+
+        // Perfectly linear pairs (2,5), (4,10), (6,15), (8,20), (10,25):
+        // population covariance = sum((x - 6)(y - 15)) / 5 = 100 / 5
+        assertNumEquals(20, covar.getValue(4));
+    }
 }

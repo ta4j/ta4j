@@ -983,7 +983,7 @@ final class CandleThresholdSupport {
         final Num scaledBody = rawBody.dividedBy(shortBodyFactor);
         final boolean shorter = scaledBody.isLessThan(rawBaseline);
         if (!(rawBody instanceof DoubleNum doubleBody) || !(rawBaseline instanceof DoubleNum doubleBaseline)
-                || !isWithinOneUlp(scaledBody.doubleValue(), doubleBaseline.getDelegate())) {
+                || !isWithinUlps(scaledBody.doubleValue(), doubleBaseline.getDelegate(), averagePeriod)) {
             return shorter;
         }
         BigDecimal scaledCanonicalBody = BigDecimal.valueOf(doubleBody.getDelegate())
@@ -997,20 +997,24 @@ final class CandleThresholdSupport {
         return scaledCanonicalBody.compareTo(priorCanonicalBodySum) < 0;
     }
 
-    private static boolean isWithinOneUlp(double first, double second) {
+    private static boolean isWithinUlps(double first, double second, int ulps) {
         return Double.isFinite(first) && Double.isFinite(second)
-                && Math.abs(first - second) <= Math.max(Math.ulp(first), Math.ulp(second));
+                && Math.abs(first - second) <= ulps * Math.max(Math.ulp(first), Math.ulp(second));
     }
 
     /**
-     * Whether a rounded finite {@link DoubleNum} comparison sits on the one-ULP
-     * boundary zone: outside it the rounded ordering is decisive, inside it the
-     * verdict is rechecked against canonical decimal operands so it agrees with
-     * {@link DecimalNum} at inclusive boundaries and one canonical step above them.
+     * Whether a rounded finite {@link DoubleNum} comparison sits on the
+     * accumulated-window boundary zone: outside it the rounded ordering is
+     * decisive, inside it the verdict is rechecked against canonical decimal
+     * operands so it agrees with {@link DecimalNum} at inclusive boundaries and one
+     * canonical step above them. The baseline is itself an average of
+     * {@code averagePeriod} sums, so its rounding error accumulates beyond one ULP;
+     * gating on {@code averagePeriod} ULPs keeps the canonical recheck effective
+     * for every window size.
      */
-    static boolean isWithinOneUlpBoundary(Num scaledLeft, Num scaledRight) {
+    boolean isWithinUlpBoundary(Num scaledLeft, Num scaledRight) {
         return scaledLeft instanceof DoubleNum && scaledRight instanceof DoubleNum
-                && isWithinOneUlp(scaledLeft.doubleValue(), scaledRight.doubleValue());
+                && isWithinUlps(scaledLeft.doubleValue(), scaledRight.doubleValue(), averagePeriod);
     }
 
     /**
@@ -1030,7 +1034,7 @@ final class CandleThresholdSupport {
      */
     private boolean isAtMostScaledRawBaseline(int index, Num measurement, Num scaledMeasurement, Num rawBaseline,
             double canonicalFactor) {
-        if (isWithinOneUlpBoundary(scaledMeasurement, rawBaseline)) {
+        if (isWithinUlpBoundary(scaledMeasurement, rawBaseline)) {
             return isAtMostCanonicalFactorOfPriorAverageRange(index, measurement.doubleValue(), canonicalFactor);
         }
         return !scaledMeasurement.isGreaterThan(rawBaseline);
