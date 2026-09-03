@@ -30,7 +30,7 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
      * @param barCount   the time frame
      */
     public PearsonCorrelationIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
-        super(indicator1, indicator2);
+        super(indicator1.getBarSeries(), indicator1, indicator2);
         this.indicator1 = indicator1;
         this.indicator2 = indicator2;
         this.barCount = barCount;

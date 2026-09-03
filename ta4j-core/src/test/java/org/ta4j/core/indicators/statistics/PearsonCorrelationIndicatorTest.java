@@ -105,4 +105,21 @@ public class PearsonCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
         // Retained pairs at indices 6..9: (1,1), (2,2), (3,1), (4,2) -> r = 1/sqrt(5)
         assertNumEquals(numFactory.numOf(1).dividedBy(numFactory.numOf(5).sqrt()), coef.getValue(9));
     }
+
+    @Test
+    public void acceptsAlignedInputsFromSeparateSeries() {
+        BarSeries xSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries ySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        var now = Instant.now();
+        for (int j = 0; j < 5; j++) {
+            xSeries.barBuilder().endTime(now.minusSeconds(2 * (4 - j))).closePrice(2 * (j + 1)).add();
+            ySeries.barBuilder().endTime(now.minusSeconds(2 * (4 - j))).closePrice(5 * (j + 1)).add();
+        }
+
+        var coef = new PearsonCorrelationIndicator(new ClosePriceIndicator(xSeries), new ClosePriceIndicator(ySeries),
+                5);
+
+        // Perfectly linear pairs (2,5), (4,10), (6,15), (8,20), (10,25) -> r = 1
+        assertNumEquals(1, coef.getValue(4));
+    }
 }
