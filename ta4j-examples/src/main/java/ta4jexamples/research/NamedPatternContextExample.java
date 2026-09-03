@@ -65,7 +65,13 @@ public class NamedPatternContextExample {
         Rule priorDowntrend = priorDowntrend(series);
         Rule reversalCandidate = pattern.and(priorDowntrend);
         int firstReliableIndex = firstReliableIndex(series);
-        int index = Math.max(firstReliableIndex, series.getEndIndex());
+        int endIndex = series.getEndIndex();
+        if (endIndex < firstReliableIndex) {
+            LOG.info("Series too short: endIndex={} firstReliableIndex={}; skipping rule evaluation", endIndex,
+                    firstReliableIndex);
+            return;
+        }
+        int index = Math.max(firstReliableIndex, endIndex);
 
         LOG.info("firstReliableIndex={} index={} pattern={} priorDowntrend={} reversalCandidate={}", firstReliableIndex,
                 index, pattern.isSatisfied(index), priorDowntrend.isSatisfied(index),
@@ -110,18 +116,18 @@ public class NamedPatternContextExample {
     }
 
     /**
-     * The first index whose context average covers the full
+     * The first bar whose context average covers the full
      * {@value #CONTEXT_PERIOD}-bar window shifted {@value #PATTERN_WIDTH} bars
-     * before the pattern: the later of the pattern's and the shifted average's
-     * unstable-bar counts. Signals at lower indexes read a partial context window
-     * and must be skipped.
+     * before the pattern: the series begin index plus the later of the pattern's
+     * and the shifted average's unstable-bar counts. Signals at lower indexes read
+     * a partial context window and must be skipped.
      *
      * @param series the bar series
      * @return the first index at which the composed rule is meaningful
      */
     static int firstReliableIndex(BarSeries series) {
         Indicator<Num> close = new ClosePriceIndicator(series);
-        return Math.max(new PiercingLineIndicator(series).getCountOfUnstableBars(),
+        return series.getBeginIndex() + Math.max(new PiercingLineIndicator(series).getCountOfUnstableBars(),
                 averageBeforePattern(close).getCountOfUnstableBars());
     }
 
