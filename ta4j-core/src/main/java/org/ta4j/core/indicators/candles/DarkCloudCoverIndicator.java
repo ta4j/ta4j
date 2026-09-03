@@ -120,8 +120,7 @@ public class DarkCloudCoverIndicator extends CandlePatternIndicator {
             // the strict clauses: DoubleNum orders -0.0 below +0.0, so two
             // numerically zero closes must compare equal here.
             return !(secondClose.isZero() && firstBodyBottom.isZero()) && secondClose.isGreaterThan(firstBodyBottom)
-                    && (secondClose.isZero() && requiredClose.isZero()
-                            || secondClose.isLessThanOrEqual(requiredClose));
+                    && (secondClose.isZero() && requiredClose.isZero() || secondClose.isLessThanOrEqual(requiredClose));
         }
         return false;
     }
