@@ -63,15 +63,16 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   pre-advance values on bounded series, so do not rely on reseeding
   semantics for them. Fixed-window recursive indicators such as
   `VolumeIndicator` and `PearsonCorrelationIndicator` keep the default
-  floor and are recomputed like any windowed indicator, unless their
-  declared unstable range can exceed the recursion prefill threshold: the
-  default floor then retains a cached suffix while evicting the band below
-  it, and reads inside the evicted band recurse one entry per bar until the
-  stack overflows. Such deep-window indicators override
+  floor and are recomputed like any windowed indicator: the floor retains
+  a cached suffix while evicting the band below it, and a read inside the
+  evicted band is served by iteratively prefilling from the first missing
+  index (`RecursiveCachedIndicator` routes the read through
+  `CachedBuffer.firstMissingIndex`), so only the gap is recomputed and no
+  floor override is needed. Do not override
   `minimumCacheableIndexAfterHeadAdvance(int)` to return
-  `Integer.MAX_VALUE` so the whole cache is discarded on head advance and
-  rebuilt iteratively; the fixed trailing window makes the recomputation
-  value-neutral. `VolumeIndicator` follows this policy.
+  `Integer.MAX_VALUE` for such indicators: discarding the whole cache on
+  head advance would restore an O(`maximumBarCount`) rebuild after every
+  append to a full bounded series.
 - Conditionally recursive indicators (recursion only along special
   stretches, e.g. flat windows or equal-basis Klinger trend stretches)
   override `requiresFullCacheInvalidationAfterHeadAdvance()` to return
