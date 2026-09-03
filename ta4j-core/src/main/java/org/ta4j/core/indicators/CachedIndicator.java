@@ -247,8 +247,16 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 return new LastBarState(null, 0L, null, null, null, null, null, null);
             }
             Bar bar = series.getLastBar();
-            return new LastBarState(bar, bar.getTrades(), bar.getOpenPrice(), bar.getHighPrice(), bar.getLowPrice(),
-                    bar.getClosePrice(), bar.getVolume(), bar.getAmount());
+            try {
+                return new LastBarState(bar, bar.getTrades(), bar.getOpenPrice(), bar.getHighPrice(), bar.getLowPrice(),
+                        bar.getClosePrice(), bar.getVolume(), bar.getAmount());
+            } catch (RuntimeException uncapturable) {
+                // A bar whose accessors throw (e.g. a non-finite mock with a null
+                // field) cannot be fingerprinted. Returning null tells callers the
+                // state is unknown: never serve a last-bar cache hit and treat the
+                // dependency as changed.
+                return null;
+            }
         }
 
         private boolean isSameAs(LastBarState other) {
@@ -572,7 +580,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
             this.state = state;
             this.sinceState = sinceState;
             snapshotChanged = !sameSeriesState(state.snapshot(), sinceState.snapshot());
-            lastBarChanged = !state.lastBar().isSameAs(sinceState.lastBar());
+            lastBarChanged = state.lastBar() == null || sinceState.lastBar() == null
+                    || !state.lastBar().isSameAs(sinceState.lastBar());
         }
 
         boolean changed() {
@@ -612,8 +621,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
         private boolean formerTerminalBarMutated() {
             LastBarState sinceLastBar = sinceState.lastBar();
-            return sinceLastBar.bar() != null && sinceLastBar.bar() != state.lastBar().bar()
-                    && !sinceLastBar.isIntact();
+            return sinceLastBar != null && state.lastBar() != null && sinceLastBar.bar() != null
+                    && sinceLastBar.bar() != state.lastBar().bar() && !sinceLastBar.isIntact();
         }
 
         /**
@@ -977,8 +986,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                 LastBarState state1 = LastBarState.capture(series, index);
                 LastBarState state2 = LastBarState.capture(series, index);
 
-                boolean stableRead = state1.isSameAs(state2);
-                LastBarState currentState = stableRead ? state1 : state2;
+                boolean stableRead = state1 != null && state1.isSameAs(state2);
+                LastBarState currentState = stableRead ? state1 : null;
 
                 if (stableRead && index == lastBarCachedIndex && currentState.isSameAs(lastBarState)) {
                     return lastBarCachedResult;
@@ -1063,7 +1072,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     LastBarState state1 = LastBarState.capture(series, index);
                     LastBarState state2 = LastBarState.capture(series, index);
 
-                    boolean stableRead = state1.isSameAs(state2);
+                    boolean stableRead = state1 != null && state1.isSameAs(state2);
 
                     if (stableRead && state1.isSameAs(snapshotState)) {
                         lastBarState = snapshotState;
