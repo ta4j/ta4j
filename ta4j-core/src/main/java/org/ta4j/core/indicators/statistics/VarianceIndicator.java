@@ -98,6 +98,14 @@ public class VarianceIndicator extends CachedIndicator<Num> {
         return squaredDeviationTotal.dividedBy(numFactory.numOf(divisor));
     }
 
+    /**
+     * @return the number of bars in the rolling variance window
+     * @since 0.24.2
+     */
+    public int getBarCount() {
+        return barCount;
+    }
+
     @Override
     public int getCountOfUnstableBars() {
         return indicator.getCountOfUnstableBars() + barCount - 1;

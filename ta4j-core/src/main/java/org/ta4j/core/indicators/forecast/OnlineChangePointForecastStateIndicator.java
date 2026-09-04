@@ -165,6 +165,17 @@ public final class OnlineChangePointForecastStateIndicator extends AbstractIndic
     }
 
     /**
+     * Returns the largest retained run length, which bounds how much posterior
+     * state each evaluation step allocates.
+     *
+     * @return largest retained run length
+     * @since 0.24.2
+     */
+    public int getMaximumRunLength() {
+        return maximumRunLength;
+    }
+
+    /**
      * Returns state at the requested source index.
      *
      * @param index source index

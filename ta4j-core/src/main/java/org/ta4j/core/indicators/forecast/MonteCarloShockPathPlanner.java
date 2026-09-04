@@ -7,6 +7,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.acceleration.AccelerationRuntime;
 import org.ta4j.core.acceleration.OperationDecoder;
@@ -38,6 +41,8 @@ import org.ta4j.core.num.NumFactory;
  */
 final class MonteCarloShockPathPlanner implements OperationPlanner {
 
+    private static final Logger LOG = LoggerFactory.getLogger(MonteCarloShockPathPlanner.class);
+
     /** Order-of-magnitude scalar cost per simulated path step, in nanoseconds. */
     static final long NANOS_PER_PATH_STEP = 50L;
 
@@ -49,6 +54,9 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         Objects.requireNonNull(indicator, "indicator must not be null");
         Objects.requireNonNull(factory, "factory must not be null");
         if (!(indicator instanceof MonteCarloPriceForecastIndicator forecast)) {
+            return null;
+        }
+        if (!forecast.kernelUsesStockShockPaths()) {
             return null;
         }
         if (!(factory instanceof DoubleNumFactory)) {
@@ -67,11 +75,37 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         }
         int iterations = settings.iterationCount();
         int lookback = settings.lookbackBarCount();
+        long steps;
+        long estimatedScalarNanos;
+        long peakBytes;
+        int windowsLength;
+        try {
+            steps = Math.multiplyExact(Math.multiplyExact((long) size, iterations), (long) settings.horizon());
+            estimatedScalarNanos = Math.multiplyExact(steps, NANOS_PER_PATH_STEP);
+            windowsLength = Math.toIntExact(Math.multiplyExact((long) size, lookback));
+            long inputBytes = Math.multiplyExact(
+                    Math.addExact(Math.multiplyExact((long) size, 4L), (long) windowsLength), BYTES_PER_ELEMENT);
+            long outputBytes = Math.multiplyExact(Math.multiplyExact((long) size, iterations), BYTES_PER_ELEMENT);
+            peakBytes = Math.addExact(Math.addExact(inputBytes, outputBytes),
+                    Math.multiplyExact(steps, BYTES_PER_ELEMENT));
+        } catch (ArithmeticException exception) {
+            LOG.warn("Declining {} over [{}..{}]: dimensions overflow ({}); scalar path",
+                    AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1, fromInclusive, toInclusive,
+                    exception.getMessage());
+            return null;
+        }
+        long deviceBudget = AccelerationRuntime.maxDeviceBytes();
+        if (peakBytes > deviceBudget) {
+            LOG.warn("Declining {} over [{}..{}]: peak device estimate {} exceeds budget {}; scalar path",
+                    AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1, fromInclusive, toInclusive, peakBytes,
+                    deviceBudget);
+            return null;
+        }
         double[] prices = new double[size];
         double[] means = new double[size];
         double[] drifts = new double[size];
         double[] variances = new double[size];
-        double[] windows = new double[size * lookback];
+        double[] windows = new double[windowsLength];
         Indicator<Num> priceIndicator = forecast.kernelPriceIndicator();
         ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator = forecast.kernelStateIndicator();
         ReturnIndicator returnIndicator = stateIndicator.getReturnIndicator();
@@ -86,15 +120,14 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
                 (double) forecast.kernelVolatilityUpdateMode().ordinal(), (double) settings.horizon(),
                 (double) iterations, (double) lookback, forecast.kernelVolatilityDecayFactor() };
         List<double[]> inputs = List.of(prices, means, drifts, variances, windows);
-        long steps = (long) size * iterations * settings.horizon();
-        long estimatedScalarNanos = steps * NANOS_PER_PATH_STEP;
-        long inputBytes = ((long) size * 4 + (long) windows.length) * BYTES_PER_ELEMENT;
-        long outputBytes = (long) size * iterations * BYTES_PER_ELEMENT;
-        long peakBytes = inputBytes + outputBytes + steps * BYTES_PER_ELEMENT;
+        double tolerance = AccelerationRuntime.approximateTolerance();
+        boolean approximate = !Double.isNaN(tolerance);
+        AccelerationRuntime.Determinism determinism = approximate ? AccelerationRuntime.Determinism.APPROXIMATE
+                : AccelerationRuntime.Determinism.BITWISE_IDENTICAL;
         AccelerationRuntime.KernelRequest request = new AccelerationRuntime.KernelRequest(
                 AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1, fromInclusive, toInclusive, iterations,
-                AccelerationRuntime.NumericEncoding.FLOAT64, AccelerationRuntime.Determinism.BITWISE_IDENTICAL,
-                settings.seed(), Double.NaN, params, inputs, estimatedScalarNanos, peakBytes);
+                AccelerationRuntime.NumericEncoding.FLOAT64, determinism, settings.seed(), tolerance, params, inputs,
+                estimatedScalarNanos, peakBytes);
         List<Double> quantiles = List.copyOf(settings.quantileProbabilities());
         int horizon = settings.horizon();
         OperationDecoder decoder = (slice, index, decodingFactory) -> {

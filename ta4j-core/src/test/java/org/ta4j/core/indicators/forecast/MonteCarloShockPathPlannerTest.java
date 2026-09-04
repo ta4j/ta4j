@@ -9,6 +9,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
+import java.util.List;
 
 import org.junit.After;
 import org.junit.Before;
@@ -62,8 +63,27 @@ public class MonteCarloShockPathPlannerTest {
         assertEquals(1d, params[2], 0d);
         assertEquals(2d, params[3], 0d);
         assertEquals(2d, params[4], 0d);
+        assertEquals(AccelerationRuntime.Determinism.BITWISE_IDENTICAL, request.determinism());
+        assertTrue(Double.isNaN(request.tolerance()));
         assertTrue(request.estimatedScalarNanos() > 0);
         assertTrue(request.peakDeviceBytesEstimate() > 0);
+    }
+
+    @Test
+    public void emitsApproximateRequestWhenOptedIn() {
+        Fixture fixture = fixture(DoubleNumFactory.getInstance());
+        System.setProperty(AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY, "0.001");
+
+        try {
+            AccelerationRuntime.KernelRequest request = new MonteCarloShockPathPlanner()
+                    .plan(fixture.indicator, 2, 3, fixture.series.numFactory())
+                    .request();
+
+            assertEquals(AccelerationRuntime.Determinism.APPROXIMATE, request.determinism());
+            assertEquals(0.001d, request.tolerance(), 0d);
+        } finally {
+            System.clearProperty(AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY);
+        }
     }
 
     @Test
@@ -97,6 +117,37 @@ public class MonteCarloShockPathPlannerTest {
 
         assertNull(new MonteCarloShockPathPlanner().plan(new ClosePriceIndicator(fixture.series), 2, 2,
                 fixture.series.numFactory()));
+    }
+
+    @Test
+    public void declinesOversizedBatchesBeforeMaterializingInputs() {
+        Fixture fixture = fixture(DoubleNumFactory.getInstance());
+        System.setProperty(AccelerationRuntime.MAX_DEVICE_BYTES_PROPERTY, "1");
+        try {
+            assertNull(new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 3, fixture.series.numFactory()));
+        } finally {
+            System.clearProperty(AccelerationRuntime.MAX_DEVICE_BYTES_PROPERTY);
+        }
+    }
+
+    @Test
+    public void declinesCustomMonteCarloMethod() {
+        Fixture fixture = fixture(DoubleNumFactory.getInstance());
+        BarSeries series = fixture.series;
+        Indicator<Num> close = new ClosePriceIndicator(series);
+        FixedReturnIndicator returns = new FixedReturnIndicator(series, ReturnRepresentation.LOG,
+                series.numFactory().numOf(0), series.numFactory().numOf(DOWN), series.numFactory().numOf(UP),
+                series.numFactory().numOf(0));
+        FixedReturnStateIndicator state = new FixedReturnStateIndicator(returns, ReturnRepresentation.LOG);
+        MonteCarloPriceForecastIndicator indicator = MonteCarloPriceForecastIndicator.builder(close, state)
+                .horizon(1)
+                .iterationCount(2)
+                .lookbackBarCount(2)
+                .shockModel(MonteCarloReturnProjectionIndicator.ShockModel.HISTORICAL_BOOTSTRAP)
+                .monteCarloMethod(context -> List.of())
+                .build();
+
+        assertNull(new MonteCarloShockPathPlanner().plan(indicator, 2, 3, series.numFactory()));
     }
 
     private static Fixture fixture(org.ta4j.core.num.NumFactory factory) {

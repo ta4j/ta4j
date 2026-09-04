@@ -1,0 +1,155 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+package org.ta4j.cli;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import com.google.gson.JsonObject;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+/**
+ * Guards the performance comparison regression threshold against non-finite
+ * values.
+ *
+ * <p>
+ * The CLI accepts {@code --max-regression-pct=NaN} or
+ * {@code --max-regression-pct=Infinity} (the check is
+ * {@code maxRegressionPct < 0d}, which neither satisfies) and
+ * {@link PerformanceComparison#compare} then never flags a regression because
+ * every {@code medianDeltaPct > NaN} comparison is {@code false} and every
+ * finite {@code medianDeltaPct} compares below infinity. A hostile or mistyped
+ * threshold silently disables the regression gate instead of failing as a usage
+ * error.
+ *
+ * @since 0.23.1
+ */
+class PerformanceCompareNanThresholdTest {
+
+    @TempDir
+    Path tempDir;
+
+    private void writeArtifact(Path dir, long medianNanos) throws Exception {
+        Files.createDirectories(dir);
+        String json = """
+                {
+                  "schemaVersion": 1,
+                  "experimentId": "kalman-filter",
+                  "gitRef": "base",
+                  "repetitions": 1,
+                  "warmups": 0,
+                  "barCounts": [100],
+                  "scenarioIds": ["sequential"],
+                  "host": {
+                    "hostId": "sha256:fixture",
+                    "osName": "fixture-os",
+                    "osArch": "fixture-arch",
+                    "osVersion": "fixture-version",
+                    "javaVersion": "fixture-java",
+                    "jvmName": "fixture-jvm",
+                    "jvmOptionsFingerprint": "sha256:fixture-jvm",
+                    "availableProcessors": 1
+                  },
+                  "results": [
+                    {
+                      "scenarioId": "sequential",
+                      "barCount": 100,
+                      "checksum": 1,
+                      "checksumStable": true,
+                      "stats": {
+                        "minNanos": %d,
+                        "maxNanos": %d,
+                        "averageNanos": %d,
+                        "medianNanos": %d,
+                        "p90Nanos": %d,
+                        "totalOperations": 100,
+                        "totalDurationNanos": %d,
+                        "operationsPerSecond": 1000.0
+                      },
+                      "measurements": []
+                    }
+                  ]
+                }
+                """.formatted(medianNanos, medianNanos, medianNanos, medianNanos, medianNanos, medianNanos);
+        Files.writeString(dir.resolve("performance.json"), json);
+    }
+
+    @Test
+    void nanRegressionThresholdIsRejectedAsUsageError() throws Exception {
+        Path base = tempDir.resolve("base");
+        Path candidate = tempDir.resolve("candidate");
+        Path output = tempDir.resolve("out");
+        writeArtifact(base, 100L);
+        writeArtifact(candidate, 200L);
+
+        ByteArrayOutputStream outBytes = new ByteArrayOutputStream();
+        ByteArrayOutputStream errBytes = new ByteArrayOutputStream();
+        int code = Ta4jCli.run(
+                new String[] { "performance", "compare", "--base-dir", base.toString(), "--candidate-dir",
+                        candidate.toString(), "--output-dir", output.toString(), "--max-regression-pct=NaN" },
+                new ByteArrayInputStream(new byte[0]), new PrintWriter(outBytes, true, StandardCharsets.UTF_8),
+                new PrintWriter(errBytes, true, StandardCharsets.UTF_8));
+        assertEquals(2, code, "NaN regression threshold must be a usage error, not silently disable the gate");
+    }
+
+    @Test
+    void compareRejectsNanThresholdDirectly() throws Exception {
+        Path base = tempDir.resolve("base2");
+        Path candidate = tempDir.resolve("candidate2");
+        Path output = tempDir.resolve("out2");
+        writeArtifact(base, 100L);
+        writeArtifact(candidate, 200L);
+        assertThrows(IllegalArgumentException.class,
+                () -> PerformanceComparison.compare(base, candidate, output, Double.NaN));
+    }
+
+    @Test
+    void infinityRegressionThresholdIsRejectedAsUsageError() throws Exception {
+        Path base = tempDir.resolve("base4");
+        Path candidate = tempDir.resolve("candidate4");
+        Path output = tempDir.resolve("out4");
+        writeArtifact(base, 100L);
+        writeArtifact(candidate, 200L);
+
+        ByteArrayOutputStream outBytes = new ByteArrayOutputStream();
+        ByteArrayOutputStream errBytes = new ByteArrayOutputStream();
+        int code = Ta4jCli.run(
+                new String[] { "performance", "compare", "--base-dir", base.toString(), "--candidate-dir",
+                        candidate.toString(), "--output-dir", output.toString(), "--max-regression-pct=Infinity" },
+                new ByteArrayInputStream(new byte[0]), new PrintWriter(outBytes, true, StandardCharsets.UTF_8),
+                new PrintWriter(errBytes, true, StandardCharsets.UTF_8));
+        assertEquals(2, code, "Infinite regression threshold must be a usage error, not silently disable the gate");
+    }
+
+    @Test
+    void compareRejectsInfiniteThresholdDirectly() throws Exception {
+        Path base = tempDir.resolve("base5");
+        Path candidate = tempDir.resolve("candidate5");
+        Path output = tempDir.resolve("out5");
+        writeArtifact(base, 100L);
+        writeArtifact(candidate, 200L);
+        assertThrows(IllegalArgumentException.class,
+                () -> PerformanceComparison.compare(base, candidate, output, Double.POSITIVE_INFINITY));
+    }
+
+    @Test
+    void finiteThresholdStillEvaluatesTheGate() throws Exception {
+        Path base = tempDir.resolve("base3");
+        Path candidate = tempDir.resolve("candidate3");
+        Path output = tempDir.resolve("out3");
+        writeArtifact(base, 100L);
+        writeArtifact(candidate, 200L);
+        JsonObject comparison = PerformanceComparison.compare(base, candidate, output, 5d);
+        assertEquals(false, comparison.get("regressionWithinThreshold").getAsBoolean());
+    }
+}

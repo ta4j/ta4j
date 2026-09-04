@@ -182,7 +182,7 @@ Examples:
   scripts/run-full-build-quiet.sh --preflight-only
   scripts/run-full-build-quiet.sh -- -pl ta4j-core
   scripts/run-full-build-quiet.sh --goals "test jacoco:report jacoco:check" -- -pl ta4j-core -am
-  scripts/run-full-build-quiet.sh --goals test -- -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless
+  scripts/run-full-build-quiet.sh --goals test -- -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-opencl,requires-display,requires-headless
 EOF
 }
 
@@ -397,7 +397,7 @@ if [[ "$PREFLIGHT_ONLY" == "true" ]]; then
 fi
 
 if [[ "$DEFAULT_GATE" == "true" ]]; then
-    DEFAULT_MAVEN_ARGS=("-Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless")
+    DEFAULT_MAVEN_ARGS=("-Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-opencl,requires-display,requires-headless")
     if ((${#EXTRA_MAVEN_ARGS[@]} > 0)); then
         DEFAULT_MAVEN_ARGS+=("${EXTRA_MAVEN_ARGS[@]}")
     fi

@@ -60,6 +60,13 @@ public final class AccelerationRuntime {
      */
     public static final String MAX_DEVICE_BYTES_PROPERTY = "ta4j.acceleration.maxDeviceBytes";
 
+    /**
+     * System property opting execution into an approximate tolerance, a finite
+     * positive value compared against the scalar oracle. Unset (or invalid) leaves
+     * exact, bitwise-identical execution as the only mode.
+     */
+    public static final String APPROXIMATE_TOLERANCE_PROPERTY = "ta4j.acceleration.approximateTolerance";
+
     private static final Logger LOG = LoggerFactory.getLogger(AccelerationRuntime.class);
 
     private static final long DEFAULT_MAX_DEVICE_BYTES = 1L << 30;
@@ -153,7 +160,19 @@ public final class AccelerationRuntime {
         return context == null ? Optional.empty() : Optional.of(context.diagnostic);
     }
 
-    static long maxDeviceBytes() {
+    /**
+     * Returns the configured global device-memory budget, or its default when unset
+     * or misconfigured.
+     *
+     * <p>
+     * Core planners consult this budget to decline oversized requests before
+     * materializing input snapshots; the runtime re-checks every planned request
+     * against the same budget before provider assessment.
+     *
+     * @return positive device-memory budget in bytes
+     * @since 0.24.2
+     */
+    public static long maxDeviceBytes() {
         String configured = System.getProperty(MAX_DEVICE_BYTES_PROPERTY);
         if (configured == null || configured.isBlank()) {
             return DEFAULT_MAX_DEVICE_BYTES;
@@ -166,6 +185,43 @@ public final class AccelerationRuntime {
                     DEFAULT_MAX_DEVICE_BYTES);
             return DEFAULT_MAX_DEVICE_BYTES;
         }
+    }
+
+    /**
+     * Returns the opted-in approximate tolerance, or {@code NaN} when exact,
+     * bitwise-identical execution is requested.
+     *
+     * <p>
+     * The property controls the determinism contract core planners emit: a finite
+     * positive value selects {@link Determinism#APPROXIMATE} with that tolerance,
+     * while anything else — unset, blank, non-numeric, or non-positive — keeps
+     * {@link Determinism#BITWISE_IDENTICAL} with {@code NaN} tolerance. Invalid
+     * configuration never silently widens accuracy; it degrades to exact.
+     *
+     * @return finite positive approximate tolerance, or {@code NaN} for exact
+     * @since 0.24.2
+     */
+    public static double approximateTolerance() {
+        String configured = System.getProperty(APPROXIMATE_TOLERANCE_PROPERTY);
+        if (configured == null || configured.isBlank()) {
+            return Double.NaN;
+        }
+        double tolerance;
+        try {
+            tolerance = Double.parseDouble(configured.trim());
+        } catch (NumberFormatException exception) {
+            LOG.warn("Invalid {}='{}'; using exact execution", APPROXIMATE_TOLERANCE_PROPERTY, configured);
+            return Double.NaN;
+        }
+        if (Double.isNaN(tolerance)) {
+            return Double.NaN;
+        }
+        if (!Double.isFinite(tolerance) || tolerance <= 0d) {
+            LOG.warn("{} must be a finite positive tolerance, was '{}'; using exact execution",
+                    APPROXIMATE_TOLERANCE_PROPERTY, configured);
+            return Double.NaN;
+        }
+        return tolerance;
     }
 
     static synchronized void useProvidersForTests(List<Provider> providers) {
@@ -270,7 +326,13 @@ public final class AccelerationRuntime {
         /**
          * Bitwise identical to the scalar oracle for the same request inputs.
          */
-        BITWISE_IDENTICAL
+        BITWISE_IDENTICAL,
+
+        /**
+         * Within an explicitly requested numeric tolerance of the scalar oracle. Using
+         * this contract requires a finite positive kernel-request tolerance.
+         */
+        APPROXIMATE
     }
 
     /** Effective execution backend. */

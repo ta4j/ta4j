@@ -1,0 +1,1327 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+package org.ta4j.cli;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Position;
+import org.ta4j.core.Strategy;
+import org.ta4j.core.TraceTestLogger;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.frequency.SamplingFrequency;
+import org.ta4j.core.criteria.Annualization;
+import org.ta4j.core.criteria.SharpeRatioCriterion;
+import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitCriterion;
+import org.ta4j.core.indicators.RSIIndicator;
+import org.ta4j.core.num.Num;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class Ta4jCliTest {
+
+    @TempDir
+    Path tempDir;
+
+    @Test
+    void helpUsesProgressiveDisclosure() {
+        CliRunResult rootHelp = runCliAllowingError("--help");
+        CliRunResult strategyHelp = runCliAllowingError("strategy", "--help");
+        CliRunResult forecastHelp = runCliAllowingError("forecast", "run", "--help");
+        CliRunResult performanceRunHelp = runCliAllowingError("performance", "run", "--help");
+
+        assertThat(rootHelp.exitCode()).isZero();
+        assertThat(rootHelp.stdout()).contains("Usage: ta4j-cli")
+                .contains("strategy")
+                .contains("indicator")
+                .contains("rule")
+                .contains("forecast")
+                .contains("performance")
+                .contains("catalog")
+                .contains("completion");
+        assertThat(rootHelp.stdout()).doesNotContain("backtest      Run strategies against one dataset.");
+
+        assertThat(strategyHelp.exitCode()).isZero();
+        assertThat(strategyHelp.stdout()).contains("Usage: ta4j-cli strategy")
+                .contains("backtest")
+                .contains("walk-forward")
+                .contains("sweep");
+        assertThat(strategyHelp.stdout()).doesNotContain("--data-file");
+
+        assertThat(forecastHelp.exitCode()).isZero();
+        assertThat(forecastHelp.stdout()).contains("Usage: ta4j-cli forecast run")
+                .contains("--state-model")
+                .contains("--target")
+                .contains("--quantiles");
+
+        assertThat(performanceRunHelp.exitCode()).isZero();
+        assertThat(performanceRunHelp.stdout()).contains("Usage: ta4j-cli performance run")
+                .contains("--bar-counts")
+                .contains("--output-dir");
+        assertThat(performanceRunHelp.stdout()).doesNotContain("--base-dir");
+    }
+
+    @Test
+    void versionIsAlwaysVisible() {
+        CliRunResult result = runCliAllowingError("--version");
+
+        assertThat(result.exitCode()).isZero();
+        assertThat(result.stdout()).contains("ta4j-cli ").doesNotEndWith("ta4j-cli " + System.lineSeparator());
+    }
+
+    @Test
+    void catalogAndCompletionAreGeneratedFromTheLiveCommandModel() {
+        CliRunResult catalogRun = runCliAllowingError("catalog");
+        CliRunResult completionRun = runCliAllowingError("completion", "--shell", "bash");
+
+        assertThat(catalogRun.exitCode()).isZero();
+        JsonObject catalog = result(JsonParser.parseString(catalogRun.stdout()).getAsJsonObject());
+        assertThat(catalog.getAsJsonObject("aliases").getAsJsonArray("indicators").toString()).contains("SMA", "RSI");
+        assertThat(catalog.getAsJsonObject("forecasting").getAsJsonArray("projectionModels").toString())
+                .contains("monte-carlo", "analog");
+        assertThat(completionRun.exitCode()).isZero();
+        assertThat(completionRun.stdout()).contains("ta4j-cli", "_complete_ta4j-cli");
+    }
+
+    @Test
+    void structuredErrorsDistinguishUsageFailures() {
+        CliRunResult result = runCliAllowingError("--error-format", "json", "backtest");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        JsonObject payload = JsonParser.parseString(result.stderr()).getAsJsonObject();
+        assertThat(payload.get("schemaVersion").getAsInt()).isEqualTo(1);
+        assertThat(payload.get("status").getAsString()).isEqualTo("error");
+        assertThat(payload.getAsJsonObject("error").get("category").getAsString()).isEqualTo("usage");
+    }
+
+    @Test
+    void oldFlatCommandsFailAsUnknownCommands() {
+        CliRunResult result = runCliAllowingError("backtest");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("Unmatched argument at index 0: 'backtest'");
+    }
+
+    @Test
+    void oldCamelCasePerformanceFlagsFailAsUnknownOptions() {
+        CliRunResult result = runCliAllowingError("performance", "run", "--barCounts", "16");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("Unknown options: '--barCounts', '16'");
+    }
+
+    @Test
+    void backtestProducesJsonAndChartArtifacts() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        Path strategyJsonFile = writeSerializedStrategy("backtest-strategy.json", sampleSweepStrategy(series));
+        Path outputFile = tempDir.resolve("backtest.json");
+        Path chartFile = tempDir.resolve("backtest.jpg");
+
+        int exitCode = runCli("strategy", "backtest", "--data-file", dataFile.toString(), "--strategy-json-file",
+                strategyJsonFile.toString(), "--criteria",
+                NetProfitCriterion.class.getName() + ",org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion",
+                "--output", outputFile.toString(), "--chart", chartFile.toString());
+
+        assertThat(exitCode).isZero();
+        assertThat(outputFile).exists();
+        assertThat(chartFile).exists();
+
+        JsonObject payload = readJson(outputFile);
+        JsonObject result = result(payload);
+        assertThat(payload.get("command").getAsString()).isEqualTo("strategy backtest");
+        assertThat(payload.get("schemaVersion").getAsInt()).isEqualTo(1);
+        assertThat(result.getAsJsonObject("statement").get("strategyName").getAsString()).contains("sma-crossover");
+        JsonObject artifacts = payload.getAsJsonObject("run").getAsJsonObject("artifacts");
+        assertThat(artifacts.get("outputFile").getAsString())
+                .isEqualTo(outputFile.toAbsolutePath().normalize().toString());
+        assertThat(artifacts.get("chartFile").getAsString())
+                .isEqualTo(chartFile.toAbsolutePath().normalize().toString());
+    }
+
+    @Test
+    void walkForwardProducesConfigHashAndFoldBreakdown() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        Path strategyJsonFile = writeSerializedStrategy("walk-forward-strategy.json", sampleSweepStrategy(series));
+        Path outputFile = tempDir.resolve("walk-forward.json");
+
+        int exitCode = runCli("strategy", "walk-forward", "--data-file", dataFile.toString(), "--strategy-json-file",
+                strategyJsonFile.toString(), "--criteria", GrossReturnCriterion.class.getName(), "--output",
+                outputFile.toString(), "--min-train-bars", "120", "--test-bars", "40", "--step-bars", "20",
+                "--holdout-bars", "20");
+
+        assertThat(exitCode).isZero();
+        JsonObject walkForward = result(readJson(outputFile)).getAsJsonObject("walkForward");
+        assertThat(walkForward.getAsJsonObject("config").get("configHash").getAsString()).isNotBlank();
+        JsonArray folds = walkForward.getAsJsonArray("folds");
+        assertThat(folds).isNotEmpty();
+    }
+
+    @Test
+    void sweepProducesDeterministicLeaderBoard() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path outputFile = tempDir.resolve("sweep.json");
+
+        int exitCode = runCli("strategy", "sweep", "--data-file", dataFile.toString(), "--param-grid", "fast=3,5",
+                "--param-grid", "slow=20,30", "--top-k", "2", "--criteria", NetProfitCriterion.class.getName(),
+                "--output", outputFile.toString());
+
+        assertThat(exitCode).isZero();
+        JsonObject result = result(readJson(outputFile));
+        assertThat(result.get("candidateCount").getAsInt()).isEqualTo(4);
+        assertThat(result.get("topK").getAsInt()).isEqualTo(2);
+        assertThat(result.getAsJsonArray("leaderboard")).hasSize(2);
+    }
+
+    @Test
+    void indicatorTestBuildsThresholdStrategy() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path outputFile = tempDir.resolve("indicator-test.json");
+
+        int exitCode = runCli("indicator", "test", "--data-file", dataFile.toString(), "--indicator", "RSI(14)",
+                "--entry-below", "30", "--exit-above", "70", "--output", outputFile.toString());
+
+        assertThat(exitCode).isZero();
+        JsonObject result = result(readJson(outputFile));
+        assertThat(result.get("indicatorType").getAsString()).isEqualTo(RSIIndicator.class.getName());
+        assertThat(result.getAsJsonObject("statement").get("strategyName").getAsString())
+                .isEqualTo("RSIIndicator-indicator-test");
+    }
+
+    @Test
+    void ruleTestBuildsBacktestAndWalkForwardArtifactsFromNamedRules() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path outputFile = tempDir.resolve("rule-test.json");
+
+        int exitCode = runCli("rule", "test", "--data-file", dataFile.toString(), "--entry-rule",
+                "RsiThresholdRule_BELOW_14_30", "--exit-rule", "RsiThresholdRule_ABOVE_14_70", "--output",
+                outputFile.toString(), "--min-train-bars", "120", "--test-bars", "40", "--step-bars", "20",
+                "--holdout-bars", "20");
+
+        assertThat(exitCode).isZero();
+        JsonObject payload = readJson(outputFile);
+        JsonObject result = result(payload);
+        assertThat(result.get("entryRuleName").getAsString()).isEqualTo("RsiThresholdRule_BELOW_14_30");
+        assertThat(result.get("exitRuleName").getAsString()).isEqualTo("RsiThresholdRule_ABOVE_14_70");
+        assertThat(result.get("backtest")).isNotNull();
+        assertThat(payload.getAsJsonObject("run").get("backtestRuntime")).isNotNull();
+        assertThat(result.get("walkForward")).isNotNull();
+    }
+
+    @Test
+    void ruleTestAllowsTheSameRuleJsonFileForEntryAndExit() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        String ruleJson = sampleSweepStrategy(series).getEntryRule().toJson();
+        Path ruleFile = tempDir.resolve("rule.json");
+        Files.writeString(ruleFile, ruleJson);
+        Path outputFile = tempDir.resolve("rule-test.json");
+
+        int exitCode = runCli("rule", "test", "--data-file", dataFile.toString(), "--entry-rule-json-file",
+                ruleFile.toString(), "--exit-rule-json-file", ruleFile.toString(), "--output", outputFile.toString());
+        assertThat(exitCode).isZero();
+        JsonObject result = result(readJson(outputFile));
+        assertThat(result.get("backtest")).isNotNull();
+        assertThat(result.get("walkForward")).isNotNull();
+    }
+
+    @Test
+    void unreadableStructuredInputFilesExitWithIoErrorCategory() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path missing = tempDir.resolve("missing.json");
+
+        CliRunResult strategyJson = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy-json-file", missing.toString());
+        assertThat(strategyJson.exitCode()).isEqualTo(74);
+        assertThat(strategyJson.stderr()).contains("Unable to read strategy JSON from " + missing);
+
+        CliRunResult entryRule = runCliAllowingError("rule", "test", "--data-file", dataFile.toString(),
+                "--entry-rule-json-file", missing.toString(), "--exit-rule", "RsiThresholdRule_ABOVE_14_70");
+        assertThat(entryRule.exitCode()).isEqualTo(74);
+        assertThat(entryRule.stderr()).contains("Unable to read rule JSON from " + missing);
+
+        CliRunResult indicator = runCliAllowingError("indicator", "test", "--data-file", dataFile.toString(),
+                "--indicator-json-file", missing.toString(), "--entry-below", "30", "--exit-above", "70");
+        assertThat(indicator.exitCode()).isEqualTo(74);
+        assertThat(indicator.stderr()).contains("Unable to read serialized input from " + missing);
+
+        CliRunResult criteria = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--criteria-file", missing.toString());
+        assertThat(criteria.exitCode()).isEqualTo(74);
+        assertThat(criteria.stderr()).contains("Unable to read --criteria-file " + missing);
+    }
+
+    @Test
+    void jsonDataFileRejectsPartiallyDecodedCandles() throws Exception {
+        Path dataFile = tempDir.resolve("partial-coinbase.json");
+        Files.writeString(dataFile, """
+                {"candles": [
+                  {"start": "1700000000", "open": "100", "high": "110", "low": "90", "close": "105", "volume": "1000"},
+                  {"start": "1700000060", "open": "106"}
+                ]}
+                """);
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("contains 2 candles but only 1 could be decoded");
+    }
+
+    @Test
+    void jsonDataFileRejectsNonUniformPeriodsWhenAggregating() throws Exception {
+        Path dataFile = tempDir.resolve("irregular-coinbase.json");
+        Files.writeString(dataFile, """
+                {"candles": [
+                  {"start": "1700000000", "open": "100", "high": "110", "low": "90", "close": "105", "volume": "1000"},
+                  {"start": "1700000060", "open": "105", "high": "115", "low": "95", "close": "110", "volume": "1000"},
+                  {"start": "1700000180", "open": "110", "high": "120", "low": "100", "close": "115", "volume": "1000"}
+                ]}
+                """);
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--timeframe", "PT1M");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("non-uniform periods");
+    }
+
+    @Test
+    void ruleTestRejectsNonFiniteRsiThreshold() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("rule", "test", "--data-file", dataFile.toString(), "--entry-rule",
+                "RsiThresholdRule_BELOW_14_NaN", "--exit-rule", "RsiThresholdRule_ABOVE_14_70");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("RsiThresholdRule threshold must be a finite value");
+    }
+
+    @Test
+    void performanceExperimentWritesArtifacts() throws Exception {
+        Path outputDir = tempDir.resolve("performance-experiment");
+
+        int exitCode = runCli("performance", "run", "--experiment", "kalman-filter", "--bar-counts", "16",
+                "--scenarios", "endOnly", "--repetitions", "1", "--warmups", "0", "--output-dir", outputDir.toString());
+
+        assertThat(exitCode).isZero();
+        JsonObject payload = readJson(outputDir.resolve("performance.json"));
+        assertThat(payload.get("experimentId").getAsString()).isEqualTo("kalman-filter");
+        assertThat(payload.getAsJsonArray("results")).hasSize(1);
+        assertThat(outputDir.resolve("summary.md")).exists();
+    }
+
+    @Test
+    void performanceRejectsOversizedRepetitionCount() throws Exception {
+        Path outputDir = tempDir.resolve("performance-oversized-repetitions");
+
+        CliRunResult result = runCliAllowingError("performance", "run", "--experiment", "kalman-filter", "--bar-counts",
+                "16", "--scenarios", "endOnly", "--repetitions", "1000001", "--warmups", "0", "--output-dir",
+                outputDir.toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("repetitions must not exceed 1000000");
+    }
+
+    @Test
+    void performanceRejectsOversizedWarmupCount() throws Exception {
+        Path outputDir = tempDir.resolve("performance-oversized-warmups");
+
+        CliRunResult result = runCliAllowingError("performance", "run", "--experiment", "kalman-filter", "--bar-counts",
+                "16", "--scenarios", "endOnly", "--repetitions", "1", "--warmups", "1000001", "--output-dir",
+                outputDir.toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("warmups must not exceed 1000000");
+    }
+
+    @Test
+    void performanceCompareWritesArtifacts() throws Exception {
+        Path baseDir = tempDir.resolve("performance-base");
+        Path candidateDir = tempDir.resolve("performance-candidate");
+        Path comparisonDir = tempDir.resolve("performance-comparison");
+        assertThat(runCli("performance", "run", "--experiment", "kalman-filter", "--bar-counts", "16", "--scenarios",
+                "endOnly", "--repetitions", "1", "--warmups", "0", "--output-dir", baseDir.toString())).isZero();
+        assertThat(runCli("performance", "run", "--experiment", "kalman-filter", "--bar-counts", "16", "--scenarios",
+                "endOnly", "--repetitions", "1", "--warmups", "0", "--output-dir", candidateDir.toString())).isZero();
+
+        int exitCode = runCli("performance", "compare", "--base-dir", baseDir.toString(), "--candidate-dir",
+                candidateDir.toString(), "--output-dir", comparisonDir.toString(), "--max-regression-pct", "100000");
+
+        assertThat(exitCode).isZero();
+        JsonObject payload = readJson(comparisonDir.resolve("comparison.json"));
+        assertThat(payload.get("experimentId").getAsString()).isEqualTo("kalman-filter");
+        assertThat(payload.get("checksumMatch").getAsBoolean()).isTrue();
+        assertThat(comparisonDir.resolve("summary.md")).exists();
+    }
+
+    @Test
+    void performanceCompareFailsTheProcessWhenTheRegressionGateFails() throws Exception {
+        Path baseDir = tempDir.resolve("performance-base-regressed");
+        Path candidateDir = tempDir.resolve("performance-candidate-regressed");
+        Path comparisonDir = tempDir.resolve("performance-comparison-regressed");
+        Files.createDirectories(baseDir);
+        Files.createDirectories(candidateDir);
+        // Candidate median is 400% slower than the baseline with matching
+        // checksums: a clear regression beyond --max-regression-pct 5.
+        Files.writeString(baseDir.resolve("performance.json"), performanceArtifact(1_000_000L));
+        Files.writeString(candidateDir.resolve("performance.json"), performanceArtifact(5_000_000L));
+
+        CliRunResult result = runCliAllowingError("performance", "compare", "--base-dir", baseDir.toString(),
+                "--candidate-dir", candidateDir.toString(), "--output-dir", comparisonDir.toString(),
+                "--max-regression-pct", "5");
+
+        // The compare command is a regression gate ("Allowed median runtime
+        // regression percentage"). A regressed candidate must fail the process
+        // so automation and CI cannot treat the run as green.
+        assertThat(result.exitCode()).isNotZero();
+        assertThat(result.stdout()).contains("\"status\": \"regression\"");
+        assertThat(comparisonDir.resolve("comparison.json")).exists();
+    }
+
+    @Test
+    void performanceCompareFailsTheProcessWhenChecksumsDiverge() throws Exception {
+        Path baseDir = tempDir.resolve("performance-base-checksum");
+        Path candidateDir = tempDir.resolve("performance-candidate-checksum");
+        Path comparisonDir = tempDir.resolve("performance-comparison-checksum");
+        Files.createDirectories(baseDir);
+        Files.createDirectories(candidateDir);
+        Files.writeString(baseDir.resolve("performance.json"), performanceArtifact(1_000_000L, "checksum", 42L));
+        Files.writeString(candidateDir.resolve("performance.json"), performanceArtifact(1_000_000L, "checksum", 43L));
+
+        CliRunResult result = runCliAllowingError("performance", "compare", "--base-dir", baseDir.toString(),
+                "--candidate-dir", candidateDir.toString(), "--output-dir", comparisonDir.toString(),
+                "--max-regression-pct", "5");
+
+        // A checksum mismatch means the candidate exercised different behavior;
+        // the comparison "fails" (PerformanceComparison.compare javadoc) and
+        // the gate must fail the process.
+        assertThat(result.exitCode()).isNotZero();
+        assertThat(comparisonDir.resolve("comparison.json")).exists();
+    }
+
+    @Test
+    void backtestAcceptsNamedStrategyLabels() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path outputFile = tempDir.resolve("named-strategy-backtest.json");
+
+        int exitCode = runCli("strategy", "backtest", "--data-file", dataFile.toString(), "--strategy",
+                "DayOfWeekStrategy_MONDAY_FRIDAY", "--output", outputFile.toString());
+
+        assertThat(exitCode).isZero();
+        JsonObject result = result(readJson(outputFile));
+        assertThat(result.getAsJsonObject("statement").get("strategyName").getAsString())
+                .isEqualTo("DayOfWeekStrategy_MONDAY_FRIDAY");
+    }
+
+    @Test
+    void backtestAcceptsCompactStrategyAndCriterionExpressionsWithDynamicSizing() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path outputFile = tempDir.resolve("expression-backtest.json");
+
+        int exitCode = runCli("strategy", "backtest", "--data-file", dataFile.toString(), "--strategy", "SMA(7,21)",
+                "--criteria", "NetProfit,ReturnOverMaxDrawdown", "--position-sizing", "balance", "--capital", "10000",
+                "--borrow-rate", "0", "--borrow-side", "both", "--output", outputFile.toString());
+
+        assertThat(exitCode).isZero();
+        JsonObject result = result(readJson(outputFile));
+        assertThat(result.getAsJsonObject("statement").get("strategyName").getAsString()).isEqualTo("SMA(7,21)");
+        assertThat(result.getAsJsonObject("statement").getAsJsonArray("criteria")).hasSize(2);
+        assertThat(result.getAsJsonObject("execution").get("positionSizing").getAsString()).isEqualTo("balance");
+        assertThat(result.getAsJsonObject("execution").get("borrowSide").getAsString()).isEqualTo("both");
+    }
+
+    @Test
+    void backtestAcceptsVersionTwoStrategyJson() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path strategyFile = tempDir.resolve("strategy-v2.json");
+        Path outputFile = tempDir.resolve("strategy-v2-backtest.json");
+        Files.writeString(strategyFile, """
+                {
+                  "version": 2,
+                  "name": "v2-sma",
+                  "entryRule": {"type": "CrossedUpIndicatorRule", "args": ["SMA(7)", "SMA(21)"]},
+                  "exitRule": {"type": "CrossedDownIndicatorRule", "args": ["SMA(7)", "SMA(21)"]}
+                }
+                """);
+
+        int exitCode = runCli("strategy", "backtest", "--data-file", dataFile.toString(), "--strategy-json-file",
+                strategyFile.toString(), "--output", outputFile.toString());
+
+        assertThat(exitCode).isZero();
+        assertThat(result(readJson(outputFile)).getAsJsonObject("statement").get("strategyName").getAsString())
+                .isEqualTo("v2-sma");
+    }
+
+    @Test
+    void forecastRunProducesDeterministicEmpiricalPriceSummary() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path outputFile = tempDir.resolve("forecast.json");
+
+        int exitCode = runCli("forecast", "run", "--data-file", dataFile.toString(), "--state-model", "ewma",
+                "--target", "price", "--horizon", "3", "--samples", "25", "--quantiles", "0.05,0.5,0.95", "--output",
+                outputFile.toString());
+
+        assertThat(exitCode).isZero();
+        JsonObject payload = readJson(outputFile);
+        JsonObject result = result(payload);
+        assertThat(payload.get("command").getAsString()).isEqualTo("forecast run");
+        assertThat(result.getAsJsonObject("state").get("stable").getAsBoolean()).isTrue();
+        assertThat(result.getAsJsonObject("forecast").get("horizon").getAsInt()).isEqualTo(3);
+        assertThat(result.getAsJsonObject("configuration").get("lookbackBars").getAsInt()).isEqualTo(251);
+        assertThat(result.getAsJsonObject("forecast").getAsJsonObject("support").get("count").getAsInt()).isEqualTo(25);
+    }
+
+    @Test
+    void forecastRunComposesAnalogConformalAndLognormalModels() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path analogOutput = tempDir.resolve("analog-price.json");
+        Path conformalOutput = tempDir.resolve("analog-conformal-return.json");
+
+        int analogExit = runCli("forecast", "run", "--data-file", dataFile.toString(), "--target", "price",
+                "--projection-model", "analog", "--price-model", "lognormal", "--lookback-bars", "120",
+                "--neighbor-count", "10", "--minimum-neighbor-count", "5", "--output", analogOutput.toString());
+        int conformalExit = runCli("forecast", "run", "--data-file", dataFile.toString(), "--target", "return",
+                "--projection-model", "analog", "--calibration", "conformal", "--lookback-bars", "40",
+                "--neighbor-count", "10", "--minimum-neighbor-count", "5", "--calibration-window", "80",
+                "--minimum-calibration-count", "10", "--output", conformalOutput.toString());
+
+        assertThat(analogExit).isZero();
+        assertThat(conformalExit).isZero();
+        JsonObject analogResult = result(readJson(analogOutput));
+        assertThat(analogResult.getAsJsonObject("configuration").get("resolvedPriceModel").getAsString())
+                .isEqualTo("lognormal");
+        assertThat(analogResult.getAsJsonObject("forecast").getAsJsonObject("support").get("assumption").getAsString())
+                .isEqualTo("lognormal-moment-match");
+        JsonObject conformalResult = result(readJson(conformalOutput));
+        assertThat(conformalResult.getAsJsonObject("configuration").get("calibration").getAsString())
+                .isEqualTo("conformal");
+        assertThat(conformalResult.getAsJsonObject("forecast").get("stable").getAsBoolean()).isTrue();
+    }
+
+    @Test
+    void criterionJsonPreservesTradeSamplingConfiguration() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path outputFile = tempDir.resolve("criterion-json.json");
+        String criterionJson = new SharpeRatioCriterion(0.03d, SamplingFrequency.TRADE, Annualization.ANNUALIZED,
+                ZoneOffset.UTC).toJson();
+
+        int exitCode = runCli("strategy", "backtest", "--data-file", dataFile.toString(), "--strategy", "SMA(7,21)",
+                "--criterion-json", criterionJson, "--output", outputFile.toString());
+
+        assertThat(exitCode).isZero();
+        JsonArray scores = result(readJson(outputFile)).getAsJsonObject("statement").getAsJsonArray("criteria");
+        assertThat(scores).hasSize(1);
+        assertThat(scores.get(0).getAsJsonObject().get("descriptor").toString()).contains("TRADE", "0.03");
+    }
+
+    @Test
+    void reproducibleOutputIsByteStableAndOmitsRunMetadata() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult first = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "SMA(7,21)", "--reproducible");
+        CliRunResult second = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "SMA(7,21)", "--reproducible");
+
+        assertThat(first.exitCode()).isZero();
+        assertThat(first.stderr()).isBlank();
+        assertThat(second.stdout()).isEqualTo(first.stdout());
+        JsonObject payload = JsonParser.parseString(first.stdout()).getAsJsonObject();
+        assertThat(payload.has("run")).isFalse();
+        assertThat(result(payload).getAsJsonObject("input").get("seriesSha256").getAsString()).hasSize(64);
+    }
+
+    @Test
+    void reproducibleOutputUsesContentIdentityInsteadOfLocalInputPath() throws Exception {
+        Path firstDataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path secondDataFile = tempDir.resolve("same-bars-under-another-name.csv");
+        Files.copy(firstDataFile, secondDataFile);
+
+        CliRunResult first = runCliAllowingError("strategy", "backtest", "--data-file", firstDataFile.toString(),
+                "--strategy", "SMA(7,21)", "--reproducible");
+        CliRunResult second = runCliAllowingError("strategy", "backtest", "--data-file", secondDataFile.toString(),
+                "--strategy", "SMA(7,21)", "--reproducible");
+
+        assertThat(first.exitCode()).isZero();
+        assertThat(second.exitCode()).isZero();
+        assertThat(second.stdout()).isEqualTo(first.stdout());
+        JsonObject reproducibleInput = result(JsonParser.parseString(first.stdout()).getAsJsonObject())
+                .getAsJsonObject("input");
+        assertThat(reproducibleInput.has("dataFile")).isFalse();
+        assertThat(reproducibleInput.has("seriesName")).isFalse();
+
+        CliRunResult ordinary = runCliAllowingError("strategy", "backtest", "--data-file", firstDataFile.toString(),
+                "--strategy", "SMA(7,21)");
+        JsonObject ordinaryInput = result(JsonParser.parseString(ordinary.stdout()).getAsJsonObject())
+                .getAsJsonObject("input");
+        assertThat(ordinaryInput.get("dataFile").getAsString()).isEqualTo(firstDataFile.toString());
+        assertThat(ordinaryInput.get("seriesName").getAsString()).isEqualTo(firstDataFile.getFileName().toString());
+    }
+
+    @Test
+    void stdinDataSupportsComposableAgentPipelines() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        InputStream input = new ByteArrayInputStream(Files.readAllBytes(dataFile));
+
+        CliRunResult run = runCliAllowingError(input, "strategy", "backtest", "--data-file", "-", "--data-format",
+                "csv", "--strategy", "SMA(7,21)", "--reproducible");
+
+        assertThat(run.exitCode()).isZero();
+        assertThat(run.stderr()).isBlank();
+        JsonObject inputMetadata = result(JsonParser.parseString(run.stdout()).getAsJsonObject())
+                .getAsJsonObject("input");
+        assertThat(inputMetadata.get("dataFile").getAsString()).isEqualTo("-");
+        assertThat(inputMetadata.get("seriesName").getAsString()).isEqualTo("stdin");
+    }
+
+    @Test
+    void stdinReadFailuresUseTheIoErrorContract() {
+        InputStream failingInput = new InputStream() {
+            @Override
+            public int read() throws IOException {
+                throw new IOException("simulated pipe failure");
+            }
+        };
+
+        CliRunResult ioFailure = runCliAllowingError(failingInput, "--error-format", "json", "strategy", "backtest",
+                "--data-file", "-", "--data-format", "csv", "--strategy", "SMA(7,21)");
+
+        assertThat(ioFailure.exitCode()).isEqualTo(74);
+        JsonObject ioError = JsonParser.parseString(ioFailure.stderr()).getAsJsonObject().getAsJsonObject("error");
+        assertThat(ioError.get("category").getAsString()).isEqualTo("io");
+        assertThat(ioError.get("message").getAsString()).isEqualTo("Unable to read bar data from stdin.");
+
+        CliRunResult invalidFormat = runCliAllowingError(InputStream.nullInputStream(), "--error-format", "json",
+                "strategy", "backtest", "--data-file", "-", "--data-format", "yaml", "--strategy", "SMA(7,21)");
+        assertThat(invalidFormat.exitCode()).isEqualTo(2);
+        JsonObject usageError = JsonParser.parseString(invalidFormat.stderr())
+                .getAsJsonObject()
+                .getAsJsonObject("error");
+        assertThat(usageError.get("category").getAsString()).isEqualTo("usage");
+    }
+
+    @Test
+    void backtestRejectsMissingDataFileWithIoError() {
+        String missing = tempDir.resolve("missing.csv").toString();
+
+        CliRunResult ioFailure = runCliAllowingError("--error-format", "json", "strategy", "backtest", "--data-file",
+                missing, "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY");
+
+        assertThat(ioFailure.exitCode()).isEqualTo(74);
+        JsonObject ioError = JsonParser.parseString(ioFailure.stderr()).getAsJsonObject().getAsJsonObject("error");
+        assertThat(ioError.get("category").getAsString()).isEqualTo("io");
+        assertThat(ioError.get("message").getAsString()).isEqualTo("Unable to read bar data from " + missing + ".");
+    }
+
+    @Test
+    void backtestRejectsMidReadDataFileFailuresWithIoError() throws Exception {
+        Path corrupt = tempDir.resolve("corrupt.csv");
+        Files.writeString(corrupt, """
+                date,open,high,low,close,volume
+                2013-01-02,553.82,555.00,541.63,549.03,20018500
+                """);
+        Files.write(corrupt, new byte[] { (byte) 0xC3, (byte) 0x28 }, StandardOpenOption.APPEND);
+
+        CliRunResult result = runCliAllowingError("--error-format", "json", "strategy", "backtest", "--data-file",
+                corrupt.toString(), "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY");
+
+        assertThat(result.exitCode()).isEqualTo(74);
+        JsonObject ioError = JsonParser.parseString(result.stderr()).getAsJsonObject().getAsJsonObject("error");
+        assertThat(ioError.get("category").getAsString()).isEqualTo("io");
+        assertThat(ioError.get("message").getAsString()).isEqualTo("Unable to read CSV data from " + corrupt + ".");
+    }
+
+    @Test
+    void sweepRejectsUnboundedWorkFromGridTimesSeriesLength() throws Exception {
+        Path dataFile = writeLongSeriesCsv(39_700);
+        StringBuilder fastValues = new StringBuilder();
+        StringBuilder slowValues = new StringBuilder();
+        for (int i = 3; i <= 102; i++) {
+            if (i > 3) {
+                fastValues.append(',');
+                slowValues.append(',');
+            }
+            fastValues.append(i);
+            slowValues.append(i);
+        }
+
+        CliRunResult result = runCliAllowingError("strategy", "sweep", "--data-file", dataFile.toString(),
+                "--param-grid", "fast=" + fastValues, "--param-grid", "slow=" + slowValues, "--top-k", "2",
+                "--criteria", NetProfitCriterion.class.getName());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("bar-strategy evaluations");
+    }
+
+    @Test
+    void forecastStateRejectsProjectionOnlyOptions() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(), "--target",
+                "state", "--horizon", "3");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--horizon may only be used with --target return or --target price.");
+    }
+
+    @Test
+    void forecastRejectsUnboundedHorizonBeforeStateEvaluation() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(),
+                "--state-model", "rough-volatility", "--target", "return", "--horizon", "10000001");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--horizon must not exceed 10000000");
+    }
+
+    @Test
+    void forecastRejectsRoughVolatilityHorizonBeyondMemoryBound() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(),
+                "--state-model", "rough-volatility", "--target", "return", "--horizon", "100001", "--samples", "1");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("horizon must be <= 100000");
+    }
+
+    @Test
+    void forecastRejectsMonteCarloWorkBeyondCeilingBeforeStateEvaluation() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(),
+                "--state-model", "rough-volatility", "--target", "price", "--horizon", "100000", "--samples", "101");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--samples x --horizon must not exceed 10000000");
+    }
+
+    @Test
+    void forecastRejectsUnboundedLookbackBars() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(), "--target",
+                "price", "--lookback-bars", "1000001");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--lookback-bars must not exceed 1000000");
+    }
+
+    @Test
+    void forecastRejectsUnboundedCalibrationWindow() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(), "--target",
+                "return", "--calibration", "conformal", "--calibration-window", "1000001");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--calibration-window must not exceed 1000000");
+    }
+
+    @Test
+    void forecastRejectsUnboundedAnalogWork() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(), "--target",
+                "return", "--projection-model", "analog", "--horizon", "100000", "--lookback-bars", "100000");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--horizon x --lookback-bars must not exceed 10000000");
+    }
+
+    @Test
+    void forecastRejectsConformalMonteCarloWorkBeyondCeiling() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(), "--target",
+                "return", "--calibration", "conformal", "--samples", "100000", "--horizon", "100");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr())
+                .contains("--samples x --horizon with --calibration conformal (window 252) must not exceed 10000000");
+    }
+
+    @Test
+    void forecastRejectsConformalAnalogWorkBeyondCeiling() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(), "--target",
+                "return", "--projection-model", "analog", "--calibration", "conformal", "--horizon", "200",
+                "--lookback-bars", "250");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains(
+                "--horizon x --lookback-bars with --calibration conformal (window 252) must not exceed 10000000");
+    }
+
+    @Test
+    void forecastRejectsUnboundedChangePointStateWork() throws Exception {
+        Path dataFile = writeLongSeriesCsv(39_700);
+
+        CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(),
+                "--state-model", "change-point", "--target", "state");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains(
+                "--state-model change-point state work (history x maximum run length) must not exceed 10000000");
+    }
+
+    @Test
+    void forecastEvaluatesChangePointStateWithinCeiling() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path outputFile = tempDir.resolve("change-point-state.json");
+
+        int exitCode = runCli("forecast", "run", "--data-file", dataFile.toString(), "--state-model", "change-point",
+                "--target", "state", "--output", outputFile.toString());
+
+        assertThat(exitCode).isZero();
+        JsonObject payload = readJson(outputFile);
+        assertThat(payload.get("command").getAsString()).isEqualTo("forecast run");
+        assertThat(result(payload).getAsJsonObject("state").get("stable").getAsBoolean()).isTrue();
+    }
+
+    @Test
+    void backtestFailsBeforeExecutionWhenAnyBatchInputIsInvalidByDefault() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path outputFile = tempDir.resolve("should-not-exist.json");
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategies", "SMA(7,21),MissingStrategy_VALUE", "--output", outputFile.toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("Invalid strategy inputs:", "MissingStrategy_VALUE",
+                "Use --invalid-input skip to run only valid inputs.");
+        assertThat(outputFile).doesNotExist();
+    }
+
+    @Test
+    void backtestCombinesStrategyInputsAndSkipsInvalidEntries() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        Strategy serializedStrategy = sampleSweepStrategy(series);
+        Path strategyJsonFile = writeSerializedStrategy("strategy.json", serializedStrategy);
+        Path strategiesJsonFile = tempDir.resolve("strategies.json");
+        Path outputFile = tempDir.resolve("backtest-batch.json");
+        Files.writeString(strategiesJsonFile, "[" + serializedStrategy.toJson() + ",\"invalid\"]");
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--strategies",
+                "HourOfDayStrategy_9_17,MissingStrategy_VALUE", "--strategy-json-file", strategyJsonFile.toString(),
+                "--strategies-json-file", strategiesJsonFile.toString(), "--invalid-input", "skip", "--output",
+                outputFile.toString());
+
+        assertThat(result.exitCode()).isZero();
+        assertThat(result.stderr()).contains("Skipping invalid strategy inputs:")
+                .contains("--strategies MissingStrategy_VALUE")
+                .contains("--strategies-json-file " + strategiesJsonFile + "[1]");
+
+        JsonObject payload = readJson(outputFile);
+        JsonObject resultPayload = result(payload);
+        assertThat(payload.get("status").getAsString()).isEqualTo("partial");
+        assertThat(resultPayload.get("strategyCount").getAsInt()).isEqualTo(4);
+        assertThat(resultPayload.get("invalidStrategyCount").getAsInt()).isEqualTo(2);
+        assertThat(resultPayload.getAsJsonArray("statements")).hasSize(4);
+        assertThat(resultPayload.getAsJsonArray("invalidStrategies")).hasSize(2);
+        assertThat(resultPayload.getAsJsonObject("statement").get("strategyName").getAsString())
+                .isEqualTo("DayOfWeekStrategy_MONDAY_FRIDAY");
+    }
+
+    @Test
+    void reproduciblePartialOutputOmitsInvalidStrategyFilePaths() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        String strategiesJson = "[" + sampleSweepStrategy(series).toJson() + ",\"invalid\"]";
+        Path firstStrategiesFile = tempDir.resolve("first-strategies.json");
+        Path secondStrategiesFile = tempDir.resolve("same-strategies-under-another-name.json");
+        Files.writeString(firstStrategiesFile, strategiesJson);
+        Files.writeString(secondStrategiesFile, strategiesJson);
+
+        CliRunResult first = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategies-json-file", firstStrategiesFile.toString(), "--invalid-input", "skip", "--reproducible");
+        CliRunResult second = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategies-json-file", secondStrategiesFile.toString(), "--invalid-input", "skip", "--reproducible");
+
+        assertThat(first.exitCode()).isZero();
+        assertThat(second.exitCode()).isZero();
+        assertThat(second.stdout()).isEqualTo(first.stdout());
+        String reproducibleInvalidInput = result(JsonParser.parseString(first.stdout()).getAsJsonObject())
+                .getAsJsonArray("invalidStrategies")
+                .get(0)
+                .getAsString();
+        assertThat(reproducibleInvalidInput).doesNotContain(tempDir.toString());
+
+        CliRunResult ordinary = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategies-json-file", firstStrategiesFile.toString(), "--invalid-input", "skip");
+        String ordinaryInvalidInput = result(JsonParser.parseString(ordinary.stdout()).getAsJsonObject())
+                .getAsJsonArray("invalidStrategies")
+                .get(0)
+                .getAsString();
+        assertThat(ordinaryInvalidInput).contains(firstStrategiesFile.toString());
+    }
+
+    @Test
+    void walkForwardSupportsStrategiesJsonFileAndPreservesPrimaryFields() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        Strategy serializedStrategy = sampleSweepStrategy(series);
+        Path strategiesJsonFile = tempDir.resolve("walk-forward-strategies.json");
+        Path outputFile = tempDir.resolve("walk-forward-batch.json");
+        Files.writeString(strategiesJsonFile, "[" + serializedStrategy.toJson() + ",{\"bad\":true}]");
+
+        CliRunResult result = runCliAllowingError("strategy", "walk-forward", "--data-file", dataFile.toString(),
+                "--strategies-json-file", strategiesJsonFile.toString(), "--invalid-input", "skip", "--output",
+                outputFile.toString(), "--min-train-bars", "120", "--test-bars", "40", "--step-bars", "20",
+                "--holdout-bars", "20");
+
+        assertThat(result.exitCode()).isZero();
+        assertThat(result.stderr()).contains("Skipping invalid strategy inputs:")
+                .contains("--strategies-json-file " + strategiesJsonFile + "[1]");
+
+        JsonObject payload = readJson(outputFile);
+        JsonObject resultPayload = result(payload);
+        assertThat(payload.get("status").getAsString()).isEqualTo("partial");
+        assertThat(resultPayload.get("strategyCount").getAsInt()).isEqualTo(1);
+        assertThat(resultPayload.get("invalidStrategyCount").getAsInt()).isEqualTo(1);
+        assertThat(resultPayload.get("backtest")).isNotNull();
+        assertThat(payload.getAsJsonObject("run").get("backtestRuntime")).isNotNull();
+        assertThat(resultPayload.get("walkForward")).isNotNull();
+        assertThat(resultPayload.getAsJsonArray("results")).hasSize(1);
+    }
+
+    @Test
+    void backtestRejectsInvalidUnstableBarsValue() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--unstable-bars", "abc");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("Invalid integer value for --unstable-bars: abc.");
+    }
+
+    @Test
+    void backtestRejectsNegativeUnstableBarsValue() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--unstable-bars", "-1");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--unstable-bars must not be negative: -1.");
+    }
+
+    @Test
+    void sweepRejectsInvalidTopKValue() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("strategy", "sweep", "--data-file", dataFile.toString(),
+                "--param-grid", "fast=3,5", "--param-grid", "slow=20,30", "--top-k", "abc");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("Invalid integer value for --top-k: abc.");
+    }
+
+    @Test
+    void sweepRejectsNonPositiveTopKValue() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("strategy", "sweep", "--data-file", dataFile.toString(),
+                "--param-grid", "fast=3,5", "--param-grid", "slow=20,30", "--top-k", "0");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--top-k must be greater than zero.");
+    }
+
+    @Test
+    void sweepRejectsOverlappingFixedAndGridKeys() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("strategy", "sweep", "--data-file", dataFile.toString(), "--param",
+                "fast=5", "--param-grid", "fast=3,5", "--param-grid", "slow=20,30");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("Sweep parameter 'fast' must not appear in both --param and --param-grid");
+    }
+
+    @Test
+    void sweepRejectsDuplicateFixedParamKeys() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("strategy", "sweep", "--data-file", dataFile.toString(), "--param",
+                "fast=3", "--param", "fast=5", "--param-grid", "slow=20,30");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr())
+                .contains("Duplicate --param key 'fast'. Specify each sweep parameter at most once.");
+    }
+
+    @Test
+    void sweepRejectsDuplicateGridParamKeys() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("strategy", "sweep", "--data-file", dataFile.toString(),
+                "--param-grid", "fast=3,5", "--param-grid", "fast=8,13", "--param-grid", "slow=20,30");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr())
+                .contains("Duplicate --param-grid key 'fast'. Specify each sweep dimension at most once.");
+    }
+
+    @Test
+    void backtestRejectsOutputPathAliasingDataFile() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        byte[] original = Files.readAllBytes(dataFile);
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--output", dataFile.toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--data-file and --output must not refer to the same file");
+        assertThat(Files.readAllBytes(dataFile)).containsExactly(original);
+    }
+
+    @Test
+    void backtestRejectsSymlinkedOutputAliasingDataFile() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        byte[] original = Files.readAllBytes(dataFile);
+        Path symlink = tempDir.resolve("alias-output.json");
+        Files.createSymbolicLink(symlink, dataFile);
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--output", symlink.toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--data-file and --output must not refer to the same file");
+        assertThat(Files.readAllBytes(dataFile)).containsExactly(original);
+    }
+
+    @Test
+    void backtestRejectsArtifactsAliasedThroughSymlinkedParentDirectories() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path realDir = tempDir.resolve("real");
+        Files.createDirectory(realDir);
+        Path aliasDir = tempDir.resolve("alias");
+        Files.createSymbolicLink(aliasDir, realDir);
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--output", realDir.resolve("result.json").toString(),
+                "--chart", aliasDir.resolve("result.json").toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--output and --chart must not refer to the same file");
+        assertThat(Files.exists(realDir.resolve("result.json"))).isFalse();
+    }
+
+    @Test
+    void backtestRejectsDanglingSymlinkLeafAliasingOutput() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path chartPath = tempDir.resolve("chart.jpg");
+        Path outputPath = tempDir.resolve("result.json");
+        Files.createSymbolicLink(chartPath, outputPath);
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--chart", chartPath.toString(), "--output",
+                outputPath.toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("must not refer to the same file");
+        assertThat(outputPath).doesNotExist();
+    }
+
+    @Test
+    void backtestRejectsNonFiniteTokensInCsvData() throws Exception {
+        Path nanCloseFile = tempDir.resolve("nan-close.csv");
+        Files.writeString(nanCloseFile, """
+                date,open,high,low,close,volume
+                2013-01-02,553.82,555.00,541.63,549.03,20018500
+                2013-01-03,547.88,549.67,541.00,NaN,12605900
+                2013-01-04,536.97,538.63,525.83,527.00,21226200
+                """);
+
+        CliRunResult nanClose = runCliAllowingError("strategy", "backtest", "--data-file", nanCloseFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY");
+        assertThat(nanClose.exitCode()).isEqualTo(2);
+        assertThat(nanClose.stderr()).contains("Unable to load bar data from " + nanCloseFile);
+
+        Path infiniteVolumeFile = tempDir.resolve("infinite-volume.csv");
+        Files.writeString(infiniteVolumeFile, """
+                date,open,high,low,close,volume
+                2013-01-02,553.82,555.00,541.63,549.03,20018500
+                2013-01-03,547.88,549.67,541.00,542.10,Infinity
+                2013-01-04,536.97,538.63,525.83,527.00,21226200
+                """);
+
+        CliRunResult infiniteVolume = runCliAllowingError("strategy", "backtest", "--data-file",
+                infiniteVolumeFile.toString(), "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY");
+        assertThat(infiniteVolume.exitCode()).isEqualTo(2);
+        assertThat(infiniteVolume.stderr()).contains("Unable to load bar data from " + infiniteVolumeFile);
+    }
+
+    @Test
+    void backtestRejectsOutputPathAliasingStrategyJsonFile() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path strategyJsonFile = tempDir.resolve("strategy.json");
+        Files.copy(dataFile, strategyJsonFile);
+        byte[] original = Files.readAllBytes(strategyJsonFile);
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy-json-file", strategyJsonFile.toString(), "--output", strategyJsonFile.toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--strategy-json-file and --output must not refer to the same file");
+        assertThat(Files.readAllBytes(strategyJsonFile)).containsExactly(original);
+    }
+
+    @Test
+    void backtestRejectsChartPathAliasingDataFile() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        byte[] original = Files.readAllBytes(dataFile);
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--chart", dataFile.toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--data-file and --chart must not refer to the same file");
+        assertThat(Files.readAllBytes(dataFile)).containsExactly(original);
+    }
+
+    @Test
+    void backtestRejectsChartPathAliasingOutputPath() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path artifactPath = tempDir.resolve("shared-artifact.json");
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--output", artifactPath.toString(), "--chart",
+                artifactPath.toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--output and --chart must not refer to the same file");
+        assertThat(artifactPath).doesNotExist();
+    }
+
+    @Test
+    void walkForwardRejectsGeometryWithoutFolds() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("strategy", "walk-forward", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--holdout-bars", "300");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("Walk-forward geometry produced no folds");
+    }
+
+    @Test
+    void ruleTestRejectsGeometryWithoutFolds() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("rule", "test", "--data-file", dataFile.toString(), "--entry-rule",
+                "RsiThresholdRule_BELOW_14_30", "--exit-rule", "RsiThresholdRule_ABOVE_14_70", "--holdout-bars", "300");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("Walk-forward geometry produced no folds");
+    }
+
+    @Test
+    void sweepReportsPartialFailuresWithoutDroppingSurvivors() throws Exception {
+        ExplodingOnceCriterion.throwBudget.set(1);
+        TraceTestLogger logs = new TraceTestLogger();
+        logs.open();
+        try {
+            Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+            Path outputFile = tempDir.resolve("sweep-partial.json");
+
+            int exitCode = runCli("strategy", "sweep", "--data-file", dataFile.toString(), "--param-grid", "fast=3,5",
+                    "--param-grid", "slow=20,30", "--top-k", "2", "--criterion-json",
+                    "{\"type\":\"" + ExplodingOnceCriterion.class.getName() + "\"}", "--output", outputFile.toString());
+
+            assertThat(exitCode).isZero();
+            JsonObject payload = readJson(outputFile);
+            JsonObject result = result(payload);
+            assertThat(payload.get("status").getAsString()).isEqualTo("partial");
+            assertThat(result.get("candidateCount").getAsInt()).isEqualTo(4);
+            assertThat(result.get("failedStrategyCount").getAsInt()).isEqualTo(1);
+            JsonArray failedStrategies = result.getAsJsonArray("failedStrategies");
+            assertThat(failedStrategies).hasSize(1);
+            assertThat(failedStrategies.get(0).getAsJsonObject().get("name").getAsString()).isNotBlank();
+            assertThat(failedStrategies.get(0).getAsJsonObject().get("message").getAsString())
+                    .contains("injected criterion failure");
+            assertThat(result.getAsJsonArray("leaderboard")).hasSize(2);
+            assertThat(logs.getLogOutput()).contains("injected criterion failure");
+        } finally {
+            ExplodingOnceCriterion.throwBudget.set(0);
+            logs.close();
+        }
+    }
+
+    @Test
+    void backtestRejectsParamOptions() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--param", "entry=MONDAY");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains(
+                "The strategy backtest command does not accept --param. Encode parameters in compact shorthand, NamedStrategy labels, or serialized strategy JSON.");
+    }
+
+    @Test
+    void indicatorTestRejectsParamOptions() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("indicator", "test", "--data-file", dataFile.toString(),
+                "--indicator", "{\"type\":\"EMAIndicator\"}", "--param", "period=14");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains(
+                "The indicator test command does not accept --param. Encode indicator parameters in compact shorthand or serialized indicator JSON.");
+    }
+
+    @Test
+    void backtestFailsFastWhenEveryStrategyInputIsInvalid() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategies", "MissingStrategy_VALUE,AlsoMissing_VALUE");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("No valid strategies to run.")
+                .contains("--strategies MissingStrategy_VALUE")
+                .contains("--strategies AlsoMissing_VALUE")
+                .contains("Use --strategy, --strategies, --strategy-json-file, or --strategies-json-file.");
+    }
+
+    @Test
+    void backtestReportsUnreadableStrategiesJsonFileAsIoError() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path missing = tempDir.resolve("missing.json");
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategies", "MissingStrategy_VALUE", "--strategies-json-file", missing.toString());
+
+        assertThat(result.exitCode()).isEqualTo(74);
+        assertThat(result.stderr()).contains("Unable to read strategies JSON from " + missing);
+    }
+
+    public static final class ExplodingOnceCriterion implements AnalysisCriterion {
+        static final AtomicInteger throwBudget = new AtomicInteger();
+
+        @Override
+        public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+            if (throwBudget.getAndDecrement() > 0) {
+                throw new IllegalStateException("injected criterion failure");
+            }
+            return series.numFactory().zero();
+        }
+
+        @Override
+        public boolean betterThan(Num criterionValue, Num otherCriterionValue) {
+            return criterionValue.isGreaterThan(otherCriterionValue);
+        }
+
+        @Override
+        public Num calculate(BarSeries series, Position position) {
+            return series.numFactory().zero();
+        }
+    }
+
+    private int runCli(String... args) {
+        CliRunResult result = runCliAllowingError(args);
+        assertThat(result.stderr()).withFailMessage("CLI stderr output should be blank but was:%n%s", result.stderr())
+                .isBlank();
+        return result.exitCode();
+    }
+
+    private CliRunResult runCliAllowingError(String... args) {
+        return runCliAllowingError(InputStream.nullInputStream(), args);
+    }
+
+    private CliRunResult runCliAllowingError(InputStream input, String... args) {
+        StringWriter stdout = new StringWriter();
+        StringWriter stderr = new StringWriter();
+        int exitCode = Ta4jCli.run(args, input, new PrintWriter(stdout, true), new PrintWriter(stderr, true));
+        return new CliRunResult(exitCode, stdout.toString(), stderr.toString());
+    }
+
+    private static String performanceArtifact(long medianNanos) {
+        return performanceArtifact(medianNanos, "checksum", 42L);
+    }
+
+    private static String performanceArtifact(long medianNanos, String field, long value) {
+        return "{\"schemaVersion\":1,\"experimentId\":\"kalman-filter\",\"description\":\"fixture\","
+                + "\"gitRef\":\"abc1234\",\"startedAt\":\"2026-08-09T00:00:00Z\","
+                + "\"completedAt\":\"2026-08-09T00:00:01Z\",\"repetitions\":1,\"warmups\":0,\"profile\":false,"
+                + "\"barCounts\":[16],\"scenarioIds\":[\"endOnly\"],\"host\":{\"hostId\":\"sha256:fixture\","
+                + "\"osName\":\"os\",\"osArch\":\"arch\",\"osVersion\":\"v\",\"javaVersion\":\"j\","
+                + "\"jvmName\":\"jvm\",\"jvmOptionsFingerprint\":\"sha256:fixture-jvm\",\"availableProcessors\":1},\"results\":[{\"scenarioId\":\"endOnly\","
+                + "\"description\":\"fixture\",\"hypothesis\":\"h\",\"barCount\":16,\"" + field + "\":" + value
+                + ",\"checksumStable\":true,\"stats\":{\"minNanos\":" + medianNanos + ",\"maxNanos\":" + medianNanos
+                + ",\"averageNanos\":" + medianNanos + ",\"medianNanos\":" + medianNanos + ",\"p90Nanos\":"
+                + medianNanos + ",\"totalOperations\":1,\"totalDurationNanos\":" + medianNanos
+                + ",\"operationsPerSecond\":1000.0},\"measurements\":[]}]}";
+    }
+
+    private Path copyResource(String resourceName) throws IOException {
+        Path target = tempDir.resolve(resourceName);
+        try (InputStream inputStream = Objects
+                .requireNonNull(getClass().getClassLoader().getResourceAsStream(resourceName))) {
+            Files.copy(inputStream, target);
+        }
+        return target;
+    }
+
+    private JsonObject readJson(Path jsonFile) throws IOException {
+        return JsonParser.parseString(Files.readString(jsonFile)).getAsJsonObject();
+    }
+
+    private JsonObject result(JsonObject payload) {
+        return payload.getAsJsonObject("result");
+    }
+
+    private Strategy sampleSweepStrategy(BarSeries series) {
+        return CliSupport.buildSweepStrategies(List.of(), List.of("fast=5", "slow=20"), null, series).getFirst();
+    }
+
+    private Path writeSerializedStrategy(String fileName, Strategy strategy) throws IOException {
+        Path strategyJsonFile = tempDir.resolve(fileName);
+        Files.writeString(strategyJsonFile, strategy.toJson());
+        return strategyJsonFile;
+    }
+
+    private Path writeLongSeriesCsv(int barCount) throws IOException {
+        StringBuilder csv = new StringBuilder("date,open,high,low,close,volume\n");
+        LocalDate date = LocalDate.of(1900, 1, 1);
+        for (int i = 0; i < barCount; i++) {
+            csv.append(date.plusDays(i)).append(",10,11,9,10.5,100\n");
+        }
+        Path file = tempDir.resolve("long-series.csv");
+        Files.writeString(file, csv);
+        return file;
+    }
+
+    private record CliRunResult(int exitCode, String stdout, String stderr) {
+    }
+}
