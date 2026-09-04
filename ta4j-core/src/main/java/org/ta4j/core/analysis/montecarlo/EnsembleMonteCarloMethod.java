@@ -95,6 +95,28 @@ public final class EnsembleMonteCarloMethod implements MonteCarloMethod {
                 context.moments(), random, context.numFactory());
     }
 
+    /**
+     * Leading pooled technique, exposed for the package-private canonical operation
+     * description. Concatenation order is observable deterministic semantics: its
+     * samples come first in the pooled distribution.
+     *
+     * @return the first technique
+     */
+    MonteCarloMethod first() {
+        return first;
+    }
+
+    /**
+     * Trailing pooled technique, exposed for the package-private canonical
+     * operation description. It receives the remainder of the iteration budget and
+     * its samples come second in the pooled distribution.
+     *
+     * @return the second technique
+     */
+    MonteCarloMethod second() {
+        return second;
+    }
+
     @Override
     public String toString() {
         return "EnsembleMonteCarloMethod[first=" + first + ", second=" + second + "]";

@@ -159,6 +159,36 @@ public final class RecentVolatilityWideningMonteCarloMethod implements MonteCarl
     }
 
     /**
+     * Trailing realized-volatility window length in bars, exposed for the
+     * package-private canonical operation description.
+     *
+     * @return the configured recent window length
+     */
+    int recentBarCount() {
+        return recentBarCount;
+    }
+
+    /**
+     * Upper bound on the widening factor, exposed for the package-private canonical
+     * operation description.
+     *
+     * @return the configured widening bound
+     */
+    double maxWiden() {
+        return maxWiden;
+    }
+
+    /**
+     * Inner technique whose samples are widened, exposed for the package-private
+     * canonical operation description.
+     *
+     * @return the wrapped technique
+     */
+    MonteCarloMethod inner() {
+        return inner;
+    }
+
+    /**
      * RMS of the trailing realized returns, accumulated in the active {@code Num}
      * domain so magnitudes beyond the primitive {@code double} range neither
      * overflow (squares to infinity) nor underflow (tiny squares to zero) before

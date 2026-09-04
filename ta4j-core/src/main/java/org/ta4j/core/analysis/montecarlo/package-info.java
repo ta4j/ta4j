@@ -18,6 +18,16 @@
  * {@link org.ta4j.core.analysis.montecarlo.ShockPathMonteCarloMethod}, and the
  * conjugate Bayesian alternative in
  * {@link org.ta4j.core.analysis.montecarlo.NormalInverseGammaForecastMethod}.
+ * <p>
+ * The public {@code MonteCarloMethod} seam is accelerator-neutral. Internally,
+ * the package-private
+ * {@link org.ta4j.core.analysis.montecarlo.MonteCarloOperationGraphs} lowers
+ * explicitly supported built-in method graphs into a canonical primitive
+ * {@link org.ta4j.core.analysis.montecarlo.MonteCarloOperation} description
+ * (type, version, parameters, children) that seeds the future operation-level
+ * native acceleration ABI; graphs containing custom or unknown techniques
+ * decline lowering and remain valid on the scalar path. This surface is not
+ * part of the public API.
  *
  * @since 0.24.2
  */

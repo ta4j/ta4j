@@ -30,10 +30,13 @@ import org.ta4j.core.num.NumFactory;
  * regimes, while the mean and the calm-regime center are preserved. Higher
  * degrees of freedom approximate the unchanged gaussian case; lower values
  * permit more extreme scale draws. The numerator {@code sqrt(df / chiSq(df))}
- * uses {@code degreesOfFreedom} independent standard-normal draws from
- * {@link MonteCarloContext#random()}, and each inner sample is coerced through
- * the context's {@link NumFactory} so cross-factory inner techniques compose
- * without throwing.
+ * draws its chi-square denominator from the exact gamma representation
+ * {@code chiSq(df) = 2 * Gamma(df/2)} via the shared
+ * {@link RandomSamplers#nextChiSquared(RandomGenerator, int)} sampler, so the
+ * per-sample draw count never depends on {@code degreesOfFreedom} and
+ * arbitrarily large values stay constant-time. Each inner sample is coerced
+ * through the context's {@link NumFactory} so cross-factory inner techniques
+ * compose without throwing.
  *
  * <p>
  * This decorator stresses the seam contract: it draws exclusively from
@@ -125,14 +128,29 @@ public final class StudentTScaleMixingMonteCarloMethod implements MonteCarloMeth
         return Num.isFinite(value) ? numFactory.numOf(value.bigDecimalValue()) : null;
     }
 
+    /**
+     * Degrees of freedom of the mixing scale, exposed for the package-private
+     * canonical operation description.
+     *
+     * @return the configured degrees of freedom
+     */
+    int degreesOfFreedom() {
+        return degreesOfFreedom;
+    }
+
+    /**
+     * Inner technique whose centered samples are tail-mixed, exposed for the
+     * package-private canonical operation description.
+     *
+     * @return the wrapped technique
+     */
+    MonteCarloMethod inner() {
+        return inner;
+    }
+
     /** {@code sqrt(df / chiSq(df))} draw from the Student-t scale distribution. */
     private double tScaleDraw(RandomGenerator random) {
-        double chiSq = 0d;
-        for (int i = 0; i < degreesOfFreedom; i++) {
-            double normal = random.nextGaussian();
-            chiSq += normal * normal;
-        }
-        return Math.sqrt(degreesOfFreedom / chiSq);
+        return Math.sqrt(degreesOfFreedom / RandomSamplers.nextChiSquared(random, degreesOfFreedom));
     }
 
     /**

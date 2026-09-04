@@ -142,6 +142,16 @@ public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCar
         return Num.isFinite(value) ? numFactory.numOf(value.bigDecimalValue()) : null;
     }
 
+    /**
+     * Inner technique generating the kernel-smoothed residual path shape, exposed
+     * for the package-private canonical operation description.
+     *
+     * @return the resolved inner technique (never {@code null})
+     */
+    MonteCarloMethod inner() {
+        return inner;
+    }
+
     @Override
     public String toString() {
         return "PosteriorSmoothedResidualMonteCarloMethod[" + inner + "]";

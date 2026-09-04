@@ -236,32 +236,59 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
         return new ParameterDraw(sigmaSquared, muDraw);
     }
 
-    private static double nextInverseGamma(RandomGenerator random, double shape, double rate) {
-        return rate / nextGamma(random, shape);
+    /**
+     * Explicit prior mean {@code m0}, exposed for the package-private canonical
+     * operation description. Zero for empirical-prior instances.
+     *
+     * @return the configured prior mean
+     */
+    double priorMean() {
+        return priorMean;
     }
 
-    private static double nextGamma(RandomGenerator random, double shape) {
-        if (shape < 1d) {
-            return nextGamma(random, shape + 1d) * Math.pow(random.nextDouble(), 1d / shape);
-        }
-        double delta = shape - 1d / 3d;
-        double c = 1d / Math.sqrt(9d * delta);
-        while (true) {
-            double x;
-            double v;
-            do {
-                x = random.nextGaussian();
-                v = 1d + c * x;
-            } while (v <= 0d);
-            v = v * v * v;
-            double u = random.nextDouble();
-            if (u < 1d - 0.0331d * x * x * x * x) {
-                return delta * v;
-            }
-            if (Math.log(u) < 0.5d * x * x + delta * (1d - v + Math.log(v))) {
-                return delta * v;
-            }
-        }
+    /**
+     * Explicit prior strength {@code k0}, exposed for the package-private canonical
+     * operation description. Zero for empirical-prior instances.
+     *
+     * @return the configured prior strength
+     */
+    double priorStrength() {
+        return priorStrength;
+    }
+
+    /**
+     * Explicit prior shape {@code a0}, exposed for the package-private canonical
+     * operation description. Zero for empirical-prior instances.
+     *
+     * @return the configured prior shape
+     */
+    double priorShape() {
+        return priorShape;
+    }
+
+    /**
+     * Explicit prior scale {@code b0}, exposed for the package-private canonical
+     * operation description. Zero for empirical-prior instances.
+     *
+     * @return the configured prior scale
+     */
+    double priorScale() {
+        return priorScale;
+    }
+
+    /**
+     * Whether this instance derives weakly-informative data-driven priors from the
+     * lookback window, exposed for the package-private canonical operation
+     * description.
+     *
+     * @return {@code true} for empirical-prior instances
+     */
+    boolean empiricalPriors() {
+        return empiricalPriors;
+    }
+
+    private static double nextInverseGamma(RandomGenerator random, double shape, double rate) {
+        return rate / RandomSamplers.nextGamma(random, shape);
     }
 
     private static void requireFinite(double value, String name) {

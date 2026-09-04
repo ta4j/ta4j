@@ -59,6 +59,36 @@ public final class ShockPathMonteCarloMethod implements MonteCarloMethod {
     }
 
     /**
+     * Configured shock source, exposed for the package-private canonical operation
+     * description.
+     *
+     * @return the shock model
+     */
+    ShockModel shockModel() {
+        return shockModel;
+    }
+
+    /**
+     * Configured variance update policy, exposed for the package-private canonical
+     * operation description.
+     *
+     * @return the volatility update mode
+     */
+    VolatilityUpdateMode volatilityUpdateMode() {
+        return volatilityUpdateMode;
+    }
+
+    /**
+     * Configured EWMA decay factor, exposed for the package-private canonical
+     * operation description.
+     *
+     * @return the volatility decay factor
+     */
+    double volatilityDecayFactor() {
+        return volatilityDecayFactor;
+    }
+
+    /**
      * Samples shocks from the configured {@link ShockModel} and compounds them into
      * horizon cumulative log returns using the window's volatility state.
      *
