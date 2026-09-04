@@ -42,14 +42,22 @@ import org.ta4j.core.num.NumFactory;
  * {@code mu + sigma * z}.
  *
  * <p>
- * The method is self-contained: it derives its likelihood exclusively from the
- * historical window and does not consume the forward drift assumption of the
- * upstream moment state, whose stability still gates the forecast.
+ * The posterior hyper-parameter computation is shared, package-private
+ * {@link #posterior(MonteCarloContext)}, the single source of posterior draws
+ * used by this method and {@link PosteriorSmoothedResidualMonteCarloMethod}.
  *
  * @see MonteCarloMethod
  * @since 0.24.2
  */
 public final class NormalInverseGammaForecastMethod implements MonteCarloMethod {
+
+    /** Posterior hyper-parameters {@code (mean, strength, shape, scale)}. */
+    record Posterior(double mean, double strength, double shape, double scale) {
+    }
+
+    /** One posterior parameter draw {@code (sigmaSquared, mu)}. */
+    record ParameterDraw(double sigmaSquared, double mu) {
+    }
 
     private final double priorMean;
     private final double priorStrength;
@@ -113,19 +121,17 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
     }
 
     /**
-     * Draws posterior predictive parameters from the Normal-Inverse-Gamma posterior
-     * fitted to the lookback window and compounds Normal increments into horizon
-     * cumulative log returns. Posteriors whose mean or scale cannot cross to the
-     * sampling precision degrade to an unstable result.
+     * Computes the Normal-Inverse-Gamma posterior hyper-parameters for the context
+     * window, shared as the single source of posterior draws between this method
+     * and {@link PosteriorSmoothedResidualMonteCarloMethod}.
      *
-     * @param context validated simulation inputs including the seeded random
-     *                generator
-     * @return exactly {@code context.iterationCount()} finite cumulative log-return
-     *         samples, or {@code null} when no stable posterior can be produced
+     * @param context validated simulation inputs
+     * @return posterior hyper-parameters, or {@code null} when no stable posterior
+     *         can be produced (empty window, non-finite window, or degenerate
+     *         posterior scale)
      * @since 0.24.2
      */
-    @Override
-    public List<Num> terminalReturns(MonteCarloContext context) {
+    Posterior posterior(MonteCarloContext context) {
         List<Num> window = context.historicalLogReturns();
         int observationCount = window.size();
         if (observationCount == 0) {
@@ -165,21 +171,35 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
         if (!isFinite(posteriorStrength, posteriorMean, posteriorShape, posteriorScale) || posteriorScale < 0d) {
             return null;
         }
+        return new Posterior(posteriorMean, posteriorStrength, posteriorShape, posteriorScale);
+    }
 
+    /**
+     * Draws posterior predictive parameters from the Normal-Inverse-Gamma posterior
+     * fitted to the lookback window and compounds Normal increments into horizon
+     * cumulative log returns. Posteriors whose mean or scale cannot cross to the
+     * sampling precision degrade to an unstable result.
+     *
+     * @param context validated simulation inputs including the seeded random
+     *                generator
+     * @return exactly {@code context.iterationCount()} finite cumulative log-return
+     *         samples, or {@code null} when no stable posterior can be produced
+     * @since 0.24.2
+     */
+    @Override
+    public List<Num> terminalReturns(MonteCarloContext context) {
+        Posterior posterior = posterior(context);
+        if (posterior == null) {
+            return null;
+        }
         RandomGenerator random = context.random();
         List<Num> terminalReturns = new ArrayList<>(context.iterationCount());
         for (int iteration = 0; iteration < context.iterationCount(); iteration++) {
-            double sigmaSquared = posteriorScale == 0d ? 0d : nextInverseGamma(random, posteriorShape, posteriorScale);
-            double muDraw = posteriorMean + Math.sqrt(sigmaSquared / posteriorStrength) * random.nextGaussian();
-            double sigma = Math.sqrt(sigmaSquared);
-            double cumulativeReturn = 0d;
-            for (int step = 0; step < context.horizon(); step++) {
-                cumulativeReturn += muDraw + sigma * random.nextGaussian();
-            }
+            double cumulativeReturn = drawCumulativeReturn(posterior, context, random);
             if (!Double.isFinite(cumulativeReturn)) {
                 return null;
             }
-            Num converted = numFactory.numOf(BigDecimal.valueOf(cumulativeReturn));
+            Num converted = context.numFactory().numOf(BigDecimal.valueOf(cumulativeReturn));
             if (!Num.isFinite(converted)) {
                 return null;
             }
@@ -188,39 +208,87 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
         return terminalReturns;
     }
 
-    /**
-     * Samples from the inverse-gamma distribution with the requested shape and rate
-     * by inverting a gamma draw, using Marsaglia-Tsang sampling with the
-     * shape-acceleration boost for shapes below one.
-     *
-     * @return positive inverse-gamma draw
-     */
-    private double nextInverseGamma(RandomGenerator random, double shape, double rate) {
-        return rate / nextGamma(random, shape);
+    private static double drawCumulativeReturn(Posterior posterior, MonteCarloContext context, RandomGenerator random) {
+        ParameterDraw draw = drawParameters(posterior, random);
+        double sigma = Math.sqrt(draw.sigmaSquared());
+        double cumulativeReturn = 0d;
+        for (int step = 0; step < context.horizon(); step++) {
+            cumulativeReturn += draw.mu() + sigma * random.nextGaussian();
+        }
+        return cumulativeReturn;
     }
 
-    private double nextGamma(RandomGenerator random, double shape) {
-        if (shape < 1d) {
-            return nextGamma(random, shape + 1d) * Math.pow(random.nextDouble(), 1d / shape);
-        }
-        double delta = shape - 1d / 3d;
-        double c = 1d / Math.sqrt(9d * delta);
-        while (true) {
-            double x;
-            double v;
-            do {
-                x = random.nextGaussian();
-                v = 1d + c * x;
-            } while (v <= 0d);
-            v = v * v * v;
-            double u = random.nextDouble();
-            if (u < 1d - 0.0331d * x * x * x * x) {
-                return delta * v;
-            }
-            if (Math.log(u) < 0.5d * x * x + delta * (1d - v + Math.log(v))) {
-                return delta * v;
-            }
-        }
+    /**
+     * Draws {@code (sigmaSquared, mu)} from the posterior predictive conditional,
+     * shared as the single source of parameter draws between this method and
+     * {@link PosteriorSmoothedResidualMonteCarloMethod} for identical seeds and
+     * windows.
+     *
+     * @param posterior fitted posterior hyper-parameters
+     * @param random    deterministic seeded random generator
+     * @return a single parameter draw
+     * @since 0.24.2
+     */
+    static ParameterDraw drawParameters(Posterior posterior, RandomGenerator random) {
+        double sigmaSquared = posterior.scale() == 0d ? 0d
+                : nextInverseGamma(random, posterior.shape(), posterior.scale());
+        double muDraw = posterior.mean() + Math.sqrt(sigmaSquared / posterior.strength()) * random.nextGaussian();
+        return new ParameterDraw(sigmaSquared, muDraw);
+    }
+
+    /**
+     * Explicit prior mean {@code m0}, exposed for the package-private canonical
+     * operation description. Zero for empirical-prior instances.
+     *
+     * @return the configured prior mean
+     */
+    double priorMean() {
+        return priorMean;
+    }
+
+    /**
+     * Explicit prior strength {@code k0}, exposed for the package-private canonical
+     * operation description. Zero for empirical-prior instances.
+     *
+     * @return the configured prior strength
+     */
+    double priorStrength() {
+        return priorStrength;
+    }
+
+    /**
+     * Explicit prior shape {@code a0}, exposed for the package-private canonical
+     * operation description. Zero for empirical-prior instances.
+     *
+     * @return the configured prior shape
+     */
+    double priorShape() {
+        return priorShape;
+    }
+
+    /**
+     * Explicit prior scale {@code b0}, exposed for the package-private canonical
+     * operation description. Zero for empirical-prior instances.
+     *
+     * @return the configured prior scale
+     */
+    double priorScale() {
+        return priorScale;
+    }
+
+    /**
+     * Whether this instance derives weakly-informative data-driven priors from the
+     * lookback window, exposed for the package-private canonical operation
+     * description.
+     *
+     * @return {@code true} for empirical-prior instances
+     */
+    boolean empiricalPriors() {
+        return empiricalPriors;
+    }
+
+    private static double nextInverseGamma(RandomGenerator random, double shape, double rate) {
+        return rate / RandomSamplers.nextGamma(random, shape);
     }
 
     private static void requireFinite(double value, String name) {
