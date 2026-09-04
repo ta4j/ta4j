@@ -22,6 +22,8 @@ import java.io.InputStream;
 import java.io.PrintWriter;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -499,6 +501,11 @@ final class CliCommands {
             for (Strategy strategy : resolvedStrategies.strategies()) {
                 strategyGroups.computeIfAbsent(strategy.getStartingType(), type -> new ArrayList<>()).add(strategy);
             }
+            IdentityHashMap<Strategy, Integer> strategyIndex = new IdentityHashMap<>();
+            List<Strategy> resolvedStrategyList = resolvedStrategies.strategies();
+            for (int i = 0; i < resolvedStrategyList.size(); i++) {
+                strategyIndex.put(resolvedStrategyList.get(i), i);
+            }
             boolean singleStrategy = resolvedStrategies.strategies().size() == 1;
             Consumer<Integer> progressCallback = singleStrategy
                     ? CliSupport.progressCallback(artifacts.progress, err(), "strategy backtest")
@@ -506,7 +513,9 @@ final class CliCommands {
 
             List<TradingStatement> statements = new ArrayList<>(resolvedStrategies.strategies().size());
             List<BacktestRuntimeReport> runtimeReports = new ArrayList<>(strategyGroups.size());
-            List<Map<String, Object>> failedStrategies = new ArrayList<>();
+            record IndexedFailure(int inputIndex, Map<String, Object> failure) {
+            }
+            List<IndexedFailure> indexedFailures = new ArrayList<>();
             int completedStrategies = 0;
             for (Map.Entry<Trade.TradeType, List<Strategy>> group : strategyGroups.entrySet()) {
                 List<Strategy> groupStrategies = group.getValue();
@@ -516,16 +525,22 @@ final class CliCommands {
                     statements.addAll(result.tradingStatements());
                     runtimeReports.add(result.runtimeReport());
                     for (BacktestExecutionResult.StrategyFailure failure : result.strategyFailures()) {
-                        failedStrategies.add(failureEntry(failure.strategy().getName(), failure.cause().getMessage()));
+                        indexedFailures.add(new IndexedFailure(strategyIndex.get(failure.strategy()),
+                                failureEntry(failure.strategy().getName(), failure.cause().getMessage())));
                     }
                 } catch (RuntimeException ex) {
                     for (Strategy strategy : groupStrategies) {
-                        failedStrategies.add(failureEntry(strategy.getName(), ex.getMessage()));
+                        indexedFailures.add(new IndexedFailure(strategyIndex.get(strategy),
+                                failureEntry(strategy.getName(), ex.getMessage())));
                     }
                 }
                 completedStrategies += groupStrategies.size();
                 reportProgress(artifacts.progress && !singleStrategy, err(), "strategy backtest", completedStrategies);
             }
+            List<Map<String, Object>> failedStrategies = indexedFailures.stream()
+                    .sorted(Comparator.comparingInt(IndexedFailure::inputIndex))
+                    .map(IndexedFailure::failure)
+                    .toList();
 
             List<Map<String, Object>> statementMaps = statements.stream()
                     .map(statement -> CliSupport.statementToMap(series, statement, resolvedCriteria))
@@ -986,6 +1001,7 @@ final class CliCommands {
             BarSeries series = data.loadSeries(in());
             CliSupport.ResolvedIndicator resolvedIndicator = CliSupport.resolveIndicator(indicatorJson,
                     indicatorJsonFile, series);
+            CliSupport.requireBoundedIndicatorWindowWork(resolvedIndicator.indicator(), series.getBarCount());
             Strategy strategy = CliSupport.buildIndicatorTestStrategy(resolvedIndicator.indicator(), parsedUnstableBars,
                     entryBelow, entryAbove, exitBelow, exitAbove, series);
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
@@ -1065,6 +1081,7 @@ final class CliCommands {
             WalkForwardConfig config = walkForward.build(series);
             Strategy strategy = CliSupport.buildRuleTestStrategy(entryRuleLabel, entryRuleJsonFile, exitRuleLabel,
                     exitRuleJsonFile, parsedUnstableBars, series);
+            CliSupport.requireBoundedWalkForwardBatch(List.of(strategy), series, config);
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
                     execution.borrowRate, execution.borrowSide);
             CliSupport.PositionSizingSpec positionSizing = execution.resolvePositionSizing(series);

@@ -106,7 +106,7 @@ public final class Ta4jCli implements Runnable {
     }
 
     static int run(String[] args, InputStream input, PrintWriter out, PrintWriter err) {
-        configureQuietLogging();
+        configureQuietLogging(requestsJsonErrorFormat(args));
         CommandLine commandLine = new CommandLine(new Ta4jCli(input));
         commandLine.setCaseInsensitiveEnumValuesAllowed(true);
         commandLine.setOut(out);
@@ -129,12 +129,22 @@ public final class Ta4jCli implements Runnable {
      * routing deterministic.
      * </p>
      */
-    private static void configureQuietLogging() {
+    private static void configureQuietLogging(boolean suppressOperationalLogs) {
         if (!QUIET_LOGGING_CONFIGURED.compareAndSet(false, true)) {
             return;
         }
         ConfigurationBuilder<BuiltConfiguration> configurationBuilder = ConfigurationBuilderFactory
                 .newConfigurationBuilder();
+        if (suppressOperationalLogs) {
+            // JSON error mode must write a single JSON envelope to stderr; any
+            // WARN/ERROR datasource or library log would corrupt that envelope,
+            // so disable logging entirely rather than route it to stderr.
+            configurationBuilder.setStatusLevel(Level.OFF);
+            configurationBuilder.add(configurationBuilder.newRootLogger(Level.OFF));
+            LoggerContext context = (LoggerContext) LogManager.getContext(Ta4jCli.class.getClassLoader(), false);
+            context.setConfiguration(configurationBuilder.build());
+            return;
+        }
         configurationBuilder.setStatusLevel(Level.WARN);
         AppenderComponentBuilder stderrAppender = configurationBuilder.newAppender("stderr", "CONSOLE")
                 .addAttribute("target", "SYSTEM_ERR")
@@ -145,6 +155,23 @@ public final class Ta4jCli implements Runnable {
                 .add(configurationBuilder.newRootLogger(Level.WARN).add(configurationBuilder.newAppenderRef("stderr")));
         LoggerContext context = (LoggerContext) LogManager.getContext(Ta4jCli.class.getClassLoader(), false);
         context.setConfiguration(configurationBuilder.build());
+    }
+
+    private static boolean requestsJsonErrorFormat(String[] args) {
+        for (int i = 0; i < args.length; i++) {
+            String arg = args[i];
+            if (arg.startsWith("--error-format=")) {
+                return isJsonErrorFormat(arg.substring("--error-format=".length()));
+            }
+            if (arg.equals("--error-format")) {
+                return i + 1 < args.length && isJsonErrorFormat(args[i + 1]);
+            }
+        }
+        return false;
+    }
+
+    private static boolean isJsonErrorFormat(String value) {
+        return ErrorFormat.JSON.name().equalsIgnoreCase(value);
     }
 
     InputStream input() {

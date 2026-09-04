@@ -209,8 +209,10 @@ abstract class ShockPathKernelProvider implements Provider {
     String accuracyDetail(KernelRequest request, boolean exact) {
         if (exact) {
             return providerId + " is not exact-capable; exact requests stay scalar"
-                    + (approximateCapable ? " unless -D" + AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY
-                            + " opts into an approximate tolerance" : "");
+                    + (approximateCapable
+                            ? " unless -D" + AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY
+                                    + " opts into an approximate tolerance"
+                            : "");
         }
         return providerId + " serves exact requests only and declines approximate tolerance " + request.tolerance();
     }

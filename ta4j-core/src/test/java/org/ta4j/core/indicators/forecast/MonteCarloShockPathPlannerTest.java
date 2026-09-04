@@ -76,7 +76,8 @@ public class MonteCarloShockPathPlannerTest {
 
         try {
             AccelerationRuntime.KernelRequest request = new MonteCarloShockPathPlanner()
-                    .plan(fixture.indicator, 2, 3, fixture.series.numFactory()).request();
+                    .plan(fixture.indicator, 2, 3, fixture.series.numFactory())
+                    .request();
 
             assertEquals(AccelerationRuntime.Determinism.APPROXIMATE, request.determinism());
             assertEquals(0.001d, request.tolerance(), 0d);

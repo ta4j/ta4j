@@ -79,6 +79,13 @@ public class StandardDeviationIndicator extends CachedIndicator<Num> {
         return variance.getValue(index).sqrt();
     }
 
+    /**
+     * @return the number of bars in the rolling window
+     */
+    public int getBarCount() {
+        return barCount;
+    }
+
     @Override
     public int getCountOfUnstableBars() {
         return variance.getCountOfUnstableBars();

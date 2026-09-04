@@ -49,10 +49,10 @@ public final class RsiThresholdRule extends NamedRule {
     public RsiThresholdRule(ClosePriceIndicator closePriceIndicator, int period, Num threshold,
             ThresholdDirection direction) {
         super(buildLabel(Objects.requireNonNull(direction, "direction"), validatePeriod(period),
-                validateThreshold(threshold)));
+                normalizeThreshold(Objects.requireNonNull(closePriceIndicator, "closePriceIndicator"), threshold)));
         this.closePriceIndicator = Objects.requireNonNull(closePriceIndicator, "closePriceIndicator");
         this.period = validatePeriod(period);
-        this.threshold = validateThreshold(threshold);
+        this.threshold = normalizeThreshold(closePriceIndicator, threshold);
         this.direction = direction;
         this.rsiIndicator = new RSIIndicator(this.closePriceIndicator, this.period);
     }
@@ -125,6 +125,15 @@ public final class RsiThresholdRule extends NamedRule {
             throw new IllegalArgumentException("RsiThresholdRule threshold must be a finite value");
         }
         return threshold;
+    }
+
+    private static Num normalizeThreshold(ClosePriceIndicator closePriceIndicator, Num threshold) {
+        // The threshold may be supplied in a different NumFactory than the one
+        // backing the close-price series; comparison and label reconstruction
+        // must both use the series factory so cross-factory Num instances never
+        // leak into isSatisfied or into the round-tripped label.
+        Num validated = validateThreshold(threshold);
+        return validateThreshold(closePriceIndicator.getBarSeries().numFactory().numOf(validated.getDelegate()));
     }
 
     private static ThresholdDirection parseDirection(String... params) {

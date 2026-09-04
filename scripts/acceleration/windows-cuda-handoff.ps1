@@ -42,9 +42,8 @@ if (-not (Test-Path -LiteralPath $library -PathType Leaf)) {
 
 if ($Action -in @("Integration", "All")) {
     & $maven -B -pl ta4j-cli -am "-Dtest=CudaNativeIntegrationTest" `
-        "-Dsurefire.failIfNoSpecifiedTests=false" "-Dgroups=requires-cuda" `
+        "-Dgroups=requires-cuda" `
         "-Dta4j.excludedTestTags=requires-metal" `
-        "-Dta4j.forecast.rngVersion=1" `
         "-Dta4j.acceleration.cuda.library=$library" test
     if ($LASTEXITCODE -ne 0) {
         throw "CUDA integration tests failed with exit code $LASTEXITCODE"

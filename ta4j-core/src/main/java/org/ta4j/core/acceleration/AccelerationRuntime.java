@@ -62,8 +62,8 @@ public final class AccelerationRuntime {
 
     /**
      * System property opting execution into an approximate tolerance, a finite
-     * positive value compared against the scalar oracle. Unset (or invalid)
-     * leaves exact, bitwise-identical execution as the only mode.
+     * positive value compared against the scalar oracle. Unset (or invalid) leaves
+     * exact, bitwise-identical execution as the only mode.
      */
     public static final String APPROXIMATE_TOLERANCE_PROPERTY = "ta4j.acceleration.approximateTolerance";
 
@@ -317,8 +317,8 @@ public final class AccelerationRuntime {
         BITWISE_IDENTICAL,
 
         /**
-         * Within an explicitly requested numeric tolerance of the scalar oracle.
-         * Using this contract requires a finite positive kernel-request tolerance.
+         * Within an explicitly requested numeric tolerance of the scalar oracle. Using
+         * this contract requires a finite positive kernel-request tolerance.
          */
         APPROXIMATE
     }

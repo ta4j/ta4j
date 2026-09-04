@@ -8,8 +8,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -102,6 +104,16 @@ final class PerformanceComparison {
         Map<String, JsonObject> candidateResults = resultMap(candidate);
         if (!baseResults.keySet().equals(candidateResults.keySet())) {
             throw new IllegalStateException("Cannot compare performance artifacts with different result cells");
+        }
+        Set<String> declaredCells = declaredCells(required(base, "scenarioIds").getAsJsonArray(),
+                required(base, "barCounts").getAsJsonArray());
+        if (!baseResults.keySet().equals(declaredCells)) {
+            Set<String> missing = new LinkedHashSet<>(declaredCells);
+            missing.removeAll(baseResults.keySet());
+            Set<String> unexpected = new LinkedHashSet<>(baseResults.keySet());
+            unexpected.removeAll(declaredCells);
+            throw new IllegalStateException("Performance artifact does not cover the declared grid; missing cells: "
+                    + missing + ", unexpected cells: " + unexpected);
         }
 
         JsonArray cells = new JsonArray();
@@ -302,6 +314,17 @@ final class PerformanceComparison {
             }
         }
         return byCell;
+    }
+
+    private static Set<String> declaredCells(JsonArray scenarioIds, JsonArray barCounts) {
+        Set<String> cells = new LinkedHashSet<>();
+        for (int s = 0; s < scenarioIds.size(); s++) {
+            String scenarioId = scenarioIds.get(s).getAsString();
+            for (int b = 0; b < barCounts.size(); b++) {
+                cells.add(scenarioId + ":" + barCounts.get(b).getAsInt());
+            }
+        }
+        return cells;
     }
 
     private static JsonElement required(JsonObject artifact, String field) {

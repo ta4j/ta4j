@@ -19,9 +19,9 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
  * exact requests stay scalar with a diagnostic that says so. Approximate
  * requests, which the core planner emits only when
  * {@code -Dta4j.acceleration.approximateTolerance=<value>} is set, engage only
- * on qualified device families above the crossover floor. The public constructor
- * exists solely for {@link java.util.ServiceLoader} and performs no probe or
- * native loading.
+ * on qualified device families above the crossover floor. The public
+ * constructor exists solely for {@link java.util.ServiceLoader} and performs no
+ * probe or native loading.
  *
  * @since 0.24.2
  */

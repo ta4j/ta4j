@@ -63,6 +63,9 @@ import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.named.NamedAssetKind;
 import org.ta4j.core.named.NamedAssetRegistry;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
+import org.ta4j.core.indicators.statistics.VarianceIndicator;
 import org.ta4j.core.reports.PositionStatsReport;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
@@ -100,6 +103,8 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.HexFormat;
@@ -157,6 +162,14 @@ final class CliSupport {
     static final long MAX_FORECAST_WORK = 10_000_000L;
     static final long MAX_FORECAST_HORIZON = 10_000_000L;
     static final long MAX_FORECAST_BAR_COUNT = 1_000_000L;
+    /**
+     * Upper bound on a JSON market-data file before it is read into memory.
+     * {@link JsonFileBarSeriesDataSource} materializes the whole file with
+     * {@code Files.readAllBytes} and parses it into an in-memory document, so an
+     * oversized file must be rejected by size ahead of that allocation rather than
+     * exhausting the JVM heap.
+     */
+    static final long MAX_JSON_DATA_FILE_BYTES = 512L * 1024 * 1024;
 
     private static final Gson GSON = new GsonBuilder().disableHtmlEscaping()
             .serializeNulls()
@@ -209,6 +222,7 @@ final class CliSupport {
         if (lowerCasePath.endsWith(".csv")) {
             loadedSeries = CsvFileBarSeriesDataSource.loadCsvSeries(normalizedPath);
         } else if (lowerCasePath.endsWith(".json")) {
+            requireBoundedJsonDataFile(normalizedPath);
             loadedSeries = JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(normalizedPath);
         } else {
             throw new IllegalArgumentException("Unsupported data file format for " + dataFile + ". Use .csv or .json.");
@@ -308,6 +322,22 @@ final class CliSupport {
             throw new IllegalArgumentException("Bar data file " + dataFile + " contains " + sourceBarCount + " "
                     + barArrayMember + " but only " + series.getBarCount()
                     + " could be decoded; refusing to analyze incomplete data. Fix or remove the malformed bars.");
+        }
+    }
+
+    private static void requireBoundedJsonDataFile(String normalizedPath) {
+        long bytes;
+        try {
+            bytes = Files.size(Path.of(normalizedPath));
+        } catch (IOException ex) {
+            // A missing or unreadable file is reported by the existing load path
+            // with the io category and exit code 74, so defer to that handling
+            // rather than masking it with a size error.
+            return;
+        }
+        if (bytes > MAX_JSON_DATA_FILE_BYTES) {
+            throw new IllegalArgumentException("Bar data file " + normalizedPath + " is " + bytes + " bytes; at most "
+                    + MAX_JSON_DATA_FILE_BYTES + " bytes are supported.");
         }
     }
 
@@ -534,6 +564,43 @@ final class CliSupport {
             foldBars = Math.addExact(foldBars, split.testBarCount());
         }
         requireBoundedStrategyBatch(strategies, Math.addExact(series.getBarCount(), foldBars));
+    }
+
+    /**
+     * Rejects an indicator test whose rolling-window scans exceed
+     * {@link #MAX_BATCH_STRATEGY_WORK} before execution. A
+     * {@link VarianceIndicator} or {@link StandardDeviationIndicator} recomputes
+     * its full {@code barCount} window at every stable bar, so each discovered
+     * instance contributes {@code bars * barCount} operations. The sum is checked
+     * ahead of execution so a long series over a wide window cannot run away while
+     * still passing the strategy-batch ceiling.
+     */
+    static void requireBoundedIndicatorWindowWork(Indicator<?> indicator, long bars) {
+        long windowBarCounts = sumRollingWindowBarCounts(indicator, Collections.newSetFromMap(new IdentityHashMap<>()));
+        if (windowBarCounts == 0L) {
+            return;
+        }
+        BigInteger work = BigInteger.valueOf(windowBarCounts).multiply(BigInteger.valueOf(bars));
+        if (work.compareTo(BigInteger.valueOf(MAX_BATCH_STRATEGY_WORK)) > 0) {
+            throw new IllegalArgumentException("Indicator test over " + bars + " bars requires " + work
+                    + " rolling-window iterations; at most " + MAX_BATCH_STRATEGY_WORK + " are supported.");
+        }
+    }
+
+    private static long sumRollingWindowBarCounts(Indicator<?> indicator, Set<Indicator<?>> visited) {
+        if (!visited.add(indicator)) {
+            return 0L;
+        }
+        long barCounts = 0L;
+        if (indicator instanceof VarianceIndicator varianceIndicator) {
+            barCounts = varianceIndicator.getBarCount();
+        } else if (indicator instanceof StandardDeviationIndicator deviationIndicator) {
+            barCounts = deviationIndicator.getBarCount();
+        }
+        for (Indicator<?> dependency : indicator.getDependencies()) {
+            barCounts = Math.addExact(barCounts, sumRollingWindowBarCounts(dependency, visited));
+        }
+        return barCounts;
     }
 
     static void reportInvalidStrategies(List<String> invalidStrategies, PrintWriter err) {
@@ -1742,20 +1809,19 @@ final class CliSupport {
         }
         if (belowToken != null) {
             return new UnderIndicatorRule(indicator,
-                    series.numFactory().numOf(parseFiniteDouble(belowToken, phase + "-below")));
+                    parseThresholdNum(belowToken, phase + "-below", series.numFactory()));
         }
-        return new OverIndicatorRule(indicator,
-                series.numFactory().numOf(parseFiniteDouble(aboveToken, phase + "-above")));
+        return new OverIndicatorRule(indicator, parseThresholdNum(aboveToken, phase + "-above", series.numFactory()));
     }
 
-    private static double parseFiniteDouble(String token, String optionName) {
-        double parsed;
+    private static Num parseThresholdNum(String token, String optionName, NumFactory numFactory) {
+        Num parsed;
         try {
-            parsed = Double.parseDouble(token);
-        } catch (NumberFormatException ex) {
+            parsed = numFactory.numOf(token);
+        } catch (RuntimeException ex) {
             throw new IllegalArgumentException("Invalid numeric value for --" + optionName + ": " + token + ".", ex);
         }
-        if (!Double.isFinite(parsed)) {
+        if (!Num.isFinite(parsed)) {
             throw new IllegalArgumentException("Invalid numeric value for --" + optionName + ": " + token + ".");
         }
         return parsed;

@@ -43,13 +43,11 @@ if [[ ! -f "$LIBRARY" ]]; then
 fi
 sha256sum "$LIBRARY"
 
-echo "==> Running OpenClNativeIntegrationTest (probe self-test + scalar parity)"
+echo "==> Running OpenClNativeIntegrationTest (native probe self-test)"
 ./mvnw -B -ntp -pl ta4j-cli -am \
     -Dtest=OpenClNativeIntegrationTest \
-    -Dsurefire.failIfNoSpecifiedTests=false \
     -Dgroups=requires-opencl \
     -Dta4j.excludedTestTags="$EXCLUDED" \
-    -Dta4j.forecast.rngVersion=1 \
     -Dta4j.acceleration.opencl.library="$LIBRARY" \
     test
 
