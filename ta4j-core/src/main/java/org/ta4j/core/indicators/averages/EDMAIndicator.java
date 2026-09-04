@@ -3,12 +3,8 @@
  */
 package org.ta4j.core.indicators.averages;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 import static org.ta4j.core.num.NaN.NaN;
@@ -23,14 +19,13 @@ import static org.ta4j.core.num.NaN.NaN;
  * action, either anticipating future price movements or analyzing past trends.
  *
  */
-public class EDMAIndicator extends AbstractIndicator<Num> {
+public class EDMAIndicator extends CachedIndicator<Num> {
 
+    private final Indicator<Num> indicator;
     private final int barCount;
     private final int displacement;
-    /** List of cached results. */
-    private final List<Num> results;
-    private final Indicator<Num> indicator;
-    private final int unstableBars;
+    private final transient EMAIndicator ema;
+    private final transient int unstableBars;
 
     /**
      * Constructor.
@@ -40,21 +35,18 @@ public class EDMAIndicator extends AbstractIndicator<Num> {
      * @param displacement the Exponential Moving Average displacement
      */
     public EDMAIndicator(Indicator<Num> indicator, int barCount, int displacement) {
-        super(indicator.getBarSeries());
-        BarSeries series = indicator.getBarSeries();
+        // The source is registered so a rebaselining input (e.g., a stochastic)
+        // invalidates the whole displaced cache after a series head advance.
+        super(indicator);
+        this.indicator = indicator;
         this.barCount = barCount;
         this.displacement = displacement;
-        this.indicator = indicator;
-        this.results = new ArrayList<>();
-
-        EMAIndicator ema = new EMAIndicator(indicator, barCount);
-        for (int i = 0; i < series.getBarCount(); i++) {
-            results.add(ema.getValue(i));
-        }
+        this.ema = new EMAIndicator(indicator, barCount);
         int emaUnstableBars = indicator.getCountOfUnstableBars() + barCount;
         this.unstableBars = Math.max(0, emaUnstableBars + displacement);
     }
 
+    @Override
     protected Num calculate(int index) {
         if (index < getCountOfUnstableBars()) {
             return NaN;
@@ -62,9 +54,9 @@ public class EDMAIndicator extends AbstractIndicator<Num> {
 
         int displacedIndex = index - displacement;
         if (index <= displacement) {
-            return results.get(0);
+            return ema.getValue(0);
         }
-        return results.get(displacedIndex);
+        return ema.getValue(displacedIndex);
     }
 
     @Override
@@ -76,10 +68,4 @@ public class EDMAIndicator extends AbstractIndicator<Num> {
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount + " displacement: " + displacement;
     }
-
-    @Override
-    public Num getValue(int index) {
-        return calculate(index);
-    }
-
 }

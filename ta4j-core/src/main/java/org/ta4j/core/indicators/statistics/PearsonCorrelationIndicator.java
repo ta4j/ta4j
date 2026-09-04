@@ -30,17 +30,34 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
      * @param barCount   the time frame
      */
     public PearsonCorrelationIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount) {
-        super(indicator1);
+        super(indicator1.getBarSeries(), indicator1, indicator2);
         this.indicator1 = indicator1;
         this.indicator2 = indicator2;
         this.barCount = barCount;
+    }
+
+    /**
+     * The correlation over a fixed window reads only retained bars, so every cached
+     * value stays recomputable from the retained window after a head advance: the
+     * unstable-range floor applies instead of keeping every cached value.
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return false;
     }
 
     @Override
     protected Num calculate(int index) {
 
         final var numFactory = getBarSeries().numFactory();
-        Num n = numFactory.numOf(barCount);
+        final int beginIndex = Math.max(0, getBarSeries().getBeginIndex());
+        final int start = Math.max(beginIndex, index - barCount + 1);
+        // Once bar eviction has advanced the begin index, the retained window may be
+        // smaller than the requested barCount; normalize by the number of values
+        // actually iterated. The warm-up phase keeps the historical barCount
+        // normalization for backward compatibility.
+        final int normalizationCount = beginIndex > 0 ? index - start + 1 : barCount;
+        Num n = numFactory.numOf(normalizationCount);
 
         Num zero = numFactory.zero();
         Num Sx = zero;
@@ -49,7 +66,7 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
         Num Syy = zero;
         Num Sxy = zero;
 
-        for (int i = Math.max(Math.max(0, getBarSeries().getBeginIndex()), index - barCount + 1); i <= index; i++) {
+        for (int i = start; i <= index; i++) {
 
             Num x = indicator1.getValue(i);
             Num y = indicator2.getValue(i);

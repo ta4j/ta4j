@@ -169,11 +169,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         if (referenceTarget == null) {
             return null;
         }
-        int activationIndex = resolveActivationIndex(referenceTarget.index());
-        if (activationIndex > barSeries.getEndIndex()) {
-            return null;
-        }
-        return new ExecutionTarget(activationIndex, toLimitPrice(referenceTarget.price(), tradeType));
+        return activationTarget(referenceTarget, barSeries, tradeType);
     }
 
     @Override
@@ -209,14 +205,14 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         TradeType tradeType = ExecutionModelSupport.nextTradeType(tradingRecord);
         Num stopPrice = toStopPrice(referenceTarget.price(), tradeType);
         Num limitPrice = toLimitPrice(referenceTarget.price(), tradeType);
-        int activationIndex = resolveActivationIndex(referenceTarget.index());
-        if (activationIndex > barSeries.getEndIndex()) {
+        ExecutionTarget activation = activationTarget(referenceTarget, barSeries, tradeType);
+        if (activation == null) {
             addRejectedOrder(tradingRecord, new RejectedOrder(index, index, tradeType, requestedAmount,
                     requestedAmount.getNumFactory().zero(), "Unable to resolve activation bar for stop-limit order"));
             return;
         }
-        putPendingOrder(tradingRecord, new PendingOrder(index, activationIndex, tradeType, requestedAmount, stopPrice,
-                limitPrice, activationIndex + maxBarsToFill - 1));
+        putPendingOrder(tradingRecord, new PendingOrder(index, activation.index(), tradeType, requestedAmount,
+                stopPrice, limitPrice, expiryIndex(activation.index(), maxBarsToFill)));
     }
 
     @Override
@@ -297,6 +293,51 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             return referenceIndex + 1;
         }
         return referenceIndex;
+    }
+
+    /**
+     * Resolves the bar that activates a stop-limit order referenced at
+     * {@code referenceTarget}, or {@code null} when no activation bar exists.
+     *
+     * <p>
+     * {@link PriceSource#CURRENT_CLOSE} activates on the bar after the reference:
+     * when the reference is the last representable index, that bar cannot exist and
+     * a naive {@code referenceIndex + 1} would wrap to a negative index, defeating
+     * the subsequent end-index check.
+     * </p>
+     *
+     * @param referenceTarget resolved reference execution target
+     * @param barSeries       series being executed
+     * @param tradeType       trade direction of the pending order
+     * @return activation target, or {@code null} when no activation bar exists
+     */
+    private ExecutionTarget activationTarget(ExecutionTarget referenceTarget, BarSeries barSeries,
+            TradeType tradeType) {
+        if (priceSource == PriceSource.CURRENT_CLOSE && referenceTarget.index() == Integer.MAX_VALUE) {
+            return null;
+        }
+        int activationIndex = resolveActivationIndex(referenceTarget.index());
+        if (activationIndex > barSeries.getEndIndex()) {
+            return null;
+        }
+        return new ExecutionTarget(activationIndex, toLimitPrice(referenceTarget.price(), tradeType));
+    }
+
+    /**
+     * Computes the last bar on which a stop-limit order may be filled, using wider
+     * arithmetic and clamping to {@link Integer#MAX_VALUE}. An activation near the
+     * maximum index must not wrap the expiry index negative, which would expire the
+     * order on its very first activation bar instead of keeping its configured
+     * time-to-live. The expiry is deliberately not clamped to the series end:
+     * bar-series managers may process raw bars past a constrained end to close open
+     * positions.
+     *
+     * @param activationIndex activation bar index
+     * @param maxBarsToFill   fillable bar count including the activation bar
+     * @return clamped expiry index, never below the activation index
+     */
+    private static int expiryIndex(int activationIndex, int maxBarsToFill) {
+        return (int) Math.min((long) activationIndex + maxBarsToFill - 1L, Integer.MAX_VALUE);
     }
 
     private Num toStopPrice(Num reference, TradeType tradeType) {

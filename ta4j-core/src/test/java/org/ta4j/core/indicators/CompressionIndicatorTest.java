@@ -42,6 +42,19 @@ public class CompressionIndicatorTest {
         assertThat(subject.getValue(7).isGreaterThan(subject.getValue(3))).isTrue();
     }
 
+    @Test
+    public void registersAllMetricBranchesAsCacheSources() {
+        Indicator<Num> atrPercent = metric(80, 70, 60, 70, 60, 50, 40, 10);
+        Indicator<Num> bollingerBandwidth = metric(76, 68, 62, 69, 59, 48, 39, 9);
+        Indicator<Num> keltnerChannelWidth = metric(74, 66, 58, 67, 57, 46, 35, 8);
+        CompressionIndicator subject = new CompressionIndicator(atrPercent, bollingerBandwidth, keltnerChannelWidth, 3,
+                3);
+
+        assertThat(hasDependencyPath(subject, atrPercent)).isTrue();
+        assertThat(hasDependencyPath(subject, bollingerBandwidth)).isTrue();
+        assertThat(hasDependencyPath(subject, keltnerChannelWidth)).isTrue();
+    }
+
     private Indicator<Num> metric(double... values) {
         return new CachedIndicator<>(series) {
             @Override
@@ -54,6 +67,11 @@ public class CompressionIndicatorTest {
                 return 0;
             }
         };
+    }
+
+    private static boolean hasDependencyPath(Indicator<?> indicator, Indicator<?> expected) {
+        return indicator == expected
+                || indicator.getDependencies().stream().anyMatch(dependency -> hasDependencyPath(dependency, expected));
     }
 
     @Test

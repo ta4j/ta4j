@@ -54,7 +54,7 @@ public class MutualInformationIndicator extends CachedIndicator<Num> {
      * @since 0.22.7
      */
     public MutualInformationIndicator(Indicator<Num> first, Indicator<Num> second, int barCount, int binCount) {
-        super(first);
+        super(first, second);
         IndicatorUtils.requireSameSeries(first, second);
         this.first = first;
         this.second = second;
@@ -106,7 +106,7 @@ public class MutualInformationIndicator extends CachedIndicator<Num> {
                 mutualInformation = mutualInformation.plus(jointProbability.multipliedBy(ratio.log()));
             }
         }
-        return CorrelationWindowSupport.isFinite(mutualInformation) ? mutualInformation : NaN.NaN;
+        return Num.isFinite(mutualInformation) ? mutualInformation : NaN.NaN;
     }
 
     @Override

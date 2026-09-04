@@ -284,10 +284,13 @@ class CachedBuffer<T> {
      * Prefills missing values up to (but not including) the target index.
      *
      * <p>
-     * This method is designed for recursive indicators to avoid stack overflow by
-     * iteratively computing values from the current highest index up to the target.
-     * The caller provides a calculator that computes values without re-entering the
-     * public getValue method.
+     * Ordinary forward prefill starts after the current highest cached index. When
+     * a head advance has retained a later cache tail while evicting a lower prefix,
+     * a caller can instead start before {@code firstCachedIndex}; the missing
+     * prefix is then filled in order without recomputing existing values. A
+     * backward read can also leave uncomputed holes inside the represented range;
+     * prefill then starts at the first missing index rather than assuming the range
+     * is contiguous.
      *
      * @param startIndex  the index to start filling from
      * @param targetIndex the target index (exclusive)
@@ -298,16 +301,60 @@ class CachedBuffer<T> {
         try {
             onWriteLockAcquired();
             try {
-                int fillStart = Math.max(startIndex, highestResultIndex + 1);
+                int fillStart = startIndex;
+                if (firstCachedIndex >= 0 && startIndex >= firstCachedIndex) {
+                    fillStart = highestResultIndex == Integer.MAX_VALUE ? Integer.MAX_VALUE
+                            : Math.max(startIndex, highestResultIndex + 1);
+                    int scanEnd = highestResultIndex == Integer.MAX_VALUE ? targetIndex
+                            : (int) Math.min((long) targetIndex, (long) highestResultIndex + 1L);
+                    for (int i = startIndex; i < scanEnd; i++) {
+                        if (readAtUnlocked(i) == NOT_COMPUTED) {
+                            fillStart = i;
+                            break;
+                        }
+                    }
+                }
                 for (int i = fillStart; i < targetIndex; i++) {
-                    T value = calculator.apply(i);
-                    store(i, value);
+                    if (readAtUnlocked(i) == NOT_COMPUTED) {
+                        T value = calculator.apply(i);
+                        store(i, value);
+                    }
                 }
             } finally {
                 onBeforeWriteLockReleased();
             }
         } finally {
             lock.writeLock().unlock();
+        }
+    }
+
+    /**
+     * Finds the first index without a computed value inside the represented range.
+     * A backward read can truncate the retained tail and leave the reported
+     * {@code [firstCachedIndex, highestResultIndex]} range non-contiguous; callers
+     * must fill such holes from the first missing index.
+     *
+     * @param fromIndex first index to inspect (inclusive)
+     * @param toIndex   last index to inspect (inclusive)
+     * @return the first index without a computed value, or {@code -1} when the
+     *         inspected range is fully computed
+     */
+    int firstMissingIndex(int fromIndex, int toIndex) {
+        lock.readLock().lock();
+        try {
+            int from = firstCachedIndex < 0 ? fromIndex : Math.max(fromIndex, firstCachedIndex);
+            int to = Math.min(toIndex, highestResultIndex);
+            for (int i = from; i <= to; i++) {
+                if (readAtUnlocked(i) == NOT_COMPUTED) {
+                    return i;
+                }
+                if (i == to) {
+                    break;
+                }
+            }
+            return -1;
+        } finally {
+            lock.readLock().unlock();
         }
     }
 

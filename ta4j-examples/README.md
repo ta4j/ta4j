@@ -10,14 +10,19 @@ It is organized as progressive learning tracks so production-minded Java develop
 - Build from the repository root where `ta4j-core` and `ta4j-examples` are both available
 
 ## Run an example
-
-From the repository root:
+From the repository root, run the canonical command (install first so the
+example resolves `ta4j-core` from the local repository, then execute only in
+`ta4j-examples`; a directly invoked goal would also run on upstream reactor
+modules, and `ta4j-core` has no main class):
 
 ```bash
-mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
+mvn -pl ta4j-examples -am install -DskipTests \
+  && mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
 ```
 
-Replace `ta4jexamples.Quickstart` with any class listed below.
+The install step is required on a clean clone: without it, `exec:java` cannot
+resolve the ta4j-core snapshot from the local repository. Replace
+`ta4jexamples.Quickstart` with any class listed below.
 
 ## Verify your run succeeded
 
@@ -48,12 +53,12 @@ If chart windows do not appear, you are likely in a headless environment; switch
 - `ta4jexamples.backtesting.TradingRecordParityBacktest`
 - `ta4jexamples.backtesting.TradeFillRecordingExample`
 - `ta4jexamples.backtesting.SimpleMovingAverageRangeBacktest`
+- `ta4jexamples.research.RelationshipObjectiveSearchExample`
 - `ta4jexamples.backtesting.BacktestPerformanceTuningHarness`
 
 Run a fixed throughput matrix and write `matrix_performance.json`:
 
 ```bash
-mvn -pl ta4j-examples -am compile
 mvn -pl ta4j-examples exec:java \
   -Dexec.mainClass=ta4jexamples.backtesting.BacktestPerformanceTuningHarness \
   -Dexec.args="--throughputControl --throughputOutputDir .agents/benchmarks/backtest-throughput/current --matrixStrategyCounts 250,500,1000 --matrixBarCounts 500,1000 --matrixMaxBarCountHints 0 --executionMode topK --topK 10 --parallelism 1"
@@ -85,20 +90,21 @@ raw machine hostname.
 
 - `ta4jexamples.analysis.forecast.RollingConformalForecastExample`
 - `ta4jexamples.analysis.forecast.KinematicKalmanForecastExample`
+- `ta4jexamples.analysis.forecast.CorrentropyKalmanExample`
 
 Run the ossified BTC daily analog and rolling-conformal walkthrough:
 
 ```bash
-./mvnw -pl ta4j-examples -am install
-./mvnw -pl ta4j-examples exec:java \
+./mvnw -pl ta4j-examples -am install \
+  && ./mvnw -pl ta4j-examples exec:java \
   -Dexec.mainClass=ta4jexamples.analysis.forecast.RollingConformalForecastExample
 ```
 
 Run the ossified S&P 500 weekly kinematic Kalman walkthrough:
 
 ```bash
-./mvnw -pl ta4j-examples -am install
-./mvnw -pl ta4j-examples exec:java \
+./mvnw -pl ta4j-examples -am install \
+  && ./mvnw -pl ta4j-examples exec:java \
   -Dexec.mainClass=ta4jexamples.analysis.forecast.KinematicKalmanForecastExample
 ```
 
@@ -107,6 +113,30 @@ measurement-variance regime, shares one cached state across one-, four-, and
 thirteen-week forecasts, and applies rolling conformal calibration to the
 four-week interval. The bundled Yahoo Finance snapshot is fixed through July
 30, 2026; its final July 27 weekly aggregate is an as-of partial week.
+
+Run the robust correntropy Kalman walkthrough over the same ossified S&P 500
+weekly series:
+
+```bash
+./mvnw -pl ta4j-examples -am install \
+  && ./mvnw -pl ta4j-examples exec:java \
+  -Dexec.mainClass=ta4jexamples.analysis.forecast.CorrentropyKalmanExample
+```
+
+This example derives illustrative squared-price Q/R variances from ATR,
+smooths the close with the correntropy Kalman filter (dimensionless kernel
+bandwidth), and logs the robust estimate, residual, and measurement weight at
+an isolated wick, across a sustained move, and as rejected-residual evidence
+using `(1 - measurement weight) * residual`, without activating a trading
+strategy.
+
+Each dynamic source/Q/R value is normalized through the series `NumFactory`,
+allowing inputs that return a different `Num` implementation when conversion
+remains finite. The residual view accepts source indicators that expose either
+the backing series or its read-only view.
+Finite extreme endpoint innovations are whitened before subtraction, so
+`DoubleNum` range limits do not turn a representable robust update into
+`NaN.NaN`.
 
 ## Suggested progression
 

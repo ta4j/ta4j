@@ -39,15 +39,77 @@ workspace_root() {
 
 root="$(workspace_root)"
 
-# If rg isn't available, fail fast with a clear message
-if ! command -v rg >/dev/null 2>&1; then
-  echo "Error: ripgrep (rg) not found in PATH." >&2
-  exit 127
-fi
-
 # Find matches under root, including hidden and ignored files,
 # so AGENTS candidates are discovered even in filtered directories.
-rg --files --no-ignore --hidden -g "$target_glob" "$root" 2>/dev/null \
+if command -v rg >/dev/null 2>&1; then
+  file_listing() {
+    rg --files --no-ignore --hidden -g "$target_glob" "$root" 2>/dev/null
+  }
+else
+  # Portable fallback: BSD and GNU find both support -name and -path glob matching.
+  # MSYS/Git Bash find emits backslash separators; normalize them so the
+  # upward AGENTS.md walk sees ordinary slash-separated paths.
+  # Path-shaped targets (containing "/") preserve the rg path-input contract
+  # including recursive glob expressions (such as "**").
+  file_listing() {
+    case "$target_glob" in
+      */*)
+        if [ -f "$root/$target_glob" ]; then
+          printf '%s\n' "$root/$target_glob"
+          return
+        fi
+        local clean_glob="${target_glob#./}"
+        case "$clean_glob" in
+          *\*\*/*)
+            local prefix="${clean_glob%%\*\*/*}"
+            local suffix="${clean_glob#*\*\*/*}"
+            prefix="${prefix%/}"
+            if [ -n "$prefix" ]; then
+              local p0="./$prefix/$suffix"
+              local p1="./$prefix/*/$suffix"
+              local p2="./$prefix/*/*/$suffix"
+              local p3="./$prefix/*/*/*/$suffix"
+              local p4="./$prefix/*/*/*/*/$suffix"
+            else
+              local p0="./$suffix"
+              local p1="./*/$suffix"
+              local p2="./*/*/$suffix"
+              local p3="./*/*/*/$suffix"
+              local p4="./*/*/*/*/$suffix"
+            fi
+            (
+              cd "$root" || exit
+              find . -type f \( -path "$p0" -o -path "$p1" -o -path "$p2" -o -path "$p3" -o -path "$p4" \) 2>/dev/null \
+                | sed "s|^\./|$root/|" \
+                | tr '\\' '/'
+            )
+            ;;
+          *)
+            local dir_prefix="${clean_glob%/*}"
+            local base_name="${clean_glob##*/}"
+            (
+              cd "$root" || exit
+              if [ -d "$dir_prefix" ] && case "$dir_prefix" in *\**|*\?*) false;; *) true;; esac; then
+                find "$dir_prefix" -maxdepth 1 -type f -name "$base_name" 2>/dev/null \
+                  | sed "s|^|$root/|" \
+                  | tr '\\' '/'
+              else
+                find . -type f -path "./$clean_glob" 2>/dev/null \
+                  | sed "s|^\./|$root/|" \
+                  | tr '\\' '/'
+              fi
+            )
+            ;;
+        esac
+        ;;
+      *)
+        find "$root" -type f -name "$target_glob" 2>/dev/null | tr '\\' '/'
+        ;;
+    esac
+  }
+fi
+
+file_listing \
 | while IFS= read -r file; do
     [ -z "$file" ] && continue
     dir="$(dirname "$file")"

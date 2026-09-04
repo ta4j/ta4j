@@ -38,7 +38,7 @@ public class WyckoffEventDetectorTest extends AbstractIndicatorTest<BarSeries, N
         addBar(series, 10.5, 11.0, 10.0, 10.6);
         addBar(series, 9.8, 10.2, 9.0, 9.4);
         addBar(series, 10.0, 10.5, 9.5, 10.2);
-        addBar(series, 10.6, 11.2, 10.4, 11.3);
+        addBar(series, 10.6, 11.3, 10.4, 11.3);
         addBar(series, 10.2, 10.6, 10.0, 10.4);
         addBar(series, 9.6, 9.9, 9.1, 9.3);
     }
@@ -182,10 +182,18 @@ public class WyckoffEventDetectorTest extends AbstractIndicatorTest<BarSeries, N
         detector.detect(3, structure, volume, WyckoffPhase.UNKNOWN);
 
         ((BaseBarSeries) series).replaceBar(2,
-                series.barBuilder().openPrice(9.8).highPrice(10.2).lowPrice(10.0).closePrice(9.4).volume(1000).build());
+                series.barBuilder()
+                        .openPrice(10.4)
+                        .highPrice(10.6)
+                        .lowPrice(10.1)
+                        .closePrice(10.3)
+                        .volume(1000)
+                        .build());
 
-        // The replacement bar (low 10.0 vs cached low 9.0) must force a cache
-        // refresh; a cached detector and a fresh detector must agree.
+        // The replacement bar keeps a valid OHLC shape (low 10.1 <= open/close) while
+        // its low stays above the cached extreme low of 9.0, so only the revision
+        // reconciliation can refresh the cache; a cached detector and a fresh detector
+        // must then agree.
         var fresh = new WyckoffEventDetector(series, numOf(0.05));
         EnumSet<WyckoffEvent> cached = detector.detect(3, structure, volume, WyckoffPhase.UNKNOWN);
         EnumSet<WyckoffEvent> expected = fresh.detect(3, structure, volume, WyckoffPhase.UNKNOWN);

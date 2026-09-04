@@ -66,22 +66,31 @@ cleanup_old_logs() {
         return 0
     fi
     
-    # Find all full-build-*.log files and sort by filename (which contains timestamp)
-    # Filenames are in format: full-build-YYYYMMDD-HHMMSS.log
-    # Sorting alphabetically gives chronological order (newest last)
-    local files
-    files=$(find "$log_dir" -maxdepth 1 -type f -name "full-build-*.log" 2>/dev/null | sort || true)
-    if [[ -z "$files" ]]; then
+    # Find all full-build-*.log files and sort by filename (which contains timestamp).
+    # Filenames are in format: full-build-YYYYMMDD-HHMMSS.log; sorting alphabetically
+    # gives chronological order (newest last). Bash globs stay portable across
+    # GNU find and BSD find (macOS lacks -maxdepth).
+    local -a log_files=()
+    local entry
+    for entry in "$log_dir"/full-build-*.log; do
+        if [[ -f "$entry" ]]; then
+            log_files+=("$entry")
+        fi
+    done
+    if ((${#log_files[@]} == 0)); then
         return 0
     fi
-
-    # Delete everything except the newest keep_count files; use POSIX-safe tail/awk
+    local sorted_files
+    sorted_files="$(printf '%s\n' "${log_files[@]}" | sort || true)"
+    if [[ -z "$sorted_files" ]]; then
+        return 0
+    fi
     local file_count
-    file_count=$(printf '%s\n' "$files" | grep -c . || true)
+    file_count=$(printf '%s\n' "$sorted_files" | grep -c . || true)
     local delete_count=$((file_count - keep_count))
     if ((delete_count > 0)); then
         local files_to_delete
-        files_to_delete=$(printf '%s\n' "$files" | head -n "$delete_count")
+        files_to_delete=$(printf '%s\n' "$sorted_files" | head -n "$delete_count")
         while IFS= read -r file; do
             if [[ -n "$file" && -f "$file" ]]; then
                 rm -f "$file"
@@ -419,6 +428,15 @@ MVN_CMD+=("${GOALS[@]}")
     printf '\n'
 } >>"$LOG_FILE"
 
+watchdog_epoch() {
+    local test_clock_file="$1"
+    if [[ -n "$test_clock_file" ]]; then
+        cat "$test_clock_file"
+    else
+        date +%s
+    fi
+}
+
 run_with_timeout() {
     local timeout_marker_file="$1"
     local timeout_seconds="$2"
@@ -426,7 +444,19 @@ run_with_timeout() {
     local stall_seconds="$4"
     local heartbeat_seconds="$5"
     shift 5
+    local test_clock_file="${QUIET_BUILD_TEST_CLOCK_FILE:-}"
+    local watchdog_poll_seconds=1
+    if [[ -n "$test_clock_file" ]]; then
+        watchdog_poll_seconds="${QUIET_BUILD_TEST_WATCHDOG_POLL_SECONDS:-1}"
+    fi
     : >"$timeout_marker_file"
+
+    # Capture the initial clock before launching so the timeout counts from build
+    # start rather than the watcher's first poll. A fast fake Maven that advances
+    # the test clock to completion before the watcher first polls would otherwise
+    # freeze elapsed at zero and never exercise the timeout boundary.
+    local start_epoch
+    start_epoch="$(watchdog_epoch "$test_clock_file")"
 
     "$@" &
     local command_pid=$!
@@ -434,12 +464,10 @@ run_with_timeout() {
     (
         local elapsed=0
         local sleep_pid=""
-        local start_epoch
         local now_epoch
         local last_progress_epoch
         local last_heartbeat_epoch
         local last_progress_size=0
-        start_epoch="$(date +%s)"
         last_progress_epoch="$start_epoch"
         last_heartbeat_epoch="$start_epoch"
         if [[ -f "$progress_file" ]]; then
@@ -447,17 +475,20 @@ run_with_timeout() {
             if ! [[ "$last_progress_size" =~ ^[0-9]+$ ]]; then
                 last_progress_size=0
             fi
+            if ((last_progress_size > 0)); then
+                last_progress_epoch="$(watchdog_epoch "$test_clock_file")"
+            fi
         fi
         trap 'if [[ -n "${sleep_pid:-}" ]]; then kill "$sleep_pid" >/dev/null 2>&1 || true; fi; exit 0' TERM INT
         while true; do
-            sleep 1 &
+            sleep "$watchdog_poll_seconds" &
             sleep_pid="$!"
             wait "$sleep_pid" >/dev/null 2>&1 || exit 0
             sleep_pid=""
             if ! kill -0 "$command_pid" >/dev/null 2>&1; then
                 exit 0
             fi
-            now_epoch="$(date +%s)"
+            now_epoch="$(watchdog_epoch "$test_clock_file")"
             elapsed=$((now_epoch - start_epoch))
 
             if [[ -f "$progress_file" ]]; then

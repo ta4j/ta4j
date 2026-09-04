@@ -115,12 +115,24 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
      *                   narrower bands (more signals, more noise).
      */
     public SuperTrendIndicator(final BarSeries series, int barCount, double multiplier) {
-        super(series);
-        this.barCount = barCount;
-        this.multiplier = multiplier;
+        this(buildConfig(series, barCount, multiplier));
+    }
+
+    private SuperTrendIndicator(Config config) {
+        super(config.superTrendUpperBandIndicator(), config.superTrendLowerBandIndicator());
+        this.barCount = config.barCount();
+        this.multiplier = config.multiplier();
+        this.superTrendUpperBandIndicator = config.superTrendUpperBandIndicator();
+        this.superTrendLowerBandIndicator = config.superTrendLowerBandIndicator();
+    }
+
+    private static Config buildConfig(BarSeries series, int barCount, double multiplier) {
         ATRIndicator atrIndicator = new ATRIndicator(series, barCount);
-        this.superTrendUpperBandIndicator = new SuperTrendUpperBandIndicator(series, atrIndicator, multiplier);
-        this.superTrendLowerBandIndicator = new SuperTrendLowerBandIndicator(series, atrIndicator, multiplier);
+        SuperTrendUpperBandIndicator superTrendUpperBandIndicator = new SuperTrendUpperBandIndicator(series,
+                atrIndicator, multiplier);
+        SuperTrendLowerBandIndicator superTrendLowerBandIndicator = new SuperTrendLowerBandIndicator(series,
+                atrIndicator, multiplier);
+        return new Config(superTrendUpperBandIndicator, superTrendLowerBandIndicator, barCount, multiplier);
     }
 
     @Override
@@ -263,4 +275,9 @@ public class SuperTrendIndicator extends RecursiveCachedIndicator<Num> {
     public SuperTrendUpperBandIndicator getSuperTrendUpperBandIndicator() {
         return new SuperTrendUpperBandIndicator(getBarSeries(), new ATRIndicator(getBarSeries(), barCount), multiplier);
     }
+
+    private record Config(SuperTrendUpperBandIndicator superTrendUpperBandIndicator,
+            SuperTrendLowerBandIndicator superTrendLowerBandIndicator, int barCount, double multiplier) {
+    }
+
 }

@@ -433,4 +433,5 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
 
     private record Config(ElliottSwingIndicator swingIndicator, ElliottFibonacciValidator fibonacciValidator) {
     }
+
 }
