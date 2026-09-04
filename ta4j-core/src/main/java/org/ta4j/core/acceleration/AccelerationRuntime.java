@@ -160,7 +160,19 @@ public final class AccelerationRuntime {
         return context == null ? Optional.empty() : Optional.of(context.diagnostic);
     }
 
-    static long maxDeviceBytes() {
+    /**
+     * Returns the configured global device-memory budget, or its default when
+     * unset or misconfigured.
+     *
+     * <p>
+     * Core planners consult this budget to decline oversized requests before
+     * materializing input snapshots; the runtime re-checks every planned request
+     * against the same budget before provider assessment.
+     *
+     * @return positive device-memory budget in bytes
+     * @since 0.24.2
+     */
+    public static long maxDeviceBytes() {
         String configured = System.getProperty(MAX_DEVICE_BYTES_PROPERTY);
         if (configured == null || configured.isBlank()) {
             return DEFAULT_MAX_DEVICE_BYTES;

@@ -171,6 +171,14 @@ final class CliSupport {
      */
     static final long MAX_JSON_DATA_FILE_BYTES = 512L * 1024 * 1024;
 
+    /**
+     * Upper bound on a CSV market-data file before it is read into memory.
+     * {@link CsvFileBarSeriesDataSource} streams every row into a growing
+     * {@link BarSeries}, so an oversized file would exhaust the CLI heap before
+     * any strategy or forecast work ceiling could be applied.
+     */
+    static final long MAX_CSV_DATA_FILE_BYTES = 512L * 1024 * 1024;
+
     private static final Gson GSON = new GsonBuilder().disableHtmlEscaping()
             .serializeNulls()
             .setPrettyPrinting()
@@ -220,6 +228,7 @@ final class CliSupport {
         BarSeries loadedSeries;
         String lowerCasePath = dataFile.toLowerCase(Locale.ROOT);
         if (lowerCasePath.endsWith(".csv")) {
+            requireBoundedCsvDataFile(normalizedPath);
             loadedSeries = CsvFileBarSeriesDataSource.loadCsvSeries(normalizedPath);
         } else if (lowerCasePath.endsWith(".json")) {
             requireBoundedJsonDataFile(normalizedPath);
@@ -341,6 +350,22 @@ final class CliSupport {
         }
     }
 
+    private static void requireBoundedCsvDataFile(String normalizedPath) {
+        long bytes;
+        try {
+            bytes = Files.size(Path.of(normalizedPath));
+        } catch (IOException ex) {
+            // A missing or unreadable file is reported by the existing load path
+            // with the io category and exit code 74, so defer to that handling
+            // rather than masking it with a size error.
+            return;
+        }
+        if (bytes > MAX_CSV_DATA_FILE_BYTES) {
+            throw new IllegalArgumentException("Bar data file " + normalizedPath + " is " + bytes + " bytes; at most "
+                    + MAX_CSV_DATA_FILE_BYTES + " bytes are supported.");
+        }
+    }
+
     static BacktestExecutor buildExecutor(BarSeries series, String executionModelToken, String commissionToken,
             String borrowRateToken) {
         return buildExecutor(series, executionModelToken, commissionToken, borrowRateToken, null);
@@ -372,7 +397,9 @@ final class CliSupport {
             resolved = "1";
         }
         if (capital != null && stake != null) {
-            if (stake > capital) {
+            Num capitalAmount = series.numFactory().numOf(capitalToken);
+            Num stakeAmount = series.numFactory().numOf(stakeAmountToken);
+            if (stakeAmount.isGreaterThan(capitalAmount)) {
                 throw new IllegalArgumentException("--stake-amount must not exceed --capital.");
             }
         }
@@ -595,7 +622,9 @@ final class CliSupport {
         if (indicator instanceof VarianceIndicator varianceIndicator) {
             barCounts = varianceIndicator.getBarCount();
         } else if (indicator instanceof StandardDeviationIndicator deviationIndicator) {
-            barCounts = deviationIndicator.getBarCount();
+            // A non-positive window normalizes the internal variance window to one,
+            // so a negative serialized value must never cancel a positive one.
+            barCounts = Math.max(1L, deviationIndicator.getBarCount());
         }
         for (Indicator<?> dependency : indicator.getDependencies()) {
             barCounts = Math.addExact(barCounts, sumRollingWindowBarCounts(dependency, visited));

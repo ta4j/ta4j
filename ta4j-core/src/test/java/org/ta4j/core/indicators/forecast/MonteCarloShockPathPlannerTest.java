@@ -120,6 +120,17 @@ public class MonteCarloShockPathPlannerTest {
     }
 
     @Test
+    public void declinesOversizedBatchesBeforeMaterializingInputs() {
+        Fixture fixture = fixture(DoubleNumFactory.getInstance());
+        System.setProperty(AccelerationRuntime.MAX_DEVICE_BYTES_PROPERTY, "1");
+        try {
+            assertNull(new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 3, fixture.series.numFactory()));
+        } finally {
+            System.clearProperty(AccelerationRuntime.MAX_DEVICE_BYTES_PROPERTY);
+        }
+    }
+
+    @Test
     public void declinesCustomMonteCarloMethod() {
         Fixture fixture = fixture(DoubleNumFactory.getInstance());
         BarSeries series = fixture.series;

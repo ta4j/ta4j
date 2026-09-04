@@ -463,13 +463,13 @@ public final class PerformanceExperimentRunner {
     }
 
     private record HostTelemetry(String hostId, String osName, String osArch, String osVersion, String javaVersion,
-            String jvmName, int availableProcessors) {
+            String jvmName, String jvmOptionsFingerprint, int availableProcessors) {
 
         static HostTelemetry capture() {
             return new HostTelemetry(hashedHostId(), System.getProperty("os.name", "unknown"),
                     System.getProperty("os.arch", "unknown"), System.getProperty("os.version", "unknown"),
                     System.getProperty("java.version", "unknown"), ManagementFactory.getRuntimeMXBean().getVmName(),
-                    Runtime.getRuntime().availableProcessors());
+                    hashedJvmOptions(), Runtime.getRuntime().availableProcessors());
         }
 
         JsonObject toJson() {
@@ -480,8 +480,33 @@ public final class PerformanceExperimentRunner {
             object.addProperty("osVersion", osVersion);
             object.addProperty("javaVersion", javaVersion);
             object.addProperty("jvmName", jvmName);
+            object.addProperty("jvmOptionsFingerprint", jvmOptionsFingerprint);
             object.addProperty("availableProcessors", availableProcessors);
             return object;
+        }
+
+        /**
+         * SHA-256 over the sorted JVM input arguments. The raw arguments are
+         * never persisted, so property values (including secrets) never reach
+         * an artifact, while any option change still alters the fingerprint.
+         */
+        private static String hashedJvmOptions() {
+            List<String> arguments = new ArrayList<>(ManagementFactory.getRuntimeMXBean().getInputArguments());
+            arguments.sort(null);
+            try {
+                MessageDigest digest = MessageDigest.getInstance("SHA-256");
+                for (String argument : arguments) {
+                    digest.update(argument.getBytes(StandardCharsets.UTF_8));
+                    digest.update((byte) 0);
+                }
+                StringBuilder builder = new StringBuilder("sha256:");
+                for (byte value : digest.digest()) {
+                    builder.append(String.format("%02x", value));
+                }
+                return builder.toString();
+            } catch (NoSuchAlgorithmException impossible) {
+                throw new AssertionError("SHA-256 unavailable", impossible);
+            }
         }
 
         private static String hashedHostId() {

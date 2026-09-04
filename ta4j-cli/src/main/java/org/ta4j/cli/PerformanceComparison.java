@@ -97,6 +97,10 @@ final class PerformanceComparison {
                 || UNKNOWN_HOST_ID.equals(candidateHost.get("hostId").getAsString())) {
             throw new IllegalStateException("Cannot compare performance artifacts when the host ID is unknown");
         }
+        if (!baseHost.get("jvmOptionsFingerprint").getAsString()
+                .equals(candidateHost.get("jvmOptionsFingerprint").getAsString())) {
+            throw new IllegalStateException("Cannot compare performance artifacts captured with different JVM options");
+        }
         if (!hostTelemetryMatch(baseHost, candidateHost)) {
             throw new IllegalStateException("Cannot compare performance artifacts from different hosts");
         }
@@ -232,6 +236,7 @@ final class PerformanceComparison {
         requireString(host, file, "osVersion");
         requireString(host, file, "javaVersion");
         requireString(host, file, "jvmName");
+        requireString(host, file, "jvmOptionsFingerprint");
         requireNumber(host, file, "availableProcessors");
         JsonArray results = requireArray(artifact, file, "results");
         for (int i = 0; i < results.size(); i++) {

@@ -3,10 +3,13 @@
  */
 package org.ta4j.cli.acceleration.internal.providers;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
@@ -76,6 +79,19 @@ public final class MetalAccelerationProvider extends ShockPathKernelProvider {
         if (probed != null) {
             return normalizeFamily(probed);
         }
+        // Cold-start fix: resolve the family from the OS before the kernel is
+        // ever loaded, otherwise the first assessment sees "generic", the
+        // generic qualification row predicts Long.MAX_VALUE, the CPU lane wins,
+        // and ensureKernel() never runs the probe that would discover the real
+        // family. sysctl is device identification, not native loading.
+        if (!sysctlAttempted) {
+            String detected = detectCpuBrand();
+            sysctlFamily = detected == null ? "" : detected;
+            sysctlAttempted = true;
+        }
+        if (!sysctlFamily.isEmpty()) {
+            return sysctlFamily;
+        }
         return "generic";
     }
 
@@ -119,5 +135,34 @@ public final class MetalAccelerationProvider extends ShockPathKernelProvider {
             return "m5max";
         }
         return normalized;
+    }
+
+    private volatile boolean sysctlAttempted;
+    private volatile String sysctlFamily = "";
+
+    private static String detectCpuBrand() {
+        String osName = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        if (!osName.contains("mac")) {
+            return null;
+        }
+        Process process = null;
+        try {
+            process = new ProcessBuilder("sysctl", "-n", "machdep.cpu.brand_string").start();
+            byte[] output = process.getInputStream().readAllBytes();
+            if (!process.waitFor(2, TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+                return null;
+            }
+            String brand = new String(output, StandardCharsets.UTF_8).trim();
+            return brand.isEmpty() ? null : normalizeFamily(brand);
+        } catch (IOException exception) {
+            return null;
+        } catch (InterruptedException exception) {
+            if (process != null) {
+                process.destroyForcibly();
+            }
+            Thread.currentThread().interrupt();
+            return null;
+        }
     }
 }

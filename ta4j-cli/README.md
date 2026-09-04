@@ -31,10 +31,10 @@ Build a platform classifier, place it on the application classpath with
 `ta4j-core`, and launch with:
 
 ```text
--Dta4j.acceleration=auto
+-Dta4j.acceleration.enabled=auto
 ```
 
-Omitting the property or setting `-Dta4j.acceleration=off` performs no provider
+Omitting the property or setting `-Dta4j.acceleration.enabled=off` performs no provider
 discovery or native loading. `auto` currently accelerates eligible `DoubleNum`
 Monte Carlo price forecasts and falls back to their scalar `getValue(int)` path
 for every unsupported, unavailable, slower, stale, or failed request. See

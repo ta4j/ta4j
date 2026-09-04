@@ -58,6 +58,24 @@ class PerformanceComparisonTest {
     }
 
     @Test
+    void comparisonRejectsMismatchedJvmOptions() throws Exception {
+        Path baseDir = tempDir.resolve("base");
+        Path candidateDir = tempDir.resolve("candidate");
+        writePerformanceJson(baseDir, 10L, 1_000L);
+        writePerformanceJson(candidateDir, 10L, 900L);
+        Path candidateFile = candidateDir.resolve("performance.json");
+        JsonObject root = JsonParser.parseString(Files.readString(candidateFile)).getAsJsonObject();
+        root.getAsJsonObject("host").addProperty("jvmOptionsFingerprint", "sha256:other-jvm");
+        Files.writeString(candidateFile, GSON.toJson(root), StandardCharsets.UTF_8);
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> PerformanceComparison.compare(baseDir, candidateDir, tempDir.resolve("comparison"), 5d));
+
+        assertEquals("Cannot compare performance artifacts captured with different JVM options",
+                exception.getMessage());
+    }
+
+    @Test
     void comparisonIdentifiesMissingRequiredMetadata() throws Exception {
         Path baseDir = tempDir.resolve("base");
         Path candidateDir = tempDir.resolve("candidate");
@@ -328,6 +346,7 @@ class PerformanceComparisonTest {
         host.addProperty("osVersion", "fixture-version");
         host.addProperty("javaVersion", "fixture-java");
         host.addProperty("jvmName", "fixture-jvm");
+        host.addProperty("jvmOptionsFingerprint", "sha256:fixture-jvm");
         host.addProperty("availableProcessors", 1);
         root.add("host", host);
 

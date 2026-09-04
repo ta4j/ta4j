@@ -43,6 +43,20 @@ abstract class ShockPathKernelProvider implements Provider {
     /** Quantile vector handed to sample kernels; core decodes quantiles itself. */
     private static final double[] NO_QUANTILES = new double[0];
 
+    /**
+     * Certified relative-tolerance floor of the fp32 approximate lane, per
+     * horizon step. Each terminal price compounds {@code horizon} fp32
+     * multiply-adds whose per-operation relative rounding error is bounded by
+     * roughly 2^-24; {@code 1e-6} per step leaves about an order of magnitude
+     * of headroom, so requests at or above the floor can never silently violate
+     * their tolerance.
+     */
+    private static final double MIN_CERTIFIED_RELATIVE_TOLERANCE_PER_STEP = 1e-6;
+
+    private static double certifiedRelativeToleranceFloor(int horizon) {
+        return MIN_CERTIFIED_RELATIVE_TOLERANCE_PER_STEP * horizon;
+    }
+
     private final Backend backend;
     private final String providerId;
     private final String maxMemoryProperty;
@@ -97,6 +111,16 @@ abstract class ShockPathKernelProvider implements Provider {
         } catch (ArithmeticException exception) {
             return unsupported(DiagnosticCode.UNSUPPORTED,
                     providerId + " request dimensions overflow: " + exception.getMessage());
+        }
+        if (!exact) {
+            double floor = certifiedRelativeToleranceFloor(dimensions.horizon());
+            if (request.tolerance() < floor) {
+                return unsupported(DiagnosticCode.UNSUPPORTED, providerId + " cannot certify approximate tolerance "
+                        + request.tolerance() + " for a " + dimensions.horizon() + "-step horizon: the fp32 lane's"
+                        + " certified relative-tolerance floor is " + floor
+                        + "; raise -D" + AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY
+                        + " or run the scalar path");
+            }
         }
         long ceiling = memoryCeiling();
         if (ceiling <= 0L) {

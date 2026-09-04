@@ -81,6 +81,7 @@ public class StandardDeviationIndicator extends CachedIndicator<Num> {
 
     /**
      * @return the number of bars in the rolling window
+     * @since 0.24.2
      */
     public int getBarCount() {
         return barCount;

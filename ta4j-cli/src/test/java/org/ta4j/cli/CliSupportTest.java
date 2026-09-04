@@ -31,6 +31,8 @@ import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedBooleanIndicator;
+import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
+import org.ta4j.core.indicators.statistics.VarianceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -230,6 +232,35 @@ class CliSupportTest {
         assertThatThrownBy(() -> CliSupport.resolveAmount(series, "abc", null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Invalid numeric value for --capital: abc.");
+    }
+
+    @Test
+    void resolveAmountEnforcesCapitalLimitAtFactoryPrecision() {
+        BaseBarSeries series = new BaseBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance()).build();
+
+        // 9007199254740993 parses to the same double as 9007199254740992, so a
+        // double comparison would accept the oversized stake.
+        assertThatThrownBy(() -> CliSupport.resolveAmount(series, "9007199254740992", "9007199254740993"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("--stake-amount must not exceed --capital.");
+        assertThat(CliSupport.resolveAmount(series, "9007199254740993", "9007199254740992"))
+                .hasToString("9007199254740992");
+    }
+
+    @Test
+    void requireBoundedIndicatorWindowWorkClampsNormalizedNegativeWindows() {
+        double[] prices = new double[200];
+        for (int bar = 0; bar < prices.length; bar++) {
+            prices[bar] = 1d + bar;
+        }
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(prices)
+                .build();
+        StandardDeviationIndicator deviation = new StandardDeviationIndicator(
+                new VarianceIndicator(new ClosePriceIndicator(series), 1_000_000), -1_000_000);
+
+        assertThatThrownBy(() -> CliSupport.requireBoundedIndicatorWindowWork(deviation, series.getBarCount()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("rolling-window iterations");
     }
 
     @Test

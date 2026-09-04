@@ -76,6 +76,7 @@ class MetalAccelerationProviderTest {
     @Test
     void unqualifiedFamilyPredictsUnboundedCostForCoreCrossover() throws Exception {
         useLibraryFile();
+        System.setProperty(ShockPathQualification.familyProperty(Backend.METAL), "generic");
         MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(true), new FakeBridge());
 
         Assessment assessment = provider.assess(request(0.01d));
@@ -99,6 +100,20 @@ class MetalAccelerationProviderTest {
         assertThat(assessment.deviceId()).isEqualTo("metal/m5max");
         assertThat(assessment.predictedTotalNanos()).isGreaterThan(0L).isLessThan(Long.MAX_VALUE);
         assertThat(assessment.deterministic()).isTrue();
+    }
+
+    @Test
+    void approximateToleranceBelowCertifiedFloorDeclines() throws Exception {
+        useLibraryFile();
+        System.setProperty(ShockPathQualification.familyProperty(Backend.METAL), "m5max");
+        System.setProperty(ShockPathQualification.minStepsProperty(Backend.METAL), "8");
+        MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(true), new FakeBridge());
+
+        Assessment assessment = provider.assess(request(1e-12));
+
+        assertThat(assessment.supported()).isFalse();
+        assertThat(assessment.diagnostic().code()).isEqualTo(DiagnosticCode.UNSUPPORTED);
+        assertThat(assessment.diagnostic().detail()).contains("certified relative-tolerance floor");
     }
 
     @Test
