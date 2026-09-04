@@ -253,7 +253,8 @@ class CliSupportTest {
         for (int bar = 0; bar < prices.length; bar++) {
             prices[bar] = 1d + bar;
         }
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(prices)
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(prices)
                 .build();
         StandardDeviationIndicator deviation = new StandardDeviationIndicator(
                 new VarianceIndicator(new ClosePriceIndicator(series), 1_000_000), -1_000_000);

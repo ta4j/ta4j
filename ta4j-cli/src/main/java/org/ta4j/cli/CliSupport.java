@@ -174,8 +174,8 @@ final class CliSupport {
     /**
      * Upper bound on a CSV market-data file before it is read into memory.
      * {@link CsvFileBarSeriesDataSource} streams every row into a growing
-     * {@link BarSeries}, so an oversized file would exhaust the CLI heap before
-     * any strategy or forecast work ceiling could be applied.
+     * {@link BarSeries}, so an oversized file would exhaust the CLI heap before any
+     * strategy or forecast work ceiling could be applied.
      */
     static final long MAX_CSV_DATA_FILE_BYTES = 512L * 1024 * 1024;
 

@@ -161,8 +161,8 @@ public final class AccelerationRuntime {
     }
 
     /**
-     * Returns the configured global device-memory budget, or its default when
-     * unset or misconfigured.
+     * Returns the configured global device-memory budget, or its default when unset
+     * or misconfigured.
      *
      * <p>
      * Core planners consult this budget to decline oversized requests before

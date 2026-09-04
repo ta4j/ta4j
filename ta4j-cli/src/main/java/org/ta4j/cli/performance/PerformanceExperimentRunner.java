@@ -486,9 +486,9 @@ public final class PerformanceExperimentRunner {
         }
 
         /**
-         * SHA-256 over the sorted JVM input arguments. The raw arguments are
-         * never persisted, so property values (including secrets) never reach
-         * an artifact, while any option change still alters the fingerprint.
+         * SHA-256 over the sorted JVM input arguments. The raw arguments are never
+         * persisted, so property values (including secrets) never reach an artifact,
+         * while any option change still alters the fingerprint.
          */
         private static String hashedJvmOptions() {
             List<String> arguments = new ArrayList<>(ManagementFactory.getRuntimeMXBean().getInputArguments());
