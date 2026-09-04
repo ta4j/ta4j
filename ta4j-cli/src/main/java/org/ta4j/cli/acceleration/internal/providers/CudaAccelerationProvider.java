@@ -33,7 +33,7 @@ public final class CudaAccelerationProvider extends ShockPathKernelProvider {
      * Creates a lazy CUDA provider.
      */
     public CudaAccelerationProvider() {
-        super(Backend.CUDA, "cuda", MAX_MEMORY_PROPERTY, DEFAULT_MAX_MEMORY_BYTES, false, false, null);
+        super(Backend.CUDA, "cuda", MAX_MEMORY_PROPERTY, DEFAULT_MAX_MEMORY_BYTES, false, false);
     }
 
     @Override

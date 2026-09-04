@@ -94,10 +94,14 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         long inputBytes = ((long) size * 4 + (long) windows.length) * BYTES_PER_ELEMENT;
         long outputBytes = (long) size * iterations * BYTES_PER_ELEMENT;
         long peakBytes = inputBytes + outputBytes + steps * BYTES_PER_ELEMENT;
+        double tolerance = AccelerationRuntime.approximateTolerance();
+        boolean approximate = !Double.isNaN(tolerance);
+        AccelerationRuntime.Determinism determinism = approximate ? AccelerationRuntime.Determinism.APPROXIMATE
+                : AccelerationRuntime.Determinism.BITWISE_IDENTICAL;
         AccelerationRuntime.KernelRequest request = new AccelerationRuntime.KernelRequest(
                 AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1, fromInclusive, toInclusive, iterations,
-                AccelerationRuntime.NumericEncoding.FLOAT64, AccelerationRuntime.Determinism.BITWISE_IDENTICAL,
-                settings.seed(), Double.NaN, params, inputs, estimatedScalarNanos, peakBytes);
+                AccelerationRuntime.NumericEncoding.FLOAT64, determinism, settings.seed(), tolerance, params, inputs,
+                estimatedScalarNanos, peakBytes);
         List<Double> quantiles = List.copyOf(settings.quantileProbabilities());
         int horizon = settings.horizon();
         OperationDecoder decoder = (slice, index, decodingFactory) -> {

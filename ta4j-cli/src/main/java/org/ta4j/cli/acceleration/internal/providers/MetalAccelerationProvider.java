@@ -16,19 +16,18 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
  *
  * <p>
  * The FP32 Metal kernel cannot reproduce float64 scalar results bit for bit, so
- * exact requests (the only kind the core planner produces today) stay scalar
- * with a diagnostic that says so. Approximate requests engage only with
- * explicit opt-in, and only on qualified device families above the crossover
- * floor. The public constructor exists solely for
- * {@link java.util.ServiceLoader} and performs no probe or native loading.
+ * exact requests stay scalar with a diagnostic that says so. Approximate
+ * requests, which the core planner emits only when
+ * {@code -Dta4j.acceleration.approximateTolerance=<value>} is set, engage only
+ * on qualified device families above the crossover floor. The public constructor
+ * exists solely for {@link java.util.ServiceLoader} and performs no probe or
+ * native loading.
  *
  * @since 0.24.2
  */
 public final class MetalAccelerationProvider extends ShockPathKernelProvider {
 
     static final String MAX_MEMORY_PROPERTY = "ta4j.acceleration.metal.maxBytes";
-
-    static final String APPROXIMATE_PROPERTY = "ta4j.cli.acceleration.metal.approximate";
 
     private static final long DEFAULT_MAX_MEMORY_BYTES = 512L * 1024L * 1024L;
 
@@ -45,7 +44,7 @@ public final class MetalAccelerationProvider extends ShockPathKernelProvider {
     }
 
     MetalAccelerationProvider(Supplier<MetalNativeLibrary.LoadResult> libraryLoader, MetalNativeBridge nativeBridge) {
-        super(Backend.METAL, "metal", MAX_MEMORY_PROPERTY, DEFAULT_MAX_MEMORY_BYTES, false, true, APPROXIMATE_PROPERTY);
+        super(Backend.METAL, "metal", MAX_MEMORY_PROPERTY, DEFAULT_MAX_MEMORY_BYTES, false, true);
         this.libraryLoader = Objects.requireNonNull(libraryLoader, "libraryLoader must not be null");
         this.nativeBridge = Objects.requireNonNull(nativeBridge, "nativeBridge must not be null");
     }

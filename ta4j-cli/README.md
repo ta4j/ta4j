@@ -41,11 +41,14 @@ for every unsupported, unavailable, slower, stale, or failed request. See
 [the acceleration guide](https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration) for classifiers,
 platform status, diagnostics, rollback, and benchmark evidence.
 
-The Metal provider's approximate fp32 execution lane requires explicit opt-in
-via `-Dta4j.cli.acceleration.metal.approximate=true`. Without it the provider
-reports itself unavailable with a diagnostic naming the property and falls
-back to scalar execution, so approximate results are never silently selected.
-Native probe failures surface the native diagnostic detail (for example `metal_device_unavailable`) instead of a generic metadata-parse error.
+The Metal provider's approximate fp32 execution lane engages only when the
+run opts into a tolerance via `-Dta4j.acceleration.approximateTolerance=<value>`
+(a finite positive number). Without it the core planner emits exact,
+bitwise-identical requests, which Metal cannot serve, so the provider reports
+itself unavailable with a diagnostic naming the property and falls back to
+scalar execution; approximate results are never silently selected. Native
+probe failures surface the native diagnostic detail (for example
+`metal_device_unavailable`) instead of a generic metadata-parse error.
 
 Native lanes implement only the versioned per-path RNG stream (RNG version 1),
 so acceleration engages only when `-Dta4j.forecast.rngVersion=1` is set. An

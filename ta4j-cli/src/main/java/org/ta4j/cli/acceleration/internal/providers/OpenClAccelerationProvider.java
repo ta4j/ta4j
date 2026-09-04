@@ -33,7 +33,7 @@ public final class OpenClAccelerationProvider extends ShockPathKernelProvider {
      * Creates a lazy OpenCL provider.
      */
     public OpenClAccelerationProvider() {
-        super(Backend.OPENCL, "opencl", MAX_MEMORY_PROPERTY, DEFAULT_MAX_MEMORY_BYTES, false, false, null);
+        super(Backend.OPENCL, "opencl", MAX_MEMORY_PROPERTY, DEFAULT_MAX_MEMORY_BYTES, false, false);
     }
 
     @Override

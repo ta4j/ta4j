@@ -72,7 +72,8 @@ class OpenClAccelerationProviderTest {
         double[] params = { 0d, 0d, (double) horizon, (double) iterations, (double) lookback, 0.94d };
         List<double[]> inputs = List.of(new double[decisions], new double[decisions], new double[decisions],
                 new double[decisions], new double[decisions * lookback]);
+        Determinism determinism = Double.isNaN(tolerance) ? Determinism.BITWISE_IDENTICAL : Determinism.APPROXIMATE;
         return new KernelRequest(Operation.MONTE_CARLO_SHOCK_PATHS_V1, 10, 13, iterations, NumericEncoding.FLOAT64,
-                Determinism.BITWISE_IDENTICAL, 42L, tolerance, params, inputs, 1_000_000_000L, 1_000_000L);
+                determinism, 42L, tolerance, params, inputs, 1_000_000_000L, 1_000_000L);
     }
 }

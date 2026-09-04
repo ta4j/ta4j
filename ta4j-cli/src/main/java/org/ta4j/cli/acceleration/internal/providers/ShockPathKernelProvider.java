@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
+import org.ta4j.core.acceleration.AccelerationRuntime;
 import org.ta4j.core.acceleration.AccelerationRuntime.Assessment;
 import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
 import org.ta4j.core.acceleration.AccelerationRuntime.Determinism;
@@ -48,21 +49,19 @@ abstract class ShockPathKernelProvider implements Provider {
     private final long defaultMaxMemoryBytes;
     private final boolean exactCapable;
     private final boolean approximateCapable;
-    private final String approximateProperty;
 
     private volatile boolean resident;
     private volatile String probedDevice;
     private volatile long probedCeilingBytes;
 
     ShockPathKernelProvider(Backend backend, String providerId, String maxMemoryProperty, long defaultMaxMemoryBytes,
-            boolean exactCapable, boolean approximateCapable, String approximateProperty) {
+            boolean exactCapable, boolean approximateCapable) {
         this.backend = Objects.requireNonNull(backend, "backend must not be null");
         this.providerId = Objects.requireNonNull(providerId, "providerId must not be null");
         this.maxMemoryProperty = Objects.requireNonNull(maxMemoryProperty, "maxMemoryProperty must not be null");
         this.defaultMaxMemoryBytes = defaultMaxMemoryBytes;
         this.exactCapable = exactCapable;
         this.approximateCapable = approximateCapable;
-        this.approximateProperty = approximateProperty;
     }
 
     @Override
@@ -81,16 +80,13 @@ abstract class ShockPathKernelProvider implements Provider {
             return unsupported(DiagnosticCode.UNSUPPORTED,
                     providerId + " consumes FLOAT64 buffers, not " + request.numeric());
         }
-        boolean exact = Double.isNaN(request.tolerance());
+        boolean exact = request.determinism() == Determinism.BITWISE_IDENTICAL;
+        if (!exact && Double.isNaN(request.tolerance())) {
+            return unsupported(DiagnosticCode.UNSUPPORTED,
+                    providerId + " approximate requests require a finite positive tolerance");
+        }
         if (exact ? !exactCapable : !approximateCapable) {
             return unsupported(DiagnosticCode.PROVIDER_UNAVAILABLE, accuracyDetail(request, exact));
-        }
-        if (exact && request.determinism() != Determinism.BITWISE_IDENTICAL) {
-            return unsupported(DiagnosticCode.UNSUPPORTED,
-                    providerId + " serves exact requests only under BITWISE_IDENTICAL determinism");
-        }
-        if (!exact && !approximateOptIn()) {
-            return unsupported(DiagnosticCode.PROVIDER_UNAVAILABLE, accuracyDetail(request, false));
         }
         if (!libraryPresent()) {
             return unsupported(DiagnosticCode.PROVIDER_UNAVAILABLE, libraryDetail());
@@ -115,7 +111,7 @@ abstract class ShockPathKernelProvider implements Provider {
         long predicted = ShockPathQualification.predictedTotalNanos(backend, request.operation().version(), family,
                 dimensions.steps(), dimensions.stagedBytes(), resident);
         long peak = Math.min(dimensions.peakBytes(), ceiling);
-        return Assessment.supported(backend, deviceId(), predicted, peak, exact && exactCapable);
+        return Assessment.supported(backend, deviceId(), predicted, peak, exact ? exactCapable : approximateCapable);
     }
 
     @Override
@@ -213,16 +209,10 @@ abstract class ShockPathKernelProvider implements Provider {
     String accuracyDetail(KernelRequest request, boolean exact) {
         if (exact) {
             return providerId + " is not exact-capable; exact requests stay scalar"
-                    + (approximateCapable ? " unless an explicit tolerance is requested" : "");
+                    + (approximateCapable ? " unless -D" + AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY
+                            + " opts into an approximate tolerance" : "");
         }
-        if (!approximateCapable) {
-            return providerId + " serves exact requests only and declines approximate tolerance " + request.tolerance();
-        }
-        return "approximate results require opt-in via -D" + approximateProperty + "=true";
-    }
-
-    private boolean approximateOptIn() {
-        return approximateProperty != null && Boolean.getBoolean(approximateProperty);
+        return providerId + " serves exact requests only and declines approximate tolerance " + request.tolerance();
     }
 
     private long memoryCeiling() {

@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.ta4j.core.acceleration.AccelerationRuntime;
 import org.ta4j.core.acceleration.AccelerationRuntime.Assessment;
 import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
 import org.ta4j.core.acceleration.AccelerationRuntime.Determinism;
@@ -30,7 +31,7 @@ class MetalAccelerationProviderTest {
     @AfterEach
     void reset() {
         System.clearProperty(MetalAccelerationProvider.MAX_MEMORY_PROPERTY);
-        System.clearProperty(MetalAccelerationProvider.APPROXIMATE_PROPERTY);
+        System.clearProperty(AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY);
         System.clearProperty(MetalNativeLibrary.LIBRARY_PROPERTY);
         System.clearProperty(ShockPathQualification.familyProperty(Backend.METAL));
         System.clearProperty(ShockPathQualification.minStepsProperty(Backend.METAL));
@@ -49,20 +50,19 @@ class MetalAccelerationProviderTest {
     }
 
     @Test
-    void approximateRequestsRequireExplicitOptIn() {
+    void approximateDeterminismRequiresFiniteTolerance() {
         MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(true), bridgeFailing());
 
-        Assessment assessment = provider.assess(request(0.01d));
+        Assessment assessment = provider.assess(request(Determinism.APPROXIMATE, Double.NaN));
 
         assertThat(assessment.supported()).isFalse();
-        assertThat(assessment.diagnostic().code()).isEqualTo(DiagnosticCode.PROVIDER_UNAVAILABLE);
-        assertThat(assessment.diagnostic().detail()).contains("opt-in");
+        assertThat(assessment.diagnostic().code()).isEqualTo(DiagnosticCode.UNSUPPORTED);
+        assertThat(assessment.diagnostic().detail()).contains("finite positive tolerance");
     }
 
     @Test
     void absentLibraryDeclinesApproximate() {
         org.junit.jupiter.api.Assumptions.assumeFalse(MetalNativeLibrary.packagedResourcePresent());
-        System.setProperty(MetalAccelerationProvider.APPROXIMATE_PROPERTY, "true");
         System.setProperty(MetalNativeLibrary.LIBRARY_PROPERTY, temporary.resolve("missing.dylib").toString());
         MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(false), new FakeBridge());
 
@@ -76,7 +76,6 @@ class MetalAccelerationProviderTest {
     @Test
     void unqualifiedFamilyPredictsUnboundedCostForCoreCrossover() throws Exception {
         useLibraryFile();
-        System.setProperty(MetalAccelerationProvider.APPROXIMATE_PROPERTY, "true");
         MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(true), new FakeBridge());
 
         Assessment assessment = provider.assess(request(0.01d));
@@ -89,7 +88,6 @@ class MetalAccelerationProviderTest {
     @Test
     void qualifiedFamilyPredictsFiniteTotalCost() throws Exception {
         useLibraryFile();
-        System.setProperty(MetalAccelerationProvider.APPROXIMATE_PROPERTY, "true");
         System.setProperty(ShockPathQualification.familyProperty(Backend.METAL), "m5max");
         System.setProperty(ShockPathQualification.minStepsProperty(Backend.METAL), "8");
         MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(true), new FakeBridge());
@@ -100,7 +98,7 @@ class MetalAccelerationProviderTest {
         assertThat(assessment.backend()).isEqualTo(Backend.METAL);
         assertThat(assessment.deviceId()).isEqualTo("metal/m5max");
         assertThat(assessment.predictedTotalNanos()).isGreaterThan(0L).isLessThan(Long.MAX_VALUE);
-        assertThat(assessment.deterministic()).isFalse();
+        assertThat(assessment.deterministic()).isTrue();
     }
 
     @Test
@@ -193,6 +191,10 @@ class MetalAccelerationProviderTest {
     }
 
     private static KernelRequest request(double tolerance) {
+        return request(Double.isNaN(tolerance) ? Determinism.BITWISE_IDENTICAL : Determinism.APPROXIMATE, tolerance);
+    }
+
+    private static KernelRequest request(Determinism determinism, double tolerance) {
         int decisions = 4;
         int horizon = 2;
         int iterations = 2;
@@ -201,7 +203,7 @@ class MetalAccelerationProviderTest {
         List<double[]> inputs = List.of(new double[decisions], new double[decisions], new double[decisions],
                 new double[decisions], new double[decisions * lookback]);
         return new KernelRequest(Operation.MONTE_CARLO_SHOCK_PATHS_V1, 10, 13, iterations, NumericEncoding.FLOAT64,
-                Determinism.BITWISE_IDENTICAL, 42L, tolerance, params, inputs, 1_000_000_000L, 1_000_000L);
+                determinism, 42L, tolerance, params, inputs, 1_000_000_000L, 1_000_000L);
     }
 
     private static class FakeBridge implements MetalNativeBridge {

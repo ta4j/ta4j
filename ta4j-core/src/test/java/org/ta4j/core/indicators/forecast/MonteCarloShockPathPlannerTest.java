@@ -63,8 +63,26 @@ public class MonteCarloShockPathPlannerTest {
         assertEquals(1d, params[2], 0d);
         assertEquals(2d, params[3], 0d);
         assertEquals(2d, params[4], 0d);
+        assertEquals(AccelerationRuntime.Determinism.BITWISE_IDENTICAL, request.determinism());
+        assertTrue(Double.isNaN(request.tolerance()));
         assertTrue(request.estimatedScalarNanos() > 0);
         assertTrue(request.peakDeviceBytesEstimate() > 0);
+    }
+
+    @Test
+    public void emitsApproximateRequestWhenOptedIn() {
+        Fixture fixture = fixture(DoubleNumFactory.getInstance());
+        System.setProperty(AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY, "0.001");
+
+        try {
+            AccelerationRuntime.KernelRequest request = new MonteCarloShockPathPlanner()
+                    .plan(fixture.indicator, 2, 3, fixture.series.numFactory()).request();
+
+            assertEquals(AccelerationRuntime.Determinism.APPROXIMATE, request.determinism());
+            assertEquals(0.001d, request.tolerance(), 0d);
+        } finally {
+            System.clearProperty(AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY);
+        }
     }
 
     @Test
