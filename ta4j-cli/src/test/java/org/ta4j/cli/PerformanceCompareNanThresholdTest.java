@@ -57,6 +57,7 @@ class PerformanceCompareNanThresholdTest {
                     "osVersion": "fixture-version",
                     "javaVersion": "fixture-java",
                     "jvmName": "fixture-jvm",
+                    "jvmOptionsFingerprint": "sha256:fixture-jvm",
                     "availableProcessors": 1
                   },
                   "results": [

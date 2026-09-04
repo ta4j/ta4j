@@ -1276,7 +1276,7 @@ class Ta4jCliTest {
                 + "\"completedAt\":\"2026-08-09T00:00:01Z\",\"repetitions\":1,\"warmups\":0,\"profile\":false,"
                 + "\"barCounts\":[16],\"scenarioIds\":[\"endOnly\"],\"host\":{\"hostId\":\"sha256:fixture\","
                 + "\"osName\":\"os\",\"osArch\":\"arch\",\"osVersion\":\"v\",\"javaVersion\":\"j\","
-                + "\"jvmName\":\"jvm\",\"availableProcessors\":1},\"results\":[{\"scenarioId\":\"endOnly\","
+                + "\"jvmName\":\"jvm\",\"jvmOptionsFingerprint\":\"sha256:fixture-jvm\",\"availableProcessors\":1},\"results\":[{\"scenarioId\":\"endOnly\","
                 + "\"description\":\"fixture\",\"hypothesis\":\"h\",\"barCount\":16,\"" + field + "\":" + value
                 + ",\"checksumStable\":true,\"stats\":{\"minNanos\":" + medianNanos + ",\"maxNanos\":" + medianNanos
                 + ",\"averageNanos\":" + medianNanos + ",\"medianNanos\":" + medianNanos + ",\"p90Nanos\":"
