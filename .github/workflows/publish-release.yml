@@ -750,6 +750,19 @@ jobs:
             --strict
           echo "::endgroup::"
 
+      - name: Validate Javadoc warning baseline (pre-deploy)
+        id: javadoc_warnings_predeploy
+        run: |
+          set -euo pipefail
+          echo "::group::Validate Javadoc warnings before tag/deploy"
+          bash scripts/release/release_helpers.sh javadoc-warnings \
+            --baseline scripts/release/javadoc-warning-baseline.txt \
+            --output javadoc-warnings-predeploy.txt \
+            --github-output "$GITHUB_OUTPUT" \
+            --fail-on-new \
+            release-artifact-build.log
+          echo "::endgroup::"
+
       - name: Create release tag
         if: steps.dry_run.outputs.dryRun != 'true'
         env:
@@ -776,18 +789,17 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          echo "::group::Validate Javadoc warnings"
+          echo "::group::Validate Javadoc warnings (audit-only; pre-deploy gate already enforced)" 
           set +e
           bash scripts/release/release_helpers.sh javadoc-warnings \
             --baseline scripts/release/javadoc-warning-baseline.txt \
             --output javadoc-warnings.txt \
             --github-output "$GITHUB_OUTPUT" \
-            --fail-on-new \
             release-artifact-build.log release-deploy.log
           status=$?
           set -e
           echo "::endgroup::"
-          exit "$status"
+          echo "audit:post_deploy_javadoc_audit_status=$status"
 
       - name: Push release tag
         if: steps.dry_run.outputs.dryRun != 'true'

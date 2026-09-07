@@ -28,9 +28,6 @@ import org.ta4j.core.indicators.elliott.ElliottSwing;
  *
  * @param pivots ordered list of detected pivots
  * @param swings ordered list of swings derived from pivots
- * @throws IllegalArgumentException when the swings are not a contiguous chain,
- *                                  or when both pivots and swings are non-empty
- *                                  and mutually inconsistent
  * @since 0.22.2
  */
 public record SwingDetectorResult(List<SwingPivot> pivots, List<ElliottSwing> swings) {
