@@ -1,5 +1,9 @@
 ## Unreleased
 
+- _No changes yet._
+
+## 0.25.0 (2026-09-07)
+
 ### Breaking
 
 - morning/evening stars, three-black-crows, and three-white-soldiers lose their ratio/factor constructors; migrate to the default or `(series, averagePeriod)` forms (`(series, averagePeriod, penetration)` for stars).
