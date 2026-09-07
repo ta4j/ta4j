@@ -789,7 +789,7 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          echo "::group::Validate Javadoc warnings (audit-only; pre-deploy gate already enforced)" 
+          echo "::group::Validate Javadoc warnings (audit-only; pre-deploy gate already enforced)"
           set +e
           bash scripts/release/release_helpers.sh javadoc-warnings \
             --baseline scripts/release/javadoc-warning-baseline.txt \
