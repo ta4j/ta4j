@@ -381,10 +381,14 @@ $isWindowsPlatform = [System.Environment]::OSVersion.Platform -eq [System.Platfo
 if ($defaultGate -or $preflightOnly) {
     $preflightScript = "scripts/run-full-build-quiet.sh"
     $wsl = if ($isWindowsPlatform) { Get-Command wsl.exe -ErrorAction SilentlyContinue } else { $null }
+    $wslReady = $false
     if ($wsl) {
-        & $wsl.Source --cd $repoRoot bash $preflightScript --preflight-only
+        & $wsl.Source --cd $repoRoot bash -c "test -r scripts/run-full-build-quiet.sh"
+        $wslReady = $LASTEXITCODE -eq 0
     }
-    if (-not $wsl -or $LASTEXITCODE -ne 0) {
+    if ($wslReady) {
+        & $wsl.Source --cd $repoRoot bash $preflightScript --preflight-only
+    } else {
         & (Resolve-PreflightBash) (Join-Path $repoRoot $preflightScript) --preflight-only
     }
     if ($LASTEXITCODE -ne 0) {
@@ -466,8 +470,10 @@ try {
             $lastHeartbeat = $now
         }
     }
-    $process.WaitForExit()
-    $process.Refresh()
+    if (-not $timedOut) {
+        $process.WaitForExit()
+        $process.Refresh()
+    }
 
     $stdout = if (Test-Path -LiteralPath $stdoutFile) { Get-Content -LiteralPath $stdoutFile } else { @() }
     $stderr = if (Test-Path -LiteralPath $stderrFile) { Get-Content -LiteralPath $stderrFile } else { @() }
