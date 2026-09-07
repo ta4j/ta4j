@@ -263,6 +263,7 @@ test_validate_only_rejects_unformatted_source_without_repairing_it() {
   pass "test_validate_only_rejects_unformatted_source_without_repairing_it"
 }
 
+
 test_goals_override_and_maven_args_passthrough() {
   echo "Running test_goals_override_and_maven_args_passthrough"
   create_test_repo
@@ -525,6 +526,10 @@ test_powershell_entrypoint_classifier_parity() {
   expect_contains "$ps1" "\$goals = @(\"clean\", \"license:format\", \"spotless:apply\", \"verify\")" "PowerShell local default should repair source"
   expect_contains "$ps1" "'^--validate-only$'" "PowerShell should expose validate-only mode"
   expect_contains "$ps1" "\$goals = @(\"clean\", \"license:check\", \"spotless:check\", \"verify\")" "PowerShell validate-only mode should preserve hosted goals"
+  expect_contains "$ps1" "Get-Command wsl.exe" "PowerShell should prefer WSL for the shell-fixture preflight"
+  expect_contains "$ps1" "Git\bin\bash.exe" "PowerShell should retain Git Bash as the preflight fallback"
+  expect_contains "$ps1" "\$process.WaitForExit()" "PowerShell should wait for the native Maven process before reading its exit code"
+  expect_contains "$ps1" '$stdout -contains "[INFO] BUILD SUCCESS"' "PowerShell should recover a missing wrapper exit code from Maven's terminal status"
 
   if [[ "${TA4J_RUN_POWERSHELL_FIXTURE:-false}" == "true" ]] && command -v pwsh >/dev/null 2>&1; then
     local output

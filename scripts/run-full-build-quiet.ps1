@@ -7,12 +7,12 @@ function Show-Usage {
 Usage: scripts/run-full-build-quiet.ps1 [--validate-only] [--preflight-only] [--goals "goal..."] [--] [maven-args...]
 
 The default local invocation repairs license headers and formatting before it
-runs the repository-owned checks and Maven verify gate. Hosted PR CI uses
---validate-only to reject those defects without modifying its checkout. Maven
-output is filtered and the complete log is written to .agents/logs/full-build-*.log.
+runs the repository-owned checks and Maven verify gate. Hosted CI uses
+--validate-only to validate the same gate without modifying its checkout.
+Maven output is filtered and the complete log is written to .agents/logs/full-build-*.log.
 Explicit --goals invocations remain focused and skip repository preflight checks.
-The default gate and --preflight-only require Bash; on Windows, install Git for
-Windows and include Git Bash on PATH.
+The default gate and --preflight-only require Bash. On Windows, WSL is preferred
+for preflight; Git Bash is the fallback.
 
 Examples:
   scripts/run-full-build-quiet.ps1
@@ -43,6 +43,20 @@ function Split-Goals {
         throw "At least one Maven goal is required"
     }
     return @($Value -split '\s+' | Where-Object { $_ -ne "" })
+}
+
+function Resolve-PreflightBash {
+    $gitBash = Join-Path $env:ProgramFiles "Git\bin\bash.exe"
+    if (Test-Path -LiteralPath $gitBash) {
+        return $gitBash
+    }
+
+    $bash = Get-Command bash -ErrorAction SilentlyContinue
+    if ($bash) {
+        return $bash.Source
+    }
+
+    throw "WSL or Git Bash is required to run the hosted CI parity preflight checks"
 }
 
 function Format-Elapsed {
@@ -349,7 +363,6 @@ while ($index -lt $args.Count) {
     }
     $index++
 }
-
 if ($validateOnly -and -not $defaultGate) {
     throw "--validate-only cannot be combined with --goals"
 }
@@ -357,17 +370,19 @@ if ($validateOnly -and -not $defaultGate) {
 if ($validateOnly) {
     $goals = @("clean", "license:check", "spotless:check", "verify")
 }
-
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent $scriptDir
 Set-Location $repoRoot
+$isWindowsPlatform = [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
+
 
 if ($defaultGate -or $preflightOnly) {
-    $bash = Get-Command bash -ErrorAction SilentlyContinue
-    if (-not $bash) {
-        throw "bash is required to run the hosted CI parity preflight checks"
+    $wsl = if ($isWindowsPlatform) { Get-Command wsl.exe -ErrorAction SilentlyContinue } else { $null }
+    if ($wsl) {
+        & $wsl.Source --cd $repoRoot bash "scripts/run-full-build-quiet.sh" --preflight-only
+    } else {
+        & (Resolve-PreflightBash) (Join-Path $repoRoot "scripts/run-full-build-quiet.sh") --preflight-only
     }
-    & $bash.Source (Join-Path $repoRoot "scripts/run-full-build-quiet.sh") --preflight-only
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }
@@ -398,7 +413,6 @@ try {
     $heartbeatSeconds = Positive-Int-OrDefault $env:QUIET_BUILD_HEARTBEAT_SECONDS 60 1
 
     $mavenCommand = "mvn"
-    $isWindowsPlatform = [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
     if ($isWindowsPlatform -and (Test-Path -LiteralPath (Join-Path $repoRoot "mvnw.cmd"))) {
         $mavenCommand = Join-Path $repoRoot "mvnw.cmd"
         Write-Output "Using Maven Wrapper: mvnw.cmd"
@@ -448,10 +462,19 @@ try {
             $lastHeartbeat = $now
         }
     }
+    if (-not $timedOut) {
+        $process.WaitForExit()
+        $process.Refresh()
+    }
 
     $stdout = if (Test-Path -LiteralPath $stdoutFile) { Get-Content -LiteralPath $stdoutFile } else { @() }
     $stderr = if (Test-Path -LiteralPath $stderrFile) { Get-Content -LiteralPath $stderrFile } else { @() }
     Set-Content -LiteralPath $logFile -Value @($stdout + $stderr)
+    $exitCode = $process.ExitCode
+    if ($null -eq $exitCode) {
+        $exitCode = if ($stdout -contains "[INFO] BUILD SUCCESS") { 0 } else { 1 }
+    }
+
 
     foreach ($line in Get-Content -LiteralPath $logFile) {
         if ($line.Contains("BUILD SUCCESS") -or $line.Contains("BUILD FAILURE")) {
@@ -466,14 +489,14 @@ try {
         exit 124
     }
 
-    if ($process.ExitCode -ne 0) {
+    if ($exitCode -ne 0) {
         Write-Output ""
-        Write-Output "Maven build failed (mvn=$($process.ExitCode))."
+        Write-Output "Maven build failed (mvn=$exitCode)."
         Write-FailureDigest $logFile
         Write-WarningSummary $logFile 12
         Write-UnexpectedSummary $logFile 12
         Write-Output "Full build log saved to: $logFile"
-        exit $process.ExitCode
+        exit $exitCode
     }
 
     $summary = Extract-TestSummary $logFile

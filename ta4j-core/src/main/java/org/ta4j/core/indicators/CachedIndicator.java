@@ -749,9 +749,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * Selects the cache floor for the retained range with additional derived
      * sources treated as part of this indicator's source graph even though they are
      * not constructor-registered dependencies (lazily created sub-indicators, for
-     * example {@link org.ta4j.core.indicators.macd.MACDVIndicator}'s moving averages). Subclasses with such
-     * sources override {@link #minimumCacheableIndexAfterHeadAdvance(int)} and pass
-     * them here after initialization.
+     * example {@link org.ta4j.core.indicators.macd.MACDVIndicator}'s moving
+     * averages). Subclasses with such sources override
+     * {@link #minimumCacheableIndexAfterHeadAdvance(int)} and pass them here after
+     * initialization.
      *
      * @param firstRetainedIndex the first series index that remains available
      * @param derivedSources     additional sources in this indicator's source graph

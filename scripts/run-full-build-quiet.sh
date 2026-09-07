@@ -167,9 +167,9 @@ usage() {
 Usage: scripts/run-full-build-quiet.sh [--validate-only] [--preflight-only] [--goals "goal..."] [--] [maven-args...]
 
 The default local invocation repairs license headers and formatting before it
-runs the repository-owned checks and Maven verify gate. Hosted PR CI uses
---validate-only to reject those defects without modifying its checkout. Maven
-output is filtered and the complete log is written to .agents/logs/full-build-*.log.
+runs the repository-owned checks and Maven verify gate. Hosted CI uses
+--validate-only to validate the same gate without modifying its checkout.
+Maven output is filtered and the complete log is written to .agents/logs/full-build-*.log.
 Explicit --goals invocations remain focused and skip repository preflight checks.
 The Bash watchdog keeps the default 180-second timeout as the earliest timeout
 point, then allows a build that keeps emitting Maven output to continue until no
@@ -372,7 +372,6 @@ while (($# > 0)); do
             ;;
     esac
 done
-
 if [[ "$VALIDATE_ONLY" == "true" && "$DEFAULT_GATE" != "true" ]]; then
     echo "--validate-only cannot be combined with --goals" >&2
     exit 2
@@ -381,7 +380,6 @@ fi
 if [[ "$VALIDATE_ONLY" == "true" ]]; then
     GOALS=(clean license:check spotless:check verify)
 fi
-
 if [[ "$DEFAULT_GATE" == "true" || "$PREFLIGHT_ONLY" == "true" ]]; then
     if ! run_repository_preflight; then
         echo "Build: failed in $(format_elapsed "$(($(date +%s) - SCRIPT_START_TIME))")"
