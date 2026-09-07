@@ -472,10 +472,6 @@ try {
     $stdout = if (Test-Path -LiteralPath $stdoutFile) { Get-Content -LiteralPath $stdoutFile } else { @() }
     $stderr = if (Test-Path -LiteralPath $stderrFile) { Get-Content -LiteralPath $stderrFile } else { @() }
     Set-Content -LiteralPath $logFile -Value @($stdout + $stderr)
-    $exitCode = $process.ExitCode
-    if ($null -eq $exitCode) {
-        $exitCode = if ($stdout -contains "[INFO] BUILD SUCCESS") { 0 } else { 1 }
-    }
 
 
     foreach ($line in Get-Content -LiteralPath $logFile) {
@@ -490,6 +486,11 @@ try {
         Write-Output "Full build log saved to: $logFile"
         exit 124
     }
+    $exitCode = $process.ExitCode
+    if ($null -eq $exitCode) {
+        $exitCode = if ($stdout -contains "[INFO] BUILD SUCCESS") { 0 } else { 1 }
+    }
+
 
     if ($exitCode -ne 0) {
         Write-Output ""
