@@ -530,6 +530,8 @@ test_powershell_entrypoint_classifier_parity() {
   expect_contains "$ps1" "Git\bin\bash.exe" "PowerShell should retain Git Bash as the preflight fallback"
   expect_contains "$ps1" "\$process.WaitForExit()" "PowerShell should wait for the native Maven process before reading its exit code"
   expect_contains "$ps1" '$stdout -contains "[INFO] BUILD SUCCESS"' "PowerShell should recover a missing wrapper exit code from Maven's terminal status"
+  expect_contains "$ps1" "if (-not \$wsl -or \$LASTEXITCODE -ne 0)" "PowerShell should fall back to Git Bash when WSL preflight fails"
+  expect_contains "$ps1" "if (\$env:ProgramFiles)" "PowerShell should only resolve Git for Windows when its root is available"
 
   if [[ "${TA4J_RUN_POWERSHELL_FIXTURE:-false}" == "true" ]] && command -v pwsh >/dev/null 2>&1; then
     local output

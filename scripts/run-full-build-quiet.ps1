@@ -46,9 +46,11 @@ function Split-Goals {
 }
 
 function Resolve-PreflightBash {
-    $gitBash = Join-Path $env:ProgramFiles "Git\bin\bash.exe"
-    if (Test-Path -LiteralPath $gitBash) {
-        return $gitBash
+    if ($env:ProgramFiles) {
+        $gitBash = Join-Path $env:ProgramFiles "Git\bin\bash.exe"
+        if (Test-Path -LiteralPath $gitBash) {
+            return $gitBash
+        }
     }
 
     $bash = Get-Command bash -ErrorAction SilentlyContinue
@@ -377,11 +379,13 @@ $isWindowsPlatform = [System.Environment]::OSVersion.Platform -eq [System.Platfo
 
 
 if ($defaultGate -or $preflightOnly) {
+    $preflightScript = "scripts/run-full-build-quiet.sh"
     $wsl = if ($isWindowsPlatform) { Get-Command wsl.exe -ErrorAction SilentlyContinue } else { $null }
     if ($wsl) {
-        & $wsl.Source --cd $repoRoot bash "scripts/run-full-build-quiet.sh" --preflight-only
-    } else {
-        & (Resolve-PreflightBash) (Join-Path $repoRoot "scripts/run-full-build-quiet.sh") --preflight-only
+        & $wsl.Source --cd $repoRoot bash $preflightScript --preflight-only
+    }
+    if (-not $wsl -or $LASTEXITCODE -ne 0) {
+        & (Resolve-PreflightBash) (Join-Path $repoRoot $preflightScript) --preflight-only
     }
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
@@ -462,10 +466,8 @@ try {
             $lastHeartbeat = $now
         }
     }
-    if (-not $timedOut) {
-        $process.WaitForExit()
-        $process.Refresh()
-    }
+    $process.WaitForExit()
+    $process.Refresh()
 
     $stdout = if (Test-Path -LiteralPath $stdoutFile) { Get-Content -LiteralPath $stdoutFile } else { @() }
     $stderr = if (Test-Path -LiteralPath $stderrFile) { Get-Content -LiteralPath $stderrFile } else { @() }
