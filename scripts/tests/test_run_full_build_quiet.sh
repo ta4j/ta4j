@@ -517,37 +517,19 @@ EOF
 }
 
 test_powershell_entrypoint_classifier_parity() {
-  echo "Running test_powershell_entrypoint_classifier_parity"
-  create_test_repo
-  write_fake_maven
-
-  local ps1
-  ps1="$(<scripts/run-full-build-quiet.ps1)"
-  expect_contains "$ps1" "\$goals = @(\"clean\", \"license:format\", \"spotless:apply\", \"verify\")" "PowerShell local default should repair source"
-  expect_contains "$ps1" "'^--validate-only$'" "PowerShell should expose validate-only mode"
-  expect_contains "$ps1" "\$goals = @(\"clean\", \"license:check\", \"spotless:check\", \"verify\")" "PowerShell validate-only mode should preserve hosted goals"
-  expect_contains "$ps1" "Get-Command wsl.exe" "PowerShell should prefer WSL for the shell-fixture preflight"
-  expect_contains "$ps1" "Git\bin\bash.exe" "PowerShell should retain Git Bash as the preflight fallback"
-  expect_contains "$ps1" "\$process.WaitForExit()" "PowerShell should wait for the native Maven process before reading its exit code"
-  expect_contains "$ps1" '$stdout -contains "[INFO] BUILD SUCCESS"' "PowerShell should recover a missing wrapper exit code from Maven's terminal status"
-  expect_contains "$ps1" "if (-not \$wsl -or \$LASTEXITCODE -ne 0)" "PowerShell should fall back to Git Bash when WSL preflight fails"
-  expect_contains "$ps1" "if (\$env:ProgramFiles)" "PowerShell should only resolve Git for Windows when its root is available"
-
-  if [[ "${TA4J_RUN_POWERSHELL_FIXTURE:-false}" == "true" ]] && command -v pwsh >/dev/null 2>&1; then
-    local output
-    output="$(FAKE_MAVEN_SUCCESS_UNEXPECTED=1 run_quiet_build pwsh -NoLogo -NoProfile -File scripts/run-full-build-quiet.ps1)"
-    expect_contains "$output" "Warnings summary:" "PowerShell warning digest should be visible"
-    expect_contains "$output" "Unexpected output summary:" "PowerShell unexpected digest should be visible"
-    expect_contains "$output" "java.lang.IllegalStateException: suspicious success diagnostic" "PowerShell should surface exceptions"
+  local shell fixture="$ROOT/scripts/tests/test_run_full_build_quiet.ps1"
+  if command -v pwsh >/dev/null 2>&1; then
+    shell=pwsh
+  elif command -v powershell.exe >/dev/null 2>&1; then
+    shell=powershell.exe
+    if command -v wslpath >/dev/null 2>&1; then
+      fixture="$(wslpath -w "$fixture")"
+    fi
   else
-    expect_contains "$ps1" "function Write-FailureDigest" "PowerShell script should define failure digest"
-    expect_contains "$ps1" "function Write-WarningSummary" "PowerShell script should define warning digest"
-    expect_contains "$ps1" "function Write-UnexpectedSummary" "PowerShell script should define unexpected digest"
-    expect_contains "$ps1" "Test-StackOrExceptionLine" "PowerShell script should classify exception and stack lines"
+    echo "PowerShell runtime unavailable; native gate fixtures require pwsh or powershell.exe"
+    return
   fi
-
-  finish_test_repo
-  pass "test_powershell_entrypoint_classifier_parity"
+  "$shell" -NoProfile -ExecutionPolicy Bypass -File "$fixture"
 }
 
 test_default_invocation_uses_local_repair_gate
