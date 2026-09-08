@@ -31,12 +31,15 @@ public interface OperationPlanner {
      * Plans acceleration for an indicator over {@code [fromInclusive,
      * toInclusive]}, or returns {@code null} when the calculation is not claimed.
      *
-     * @param indicator     indicator requesting acceleration
-     * @param fromInclusive first decision index
-     * @param toInclusive   last decision index
-     * @param factory       owning factory used for scalar baselines and decoding
+     * @param indicator        indicator requesting acceleration
+     * @param fromInclusive    first decision index
+     * @param toInclusive      last decision index
+     * @param factory          owning factory used for scalar baselines and decoding
+     * @param memoryLimitBytes scope-captured memory ceiling, checked before
+     *                         allocating snapshot or output buffers
      * @return planned operation, or {@code null} when unclaimed
      * @since 0.25.1
      */
-    PlannedOperation plan(Indicator<?> indicator, int fromInclusive, int toInclusive, NumFactory factory);
+    PlannedOperation plan(Indicator<?> indicator, int fromInclusive, int toInclusive, NumFactory factory,
+            long memoryLimitBytes);
 }

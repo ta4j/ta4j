@@ -48,7 +48,7 @@ public class MonteCarloShockPathPlannerTest {
         Fixture fixture = fixture(DoubleNumFactory.getInstance());
 
         PlannedOperation planned = new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 3,
-                fixture.series.numFactory());
+                fixture.series.numFactory(), Long.MAX_VALUE);
 
         AccelerationRuntime.KernelRequest request = planned.request();
         assertEquals(AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1, request.operation());
@@ -69,17 +69,39 @@ public class MonteCarloShockPathPlannerTest {
     }
 
     @Test
+    public void declinesPlansExceedingConfiguredMemoryBudget() {
+        Fixture fixture = fixture(DoubleNumFactory.getInstance());
+
+        assertNull(new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 3, fixture.series.numFactory(), 1L));
+    }
+
+    @Test
+    public void declinesUnrepresentableWindowDimensionsWithoutAllocating() {
+        Fixture fixture = fixture(DoubleNumFactory.getInstance());
+        MonteCarloPriceForecastIndicator forecast = MonteCarloPriceForecastIndicator
+                .builder(fixture.indicator.kernelPriceIndicator(), fixture.indicator.kernelStateIndicator())
+                .horizon(1)
+                .iterationCount(2)
+                .lookbackBarCount(Integer.MAX_VALUE)
+                .build();
+
+        assertNull(new MonteCarloShockPathPlanner().plan(forecast, 0, 1, fixture.series.numFactory(), Long.MAX_VALUE));
+    }
+
+    @Test
     public void declinesIncompleteWindows() {
         Fixture fixture = fixture(DoubleNumFactory.getInstance());
 
-        assertNull(new MonteCarloShockPathPlanner().plan(fixture.indicator, 0, 1, fixture.series.numFactory()));
+        assertNull(new MonteCarloShockPathPlanner().plan(fixture.indicator, 0, 1, fixture.series.numFactory(),
+                Long.MAX_VALUE));
     }
 
     @Test
     public void declinesNonDoubleNumerics() {
         Fixture fixture = fixture(DecimalNumFactory.getInstance());
 
-        assertNull(new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 2, fixture.series.numFactory()));
+        assertNull(new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 2, fixture.series.numFactory(),
+                Long.MAX_VALUE));
     }
 
     @Test
@@ -87,7 +109,8 @@ public class MonteCarloShockPathPlannerTest {
         Fixture fixture = fixture(DoubleNumFactory.getInstance());
         System.setProperty(MonteCarloSimulation.RNG_VERSION_PROPERTY, "0");
         try {
-            assertNull(new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 2, fixture.series.numFactory()));
+            assertNull(new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 2, fixture.series.numFactory(),
+                    Long.MAX_VALUE));
         } finally {
             System.setProperty(MonteCarloSimulation.RNG_VERSION_PROPERTY, "1");
         }
@@ -98,13 +121,14 @@ public class MonteCarloShockPathPlannerTest {
         Fixture fixture = fixture(DoubleNumFactory.getInstance());
 
         assertNull(new MonteCarloShockPathPlanner().plan(new ClosePriceIndicator(fixture.series), 2, 2,
-                fixture.series.numFactory()));
+                fixture.series.numFactory(), Long.MAX_VALUE));
     }
 
     @Test
     public void declinesCustomMonteCarloMethods() {
         Fixture fixture = fixture(DoubleNumFactory.getInstance(), true);
-        assertNull(new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 2, fixture.series.numFactory()));
+        assertNull(new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 2, fixture.series.numFactory(),
+                Long.MAX_VALUE));
     }
 
     private static Fixture fixture(org.ta4j.core.num.NumFactory factory) {

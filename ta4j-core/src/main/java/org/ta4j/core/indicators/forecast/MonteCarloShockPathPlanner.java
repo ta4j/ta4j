@@ -45,7 +45,8 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
     private static final long BYTES_PER_ELEMENT = 8L;
 
     @Override
-    public PlannedOperation plan(Indicator<?> indicator, int fromInclusive, int toInclusive, NumFactory factory) {
+    public PlannedOperation plan(Indicator<?> indicator, int fromInclusive, int toInclusive, NumFactory factory,
+            long memoryLimitBytes) {
         Objects.requireNonNull(indicator, "indicator must not be null");
         Objects.requireNonNull(factory, "factory must not be null");
         if (!(indicator instanceof MonteCarloPriceForecastIndicator forecast)) {
@@ -64,17 +65,37 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         if (settings.horizon() < 1 || settings.iterationCount() < 1 || settings.lookbackBarCount() < 1) {
             return null;
         }
-        int size = toInclusive - fromInclusive + 1;
-        if (size < 1) {
+        long requestedSize = (long) toInclusive - fromInclusive + 1L;
+        if (fromInclusive < 0 || requestedSize < 1 || requestedSize > Integer.MAX_VALUE) {
             return null;
         }
+        int size = (int) requestedSize;
         int iterations = settings.iterationCount();
         int lookback = settings.lookbackBarCount();
+        int windowSize;
+        long estimatedScalarNanos;
+        long peakBytes;
+        try {
+            windowSize = Math.multiplyExact(size, lookback);
+            int outputSize = Math.multiplyExact(size, iterations);
+            long steps = Math.multiplyExact((long) outputSize, settings.horizon());
+            long inputElements = Math.addExact(Math.multiplyExact((long) size, 4L), windowSize);
+            long inputBytes = Math.multiplyExact(inputElements, BYTES_PER_ELEMENT);
+            long outputBytes = Math.multiplyExact((long) outputSize, BYTES_PER_ELEMENT);
+            long workspaceBytes = Math.multiplyExact(steps, BYTES_PER_ELEMENT);
+            peakBytes = Math.addExact(inputBytes, Math.addExact(outputBytes, workspaceBytes));
+            estimatedScalarNanos = Math.multiplyExact(steps, NANOS_PER_PATH_STEP);
+        } catch (ArithmeticException exception) {
+            return null;
+        }
+        if (peakBytes > memoryLimitBytes) {
+            return null;
+        }
         double[] prices = new double[size];
         double[] means = new double[size];
         double[] drifts = new double[size];
         double[] variances = new double[size];
-        double[] windows = new double[size * lookback];
+        double[] windows = new double[windowSize];
         Indicator<Num> priceIndicator = forecast.kernelPriceIndicator();
         ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator = forecast.kernelStateIndicator();
         ReturnIndicator returnIndicator = stateIndicator.getReturnIndicator();
@@ -89,11 +110,6 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
                 volatilityUpdateModeCode(forecast.kernelVolatilityUpdateMode()), (double) settings.horizon(),
                 (double) iterations, (double) lookback, forecast.kernelVolatilityDecayFactor() };
         List<double[]> inputs = List.of(prices, means, drifts, variances, windows);
-        long steps = (long) size * iterations * settings.horizon();
-        long estimatedScalarNanos = steps * NANOS_PER_PATH_STEP;
-        long inputBytes = ((long) size * 4 + (long) windows.length) * BYTES_PER_ELEMENT;
-        long outputBytes = (long) size * iterations * BYTES_PER_ELEMENT;
-        long peakBytes = inputBytes + outputBytes + steps * BYTES_PER_ELEMENT;
         AccelerationRuntime.KernelRequest request = new AccelerationRuntime.KernelRequest(
                 AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1, fromInclusive, toInclusive, iterations,
                 AccelerationRuntime.NumericEncoding.FLOAT64, AccelerationRuntime.Determinism.BITWISE_IDENTICAL,

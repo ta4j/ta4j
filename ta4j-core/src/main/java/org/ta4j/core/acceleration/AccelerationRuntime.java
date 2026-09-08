@@ -552,6 +552,7 @@ public final class AccelerationRuntime {
         private final int fromInclusive;
         private final int toInclusive;
         private final Context previous;
+        private final long memoryLimitBytes;
         private final long startedNanos = System.nanoTime();
         private final IdentityHashMap<Indicator<?>, CachedBatch> batches = new IdentityHashMap<>();
         private final Set<Indicator<?>> scalarFallback = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -571,6 +572,7 @@ public final class AccelerationRuntime {
             this.fromInclusive = fromInclusive;
             this.toInclusive = toInclusive;
             this.previous = previous;
+            this.memoryLimitBytes = maxDeviceBytes();
         }
 
         @SuppressWarnings("unchecked")
@@ -620,9 +622,9 @@ public final class AccelerationRuntime {
                 return null;
             }
             KernelRequest request = planned.request();
-            if (request.peakDeviceBytesEstimate() > maxDeviceBytes()) {
+            if (request.peakDeviceBytesEstimate() > memoryLimitBytes) {
                 diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none", "peak device estimate "
-                        + request.peakDeviceBytesEstimate() + " exceeds budget " + maxDeviceBytes());
+                        + request.peakDeviceBytesEstimate() + " exceeds budget " + memoryLimitBytes);
                 return null;
             }
             providerAttempted = true;
@@ -670,11 +672,11 @@ public final class AccelerationRuntime {
                 }
                 nativeInitialized |= result.nativeInitialized();
                 double[] rawOutputs = result.outputs();
-                if (rawOutputs.length != request.expectedOutputLength()) {
+                if (rawOutputs.length != request.expectedOutputLength() || !allFinite(rawOutputs)) {
                     quarantine.put(quarantineKey(candidate, request), "malformed raw output");
                     diagnostic = new Diagnostic(DiagnosticCode.INVALID_RESULT, candidate.providerId,
-                            "provider output did not exactly cover [%d, %d]".formatted(request.fromInclusive(),
-                                    request.toInclusive()));
+                            "provider output was malformed or non-finite for [%d, %d]"
+                                    .formatted(request.fromInclusive(), request.toInclusive()));
                     continue;
                 }
                 BarSeriesChangeSnapshot after = indicatorSeries.getBarSeriesChangeSnapshot(revision);
@@ -724,7 +726,7 @@ public final class AccelerationRuntime {
                 }
                 if (assessment == null || !assessment.supported() || !assessment.deterministic()
                         || assessment.predictedTotalNanos() < 0 || Math.max(request.peakDeviceBytesEstimate(),
-                                assessment.peakDeviceBytes()) > maxDeviceBytes()) {
+                                assessment.peakDeviceBytes()) > memoryLimitBytes) {
                     continue;
                 }
                 long baseline = request.estimatedScalarNanos();
@@ -755,7 +757,7 @@ public final class AccelerationRuntime {
             }
             for (OperationPlanner planner : planners) {
                 PlannedOperation planned = planner.plan(indicator, index, toInclusive,
-                        indicator.getBarSeries().numFactory());
+                        indicator.getBarSeries().numFactory(), memoryLimitBytes);
                 if (planned != null) {
                     return planned;
                 }
@@ -804,6 +806,15 @@ public final class AccelerationRuntime {
                         diagnostic.detail());
             }
         }
+    }
+
+    private static boolean allFinite(double[] outputs) {
+        for (double output : outputs) {
+            if (!Double.isFinite(output)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private record RankedProvider(Provider provider, String providerId, Assessment assessment) {
