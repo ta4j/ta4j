@@ -4,9 +4,18 @@
 # Exit code is non-zero on any failure.
 set -euo pipefail
 
+if [[ "$#" -gt 3 ]]; then
+    echo "error: expected at most one optional argument (--benchmark)" >&2
+    exit 2
+fi
+BENCHMARK="${3:-}"
+if [[ -n "$BENCHMARK" && "$BENCHMARK" != "--benchmark" ]]; then
+    echo "error: unsupported optional argument '$BENCHMARK'; expected --benchmark" >&2
+    exit 2
+fi
+
 ROOT="$(cd "$1" && pwd)"
 ARCH="$2"
-BENCHMARK="${3:-}"
 
 if [[ "$ARCH" != "x86_64" && "$ARCH" != "aarch64" ]]; then
     echo "error: arch must be x86_64 or aarch64, found '$ARCH'" >&2

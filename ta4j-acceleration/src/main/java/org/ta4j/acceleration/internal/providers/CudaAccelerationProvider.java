@@ -4,6 +4,7 @@
 package org.ta4j.acceleration.internal.providers;
 
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 
 import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
@@ -31,8 +32,15 @@ public final class CudaAccelerationProvider extends ShockPathKernelProvider {
     @Override
     boolean libraryPresent() {
         String configured = System.getProperty(CudaNativeLibrary.LIBRARY_PROPERTY, "").trim();
-        return (!configured.isEmpty() && Files.exists(Path.of(configured)))
-                || CudaNativeLibrary.packagedResourcePresent();
+        if (configured.isEmpty()) {
+            return CudaNativeLibrary.packagedResourcePresent();
+        }
+        try {
+            Path path = Path.of(configured);
+            return path.isAbsolute() && Files.isRegularFile(path);
+        } catch (InvalidPathException exception) {
+            return false;
+        }
     }
 
     @Override

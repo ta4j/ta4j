@@ -51,11 +51,67 @@ class OpenClAccelerationProviderTest {
     }
 
     @Test
+    void rejectsConfiguredDirectoryAsLibrary(@TempDir Path directory) throws IOException {
+        System.setProperty(OpenClNativeLibrary.LIBRARY_PROPERTY,
+                Files.createDirectory(directory.resolve("not-a-library")).toString());
+
+        Assessment assessment = new OpenClAccelerationProvider().assess(request(0.01d));
+
+        assertThat(assessment.supported()).isFalse();
+        assertThat(assessment.diagnostic().code()).isEqualTo(DiagnosticCode.PROVIDER_UNAVAILABLE);
+        assertThat(assessment.diagnostic().detail()).contains("not found");
+    }
+
+    @Test
     void reportsMissingLibraryOnExecution(@TempDir Path directory) {
         System.setProperty(OpenClNativeLibrary.LIBRARY_PROPERTY, directory.resolve("missing.so").toString());
         OpenClAccelerationProvider provider = new OpenClAccelerationProvider();
 
         assertThrows(NativeProviderException.class, () -> provider.execute(request(0.01d)));
+    }
+
+    @Test
+    void probeLinkageErrorSurfacesAsNativeError() {
+        OpenClNativeBridge failingProbe = new OpenClNativeBridge() {
+            @Override
+            public OpenClProbeResult probe() {
+                throw new UnsatisfiedLinkError("missing OpenCL JNI symbol");
+            }
+
+            @Override
+            public OpenClEvaluationResult evaluate(NativeForecastRequest request) {
+                throw new AssertionError("probe must fail before evaluation");
+            }
+        };
+        OpenClAccelerationProvider provider = new OpenClAccelerationProvider(
+                () -> new OpenClNativeLibrary.LoadResult(true, null, "test"), failingProbe);
+
+        NativeProviderException failure = assertThrows(NativeProviderException.class,
+                () -> provider.execute(request(0.01d)));
+
+        assertThat(failure.getCause()).isInstanceOf(UnsatisfiedLinkError.class);
+    }
+
+    @Test
+    void unavailableProbeRejectsExecutionBeforeEvaluation() {
+        OpenClNativeBridge unavailableProbe = new OpenClNativeBridge() {
+            @Override
+            public OpenClProbeResult probe() {
+                return new OpenClProbeResult(false, "", 0, 0, 0L, 0L, 0, 0, false, "device lost");
+            }
+
+            @Override
+            public OpenClEvaluationResult evaluate(NativeForecastRequest request) {
+                throw new AssertionError("unavailable device must not evaluate");
+            }
+        };
+        OpenClAccelerationProvider provider = new OpenClAccelerationProvider(
+                () -> new OpenClNativeLibrary.LoadResult(true, null, "test"), unavailableProbe);
+
+        NativeProviderException failure = assertThrows(NativeProviderException.class,
+                () -> provider.execute(request(0.01d)));
+
+        assertThat(failure.getMessage()).contains("device lost");
     }
 
     private static KernelRequest request(double tolerance) {

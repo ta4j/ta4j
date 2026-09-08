@@ -924,6 +924,7 @@ Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeProbe(
                                                                                     jint abi_version) {
     char error[STATE_ERROR_BUFFER];
     char payload[1024];
+    error[0] = '\0';
     if (pthread_mutex_lock(&STATE_MUTEX) != 0) {
         return (*environment)->NewStringUTF(environment, "ERROR||||||||0|unable to lock native state");
     }

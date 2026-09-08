@@ -14,6 +14,7 @@ echo "Implementation plan: https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acce
 echo "Frozen Linux handoff: https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration#linux-cuda-qualification"
 echo
 echo "Required preflight and validation commands:"
+printf '  cd -- %q\n' "$root"
 cat <<'COMMANDS'
   hostnamectl
   nvidia-smi

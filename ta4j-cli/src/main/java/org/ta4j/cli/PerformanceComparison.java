@@ -228,8 +228,8 @@ final class PerformanceComparison {
         requireString(artifact, file, "gitRef");
         requireNumber(artifact, file, "repetitions");
         requireNumber(artifact, file, "warmups");
-        requireArray(artifact, file, "barCounts");
-        requireArray(artifact, file, "scenarioIds");
+        requireNonEmptyArray(artifact, file, "barCounts");
+        requireNonEmptyArray(artifact, file, "scenarioIds");
         JsonObject host = requireObject(artifact, file, "host");
         requireString(host, file, "hostId");
         requireString(host, file, "osName");
@@ -239,7 +239,7 @@ final class PerformanceComparison {
         requireString(host, file, "jvmName");
         requireString(host, file, "jvmOptionsFingerprint");
         requireNumber(host, file, "availableProcessors");
-        JsonArray results = requireArray(artifact, file, "results");
+        JsonArray results = requireNonEmptyArray(artifact, file, "results");
         for (int i = 0; i < results.size(); i++) {
             JsonElement element = results.get(i);
             if (!element.isJsonObject()) {
@@ -297,6 +297,15 @@ final class PerformanceComparison {
                     "Invalid performance artifact " + file + ": field '" + field + "' must be an array.");
         }
         return value.getAsJsonArray();
+    }
+
+    private static JsonArray requireNonEmptyArray(JsonObject object, Path file, String field) {
+        JsonArray array = requireArray(object, file, field);
+        if (array.size() == 0) {
+            throw new IllegalArgumentException(
+                    "Invalid performance artifact " + file + ": field '" + field + "' must not be empty.");
+        }
+        return array;
     }
 
     private static JsonObject requireObject(JsonObject object, Path file, String field) {

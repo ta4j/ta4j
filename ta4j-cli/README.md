@@ -613,6 +613,7 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 - `strategy walk-forward` and `rule test` fail with a usage error when the configured geometry produces zero folds; when folds exist but every fold fails, `strategy walk-forward` records a per-strategy failure and `rule test` reports the failures in its walk-forward summary instead of treating the geometry as invalid.
 - Unreadable structured input files (`--strategy-json-file`, `--entry-rule-json-file`, `--exit-rule-json-file`, `--indicator-json-file`, `--criteria-file`) are I/O errors (exit 74) rather than usage errors.
 - `performance compare` rejects an `--output-dir` that refers to the `--base-dir` or `--candidate-dir` directory, including symlink aliases, so comparison artifacts never overwrite the inputs being compared.
+- `performance compare` rejects empty `barCounts`, `scenarioIds`, or `results` arrays with a usage error (exit 2); an artifact must contain an actual experiment grid to produce a comparison.
 - The reproducible `input.seriesSha256` fingerprint covers every observable bar field: begin/end time, time period, OHLCV, volume, amount, and trade count.
 - Loaded bar data must be finite: `NaN` or `Infinity` tokens in any OHLCV or amount column are rejected with a usage error instead of producing a backtest result.
 - `strategy backtest` and `strategy walk-forward` share the same concrete strategy-input contract: one label, many labels, one serialized strategy file, or one serialized strategy-array file.

@@ -51,6 +51,18 @@ class CudaAccelerationProviderTest {
     }
 
     @Test
+    void rejectsConfiguredDirectoryAsLibrary(@TempDir Path directory) throws IOException {
+        System.setProperty(CudaNativeLibrary.LIBRARY_PROPERTY,
+                Files.createDirectory(directory.resolve("not-a-library")).toString());
+
+        Assessment assessment = new CudaAccelerationProvider().assess(request(0.01d));
+
+        assertThat(assessment.supported()).isFalse();
+        assertThat(assessment.diagnostic().code()).isEqualTo(DiagnosticCode.PROVIDER_UNAVAILABLE);
+        assertThat(assessment.diagnostic().detail()).contains("not found");
+    }
+
+    @Test
     void reportsMissingLibraryOnExecution(@TempDir Path directory) {
         System.setProperty(CudaNativeLibrary.LIBRARY_PROPERTY, directory.resolve("missing.dll").toString());
         CudaAccelerationProvider provider = new CudaAccelerationProvider();

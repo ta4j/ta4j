@@ -110,6 +110,15 @@ abstract class ShockPathKernelProvider implements Provider {
         long started = System.nanoTime();
         double[] params = validation.params();
         Dimensions dimensions = validation.dimensions();
+        long ceiling = memoryCeiling();
+        if (ceiling <= 0L) {
+            throw new NativeProviderException(backendName(), maxMemoryProperty + " must be > 0");
+        }
+        if (dimensions.bytesPerDecision() > ceiling) {
+            throw new NativeProviderException(backendName(),
+                    providerId + " needs %,d bytes per decision, above the %,d-byte provider ceiling"
+                            .formatted(dimensions.bytesPerDecision(), ceiling));
+        }
         SampleKernel kernel = ensureKernel();
         List<double[]> inputs = request.inputs();
         double[] raw = new double[request.expectedOutputLength()];

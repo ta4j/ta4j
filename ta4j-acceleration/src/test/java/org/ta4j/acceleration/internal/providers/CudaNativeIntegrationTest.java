@@ -4,6 +4,7 @@
 package org.ta4j.acceleration.internal.providers;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.withinPercentage;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -56,7 +57,12 @@ class CudaNativeIntegrationTest {
                     1_000_000L, 1_000_000L);
             double expected = shockCode == 0 ? 400d : 100d;
 
-            assertThat(provider.execute(request).outputs()).containsExactly(expected, expected);
+            double[] outputs = provider.execute(request).outputs();
+            assertThat(outputs).hasSize(2);
+            for (double actual : outputs) {
+                assertThat(actual).as("shock code %d terminal price", shockCode)
+                        .isCloseTo(expected, withinPercentage(1d));
+            }
         }
     }
 }

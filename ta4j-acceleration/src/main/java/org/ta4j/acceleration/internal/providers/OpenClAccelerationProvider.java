@@ -4,7 +4,10 @@
 package org.ta4j.acceleration.internal.providers;
 
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.util.Objects;
+import java.util.function.Supplier;
 
 import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
 
@@ -23,17 +26,32 @@ public final class OpenClAccelerationProvider extends ShockPathKernelProvider {
     private static final long DEFAULT_MAX_MEMORY_BYTES = 512L * 1024L * 1024L;
     private final Object kernelLock = new Object();
     private volatile SampleKernel kernel;
-    private final OpenClNativeBridge nativeBridge = new JniOpenClNativeBridge();
+    private final Supplier<OpenClNativeLibrary.LoadResult> libraryLoader;
+    private final OpenClNativeBridge nativeBridge;
 
     public OpenClAccelerationProvider() {
+        this(OpenClNativeLibrary::load, new JniOpenClNativeBridge());
+    }
+
+    OpenClAccelerationProvider(Supplier<OpenClNativeLibrary.LoadResult> libraryLoader,
+            OpenClNativeBridge nativeBridge) {
         super(Backend.OPENCL, "opencl", MAX_MEMORY_PROPERTY, DEFAULT_MAX_MEMORY_BYTES, false, true);
+        this.libraryLoader = Objects.requireNonNull(libraryLoader, "libraryLoader must not be null");
+        this.nativeBridge = Objects.requireNonNull(nativeBridge, "nativeBridge must not be null");
     }
 
     @Override
     boolean libraryPresent() {
         String configured = System.getProperty(OpenClNativeLibrary.LIBRARY_PROPERTY, "").trim();
-        return (!configured.isEmpty() && Files.exists(Path.of(configured)))
-                || OpenClNativeLibrary.packagedResourcePresent();
+        if (configured.isEmpty()) {
+            return OpenClNativeLibrary.packagedResourcePresent();
+        }
+        try {
+            Path path = Path.of(configured);
+            return path.isAbsolute() && Files.isRegularFile(path);
+        } catch (InvalidPathException exception) {
+            return false;
+        }
     }
 
     @Override
@@ -53,11 +71,16 @@ public final class OpenClAccelerationProvider extends ShockPathKernelProvider {
             if (installed != null) {
                 return installed;
             }
-            OpenClNativeLibrary.LoadResult load = OpenClNativeLibrary.load();
+            OpenClNativeLibrary.LoadResult load = libraryLoader.get();
             if (!load.loaded()) {
                 throw new NativeProviderException("opencl", load.detail());
             }
-            OpenClProbeResult probe = nativeBridge.probe();
+            OpenClProbeResult probe;
+            try {
+                probe = nativeBridge.probe();
+            } catch (LinkageError | RuntimeException exception) {
+                throw new NativeProviderException("opencl", exception);
+            }
             if (!probe.available()) {
                 throw new NativeProviderException("opencl", probe.detail());
             }

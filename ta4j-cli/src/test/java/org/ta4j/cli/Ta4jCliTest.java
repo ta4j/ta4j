@@ -504,6 +504,29 @@ class Ta4jCliTest {
     }
 
     @Test
+    void performanceCompareRejectsEmptyArtifactGrid() throws Exception {
+        Path baseDir = tempDir.resolve("performance-base-empty");
+        Path candidateDir = tempDir.resolve("performance-candidate-empty");
+        Path comparisonDir = tempDir.resolve("performance-comparison-empty");
+        Files.createDirectories(baseDir);
+        Files.createDirectories(candidateDir);
+
+        JsonObject emptyArtifact = JsonParser.parseString(performanceArtifact(1_000_000L)).getAsJsonObject();
+        emptyArtifact.getAsJsonArray("barCounts").remove(0);
+        emptyArtifact.getAsJsonArray("scenarioIds").remove(0);
+        emptyArtifact.getAsJsonArray("results").remove(0);
+        Files.writeString(baseDir.resolve("performance.json"), emptyArtifact.toString());
+        Files.writeString(candidateDir.resolve("performance.json"), emptyArtifact.toString());
+
+        CliRunResult result = runCliAllowingError("performance", "compare", "--base-dir", baseDir.toString(),
+                "--candidate-dir", candidateDir.toString(), "--output-dir", comparisonDir.toString(),
+                "--max-regression-pct", "5");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(comparisonDir.resolve("comparison.json")).doesNotExist();
+    }
+
+    @Test
     void backtestAcceptsNamedStrategyLabels() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         Path outputFile = tempDir.resolve("named-strategy-backtest.json");

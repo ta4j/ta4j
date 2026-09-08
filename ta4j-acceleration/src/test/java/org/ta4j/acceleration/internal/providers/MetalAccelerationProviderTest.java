@@ -6,6 +6,7 @@ package org.ta4j.acceleration.internal.providers;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -74,6 +75,34 @@ class MetalAccelerationProviderTest {
         assertThat(assessment.supported()).isFalse();
         assertThat(assessment.diagnostic().code()).isEqualTo(DiagnosticCode.PROVIDER_UNAVAILABLE);
         assertThat(assessment.diagnostic().detail()).contains("not found");
+    }
+
+    @Test
+    void rejectsConfiguredDirectoryAsLibrary() throws Exception {
+        System.setProperty(MetalNativeLibrary.LIBRARY_PROPERTY,
+                Files.createDirectory(temporary.resolve("not-a-library")).toString());
+
+        Assessment assessment = new MetalAccelerationProvider(loaderWith(true), bridgeFailing()).assess(request(0.01d));
+
+        assertThat(assessment.supported()).isFalse();
+        assertThat(assessment.diagnostic().code()).isEqualTo(DiagnosticCode.PROVIDER_UNAVAILABLE);
+        assertThat(assessment.diagnostic().detail()).contains("not found");
+    }
+
+    @Test
+    void executeRejectsInfeasibleMemoryCeilingBeforeNativeInitialization() {
+        System.setProperty(MetalAccelerationProvider.MAX_MEMORY_PROPERTY, "0");
+        AtomicInteger loads = new AtomicInteger();
+        MetalAccelerationProvider provider = new MetalAccelerationProvider(() -> {
+            loads.incrementAndGet();
+            return new MetalNativeLibrary.LoadResult(true, null, "test");
+        }, bridgeFailing());
+
+        NativeProviderException failure = assertThrows(NativeProviderException.class,
+                () -> provider.execute(request(0.01d)));
+
+        assertThat(failure.getMessage()).contains("must be > 0");
+        assertThat(loads.get()).isZero();
     }
 
     @Test

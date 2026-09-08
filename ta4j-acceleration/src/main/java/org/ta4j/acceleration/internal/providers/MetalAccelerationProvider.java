@@ -6,6 +6,7 @@ package org.ta4j.acceleration.internal.providers;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Objects;
@@ -55,10 +56,15 @@ public final class MetalAccelerationProvider extends ShockPathKernelProvider {
     @Override
     boolean libraryPresent() {
         String configured = System.getProperty(MetalNativeLibrary.LIBRARY_PROPERTY, "").trim();
-        if (!configured.isEmpty() && Files.exists(Path.of(configured))) {
-            return true;
+        if (configured.isEmpty()) {
+            return MetalNativeLibrary.packagedResourcePresent();
         }
-        return MetalNativeLibrary.packagedResourcePresent();
+        try {
+            Path path = Path.of(configured);
+            return path.isAbsolute() && Files.isRegularFile(path);
+        } catch (InvalidPathException exception) {
+            return false;
+        }
     }
 
     @Override
