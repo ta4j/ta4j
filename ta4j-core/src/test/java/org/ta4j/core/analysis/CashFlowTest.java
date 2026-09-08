@@ -55,6 +55,18 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
+    public void sizeRemainsBoundToMaterializedValues() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        CashFlow cashFlow = new CashFlow(series, new BaseTradingRecord());
+
+        series.barBuilder().closePrice(4d).add();
+        assertEquals(3, cashFlow.getSize());
+        series.setMaximumBarCount(1);
+        assertEquals(3, cashFlow.getSize());
+        assertEquals(3L, cashFlow.stream().count());
+    }
+
+    @Test
     public void cashFlowSize() {
         var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1d, 2d, 3d, 4d, 5d)

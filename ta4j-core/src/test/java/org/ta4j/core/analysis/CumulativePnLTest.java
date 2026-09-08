@@ -53,6 +53,18 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
     }
 
     @Test
+    public void sizeRemainsBoundToMaterializedValues() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        CumulativePnL pnl = new CumulativePnL(series, new BaseTradingRecord());
+
+        series.barBuilder().closePrice(4d).add();
+        assertEquals(3, pnl.getSize());
+        series.setMaximumBarCount(1);
+        assertEquals(3, pnl.getSize());
+        assertEquals(3L, pnl.stream().count());
+    }
+
+    @Test
     public void sizeWithoutTrades() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
         var pnl = new CumulativePnL(series, new BaseTradingRecord());

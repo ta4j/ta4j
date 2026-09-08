@@ -344,10 +344,11 @@ public class CashFlow implements PerformanceIndicator {
     }
 
     /**
-     * @return the size of the bar series
+     * @return the number of values captured in the materialized window, unaffected
+     *         by later changes to the borrowed series
      */
     public int getSize() {
-        return barSeries.getBarCount();
+        return values.size();
     }
 
     /**

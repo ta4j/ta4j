@@ -288,13 +288,14 @@ public final class CumulativePnL implements PerformanceIndicator {
     }
 
     /**
-     * Returns the number of bars in the underlying series.
+     * Returns the number of values captured in the materialized window, unaffected
+     * by later changes to the borrowed series.
      *
-     * @return the bar count
+     * @return the materialized value count
      * @since 0.19
      */
     public int getSize() {
-        return barSeries.getBarCount();
+        return values.size();
     }
 
     /**
