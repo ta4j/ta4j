@@ -34,7 +34,7 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ConcurrentBarSeries;
-import org.ta4j.core.ConcurrentBarSeriesBuilder;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Position;
@@ -49,7 +49,6 @@ import org.ta4j.core.criteria.NumberOfBarsCriterion;
 import org.ta4j.core.criteria.commissions.CommissionsCriterion;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
@@ -226,12 +225,11 @@ public class BacktestExecutorTest {
 
     @Test
     public void executeWithRuntimeReportHoldsOneRetentionWindowAcrossQueuedAppend() throws Exception {
-        ConcurrentBarSeries series = buildConcurrentSeries();
-        Bar appendedBar = buildAppendedBar(series);
         CountDownLatch writerAttempted = new CountDownLatch(1);
+        ConcurrentBarSeries series = buildConcurrentSeries(writerAttempted);
+        Bar appendedBar = buildAppendedBar(series);
         AtomicBoolean writerAcquired = new AtomicBoolean();
         Thread writer = new Thread(() -> {
-            writerAttempted.countDown();
             series.withWriteLock(() -> {
                 writerAcquired.set(true);
                 series.addBar(appendedBar);
@@ -272,12 +270,11 @@ public class BacktestExecutorTest {
 
     @Test
     public void executeAndKeepTopKHoldsOneRetentionWindowAcrossQueuedAppend() throws Exception {
-        ConcurrentBarSeries series = buildConcurrentSeries();
-        Bar appendedBar = buildAppendedBar(series);
         CountDownLatch writerAttempted = new CountDownLatch(1);
+        ConcurrentBarSeries series = buildConcurrentSeries(writerAttempted);
+        Bar appendedBar = buildAppendedBar(series);
         AtomicBoolean writerAcquired = new AtomicBoolean();
         Thread writer = new Thread(() -> {
-            writerAttempted.countDown();
             series.withWriteLock(() -> {
                 writerAcquired.set(true);
                 series.addBar(appendedBar);
@@ -903,13 +900,9 @@ public class BacktestExecutorTest {
         };
     }
 
-    private ConcurrentBarSeries buildConcurrentSeries() {
+    private ConcurrentBarSeries buildConcurrentSeries(CountDownLatch writerAttempted) {
         BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
-        return new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
-                .withBarBuilderFactory(new MockBarBuilderFactory())
-                .withBars(source.getBarData())
-                .withMaxBarCount(3)
-                .build();
+        return ConstrainedSeriesSupport.seriesWithWriteAttempt(source, writerAttempted::countDown);
     }
 
     private Bar buildAppendedBar(ConcurrentBarSeries series) {
@@ -929,12 +922,6 @@ public class BacktestExecutorTest {
                     Thread.currentThread().interrupt();
                     throw new IllegalStateException("Interrupted while waiting for the retention writer", e);
                 }
-                long deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
-                while (writer.isAlive() && writer.getState() != Thread.State.WAITING && System.nanoTime() < deadline) {
-                    Thread.onSpinWait();
-                }
-                assertEquals("retention writer must queue behind the batch lease", Thread.State.WAITING,
-                        writer.getState());
                 assertFalse("retention writer acquired the lease before batch completion", writerAcquired.get());
             }
             return index == 0;

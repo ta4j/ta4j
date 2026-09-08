@@ -56,19 +56,6 @@ final class OffsetNumBuffer {
         this.values = new ArrayList<>(Collections.nCopies(sizeOf(startIndex, endIndex), initialValue));
     }
 
-    /**
-     * Creates a buffer covering the full logical window of the given series.
-     *
-     * @param series       the bar series
-     * @param initialValue the value pre-filling the window
-     * @param neutral      the value returned for reads outside the window
-     * @return a buffer covering
-     *         {@code [series.getBeginIndex(), series.getEndIndex()]}
-     */
-    static OffsetNumBuffer of(BarSeries series, Num initialValue, Num neutral) {
-        return new OffsetNumBuffer(series.getBeginIndex(), series.getEndIndex(), initialValue, neutral);
-    }
-
     private static int sizeOf(int startIndex, int endIndex) {
         if (startIndex == -1 && endIndex == -1) {
             return 0;
