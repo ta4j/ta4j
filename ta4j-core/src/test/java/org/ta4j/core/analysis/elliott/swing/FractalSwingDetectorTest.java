@@ -12,11 +12,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.SplittableRandom;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
@@ -149,6 +151,40 @@ class FractalSwingDetectorTest {
                 .isEqualTo(new FractalSwingDetector(1).detectPivots(series, series.getEndIndex()));
         assertThat(shared.detectPivots(series, series.getEndIndex())).isEmpty();
         assertThat(shared.detect(series, series.getEndIndex(), ElliottDegree.MINUETTE).pivots()).isEmpty();
+    }
+
+    @Test
+    void headEvictionBetweenSnapshotReadsInvalidatesSameIndexReplay() {
+        final AtomicBoolean armEviction = new AtomicBoolean();
+        final AtomicBoolean shrinkAfterBeginRead = new AtomicBoolean();
+        final BarSeries input = seriesWithHighsAndLows(new double[] { 5, 6, 10, 7 }, new double[] { 4, 5, 9, 6 });
+        final BaseBarSeries series = new BaseBarSeries("head-eviction", new ArrayList<>(input.getBarData())) {
+            @Override
+            public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
+                final BarSeriesChangeSnapshot snapshot = super.getBarSeriesChangeSnapshot(sinceRevision);
+                if (armEviction.compareAndSet(true, false)) {
+                    shrinkAfterBeginRead.set(true);
+                }
+                return snapshot;
+            }
+
+            @Override
+            public int getBeginIndex() {
+                final int beginIndex = super.getBeginIndex();
+                if (shrinkAfterBeginRead.compareAndSet(true, false)) {
+                    setMaximumBarCount(1);
+                }
+                return beginIndex;
+            }
+        };
+        final FractalSwingDetector detector = new FractalSwingDetector(1);
+        final int endIndex = series.getEndIndex();
+        assertThat(detector.detectPivots(series, endIndex)).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(2, SwingPivotType.HIGH));
+
+        armEviction.set(true);
+        assertThat(detector.detectPivots(series, endIndex)).isEmpty();
+        assertThat(series.getBeginIndex()).isEqualTo(endIndex);
     }
 
     @Test

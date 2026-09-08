@@ -54,7 +54,9 @@ public class BaseBar implements Bar {
 
         private boolean detach(final int index) {
             if (index != firstIndex) {
-                additionalIndexes.remove(index);
+                if (additionalIndexes != null) {
+                    additionalIndexes.remove(index);
+                }
                 return true;
             }
             if (additionalIndexes == null || additionalIndexes.isEmpty()) {

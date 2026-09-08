@@ -520,7 +520,9 @@ public final class FractalSwingDetector implements SwingDetector {
                 snapshot = series.getBarSeriesChangeSnapshot(sinceRevision);
                 currentBeginIndex = series.getBeginIndex();
                 final BarSeriesChangeSnapshot verify = series.getBarSeriesChangeSnapshot(snapshot.revision());
-                if (verify.revision() == snapshot.revision() && verify.endIndex() == snapshot.endIndex()) {
+                if (verify.revision() == snapshot.revision() && verify.endIndex() == snapshot.endIndex()
+                        && verify.removedThroughIndex() == snapshot.removedThroughIndex()
+                        && verify.maximumBarCount() == snapshot.maximumBarCount()) {
                     break;
                 }
                 sinceRevision = verify.revision();
