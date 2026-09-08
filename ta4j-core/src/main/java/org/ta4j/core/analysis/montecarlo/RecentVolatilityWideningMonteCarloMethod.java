@@ -52,7 +52,7 @@ import org.ta4j.core.num.NumFactory;
  *
  * @see MonteCarloMethod
  * @see org.ta4j.core.indicators.forecast.state.ReturnMoments#volatility()
- * @since 0.24.2
+ * @since 0.25.1
  */
 public final class RecentVolatilityWideningMonteCarloMethod implements MonteCarloMethod {
 
@@ -72,7 +72,7 @@ public final class RecentVolatilityWideningMonteCarloMethod implements MonteCarl
      * ({@value #DEFAULT_MAX_WIDEN}).
      *
      * @param inner technique whose samples are widened
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public RecentVolatilityWideningMonteCarloMethod(MonteCarloMethod inner) {
         this(inner, DEFAULT_RECENT_BAR_COUNT, DEFAULT_MAX_WIDEN);
@@ -86,7 +86,7 @@ public final class RecentVolatilityWideningMonteCarloMethod implements MonteCarl
      * @param recentBarCount trailing window length in bars for the realized
      *                       volatility, must be at least 2
      * @param maxWiden       upper bound on the widening factor, must be &gt;= 1
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public RecentVolatilityWideningMonteCarloMethod(MonteCarloMethod inner, int recentBarCount, double maxWiden) {
         if (inner == null) {
@@ -122,8 +122,13 @@ public final class RecentVolatilityWideningMonteCarloMethod implements MonteCarl
         if (recentRealized == null || !Num.isFinite(recentRealized)) {
             return null;
         }
-        double ratio = recentRealized.doubleValue() / stateVolatility.doubleValue();
-        double factor = Math.min(maxWiden, Math.max(1d, ratio));
+        Num normalizedStateVolatility = numFactory.numOf(stateVolatility.bigDecimalValue());
+        if (!Num.isFinite(normalizedStateVolatility) || normalizedStateVolatility.isZero()) {
+            return null;
+        }
+        Num ratio = recentRealized.dividedBy(normalizedStateVolatility);
+        Num factor = ratio.compareTo(numFactory.one()) < 0 ? numFactory.one()
+                : ratio.compareTo(numFactory.numOf(maxWiden)) > 0 ? numFactory.numOf(maxWiden) : ratio;
 
         // Coerce to the context factory and locate the inner distribution's empirical
         // center so widening scales dispersion without shifting the forecast location.
@@ -145,7 +150,7 @@ public final class RecentVolatilityWideningMonteCarloMethod implements MonteCarl
         List<Num> widened = new ArrayList<>(context.iterationCount());
         for (Num sample : converted) {
             Num centered = sample.minus(center);
-            Num scaled = center.plus(centered.multipliedBy(numFactory.numOf(factor)));
+            Num scaled = center.plus(centered.multipliedBy(factor));
             if (!Num.isFinite(scaled)) {
                 return null;
             }

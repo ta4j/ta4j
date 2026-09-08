@@ -49,7 +49,7 @@ import org.ta4j.core.num.NumFactory;
  *
  * @see MonteCarloMethod
  * @see NormalInverseGammaForecastMethod
- * @since 0.24.2
+ * @since 0.25.1
  */
 public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCarloMethod {
 
@@ -63,7 +63,7 @@ public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCar
      *
      * @param inner kernel-smoothed residual path generator, or {@code null} to use
      *              the default smoothed-empirical technique
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public PosteriorSmoothedResidualMonteCarloMethod(MonteCarloMethod inner) {
         this.inner = inner != null ? inner
@@ -80,7 +80,7 @@ public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCar
      * @return exactly {@code context.iterationCount()} finite cumulative log-return
      *         samples, or {@code null} when the posterior or the inner technique
      *         cannot produce a stable result
-     * @since 0.24.2
+     * @since 0.25.1
      */
     @Override
     public List<Num> terminalReturns(MonteCarloContext context) {

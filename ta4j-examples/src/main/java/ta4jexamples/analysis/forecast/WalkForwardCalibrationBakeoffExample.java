@@ -17,6 +17,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.analysis.montecarlo.EnsembleMonteCarloMethod;
 import org.ta4j.core.analysis.montecarlo.MonteCarloContext;
 import org.ta4j.core.analysis.montecarlo.MonteCarloMethod;
+import org.ta4j.core.analysis.montecarlo.MonteCarloSeed;
 import org.ta4j.core.analysis.montecarlo.NormalInverseGammaForecastMethod;
 import org.ta4j.core.analysis.montecarlo.PosteriorSmoothedResidualMonteCarloMethod;
 import org.ta4j.core.analysis.montecarlo.RecentVolatilityWideningMonteCarloMethod;
@@ -79,7 +80,7 @@ import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
  * The experiment is deterministic: results are written incrementally as JSON
  * under {@code temp/walk-forward-calibration/}.
  *
- * @since 0.24.2
+ * @since 0.25.1
  */
 public final class WalkForwardCalibrationBakeoffExample {
 
@@ -112,7 +113,7 @@ public final class WalkForwardCalibrationBakeoffExample {
      *             bound the walk forward (default: all usable origins)
      */
     public static void main(String[] args) {
-        int decisionCap = DecisionCap.fromArgs(args);
+        int decisionCap = decisionCapFromArgs(args);
         for (DatasetSpec dataset : DATASETS) {
             runBakeoff(dataset, decisionCap);
         }
@@ -302,21 +303,8 @@ public final class WalkForwardCalibrationBakeoffExample {
             window.add(numFactory.numOf(returns.getValue(i).bigDecimalValue()));
         }
         ReturnMoments moments = Objects.requireNonNull(stableMoments(state, index));
-        RandomGenerator random = new SplittableRandom(mixSeed(SEED, index, HORIZON));
+        RandomGenerator random = new SplittableRandom(MonteCarloSeed.mix(SEED, index, HORIZON));
         return new MonteCarloContext(index, HORIZON, ITERATION_COUNT, window, moments, random, numFactory);
-    }
-
-    /**
-     * Mirrors {@code MonteCarloSimulation#mixSeed} so the draws reproduce the
-     * production engine's deterministic random stream exactly.
-     */
-    private static long mixSeed(long seed, int index, int horizon) {
-        long value = seed;
-        value ^= 0x9E3779B97F4A7C15L + ((long) index << 32) + index;
-        value = Long.rotateLeft(value, 27) * 0x3C79AC492BA7B653L;
-        value ^= 0x1C69B3F74AC4AE35L + horizon;
-        value = Long.rotateLeft(value, 31) * 0x1C69B3F74AC4AE35L;
-        return value ^ value >>> 33;
     }
 
     private static Num realizedReturn(LogReturnIndicator returns, int index, int horizon) {
@@ -449,17 +437,15 @@ public final class WalkForwardCalibrationBakeoffExample {
         }
     }
 
-    private static final class DecisionCap {
-        static int fromArgs(String[] args) {
-            if (args.length == 0) {
-                return 0;
-            }
-            int cap = Integer.parseInt(args[0]);
-            if (cap < 1) {
-                throw new IllegalArgumentException("decision cap must be >= 1");
-            }
-            return cap;
+    private static int decisionCapFromArgs(String[] args) {
+        if (args.length == 0) {
+            return 0;
         }
+        int cap = Integer.parseInt(args[0]);
+        if (cap < 1) {
+            throw new IllegalArgumentException("decision cap must be >= 1");
+        }
+        return cap;
     }
 
     private record DatasetSpec(String resource, String label, String token) {

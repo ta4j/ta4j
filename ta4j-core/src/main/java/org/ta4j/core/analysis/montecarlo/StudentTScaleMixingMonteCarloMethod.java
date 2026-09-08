@@ -47,7 +47,7 @@ import org.ta4j.core.num.NumFactory;
  * finite.
  *
  * @see MonteCarloMethod
- * @since 0.24.2
+ * @since 0.25.1
  */
 public final class StudentTScaleMixingMonteCarloMethod implements MonteCarloMethod {
 
@@ -63,7 +63,7 @@ public final class StudentTScaleMixingMonteCarloMethod implements MonteCarloMeth
      * ({@value #DEFAULT_DEGREES_OF_FREEDOM}).
      *
      * @param inner technique whose centered samples are tail-mixed
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public StudentTScaleMixingMonteCarloMethod(MonteCarloMethod inner) {
         this(inner, DEFAULT_DEGREES_OF_FREEDOM);
@@ -74,7 +74,7 @@ public final class StudentTScaleMixingMonteCarloMethod implements MonteCarloMeth
      *
      * @param inner            technique whose centered samples are rescaled
      * @param degreesOfFreedom of the mixing Student-t scale, must be &gt;= 2
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public StudentTScaleMixingMonteCarloMethod(MonteCarloMethod inner, int degreesOfFreedom) {
         if (inner == null) {

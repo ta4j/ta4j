@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
  * {@code null} or non-finite sample.
  *
  * @see MonteCarloMethod
- * @since 0.24.2
+ * @since 0.25.1
  */
 public final class EnsembleMonteCarloMethod implements MonteCarloMethod {
 
@@ -44,7 +44,7 @@ public final class EnsembleMonteCarloMethod implements MonteCarloMethod {
      *
      * @param first  first technique, receives the leading half of the budget
      * @param second second technique, receives the remainder
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public EnsembleMonteCarloMethod(MonteCarloMethod first, MonteCarloMethod second) {
         if (first == null || second == null) {

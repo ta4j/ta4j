@@ -7,14 +7,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.SplittableRandom;
-import java.util.TreeSet;
 import java.util.random.RandomGenerator;
 
+import org.ta4j.core.analysis.montecarlo.MonteCarloContext;
+import org.ta4j.core.analysis.montecarlo.MonteCarloMethod;
+import org.ta4j.core.analysis.montecarlo.MonteCarloSeed;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.ReturnIndicator;
-import org.ta4j.core.analysis.montecarlo.MonteCarloContext;
-import org.ta4j.core.analysis.montecarlo.MonteCarloMethod;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.state.ReturnMomentState;
@@ -77,7 +77,7 @@ final class MonteCarloSimulation {
             return Forecast.unstable(index, settings.horizon());
         }
 
-        RandomGenerator random = new SplittableRandom(mixSeed(settings.seed(), index, settings.horizon()));
+        RandomGenerator random = new SplittableRandom(MonteCarloSeed.mix(settings.seed(), index, settings.horizon()));
         List<Num> terminalSamples = method.terminalReturns(new MonteCarloContext(index, settings.horizon(),
                 settings.iterationCount(), historicalReturns, moments, random, numFactory));
         if (terminalSamples == null || terminalSamples.size() != settings.iterationCount()) {
@@ -152,14 +152,6 @@ final class MonteCarloSimulation {
         return Num.isFinite(normalized) && (!normalized.isZero() || value.isZero()) ? normalized : null;
     }
 
-    private static long mixSeed(long seed, int index, int horizon) {
-        long value = seed;
-        value ^= 0x9E3779B97F4A7C15L + ((long) index << 32) + index;
-        value = Long.rotateLeft(value, 27) * 0x3C79AC492BA7B653L;
-        value ^= 0x1C69B3F74AC4AE35L + horizon;
-        value = Long.rotateLeft(value, 31) * 0x1C69B3F74AC4AE35L;
-        return value ^ value >>> 33;
-    }
 
     @FunctionalInterface
     interface TerminalValueMapper {
