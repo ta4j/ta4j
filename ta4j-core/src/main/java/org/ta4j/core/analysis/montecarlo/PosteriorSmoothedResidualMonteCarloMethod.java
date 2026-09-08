@@ -109,11 +109,11 @@ public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCar
         if (innerSamples == null || innerSamples.size() != context.iterationCount()) {
             return null;
         }
-        if (volatility.isZero()) {
-            if (!posterior.scale().isZero()) {
-                return null;
-            }
+        if (posterior.scale().isZero()) {
             return deterministicPosteriorReturns(posterior, context);
+        }
+        if (volatility.isZero()) {
+            return null;
         }
         RandomGenerator random = context.random();
         List<Num> terminalReturns = new ArrayList<>(context.iterationCount());

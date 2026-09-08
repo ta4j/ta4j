@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis.montecarlo;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.random.RandomGenerator;
@@ -104,6 +105,8 @@ public final class StudentTScaleMixingMonteCarloMethod implements MonteCarloMeth
             return null;
         }
         Num driftPath = drift.multipliedBy(numFactory.numOf(context.horizon()));
+        BigDecimal extendedDriftPath = Num.isFinite(driftPath) ? null
+                : drift.bigDecimalValue().multiply(BigDecimal.valueOf(context.horizon()));
         RandomGenerator random = context.random();
         List<Num> mixed = new ArrayList<>(context.iterationCount());
         for (Num sample : samples) {
@@ -115,11 +118,24 @@ public final class StudentTScaleMixingMonteCarloMethod implements MonteCarloMeth
             }
             double factor = tScaleDraw(random) / scaleMean;
             Num scale = numFactory.numOf(factor);
+            if (!Num.isFinite(scale)) {
+                return null;
+            }
             // Keep the affine transform in the active numeric domain. The shared
             // implementation avoids overflowing endpoint differences during both
             // contraction and expansion, and uses FMA for DoubleNum cancellation.
-            Num scaled = MonteCarloArithmetic.affine(driftPath, converted, scale, numFactory);
-            if (scaled == null) {
+            Num scaled;
+            if (extendedDriftPath == null) {
+                scaled = MonteCarloArithmetic.affine(driftPath, converted, scale, numFactory);
+            } else {
+                // The drift path itself need not fit when its affine contribution
+                // does. Keep that center wide until after weighting and addition.
+                BigDecimal weight = scale.bigDecimalValue();
+                BigDecimal value = extendedDriftPath.multiply(BigDecimal.ONE.subtract(weight))
+                        .add(converted.bigDecimalValue().multiply(weight));
+                scaled = numFactory.numOf(value);
+            }
+            if (!Num.isFinite(scaled)) {
                 return null;
             }
             mixed.add(scaled);

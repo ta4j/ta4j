@@ -113,6 +113,22 @@ public class StudentTScaleMixingMonteCarloMethodTest {
     }
 
     @Test
+    public void contractsDriftPathThatExceedsDoubleRange() {
+        MonteCarloMethod unitMethod = new StudentTScaleMixingMonteCarloMethod(fixedSamples(1d), 5);
+        double unitResult = unitMethod
+                .terminalReturns(context(2, 1, window(0.01d), moments(1d), fixedScaleDraw(1d, 0.5d)))
+                .get(0)
+                .doubleValue();
+        assertTrue(unitResult > 1d && unitResult < 1.79d);
+        MonteCarloMethod method = new StudentTScaleMixingMonteCarloMethod(fixedSamples(1e308), 5);
+
+        List<Num> samples = method
+                .terminalReturns(context(2, 1, window(0.01d), moments(1e308), fixedScaleDraw(1d, 0.5d)));
+
+        assertEquals(unitResult, samples.get(0).doubleValue() / 1e308, 1e-12);
+    }
+
+    @Test
     public void oppositeSignSamplesExpandWithoutIntermediateOverflow() {
         RandomGenerator random = fixedScaleDraw(-0.8d, 0.5d);
         MonteCarloMethod method = new StudentTScaleMixingMonteCarloMethod(fixedSamples(-1e308), 5);

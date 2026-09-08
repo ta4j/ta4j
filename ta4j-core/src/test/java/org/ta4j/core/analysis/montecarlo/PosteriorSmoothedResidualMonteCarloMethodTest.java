@@ -146,6 +146,13 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
         for (Num sample : samples) {
             TestUtils.assertNumEquals(expected, sample);
         }
+
+        ReturnMoments laggingVolatility = ReturnMoments.stable(100, constantWindow.size(), ReturnRepresentation.LOG,
+                DECIMAL.zero(), DECIMAL.zero(), DECIMAL.one());
+        List<Num> laggingSamples = method
+                .terminalReturns(context(3, 2, constantWindow, laggingVolatility, 7L, DECIMAL));
+        assertNotNull(laggingSamples);
+        assertEquals(samples, laggingSamples);
     }
 
     @Test
