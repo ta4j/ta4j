@@ -160,17 +160,18 @@ public class RecentVolatilityWideningMonteCarloMethodTest {
         TestUtils.assertNumEquals(DECIMAL.numOf(-1.5d), samples.get(0), 1e-6);
         TestUtils.assertNumEquals(DECIMAL.numOf(2.5d), samples.get(1), 1e-6);
     }
+
     @Test
     public void extremeDecimalRatioUsesCapWithoutPrimitiveUnderflow() {
         // Recent RMS 1E-400 versus state volatility 1E-410 has a ratio of 1E10.
         // Both values underflow to zero in double arithmetic, but the DecimalNum
         // ratio remains finite and must be capped at four.
-        ReturnMoments tinyVol = ReturnMoments.stable(100, 2, ReturnRepresentation.LOG, DECIMAL.zero(),
-                DECIMAL.zero(), DECIMAL.numOf(new java.math.BigDecimal("1E-820")));
+        ReturnMoments tinyVol = ReturnMoments.stable(100, 2, ReturnRepresentation.LOG, DECIMAL.zero(), DECIMAL.zero(),
+                DECIMAL.numOf(new java.math.BigDecimal("1E-820")));
         MonteCarloMethod method = new RecentVolatilityWideningMonteCarloMethod(fixedSamples(0.0d, 1.0d), 2, 4d);
 
-        List<Num> samples = method.terminalReturns(
-                decimalContext(1, 2, decimalWindowExact("1E-400", "1E-400"), tinyVol, 1L));
+        List<Num> samples = method
+                .terminalReturns(decimalContext(1, 2, decimalWindowExact("1E-400", "1E-400"), tinyVol, 1L));
         assertEquals(2, samples.size());
         TestUtils.assertNumEquals(DECIMAL.numOf(-1.5d), samples.get(0), 1e-6);
         TestUtils.assertNumEquals(DECIMAL.numOf(2.5d), samples.get(1), 1e-6);
@@ -218,6 +219,7 @@ public class RecentVolatilityWideningMonteCarloMethodTest {
         }
         return result;
     }
+
     private static List<Num> decimalWindowExact(String... values) {
         List<Num> result = new ArrayList<>(values.length);
         for (String value : values) {
@@ -225,7 +227,6 @@ public class RecentVolatilityWideningMonteCarloMethodTest {
         }
         return result;
     }
-
 
     private static ReturnMoments decimalMoments(double volatility, double drift) {
         return ReturnMoments.stable(100, 2, ReturnRepresentation.LOG, DECIMAL.zero(), DECIMAL.numOf(drift),

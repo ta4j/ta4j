@@ -152,7 +152,6 @@ final class MonteCarloSimulation {
         return Num.isFinite(normalized) && (!normalized.isZero() || value.isZero()) ? normalized : null;
     }
 
-
     @FunctionalInterface
     interface TerminalValueMapper {
         Num map(Num cumulativeReturn);
