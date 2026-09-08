@@ -7,6 +7,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Objects;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
@@ -27,17 +28,17 @@ public class CashFlow implements PerformanceIndicator {
     /**
      * The (accrued) cash flow sequence (without trading costs).
      */
-    private final OffsetNumBuffer values;
+    private OffsetNumBuffer values;
 
     /**
      * The first logical bar index materialized in {@link #values}.
      */
-    private final int valueStartIndex;
+    private int valueStartIndex;
 
     /**
      * The last logical bar index materialized in {@link #values}.
      */
-    private final int valueEndIndex;
+    private int valueEndIndex;
 
     /**
      * The equity curve calculation mode.
@@ -57,8 +58,8 @@ public class CashFlow implements PerformanceIndicator {
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex, EquityCurveMode equityCurveMode,
             OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, 0, Math.max(barSeries.getEndIndex(), tradingRecord.getEndIndex(barSeries)),
-                finalIndex, equityCurveMode, openPositionHandling);
+        this(barSeries, tradingRecord, 0, finalIndex, finalIndex, equityCurveMode, openPositionHandling, false, false,
+                true);
     }
 
     /**
@@ -76,7 +77,8 @@ public class CashFlow implements PerformanceIndicator {
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int startIndex, int finalIndex,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, startIndex, finalIndex, finalIndex, equityCurveMode, openPositionHandling);
+        this(barSeries, tradingRecord, startIndex, finalIndex, finalIndex, equityCurveMode, openPositionHandling, false,
+                false, false);
     }
 
     /**
@@ -88,7 +90,8 @@ public class CashFlow implements PerformanceIndicator {
      * @since 0.22.2
      */
     public CashFlow(BarSeries barSeries, Position position, EquityCurveMode equityCurveMode) {
-        this(barSeries, new BaseTradingRecord(position), barSeries.getEndIndex(), equityCurveMode);
+        this(barSeries, new BaseTradingRecord(position), 0, 0, 0, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET,
+                false, true, true);
     }
 
     /**
@@ -122,8 +125,8 @@ public class CashFlow implements PerformanceIndicator {
      * @param tradingRecord the trading record
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), EquityCurveMode.MARK_TO_MARKET,
-                OpenPositionHandling.MARK_TO_MARKET);
+        this(barSeries, tradingRecord, 0, 0, 0, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET,
+                true, false, true);
     }
 
     /**
@@ -135,8 +138,8 @@ public class CashFlow implements PerformanceIndicator {
      * @since 0.22.2
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, EquityCurveMode equityCurveMode) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), equityCurveMode,
-                OpenPositionHandling.MARK_TO_MARKET);
+        this(barSeries, tradingRecord, 0, 0, 0, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET, true, false,
+                true);
     }
 
     /**
@@ -150,7 +153,7 @@ public class CashFlow implements PerformanceIndicator {
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, EquityCurveMode equityCurveMode,
             OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), equityCurveMode, openPositionHandling);
+        this(barSeries, tradingRecord, 0, 0, 0, equityCurveMode, openPositionHandling, true, false, true);
     }
 
     /**
@@ -174,21 +177,43 @@ public class CashFlow implements PerformanceIndicator {
      * @since 0.22.2
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), EquityCurveMode.MARK_TO_MARKET,
-                openPositionHandling);
+        this(barSeries, tradingRecord, 0, 0, 0, EquityCurveMode.MARK_TO_MARKET, openPositionHandling, true, false,
+                true);
     }
 
-    private CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int startIndex, int endIndex, int finalIndex,
-            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+    private CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int startIndex, int requestedEndIndex,
+            int requestedFinalIndex, EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling,
+            boolean useRecordEnd, boolean useSeriesEnd, boolean padToSeriesEnd) {
         this.barSeries = Objects.requireNonNull(barSeries, "barSeries");
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        this.valueStartIndex = Math.max(Math.max(0, startIndex), this.barSeries.getBeginIndex());
-        int addressableEndIndex = OffsetNumBuffer.addressableEndIndex(this.barSeries);
-        this.valueEndIndex = valueStartIndex > addressableEndIndex ? valueStartIndex - 1
-                : Math.min(Math.max(endIndex, valueStartIndex), addressableEndIndex);
-        Num one = this.barSeries.numFactory().one();
-        this.values = new OffsetNumBuffer(valueStartIndex, valueEndIndex, one, one);
-        calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
+        TradingRecord record = Objects.requireNonNull(tradingRecord);
+        OpenPositionHandling handling = Objects.requireNonNull(openPositionHandling);
+        Runnable action = () -> {
+            int finalIndex = useRecordEnd ? record.getEndIndex(this.barSeries)
+                    : useSeriesEnd ? this.barSeries.getEndIndex() : requestedFinalIndex;
+            this.valueStartIndex = Math.max(Math.max(0, startIndex), this.barSeries.getBeginIndex());
+            int addressableEndIndex = OffsetNumBuffer.addressableEndIndex(this.barSeries);
+            int materializationEnd = useRecordEnd ? finalIndex : requestedEndIndex;
+            int endIndex = padToSeriesEnd ? Math.max(this.barSeries.getEndIndex(), materializationEnd)
+                    : materializationEnd;
+            Num one = this.barSeries.numFactory().one();
+            boolean emptyWindow = valueStartIndex > addressableEndIndex || endIndex < valueStartIndex;
+            if (emptyWindow) {
+                // Keep the requested bounds for calculation guards, but use the
+                // canonical empty buffer rather than allocating an inverted span.
+                this.valueEndIndex = valueStartIndex - 1;
+                this.values = new OffsetNumBuffer(-1, -1, one, one);
+            } else {
+                this.valueEndIndex = Math.min(endIndex, addressableEndIndex);
+                this.values = new OffsetNumBuffer(valueStartIndex, valueEndIndex, one, one);
+            }
+            calculate(record, finalIndex, handling);
+        };
+        if (barSeries instanceof ConcurrentBarSeries concurrent) {
+            concurrent.withReadLock(action);
+        } else {
+            action.run();
+        }
     }
 
     /**

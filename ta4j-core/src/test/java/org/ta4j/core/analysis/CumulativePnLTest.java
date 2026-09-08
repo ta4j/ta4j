@@ -4,6 +4,7 @@
 package org.ta4j.core.analysis;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertSame;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.time.Duration;
@@ -90,6 +91,27 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
                 .minus(numFactory.numOf(100d))
                 .minus(averageCost.multipliedBy(numFactory.numOf(2)));
         assertNumEquals(expected, pnl.getValue(2), 1e-12);
+        Num expectedNext = numFactory.numOf(130d).minus(numFactory.numOf(100d)).minus(numFactory.numOf(4d));
+        assertNumEquals(expectedNext, pnl.getValue(3), 1e-12);
+    }
+
+    @Test
+    public void flatPriceHoldingCostRemainsCumulativeAfterRetainedSeed() {
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        rolling.setMaximumBarCount(2);
+        rolling.barBuilder().closePrice(100d).add();
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(),
+                new FixedTransactionCostModel(4d));
+        record.enter(0, rolling.getBar(0).getClosePrice(), numFactory.one());
+        rolling.barBuilder().closePrice(100d).add();
+        rolling.barBuilder().closePrice(100d).add();
+        rolling.barBuilder().closePrice(100d).add();
+
+        CumulativePnL pnl = new CumulativePnL(rolling, record, EquityCurveMode.MARK_TO_MARKET);
+
+        assertNumEquals(numFactory.numOf(-8d / 3d), pnl.getValue(2), 1e-12);
+        assertNumEquals(numFactory.numOf(-4d), pnl.getValue(3), 1e-12);
+        assertTrue(pnl.getValue(3).isNegative());
     }
 
     @Test

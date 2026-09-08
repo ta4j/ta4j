@@ -99,6 +99,14 @@ public class OffsetNumBufferTest extends AbstractIndicatorTest<Indicator<Num>, N
     public void rejectsRangesThatCannotBeMaterialized() {
         assertThrows(IllegalArgumentException.class,
                 () -> new OffsetNumBuffer(0, Integer.MAX_VALUE, numFactory.one(), numFactory.zero()));
+        assertThrows(IllegalArgumentException.class,
+                () -> new OffsetNumBuffer(0, Integer.MAX_VALUE - 1, numFactory.one(), numFactory.zero()));
+        assertThrows(IllegalArgumentException.class,
+                () -> new OffsetNumBuffer(10, 2, numFactory.one(), numFactory.zero()));
+        assertThrows(IllegalArgumentException.class,
+                () -> new OffsetNumBuffer(10, 9, numFactory.one(), numFactory.zero()));
+        assertThrows(IllegalArgumentException.class,
+                () -> new OffsetNumBuffer(-2, -3, numFactory.one(), numFactory.zero()));
     }
 
     private void assertWindowUntouched(OffsetNumBuffer buffer) {

@@ -6,6 +6,7 @@ package org.ta4j.core.analysis;
 import java.util.List;
 import java.util.Objects;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.CachedIndicator;
@@ -56,8 +57,19 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
         Objects.requireNonNull(series, "series cannot be null");
         Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
-        materializedBeginIndex = getBarSeries().getBeginIndex();
-        investedIntervals = buildInvestedIntervals(tradingRecord, openPositionHandling);
+        final int[] beginIndex = new int[1];
+        final boolean[][] intervals = new boolean[1][];
+        Runnable action = () -> {
+            beginIndex[0] = getBarSeries().getBeginIndex();
+            intervals[0] = buildInvestedIntervals(tradingRecord, openPositionHandling, beginIndex[0]);
+        };
+        if (series instanceof ConcurrentBarSeries concurrent) {
+            concurrent.withReadLock(action);
+        } else {
+            action.run();
+        }
+        materializedBeginIndex = beginIndex[0];
+        investedIntervals = intervals[0];
     }
 
     @Override
@@ -69,25 +81,29 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
         return investedIntervals[(int) position];
     }
 
-    private boolean[] buildInvestedIntervals(TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
+    private boolean[] buildInvestedIntervals(TradingRecord tradingRecord, OpenPositionHandling openPositionHandling,
+            int beginIndex) {
         BarSeries series = getBarSeries();
-        int beginIndex = materializedBeginIndex;
         int analysisEndIndex = Math.max(series.getEndIndex(), tradingRecord.getEndIndex(series));
-        int size = series.getBarCount() == 0 ? 0 : analysisEndIndex - beginIndex + 1;
+        long span = series.getBarCount() == 0 ? 0L : (long) analysisEndIndex - beginIndex + 1L;
+        if (span >= Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("Invested interval range is too large to materialize: [" + beginIndex
+                    + ", " + analysisEndIndex + "]");
+        }
+        int size = (int) span;
         boolean[] invested = new boolean[size];
-        tradingRecord.getPositions().forEach(position -> markInvestedIntervals(position, invested));
+        tradingRecord.getPositions().forEach(position -> markInvestedIntervals(position, invested, beginIndex));
         if (openPositionHandling == OpenPositionHandling.MARK_TO_MARKET) {
             List<Position> openPositions = AnalysisPositionSupport.openPositions(tradingRecord, analysisEndIndex);
-            openPositions.forEach(position -> markInvestedIntervals(position, invested));
+            openPositions.forEach(position -> markInvestedIntervals(position, invested, beginIndex));
         }
         return invested;
     }
 
-    private void markInvestedIntervals(Position position, boolean[] invested) {
+    private void markInvestedIntervals(Position position, boolean[] invested, int beginIndex) {
         if (position == null || position.getEntry() == null) {
             return;
         }
-        int beginIndex = materializedBeginIndex;
         int investedEndIndex = beginIndex + invested.length - 1;
         long startLong = Math.max((long) position.getEntry().getIndex() + 1, (long) beginIndex + 1);
         if (startLong > investedEndIndex) {

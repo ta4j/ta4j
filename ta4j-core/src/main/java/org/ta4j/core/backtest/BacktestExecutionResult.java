@@ -407,7 +407,7 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
     }
 
     @Override
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the borrowed caller series by contract.")
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the immutable result snapshot series captured for this execution.")
     public BarSeries barSeries() {
         return barSeries;
     }

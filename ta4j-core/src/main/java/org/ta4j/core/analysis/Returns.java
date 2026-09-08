@@ -361,26 +361,30 @@ public class Returns implements PerformanceIndicator {
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
             Num avgCost = averageHoldingCostPerPeriod(position, endIndex, numFactory);
             Num lastPrice = entry.getNetPrice();
+            long accruedPeriods = Math.max(0L, (long) seriesBegin - entryIndex);
             if (entryIndex < seriesBegin) {
                 // The entry predates the retained window: charge all elapsed
                 // holding periods before anchoring at the first retained close.
-                long elapsedPeriods = (long) seriesBegin - entryIndex;
-                Num accruedCost = avgCost.multipliedBy(numFactory.numOf(elapsedPeriods));
+                Num accruedCost = avgCost.multipliedBy(numFactory.numOf(accruedPeriods));
                 Num firstNetPrice = addCost(barSeries.getBar(seriesBegin).getClosePrice(), accruedCost, isLongTrade);
                 Num rawReturn = calculateReturn(firstNetPrice, lastPrice);
                 combineReturnAtIndex(seriesBegin, isLongTrade ? rawReturn : rawReturn.multipliedBy(minusOne));
                 lastPrice = firstNetPrice;
             }
             for (long i = start; i < endIndex; i++) {
+                accruedPeriods = Math.max(accruedPeriods, i - entryIndex);
                 Bar bar = barSeries.getBar((int) i);
-                Num intermediateNetPrice = addCost(bar.getClosePrice(), avgCost, isLongTrade);
+                Num accruedCost = avgCost.multipliedBy(numFactory.numOf(accruedPeriods));
+                Num intermediateNetPrice = addCost(bar.getClosePrice(), accruedCost, isLongTrade);
                 Num rawReturn = calculateReturn(intermediateNetPrice, lastPrice);
                 Num strategyReturn = isLongTrade ? rawReturn : rawReturn.multipliedBy(minusOne);
                 combineReturnAtIndex((int) i, strategyReturn);
                 lastPrice = intermediateNetPrice;
             }
+            long exitPeriods = Math.max(0L, (long) endIndex - entryIndex);
+            Num accruedExitCost = avgCost.multipliedBy(numFactory.numOf(exitPeriods));
             Num exitPrice = resolveExitPrice(position, endIndex, barSeries);
-            Num rawReturn = calculateReturn(addCost(exitPrice, avgCost, isLongTrade), lastPrice);
+            Num rawReturn = calculateReturn(addCost(exitPrice, accruedExitCost, isLongTrade), lastPrice);
             Num strategyReturn = isLongTrade ? rawReturn : rawReturn.multipliedBy(minusOne);
             combineReturnAtIndex(endIndex, strategyReturn);
             return;

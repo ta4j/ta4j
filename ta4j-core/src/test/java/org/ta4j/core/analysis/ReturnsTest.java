@@ -27,6 +27,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -86,6 +87,35 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertEquals(1, rolling.getBeginIndex());
         assertNumEquals(40d / 30d - 1d, returns.getValue(1));
         assertNumEquals(50d / 40d - 1d, returns.getValue(2));
+    }
+
+    @Test
+    public void retainedHeadHoldingCostRemainsCumulativeAcrossMarks() {
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        rolling.setMaximumBarCount(2);
+        rolling.barBuilder().closePrice(100d).add();
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(),
+                new FixedTransactionCostModel(4d));
+        record.enter(0, rolling.getBar(0).getClosePrice(), numFactory.one());
+        rolling.barBuilder().closePrice(100d).add();
+        rolling.barBuilder().closePrice(100d).add();
+        rolling.barBuilder().closePrice(100d).add();
+
+        Returns returns = new Returns(rolling, record, ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        Num accruedAtHead = numFactory.numOf(4d).dividedBy(numFactory.numOf(3)).multipliedBy(numFactory.numOf(2));
+        Num expectedHead = numFactory.numOf(100d)
+                .minus(accruedAtHead)
+                .dividedBy(numFactory.numOf(100d))
+                .minus(numFactory.one());
+        Num expectedNext = numFactory.numOf(100d)
+                .minus(numFactory.numOf(4d))
+                .dividedBy(numFactory.numOf(100d).minus(accruedAtHead))
+                .minus(numFactory.one());
+        assertNumEquals(expectedHead, returns.getValue(2));
+        assertNumEquals(expectedNext, returns.getValue(3));
+        assertTrue(returns.getValue(3).isNegative());
     }
 
     @Test

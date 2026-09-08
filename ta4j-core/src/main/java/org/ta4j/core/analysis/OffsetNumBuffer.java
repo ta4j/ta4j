@@ -72,14 +72,11 @@ final class OffsetNumBuffer {
             return 0;
         }
         if (startIndex < 0 || endIndex < startIndex) {
-            if (endIndex == startIndex - 1) {
-                return 0;
-            }
-            throw new IllegalArgumentException(
-                    "Offset buffer range must be non-inverted: [" + startIndex + ", " + endIndex + "]");
+            throw new IllegalArgumentException("Offset buffer range must be non-inverted and non-negative: ["
+                    + startIndex + ", " + endIndex + "]");
         }
         long span = (long) endIndex - startIndex + 1L;
-        if (span > Integer.MAX_VALUE) {
+        if (span >= Integer.MAX_VALUE) {
             throw new IllegalArgumentException(
                     "Offset buffer range is too large to materialize: [" + startIndex + ", " + endIndex + "]");
         }
