@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.SplittableRandom;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.Bar;
@@ -249,7 +250,16 @@ class FractalSwingDetectorTest {
 
     @Test
     void inPlaceEarlierCustomBarMutationInvalidatesRevisionAwareReplayResult() {
-        final BaseBarSeries series = revisionAwareSeriesWithCustomBar();
+        assertUntrackedMutationReplaysCorrectly(UntrackedBar::new);
+    }
+
+    @Test
+    void nonpublishingBaseBarSubclassInvalidatesRevisionAwareReplayResult() {
+        assertUntrackedMutationReplaysCorrectly(UntrackedBaseBar::new);
+    }
+
+    private static void assertUntrackedMutationReplaysCorrectly(final Function<BaseBar, Bar> customBar) {
+        final BaseBarSeries series = revisionAwareSeriesWithCustomBar(customBar);
         final FractalSwingDetector shared = new FractalSwingDetector(1);
 
         assertThat(shared.detectPivots(series, series.getEndIndex())).extracting(SwingPivot::index, SwingPivot::type)
@@ -401,7 +411,7 @@ class FractalSwingDetectorTest {
         assertThat(shared.detectPivots(series, end / 2)).isSameAs(middle);
     }
 
-    private static BaseBarSeries revisionAwareSeriesWithCustomBar() {
+    private static BaseBarSeries revisionAwareSeriesWithCustomBar(final Function<BaseBar, Bar> customBar) {
         final double[] highs = { 5, 6, 10, 7 };
         final double[] lows = { 4, 5, 9, 6 };
         final List<Bar> bars = new ArrayList<>();
@@ -410,7 +420,7 @@ class FractalSwingDetectorTest {
             final BaseBar bar = new BaseBar(Duration.ofMinutes(1), Instant.EPOCH.plus(Duration.ofMinutes(index)),
                     Instant.EPOCH.plus(Duration.ofMinutes(index + 1)), close, DecimalNum.valueOf(highs[index]),
                     DecimalNum.valueOf(lows[index]), close, DecimalNum.valueOf(1), DecimalNum.valueOf(0), 0L);
-            bars.add(index == 1 ? new UntrackedBar(bar) : bar);
+            bars.add(index == 1 ? customBar.apply(bar) : bar);
         }
         return new BaseBarSeries("custom-bars", bars);
     }
@@ -485,19 +495,57 @@ class FractalSwingDetectorTest {
         }
     }
 
+    private static final class UntrackedBaseBar extends BaseBar {
+        private static final long serialVersionUID = 1L;
+        private Num high;
+        private Num close;
+
+        private UntrackedBaseBar(final BaseBar source) {
+            super(source.getTimePeriod(), source.getBeginTime(), source.getEndTime(), source.getOpenPrice(),
+                    source.getHighPrice(), source.getLowPrice(), source.getClosePrice(), source.getVolume(),
+                    source.getAmount(), source.getTrades());
+            high = source.getHighPrice();
+            close = source.getClosePrice();
+        }
+
+        @Override
+        public void addPrice(final Num price) {
+            high = high.max(price);
+            close = price;
+        }
+
+        @Override
+        public Num getHighPrice() {
+            return high;
+        }
+
+        @Override
+        public Num getClosePrice() {
+            return close;
+        }
+    }
+
     private static long replayAscending(final FractalSwingDetector detector, final CountedZigZagSeries fixture) {
-        final long readsBefore = fixture.priceReads.sum();
+        final long readsBefore = fixture.barReads.sum();
         for (int index = 0; index <= fixture.seriesEnd(); index++) {
             detector.detectPivots(fixture.series(), index);
         }
-        return fixture.priceReads.sum() - readsBefore;
+        return fixture.barReads.sum() - readsBefore;
     }
 
-    /** Zigzag fixture whose bars count high/low price reads during detection. */
+    /** Zigzag fixture counting series reads without subclassing trusted bars. */
     private static final class CountedZigZagSeries {
 
-        private final BarSeries series = new MockBarSeriesBuilder().build();
-        private final LongAdder priceReads = new LongAdder();
+        private final LongAdder barReads = new LongAdder();
+        private final BarSeries series = new BaseBarSeries("counted-zigzag", new ArrayList<>()) {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public Bar getBar(final int index) {
+                barReads.increment();
+                return super.getBar(index);
+            }
+        };
 
         private CountedZigZagSeries(final int barCount) {
             final NumFactory factory = series.numFactory();
@@ -510,7 +558,8 @@ class FractalSwingDetectorTest {
                 }
                 final Instant beginTime = Instant.EPOCH.plus(Duration.ofMinutes(index));
                 final Num value = factory.numOf(price);
-                series.addBar(new CountingBar(priceReads, factory, beginTime, value));
+                series.addBar(new BaseBar(Duration.ofMinutes(1), beginTime, beginTime.plus(Duration.ofMinutes(1)),
+                        value, value, value, value, factory.one(), factory.zero(), 0L));
             }
         }
 
@@ -520,32 +569,6 @@ class FractalSwingDetectorTest {
 
         private int seriesEnd() {
             return series.getEndIndex();
-        }
-    }
-
-    private static final class CountingBar extends BaseBar {
-
-        private static final long serialVersionUID = 1L;
-
-        private final transient LongAdder priceReads;
-
-        private CountingBar(final LongAdder priceReads, final NumFactory factory, final Instant beginTime,
-                final Num price) {
-            super(Duration.ofMinutes(1), beginTime, beginTime.plus(Duration.ofMinutes(1)), price, price, price, price,
-                    factory.numOf(1), factory.numOf(0), 0L);
-            this.priceReads = priceReads;
-        }
-
-        @Override
-        public Num getHighPrice() {
-            priceReads.increment();
-            return super.getHighPrice();
-        }
-
-        @Override
-        public Num getLowPrice() {
-            priceReads.increment();
-            return super.getLowPrice();
         }
     }
 

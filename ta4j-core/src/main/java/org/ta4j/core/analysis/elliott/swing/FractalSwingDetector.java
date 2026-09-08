@@ -15,6 +15,7 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseRealtimeBar;
 import org.ta4j.core.indicators.RecentFractalSwingHighIndicator;
 import org.ta4j.core.indicators.RecentFractalSwingLowIndicator;
 import org.ta4j.core.indicators.RecentSwingIndicator;
@@ -649,7 +650,7 @@ public final class FractalSwingDetector implements SwingDetector {
         private void captureUntrackableBars(final long fromIndex, final int toIndex) {
             for (long index = fromIndex; index <= (long) toIndex; index++) {
                 final Bar bar = series.getBar((int) index);
-                if (!(bar instanceof BaseBar)) {
+                if (bar.getClass() != BaseBar.class && bar.getClass() != BaseRealtimeBar.class) {
                     observedUntrackableBars.put((int) index, BarState.of(bar));
                 }
             }
@@ -681,10 +682,9 @@ public final class FractalSwingDetector implements SwingDetector {
     }
 
     /**
-     * Value snapshot of a retained bar's high/low/close prices. Series revision
-     * tracking cannot observe in-place bar mutations such as
-     * {@code series.getBar(index).addPrice(...)}, so replay fallback validation
-     * compares these values exactly.
+     * Value snapshot of a retained bar's high/low/close prices. Custom bar
+     * implementations can mutate without publishing a series revision, so replay
+     * fallback validation compares their values exactly.
      */
     private record BarState(Num high, Num low, Num close) {
 
