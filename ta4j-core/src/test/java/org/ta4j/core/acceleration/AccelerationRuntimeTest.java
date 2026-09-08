@@ -390,6 +390,74 @@ class AccelerationRuntimeTest {
     }
 
     @Test
+    void seriesChangesDuringPlanningFallsBackWithoutExecutingOrCaching() {
+        EchoProvider provider = new EchoProvider(Backend.METAL, "gpu-0", 10L, 1_000L);
+        useProvidersForTests(List.of(provider));
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        BarSeries series = series();
+        SeriesValueIndicator indicator = new SeriesValueIndicator(series, () -> replaceLastBarWithClose(series, 42d));
+
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            assertEquals(series.numFactory().numOf(42), indicator.getValue(series.getEndIndex()));
+            assertEquals(series.numFactory().numOf(42), indicator.getValue(series.getEndIndex()));
+            assertEquals(DiagnosticCode.STALE_SERIES, AccelerationRuntime.lastDiagnostic().orElseThrow().code());
+        }
+
+        assertEquals(1, provider.assessments.get());
+        assertEquals(0, provider.executions.get());
+    }
+
+    @Test
+    void seriesChangesDuringAssessmentFallsBackWithoutExecutingOrCaching() {
+        BarSeries series = series();
+        EchoProvider provider = new EchoProvider(Backend.METAL, "gpu-0", 10L, 1_000L) {
+            @Override
+            public Assessment assess(KernelRequest request) {
+                Assessment assessment = super.assess(request);
+                replaceLastBarWithClose(series, 42d);
+                return assessment;
+            }
+        };
+        useProvidersForTests(List.of(provider));
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        SeriesValueIndicator indicator = new SeriesValueIndicator(series, null);
+
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            assertEquals(series.numFactory().numOf(42), indicator.getValue(series.getEndIndex()));
+            assertEquals(series.numFactory().numOf(42), indicator.getValue(series.getEndIndex()));
+            assertEquals(DiagnosticCode.STALE_SERIES, AccelerationRuntime.lastDiagnostic().orElseThrow().code());
+        }
+
+        assertEquals(1, provider.assessments.get());
+        assertEquals(0, provider.executions.get());
+    }
+
+    @Test
+    void staleProviderResultDoesNotReachFallbackProvider() {
+        BarSeries series = series();
+        EchoProvider staleProvider = new EchoProvider(Backend.CPU, "a-device", 10L, 1_000L) {
+            @Override
+            public KernelResult execute(KernelRequest request) {
+                KernelResult result = super.execute(request);
+                replaceLastBarWithClose(series, 42d);
+                return result;
+            }
+        };
+        EchoProvider fallbackProvider = new EchoProvider(Backend.METAL, "z-device", 10L, 1_000L);
+        useProvidersForTests(List.of(staleProvider, fallbackProvider));
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        SeriesValueIndicator indicator = new SeriesValueIndicator(series, null);
+
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            assertEquals(series.numFactory().numOf(42), indicator.getValue(series.getEndIndex()));
+            assertEquals(DiagnosticCode.STALE_SERIES, AccelerationRuntime.lastDiagnostic().orElseThrow().code());
+        }
+
+        assertEquals(1, staleProvider.executions.get());
+        assertEquals(0, fallbackProvider.executions.get());
+    }
+
+    @Test
     void seriesWithoutRevisionTrackingFallBackToScalarValues() {
         EchoProvider provider = new EchoProvider(Backend.METAL, "gpu-0", 10L, 1_000L);
         AccelerationRuntime.useProvidersForTests(List.of(provider));
@@ -522,6 +590,20 @@ class AccelerationRuntimeTest {
         return new MockBarSeriesBuilder().withData(10, 11, 12, 13).build();
     }
 
+    private static void replaceLastBarWithClose(BarSeries series, double closePrice) {
+        Bar last = series.getLastBar();
+        Bar replacement = series.barBuilder()
+                .timePeriod(last.getTimePeriod())
+                .endTime(last.getEndTime())
+                .openPrice(closePrice)
+                .highPrice(closePrice)
+                .lowPrice(closePrice)
+                .closePrice(closePrice)
+                .volume(last.getVolume())
+                .build();
+        series.addBar(replacement, true);
+    }
+
     private static BarSeries revisionFreeSeries() {
         BarSeries built = series();
         List<Bar> bars = new ArrayList<>();
@@ -536,18 +618,23 @@ class AccelerationRuntimeTest {
         @Override
         public PlannedOperation plan(Indicator<?> indicator, int fromInclusive, int toInclusive, NumFactory factory,
                 long memoryLimitBytes) {
-            if (!(indicator instanceof ScopeAwareIndicator)) {
+            SeriesValueIndicator seriesValue = indicator instanceof SeriesValueIndicator value ? value : null;
+            if (!(indicator instanceof ScopeAwareIndicator) && seriesValue == null) {
                 return null;
             }
             int size = toInclusive - fromInclusive + 1;
             double[] markers = new double[size];
             for (int row = 0; row < size; row++) {
-                markers[row] = fromInclusive + row;
+                int index = fromInclusive + row;
+                markers[row] = seriesValue == null ? index : seriesValue.markerAt(index);
             }
             KernelRequest request = new KernelRequest(AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1,
                     fromInclusive, toInclusive, 1, AccelerationRuntime.NumericEncoding.FLOAT64,
                     AccelerationRuntime.Determinism.BITWISE_IDENTICAL, 7L, Double.NaN,
                     new double[] { 1d, 0d, 1d, 8d, 4d, 0.94d }, List.of(markers), 1_000_000L, 1_000_000L);
+            if (seriesValue != null) {
+                seriesValue.runAfterPlanning();
+            }
             return new PlannedOperation(request, (slice, index, decodingFactory) -> decodingFactory.numOf(slice[0]));
         }
     }
@@ -571,6 +658,41 @@ class AccelerationRuntimeTest {
         @Override
         public int getCountOfUnstableBars() {
             return 0;
+        }
+    }
+
+    private static final class SeriesValueIndicator extends CachedIndicator<Num> {
+
+        private final Runnable afterPlanning;
+
+        private SeriesValueIndicator(BarSeries series, Runnable afterPlanning) {
+            super(series);
+            this.afterPlanning = afterPlanning;
+        }
+
+        @Override
+        public Num getValue(int index) {
+            return AccelerationRuntime.value(this, index).orElseGet(() -> super.getValue(index));
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            return getBarSeries().getBar(index).getClosePrice();
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        private double markerAt(int index) {
+            return getBarSeries().getBar(index).getClosePrice().doubleValue();
+        }
+
+        private void runAfterPlanning() {
+            if (afterPlanning != null) {
+                afterPlanning.run();
+            }
         }
     }
 
