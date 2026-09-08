@@ -676,7 +676,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * like any windowed indicator. {@link RecursiveCachedIndicator} overrides this
      * to {@code true}, because subclasses extend it precisely to compute each value
      * from its predecessors. Recursive subclasses over a fixed trailing window (for
-     * example {@link VolumeIndicator} or {@link PearsonCorrelationIndicator}) must
+     * example {@link org.ta4j.core.indicators.helpers.VolumeIndicator} or
+     * {@link org.ta4j.core.indicators.statistics.PearsonCorrelationIndicator}) must
      * override it back to {@code false} so their stale bands are recomputed.
      * Classes that extend {@code CachedIndicator} directly and compute each value
      * from earlier {@code getValue} results are recursive by the same criterion and
@@ -748,9 +749,10 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * Selects the cache floor for the retained range with additional derived
      * sources treated as part of this indicator's source graph even though they are
      * not constructor-registered dependencies (lazily created sub-indicators, for
-     * example {@link MACDVIndicator}'s moving averages). Subclasses with such
-     * sources override {@link #minimumCacheableIndexAfterHeadAdvance(int)} and pass
-     * them here after initialization.
+     * example {@link org.ta4j.core.indicators.macd.MACDVIndicator}'s moving
+     * averages). Subclasses with such sources override
+     * {@link #minimumCacheableIndexAfterHeadAdvance(int)} and pass them here after
+     * initialization.
      *
      * @param firstRetainedIndex the first series index that remains available
      * @param derivedSources     additional sources in this indicator's source graph

@@ -50,7 +50,7 @@ package org.ta4j.core.indicators.forecast;
  * prices apply the scalar guard: cumulative log-returns whose magnitude exceeds
  * {@code 700} map to non-finite output.
  *
- * @since 0.24.2
+ * @since 0.25.1
  */
 public final class MonteCarloKernel {
 
@@ -92,7 +92,7 @@ public final class MonteCarloKernel {
      * @param horizon       forecast horizon in bars
      * @param pathIndex     path ordinal within the decision index
      * @return initial stream state
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public static long initialPathState(long seed, int decisionIndex, int horizon, int pathIndex) {
         if (decisionIndex < 0) {
@@ -117,7 +117,7 @@ public final class MonteCarloKernel {
      *
      * @param state current stream state
      * @return mixed output; the next state is {@code state + GOLDEN_GAMMA}
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public static long advanceState(long state) {
         return mix64(state + GOLDEN_GAMMA);
@@ -128,7 +128,7 @@ public final class MonteCarloKernel {
      *
      * @param mixed mixed output bits
      * @return uniform double
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public static double toUnitDouble(long mixed) {
         return (mixed >>> 11) * DOUBLE_UNIT;
@@ -141,7 +141,7 @@ public final class MonteCarloKernel {
      * @param first  first uniform
      * @param second second uniform
      * @return standard normal draw
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public static double gaussian(double first, double second) {
         double radius = StrictMath.sqrt(-2d * StrictMath.log(1d - first));

@@ -30,15 +30,18 @@ public class AccelerationOsgiExportTest {
 
     @Test
     public void publicAccelerationSpiRemainsExportableFromTheOsgiBundle() throws Exception {
-        Path pom = Path.of("pom.xml").toAbsolutePath();
-        assertTrue("test must run from the ta4j-core module directory", Files.isRegularFile(pom));
-        Matcher matcher = EXPORT_CONTENTS.matcher(Files.readString(pom));
+        Path pom = Path.of(System.getProperty("basedir", "."), "pom.xml").toAbsolutePath();
+        assertTrue("ta4j-core pom.xml must be readable: " + pom, Files.isRegularFile(pom));
+        String pomContent = Files.readString(pom);
+        assertTrue("resolved pom must be the ta4j-core module pom: " + pom,
+                pomContent.contains("<artifactId>ta4j-core</artifactId>"));
+        Matcher matcher = EXPORT_CONTENTS.matcher(pomContent);
         boolean found = matcher.find();
         assertTrue("ta4j-core pom must declare the bnd -exportcontents directive", found);
         String exportContents = matcher.group(1).replaceAll("\\s+", " ").trim();
 
         assertFalse("bnd -exportcontents must not exclude the public acceleration SPI package (" + SPI_PACKAGE + "): "
-                + exportContents, exportContents.contains("!org.ta4j.core.acceleration"));
+                + exportContents, exportContents.contains("!" + SPI_PACKAGE));
 
         assertTrue("bnd -exportcontents must include the public acceleration SPI package: " + exportContents,
                 exportContents.contains("*org.ta4j.core*"));

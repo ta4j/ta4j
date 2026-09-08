@@ -14,7 +14,7 @@ import org.ta4j.core.num.NumFactory;
  * {@link NumFactory} and must return {@code null} only via an exception: a
  * {@code null} return is treated as malformed provider output.
  *
- * @since 0.24.2
+ * @since 0.25.1
  */
 @FunctionalInterface
 public interface OperationDecoder {
@@ -26,7 +26,7 @@ public interface OperationDecoder {
      * @param index   decision index the slice belongs to
      * @param factory owning factory for numeric reconstruction
      * @return decoded domain value, never {@code null}
-     * @since 0.24.2
+     * @since 0.25.1
      */
     Object decode(double[] slice, int index, NumFactory factory);
 }

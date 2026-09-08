@@ -185,7 +185,7 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
      * every cached forecast must be discarded and recomputed from the restarted
      * posterior.
      *
-     * @since 0.24.2
+     * @since 0.25.1
      */
     @Override
     protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
@@ -206,7 +206,7 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
      * Exposes the price source to the core-owned shock-path planner.
      *
      * @return price source
-     * @since 0.24.2
+     * @since 0.25.1
      */
     Indicator<Num> kernelPriceIndicator() {
         return priceIndicator;
@@ -216,7 +216,7 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
      * Exposes the moment state source to the core-owned shock-path planner.
      *
      * @return moment state source
-     * @since 0.24.2
+     * @since 0.25.1
      */
     ReturnForecastStateIndicator<? extends ReturnMomentState> kernelStateIndicator() {
         return stateIndicator;
@@ -226,7 +226,7 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
      * Exposes the validated settings to the core-owned shock-path planner.
      *
      * @return simulation settings
-     * @since 0.24.2
+     * @since 0.25.1
      */
     MonteCarloSettings kernelSettings() {
         return settings;
@@ -236,7 +236,7 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
      * Exposes the shock model to the core-owned shock-path planner.
      *
      * @return shock model
-     * @since 0.24.2
+     * @since 0.25.1
      */
     MonteCarloReturnProjectionIndicator.ShockModel kernelShockModel() {
         return shockModel;
@@ -246,7 +246,7 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
      * Exposes the volatility update mode to the core-owned shock-path planner.
      *
      * @return volatility update mode
-     * @since 0.24.2
+     * @since 0.25.1
      */
     MonteCarloReturnProjectionIndicator.VolatilityUpdateMode kernelVolatilityUpdateMode() {
         return volatilityUpdateMode;
@@ -256,7 +256,7 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
      * Exposes the volatility decay factor to the core-owned shock-path planner.
      *
      * @return volatility decay factor
-     * @since 0.24.2
+     * @since 0.25.1
      */
     double kernelVolatilityDecayFactor() {
         return volatilityDecayFactor;
@@ -414,7 +414,7 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
          *
          * @param value technique generating terminal samples
          * @return this builder
-         * @since 0.24.2
+         * @since 0.25.1
          */
         public Builder monteCarloMethod(MonteCarloMethod value) {
             monteCarloMethod = Objects.requireNonNull(value, "monteCarloMethod must not be null");

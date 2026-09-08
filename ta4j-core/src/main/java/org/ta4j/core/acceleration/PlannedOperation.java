@@ -13,14 +13,14 @@ import org.ta4j.core.acceleration.AccelerationRuntime.KernelRequest;
  *
  * @param request kernel request built from primitives only
  * @param decoder core-owned raw-to-domain reconstruction
- * @since 0.24.2
+ * @since 0.25.1
  */
 public record PlannedOperation(KernelRequest request, OperationDecoder decoder) {
 
     /**
      * Validates a planned operation.
      *
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public PlannedOperation {
         Objects.requireNonNull(request, "request must not be null");
