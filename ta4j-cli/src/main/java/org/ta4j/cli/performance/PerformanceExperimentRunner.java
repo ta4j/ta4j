@@ -16,12 +16,14 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -462,6 +464,74 @@ public final class PerformanceExperimentRunner {
         }
     }
 
+    static String fingerprintJvmOptions(List<String> inputArguments) {
+        List<String> arguments = new ArrayList<>(inputArguments);
+        arguments.replaceAll(argument -> {
+            if (argument.startsWith("-Dmaven.multiModuleProjectDirectory=") || argument.startsWith("-Dmaven.home=")
+                    || argument.startsWith("-Dclassworlds.conf=") || argument.startsWith("-Dlibrary.jansi.path=")) {
+                return argument.substring(0, argument.indexOf('=') + 1) + "<launcher-path>";
+            }
+            return argument;
+        });
+        arguments.sort(null);
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            for (String argument : arguments) {
+                digest.update(argument.getBytes(StandardCharsets.UTF_8));
+                digest.update((byte) 0);
+            }
+            return "sha256:" + HexFormat.of().formatHex(digest.digest());
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new AssertionError("SHA-256 unavailable", impossible);
+        }
+    }
+
+    static String fingerprintHost(String hostname, String cpuIdentity) {
+        if (hostname == null || hostname.isBlank() || cpuIdentity == null || cpuIdentity.isBlank()) {
+            // PerformanceComparison treats unknown identities as incomparable.
+            return "unknown";
+        }
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            digest.update(hostname.getBytes(StandardCharsets.UTF_8));
+            digest.update((byte) 0);
+            digest.update(cpuIdentity.getBytes(StandardCharsets.UTF_8));
+            return "sha256:" + HexFormat.of().formatHex(digest.digest());
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new AssertionError("SHA-256 unavailable", impossible);
+        }
+    }
+
+    private static String cpuIdentity() {
+        String osName = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        if (osName.startsWith("windows")) {
+            return commandOutput(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS, "reg.exe", "query",
+                    "HKEY_LOCAL_MACHINE\\HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", "/v",
+                    "ProcessorNameString")
+                    .flatMap(output -> output.lines().filter(line -> line.contains("REG_SZ")).findFirst())
+                    .map(line -> line.substring(line.indexOf("REG_SZ") + "REG_SZ".length()).trim())
+                    .orElse("");
+        }
+        if (osName.contains("mac")) {
+            return commandOutput(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS, "sysctl", "-n", "machdep.cpu.brand_string")
+                    .orElse("");
+        }
+        if (osName.contains("linux")) {
+            try (Stream<String> lines = Files.lines(Path.of("/proc/cpuinfo"))) {
+                return lines
+                        .filter(line -> line.startsWith("model name") || line.startsWith("Hardware")
+                                || line.startsWith("CPU part"))
+                        .map(line -> line.substring(line.indexOf(':') + 1).trim())
+                        .distinct()
+                        .sorted()
+                        .collect(Collectors.joining("|"));
+            } catch (IOException ex) {
+                return "";
+            }
+        }
+        return "";
+    }
+
     private record HostTelemetry(String hostId, String osName, String osArch, String osVersion, String javaVersion,
             String jvmName, String jvmOptionsFingerprint, int availableProcessors) {
 
@@ -469,7 +539,8 @@ public final class PerformanceExperimentRunner {
             return new HostTelemetry(hashedHostId(), System.getProperty("os.name", "unknown"),
                     System.getProperty("os.arch", "unknown"), System.getProperty("os.version", "unknown"),
                     System.getProperty("java.version", "unknown"), ManagementFactory.getRuntimeMXBean().getVmName(),
-                    hashedJvmOptions(), Runtime.getRuntime().availableProcessors());
+                    fingerprintJvmOptions(ManagementFactory.getRuntimeMXBean().getInputArguments()),
+                    Runtime.getRuntime().availableProcessors());
         }
 
         JsonObject toJson() {
@@ -485,41 +556,10 @@ public final class PerformanceExperimentRunner {
             return object;
         }
 
-        /**
-         * SHA-256 over the sorted JVM input arguments. The raw arguments are never
-         * persisted, so property values (including secrets) never reach an artifact,
-         * while any option change still alters the fingerprint.
-         */
-        private static String hashedJvmOptions() {
-            List<String> arguments = new ArrayList<>(ManagementFactory.getRuntimeMXBean().getInputArguments());
-            arguments.sort(null);
-            try {
-                MessageDigest digest = MessageDigest.getInstance("SHA-256");
-                for (String argument : arguments) {
-                    digest.update(argument.getBytes(StandardCharsets.UTF_8));
-                    digest.update((byte) 0);
-                }
-                StringBuilder builder = new StringBuilder("sha256:");
-                for (byte value : digest.digest()) {
-                    builder.append(String.format("%02x", value));
-                }
-                return builder.toString();
-            } catch (NoSuchAlgorithmException impossible) {
-                throw new AssertionError("SHA-256 unavailable", impossible);
-            }
-        }
-
         private static String hashedHostId() {
             try {
-                String hostname = InetAddress.getLocalHost().getHostName();
-                MessageDigest digest = MessageDigest.getInstance("SHA-256");
-                byte[] hashed = digest.digest(hostname.getBytes(StandardCharsets.UTF_8));
-                StringBuilder builder = new StringBuilder("sha256:");
-                for (byte value : hashed) {
-                    builder.append(String.format("%02x", value));
-                }
-                return builder.toString();
-            } catch (IOException | NoSuchAlgorithmException e) {
+                return fingerprintHost(InetAddress.getLocalHost().getHostName(), cpuIdentity());
+            } catch (IOException e) {
                 // Must stay in sync with PerformanceComparison.UNKNOWN_HOST_ID,
                 // which treats artifacts carrying this sentinel as incomparable.
                 return "unknown";

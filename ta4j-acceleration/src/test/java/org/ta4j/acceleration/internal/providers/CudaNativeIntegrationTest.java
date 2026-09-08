@@ -54,7 +54,7 @@ class CudaNativeIntegrationTest {
                             new double[] { shockCode == 3 ? 0d : 1d },
                             new double[] { historicalReturn, historicalReturn }),
                     1_000_000L, 1_000_000L);
-            double expected = shockCode == 1 ? 400d : 100d;
+            double expected = shockCode == 0 ? 400d : 100d;
 
             assertThat(provider.execute(request).outputs()).containsExactly(expected, expected);
         }

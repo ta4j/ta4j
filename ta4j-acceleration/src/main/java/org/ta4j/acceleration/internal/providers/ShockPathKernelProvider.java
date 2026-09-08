@@ -301,10 +301,10 @@ abstract class ShockPathKernelProvider implements Provider {
         double[] chunkVariances = Arrays.copyOfRange(variances, base, base + count);
         double[] chunkWindows = Arrays.copyOfRange(windows, base * dimensions.lookback(),
                 (base + count) * dimensions.lookback());
-        // The native kernels predate the planner's versioned operation codes.
+        // Historical and empirical codes match; native normal predates the
+        // planner's insertion of the unsupported smoothed-empirical model.
         int nativeShockModel = switch ((int) params[0]) {
-        case 0 -> 1; // STANDARDIZED_EMPIRICAL
-        case 1 -> 0; // HISTORICAL_BOOTSTRAP
+        case 0, 1 -> (int) params[0];
         case 3 -> 2; // NORMAL
         default -> throw new IllegalArgumentException("Unsupported native shock model: " + params[0]);
         };

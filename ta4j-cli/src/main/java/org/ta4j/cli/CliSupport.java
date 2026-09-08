@@ -9,6 +9,9 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonParseException;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
 import org.ta4j.core.AnalysisCriterion;
@@ -89,6 +92,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.Reader;
+import java.io.StringReader;
 import java.io.UncheckedIOException;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -169,6 +173,7 @@ final class CliSupport {
      * materialization can exhaust the CLI heap or temporary storage.
      */
     static final long MAX_DATA_FILE_BYTES = 512L * 1024 * 1024;
+    static final int MAX_SERIALIZED_INPUT_BYTES = 16 * 1024 * 1024;
 
     private static final Gson GSON = new GsonBuilder().disableHtmlEscaping()
             .serializeNulls()
@@ -411,7 +416,8 @@ final class CliSupport {
             rejectOption(winProbabilityToken, "--win-probability", "--position-sizing kelly");
             rejectOption(payoffRatioToken, "--payoff-ratio", "--position-sizing kelly");
             rejectOption(coefficientToken, "--kelly-coefficient", "--position-sizing kelly");
-            double capital = parsePositiveDouble(capitalToken, "capital");
+            parsePositiveDouble(capitalToken, "capital");
+            Number capital = series.numFactory().numOf(capitalToken).getDelegate();
             yield new PositionSizingSpec(mode, capitalToken, null, null, null, null, PositionSizer.balance(capital));
         }
         case "kelly" -> {
@@ -419,11 +425,17 @@ final class CliSupport {
             requireOption(winProbabilityToken, "--win-probability", "--position-sizing kelly");
             requireOption(payoffRatioToken, "--payoff-ratio", "--position-sizing kelly");
             rejectOption(stakeAmountToken, "--stake-amount", "--position-sizing fixed");
-            double capital = parsePositiveDouble(capitalToken, "capital");
-            double winProbability = parseProbability(winProbabilityToken, "win-probability");
-            double payoffRatio = parsePositiveDouble(payoffRatioToken, "payoff-ratio");
-            double coefficient = coefficientToken == null || coefficientToken.isBlank() ? 1.0d
-                    : parsePositiveDouble(coefficientToken, "kelly-coefficient");
+            parsePositiveDouble(capitalToken, "capital");
+            parseProbability(winProbabilityToken, "win-probability");
+            parsePositiveDouble(payoffRatioToken, "payoff-ratio");
+            Number capital = series.numFactory().numOf(capitalToken).getDelegate();
+            Number winProbability = series.numFactory().numOf(winProbabilityToken).getDelegate();
+            Number payoffRatio = series.numFactory().numOf(payoffRatioToken).getDelegate();
+            Number coefficient = series.numFactory().one().getDelegate();
+            if (coefficientToken != null && !coefficientToken.isBlank()) {
+                parsePositiveDouble(coefficientToken, "kelly-coefficient");
+                coefficient = series.numFactory().numOf(coefficientToken).getDelegate();
+            }
             yield new PositionSizingSpec(mode, capitalToken, null, winProbabilityToken, payoffRatioToken,
                     coefficientToken == null || coefficientToken.isBlank() ? "1" : coefficientToken,
                     PositionSizer.kelly(capital, winProbability, payoffRatio, coefficient));
@@ -602,12 +614,12 @@ final class CliSupport {
         }
     }
 
-    static void requireBoundedSweepCriterionWork(List<CriterionSpec> criteria, long candidateCount, long bars,
-            int topK) {
+    static void requireBoundedCriterionWork(List<CriterionSpec> criteria, long bars, long reportCount,
+            long rankedCandidateCount) {
         BigInteger work = BigInteger.ZERO;
         for (int index = 0; index < criteria.size(); index++) {
             if (criteria.get(index).criterion() instanceof MonteCarloMaximumDrawdownCriterion monteCarlo) {
-                long evaluations = Math.min(candidateCount, topK) + (index == 0 ? candidateCount : 0L);
+                long evaluations = reportCount + (index == 0 ? rankedCandidateCount : 0L);
                 // Sampling is with replacement. Bound each selected block by the
                 // full history, and the default observed trade count by bar count.
                 long blocks = monteCarlo.getPathBlocks() == null ? bars : Math.max(0, monteCarlo.getPathBlocks());
@@ -617,9 +629,9 @@ final class CliSupport {
                         .multiply(BigInteger.valueOf(bars)));
             }
         }
-        if (work.compareTo(BigInteger.valueOf(MAX_SWEEP_WORK)) > 0) {
-            throw new IllegalArgumentException("Sweep Monte Carlo criteria require up to " + work
-                    + " sampled-bar evaluations; at most " + MAX_SWEEP_WORK + " are supported.");
+        if (work.compareTo(BigInteger.valueOf(MAX_BATCH_STRATEGY_WORK)) > 0) {
+            throw new IllegalArgumentException("Monte Carlo criteria require up to " + work
+                    + " sampled-bar evaluations; at most " + MAX_BATCH_STRATEGY_WORK + " are supported.");
         }
     }
 
@@ -833,10 +845,14 @@ final class CliSupport {
     }
 
     private static Path resolveAliasedTarget(Path path) {
-        Path existing = path;
+        Path existing = path.toAbsolutePath().normalize();
+        Set<Path> visitedLinks = new LinkedHashSet<>();
         // A dangling symlink leaf still redirects a future write to its target
         // path, so resolve link leaves even when the target does not exist yet.
         while (existing != null && !Files.exists(existing) && Files.isSymbolicLink(existing)) {
+            if (!visitedLinks.add(existing)) {
+                throw new IllegalArgumentException("Symbolic-link cycle in output artifact path " + path + ".");
+            }
             Path target;
             try {
                 target = Files.readSymbolicLink(existing);
@@ -844,7 +860,8 @@ final class CliSupport {
                 throw new UncheckedIOException("Could not resolve output artifact path " + path + ".", ex);
             }
             Path parent = existing.getParent();
-            existing = target.isAbsolute() || parent == null ? target : parent.resolve(target);
+            existing = (target.isAbsolute() || parent == null ? target : parent.resolve(target)).toAbsolutePath()
+                    .normalize();
         }
         ArrayDeque<Path> missing = new ArrayDeque<>();
         while (existing != null && !Files.exists(existing)) {
@@ -2023,28 +2040,50 @@ final class CliSupport {
         if (file == null || file.isBlank()) {
             throw new IllegalArgumentException("--criteria-file paths must not be blank.");
         }
-        Path path = Path.of(file).toAbsolutePath().normalize();
+        Path path = Path.of(file);
+        String json;
         try {
-            JsonElement root = JsonParser.parseString(Files.readString(path));
-            if (root.isJsonObject()) {
-                return List.of(root.toString());
-            }
-            if (root.isJsonArray()) {
-                List<String> inputs = new ArrayList<>();
-                JsonArray array = root.getAsJsonArray();
-                for (int index = 0; index < array.size(); index++) {
-                    JsonElement element = array.get(index);
-                    if (!element.isJsonObject()) {
-                        throw new IllegalArgumentException(
-                                "--criteria-file " + file + "[" + index + "] must be a JSON object.");
-                    }
-                    inputs.add(element.toString());
-                }
-                return List.copyOf(inputs);
-            }
-            throw new IllegalArgumentException("--criteria-file " + file + " must contain a JSON object or array.");
+            json = readBoundedSerializedFile(path);
         } catch (IOException exception) {
             throw new UncheckedIOException("Unable to read --criteria-file " + file + ".", exception);
+        }
+
+        try (JsonReader reader = new JsonReader(new StringReader(json))) {
+            JsonToken rootToken = reader.peek();
+            if (rootToken == JsonToken.BEGIN_OBJECT) {
+                JsonElement root = JsonParser.parseReader(reader);
+                if (reader.peek() != JsonToken.END_DOCUMENT) {
+                    throw new JsonParseException("Unexpected content after criterion object");
+                }
+                return List.of(root.toString());
+            }
+            if (rootToken != JsonToken.BEGIN_ARRAY) {
+                throw new IllegalArgumentException("--criteria-file " + file + " must contain a JSON object or array.");
+            }
+
+            reader.beginArray();
+            List<String> inputs = new ArrayList<>();
+            int index = 0;
+            while (reader.hasNext()) {
+                if (index >= MAX_SWEEP_STRATEGIES) {
+                    throw new IllegalArgumentException(
+                            "Criteria JSON input exceeds " + MAX_SWEEP_STRATEGIES + " entries.");
+                }
+                JsonElement element = JsonParser.parseReader(reader);
+                if (!element.isJsonObject()) {
+                    throw new IllegalArgumentException(
+                            "--criteria-file " + file + "[" + index + "] must be a JSON object.");
+                }
+                inputs.add(element.toString());
+                index++;
+            }
+            reader.endArray();
+            if (reader.peek() != JsonToken.END_DOCUMENT) {
+                throw new JsonParseException("Unexpected content after criterion array");
+            }
+            return List.copyOf(inputs);
+        } catch (IOException exception) {
+            throw new IllegalArgumentException("Invalid JSON in --criteria-file " + file + ".", exception);
         } catch (RuntimeException exception) {
             if (exception instanceof IllegalArgumentException) {
                 throw exception;
@@ -2130,7 +2169,7 @@ final class CliSupport {
 
     private static Rule buildRuleFromJsonPath(String ruleJsonPath, BarSeries series) {
         try {
-            String json = Files.readString(Path.of(ruleJsonPath));
+            String json = readBoundedSerializedFile(Path.of(ruleJsonPath));
             return buildRuleFromJsonString(json, ruleJsonPath, series);
         } catch (IOException ex) {
             throw new UncheckedIOException("Unable to read rule JSON from " + ruleJsonPath + ".", ex);
@@ -2147,7 +2186,7 @@ final class CliSupport {
 
     private static Strategy buildStrategyFromJsonPath(String strategyJsonPath, Integer unstableBars, BarSeries series) {
         try {
-            String json = Files.readString(Path.of(strategyJsonPath));
+            String json = readBoundedSerializedFile(Path.of(strategyJsonPath));
             return buildStrategyFromJsonString(json, strategyJsonPath, unstableBars, series);
         } catch (IOException ex) {
             throw new UncheckedIOException("Unable to read strategy JSON from " + strategyJsonPath + ".", ex);
@@ -2189,50 +2228,65 @@ final class CliSupport {
         return labels;
     }
 
+    static String readBoundedSerializedFile(Path path) throws IOException {
+        try (InputStream input = Files.newInputStream(path)) {
+            byte[] bytes = input.readNBytes(MAX_SERIALIZED_INPUT_BYTES + 1);
+            if (bytes.length > MAX_SERIALIZED_INPUT_BYTES) {
+                throw new IllegalArgumentException(
+                        "Serialized input " + path + " exceeds " + MAX_SERIALIZED_INPUT_BYTES + " bytes.");
+            }
+            return new String(bytes, StandardCharsets.UTF_8);
+        }
+    }
+
     private static List<Strategy> loadStrategiesFromJsonArrayFile(String strategiesJsonFile, Integer unstableBars,
             BarSeries series, List<String> invalidStrategies) {
-        List<Strategy> validStrategies = new ArrayList<>();
         String json;
         try {
-            json = Files.readString(Path.of(strategiesJsonFile));
+            json = readBoundedSerializedFile(Path.of(strategiesJsonFile));
         } catch (IOException ex) {
             throw new UncheckedIOException("Unable to read strategies JSON from " + strategiesJsonFile + ".", ex);
         }
-
-        JsonElement parsed;
-        try {
-            parsed = JsonParser.parseString(json);
-        } catch (RuntimeException ex) {
+        List<Strategy> validStrategies = new ArrayList<>();
+        try (JsonReader reader = new JsonReader(new StringReader(json))) {
+            if (reader.peek() != JsonToken.BEGIN_ARRAY) {
+                invalidStrategies.add("--strategies-json-file " + strategiesJsonFile
+                        + ": Expected a JSON array containing one or more serialized strategies.");
+                return List.of();
+            }
+            reader.beginArray();
+            int index = 0;
+            while (reader.hasNext()) {
+                if (index >= MAX_SWEEP_STRATEGIES) {
+                    throw new IllegalArgumentException(
+                            "Strategies JSON input exceeds " + MAX_SWEEP_STRATEGIES + " entries.");
+                }
+                JsonElement entry = JsonParser.parseReader(reader);
+                if (!entry.isJsonObject()) {
+                    invalidStrategies.add("--strategies-json-file " + strategiesJsonFile + "[" + index
+                            + "]: Each array element must be a serialized strategy object.");
+                } else {
+                    try {
+                        validStrategies.add(buildStrategyFromJsonString(entry.toString(),
+                                strategiesJsonFile + "[" + index + "]", unstableBars, series));
+                    } catch (IllegalArgumentException ex) {
+                        invalidStrategies.add(
+                                "--strategies-json-file " + strategiesJsonFile + "[" + index + "]: " + ex.getMessage());
+                    }
+                }
+                index++;
+            }
+            reader.endArray();
+            if (reader.peek() != JsonToken.END_DOCUMENT) {
+                throw new JsonParseException("Unexpected content after strategy array");
+            }
+            if (index == 0) {
+                invalidStrategies.add("--strategies-json-file " + strategiesJsonFile
+                        + ": Expected at least one serialized strategy.");
+            }
+        } catch (IOException | JsonParseException | IllegalStateException ex) {
             invalidStrategies.add("--strategies-json-file " + strategiesJsonFile + ": Invalid JSON content.");
             return List.of();
-        }
-        if (!parsed.isJsonArray()) {
-            invalidStrategies.add("--strategies-json-file " + strategiesJsonFile
-                    + ": Expected a JSON array containing one or more serialized strategies.");
-            return List.of();
-        }
-
-        JsonArray strategyArray = parsed.getAsJsonArray();
-        if (strategyArray.isEmpty()) {
-            invalidStrategies.add(
-                    "--strategies-json-file " + strategiesJsonFile + ": Expected at least one serialized strategy.");
-            return List.of();
-        }
-
-        for (int index = 0; index < strategyArray.size(); index++) {
-            JsonElement entry = strategyArray.get(index);
-            if (!entry.isJsonObject()) {
-                invalidStrategies.add("--strategies-json-file " + strategiesJsonFile + "[" + index
-                        + "]: Each array element must be a serialized strategy object.");
-                continue;
-            }
-            try {
-                validStrategies.add(buildStrategyFromJsonString(entry.toString(),
-                        strategiesJsonFile + "[" + index + "]", unstableBars, series));
-            } catch (IllegalArgumentException ex) {
-                invalidStrategies
-                        .add("--strategies-json-file " + strategiesJsonFile + "[" + index + "]: " + ex.getMessage());
-            }
         }
         return List.copyOf(validStrategies);
     }
@@ -2261,7 +2315,7 @@ final class CliSupport {
             return inlineValue;
         }
         try {
-            return Files.readString(Path.of(fileValue));
+            return readBoundedSerializedFile(Path.of(fileValue));
         } catch (IOException ex) {
             throw new UncheckedIOException("Unable to read serialized input from " + fileValue + ".", ex);
         }

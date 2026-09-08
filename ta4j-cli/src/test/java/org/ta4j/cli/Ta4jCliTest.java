@@ -21,11 +21,14 @@ import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.rules.AbstractRule;
+import org.ta4j.core.rules.JustOnceRule;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
+import java.io.RandomAccessFile;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -244,6 +247,29 @@ class Ta4jCliTest {
         JsonObject result = result(readJson(outputFile));
         assertThat(result.get("backtest")).isNotNull();
         assertThat(result.get("walkForward")).isNotNull();
+    }
+
+    @Test
+    void ruleTestBuildsFreshJustOnceRulesForEachFold() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path entryRuleFile = tempDir.resolve("just-once-entry.json");
+        Path exitRuleFile = tempDir.resolve("just-once-exit.json");
+        Files.writeString(entryRuleFile, new JustOnceRule().toJson());
+        Files.writeString(exitRuleFile, new JustOnceRule().toJson());
+        Path outputFile = tempDir.resolve("just-once-rule-test.json");
+
+        int exitCode = runCli("rule", "test", "--data-file", dataFile.toString(), "--entry-rule-json-file",
+                entryRuleFile.toString(), "--exit-rule-json-file", exitRuleFile.toString(), "--output",
+                outputFile.toString(), "--min-train-bars", "40", "--test-bars", "20", "--step-bars", "20",
+                "--holdout-bars", "20");
+        assertThat(exitCode).isZero();
+
+        JsonArray folds = result(readJson(outputFile)).getAsJsonObject("walkForward").getAsJsonArray("folds");
+        assertThat(folds).isNotEmpty();
+        for (var fold : folds) {
+            assertThat(fold.getAsJsonObject().getAsJsonObject("statement").get("positionCount").getAsInt())
+                    .isEqualTo(1);
+        }
     }
 
     @Test
@@ -1061,6 +1087,33 @@ class Ta4jCliTest {
     }
 
     @Test
+    void backtestRejectsCyclicDanglingArtifactLinks() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path first = tempDir.resolve("cycle-a.json");
+        Path second = tempDir.resolve("cycle-b.json");
+        Files.createSymbolicLink(first, second.getFileName());
+        Files.createSymbolicLink(second, first.getFileName());
+
+        CliRunResult result = org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(
+                java.time.Duration.ofSeconds(5),
+                () -> runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(), "--strategy",
+                        "DayOfWeekStrategy_MONDAY_FRIDAY", "--output", first.toString()));
+
+        assertThat(result.exitCode()).isEqualTo(2);
+    }
+
+    @Test
+    void backtestRejectsMonteCarloReportingBeyondWorkCeiling() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
+                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--criteria",
+                "org.ta4j.core.criteria.drawdown.MonteCarloMaximumDrawdownCriterion");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+    }
+
+    @Test
     void backtestRejectsNonFiniteTokensInCsvData() throws Exception {
         Path nanCloseFile = tempDir.resolve("nan-close.csv");
         Files.writeString(nanCloseFile, """
@@ -1154,6 +1207,26 @@ class Ta4jCliTest {
     }
 
     @Test
+    void ruleTestFailsWhenEveryWalkForwardFoldFails() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path ruleFile = tempDir.resolve("fold-failing-rule.json");
+        Files.writeString(ruleFile, "{\"type\":\"" + FoldFailingRule.class.getName() + "\"}");
+        Path outputFile = tempDir.resolve("rule-test-all-folds-failed.json");
+
+        CliRunResult run = runCliAllowingError("rule", "test", "--data-file", dataFile.toString(),
+                "--entry-rule-json-file", ruleFile.toString(), "--exit-rule-json-file", ruleFile.toString(), "--output",
+                outputFile.toString(), "--min-train-bars", "40", "--test-bars", "20", "--step-bars", "20",
+                "--holdout-bars", "20");
+
+        assertThat(run.exitCode()).isNotZero();
+        JsonObject payload = readJson(outputFile);
+        assertThat(payload.get("status").getAsString()).isEqualTo("error");
+        JsonObject walkForward = result(payload).getAsJsonObject("walkForward");
+        assertThat(walkForward.getAsJsonArray("folds")).hasSize(0);
+        assertThat(walkForward.get("failedFoldCount").getAsInt()).isPositive();
+    }
+
+    @Test
     void sweepReportsPartialFailuresWithoutDroppingSurvivors() throws Exception {
         ExplodingOnceCriterion.throwBudget.set(1);
         TraceTestLogger logs = new TraceTestLogger();
@@ -1233,6 +1306,17 @@ class Ta4jCliTest {
 
         assertThat(result.exitCode()).isEqualTo(74);
         assertThat(result.stderr()).contains("Unable to read strategies JSON from " + missing);
+    }
+
+    public static final class FoldFailingRule extends AbstractRule {
+
+        @Override
+        public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+            if (tradingRecord.getStartIndex() > 0) {
+                throw new IllegalStateException("injected fold failure");
+            }
+            return false;
+        }
     }
 
     public static final class ExplodingOnceCriterion implements AnalysisCriterion {

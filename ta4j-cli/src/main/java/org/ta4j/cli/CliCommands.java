@@ -493,6 +493,8 @@ final class CliCommands {
                     unstableBars, series);
             strategyInput.enforceInvalidInputPolicy(resolvedStrategies, err());
             CliSupport.requireBoundedStrategyBatch(resolvedStrategies.strategies(), series.getBarCount());
+            CliSupport.requireBoundedCriterionWork(resolvedCriteria, series.getBarCount(),
+                    resolvedStrategies.strategies().size(), 0);
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
                     execution.borrowRate, execution.borrowSide);
             CliSupport.PositionSizingSpec positionSizing = execution.resolvePositionSizing(series);
@@ -767,8 +769,8 @@ final class CliCommands {
                     criteria.criteriaFiles, artifacts.output, artifacts.chart));
             BarSeries series = data.loadSeries(in());
             List<Strategy> strategies = CliSupport.buildSweepStrategies(params, paramGrids, parsedUnstableBars, series);
-            CliSupport.requireBoundedSweepCriterionWork(resolvedCriteria, strategies.size(), series.getBarCount(),
-                    topK);
+            CliSupport.requireBoundedCriterionWork(resolvedCriteria, series.getBarCount(),
+                    Math.min(strategies.size(), topK), strategies.size());
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
                     execution.borrowRate, execution.borrowSide);
             CliSupport.PositionSizingSpec positionSizing = execution.resolvePositionSizing(series);
@@ -1084,13 +1086,16 @@ final class CliCommands {
             Strategy strategy = CliSupport.buildRuleTestStrategy(entryRuleLabel, entryRuleJsonFile, exitRuleLabel,
                     exitRuleJsonFile, parsedUnstableBars, series);
             CliSupport.requireBoundedWalkForwardBatch(List.of(strategy), series, config);
+            String strategyJson = strategy.toJson();
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
                     execution.borrowRate, execution.borrowSide);
             CliSupport.PositionSizingSpec positionSizing = execution.resolvePositionSizing(series);
-            BacktestExecutionResult backtest = executor.executeWithRuntimeReport(List.of(strategy),
-                    positionSizing.positionSizer(), strategy.getStartingType());
+            Strategy backtestStrategy = Strategy.fromJson(series, strategyJson);
+            BacktestExecutionResult backtest = executor.executeWithRuntimeReport(List.of(backtestStrategy),
+                    positionSizing.positionSizer(), backtestStrategy.getStartingType());
             StrategyWalkForwardExecutionResult walkForwardResult = executor.executeWalkForward(strategy,
-                    positionSizing.positionSizer(), strategy.getStartingType(), config,
+                    ignored -> Strategy.fromJson(series, strategyJson), positionSizing.positionSizer(),
+                    strategy.getStartingType(), config,
                     CliSupport.progressCallback(artifacts.progress, err(), "rule test"));
 
             rejectFoldlessGeometry(walkForwardResult, series);
@@ -1112,15 +1117,17 @@ final class CliCommands {
             Map<String, Object> walkForwardMap = CliSupport.walkForwardToMap(series, walkForwardResult,
                     resolvedCriteria, artifacts.reproducible, null, null);
             payload.put("walkForward", walkForwardMap);
-            if (((Number) walkForwardMap.get("failedFoldCount")).intValue() > 0) {
-                response.put("status", "partial");
+            int failedFoldCount = ((Number) walkForwardMap.get("failedFoldCount")).intValue();
+            boolean allFoldsFailed = allFoldsFailed(walkForwardResult);
+            if (failedFoldCount > 0) {
+                response.put("status", allFoldsFailed ? "error" : "partial");
             }
             CliSupport.putRunMetadata(response, "backtestRuntime",
                     CliSupport.backtestRuntimeToMap(backtest.runtimeReport()));
             CliSupport.putRunMetadata(response, "walkForwardRuntime",
                     CliSupport.walkForwardRuntimeToMap(walkForwardResult.runtimeReport()));
             CliSupport.writeJson(CliSupport.toJson(response), outputPath, out());
-            return 0;
+            return allFoldsFailed ? CommandLine.ExitCode.SOFTWARE : 0;
         }
     }
 

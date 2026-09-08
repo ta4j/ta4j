@@ -3,6 +3,7 @@
  */
 package org.ta4j.cli;
 
+import java.io.Writer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.ta4j.core.BaseBar;
@@ -12,6 +13,8 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Trade;
 import org.ta4j.core.aggregator.BaseBarSeriesAggregator;
 import org.ta4j.core.aggregator.DurationBarAggregator;
 import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
@@ -21,6 +24,7 @@ import org.ta4j.core.analysis.frequency.SamplingFrequency;
 import org.ta4j.core.backtest.BacktestExecutionResult;
 import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.backtest.BacktestRuntimeReport;
+import org.ta4j.core.backtest.PositionSizer;
 import org.ta4j.core.backtest.StrategyWalkForwardExecutionResult;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.criteria.SharpeRatioCriterion;
@@ -54,6 +58,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.io.RandomAccessFile;
 import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
@@ -283,9 +288,8 @@ class CliSupportTest {
                 List.of("org.ta4j.core.criteria.drawdown.MonteCarloMaximumDrawdownCriterion"),
                 CliSupport.DEFAULT_SWEEP_CRITERIA);
 
-        CliSupport.requireBoundedSweepCriterionWork(criteria, 2, 10, 1);
-        assertThrows(IllegalArgumentException.class,
-                () -> CliSupport.requireBoundedSweepCriterionWork(criteria, 2, 100, 1));
+        CliSupport.requireBoundedCriterionWork(criteria, 10, 1, 2);
+        assertThrows(IllegalArgumentException.class, () -> CliSupport.requireBoundedCriterionWork(criteria, 100, 1, 2));
     }
 
     @Test
@@ -299,6 +303,69 @@ class CliSupportTest {
         assertThat(Files.size(target)).isLessThanOrEqualTo(4L);
         CliSupport.copyBoundedInput(new ByteArrayInputStream(new byte[] { 1, 2, 3, 4 }), target, 4);
         assertThat(Files.readAllBytes(target)).containsExactly(1, 2, 3, 4);
+    }
+
+    @Test
+    void balanceAndKellySizingPreserveDecimalPrincipal() {
+        NumFactory factory = DecimalNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).withData(1d, 1d).build();
+        PositionSizer.Context context = new PositionSizer.Context(0, 0, factory.one(), sampleSweepStrategy(series),
+                series, Trade.TradeType.BUY, new BaseTradingRecord(), new ZeroCostModel(), new ZeroCostModel());
+        String principal = "9007199254740993";
+        CliSupport.PositionSizingSpec balance = CliSupport.resolvePositionSizing(series, "balance", principal, null,
+                null, null, null);
+        CliSupport.PositionSizingSpec kelly = CliSupport.resolvePositionSizing(series, "kelly", principal, null, "0.75",
+                "1", "2");
+
+        assertThat(balance.positionSizer().amount(context)).isEqualTo(factory.numOf(principal));
+        assertThat(kelly.positionSizer().amount(context)).isEqualTo(factory.numOf(principal));
+    }
+
+    @Test
+    void serializedFileReadRejectsOversizedInput() throws IOException {
+        Path file = tempDir.resolve("oversized-strategies.json");
+        try (RandomAccessFile output = new RandomAccessFile(file.toFile(), "rw")) {
+            output.setLength(CliSupport.MAX_SERIALIZED_INPUT_BYTES + 1L);
+        }
+
+        assertThrows(IllegalArgumentException.class, () -> CliSupport.readBoundedSerializedFile(file));
+    }
+
+    @Test
+    void strategyArrayStopsAtEntryCeilingDespiteOneValidStrategy() throws IOException {
+        BarSeries series = syntheticSeries(10);
+        Path file = tempDir.resolve("too-many-strategies.json");
+        Files.writeString(file,
+                "[" + sampleSweepStrategy(series).toJson() + ",null".repeat(CliSupport.MAX_SWEEP_STRATEGIES) + "]");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> CliSupport.resolveStrategies(null, null, List.of(), file.toString(), null, series));
+    }
+
+    @Test
+    void criteriaArrayStopsAtEntryCeilingBeforeMaterializingAllEntries() throws IOException {
+        Path file = tempDir.resolve("too-many-criteria.json");
+        String criterionJson = new NetProfitCriterion().toJson();
+        Files.writeString(file,
+                "[" + criterionJson + ("," + criterionJson).repeat(CliSupport.MAX_SWEEP_STRATEGIES) + "]");
+
+        assertThatThrownBy(() -> CliSupport.resolveCriteria(List.of(), List.of(), List.of(file.toString()),
+                CliSupport.DEFAULT_SWEEP_CRITERIA)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void criteriaFileRejectsOversizedInputBeforeParsing() throws IOException {
+        Path file = tempDir.resolve("oversized-criteria.json");
+        try (Writer output = Files.newBufferedWriter(file)) {
+            output.write(new NetProfitCriterion().toJson());
+            String padding = " ".repeat(8192);
+            for (long bytes = 2; bytes <= CliSupport.MAX_SERIALIZED_INPUT_BYTES; bytes += padding.length()) {
+                output.write(padding);
+            }
+        }
+
+        assertThatThrownBy(() -> CliSupport.resolveCriteria(List.of(), List.of(), List.of(file.toString()),
+                CliSupport.DEFAULT_SWEEP_CRITERIA)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

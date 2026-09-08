@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,6 +29,26 @@ class PerformanceExperimentRunnerTest {
 
     @TempDir
     Path tempDir;
+
+    @Test
+    void worktreePathsDoNotMaskMeaningfulJvmOptionChanges() {
+        String base = PerformanceExperimentRunner
+                .fingerprintJvmOptions(List.of("-Dmaven.multiModuleProjectDirectory=/worktrees/base", "-Xmx2g"));
+        String candidate = PerformanceExperimentRunner
+                .fingerprintJvmOptions(List.of("-Xmx2g", "-Dmaven.multiModuleProjectDirectory=/worktrees/candidate"));
+        String differentHeap = PerformanceExperimentRunner
+                .fingerprintJvmOptions(List.of("-Dmaven.multiModuleProjectDirectory=/worktrees/candidate", "-Xmx4g"));
+
+        assertEquals(base, candidate);
+        assertNotEquals(base, differentHeap);
+    }
+
+    @Test
+    void hostFingerprintRequiresAndDistinguishesProcessorIdentity() {
+        assertNotEquals(PerformanceExperimentRunner.fingerprintHost("cloned-host", "processor-model-a"),
+                PerformanceExperimentRunner.fingerprintHost("cloned-host", "processor-model-b"));
+        assertEquals("unknown", PerformanceExperimentRunner.fingerprintHost("cloned-host", ""));
+    }
 
     @Test
     void cliRejectsInvalidBarCounts() {

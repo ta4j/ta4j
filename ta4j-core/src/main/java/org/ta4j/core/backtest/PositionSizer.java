@@ -4,6 +4,8 @@
 package org.ta4j.core.backtest;
 
 import java.util.Objects;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
@@ -173,6 +175,11 @@ public interface PositionSizer {
 
     private static Number snapshotNumber(Number value, String name) {
         validatePositiveNumber(value, name);
+        // These immutable Number types retain all principal/fraction digits.
+        // Other Number implementations may be mutable, so snapshot their value.
+        if (value instanceof BigDecimal || value instanceof BigInteger) {
+            return value;
+        }
         return Double.valueOf(value.doubleValue());
     }
 
