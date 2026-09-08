@@ -11,6 +11,11 @@ import org.ta4j.core.acceleration.AccelerationRuntime.KernelRequest;
  * A claimed calculation: the kernel request providers execute plus the
  * core-owned decoder that reconstructs domain values from raw output.
  *
+ * <p>
+ * Public visibility bridges core domain planners and the acceleration runtime
+ * across Java packages. This record is not passed to external providers; their
+ * boundary remains the primitive-only {@link KernelRequest}.
+ *
  * @param request kernel request built from primitives only
  * @param decoder core-owned raw-to-domain reconstruction
  * @since 0.25.1

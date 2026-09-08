@@ -52,6 +52,14 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
     @Override
     public PlannedOperation plan(Indicator<?> indicator, int fromInclusive, int toInclusive, NumFactory factory,
             long memoryLimitBytes) {
+        // Keep host staging below a quarter of the maximum heap, independently of
+        // the device budget, leaving headroom for series caches and decoded values.
+        return plan(indicator, fromInclusive, toInclusive, factory, memoryLimitBytes,
+                Runtime.getRuntime().maxMemory() / 4L);
+    }
+
+    PlannedOperation plan(Indicator<?> indicator, int fromInclusive, int toInclusive, NumFactory factory,
+            long memoryLimitBytes, long hostMemoryLimitBytes) {
         Objects.requireNonNull(indicator, "indicator must not be null");
         Objects.requireNonNull(factory, "factory must not be null");
         if (!(indicator instanceof MonteCarloPriceForecastIndicator forecast)) {
@@ -80,6 +88,7 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         int windowSize;
         long estimatedScalarNanos;
         long peakBytes;
+        long hostBytes;
         try {
             windowSize = Math.multiplyExact(size, lookback);
             int outputSize = Math.multiplyExact(size, iterations);
@@ -89,6 +98,10 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
             long outputBytes = Math.multiplyExact((long) outputSize, BYTES_PER_ELEMENT);
             long workspaceBytes = Math.multiplyExact(steps, BYTES_PER_ELEMENT);
             peakBytes = Math.addExact(inputBytes, Math.addExact(outputBytes, workspaceBytes));
+            // Planner snapshots, immutable request copies and provider-accessor
+            // copies may overlap. Allow four output buffers for native handoff,
+            // result ownership and decoding before any large array is allocated.
+            hostBytes = Math.addExact(Math.multiplyExact(inputBytes, 3L), Math.multiplyExact(outputBytes, 4L));
             estimatedScalarNanos = Math.multiplyExact(steps, NANOS_PER_PATH_STEP);
         } catch (ArithmeticException exception) {
             LOG.warn("Declining {} over [{}..{}]: dimensions overflow ({}); scalar path",
@@ -96,10 +109,10 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
                     exception.getMessage());
             return null;
         }
-        if (peakBytes > memoryLimitBytes) {
-            LOG.warn("Declining {} over [{}..{}]: peak device estimate {} exceeds budget {}; scalar path",
+        if (peakBytes > memoryLimitBytes || hostBytes > hostMemoryLimitBytes) {
+            LOG.warn("Declining {} over [{}..{}]: device estimate {} / budget {}, host staging {} / budget {}; scalar path",
                     AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1, fromInclusive, toInclusive, peakBytes,
-                    memoryLimitBytes);
+                    memoryLimitBytes, hostBytes, hostMemoryLimitBytes);
             return null;
         }
         double[] prices = new double[size];

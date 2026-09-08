@@ -5,6 +5,7 @@ package org.ta4j.core.indicators.forecast;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -93,6 +94,15 @@ public class MonteCarloShockPathPlannerTest {
         Fixture fixture = fixture(DoubleNumFactory.getInstance());
 
         assertNull(new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 3, fixture.series.numFactory(), 1L));
+    }
+
+    @Test
+    public void hostStagingBudgetIsIndependentOfDeviceBudget() {
+        Fixture fixture = fixture(DoubleNumFactory.getInstance());
+        MonteCarloShockPathPlanner planner = new MonteCarloShockPathPlanner();
+
+        assertNull(planner.plan(fixture.indicator, 2, 3, fixture.series.numFactory(), Long.MAX_VALUE, 300L));
+        assertNotNull(planner.plan(fixture.indicator, 2, 3, fixture.series.numFactory(), Long.MAX_VALUE, 1024L));
     }
 
     @Test
