@@ -382,7 +382,7 @@ public class BaseBar implements Bar {
      * their complete update.
      */
     @SuppressFBWarnings(value = "AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE", justification = "BaseBar mutators are intentionally mutable; concurrent callers must synchronize at the series boundary.")
-    protected final void applyTrade(Num tradeVolume, Num tradePrice) {
+    final void applyTrade(Num tradeVolume, Num tradePrice) {
         final boolean wasSuppressed = suppressRetainedBarMutationPublication;
         suppressRetainedBarMutationPublication = true;
         try {
@@ -461,7 +461,7 @@ public class BaseBar implements Bar {
         }
     }
 
-    protected final void publishRetainedBarMutation() {
+    final void publishRetainedBarMutation() {
         final List<RetainedSeriesMutation> mutations;
         synchronized (retainingSeries) {
             purgeClearedRetainingSeries();

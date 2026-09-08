@@ -901,12 +901,13 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                 lock.writeLock().unlock();
             }
         });
-        writerLocked.await();
+        assertTrue("Writer should acquire the lock within the timeout", writerLocked.await(10, TimeUnit.SECONDS));
         final Future<?> mutation = executorService.submit(() -> retainedBar.addPrice(numOf(20)));
         try {
-            assertEquals(RetainedMutationEvent.WRITE_LOCK_ATTEMPT, events.take());
+            assertEquals("Mutation should attempt the series write lock within the timeout",
+                    RetainedMutationEvent.WRITE_LOCK_ATTEMPT, events.poll(10, TimeUnit.SECONDS));
             evictHead.countDown();
-            evictionComplete.await();
+            assertTrue("Eviction should complete within the timeout", evictionComplete.await(10, TimeUnit.SECONDS));
         } finally {
             evictHead.countDown();
             releaseWriter.countDown();
