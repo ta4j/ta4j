@@ -1,7 +1,6 @@
 ## Unreleased
 
 - **Experimental Elliott topology kernel lands in package-private internals with an internal test-plane study bridge (`CF-525`)**: a falsifiable hypothesis stack under `org.ta4j.core.analysis.elliott` adds confirmation-aware pivot history (`PivotHistory`, `ConfirmedPivot`, `ConfirmationTracker`), grammar matching for `MOTIVE_5`, `CORRECTIVE_3`, and `CYCLE_5_3` with first-class insufficient-history/no-match/forming/complete/ambiguous/invalidated outcomes (`TopologyAnalyzer`, bounded to the 64 most recent candidates), and four independently selectable relationship rules (wave-2 origin, wave-3 not-shortest, wave-4 non-overlap, wave-5 momentum divergence) emitting structured evidence instead of opaque confidence scores. `StudyRunner`, `StudyReport`, and `DetectorRobustnessMatrix` remain package-private experiment entry points exercised by the frozen test-plane bridge; topology and relationship implementation types remain package-private pending the CF-525 experimental acceptance gates, with no public API changes.
-- _No changes yet._
 
 ## 0.25.0 (2026-09-07)
 

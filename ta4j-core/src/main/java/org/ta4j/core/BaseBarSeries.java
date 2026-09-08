@@ -76,12 +76,6 @@ public class BaseBarSeries implements BarSeries {
      */
     private int removedBarsCount = 0;
     private long barHistoryRevision;
-    /**
-     * Conservative global epoch observation: a mutation in another series may cause
-     * an unnecessary invalidation, but never leaves this series stale.
-     */
-    private long observedRetainedBarMutationEpoch;
-    private boolean retainedBarMutationEpochInitialized;
     private transient Deque<BarHistoryChange> barHistoryChanges;
 
     @Serial
@@ -91,7 +85,6 @@ public class BaseBarSeries implements BarSeries {
         // before any retained-bar access can reach the trace-logging branch.
         this.log = LoggerFactory.getLogger(getClass());
         attachRetainedBarMutationTracking();
-        markRetainedBarMutationsObserved();
     }
 
     /**
@@ -145,87 +138,34 @@ public class BaseBarSeries implements BarSeries {
 
     private synchronized void attachRetainedBarMutationTracking() {
         for (Bar bar : this.bars) {
-            if (bar instanceof BaseBar baseBar) {
-                baseBar.attachToBarSeries();
-            }
-        }
-        observedRetainedBarMutationEpoch = BaseBar.retainedBarMutationEpoch();
-        retainedBarMutationEpochInitialized = true;
-    }
-
-    private static void attachBarMutationTracking(final Bar bar) {
-        if (bar instanceof BaseBar baseBar) {
-            baseBar.attachToBarSeries();
+            attachBarMutationTracking(bar);
         }
     }
 
-    private static void detachBarMutationTracking(final Bar bar) {
+    private void attachBarMutationTracking(final Bar bar) {
         if (bar instanceof BaseBar baseBar) {
-            baseBar.detachFromBarSeries();
+            baseBar.attachToBarSeries(this);
+        }
+    }
+
+    private void detachBarMutationTracking(final Bar bar) {
+        if (bar instanceof BaseBar baseBar) {
+            baseBar.detachFromBarSeries(this);
         }
     }
 
     /**
-     * Reconciles the global retained-bar mutation epoch with this series' last
-     * observation. Epoch advances observed here originate from retained bars
-     * mutated through direct bar references, so their index is unknown: journal a
-     * whole-retained-window change instead of guessing the earliest affected index.
-     *
-     * @return the observed epoch after reconciliation
+     * Records a direct mutation for this bar only when this series still retains
+     * it. The bar calls only its retaining series, so unrelated series do not
+     * receive synthetic history changes.
      */
-    private synchronized long synchronizeRetainedBarMutations() {
-        final long currentEpoch = BaseBar.retainedBarMutationEpoch();
-        if (!retainedBarMutationEpochInitialized) {
-            observedRetainedBarMutationEpoch = currentEpoch;
-            retainedBarMutationEpochInitialized = true;
-        } else if (currentEpoch != observedRetainedBarMutationEpoch) {
-            if (!this.bars.isEmpty()) {
-                recordBarHistoryChange(0);
-            }
-            observedRetainedBarMutationEpoch = currentEpoch;
-        }
-        return observedRetainedBarMutationEpoch;
-    }
-
-    private synchronized void markRetainedBarMutationsObserved() {
-        observedRetainedBarMutationEpoch = BaseBar.retainedBarMutationEpoch();
-        retainedBarMutationEpochInitialized = true;
-    }
-
-    /**
-     * Records this operation's change and then closes the retained-bar mutation
-     * reconciliation without silently consuming concurrent epoch advances.
-     *
-     * <p>
-     * {@code expectedEpochAfterOwnMutation} is the epoch returned by
-     * {@link #synchronizeRetainedBarMutations()} plus the advances this operation's
-     * own retained-bar mutation caused (one for a trade or price applied to the
-     * retained bar, zero for structural changes). Any higher current epoch
-     * originates from an earlier retained bar concurrently mutated through a direct
-     * bar reference while this operation ran; that index cannot be recovered here,
-     * so the whole retained window is journaled conservatively rather than consumed
-     * without a record.
-     *
-     * @param expectedEpochAfterOwnMutation global epoch expected once this
-     *                                      operation's own mutation has settled
-     * @param changedIndex                  series index this operation itself
-     *                                      changed
-     */
-    private synchronized void commitBarHistoryChange(final long expectedEpochAfterOwnMutation, final int changedIndex) {
-        recordBarHistoryChange(changedIndex);
-        long currentEpoch = BaseBar.retainedBarMutationEpoch();
-        while (currentEpoch > expectedEpochAfterOwnMutation) {
-            recordBarHistoryChange(0);
-            observedRetainedBarMutationEpoch = currentEpoch;
-            if (BaseBar.retainedBarMutationEpoch() == currentEpoch) {
-                // Stable double-read: every advance up to currentEpoch is now
-                // journaled; anything later stays detectable by the next
-                // reconciliation because it exceeds the stored observation.
+    synchronized void retainedBarMutated(final BaseBar bar) {
+        for (int innerIndex = 0; innerIndex < this.bars.size(); innerIndex++) {
+            if (this.bars.get(innerIndex) == bar) {
+                recordBarHistoryChange(this.removedBarsCount + innerIndex);
                 return;
             }
-            currentEpoch = BaseBar.retainedBarMutationEpoch();
         }
-        observedRetainedBarMutationEpoch = currentEpoch;
     }
 
     private static Config defaultConfig(final String name, final List<Bar> bars) {
@@ -372,11 +312,8 @@ public class BaseBarSeries implements BarSeries {
      * @since 0.23.1
      */
     @Override
-    public long getBarHistoryRevision() {
-        synchronizeRetainedBarMutations();
-        synchronized (this) {
-            return this.barHistoryRevision;
-        }
+    public synchronized long getBarHistoryRevision() {
+        return this.barHistoryRevision;
     }
 
     /**
@@ -385,15 +322,9 @@ public class BaseBarSeries implements BarSeries {
      * @since 0.24.1
      */
     @Override
-    public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
-        synchronizeRetainedBarMutations();
-        final int removedBarsCount = this.removedBarsCount;
-        final int maximumBarCount = this.maximumBarCount;
-        final int seriesEndIndex = this.seriesEndIndex;
-        synchronized (this) {
-            return new BarSeriesChangeSnapshot(this.barHistoryRevision, earliestChangedIndexSince(sinceRevision),
-                    removedBarsCount - 1, maximumBarCount, seriesEndIndex);
-        }
+    public synchronized BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
+        return new BarSeriesChangeSnapshot(this.barHistoryRevision, earliestChangedIndexSince(sinceRevision),
+                this.removedBarsCount - 1, this.maximumBarCount, this.seriesEndIndex);
     }
 
     /**
@@ -404,7 +335,6 @@ public class BaseBarSeries implements BarSeries {
     @Override
     @SuppressFBWarnings(value = "AT_STALE_THREAD_WRITE_OF_PRIMITIVE", justification = "BaseBarSeries structural indexes are intentionally single-threaded; concurrent callers must use ConcurrentBarSeries.")
     public void clear() {
-        synchronizeRetainedBarMutations();
         if (!this.bars.isEmpty()) {
             recordBarHistoryChange(0);
             for (Bar bar : this.bars) {
@@ -415,7 +345,6 @@ public class BaseBarSeries implements BarSeries {
         this.seriesBeginIndex = -1;
         this.seriesEndIndex = -1;
         this.removedBarsCount = 0;
-        markRetainedBarMutationsObserved();
     }
 
     @Override
@@ -469,14 +398,14 @@ public class BaseBarSeries implements BarSeries {
                     String.format("Cannot add Bar with data type: %s to series with datatype: %s",
                             bar.getClosePrice().getClass(), this.numFactory.one().getClass()));
         }
-        final long epochBeforeStructuralChange = synchronizeRetainedBarMutations();
+
 
         if (!this.bars.isEmpty()) {
             if (replace) {
                 final Bar previousBar = this.bars.set(this.bars.size() - 1, bar);
                 detachBarMutationTracking(previousBar);
                 attachBarMutationTracking(bar);
-                commitBarHistoryChange(epochBeforeStructuralChange, this.seriesEndIndex);
+                recordBarHistoryChange(this.seriesEndIndex);
                 return;
             }
             if (this.seriesEndIndex == Integer.MAX_VALUE) {
@@ -529,11 +458,10 @@ public class BaseBarSeries implements BarSeries {
         if (innerIndex < 0 || innerIndex >= this.bars.size()) {
             throw new IndexOutOfBoundsException(buildOutOfBoundsMessage(this, index));
         }
-        final long epochBeforeStructuralChange = synchronizeRetainedBarMutations();
         final Bar previousBar = this.bars.set(innerIndex, bar);
         detachBarMutationTracking(previousBar);
         attachBarMutationTracking(bar);
-        commitBarHistoryChange(epochBeforeStructuralChange, index);
+        recordBarHistoryChange(index);
     }
 
     @Override
@@ -543,19 +471,12 @@ public class BaseBarSeries implements BarSeries {
 
     @Override
     public void addTrade(final Num tradeVolume, final Num tradePrice) {
-        final long epochBeforeTrade = synchronizeRetainedBarMutations();
         getLastBar().addTrade(tradeVolume, tradePrice);
-        // The retained last bar publishes exactly one epoch advance for this trade;
-        // anything beyond that is a concurrent foreign mutation and is journaled
-        // conservatively instead of being consumed silently.
-        commitBarHistoryChange(epochBeforeTrade + 1, this.seriesEndIndex);
     }
 
     @Override
     public void addPrice(final Num price) {
-        final long epochBeforeTrade = synchronizeRetainedBarMutations();
         getLastBar().addPrice(price);
-        commitBarHistoryChange(epochBeforeTrade + 1, this.seriesEndIndex);
     }
 
     private synchronized void recordBarHistoryChange(final int changedIndex) {

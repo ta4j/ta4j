@@ -6,12 +6,12 @@ package org.ta4j.core;
 import java.io.IOException;
 import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
-import java.io.Serial;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.num.Num;
@@ -23,29 +23,11 @@ public class BaseBar implements Bar {
     private static final long serialVersionUID = 8038383777467488147L;
 
     /**
-     * Monotonic signal for mutations of bars currently retained by a
-     * {@link BaseBarSeries}. The series revision synchronizer uses this signal to
-     * invalidate cached consumers without scanning every retained bar.
+     * Retaining series and their reference counts. A bar can appear more than once
+     * in one series and can be shared by several series, each of which must
+     * receive only its own mutation notification.
      */
-    private static final AtomicLong RETAINED_BAR_MUTATION_EPOCH = new AtomicLong();
-
-    /**
-     * Atomic updater for {@link #mutationTrackingUsers}: the same {@code BaseBar}
-     * can be retained by several series (for example through
-     * {@link BaseBarSeries#getSubSeries}), and those series synchronize on
-     * independent locks, so the attachment count must be maintained atomically at
-     * the bar level or concurrent attachments can lose increments.
-     */
-    private static final AtomicIntegerFieldUpdater<BaseBar> MUTATION_TRACKING_USERS = AtomicIntegerFieldUpdater
-            .newUpdater(BaseBar.class, "mutationTrackingUsers");
-
-    /**
-     * Number of series retaining this bar. Package-private attachment methods keep
-     * construction-time builder mutations out of the retained-bar signal. Volatile
-     * so lock-free reads (see {@link #publishRetainedBarMutation()}) observe the
-     * latest count.
-     */
-    private volatile transient int mutationTrackingUsers;
+    private transient ConcurrentMap<BaseBarSeries, AtomicInteger> retainingSeries = new ConcurrentHashMap<>();
 
     /** The time period (e.g. 1 day, 15 min, etc.) of the bar. */
     private final Duration timePeriod;
@@ -222,28 +204,14 @@ public class BaseBar implements Bar {
     private record ResolvedTimes(Duration timePeriod, Instant beginTime, Instant endTime) {
     }
 
-    static long retainedBarMutationEpoch() {
-        return RETAINED_BAR_MUTATION_EPOCH.get();
+
+    void attachToBarSeries(final BaseBarSeries series) {
+        retainingSeries.computeIfAbsent(series, ignored -> new AtomicInteger()).incrementAndGet();
     }
 
-    @Serial
-    private void readObject(final ObjectInputStream inputStream) throws IOException, ClassNotFoundException {
-        inputStream.defaultReadObject();
-        mutationTrackingUsers = 0;
-    }
-
-    void attachToBarSeries() {
-        MUTATION_TRACKING_USERS.incrementAndGet(this);
-    }
-
-    void detachFromBarSeries() {
-        int users;
-        do {
-            users = MUTATION_TRACKING_USERS.get(this);
-            if (users <= 0) {
-                throw new IllegalStateException("Bar is not attached to a bar series");
-            }
-        } while (!MUTATION_TRACKING_USERS.compareAndSet(this, users, users - 1));
+    void detachFromBarSeries(final BaseBarSeries series) {
+        retainingSeries.computeIfPresent(series,
+                (ignored, references) -> references.decrementAndGet() == 0 ? null : references);
     }
 
     @Override
@@ -299,16 +267,20 @@ public class BaseBar implements Bar {
     @SuppressFBWarnings(value = "AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE", justification = "BaseBar mutators are intentionally mutable; concurrent callers must synchronize at the series boundary.")
     @Override
     public void addTrade(Num tradeVolume, Num tradePrice) {
-        applyTradePrice(tradePrice);
+        applyTrade(tradeVolume, tradePrice);
+        publishRetainedBarMutation();
+    }
 
+    /**
+     * Applies the common OHLCV update for a trade without publishing its retained
+     * bar mutation. Subclasses that add trade fields call this before publishing
+     * their complete update.
+     */
+    protected final void applyTrade(Num tradeVolume, Num tradePrice) {
+        applyTradePrice(tradePrice);
         volume = volume.plus(tradeVolume);
         amount = amount.plus(tradeVolume.multipliedBy(tradePrice));
         trades++;
-
-        // Publish exactly one mutation signal, and only after open/high/low/close,
-        // volume, amount, and trades are all updated, so revision-aware consumers
-        // invalidated by the signal never observe a half-applied trade.
-        publishRetainedBarMutation();
     }
 
     /**
@@ -365,6 +337,7 @@ public class BaseBar implements Bar {
      */
     private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
         stream.defaultReadObject();
+        retainingSeries = new ConcurrentHashMap<>();
         try {
             validatePrices(openPrice, highPrice, lowPrice, closePrice);
         } catch (IllegalArgumentException e) {
@@ -372,9 +345,9 @@ public class BaseBar implements Bar {
         }
     }
 
-    private void publishRetainedBarMutation() {
-        if (mutationTrackingUsers > 0) {
-            RETAINED_BAR_MUTATION_EPOCH.incrementAndGet();
+    protected final void publishRetainedBarMutation() {
+        for (BaseBarSeries series : retainingSeries.keySet()) {
+            series.retainedBarMutated(this);
         }
     }
 

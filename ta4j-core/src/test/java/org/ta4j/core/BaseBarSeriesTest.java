@@ -154,7 +154,30 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         BarSeriesChangeSnapshot snapshot = seriesWithBars.getBarSeriesChangeSnapshot(observedBarRevision);
         assertEquals(initialRevision + 1, snapshot.revision());
-        assertEquals(0, snapshot.earliestChangedIndex());
+        assertEquals(1, snapshot.earliestChangedIndex());
+    }
+
+    @Test
+    public void testRetainedBarMutationDoesNotInvalidateUnrelatedSeries() {
+        BaseBarSeries unrelated = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withName("UnrelatedSeries")
+                .build();
+        unrelated.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(Instant.parse("2024-02-01T00:00:00Z"))
+                .openPrice(numOf(10))
+                .highPrice(numOf(10))
+                .lowPrice(numOf(10))
+                .closePrice(numOf(10))
+                .volume(numFactory.zero())
+                .build();
+        long unrelatedRevision = unrelated.getBarHistoryRevision();
+
+        seriesWithBars.getBar(1).addPrice(numOf(42));
+
+        assertEquals(unrelatedRevision, unrelated.getBarHistoryRevision());
+        assertEquals(-1, unrelated.getBarSeriesChangeSnapshot(unrelatedRevision).earliestChangedIndex());
     }
 
     @Test
