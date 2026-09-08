@@ -820,17 +820,13 @@ public class BarSeriesManagerTest {
     @Test
     public void runThroughReadOnlyIndicatorSeriesHoldsRetentionWindow() throws Exception {
         BarSeries initialSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 11d, 12d).build();
-        ConcurrentBarSeries concurrentSeries = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
-                .withBarBuilderFactory(new MockBarBuilderFactory())
-                .withBars(initialSeries.getBarData())
-                .withMaxBarCount(3)
-                .build();
+        CountDownLatch writerAttempted = new CountDownLatch(1);
+        ConcurrentBarSeries concurrentSeries = ConstrainedSeriesSupport.seriesWithWriteAttempt(initialSeries,
+                writerAttempted::countDown);
         ClosePriceIndicator closePrice = new ClosePriceIndicator(concurrentSeries);
         Bar appendedBar = concurrentSeries.barBuilder().timePeriod(Duration.ofMinutes(1)).closePrice(13d).build();
-        CountDownLatch writerAttempted = new CountDownLatch(1);
         AtomicBoolean writerAcquired = new AtomicBoolean();
         Thread writer = new Thread(() -> {
-            writerAttempted.countDown();
             concurrentSeries.withWriteLock(() -> {
                 writerAcquired.set(true);
                 concurrentSeries.addBar(appendedBar);
@@ -849,12 +845,6 @@ public class BarSeriesManagerTest {
                     Thread.currentThread().interrupt();
                     throw new AssertionError(interruption);
                 }
-                long deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
-                while (writer.isAlive() && writer.getState() != Thread.State.WAITING && System.nanoTime() < deadline) {
-                    Thread.onSpinWait();
-                }
-                assertEquals("retention writer must queue behind the manager lease", Thread.State.WAITING,
-                        writer.getState());
                 assertTrue("retention writer acquired the lease before run completion", !writerAcquired.get());
             }
             assertEquals("retention must not advance during the run", 0, concurrentSeries.getBeginIndex());

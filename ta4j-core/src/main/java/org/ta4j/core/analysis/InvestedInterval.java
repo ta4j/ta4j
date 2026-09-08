@@ -102,7 +102,8 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
     private boolean[] buildInvestedIntervals(TradingRecord tradingRecord, OpenPositionHandling openPositionHandling,
             int beginIndex) {
         BarSeries series = getBarSeries();
-        int analysisEndIndex = Math.max(series.getEndIndex(), tradingRecord.getEndIndex(series));
+        int analysisEndIndex = Math.max(series.getEndIndex(), AnalysisPositionSupport.analysisEndIndex(series,
+                tradingRecord, OffsetNumBuffer.addressableEndIndex(series)));
         if (beginIndex < 0) {
             return new boolean[0];
         }

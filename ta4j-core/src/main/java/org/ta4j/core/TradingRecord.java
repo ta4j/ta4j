@@ -377,41 +377,11 @@ public interface TradingRecord extends Serializable {
      * @param series the bar series, not null
      * @return the {@link #getEndIndex()} if not null and less than
      *         {@link BarSeries#getEndIndex()}, otherwise
-     *         {@link BarSeries#getEndIndex()}. Actual trailing position activity
-     *         extends that end only while its bar remains addressable in raw
-     *         storage, so analyses can price exits after the logical window end. An
-     *         explicit run bound alone never extends the logical window.
+     *         {@link BarSeries#getEndIndex()}. This is a logical execution bound;
+     *         retained raw bars beyond it do not extend the benchmark window.
      */
     default int getEndIndex(BarSeries series) {
         Integer endIndex = getEndIndex();
-        int logicalEndIndex = series.getEndIndex();
-        if (endIndex == null) {
-            // Records built directly from trades carry no run bounds: derive the
-            // end from the latest position activity so a trailing exit counts.
-            endIndex = getPositions().stream()
-                    .mapToInt(position -> position.getExit() != null ? position.getExit().getIndex()
-                            : position.getEntry() != null ? position.getEntry().getIndex() : logicalEndIndex)
-                    .max()
-                    .orElse(logicalEndIndex);
-            endIndex = Math.max(logicalEndIndex, endIndex);
-        } else {
-            endIndex = Math.min(endIndex, logicalEndIndex);
-        }
-        // A bounded run can subsequently be closed on a retained raw bar after
-        // its logical end. The explicit run bound must not hide that exit.
-        for (Position position : getPositions()) {
-            if (position.isClosed() && position.getExit().getIndex() > logicalEndIndex) {
-                endIndex = Math.max(endIndex, position.getExit().getIndex());
-            }
-        }
-        if (endIndex <= logicalEndIndex) {
-            return endIndex;
-        }
-        List<Bar> bars = series.getBarData();
-        if (bars.isEmpty()) {
-            return logicalEndIndex;
-        }
-        long addressableEndIndex = (long) series.getRemovedBarsCount() + bars.size() - 1;
-        return endIndex <= addressableEndIndex ? endIndex : logicalEndIndex;
+        return endIndex == null ? series.getEndIndex() : Math.min(endIndex, series.getEndIndex());
     }
 }

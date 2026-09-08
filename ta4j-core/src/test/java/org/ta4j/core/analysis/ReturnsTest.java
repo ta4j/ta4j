@@ -527,10 +527,13 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("tail", numFactory, 1, 100d, 110d, 55d);
         var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
 
-        Returns returns = new Returns(series, record, record.getEndIndex(series), ReturnRepresentation.DECIMAL,
-                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        Returns returns = new Returns(series, record, ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
 
         assertEquals(2, returns.getSize());
+        Returns boundedReturns = new Returns(series, record, record.getEndIndex(series), ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        assertEquals(1, boundedReturns.getSize());
     }
 
     @Test

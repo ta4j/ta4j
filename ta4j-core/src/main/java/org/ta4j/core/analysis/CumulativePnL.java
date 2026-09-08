@@ -58,10 +58,11 @@ public final class CumulativePnL implements PerformanceIndicator {
         TradingRecord record = Objects.requireNonNull(tradingRecord);
         OpenPositionHandling handling = Objects.requireNonNull(openPositionHandling);
         Runnable action = () -> {
-            int finalIndex = useRecordEnd ? record.getEndIndex(this.barSeries)
+            this.materializedAddressableEndIndex = OffsetNumBuffer.addressableEndIndex(this.barSeries);
+            int finalIndex = useRecordEnd
+                    ? AnalysisPositionSupport.analysisEndIndex(this.barSeries, record, materializedAddressableEndIndex)
                     : useSeriesEnd ? this.barSeries.getEndIndex() : requestedFinalIndex;
             Num zero = this.barSeries.numFactory().zero();
-            this.materializedAddressableEndIndex = OffsetNumBuffer.addressableEndIndex(this.barSeries);
             int endIndex = Math.max(this.barSeries.getEndIndex(),
                     Math.min(finalIndex, this.materializedAddressableEndIndex));
             this.values = endIndex < this.barSeries.getBeginIndex() ? new OffsetNumBuffer(-1, -1, zero, zero)

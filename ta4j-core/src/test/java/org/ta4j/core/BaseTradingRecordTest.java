@@ -1055,12 +1055,12 @@ class BaseTradingRecordTest {
     }
 
     @Test
-    public void getEndIndexIncludesAddressableTrailingExit() {
+    public void getEndIndexKeepsLogicalBoundDespiteAddressableTrailingExit() {
         BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("trailing-exit", numFactory, 1, 10d, 20d,
                 30d);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(1, series), Trade.sellAt(2, series));
 
-        assertEquals(2, tradingRecord.getEndIndex(series));
+        assertEquals(1, tradingRecord.getEndIndex(series));
     }
 
     @Test

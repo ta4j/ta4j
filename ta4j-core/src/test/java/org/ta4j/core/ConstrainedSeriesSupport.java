@@ -23,6 +23,21 @@ public final class ConstrainedSeriesSupport {
     private ConstrainedSeriesSupport() {
     }
 
+    /** Builds a retained series with a deterministic writer-attempt observation. */
+    public static ConcurrentBarSeries seriesWithWriteAttempt(BarSeries source, Runnable beforeWriteLock) {
+        ConcurrentBarSeries series = new ConcurrentBarSeries("observed-write-lease",
+                new ArrayList<>(source.getBarData()), source.getBeginIndex(), source.getEndIndex(), false,
+                source.numFactory(), new MockBarBuilderFactory()) {
+            @Override
+            public void withWriteLock(Runnable action) {
+                beforeWriteLock.run();
+                super.withWriteLock(action);
+            }
+        };
+        series.setMaximumBarCount(source.getBarCount());
+        return series;
+    }
+
     /**
      * Builds a constrained series holding every {@code closes} bar in raw storage
      * while exposing only the logical window {@code [0, endIndex]}. The trailing

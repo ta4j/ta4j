@@ -15,6 +15,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
@@ -22,6 +25,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.ConcurrentBarSeriesBuilder;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Position;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
@@ -66,24 +70,27 @@ public class StrategyWalkForwardExecutorTest {
 
     @Test
     public void holdsOneRetentionWindowAcrossSplittingAndEveryFold() throws InterruptedException {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
-                .withBarBuilderFactory(new MockBarBuilderFactory())
-                .withBars(buildSeries(48).getBarData())
-                .withMaxBarCount(48)
-                .build();
-        Thread writer = new Thread(() -> series.setMaximumBarCount(2));
+        CountDownLatch writerAttempted = new CountDownLatch(1);
+        AtomicBoolean writerAcquired = new AtomicBoolean();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithWriteAttempt(buildSeries(48),
+                writerAttempted::countDown);
+        Thread writer = new Thread(() -> series.withWriteLock(() -> {
+            writerAcquired.set(true);
+            series.setMaximumBarCount(2);
+        }));
         StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(
                 new BarSeriesManager(series, new ZeroCostModel(), new ZeroCostModel(), new TradeOnCurrentCloseModel()),
                 new TradingStatementGenerator(), (target, config) -> {
                     List<WalkForwardSplit> splits = new AnchoredExpandingWalkForwardSplitter().split(target, config);
                     writer.start();
-                    long deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
-                    while (writer.isAlive() && writer.getState() != Thread.State.WAITING
-                            && System.nanoTime() < deadline) {
-                        Thread.onSpinWait();
+                    try {
+                        assertTrue("Retention writer must attempt the write lease",
+                                writerAttempted.await(5, TimeUnit.SECONDS));
+                    } catch (InterruptedException interruption) {
+                        Thread.currentThread().interrupt();
+                        throw new AssertionError(interruption);
                     }
-                    assertEquals("Retention writer must wait for the complete walk-forward run", Thread.State.WAITING,
-                            writer.getState());
+                    assertFalse("Retention writer must wait for the complete walk-forward run", writerAcquired.get());
                     return splits;
                 });
         StrategyWalkForwardExecutionResult result;
@@ -94,6 +101,7 @@ public class StrategyWalkForwardExecutorTest {
             writer.join(5_000);
         }
         assertFalse(writer.isAlive());
+        assertTrue(writerAcquired.get());
         assertEquals(46, series.getBeginIndex());
         assertEquals(2, series.getBarCount());
         assertFalse(result.folds().isEmpty());

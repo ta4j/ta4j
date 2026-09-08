@@ -122,12 +122,15 @@ public class Returns implements PerformanceIndicator {
     private void initialize(TradingRecord tradingRecord, int requestedFinalIndex,
             OpenPositionHandling openPositionHandling, boolean useRecordEnd) {
         Runnable action = () -> {
-            int finalIndex = useRecordEnd ? tradingRecord.getEndIndex(barSeries) : requestedFinalIndex;
+            this.materializedAddressableEndIndex = OffsetNumBuffer.addressableEndIndex(barSeries);
+            int finalIndex = useRecordEnd
+                    ? AnalysisPositionSupport.analysisEndIndex(barSeries, tradingRecord,
+                            materializedAddressableEndIndex)
+                    : requestedFinalIndex;
             Num one = barSeries.numFactory().one();
             Num zero = barSeries.numFactory().zero();
             Num initial = representation == ReturnRepresentation.LOG ? zero : one;
             int beginIndex = barSeries.getBeginIndex();
-            this.materializedAddressableEndIndex = OffsetNumBuffer.addressableEndIndex(barSeries);
             int endIndex = Math.max(barSeries.getEndIndex(),
                     Math.min(finalIndex, this.materializedAddressableEndIndex));
             returnFactors = endIndex < beginIndex ? new OffsetNumBuffer(-1, -1, initial, NaN.NaN)

@@ -193,10 +193,11 @@ public class CashFlow implements PerformanceIndicator {
         TradingRecord record = Objects.requireNonNull(tradingRecord);
         OpenPositionHandling handling = Objects.requireNonNull(openPositionHandling);
         Runnable action = () -> {
-            int finalIndex = useRecordEnd ? record.getEndIndex(this.barSeries)
+            this.materializedAddressableEndIndex = OffsetNumBuffer.addressableEndIndex(this.barSeries);
+            int finalIndex = useRecordEnd
+                    ? AnalysisPositionSupport.analysisEndIndex(this.barSeries, record, materializedAddressableEndIndex)
                     : useSeriesEnd ? this.barSeries.getEndIndex() : requestedFinalIndex;
             this.valueStartIndex = Math.max(Math.max(0, startIndex), this.barSeries.getBeginIndex());
-            this.materializedAddressableEndIndex = OffsetNumBuffer.addressableEndIndex(this.barSeries);
             int materializationEnd = useRecordEnd ? finalIndex : requestedEndIndex;
             int endIndex = padToSeriesEnd ? Math.max(this.barSeries.getEndIndex(), materializationEnd)
                     : materializationEnd;
