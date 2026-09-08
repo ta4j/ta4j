@@ -13,6 +13,17 @@ import org.ta4j.core.acceleration.AccelerationRuntime;
 public class MonteCarloSimulationTest {
 
     @Test
+    public void publicRawStateAndMixedOutputFollowVersionOneStream() {
+        long state = MonteCarloKernel.initialPathState(42L, 317, 12, 5);
+        MonteCarloSimulation.DeterministicRandom random = stream();
+        for (long expected : new long[] { 0xacdefb464966b93cL, 0x6c87c018610d701aL, 0x85b233fcd16e891cL }) {
+            state = MonteCarloKernel.advanceState(state);
+            assertEquals(expected, MonteCarloKernel.mix64(state));
+            assertEquals(expected, random.nextLong());
+        }
+    }
+
+    @Test
     public void boundedSelectionMatchesVersionOneGoldenVectors() {
         assertVector(1, 0, 0, 0, 0, 0, 0, 0, 0);
         assertVector(2, 0, 1, 0, 0, 1, 0, 0, 1);

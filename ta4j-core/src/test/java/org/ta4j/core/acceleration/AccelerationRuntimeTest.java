@@ -52,6 +52,7 @@ import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -148,6 +149,85 @@ class AccelerationRuntimeTest {
         }
 
         assertEquals(1, provider.executions.get());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = { false, true })
+    void invalidProviderIdentityFallsBackToScalar(boolean throwsOnIdentity) {
+        EchoProvider provider = new EchoProvider(Backend.CPU, "cpu", 1L, 1_000L) {
+            @Override
+            public String providerId() {
+                if (throwsOnIdentity) {
+                    throw new IllegalStateException("identity unavailable");
+                }
+                return null;
+            }
+        };
+        useProvidersForTests(List.of(provider));
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        BarSeries series = series();
+        ScopeAwareIndicator indicator = new ScopeAwareIndicator(series);
+
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            assertEquals(series.numFactory().numOf(2), indicator.getValue(2));
+            assertEquals(DiagnosticCode.PROVIDER_FAILURE, AccelerationRuntime.lastDiagnostic().orElseThrow().code());
+        }
+        assertEquals(0, provider.executions.get());
+    }
+
+    @Test
+    void providerIdentityIsCapturedBeforeExecution() {
+        EchoProvider provider = new EchoProvider(Backend.CPU, "cpu", 1L, 1_000L) {
+            private boolean identified;
+
+            @Override
+            public String providerId() {
+                if (identified) {
+                    throw new IllegalStateException("identity was already consumed");
+                }
+                identified = true;
+                return "stable-id";
+            }
+        };
+        useProvidersForTests(List.of(provider));
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        BarSeries series = series();
+
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            assertEquals(series.numFactory().numOf(102), new ScopeAwareIndicator(series).getValue(2));
+            assertEquals("stable-id", AccelerationRuntime.lastDiagnostic().orElseThrow().providerId());
+        }
+    }
+
+    @Test
+    void decimalForecastInsideDoubleScopeRemainsScalar() {
+        BarSeries indicatorSeries = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
+                .withData(100, 102, 101, 104, 103, 105, 106, 104, 108, 109)
+                .build();
+        BarSeries scopedSeries = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(100, 102, 101, 104, 103, 105, 106, 104, 108, 109)
+                .build();
+        MonteCarloPriceForecastIndicator forecast = MonteCarloPriceForecastIndicator
+                .builder(new ClosePriceIndicator(indicatorSeries),
+                        new EwmaReturnForecastStateIndicator(new LogReturnIndicator(indicatorSeries), 3, 0.94d))
+                .horizon(2)
+                .iterationCount(4)
+                .lookbackBarCount(3)
+                .seed(11L)
+                .build();
+        Forecast scalar = forecast.getValue(8);
+        assertTrue(scalar.isStable());
+        EchoProvider provider = new EchoProvider(Backend.CPU, "cpu", 1L, 1_000L);
+        useProvidersForTests(List.of(provider));
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        System.setProperty("ta4j.forecast.rngVersion", "1");
+        try (Scope ignored = open(scopedSeries, 8, 8)) {
+            Forecast actual = forecast.getValue(8);
+            assertEquals(scalar.mean(), actual.mean());
+            assertEquals(0, provider.executions.get());
+        } finally {
+            System.clearProperty("ta4j.forecast.rngVersion");
+        }
     }
 
     @Test

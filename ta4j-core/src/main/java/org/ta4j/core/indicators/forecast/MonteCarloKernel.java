@@ -29,8 +29,8 @@ package org.ta4j.core.indicators.forecast;
  * </ol>
  *
  * <p>
- * Request parameters, in order: shock-model ordinal, volatility-update-mode
- * ordinal, horizon in bars, iteration count, lookback bar count, EWMA decay
+ * Request parameters, in order: stable shock-model code, stable volatility-mode
+ * code, horizon in bars, iteration count, lookback bar count, EWMA decay
  * factor. The base seed travels in the request seed field. Output is row-major
  * terminal prices ({@code [n][iterationCount]}). A non-finite output marks its
  * decision index unstable; the core decoder maps such slices to unstable
@@ -40,7 +40,8 @@ package org.ta4j.core.indicators.forecast;
  * Per-path stream (RNG version 1): path {@code p} of decision index {@code i}
  * draws from the SplitMix-style stream seeded by
  * {@link #initialPathState(long, int, int, int)}. Each draw advances the state
- * by {@link #advanceState(long)} and interprets the mixed output with
+ * with {@code state = advanceState(state)}, obtains output bits with
+ * {@code mix64(state)}, and interprets those bits with
  * {@link #toUnitDouble(long)} for uniforms, {@link #gaussian(double, double)}
  * for standard normals, and the {@code nextInt} rejection loop of the scalar
  * lane for bootstrap selection. Shock model and volatility update mode use the
@@ -76,7 +77,7 @@ public final class MonteCarloKernel {
      */
     public static final double MAX_EXPONENT = 700d;
 
-    static final long GOLDEN_GAMMA = 0x9E3779B97F4A7C15L;
+    private static final long GOLDEN_GAMMA = 0x9E3779B97F4A7C15L;
 
     static final double DOUBLE_UNIT = 0x1.0p-53;
 
@@ -111,15 +112,16 @@ public final class MonteCarloKernel {
     }
 
     /**
-     * Advances a path stream and returns the mixed output (SplitMix64 increment
-     * plus avalanche).
+     * Advances the raw path-stream state by the SplitMix64 increment. Keep this
+     * returned state for the next draw; use {@link #mix64(long)} separately to
+     * obtain output bits without altering the raw state.
      *
-     * @param state current stream state
-     * @return mixed output; the next state is {@code state + GOLDEN_GAMMA}
+     * @param state current raw stream state
+     * @return next raw stream state
      * @since 0.25.1
      */
     public static long advanceState(long state) {
-        return mix64(state + GOLDEN_GAMMA);
+        return state + GOLDEN_GAMMA;
     }
 
     /**
@@ -147,7 +149,14 @@ public final class MonteCarloKernel {
         return radius * StrictMath.cos(2d * StrictMath.PI * second);
     }
 
-    static long mix64(long value) {
+    /**
+     * Applies the SplitMix64 avalanche to a raw stream state without advancing it.
+     *
+     * @param value raw stream state
+     * @return mixed output bits, not the state for the next draw
+     * @since 0.25.1
+     */
+    public static long mix64(long value) {
         value = (value ^ value >>> 30) * 0xBF58476D1CE4E5B9L;
         value = (value ^ value >>> 27) * 0x94D049BB133111EBL;
         return value ^ value >>> 31;

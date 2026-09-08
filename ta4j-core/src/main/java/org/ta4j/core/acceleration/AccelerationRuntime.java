@@ -641,7 +641,8 @@ public final class AccelerationRuntime {
             }
             List<RankedProvider> candidates = assess(request, providers);
             if (candidates.isEmpty()) {
-                if (diagnostic.code() != DiagnosticCode.CPU_FASTER) {
+                if (diagnostic.code() != DiagnosticCode.CPU_FASTER
+                        && diagnostic.code() != DiagnosticCode.PROVIDER_FAILURE) {
                     diagnostic = new Diagnostic(DiagnosticCode.NO_PROVIDER, "none",
                             "no provider supports " + request.operation());
                 }
@@ -660,7 +661,7 @@ public final class AccelerationRuntime {
                             "acceleration provider returned null");
                 } catch (LinkageError | RuntimeException exception) {
                     quarantine.put(quarantineKey(candidate, request), failureMessage(exception));
-                    diagnostic = new Diagnostic(DiagnosticCode.PROVIDER_FAILURE, candidate.provider.providerId(),
+                    diagnostic = new Diagnostic(DiagnosticCode.PROVIDER_FAILURE, candidate.providerId,
                             failureMessage(exception));
                     continue;
                 } finally {
@@ -671,14 +672,14 @@ public final class AccelerationRuntime {
                 double[] rawOutputs = result.outputs();
                 if (rawOutputs.length != request.expectedOutputLength()) {
                     quarantine.put(quarantineKey(candidate, request), "malformed raw output");
-                    diagnostic = new Diagnostic(DiagnosticCode.INVALID_RESULT, candidate.provider.providerId(),
+                    diagnostic = new Diagnostic(DiagnosticCode.INVALID_RESULT, candidate.providerId,
                             "provider output did not exactly cover [%d, %d]".formatted(request.fromInclusive(),
                                     request.toInclusive()));
                     continue;
                 }
                 BarSeriesChangeSnapshot after = indicatorSeries.getBarSeriesChangeSnapshot(revision);
                 if (!sameSeriesState(before, after)) {
-                    diagnostic = new Diagnostic(DiagnosticCode.STALE_SERIES, candidate.provider.providerId(),
+                    diagnostic = new Diagnostic(DiagnosticCode.STALE_SERIES, candidate.providerId,
                             "series changed while the provider was evaluating");
                     continue;
                 }
@@ -687,12 +688,12 @@ public final class AccelerationRuntime {
                     decoded = decodeAll(request, rawOutputs, planned, indicatorSeries);
                 } catch (LinkageError | RuntimeException exception) {
                     quarantine.put(quarantineKey(candidate, request), failureMessage(exception));
-                    diagnostic = new Diagnostic(DiagnosticCode.INVALID_RESULT, candidate.provider.providerId(),
+                    diagnostic = new Diagnostic(DiagnosticCode.INVALID_RESULT, candidate.providerId,
                             failureMessage(exception));
                     continue;
                 }
                 effectiveBackend = candidate.assessment.backend();
-                providerInUse = candidate.provider.providerId();
+                providerInUse = candidate.providerId;
                 diagnostic = new Diagnostic(DiagnosticCode.ACCELERATED, providerInUse,
                         candidate.assessment.backend().name().toLowerCase(Locale.ROOT) + "/"
                                 + candidate.assessment.deviceId() + " executed " + request.operation());
@@ -708,11 +709,15 @@ public final class AccelerationRuntime {
             String cpuFasterDetail = "";
             for (Provider provider : providers) {
                 Assessment assessment;
+                String providerId;
                 suspended = true;
                 try {
+                    providerId = Objects.requireNonNull(provider.providerId(), "providerId must not be null");
                     assessment = provider.assess(request);
                 } catch (LinkageError | RuntimeException exception) {
-                    LOG.debug("Provider {} assessment failed: {}", provider.providerId(), exception.getMessage());
+                    String fallbackId = provider.getClass().getName();
+                    diagnostic = new Diagnostic(DiagnosticCode.PROVIDER_FAILURE, fallbackId, failureMessage(exception));
+                    LOG.debug("Provider {} assessment failed: {}", fallbackId, exception.getMessage());
                     continue;
                 } finally {
                     suspended = false;
@@ -725,18 +730,18 @@ public final class AccelerationRuntime {
                 long baseline = request.estimatedScalarNanos();
                 if (baseline > 0 && (double) assessment.predictedTotalNanos() >= baseline * (1.0 - CPU_SAFETY_MARGIN)) {
                     cpuFasterObserved = true;
-                    cpuFasterProvider = provider.providerId();
+                    cpuFasterProvider = providerId;
                     cpuFasterDetail = "predicted " + assessment.predictedTotalNanos() + "ns vs scalar baseline "
                             + baseline + "ns";
                     continue;
                 }
-                candidates.add(new RankedProvider(provider, assessment));
+                candidates.add(new RankedProvider(provider, providerId, assessment));
             }
             candidates.sort(
                     Comparator.comparingLong((RankedProvider candidate) -> candidate.assessment.predictedTotalNanos())
                             .thenComparing(candidate -> candidate.assessment.backend().name())
                             .thenComparing(candidate -> candidate.assessment.deviceId())
-                            .thenComparing(candidate -> candidate.provider.providerId()));
+                            .thenComparing(candidate -> candidate.providerId));
             if (candidates.isEmpty() && cpuFasterObserved) {
                 diagnostic = new Diagnostic(DiagnosticCode.CPU_FASTER, cpuFasterProvider, cpuFasterDetail);
             }
@@ -749,7 +754,8 @@ public final class AccelerationRuntime {
                 planners = List.copyOf(PLANNERS);
             }
             for (OperationPlanner planner : planners) {
-                PlannedOperation planned = planner.plan(indicator, index, toInclusive, series.numFactory());
+                PlannedOperation planned = planner.plan(indicator, index, toInclusive,
+                        indicator.getBarSeries().numFactory());
                 if (planned != null) {
                     return planned;
                 }
@@ -776,8 +782,8 @@ public final class AccelerationRuntime {
         }
 
         private static String quarantineKey(RankedProvider candidate, KernelRequest request) {
-            return candidate.provider.providerId() + "|" + candidate.assessment.deviceId() + "|" + request.operation()
-                    + "/v" + request.operation().version();
+            return candidate.providerId + "|" + candidate.assessment.deviceId() + "|" + request.operation() + "/v"
+                    + request.operation().version();
         }
 
         @Override
@@ -800,7 +806,7 @@ public final class AccelerationRuntime {
         }
     }
 
-    private record RankedProvider(Provider provider, Assessment assessment) {
+    private record RankedProvider(Provider provider, String providerId, Assessment assessment) {
     }
 
     private static boolean sameSeriesState(BarSeriesChangeSnapshot left, BarSeriesChangeSnapshot right) {
