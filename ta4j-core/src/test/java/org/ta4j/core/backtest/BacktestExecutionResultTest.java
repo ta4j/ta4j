@@ -10,6 +10,7 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
@@ -166,6 +167,34 @@ public class BacktestExecutionResultTest {
         assertEquals(10, snapshot.getRemovedBarsCount());
         assertEquals(3, snapshot.getBarData().size());
         assertEquals(numFactory.numOf(30), snapshot.getBar(12).getClosePrice());
+    }
+
+    @Test
+    public void barSeriesSnapshotRetainsPrunedIndexFallbackAndLogicalCount() {
+        BarSeries pruned = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        pruned.setMaximumBarCount(2);
+        BacktestExecutionResult prunedResult = new BacktestExecutionResult(pruned, List.of(),
+                BacktestRuntimeReport.empty());
+
+        assertEquals(2, prunedResult.barSeries().getBarCount());
+        assertEquals(prunedResult.barSeries().getBar(1), prunedResult.barSeries().getBar(0));
+
+        BarSeries prunedView = prunedResult.barSeries().getSubSeries(0, 2);
+        assertEquals(1, prunedView.getBeginIndex());
+        assertEquals(1, prunedView.getBarCount());
+        assertEquals(numFactory.numOf(20), prunedView.getBar(0).getClosePrice());
+        assertThrows(UnsupportedOperationException.class, () -> prunedView.getLastBar().addPrice(numFactory.numOf(99)));
+
+        BarSeries constrained = ConstrainedSeriesSupport.trailingConstrainedSeries("constrained", numFactory, 1, 10d,
+                20d, 30d);
+        BacktestExecutionResult constrainedResult = new BacktestExecutionResult(constrained, List.of(),
+                BacktestRuntimeReport.empty());
+
+        assertEquals(2, constrainedResult.barSeries().getBarCount());
+        assertEquals(3, constrainedResult.barSeries().getBarData().size());
+        BarSeries constrainedView = constrainedResult.barSeries().getSubSeries(0, 3);
+        assertEquals(2, constrainedView.getBarCount());
+        assertEquals(numFactory.numOf(20), constrainedView.getLastBar().getClosePrice());
     }
 
     @Test

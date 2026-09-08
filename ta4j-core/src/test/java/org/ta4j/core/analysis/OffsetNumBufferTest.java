@@ -4,6 +4,7 @@
 package org.ta4j.core.analysis;
 
 import static org.junit.Assert.assertThrows;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;

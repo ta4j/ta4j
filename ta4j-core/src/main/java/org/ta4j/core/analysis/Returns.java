@@ -34,10 +34,10 @@ import org.ta4j.core.num.NumFactory;
  * {@link ReturnRepresentationPolicy#getDefaultRepresentation()}.
  *
  * <p>
- * The return values are materialized positionally from the captured series begin
- * index through the materialized end, which may extend beyond
- * {@code barSeries.getEndIndex()} when a trailing exit remains addressable in raw
- * storage. {@link #getValue(int)} returns {@link Double#NaN} outside that
+ * The return values are materialized positionally from the captured series
+ * begin index through the materialized end, which may extend beyond
+ * {@code barSeries.getEndIndex()} when a trailing exit remains addressable in
+ * raw storage. {@link #getValue(int)} returns {@link Double#NaN} outside that
  * materialized range.
  *
  * @see ReturnRepresentation
@@ -265,8 +265,8 @@ public class Returns implements PerformanceIndicator {
     /**
      * @param index the bar index
      * @return the return rate value at the index-th position (formatted according
-     *         to the configured representation), or {@link Double#NaN} outside
-     *         the materialized range captured by this instance
+     *         to the configured representation), or {@link Double#NaN} outside the
+     *         materialized range captured by this instance
      */
     @Override
     public Num getValue(int index) {
@@ -307,7 +307,6 @@ public class Returns implements PerformanceIndicator {
         }
         return returnFactors.size() - (firstRetainedSlotSeeded ? 0 : 1);
     }
-
 
     /**
      * Calculates the returns for a single position.

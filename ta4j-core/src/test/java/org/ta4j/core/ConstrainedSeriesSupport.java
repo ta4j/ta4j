@@ -42,19 +42,19 @@ public final class ConstrainedSeriesSupport {
     /**
      * Builds a series with an explicit logical/raw index offset.
      *
-     * @param name              the series name
-     * @param numFactory        the number factory
-     * @param beginIndex        first logical index
-     * @param endIndex          last logical index
-     * @param removedBarsCount  number of leading raw indexes
-     * @param closes            raw close prices
+     * @param name             the series name
+     * @param numFactory       the number factory
+     * @param beginIndex       first logical index
+     * @param endIndex         last logical index
+     * @param removedBarsCount number of leading raw indexes
+     * @param closes           raw close prices
      * @return the offset series
      */
     public static BarSeries offsetSeries(String name, NumFactory numFactory, int beginIndex, int endIndex,
             int removedBarsCount, double... closes) {
         BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closes).build();
-        return new BaseBarSeries(name, List.copyOf(source.getBarData()), beginIndex, endIndex, removedBarsCount,
-                false, numFactory, new TimeBarBuilderFactory());
+        return new BaseBarSeries(name, List.copyOf(source.getBarData()), beginIndex, endIndex, removedBarsCount, false,
+                numFactory, new TimeBarBuilderFactory());
     }
 
     /**

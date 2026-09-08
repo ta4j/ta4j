@@ -174,11 +174,11 @@ public class BarSeriesManagerTest {
 
     @Test
     public void currentCloseModelClosesOpenPositionUsingTrailingRawBar() {
-        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("trailing", numFactory, 1, 10d, 20d,
-                30d);
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("trailing", numFactory, 1, 10d, 20d, 30d);
         Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(2));
 
-        Position position = new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(strategy).getPositions()
+        Position position = new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(strategy)
+                .getPositions()
                 .getFirst();
 
         assertEquals(0, position.getEntry().getIndex());
@@ -188,11 +188,11 @@ public class BarSeriesManagerTest {
 
     @Test
     public void runPreservesLeadingOrphanRawBarOffset() {
-        BarSeries series = ConstrainedSeriesSupport.offsetSeries("leading-orphan", numFactory, 1, 2, 0, 10d, 20d,
-                30d);
+        BarSeries series = ConstrainedSeriesSupport.offsetSeries("leading-orphan", numFactory, 1, 2, 0, 10d, 20d, 30d);
         Strategy strategy = new BaseStrategy(new FixedRule(1), new FixedRule(2));
 
-        Position position = new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(strategy).getPositions()
+        Position position = new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(strategy)
+                .getPositions()
                 .getFirst();
 
         assertEquals(series.getBar(1).getClosePrice(), position.getEntry().getPricePerAsset());
@@ -201,11 +201,12 @@ public class BarSeriesManagerTest {
 
     @Test
     public void closeScanReachesTrailingBarWithRemovedIndexOffset() {
-        BarSeries series = ConstrainedSeriesSupport.offsetSeries("offset-trailing", numFactory, 10, 11, 10, 10d,
-                20d, 30d);
+        BarSeries series = ConstrainedSeriesSupport.offsetSeries("offset-trailing", numFactory, 10, 11, 10, 10d, 20d,
+                30d);
         Strategy strategy = new BaseStrategy(new FixedRule(10), new FixedRule(12));
 
-        Position position = new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(strategy).getPositions()
+        Position position = new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(strategy)
+                .getPositions()
                 .getFirst();
 
         assertEquals(10, position.getEntry().getIndex());

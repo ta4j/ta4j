@@ -220,8 +220,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         // A finite first raw value is a seeded return; NaN denotes the
         // leading no-prior-close placeholder.
         boolean firstSlotSeeded = !returnRates.isEmpty() && !returnRates.get(0).isNaN();
-        long firstRateIndex = Math.max(beginIndex,
-                firstSlotSeeded ? snapshotBeginIndex : snapshotBeginIndex + 1);
+        long firstRateIndex = Math.max(beginIndex, firstSlotSeeded ? snapshotBeginIndex : snapshotBeginIndex + 1);
         for (long i = firstRateIndex; i <= endIndex; i++) {
             Num returnRate = returnRates.get((int) i - snapshotBeginIndex);
             if (returnRate.isNaN()) {

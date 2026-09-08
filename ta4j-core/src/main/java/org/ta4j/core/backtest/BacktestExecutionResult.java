@@ -14,6 +14,7 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.num.Num;
@@ -43,8 +44,6 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
      * @param runtimeReport     runtime statistics for the execution
      * @param strategyFailures  strategies skipped because execution failed
      */
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The result owns a frozen copy of the series so "
-            + "post-run criteria cannot mix fills from one revision with prices from a later revision.")
     public BacktestExecutionResult {
         barSeries = snapshotSeries(Objects.requireNonNull(barSeries, "barSeries must not be null"));
         tradingStatements = List
@@ -53,29 +52,34 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
         strategyFailures = List.copyOf(Objects.requireNonNull(strategyFailures, "strategyFailures must not be null"));
     }
 
+    static BarSeries snapshot(BarSeries source) {
+        return snapshotSeries(Objects.requireNonNull(source, "source must not be null"));
+    }
+
     static BacktestExecutionResult capture(BarSeries source, List<TradingStatement> tradingStatements,
-            BacktestRuntimeReport runtimeReport, List<StrategyFailure> strategyFailures,
-            BarSeries.BarSeriesChangeSnapshot baseline) {
-        Objects.requireNonNull(baseline, "baseline must not be null");
+            BacktestRuntimeReport runtimeReport, List<StrategyFailure> strategyFailures, BarSeries baseline) {
+        if (!(baseline instanceof FrozenBarSeries frozenBaseline)) {
+            throw new IllegalArgumentException("baseline must be a frozen result series");
+        }
         if (source instanceof ConcurrentBarSeries concurrent) {
             return concurrent.withReadLock(
-                    () -> captureStable(source, tradingStatements, runtimeReport, strategyFailures, baseline));
+                    () -> captureStable(source, tradingStatements, runtimeReport, strategyFailures, frozenBaseline));
         }
-        return captureStable(source, tradingStatements, runtimeReport, strategyFailures, baseline);
+        return captureStable(source, tradingStatements, runtimeReport, strategyFailures, frozenBaseline);
     }
 
     private static BacktestExecutionResult captureStable(BarSeries source, List<TradingStatement> tradingStatements,
-            BacktestRuntimeReport runtimeReport, List<StrategyFailure> strategyFailures,
-            BarSeries.BarSeriesChangeSnapshot baseline) {
-        BarSeries.BarSeriesChangeSnapshot current = source.getBarSeriesChangeSnapshot(baseline.revision());
-        if (current.revision() != baseline.revision() || current.earliestChangedIndex() >= 0
-                || current.endIndex() != baseline.endIndex()
-                || current.removedThroughIndex() != baseline.removedThroughIndex()) {
+            BacktestRuntimeReport runtimeReport, List<StrategyFailure> strategyFailures, FrozenBarSeries baseline) {
+        if (!baseline.matches(source)) {
             throw new IllegalStateException("Bar series changed during backtest; result ownership is ambiguous");
         }
-        return new BacktestExecutionResult(source, tradingStatements, runtimeReport, strategyFailures);
+        return new BacktestExecutionResult(baseline, tradingStatements, runtimeReport, strategyFailures);
     }
+
     private static BarSeries snapshotSeries(BarSeries source) {
+        if (source instanceof FrozenBarSeries) {
+            return source;
+        }
         if (source instanceof ConcurrentBarSeries concurrent) {
             return concurrent.withReadLock(() -> snapshotSeriesUnlocked(source));
         }
@@ -109,8 +113,8 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
         }
 
         @Override
-        public NumFactory numFactory() {
-            return numFactory;
+        public String getName() {
+            return name;
         }
 
         @Override
@@ -119,14 +123,51 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
         }
 
         @Override
-        public String getName() {
-            return name;
+        public NumFactory numFactory() {
+            return numFactory;
+        }
+
+        private boolean matches(BarSeries source) {
+            if (!Objects.equals(name, source.getName()) || beginIndex != source.getBeginIndex()
+                    || endIndex != source.getEndIndex() || removedBarsCount != source.getRemovedBarsCount()
+                    || maximumBarCount != source.getMaximumBarCount() || revision != source.getBarHistoryRevision()
+                    || getBarCount() != source.getBarCount()) {
+                return false;
+            }
+            List<Bar> sourceBars = source.getBarData();
+            if (bars.size() != sourceBars.size()) {
+                return false;
+            }
+            for (int i = 0; i < bars.size(); i++) {
+                if (!sameBar(bars.get(i), sourceBars.get(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static boolean sameBar(Bar left, Bar right) {
+            return Objects.equals(left.getTimePeriod(), right.getTimePeriod())
+                    && Objects.equals(left.getBeginTime(), right.getBeginTime())
+                    && Objects.equals(left.getEndTime(), right.getEndTime())
+                    && Objects.equals(left.getOpenPrice(), right.getOpenPrice())
+                    && Objects.equals(left.getHighPrice(), right.getHighPrice())
+                    && Objects.equals(left.getLowPrice(), right.getLowPrice())
+                    && Objects.equals(left.getClosePrice(), right.getClosePrice())
+                    && Objects.equals(left.getVolume(), right.getVolume())
+                    && Objects.equals(left.getAmount(), right.getAmount()) && left.getTrades() == right.getTrades();
         }
 
         @Override
         public Bar getBar(int index) {
             long position = (long) index - removedBarsCount;
-            if (position < 0 || position >= bars.size()) {
+            if (position < 0) {
+                if (index < 0 || bars.isEmpty()) {
+                    throw new IndexOutOfBoundsException("Index is outside the frozen result series: " + index);
+                }
+                position = 0;
+            }
+            if (position >= bars.size()) {
                 throw new IndexOutOfBoundsException("Index is outside the frozen result series: " + index);
             }
             return bars.get((int) position);
@@ -134,7 +175,10 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
 
         @Override
         public int getBarCount() {
-            return bars.size();
+            if (endIndex < 0) {
+                return 0;
+            }
+            return endIndex - Math.max(removedBarsCount, beginIndex) + 1;
         }
 
         @Override
@@ -199,7 +243,21 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
 
         @Override
         public BarSeries getSubSeries(int startIndex, int endIndex) {
-            throw new UnsupportedOperationException("Result bar series is immutable");
+            if (startIndex < 0 || startIndex >= endIndex) {
+                throw new IllegalArgumentException("Subseries requires 0 <= startIndex < endIndex");
+            }
+            int retainedStart = Math.max(startIndex, beginIndex);
+            int from = Math.min(bars.size(), Math.max(0, retainedStart - removedBarsCount));
+            int to = (int) Math.max(from,
+                    Math.min(bars.size(), Math.min((long) endIndex, (long) this.endIndex + 1) - removedBarsCount));
+            List<Bar> selected = bars.subList(from, to);
+            BarSeries view = new BaseBarSeriesBuilder().withName(name)
+                    .withNumFactory(numFactory)
+                    .withMaxBarCount(maximumBarCount)
+                    .withBeginIndex(removedBarsCount > 0 ? retainedStart : 0)
+                    .withBars(selected)
+                    .build();
+            return new FrozenBarSeries(view, selected);
         }
     }
 

@@ -202,9 +202,19 @@ public class BacktestExecutorTest {
         Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
         BacktestExecutor executor = new BacktestExecutor(series);
 
-        assertThrows(IllegalStateException.class,
-                () -> executor.executeWithRuntimeReport(List.of(strategy), numOf(1), Trade.TradeType.BUY,
-                        completed -> series.addBar(series.getLastBar())));
+        assertThrows(IllegalStateException.class, () -> executor.executeWithRuntimeReport(List.of(strategy), numOf(1),
+                Trade.TradeType.BUY, completed -> series.getLastBar().addPrice(numOf(99))));
+
+    }
+
+    @Test
+    public void resultCaptureFailsWhenMaximumBarCountChangesDuringExecution() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        BacktestExecutor executor = new BacktestExecutor(series);
+
+        assertThrows(IllegalStateException.class, () -> executor.executeWithRuntimeReport(List.of(strategy), numOf(1),
+                Trade.TradeType.BUY, completed -> series.setMaximumBarCount(2)));
     }
 
     @Test
@@ -898,7 +908,6 @@ public class BacktestExecutorTest {
         assertFalse(result.walkForward().folds().isEmpty());
         BarSeries backtestSeries = result.backtest().barSeries();
         BarSeries walkForwardSeries = result.walkForward().barSeries();
-        assertSame(backtestSeries, walkForwardSeries);
         assertEquals(backtestSeries.getBarCount(), walkForwardSeries.getBarCount());
         assertEquals(backtestSeries.getName(), walkForwardSeries.getName());
     }

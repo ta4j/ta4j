@@ -407,15 +407,15 @@ public class BacktestExecutor {
         Objects.requireNonNull(tradeType, "tradeType must not be null");
         Objects.requireNonNull(tradingRecordRunner, "tradingRecordRunner must not be null");
         BarSeries managedSeries = seriesManager.getBarSeries();
-        BarSeries.BarSeriesChangeSnapshot baseline = managedSeries.getBarSeriesChangeSnapshot(-1L);
+        BarSeries baseline = BacktestExecutionResult.snapshot(managedSeries);
         if (batchSize <= 0) {
             throw new IllegalArgumentException("batchSize must be positive");
         }
 
         if (strategies.isEmpty()) {
             latestFailures = List.of();
-            return BacktestExecutionResult.capture(managedSeries, new ArrayList<>(),
-                    BacktestRuntimeReport.empty(), List.of(), baseline);
+            return BacktestExecutionResult.capture(managedSeries, new ArrayList<>(), BacktestRuntimeReport.empty(),
+                    List.of(), baseline);
         }
 
         Strategy[] strategyArray = strategies.toArray(Strategy[]::new);
@@ -851,15 +851,15 @@ public class BacktestExecutor {
         Objects.requireNonNull(criterion, "criterion must not be null");
         Objects.requireNonNull(tradingRecordRunner, "tradingRecordRunner must not be null");
         BarSeries managedSeries = seriesManager.getBarSeries();
-        BarSeries.BarSeriesChangeSnapshot baseline = managedSeries.getBarSeriesChangeSnapshot(-1L);
+        BarSeries baseline = BacktestExecutionResult.snapshot(managedSeries);
 
         if (topK <= 0) {
             throw new IllegalArgumentException("topK must be positive");
         }
         if (strategies.isEmpty()) {
             latestFailures = List.of();
-            return BacktestExecutionResult.capture(managedSeries, new ArrayList<>(),
-                    BacktestRuntimeReport.empty(), List.of(), baseline);
+            return BacktestExecutionResult.capture(managedSeries, new ArrayList<>(), BacktestRuntimeReport.empty(),
+                    List.of(), baseline);
         }
         ConcurrentLinkedQueue<BacktestExecutionResult.StrategyFailure> executionFailures = new ConcurrentLinkedQueue<>();
         int strategyCount = strategies.size();
