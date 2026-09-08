@@ -11,6 +11,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SplittableRandom;
+import java.util.random.RandomGenerator;
 
 import org.junit.Test;
 import org.ta4j.core.TestUtils;
@@ -112,6 +113,38 @@ public class StudentTScaleMixingMonteCarloMethodTest {
     }
 
     @Test
+    public void oppositeSignSamplesExpandWithoutIntermediateOverflow() {
+        RandomGenerator random = fixedScaleDraw(-0.8d, 0.5d);
+        MonteCarloMethod method = new StudentTScaleMixingMonteCarloMethod(fixedSamples(-1e308), 5);
+
+        List<Num> samples = method.terminalReturns(context(1, 1, window(0.01d), moments(1e308), random));
+
+        assertEquals(1, samples.size());
+        assertTrue(Double.isFinite(samples.get(0).doubleValue()));
+        assertTrue(samples.get(0).doubleValue() < -1e308);
+    }
+
+    @Test
+    public void sameSignExpansionUsesFmaWhenProductOverflowsBeforeCancellation() {
+        RandomGenerator random = fixedScaleDraw(-1.65d, 0.5d);
+        MonteCarloMethod method = new StudentTScaleMixingMonteCarloMethod(fixedSamples(1e308), 2);
+
+        List<Num> samples = method.terminalReturns(context(1, 1, window(0.01d), moments(1.5e308), random));
+
+        assertEquals(1, samples.size());
+        assertTrue(Double.isFinite(samples.get(0).doubleValue()));
+        assertTrue(samples.get(0).doubleValue() < 0d);
+    }
+
+    @Test
+    public void trueAffineOverflowIsRejected() {
+        RandomGenerator random = fixedScaleDraw(-1.65d, 0.5d);
+        MonteCarloMethod method = new StudentTScaleMixingMonteCarloMethod(fixedSamples(-1e308), 2);
+
+        assertNull(method.terminalReturns(context(1, 1, window(0.01d), moments(1e308), random)));
+    }
+
+    @Test
     public void sameSeedReproducesIdenticalSamples() {
         MonteCarloMethod method = new StudentTScaleMixingMonteCarloMethod(
                 NormalInverseGammaForecastMethod.withEmpiricalPriors());
@@ -180,5 +213,24 @@ public class StudentTScaleMixingMonteCarloMethodTest {
             ReturnMoments moments, long seed) {
         return new MonteCarloContext(100, horizon, iterationCount, historicalLogReturns, moments,
                 new SplittableRandom(seed), FACTORY);
+    }
+
+    private static RandomGenerator fixedScaleDraw(double gaussian, double uniform) {
+        return new java.util.Random() {
+            @Override
+            public double nextGaussian() {
+                return gaussian;
+            }
+
+            @Override
+            public double nextDouble() {
+                return uniform;
+            }
+        };
+    }
+
+    private static MonteCarloContext context(int horizon, int iterationCount, List<Num> historicalLogReturns,
+            ReturnMoments moments, RandomGenerator random) {
+        return new MonteCarloContext(100, horizon, iterationCount, historicalLogReturns, moments, random, FACTORY);
     }
 }

@@ -158,9 +158,8 @@ public final class RecentVolatilityWideningMonteCarloMethod implements MonteCarl
 
         List<Num> widened = new ArrayList<>(context.iterationCount());
         for (Num sample : converted) {
-            Num centered = sample.minus(center);
-            Num scaled = center.plus(centered.multipliedBy(factor));
-            if (!Num.isFinite(scaled)) {
+            Num scaled = MonteCarloArithmetic.affine(center, sample, factor, numFactory);
+            if (scaled == null) {
                 return null;
             }
             widened.add(scaled);
@@ -216,19 +215,35 @@ public final class RecentVolatilityWideningMonteCarloMethod implements MonteCarl
     private Num recentVolatilityRms(List<Num> window, NumFactory numFactory) {
         int from = Math.max(0, window.size() - recentBarCount);
         int count = 0;
-        Num sumSquares = numFactory.zero();
+        Num maximum = numFactory.zero();
         for (int i = from; i < window.size(); i++) {
             Num value = window.get(i);
             if (!Num.isFinite(value)) {
                 return null;
             }
-            sumSquares = sumSquares.plus(value.multipliedBy(value));
+            Num magnitude = value.abs();
+            if (magnitude.compareTo(maximum) > 0) {
+                maximum = magnitude;
+            }
             count++;
         }
         if (count < 2) {
             return null;
         }
-        return sumSquares.dividedBy(numFactory.numOf(count)).sqrt();
+        if (maximum.isZero()) {
+            return maximum;
+        }
+
+        // Normalize before squaring. This keeps every square in [0, 1], so
+        // finite DoubleNum windows above sqrt(MAX_VALUE) remain usable while
+        // DecimalNum subnormal windows retain their high-precision magnitude.
+        Num sumSquares = numFactory.zero();
+        for (int i = from; i < window.size(); i++) {
+            Num normalized = window.get(i).dividedBy(maximum);
+            sumSquares = sumSquares.plus(normalized.multipliedBy(normalized));
+        }
+        Num normalizedRms = sumSquares.dividedBy(numFactory.numOf(count)).sqrt();
+        return maximum.multipliedBy(normalizedRms);
     }
 
     @Override

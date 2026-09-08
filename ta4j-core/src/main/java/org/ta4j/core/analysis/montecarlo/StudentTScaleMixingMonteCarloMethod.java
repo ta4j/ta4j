@@ -115,12 +115,11 @@ public final class StudentTScaleMixingMonteCarloMethod implements MonteCarloMeth
             }
             double factor = tScaleDraw(random) / scaleMean;
             Num scale = numFactory.numOf(factor);
-            // A contracting affine combination stays finite even when subtracting
-            // opposite-sign endpoints would overflow before applying the scale.
-            Num scaled = factor <= 1d
-                    ? driftPath.multipliedBy(numFactory.one().minus(scale)).plus(converted.multipliedBy(scale))
-                    : driftPath.plus(converted.minus(driftPath).multipliedBy(scale));
-            if (!Num.isFinite(scaled)) {
+            // Keep the affine transform in the active numeric domain. The shared
+            // implementation avoids overflowing endpoint differences during both
+            // contraction and expansion, and uses FMA for DoubleNum cancellation.
+            Num scaled = MonteCarloArithmetic.affine(driftPath, converted, scale, numFactory);
+            if (scaled == null) {
                 return null;
             }
             mixed.add(scaled);

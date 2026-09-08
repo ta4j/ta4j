@@ -74,6 +74,19 @@ public class RecentVolatilityWideningMonteCarloMethodTest {
     }
 
     @Test
+    public void largeDoubleWindowRmsScalesBeforeSquaring() {
+        // A direct square of 1e200 overflows DoubleNum, although the RMS is
+        // finite and its ratio to state volatility is capped at four.
+        MonteCarloMethod method = new RecentVolatilityWideningMonteCarloMethod(fixedSamples(0d, 1d), 2, 4d);
+
+        List<Num> samples = method.terminalReturns(context(2, 2, window(1e200, -1e200), moments(1e-4), 1L));
+
+        assertEquals(2, samples.size());
+        TestUtils.assertNumEquals(FACTORY.numOf(-1.5d), samples.get(0), 1e-12);
+        TestUtils.assertNumEquals(FACTORY.numOf(2.5d), samples.get(1), 1e-12);
+    }
+
+    @Test
     public void calmWindowPreservesLargeFiniteSamplesWithoutCenterOverflow() {
         MonteCarloMethod inner = fixedSamples(1e308, 1e308);
         MonteCarloMethod method = new RecentVolatilityWideningMonteCarloMethod(inner, 2, 4d);
