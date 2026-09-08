@@ -95,6 +95,7 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
             TestUtils.assertNumEquals(FACTORY.numOf(3 * 0.01d), sample, 1e-12);
         }
     }
+
     @Test
     public void flatMomentsProduceDeterministicPosteriorReturns() {
         List<Num> constantWindow = List.of(FACTORY.numOf(0.01d), FACTORY.numOf(0.01d), FACTORY.numOf(0.01d));
@@ -202,7 +203,7 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
 
     private static MonteCarloContext context(int horizon, int iterations, List<Num> historicalLogReturns,
             ReturnMoments moments, long seed, NumFactory numFactory) {
-        return new MonteCarloContext(100, horizon, iterations, historicalLogReturns, moments, new SplittableRandom(seed),
-                numFactory);
+        return new MonteCarloContext(100, horizon, iterations, historicalLogReturns, moments,
+                new SplittableRandom(seed), numFactory);
     }
 }

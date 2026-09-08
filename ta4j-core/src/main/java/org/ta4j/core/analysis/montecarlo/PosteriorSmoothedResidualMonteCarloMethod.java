@@ -45,8 +45,8 @@ import org.ta4j.core.num.NumFactory;
  * {@code context.iterationCount()} finite samples, propagates a {@code null}
  * (unstable) result from the inner method, and declares the forecast unstable
  * when the inner method returns the wrong sample count or the posterior cannot
- * be fitted. A zero state volatility with a zero-scale posterior instead produces
- * the deterministic posterior-mean terminal return.
+ * be fitted. A zero state volatility with a zero-scale posterior instead
+ * produces the deterministic posterior-mean terminal return.
  *
  * @see MonteCarloMethod
  * @see NormalInverseGammaForecastMethod
