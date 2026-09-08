@@ -39,6 +39,10 @@ public class CashFlow implements PerformanceIndicator {
      * The last logical bar index materialized in {@link #values}.
      */
     private int valueEndIndex;
+    /**
+     * The last raw bar index captured when the cash flow was materialized.
+     */
+    private int materializedAddressableEndIndex;
 
     /**
      * The equity curve calculation mode.
@@ -192,19 +196,19 @@ public class CashFlow implements PerformanceIndicator {
             int finalIndex = useRecordEnd ? record.getEndIndex(this.barSeries)
                     : useSeriesEnd ? this.barSeries.getEndIndex() : requestedFinalIndex;
             this.valueStartIndex = Math.max(Math.max(0, startIndex), this.barSeries.getBeginIndex());
-            int addressableEndIndex = OffsetNumBuffer.addressableEndIndex(this.barSeries);
+            this.materializedAddressableEndIndex = OffsetNumBuffer.addressableEndIndex(this.barSeries);
             int materializationEnd = useRecordEnd ? finalIndex : requestedEndIndex;
             int endIndex = padToSeriesEnd ? Math.max(this.barSeries.getEndIndex(), materializationEnd)
                     : materializationEnd;
             Num one = this.barSeries.numFactory().one();
-            boolean emptyWindow = valueStartIndex > addressableEndIndex || endIndex < valueStartIndex;
+            boolean emptyWindow = valueStartIndex > this.materializedAddressableEndIndex || endIndex < valueStartIndex;
             if (emptyWindow) {
                 // Keep the requested bounds for calculation guards, but use the
                 // canonical empty buffer rather than allocating an inverted span.
                 this.valueEndIndex = valueStartIndex - 1;
                 this.values = new OffsetNumBuffer(-1, -1, one, one);
             } else {
-                this.valueEndIndex = Math.min(endIndex, addressableEndIndex);
+                this.valueEndIndex = Math.min(endIndex, this.materializedAddressableEndIndex);
                 this.values = new OffsetNumBuffer(valueStartIndex, valueEndIndex, one, one);
             }
             calculate(record, finalIndex, handling);
@@ -231,9 +235,9 @@ public class CashFlow implements PerformanceIndicator {
             return;
         }
         int seriesEnd = barSeries.getEndIndex();
-        int analysisEndIndex = OffsetNumBuffer.addressableEndIndex(barSeries);
+        int analysisEndIndex = materializedAddressableEndIndex;
         int entryIndex = entry.getIndex();
-        if (entryIndex > finalIndex || entryIndex > seriesEnd) {
+        if (entryIndex > finalIndex || entryIndex > analysisEndIndex) {
             return;
         }
         int endIndex = determineEndIndex(position, finalIndex, analysisEndIndex);

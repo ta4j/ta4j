@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
 
@@ -211,10 +212,11 @@ final class OffsetNumBuffer {
      */
     static int addressableEndIndex(BarSeries series) {
         int logicalEndIndex = series.getEndIndex();
-        if (logicalEndIndex < 0 || series.getBarData().isEmpty()) {
+        List<Bar> rawBars = series.getBarData();
+        if (rawBars.isEmpty()) {
             return logicalEndIndex;
         }
-        long rawLastIndex = (long) series.getRemovedBarsCount() + series.getBarData().size() - 1;
+        long rawLastIndex = (long) series.getRemovedBarsCount() + rawBars.size() - 1;
         return rawLastIndex > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) rawLastIndex;
     }
 }

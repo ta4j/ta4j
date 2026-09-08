@@ -428,6 +428,18 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
     }
 
     @Test
+    public void pricesRawExitWhenLogicalWindowIsEmpty() {
+        BarSeries series = ConstrainedSeriesSupport.emptyLogicalSeries("empty-window", numFactory, 100d);
+        Num one = numFactory.one();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, numFactory.numOf(100d), one),
+                Trade.sellAt(0, numFactory.numOf(50d), one));
+
+        CumulativePnL pnl = new CumulativePnL(series, tradingRecord);
+
+        assertNumEquals(numFactory.numOf(-50d), pnl.getValue(0));
+    }
+
+    @Test
     public void accumulatesTrailingExitBeyondLogicalWindowEnd() {
         BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("trailing-exit", numFactory, 1, 10d, 20d,
                 30d);

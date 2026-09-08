@@ -43,6 +43,21 @@ public final class ConstrainedSeriesSupport {
     }
 
     /**
+     * Builds a series whose raw bars remain retained while its logical window is
+     * empty. Raw index zero is still addressable for direct trade exits.
+     *
+     * @param name       the series name
+     * @param numFactory the number factory
+     * @param closes     the retained raw close prices
+     * @return a constrained series with an empty logical window
+     */
+    public static BarSeries emptyLogicalSeries(String name, NumFactory numFactory, double... closes) {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closes).build();
+        return new BaseBarSeries(name, List.copyOf(source.getBarData()), 0, -1, true, numFactory,
+                new TimeBarBuilderFactory());
+    }
+
+    /**
      * Builds a series with an explicit logical/raw index offset.
      *
      * @param name             the series name

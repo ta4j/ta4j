@@ -568,4 +568,33 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(numFactory.numOf(-0.5d), returns.getValue(1));
         assertEquals(2, returns.getSize());
     }
+
+    @Test
+    public void pricesRawExitWhenLogicalWindowIsEmpty() {
+        BarSeries series = ConstrainedSeriesSupport.emptyLogicalSeries("empty-window", numFactory, 100d);
+        Num one = numFactory.one();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, numFactory.numOf(100d), one),
+                Trade.sellAt(0, numFactory.numOf(50d), one));
+
+        Returns returns = new Returns(series, tradingRecord, ReturnRepresentation.DECIMAL);
+
+        assertNumEquals(numFactory.numOf(-0.5d), returns.getValue(0));
+        assertEquals(1, returns.getSize());
+    }
+
+    @Test
+    public void retainsUndefinedSeededReturnInMaterializedSize() {
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        rolling.setMaximumBarCount(2);
+        rolling.barBuilder().closePrice(0d).add();
+        Trade entry = Trade.buyAt(0, rolling);
+        rolling.barBuilder().closePrice(20d).add();
+        rolling.barBuilder().closePrice(30d).add();
+        TradingRecord tradingRecord = new BaseTradingRecord(entry, Trade.sellAt(2, rolling));
+
+        Returns returns = new Returns(rolling, tradingRecord, ReturnRepresentation.LOG);
+
+        assertTrue(returns.getRawValues().get(0).isNaN());
+        assertEquals(2, returns.getSize());
+    }
 }

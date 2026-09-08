@@ -693,6 +693,18 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
+    public void pricesRawExitWhenLogicalWindowIsEmpty() {
+        BarSeries series = ConstrainedSeriesSupport.emptyLogicalSeries("empty-window", numFactory, 100d);
+        Num one = numFactory.one();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, numFactory.numOf(100d), one),
+                Trade.sellAt(0, numFactory.numOf(50d), one));
+
+        CashFlow cashFlow = new CashFlow(series, tradingRecord);
+
+        assertNumEquals(numFactory.numOf(0.5d), cashFlow.getValue(0));
+    }
+
+    @Test
     public void sameBarPositionOnTerminalIndexDoesNotOverflow() {
         BarSeries series = ConstrainedSeriesSupport.terminalOneBarSeries("terminal", numFactory, 100d);
         var record = new BaseTradingRecord(Trade.buyAt(Integer.MAX_VALUE, series),

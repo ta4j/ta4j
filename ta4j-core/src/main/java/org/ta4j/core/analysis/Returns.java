@@ -85,6 +85,10 @@ public class Returns implements PerformanceIndicator {
      * old returns leak onto never-calculated bars.
      */
     private int materializedBeginIndex;
+    /**
+     * The last raw bar index captured when the return buffers were materialized.
+     */
+    private int materializedAddressableEndIndex;
 
     /**
      * Constructor.
@@ -123,9 +127,11 @@ public class Returns implements PerformanceIndicator {
             Num zero = barSeries.numFactory().zero();
             Num initial = representation == ReturnRepresentation.LOG ? zero : one;
             int beginIndex = barSeries.getBeginIndex();
+            this.materializedAddressableEndIndex = OffsetNumBuffer.addressableEndIndex(barSeries);
             int endIndex = Math.max(barSeries.getEndIndex(),
-                    Math.min(finalIndex, OffsetNumBuffer.addressableEndIndex(barSeries)));
-            returnFactors = new OffsetNumBuffer(beginIndex, endIndex, initial, NaN.NaN);
+                    Math.min(finalIndex, this.materializedAddressableEndIndex));
+            returnFactors = endIndex < beginIndex ? new OffsetNumBuffer(-1, -1, initial, NaN.NaN)
+                    : new OffsetNumBuffer(beginIndex, endIndex, initial, NaN.NaN);
             materializedBeginIndex = beginIndex;
             rawValues = new ArrayList<>(Collections.nCopies(returnFactors.size(), zero));
             values = new ArrayList<>(Collections.nCopies(returnFactors.size(), zero));
@@ -343,11 +349,11 @@ public class Returns implements PerformanceIndicator {
             return;
         }
         int entryIndex = entry.getIndex();
-        int seriesEnd = barSeries.getEndIndex();
-        if (entryIndex > finalIndex || entryIndex > seriesEnd) {
+        int analysisEndIndex = materializedAddressableEndIndex;
+        if (entryIndex > finalIndex || entryIndex > analysisEndIndex) {
             return;
         }
-        int endIndex = determineEndIndex(position, finalIndex, OffsetNumBuffer.addressableEndIndex(barSeries));
+        int endIndex = determineEndIndex(position, finalIndex, analysisEndIndex);
         int seriesBegin = barSeries.getBeginIndex();
         if (endIndex < seriesBegin) {
             return;

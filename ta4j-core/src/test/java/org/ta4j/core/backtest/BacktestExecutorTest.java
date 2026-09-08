@@ -11,6 +11,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -30,7 +31,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.ConcurrentBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Position;
@@ -45,10 +49,12 @@ import org.ta4j.core.criteria.NumberOfBarsCriterion;
 import org.ta4j.core.criteria.commissions.CommissionsCriterion;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.FixedRule;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.walkforward.WalkForwardConfig;
@@ -215,6 +221,91 @@ public class BacktestExecutorTest {
 
         assertThrows(IllegalStateException.class, () -> executor.executeWithRuntimeReport(List.of(strategy), numOf(1),
                 Trade.TradeType.BUY, completed -> series.setMaximumBarCount(2)));
+    }
+
+    @Test
+    public void executeWithRuntimeReportHoldsOneRetentionWindowAcrossQueuedAppend() throws Exception {
+        ConcurrentBarSeries series = buildConcurrentSeries();
+        Bar appendedBar = buildAppendedBar(series);
+        CountDownLatch writerAttempted = new CountDownLatch(1);
+        AtomicBoolean writerAcquired = new AtomicBoolean();
+        Thread writer = new Thread(() -> {
+            writerAttempted.countDown();
+            series.withWriteLock(() -> {
+                writerAcquired.set(true);
+                series.addBar(appendedBar);
+            });
+        }, "backtest-runtime-report-retention-writer");
+        writer.setDaemon(true);
+        Strategy queuedAppendStrategy = strategyThatQueuesAppend(writer, writerAttempted, writerAcquired);
+        Strategy secondStrategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        BacktestExecutionResult result;
+        ExecutorService executionPool = daemonExecutor("backtest-runtime-report-execution");
+        try {
+            Future<BacktestExecutionResult> execution = executionPool.submit(() -> new BacktestExecutor(series)
+                    .executeWithRuntimeReport(List.of(queuedAppendStrategy, secondStrategy), numFactory.one()));
+            result = execution.get(5, TimeUnit.SECONDS);
+        } finally {
+            executionPool.shutdownNow();
+            writer.join(5_000);
+        }
+
+        assertFalse("retention writer did not finish", writer.isAlive());
+        assertTrue("retention writer did not append", writerAcquired.get());
+        assertEquals(2, result.tradingStatements().size());
+        assertEquals(0, result.barSeries().getBeginIndex());
+        assertEquals(2, result.barSeries().getEndIndex());
+        assertEquals(3, result.barSeries().getBarCount());
+        for (TradingStatement statement : result.tradingStatements()) {
+            assertEquals(0, statement.getTradingRecord().getStartIndex().intValue());
+            assertEquals(2, statement.getTradingRecord().getEndIndex().intValue());
+        }
+        assertEquals(1, series.getBeginIndex());
+        assertEquals(3, series.getEndIndex());
+        assertEquals(3, series.getBarCount());
+    }
+
+    @Test
+    public void executeAndKeepTopKHoldsOneRetentionWindowAcrossQueuedAppend() throws Exception {
+        ConcurrentBarSeries series = buildConcurrentSeries();
+        Bar appendedBar = buildAppendedBar(series);
+        CountDownLatch writerAttempted = new CountDownLatch(1);
+        AtomicBoolean writerAcquired = new AtomicBoolean();
+        Thread writer = new Thread(() -> {
+            writerAttempted.countDown();
+            series.withWriteLock(() -> {
+                writerAcquired.set(true);
+                series.addBar(appendedBar);
+            });
+        }, "backtest-top-k-retention-writer");
+        writer.setDaemon(true);
+        Strategy queuedAppendStrategy = strategyThatQueuesAppend(writer, writerAttempted, writerAcquired);
+        Strategy secondStrategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        BacktestExecutionResult result;
+        ExecutorService executionPool = daemonExecutor("backtest-top-k-execution");
+        try {
+            Future<BacktestExecutionResult> execution = executionPool.submit(
+                    () -> new BacktestExecutor(series).executeAndKeepTopK(List.of(queuedAppendStrategy, secondStrategy),
+                            numFactory.one(), Trade.TradeType.BUY, new NumberOfBarsCriterion(), 2, null));
+            result = execution.get(5, TimeUnit.SECONDS);
+        } finally {
+            executionPool.shutdownNow();
+            writer.join(5_000);
+        }
+
+        assertFalse("retention writer did not finish", writer.isAlive());
+        assertTrue("retention writer did not append", writerAcquired.get());
+        assertEquals(2, result.tradingStatements().size());
+        assertEquals(0, result.barSeries().getBeginIndex());
+        assertEquals(2, result.barSeries().getEndIndex());
+        assertEquals(3, result.barSeries().getBarCount());
+        assertEquals(1, series.getBeginIndex());
+        assertEquals(3, series.getEndIndex());
+        assertEquals(3, series.getBarCount());
+        for (TradingStatement statement : result.tradingStatements()) {
+            assertEquals(0, statement.getTradingRecord().getStartIndex().intValue());
+            assertEquals(2, statement.getTradingRecord().getEndIndex().intValue());
+        }
     }
 
     @Test
@@ -775,6 +866,53 @@ public class BacktestExecutorTest {
         executor.executeWithRuntimeReport(List.of(), numOf(1));
 
         assertTrue(executor.getStrategyFailures().isEmpty());
+    }
+
+    private ExecutorService daemonExecutor(String threadName) {
+        return Executors.newSingleThreadExecutor(runnable -> {
+            Thread thread = new Thread(runnable, threadName);
+            thread.setDaemon(true);
+            return thread;
+        });
+    }
+
+    private ConcurrentBarSeries buildConcurrentSeries() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
+        return new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new MockBarBuilderFactory())
+                .withBars(source.getBarData())
+                .withMaxBarCount(3)
+                .build();
+    }
+
+    private Bar buildAppendedBar(ConcurrentBarSeries series) {
+        return series.barBuilder().timePeriod(Duration.ofMinutes(1)).closePrice(13).build();
+    }
+
+    private Strategy strategyThatQueuesAppend(Thread writer, CountDownLatch writerAttempted,
+            AtomicBoolean writerAcquired) {
+        AtomicBoolean started = new AtomicBoolean();
+        Rule queueAppend = (index, tradingRecord) -> {
+            if (started.compareAndSet(false, true)) {
+                writer.start();
+                try {
+                    assertTrue("retention writer did not attempt to acquire the lease",
+                            writerAttempted.await(5, TimeUnit.SECONDS));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("Interrupted while waiting for the retention writer", e);
+                }
+                long deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
+                while (writer.isAlive() && writer.getState() != Thread.State.WAITING && System.nanoTime() < deadline) {
+                    Thread.onSpinWait();
+                }
+                assertEquals("retention writer must queue behind the batch lease", Thread.State.WAITING,
+                        writer.getState());
+                assertFalse("retention writer acquired the lease before batch completion", writerAcquired.get());
+            }
+            return index == 0;
+        };
+        return new BaseStrategy(queueAppend, new FixedRule(1));
     }
 
     /**

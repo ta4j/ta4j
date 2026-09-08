@@ -28,6 +28,10 @@ public final class CumulativePnL implements PerformanceIndicator {
 
     private final BarSeries barSeries;
     private OffsetNumBuffer values;
+    /**
+     * The last raw bar index captured when the curve was materialized.
+     */
+    private int materializedAddressableEndIndex;
     private final EquityCurveMode equityCurveMode;
 
     /**
@@ -56,8 +60,11 @@ public final class CumulativePnL implements PerformanceIndicator {
             int finalIndex = useRecordEnd ? record.getEndIndex(this.barSeries)
                     : useSeriesEnd ? this.barSeries.getEndIndex() : requestedFinalIndex;
             Num zero = this.barSeries.numFactory().zero();
-            this.values = new OffsetNumBuffer(this.barSeries.getBeginIndex(), Math.max(this.barSeries.getEndIndex(),
-                    Math.min(finalIndex, OffsetNumBuffer.addressableEndIndex(this.barSeries))), zero, zero);
+            this.materializedAddressableEndIndex = OffsetNumBuffer.addressableEndIndex(this.barSeries);
+            int endIndex = Math.max(this.barSeries.getEndIndex(),
+                    Math.min(finalIndex, this.materializedAddressableEndIndex));
+            this.values = endIndex < this.barSeries.getBeginIndex() ? new OffsetNumBuffer(-1, -1, zero, zero)
+                    : new OffsetNumBuffer(this.barSeries.getBeginIndex(), endIndex, zero, zero);
             calculate(record, finalIndex, handling);
         };
         if (barSeries instanceof ConcurrentBarSeries concurrent) {
@@ -180,10 +187,9 @@ public final class CumulativePnL implements PerformanceIndicator {
         if (entry == null) {
             return;
         }
-        int seriesEnd = barSeries.getEndIndex();
-        int analysisEndIndex = OffsetNumBuffer.addressableEndIndex(barSeries);
+        int analysisEndIndex = materializedAddressableEndIndex;
         int entryIndex = entry.getIndex();
-        if (entryIndex > finalIndex || entryIndex > seriesEnd) {
+        if (entryIndex > finalIndex || entryIndex > analysisEndIndex) {
             return;
         }
         int endIndex = determineEndIndex(position, finalIndex, analysisEndIndex);

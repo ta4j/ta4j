@@ -17,6 +17,7 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 public class ValueAtRiskCriterionTest {
@@ -110,6 +111,21 @@ public class ValueAtRiskCriterionTest {
         AnalysisCriterion varCriterionPercentage = new ValueAtRiskCriterion(0.95, ReturnRepresentation.PERCENTAGE);
         assertNumEquals(numFactory.numOf(((90d / 104) - 1) * 100),
                 varCriterionPercentage.calculate(series, tradingRecord));
+    }
+
+    @Test
+    public void calculateWithUndefinedSeededReturnDoesNotSlicePastRawValues() {
+        series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(2);
+        series.barBuilder().closePrice(0d).add();
+        Trade entry = Trade.buyAt(0, series);
+        series.barBuilder().closePrice(20d).add();
+        series.barBuilder().closePrice(30d).add();
+        TradingRecord tradingRecord = new BaseTradingRecord(entry, Trade.sellAt(2, series));
+
+        Num result = getCriterion().calculate(series, tradingRecord);
+
+        assertTrue(result.isNaN());
     }
 
     @Test

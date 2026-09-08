@@ -126,6 +126,21 @@ public class ExpectedShortfallCriterionTest {
     }
 
     @Test
+    public void calculateWithUndefinedSeededReturnDoesNotSlicePastRawValues() {
+        series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(2);
+        series.barBuilder().closePrice(0d).add();
+        Trade entry = Trade.buyAt(0, series);
+        series.barBuilder().closePrice(20d).add();
+        series.barBuilder().closePrice(30d).add();
+        TradingRecord tradingRecord = new BaseTradingRecord(entry, Trade.sellAt(2, series));
+
+        Num result = getCriterion().calculate(series, tradingRecord);
+
+        assertTrue(result.isNaN());
+    }
+
+    @Test
     public void betterThan() {
         AnalysisCriterion criterion = getCriterion();
         assertTrue(criterion.betterThan(numFactory.numOf(-0.1), numFactory.numOf(-0.2)));
