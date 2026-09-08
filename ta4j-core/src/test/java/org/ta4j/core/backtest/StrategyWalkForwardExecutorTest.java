@@ -19,16 +19,20 @@ import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.ConcurrentBarSeriesBuilder;
 import org.ta4j.core.Position;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
+import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.reports.TradingStatementGenerator;
 import org.ta4j.core.rules.BooleanRule;
 import org.ta4j.core.walkforward.AnchoredExpandingWalkForwardSplitter;
 import org.ta4j.core.walkforward.WalkForwardConfig;
@@ -56,6 +60,45 @@ public class StrategyWalkForwardExecutorTest {
         assertTrue(result.holdoutFold().isPresent());
         assertFalse(result.inSampleFolds().isEmpty());
         assertFalse(result.outOfSampleFolds().isEmpty());
+    }
+
+    @Test
+    public void holdsOneRetentionWindowAcrossSplittingAndEveryFold() throws InterruptedException {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new MockBarBuilderFactory())
+                .withBars(buildSeries(48).getBarData())
+                .withMaxBarCount(48)
+                .build();
+        Thread writer = new Thread(() -> series.setMaximumBarCount(2));
+        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(
+                new BarSeriesManager(series, new ZeroCostModel(), new ZeroCostModel(), new TradeOnCurrentCloseModel()),
+                new TradingStatementGenerator(), (target, config) -> {
+                    List<WalkForwardSplit> splits = new AnchoredExpandingWalkForwardSplitter().split(target, config);
+                    writer.start();
+                    long deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
+                    while (writer.isAlive() && writer.getState() != Thread.State.WAITING
+                            && System.nanoTime() < deadline) {
+                        Thread.onSpinWait();
+                    }
+                    assertEquals("Retention writer must wait for the complete walk-forward run", Thread.State.WAITING,
+                            writer.getState());
+                    return splits;
+                });
+        StrategyWalkForwardExecutionResult result;
+        try {
+            result = executor.execute(new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE), Trade.TradeType.BUY,
+                    numFactory.one(), walkForwardConfig(), completed -> assertEquals(48, series.getBarCount()));
+        } finally {
+            writer.join(5_000);
+        }
+        assertFalse(writer.isAlive());
+        assertEquals(46, series.getBeginIndex());
+        assertEquals(2, series.getBarCount());
+        assertFalse(result.folds().isEmpty());
+        for (StrategyWalkForwardExecutionResult.FoldResult fold : result.folds()) {
+            assertEquals(fold.split().testStart(), fold.tradingRecord().getStartIndex().intValue());
+            assertEquals(fold.split().testEnd(), fold.tradingRecord().getEndIndex().intValue());
+        }
     }
 
     @Test

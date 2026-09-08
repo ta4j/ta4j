@@ -265,7 +265,9 @@ public class CashFlow implements PerformanceIndicator {
             if (entryIndex < windowStartIndex) {
                 Num windowStartPrice = windowStartIndex == endIndex ? resolveExitPrice(position, endIndex, barSeries)
                         : barSeries.getBar(windowStartIndex).getClosePrice();
-                Num windowStartNetPrice = addCost(windowStartPrice, averageHoldingCostPerPeriod, isLongTrade);
+                Num accruedCost = averageHoldingCostPerPeriod
+                        .multipliedBy(numFactory.numOf((long) windowStartIndex - entryIndex));
+                Num windowStartNetPrice = addCost(windowStartPrice, accruedCost, isLongTrade);
                 Num windowStartRatio = getIntermediateRatio(isLongTrade, netEntryPrice, windowStartNetPrice);
                 multiplyValue(windowStartIndex, windowStartRatio);
                 windowStartSeeded = true;
@@ -275,12 +277,15 @@ public class CashFlow implements PerformanceIndicator {
             for (long barIndex = loopStart; barIndex < endIndex && barIndex <= windowEndIndex; barIndex++) {
                 int currentIndex = (int) barIndex;
                 Num closePrice = barSeries.getBar(currentIndex).getClosePrice();
-                Num intermediateNetPrice = addCost(closePrice, averageHoldingCostPerPeriod, isLongTrade);
+                Num accruedCost = averageHoldingCostPerPeriod.multipliedBy(numFactory.numOf(barIndex - entryIndex));
+                Num intermediateNetPrice = addCost(closePrice, accruedCost, isLongTrade);
                 Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
                 multiplyValue(currentIndex, ratio);
             }
             Num exitPrice = resolveExitPrice(position, endIndex, barSeries);
-            Num netExitPrice = addCost(exitPrice, averageHoldingCostPerPeriod, isLongTrade);
+            Num accruedExitCost = averageHoldingCostPerPeriod
+                    .multipliedBy(numFactory.numOf((long) endIndex - entryIndex));
+            Num netExitPrice = addCost(exitPrice, accruedExitCost, isLongTrade);
             Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
             if (ratioIndex <= windowEndIndex && !(windowStartSeeded && ratioIndex == windowStartIndex)) {
                 multiplyValue(ratioIndex, ratio);

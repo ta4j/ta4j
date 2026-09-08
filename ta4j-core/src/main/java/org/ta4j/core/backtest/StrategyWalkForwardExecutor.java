@@ -15,6 +15,7 @@ import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
@@ -31,7 +32,10 @@ import org.ta4j.core.walkforward.WalkForwardSplit;
 import org.ta4j.core.walkforward.WalkForwardSplitter;
 
 /**
- * Executes one strategy in walk-forward mode with a backtest-symmetric API.
+ * Executes one strategy in walk-forward mode with a backtest-symmetric API. For
+ * a {@link ConcurrentBarSeries}, one read lease covers split creation, every
+ * fold and report materialization. Strategy and progress callbacks must not
+ * mutate that series while execution is in progress.
  *
  * @since 0.22.4
  */
@@ -230,6 +234,16 @@ public class StrategyWalkForwardExecutor {
         Objects.requireNonNull(foldRecordRunner, "foldRecordRunner");
 
         BarSeries series = seriesManager.getBarSeries();
+        if (series instanceof ConcurrentBarSeries concurrentSeries) {
+            return concurrentSeries
+                    .withReadLock(() -> executeFolds(series, strategy, config, progressCallback, foldRecordRunner));
+        }
+        return executeFolds(series, strategy, config, progressCallback, foldRecordRunner);
+    }
+
+    private StrategyWalkForwardExecutionResult executeFolds(BarSeries series, Strategy strategy,
+            WalkForwardConfig config, Consumer<Integer> progressCallback,
+            Function<WalkForwardSplit, TradingRecord> foldRecordRunner) {
         List<WalkForwardSplit> splits = splitter.split(series, config);
         if (splits.isEmpty()) {
             return new StrategyWalkForwardExecutionResult(series, strategy, config, List.of(),

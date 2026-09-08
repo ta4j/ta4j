@@ -476,7 +476,28 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         assertNumEquals(1, cashFlow.getValue(0));
         assertNumEquals(98d / 101d, cashFlow.getValue(1));
-        assertNumEquals(97d / 101d, cashFlow.getValue(2));
+        assertNumEquals(95d / 101d, cashFlow.getValue(2));
+    }
+
+    @Test
+    public void retainedSeedAndLaterMarksAccrueHoldingCostsFromEntry() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d)
+                .build();
+        CostModel transactionCost = new ZeroCostModel();
+        Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(12, series), transactionCost,
+                new FixedHoldingCostModel(12d));
+        CashFlow fullHistory = new CashFlow(series, position);
+        series.setMaximumBarCount(3);
+
+        CashFlow retained = new CashFlow(series, position);
+
+        assertNumEquals(0.90d, retained.getValue(10));
+        assertNumEquals(0.89d, retained.getValue(11));
+        assertNumEquals(0.88d, retained.getValue(12));
+        for (int index = 10; index <= 12; index++) {
+            assertEquals(fullHistory.getValue(index), retained.getValue(index));
+        }
     }
 
     @Test

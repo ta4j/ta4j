@@ -395,13 +395,14 @@ public interface TradingRecord extends Serializable {
                     .orElse(logicalEndIndex);
             endIndex = Math.max(logicalEndIndex, endIndex);
         }
-        if (series.getBarData().isEmpty()) {
-            return Math.min(endIndex, logicalEndIndex);
-        }
         if (endIndex <= logicalEndIndex) {
             return endIndex;
         }
-        long addressableEndIndex = (long) series.getRemovedBarsCount() + series.getBarData().size() - 1;
+        List<Bar> bars = series.getBarData();
+        if (bars.isEmpty()) {
+            return logicalEndIndex;
+        }
+        long addressableEndIndex = (long) series.getRemovedBarsCount() + bars.size() - 1;
         return endIndex <= addressableEndIndex ? endIndex : logicalEndIndex;
     }
 }
