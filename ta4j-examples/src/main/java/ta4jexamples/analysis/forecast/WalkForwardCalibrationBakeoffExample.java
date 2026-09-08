@@ -167,6 +167,11 @@ public final class WalkForwardCalibrationBakeoffExample {
             Path checkpoint = outputDirectory().resolve(dataset.token() + "-" + arm.token() + ".json");
             Accumulator acc = evaluateArm(arm, returns, state, usableOrigins, tercileBounds, checkpoint);
             results.add(acc.toResult(arm.name()));
+            if (acc.sampleCount == 0) {
+                LOG.warn("{} {}: no stable samples; unstable={} (100%)", dataset.label(), arm.name(),
+                        acc.unstableCount);
+                continue;
+            }
             LOG.info(
                     "{} {}: samples={}, unstable={} ({}%), coverage={}% (nominal {}%), "
                             + "crps={}, pinball q05={} q50={} q95={}",

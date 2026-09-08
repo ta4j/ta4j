@@ -54,14 +54,6 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
         assertNull(method.terminalReturns(context(1, 1, window(new double[] { 0.01d, 0.02d }), 7L)));
     }
 
-    private static MonteCarloMethod nullInner() {
-        return context -> null;
-    }
-
-    private static MonteCarloMethod wrongCountInner() {
-        return context -> List.of(FACTORY.zero());
-    }
-
     @Test
     public void sameSeedReproducesIdenticalSamples() {
         PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
@@ -210,14 +202,15 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
 
     @Test
     public void innerNullPropagatesAsUnstable() {
-        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(nullInner());
+        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
+                context -> null);
         assertNull(method.terminalReturns(context(4, 10, window(WINDOW_FINITE), 7L)));
     }
 
     @Test
     public void innerWrongCountPropagatesAsUnstable() {
         PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
-                wrongCountInner());
+                context -> List.of(FACTORY.zero()));
         assertNull(method.terminalReturns(context(4, 10, window(WINDOW_FINITE), 7L)));
     }
 
