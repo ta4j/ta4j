@@ -24,8 +24,8 @@ public class BaseBar implements Bar {
 
     /**
      * Retaining series and their reference counts. A bar can appear more than once
-     * in one series and can be shared by several series, each of which must
-     * receive only its own mutation notification.
+     * in one series and can be shared by several series, each of which must receive
+     * only its own mutation notification.
      */
     private transient ConcurrentMap<BaseBarSeries, AtomicInteger> retainingSeries = new ConcurrentHashMap<>();
 
@@ -204,7 +204,6 @@ public class BaseBar implements Bar {
     private record ResolvedTimes(Duration timePeriod, Instant beginTime, Instant endTime) {
     }
 
-
     void attachToBarSeries(final BaseBarSeries series) {
         retainingSeries.computeIfAbsent(series, ignored -> new AtomicInteger()).incrementAndGet();
     }
@@ -264,7 +263,6 @@ public class BaseBar implements Bar {
         return trades;
     }
 
-    @SuppressFBWarnings(value = "AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE", justification = "BaseBar mutators are intentionally mutable; concurrent callers must synchronize at the series boundary.")
     @Override
     public void addTrade(Num tradeVolume, Num tradePrice) {
         applyTrade(tradeVolume, tradePrice);
@@ -276,6 +274,7 @@ public class BaseBar implements Bar {
      * bar mutation. Subclasses that add trade fields call this before publishing
      * their complete update.
      */
+    @SuppressFBWarnings(value = "AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE", justification = "BaseBar mutators are intentionally mutable; concurrent callers must synchronize at the series boundary.")
     protected final void applyTrade(Num tradeVolume, Num tradePrice) {
         applyTradePrice(tradePrice);
         volume = volume.plus(tradeVolume);

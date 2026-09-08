@@ -382,6 +382,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         return validatedConfig(IndicatorUtils.requireSameSeries(firstSource, firstSource, additionalSources),
                 lastBarWaitTimeoutMs);
     }
+
     /**
      * @param index the bar index
      * @return the value of the indicator

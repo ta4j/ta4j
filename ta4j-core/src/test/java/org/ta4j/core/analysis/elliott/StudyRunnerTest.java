@@ -491,7 +491,6 @@ class StudyRunnerTest {
         assertEquals(List.of("0-6", "6-12"), StudyRunner.AlternativeGrammar.of("3+3").matches(pivots));
     }
 
-
     @Test
     void alternativeGrammarMarksCompetingPartialPlacementsAmbiguous() {
         final List<ConfirmedPivot> pivots = alternatingWindow(new double[] { 0, 10, 5, 20, 8, 20 });
@@ -1072,7 +1071,7 @@ class StudyRunnerTest {
                     .endTime(start.plus(Duration.ofDays(index + 1)))
                     .openPrice(Math.max(0.01d, close - 2))
                     .highPrice(close + 1)
-                    .lowPrice(Math.max(0.01d, close - 1))
+                    .lowPrice(Math.max(0.01d, close - 2))
                     .closePrice(close)
                     .volume(1)
                     .amount(close)

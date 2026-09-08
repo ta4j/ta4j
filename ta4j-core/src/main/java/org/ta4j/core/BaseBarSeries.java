@@ -399,7 +399,6 @@ public class BaseBarSeries implements BarSeries {
                             bar.getClosePrice().getClass(), this.numFactory.one().getClass()));
         }
 
-
         if (!this.bars.isEmpty()) {
             if (replace) {
                 final Bar previousBar = this.bars.set(this.bars.size() - 1, bar);

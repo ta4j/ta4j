@@ -1020,7 +1020,7 @@ final class StudyRunner {
         }
 
         Set<String> partialMatches(final List<ConfirmedPivot> pivots) {
-            final int maxSuffix = Math.min(pivots.size(), required - 1);
+            final int maxSuffix = Math.min(pivots.size(), segmentLegs[0] + segmentLegs[1]);
             // A forming claim requires the whole leading segment to be observable
             // in the suffix window.
             final int minSuffix = segmentLegs[0] + 1;
