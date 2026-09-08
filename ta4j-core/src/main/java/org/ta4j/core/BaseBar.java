@@ -408,8 +408,8 @@ public class BaseBar implements Bar {
         final List<RetainedSeriesMutation> mutations;
         synchronized (retainingSeries) {
             mutations = new ArrayList<>(retainingSeries.size());
-            retainingSeries.forEach((series, registration) ->
-                    mutations.add(new RetainedSeriesMutation(series, registration.firstIndex())));
+            retainingSeries.forEach((series, registration) -> mutations
+                    .add(new RetainedSeriesMutation(series, registration.firstIndex())));
         }
         for (RetainedSeriesMutation mutation : mutations) {
             mutation.series().retainedBarMutated(this, mutation.index());
