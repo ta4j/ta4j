@@ -51,8 +51,10 @@ import org.ta4j.core.num.NumFactory;
  */
 public final class NormalInverseGammaForecastMethod implements MonteCarloMethod {
 
-    /** Posterior hyper-parameters {@code (mean, strength, shape, scale)}. */
-    record Posterior(double mean, double strength, double shape, double scale) {
+    /**
+     * Posterior hyper-parameters with active-domain and primitive sampling views.
+     */
+    record Posterior(Num mean, double strength, double shape, Num scale, double samplingMean, double samplingScale) {
     }
 
     /** One posterior parameter draw {@code (sigmaSquared, mu)}. */
@@ -126,9 +128,10 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
      * and {@link PosteriorSmoothedResidualMonteCarloMethod}.
      *
      * @param context validated simulation inputs
-     * @return posterior hyper-parameters, or {@code null} when no stable posterior
-     *         can be produced (empty window, non-finite window, or degenerate
-     *         posterior scale)
+     * @return posterior hyper-parameters, or {@code null} when the window is empty
+     *         or non-finite, the posterior scale is invalid, or a nonzero
+     *         stochastic posterior parameter cannot reach primitive sampling
+     *         precision
      * @since 0.25.1
      */
     Posterior posterior(MonteCarloContext context) {
@@ -138,6 +141,7 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
             return null;
         }
         NumFactory numFactory = context.numFactory();
+        Num observationCountValue = numFactory.numOf(observationCount);
         Num sum = numFactory.zero();
         for (Num value : window) {
             if (!Num.isFinite(value)) {
@@ -145,40 +149,55 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
             }
             sum = sum.plus(value);
         }
-        Num meanValue = sum.dividedBy(numFactory.numOf(observationCount));
+        Num meanValue = sum.dividedBy(observationCountValue);
         Num squaredDeviations = numFactory.zero();
         for (Num value : window) {
             Num deviation = value.minus(meanValue);
             squaredDeviations = squaredDeviations.plus(deviation.multipliedBy(deviation));
         }
-        double windowMean = meanValue.doubleValue();
-        double squaredDeviationSum = squaredDeviations.doubleValue();
-        if (!Double.isFinite(windowMean) || !Double.isFinite(squaredDeviationSum)) {
-            return null;
-        }
-        double sampleVariance = observationCount > 1 ? squaredDeviationSum / (observationCount - 1) : 0d;
+        Num sampleVariance = observationCount > 1 ? squaredDeviations.dividedBy(numFactory.numOf(observationCount - 1))
+                : numFactory.zero();
 
         double strength = empiricalPriors ? 1d : priorStrength;
-        double meanPrior = empiricalPriors ? windowMean : priorMean;
         double shape = empiricalPriors ? 2d : priorShape;
-        double scale = empiricalPriors ? sampleVariance : priorScale;
-
         double posteriorStrength = strength + observationCount;
-        double posteriorMean = (strength * meanPrior + observationCount * windowMean) / posteriorStrength;
         double posteriorShape = shape + observationCount / 2.0;
-        double posteriorScale = scale + squaredDeviationSum / 2.0 + strength * observationCount
-                * (windowMean - meanPrior) * (windowMean - meanPrior) / (2.0 * posteriorStrength);
-        if (!isFinite(posteriorStrength, posteriorMean, posteriorShape, posteriorScale) || posteriorScale < 0d) {
+        if (!Double.isFinite(posteriorStrength) || !Double.isFinite(posteriorShape)) {
             return null;
         }
-        return new Posterior(posteriorMean, posteriorStrength, posteriorShape, posteriorScale);
+        Num meanPrior = empiricalPriors ? meanValue : numFactory.numOf(priorMean);
+        Num scale = empiricalPriors ? sampleVariance : numFactory.numOf(priorScale);
+        Num strengthValue = numFactory.numOf(strength);
+        Num posteriorStrengthValue = numFactory.numOf(posteriorStrength);
+        Num posteriorMean = strengthValue.multipliedBy(meanPrior)
+                .plus(observationCountValue.multipliedBy(meanValue))
+                .dividedBy(posteriorStrengthValue);
+        Num meanDifference = meanValue.minus(meanPrior);
+        Num posteriorScale = scale.plus(squaredDeviations.dividedBy(numFactory.two()))
+                .plus(strengthValue.multipliedBy(observationCountValue)
+                        .multipliedBy(meanDifference)
+                        .multipliedBy(meanDifference)
+                        .dividedBy(numFactory.two().multipliedBy(posteriorStrengthValue)));
+        if (!Num.isFinite(posteriorMean) || !Num.isFinite(posteriorScale) || posteriorScale.isNegative()) {
+            return null;
+        }
+        double samplingMean = samplingDouble(posteriorMean);
+        double samplingScale = samplingDouble(posteriorScale);
+        // Gamma and Gaussian draws require primitive doubles. Preserve exact
+        // zero-scale paths in the active Num domain.
+        if (!posteriorScale.isZero() && (!Double.isFinite(samplingMean) || !Double.isFinite(samplingScale))) {
+            return null;
+        }
+        return new Posterior(posteriorMean, posteriorStrength, posteriorShape, posteriorScale, samplingMean,
+                samplingScale);
     }
 
     /**
      * Draws posterior predictive parameters from the Normal-Inverse-Gamma posterior
      * fitted to the lookback window and compounds Normal increments into horizon
-     * cumulative log returns. Posteriors whose mean or scale cannot cross to the
-     * sampling precision degrade to an unstable result.
+     * cumulative log returns. A zero-scale posterior stays entirely in the active
+     * {@link Num} domain. Nonzero posterior parameters that cannot reach sampling
+     * precision degrade to an unstable result.
      *
      * @param context validated simulation inputs including the seeded random
      *                generator
@@ -191,6 +210,9 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
         Posterior posterior = posterior(context);
         if (posterior == null) {
             return null;
+        }
+        if (posterior.scale().isZero()) {
+            return deterministicCumulativeReturns(posterior.mean(), context);
         }
         RandomGenerator random = context.random();
         List<Num> terminalReturns = new ArrayList<>(context.iterationCount());
@@ -208,8 +230,28 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
         return terminalReturns;
     }
 
+    private static List<Num> deterministicCumulativeReturns(Num mean, MonteCarloContext context) {
+        NumFactory numFactory = context.numFactory();
+        Num normalizedMean = MonteCarloArithmetic.normalize(mean, numFactory);
+        if (normalizedMean == null) {
+            return null;
+        }
+        Num cumulativeReturn = normalizedMean.multipliedBy(numFactory.numOf(context.horizon()));
+        if (!Num.isFinite(cumulativeReturn)) {
+            return null;
+        }
+        List<Num> terminalReturns = new ArrayList<>(context.iterationCount());
+        for (int iteration = 0; iteration < context.iterationCount(); iteration++) {
+            terminalReturns.add(cumulativeReturn);
+        }
+        return terminalReturns;
+    }
+
     private static double drawCumulativeReturn(Posterior posterior, MonteCarloContext context, RandomGenerator random) {
         ParameterDraw draw = drawParameters(posterior, random);
+        if (draw == null) {
+            return Double.NaN;
+        }
         double sigma = Math.sqrt(draw.sigmaSquared());
         double cumulativeReturn = 0d;
         for (int step = 0; step < context.horizon(); step++) {
@@ -226,18 +268,32 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
      *
      * @param posterior fitted posterior hyper-parameters
      * @param random    deterministic seeded random generator
-     * @return a single parameter draw
+     * @return a single parameter draw, or {@code null} when the posterior cannot
+     *         reach primitive sampling precision
      * @since 0.25.1
      */
     static ParameterDraw drawParameters(Posterior posterior, RandomGenerator random) {
-        double sigmaSquared = posterior.scale() == 0d ? 0d
-                : nextInverseGamma(random, posterior.shape(), posterior.scale());
-        double muDraw = posterior.mean() + Math.sqrt(sigmaSquared / posterior.strength()) * random.nextGaussian();
-        return new ParameterDraw(sigmaSquared, muDraw);
+        double mean = posterior.samplingMean();
+        double scale = posterior.samplingScale();
+        if (!Double.isFinite(mean) || !Double.isFinite(scale)) {
+            return null;
+        }
+        double sigmaSquared = scale == 0d ? 0d : nextInverseGamma(random, posterior.shape(), scale);
+        if (!Double.isFinite(sigmaSquared)) {
+            return null;
+        }
+        double muDraw = mean + Math.sqrt(sigmaSquared / posterior.strength()) * random.nextGaussian();
+        return Double.isFinite(muDraw) ? new ParameterDraw(sigmaSquared, muDraw) : null;
     }
 
     private static double nextInverseGamma(RandomGenerator random, double shape, double rate) {
         return rate / RandomSamplers.nextGamma(random, shape);
+    }
+
+    // Primitive gamma/Gaussian sampling must not erase a finite nonzero Num.
+    private static double samplingDouble(Num value) {
+        double primitive = value.doubleValue();
+        return Double.isFinite(primitive) && (primitive != 0d || value.isZero()) ? primitive : Double.NaN;
     }
 
     private static void requireFinite(double value, String name) {
@@ -246,12 +302,4 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
         }
     }
 
-    private static boolean isFinite(double... values) {
-        for (double value : values) {
-            if (!Double.isFinite(value)) {
-                return false;
-            }
-        }
-        return true;
-    }
 }

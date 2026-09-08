@@ -109,7 +109,7 @@ public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCar
             return null;
         }
         if (volatility.isZero()) {
-            if (posterior.scale() != 0d) {
+            if (!posterior.scale().isZero()) {
                 return null;
             }
             return deterministicPosteriorReturns(posterior, context);
@@ -119,6 +119,9 @@ public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCar
         for (int iteration = 0; iteration < context.iterationCount(); iteration++) {
             NormalInverseGammaForecastMethod.ParameterDraw draw = NormalInverseGammaForecastMethod
                     .drawParameters(posterior, random);
+            if (draw == null) {
+                return null;
+            }
             double sigma = Math.sqrt(draw.sigmaSquared());
             if (!Double.isFinite(draw.mu()) || !Double.isFinite(sigma)) {
                 return null;
@@ -146,19 +149,17 @@ public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCar
     private static List<Num> deterministicPosteriorReturns(NormalInverseGammaForecastMethod.Posterior posterior,
             MonteCarloContext context) {
         NumFactory numFactory = context.numFactory();
-        RandomGenerator random = context.random();
         List<Num> terminalReturns = new ArrayList<>(context.iterationCount());
         Num horizon = numFactory.numOf(context.horizon());
+        Num posteriorMean = MonteCarloArithmetic.normalize(posterior.mean(), numFactory);
+        if (posteriorMean == null) {
+            return null;
+        }
+        Num cumulativeReturn = posteriorMean.multipliedBy(horizon);
+        if (!Num.isFinite(cumulativeReturn)) {
+            return null;
+        }
         for (int iteration = 0; iteration < context.iterationCount(); iteration++) {
-            NormalInverseGammaForecastMethod.ParameterDraw draw = NormalInverseGammaForecastMethod
-                    .drawParameters(posterior, random);
-            if (!Double.isFinite(draw.mu())) {
-                return null;
-            }
-            Num cumulativeReturn = numFactory.numOf(BigDecimal.valueOf(draw.mu())).multipliedBy(horizon);
-            if (!Num.isFinite(cumulativeReturn)) {
-                return null;
-            }
             terminalReturns.add(cumulativeReturn);
         }
         return terminalReturns;

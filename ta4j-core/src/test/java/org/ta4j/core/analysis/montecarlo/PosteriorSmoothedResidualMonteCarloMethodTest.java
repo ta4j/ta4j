@@ -120,6 +120,37 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
     }
 
     @Test
+    public void decimalConstantWindowPreservesSubDoubleDeterministicDrift() {
+        Num tinyReturn = DECIMAL.numOf(new java.math.BigDecimal("1E-400"));
+        List<Num> constantWindow = List.of(tinyReturn, tinyReturn);
+        ReturnMoments flatMoments = ReturnMoments.stable(100, constantWindow.size(), ReturnRepresentation.LOG,
+                DECIMAL.zero(), DECIMAL.zero(), DECIMAL.zero());
+        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
+                fixedInner(DECIMAL.one()));
+
+        List<Num> samples = method.terminalReturns(context(3, 2, constantWindow, flatMoments, 7L, DECIMAL));
+
+        assertNotNull(samples);
+        assertEquals(2, samples.size());
+        Num expected = DECIMAL.numOf(new java.math.BigDecimal("3E-400"));
+        for (Num sample : samples) {
+            TestUtils.assertNumEquals(expected, sample);
+        }
+    }
+
+    @Test
+    public void rejectsSubDoubleNonzeroPosteriorScale() {
+        List<Num> variableWindow = List.of(DECIMAL.numOf(new java.math.BigDecimal("1E-400")),
+                DECIMAL.numOf(new java.math.BigDecimal("2E-400")));
+        ReturnMoments flatMoments = ReturnMoments.stable(100, variableWindow.size(), ReturnRepresentation.LOG,
+                DECIMAL.zero(), DECIMAL.zero(), DECIMAL.zero());
+        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
+                fixedInner(DECIMAL.one()));
+
+        assertNull(method.terminalReturns(context(1, 1, variableWindow, flatMoments, 7L, DECIMAL)));
+    }
+
+    @Test
     public void zeroVolatilityRejectsNonzeroPosteriorScale() {
         ReturnMoments flatMoments = ReturnMoments.stable(100, 2, ReturnRepresentation.LOG, FACTORY.zero(),
                 FACTORY.zero(), FACTORY.zero());

@@ -9,6 +9,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SplittableRandom;
@@ -18,6 +19,7 @@ import org.junit.Test;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.forecast.state.ReturnMoments;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -29,6 +31,7 @@ import org.ta4j.core.num.NumFactory;
 public class NormalInverseGammaForecastMethodTest {
 
     private static final NumFactory FACTORY = DoubleNumFactory.getInstance();
+    private static final NumFactory DECIMAL = DecimalNumFactory.getInstance();
 
     private static final double[] WINDOW = { 0.012, -0.008, 0.02, -0.015, 0.005, 0.03, -0.022, 0.011, -0.004, 0.017,
             -0.03, 0.009, 0.002, -0.012, 0.024, -0.007 };
@@ -101,6 +104,26 @@ public class NormalInverseGammaForecastMethodTest {
         assertEquals(10, samples.size());
         for (Num sample : samples) {
             TestUtils.assertNumEquals(FACTORY.numOf(3 * constantReturn), sample, 1e-12);
+        }
+    }
+
+    @Test
+    public void decimalConstantWindowPreservesSubDoubleDeterministicDrift() {
+        Num tinyReturn = DECIMAL.numOf(new BigDecimal("1E-400"));
+        List<Num> constantWindow = List.of(tinyReturn, tinyReturn);
+        ReturnMoments moments = ReturnMoments.stable(100, constantWindow.size(), ReturnRepresentation.LOG,
+                DECIMAL.zero(), DECIMAL.zero(), DECIMAL.zero());
+        MonteCarloContext context = new MonteCarloContext(100, 3, 2, constantWindow, moments, new SplittableRandom(7L),
+                DECIMAL);
+        NormalInverseGammaForecastMethod method = NormalInverseGammaForecastMethod.withEmpiricalPriors();
+
+        List<Num> samples = method.terminalReturns(context);
+
+        assertNotNull(samples);
+        assertEquals(2, samples.size());
+        Num expected = DECIMAL.numOf(new BigDecimal("3E-400"));
+        for (Num sample : samples) {
+            TestUtils.assertNumEquals(expected, sample);
         }
     }
 
