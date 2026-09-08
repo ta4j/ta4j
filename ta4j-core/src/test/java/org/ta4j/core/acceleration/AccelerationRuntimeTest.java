@@ -230,6 +230,52 @@ class AccelerationRuntimeTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(doubles = { Double.NaN, Double.POSITIVE_INFINITY })
+    void nonFiniteForecastOutputsFallBackAndQuarantineProvider(double invalidValue) {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(100, 102, 101, 104, 103, 105, 106, 104, 108, 109)
+                .build();
+        System.setProperty("ta4j.forecast.rngVersion", "1");
+        try {
+            MonteCarloPriceForecastIndicator.Builder builder = MonteCarloPriceForecastIndicator
+                    .builder(new ClosePriceIndicator(series),
+                            new EwmaReturnForecastStateIndicator(new LogReturnIndicator(series), 3, 0.94d))
+                    .horizon(2)
+                    .iterationCount(4)
+                    .lookbackBarCount(3)
+                    .seed(11L);
+            MonteCarloPriceForecastIndicator first = builder.build();
+            MonteCarloPriceForecastIndicator second = builder.build();
+            Forecast expectedFirst = first.getValue(8);
+            Forecast expectedSecond = second.getValue(9);
+            assertTrue(expectedFirst.isStable());
+            assertTrue(expectedSecond.isStable());
+            EchoProvider provider = new EchoProvider(Backend.CPU, "cpu", 1L, 1_000L) {
+                @Override
+                public KernelResult execute(KernelRequest request) {
+                    double[] outputs = super.execute(request).outputs();
+                    outputs[0] = invalidValue;
+                    return new KernelResult(outputs, false, 0L);
+                }
+            };
+            useProvidersForTests(List.of(provider));
+            System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+            try (Scope ignored = open(series, 8, 9)) {
+                Forecast actualFirst = first.getValue(8);
+                Forecast actualSecond = second.getValue(9);
+                assertTrue(actualFirst.isStable());
+                assertTrue(actualSecond.isStable());
+                assertEquals(expectedFirst.mean(), actualFirst.mean());
+                assertEquals(expectedSecond.mean(), actualSecond.mean());
+                assertEquals(1, provider.executions.get());
+                assertEquals(DiagnosticCode.INVALID_RESULT, AccelerationRuntime.lastDiagnostic().orElseThrow().code());
+            }
+        } finally {
+            System.clearProperty("ta4j.forecast.rngVersion");
+        }
+    }
+
     @Test
     void cpuFasterPredictionKeepsScalarWithoutExecuting() {
         BarSeries series = series();
@@ -488,7 +534,8 @@ class AccelerationRuntimeTest {
     private static final class TestPlanner implements OperationPlanner {
 
         @Override
-        public PlannedOperation plan(Indicator<?> indicator, int fromInclusive, int toInclusive, NumFactory factory) {
+        public PlannedOperation plan(Indicator<?> indicator, int fromInclusive, int toInclusive, NumFactory factory,
+                long memoryLimitBytes) {
             if (!(indicator instanceof ScopeAwareIndicator)) {
                 return null;
             }

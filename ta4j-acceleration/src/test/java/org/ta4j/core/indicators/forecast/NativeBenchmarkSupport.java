@@ -26,7 +26,8 @@ final class NativeBenchmarkSupport {
     static long evaluate(Provider provider, MonteCarloPriceForecastIndicator forecast, int from, int to) {
         NumFactory factory = forecast.getBarSeries().numFactory();
         long started = System.nanoTime();
-        PlannedOperation planned = new MonteCarloShockPathPlanner().plan(forecast, from, to, factory);
+        PlannedOperation planned = new MonteCarloShockPathPlanner().plan(forecast, from, to, factory,
+                org.ta4j.core.acceleration.AccelerationRuntime.maxDeviceBytes());
         assertThat(planned).isNotNull();
         KernelRequest request = planned.request();
         assertThat(request.determinism()).as("benchmark requires an explicit approximate tolerance")

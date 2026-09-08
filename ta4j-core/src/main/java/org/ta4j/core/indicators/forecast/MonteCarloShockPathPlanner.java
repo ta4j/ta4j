@@ -50,7 +50,8 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
     private static final long BYTES_PER_ELEMENT = 8L;
 
     @Override
-    public PlannedOperation plan(Indicator<?> indicator, int fromInclusive, int toInclusive, NumFactory factory) {
+    public PlannedOperation plan(Indicator<?> indicator, int fromInclusive, int toInclusive, NumFactory factory,
+            long memoryLimitBytes) {
         Objects.requireNonNull(indicator, "indicator must not be null");
         Objects.requireNonNull(factory, "factory must not be null");
         if (!(indicator instanceof MonteCarloPriceForecastIndicator forecast)) {
@@ -69,43 +70,43 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         if (settings.horizon() < 1 || settings.iterationCount() < 1 || settings.lookbackBarCount() < 1) {
             return null;
         }
-        int size = toInclusive - fromInclusive + 1;
-        if (size < 1) {
+        long requestedSize = (long) toInclusive - fromInclusive + 1L;
+        if (fromInclusive < 0 || requestedSize < 1 || requestedSize > Integer.MAX_VALUE) {
             return null;
         }
+        int size = (int) requestedSize;
         int iterations = settings.iterationCount();
         int lookback = settings.lookbackBarCount();
-        long steps;
+        int windowSize;
         long estimatedScalarNanos;
         long peakBytes;
-        int windowsLength;
         try {
-            steps = Math.multiplyExact(Math.multiplyExact((long) size, iterations), (long) settings.horizon());
+            windowSize = Math.multiplyExact(size, lookback);
+            int outputSize = Math.multiplyExact(size, iterations);
+            long steps = Math.multiplyExact((long) outputSize, settings.horizon());
+            long inputElements = Math.addExact(Math.multiplyExact((long) size, 4L), windowSize);
+            long inputBytes = Math.multiplyExact(inputElements, BYTES_PER_ELEMENT);
+            long outputBytes = Math.multiplyExact((long) outputSize, BYTES_PER_ELEMENT);
+            long workspaceBytes = Math.multiplyExact(steps, BYTES_PER_ELEMENT);
+            peakBytes = Math.addExact(inputBytes, Math.addExact(outputBytes, workspaceBytes));
             estimatedScalarNanos = Math.multiplyExact(steps, NANOS_PER_PATH_STEP);
-            windowsLength = Math.toIntExact(Math.multiplyExact((long) size, lookback));
-            long inputBytes = Math.multiplyExact(
-                    Math.addExact(Math.multiplyExact((long) size, 4L), (long) windowsLength), BYTES_PER_ELEMENT);
-            long outputBytes = Math.multiplyExact(Math.multiplyExact((long) size, iterations), BYTES_PER_ELEMENT);
-            peakBytes = Math.addExact(Math.addExact(inputBytes, outputBytes),
-                    Math.multiplyExact(steps, BYTES_PER_ELEMENT));
         } catch (ArithmeticException exception) {
             LOG.warn("Declining {} over [{}..{}]: dimensions overflow ({}); scalar path",
                     AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1, fromInclusive, toInclusive,
                     exception.getMessage());
             return null;
         }
-        long deviceBudget = AccelerationRuntime.maxDeviceBytes();
-        if (peakBytes > deviceBudget) {
+        if (peakBytes > memoryLimitBytes) {
             LOG.warn("Declining {} over [{}..{}]: peak device estimate {} exceeds budget {}; scalar path",
                     AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1, fromInclusive, toInclusive, peakBytes,
-                    deviceBudget);
+                    memoryLimitBytes);
             return null;
         }
         double[] prices = new double[size];
         double[] means = new double[size];
         double[] drifts = new double[size];
         double[] variances = new double[size];
-        double[] windows = new double[windowsLength];
+        double[] windows = new double[windowSize];
         Indicator<Num> priceIndicator = forecast.kernelPriceIndicator();
         ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator = forecast.kernelStateIndicator();
         ReturnIndicator returnIndicator = stateIndicator.getReturnIndicator();
