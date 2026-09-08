@@ -1082,7 +1082,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         final MutationEventReadWriteLock lock = new MutationEventReadWriteLock(events, mutationThread);
         final RetainedMutationEventBar retainedBar = new RetainedMutationEventBar(testBars.get(1), events,
                 mutationThread);
-        final List<Bar> bars = new ArrayList<>(List.of(testBars.get(0), retainedBar));
+        // Register the same bar twice. The append below evicts its first alias
+        // while the callback waits, so publication must revalidate the survivor.
+        final List<Bar> bars = new ArrayList<>(List.of(retainedBar, retainedBar));
         final ConcurrentBarSeries series = new ConcurrentBarSeries(
                 "directRetainedMutationWaitsForConcurrentHeadEviction", bars, 0, 1, false, numFactory,
                 barBuilderFactory, lock);

@@ -156,16 +156,22 @@ public class BaseBarSeries implements BarSeries {
 
     /**
      * Records a direct mutation for this retained bar at its registered absolute
-     * index. A stale registration is ignored after a structural replacement or
-     * retention removal.
+     * index. A captured index can become stale while a concurrent callback waits
+     * for the series write lock, so the current retained alias is checked before
+     * discarding the notification.
      */
     void retainedBarMutated(final BaseBar bar, final int index) {
-        // Keep monitor acquisition inside the hook so concurrent series can acquire
-        // their structural write lock first, matching ordinary mutation lock order.
         synchronized (this) {
             final int innerIndex = index - this.removedBarsCount;
             if (innerIndex >= 0 && innerIndex < this.bars.size() && this.bars.get(innerIndex) == bar) {
                 recordBarHistoryChange(index);
+                return;
+            }
+            for (int currentInnerIndex = 0; currentInnerIndex < this.bars.size(); currentInnerIndex++) {
+                if (this.bars.get(currentInnerIndex) == bar) {
+                    recordBarHistoryChange(this.removedBarsCount + currentInnerIndex);
+                    return;
+                }
             }
         }
     }

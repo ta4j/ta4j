@@ -16,6 +16,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseRealtimeBar;
+import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.indicators.RecentFractalSwingHighIndicator;
 import org.ta4j.core.indicators.RecentFractalSwingLowIndicator;
 import org.ta4j.core.indicators.RecentSwingIndicator;
@@ -222,7 +223,12 @@ public final class FractalSwingDetector implements SwingDetector {
                     lookforwardLength, allowedEqualBars);
             this.swingLow = new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), lookbackLength,
                     lookforwardLength, allowedEqualBars);
-            observeSeries(true, series.getBarSeriesChangeSnapshot(-1L), series.getBeginIndex());
+            if (series instanceof ConcurrentBarSeries concurrentSeries) {
+                concurrentSeries.withReadLock(
+                        () -> observeSeries(true, series.getBarSeriesChangeSnapshot(-1L), series.getBeginIndex()));
+            } else {
+                observeSeries(true, series.getBarSeriesChangeSnapshot(-1L), series.getBeginIndex());
+            }
         }
 
         /**
@@ -251,6 +257,9 @@ public final class FractalSwingDetector implements SwingDetector {
             final boolean replayRewinds = index < lastScannedIndex;
             if (replayRewinds || seriesHistoryChanged(index)) {
                 reset(true);
+            }
+            if (series.isEmpty()) {
+                return;
             }
             final int beginIndex = series.getBeginIndex();
             final long scanStart = lastScannedIndex == Integer.MIN_VALUE ? beginIndex : (long) lastScannedIndex + 1L;
@@ -515,6 +524,13 @@ public final class FractalSwingDetector implements SwingDetector {
          * ordinary ascending replay therefore stays incremental.
          */
         private boolean seriesHistoryChanged(final int requestedIndex) {
+            if (series instanceof ConcurrentBarSeries concurrentSeries) {
+                return concurrentSeries.withReadLock(() -> seriesHistoryChangedUnderReadLock(requestedIndex));
+            }
+            return seriesHistoryChangedUnderReadLock(requestedIndex);
+        }
+
+        private boolean seriesHistoryChangedUnderReadLock(final int requestedIndex) {
             // Read the revision and series bounds through one coherent change
             // snapshot, then verify the begin index was still read under that
             // same revision. Reading them as separate calls would let an
@@ -522,45 +538,58 @@ public final class FractalSwingDetector implements SwingDetector {
             // observeSeries publishes the newer revision without a rebuild,
             // silently serving pivots computed from the replaced bar.
             long sinceRevision = observedRevision;
-            BarSeriesChangeSnapshot snapshot;
-            int currentBeginIndex;
             while (true) {
-                snapshot = series.getBarSeriesChangeSnapshot(sinceRevision);
-                currentBeginIndex = series.getBeginIndex();
-                final BarSeriesChangeSnapshot verify = series.getBarSeriesChangeSnapshot(snapshot.revision());
-                if (verify.revision() == snapshot.revision() && verify.endIndex() == snapshot.endIndex()
-                        && verify.removedThroughIndex() == snapshot.removedThroughIndex()
-                        && verify.maximumBarCount() == snapshot.maximumBarCount()) {
-                    break;
+                BarSeriesChangeSnapshot snapshot;
+                int currentBeginIndex;
+                while (true) {
+                    snapshot = series.getBarSeriesChangeSnapshot(sinceRevision);
+                    currentBeginIndex = series.getBeginIndex();
+                    final BarSeriesChangeSnapshot verify = series.getBarSeriesChangeSnapshot(snapshot.revision());
+                    if (verify.revision() == snapshot.revision() && verify.endIndex() == snapshot.endIndex()
+                            && verify.removedThroughIndex() == snapshot.removedThroughIndex()
+                            && verify.maximumBarCount() == snapshot.maximumBarCount()) {
+                        break;
+                    }
+                    sinceRevision = verify.revision();
                 }
-                sinceRevision = verify.revision();
-            }
-            final long currentRevision = snapshot.revision();
-            final int currentEndIndex = snapshot.endIndex();
-            final boolean revisionUnavailable = currentRevision < 0L || observedRevision < 0L;
-            boolean changed = currentBeginIndex != observedBeginIndex
-                    || (!revisionUnavailable && currentRevision != observedRevision)
-                    || currentEndIndex < observedEndIndex;
-            final boolean observedWindowExtended = currentEndIndex > observedEndIndex;
-            final boolean replayPositionRequiresValidation = observedWindowExtended
-                    || requestedIndex <= lastScannedIndex;
-            final boolean validateLegacySnapshots = revisionUnavailable && replayPositionRequiresValidation;
-            final boolean validateUntrackableSnapshots = !observedUntrackableBars.isEmpty();
-            if (!changed && (validateLegacySnapshots || validateUntrackableSnapshots)) {
-                if (validateLegacySnapshots) {
-                    changed = retainedBarsChanged(currentBeginIndex, Math.min(observedEndIndex, currentEndIndex));
+                final long currentRevision = snapshot.revision();
+                final int currentEndIndex = snapshot.endIndex();
+                final boolean revisionUnavailable = currentRevision < 0L || observedRevision < 0L;
+                boolean changed = currentBeginIndex != observedBeginIndex
+                        || (!revisionUnavailable && currentRevision != observedRevision)
+                        || currentEndIndex < observedEndIndex;
+                final boolean observedWindowExtended = currentEndIndex > observedEndIndex;
+                final boolean replayPositionRequiresValidation = observedWindowExtended
+                        || requestedIndex <= lastScannedIndex;
+                final boolean validateLegacySnapshots = revisionUnavailable && replayPositionRequiresValidation;
+                final boolean validateUntrackableSnapshots = !observedUntrackableBars.isEmpty();
+                if (!changed && (validateLegacySnapshots || validateUntrackableSnapshots)) {
+                    if (validateLegacySnapshots) {
+                        changed = retainedBarsChanged(currentBeginIndex, Math.min(observedEndIndex, currentEndIndex));
+                    }
+                    if (!changed && validateUntrackableSnapshots) {
+                        changed = untrackableBarsChanged(currentBeginIndex, currentEndIndex);
+                    }
                 }
-                if (!changed && validateUntrackableSnapshots) {
-                    changed = untrackableBarsChanged(currentBeginIndex, currentEndIndex);
+                if (!changed && !series.isEmpty() && currentEndIndex == observedEndIndex) {
+                    // The last bar is the live-forming bar: compare its full
+                    // high/low/close snapshot exactly.
+                    try {
+                        changed = !BarState.of(series.getLastBar()).sameAs(observedLastBar);
+                    } catch (IndexOutOfBoundsException exception) {
+                        final BarSeriesChangeSnapshot after = series.getBarSeriesChangeSnapshot(snapshot.revision());
+                        if (after.revision() != snapshot.revision() || after.endIndex() != snapshot.endIndex()
+                                || after.removedThroughIndex() != snapshot.removedThroughIndex()
+                                || after.maximumBarCount() != snapshot.maximumBarCount()) {
+                            sinceRevision = after.revision();
+                            continue;
+                        }
+                        throw exception;
+                    }
                 }
+                observeSeries(changed, snapshot, currentBeginIndex);
+                return changed;
             }
-            if (!changed && !series.isEmpty() && currentEndIndex == observedEndIndex) {
-                // The last bar is the live-forming bar: compare its full
-                // high/low/close snapshot exactly.
-                changed = !BarState.of(series.getLastBar()).sameAs(observedLastBar);
-            }
-            observeSeries(changed, snapshot, currentBeginIndex);
-            return changed;
         }
 
         /**
@@ -625,6 +654,12 @@ public final class FractalSwingDetector implements SwingDetector {
             observedBeginIndex = currentBeginIndex;
             observedEndIndex = currentEndIndex;
             observedLastBar = series.isEmpty() ? null : BarState.of(series.getLastBar());
+            if (series.isEmpty()) {
+                observedBarBaseIndex = currentBeginIndex;
+                observedBars.clear();
+                observedUntrackableBars.clear();
+                return;
+            }
             if (!snapshotBarValues) {
                 observedBars.clear();
                 if (refreshBarSnapshot) {

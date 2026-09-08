@@ -11,8 +11,9 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SplittableRandom;
-import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
 
 import org.junit.jupiter.api.Test;
@@ -188,6 +189,31 @@ class FractalSwingDetectorTest {
         armEviction.set(true);
         assertThat(detector.detectPivots(series, endIndex)).isEmpty();
         assertThat(series.getBeginIndex()).isEqualTo(endIndex);
+    }
+
+    @Test
+    void clearBetweenLastBarPresenceAndCaptureRetriesAsEmpty() {
+        final AtomicBoolean armClear = new AtomicBoolean();
+        final AtomicInteger emptyChecks = new AtomicInteger();
+        final BarSeries input = seriesWithHighsAndLows(new double[] { 5, 6, 10, 7 }, new double[] { 4, 5, 9, 6 });
+        final BaseBarSeries series = new BaseBarSeries("last-bar-clear", new ArrayList<>(input.getBarData())) {
+            @Override
+            public boolean isEmpty() {
+                final boolean empty = super.isEmpty();
+                if (armClear.get() && !empty && emptyChecks.incrementAndGet() == 2) {
+                    clear();
+                }
+                return empty;
+            }
+        };
+        final FractalSwingDetector detector = new FractalSwingDetector(1);
+        final int endIndex = series.getEndIndex();
+        assertThat(detector.detectPivots(series, endIndex)).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(2, SwingPivotType.HIGH));
+
+        emptyChecks.set(0);
+        armClear.set(true);
+        assertThat(detector.detectPivots(series, endIndex)).isEmpty();
     }
 
     @Test
