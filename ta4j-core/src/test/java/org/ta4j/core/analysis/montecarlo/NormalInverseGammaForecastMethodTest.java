@@ -4,17 +4,22 @@
 package org.ta4j.core.analysis.montecarlo;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SplittableRandom;
+import java.util.random.RandomGenerator;
 
 import org.junit.Test;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.forecast.state.ReturnMoments;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -26,6 +31,7 @@ import org.ta4j.core.num.NumFactory;
 public class NormalInverseGammaForecastMethodTest {
 
     private static final NumFactory FACTORY = DoubleNumFactory.getInstance();
+    private static final NumFactory DECIMAL = DecimalNumFactory.getInstance();
 
     private static final double[] WINDOW = { 0.012, -0.008, 0.02, -0.015, 0.005, 0.03, -0.022, 0.011, -0.004, 0.017,
             -0.03, 0.009, 0.002, -0.012, 0.024, -0.007 };
@@ -102,6 +108,48 @@ public class NormalInverseGammaForecastMethodTest {
     }
 
     @Test
+    public void decimalConstantWindowPreservesSubDoubleDeterministicDrift() {
+        Num tinyReturn = DECIMAL.numOf(new BigDecimal("1E-400"));
+        List<Num> constantWindow = List.of(tinyReturn, tinyReturn);
+        ReturnMoments moments = ReturnMoments.stable(100, constantWindow.size(), ReturnRepresentation.LOG,
+                DECIMAL.zero(), DECIMAL.zero(), DECIMAL.zero());
+        MonteCarloContext context = new MonteCarloContext(100, 3, 2, constantWindow, moments, new SplittableRandom(7L),
+                DECIMAL);
+        NormalInverseGammaForecastMethod method = NormalInverseGammaForecastMethod.withEmpiricalPriors();
+
+        List<Num> samples = method.terminalReturns(context);
+
+        assertNotNull(samples);
+        assertEquals(2, samples.size());
+        Num expected = DECIMAL.numOf(new BigDecimal("3E-400"));
+        for (Num sample : samples) {
+            TestUtils.assertNumEquals(expected, sample);
+        }
+    }
+
+    @Test
+    public void zeroBoostUniformProducesPositiveGamma() {
+        RandomGenerator random = fixedNormalAndUniform(0d, 0d);
+
+        double gamma = RandomSamplers.nextGamma(random, 0.25d);
+
+        assertTrue(Double.isFinite(gamma));
+        assertTrue(gamma > 0d);
+    }
+
+    @Test
+    public void lowPriorShapeWithZeroUniformProducesFiniteForecast() {
+        NormalInverseGammaForecastMethod method = new NormalInverseGammaForecastMethod(0d, 1d, 0.25d, 1d);
+
+        List<Num> samples = method
+                .terminalReturns(context(1, 1, List.of(FACTORY.zero()), fixedNormalAndUniform(0d, 0d)));
+
+        assertNotNull(samples);
+        assertEquals(1, samples.size());
+        assertTrue(Num.isFinite(samples.get(0)));
+    }
+
+    @Test
     public void emptyWindowYieldsNoSamples() {
         assertNull(NormalInverseGammaForecastMethod.withEmpiricalPriors()
                 .terminalReturns(context(1, 5, List.of(), new SplittableRandom(1L))));
@@ -126,9 +174,23 @@ public class NormalInverseGammaForecastMethodTest {
     }
 
     private static MonteCarloContext context(int horizon, int iterationCount, List<Num> historicalLogReturns,
-            SplittableRandom random) {
+            RandomGenerator random) {
         ReturnMoments moments = ReturnMoments.stable(100, Math.max(1, historicalLogReturns.size()),
                 ReturnRepresentation.LOG, FACTORY.zero(), FACTORY.zero(), FACTORY.one());
         return new MonteCarloContext(100, horizon, iterationCount, historicalLogReturns, moments, random, FACTORY);
+    }
+
+    private static RandomGenerator fixedNormalAndUniform(double gaussian, double uniform) {
+        return new java.util.Random() {
+            @Override
+            public synchronized double nextGaussian() {
+                return gaussian;
+            }
+
+            @Override
+            public double nextDouble() {
+                return uniform;
+            }
+        };
     }
 }

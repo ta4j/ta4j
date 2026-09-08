@@ -42,14 +42,24 @@ import org.ta4j.core.num.NumFactory;
  * {@code mu + sigma * z}.
  *
  * <p>
- * The method is self-contained: it derives its likelihood exclusively from the
- * historical window and does not consume the forward drift assumption of the
- * upstream moment state, whose stability still gates the forecast.
+ * The posterior hyper-parameter computation is shared, package-private
+ * {@link #posterior(MonteCarloContext)}, the single source of posterior draws
+ * used by this method and {@link PosteriorSmoothedResidualMonteCarloMethod}.
  *
  * @see MonteCarloMethod
  * @since 0.24.2
  */
 public final class NormalInverseGammaForecastMethod implements MonteCarloMethod {
+
+    /**
+     * Posterior hyper-parameters with active-domain and primitive sampling views.
+     */
+    record Posterior(Num mean, double strength, double shape, Num scale, double samplingMean, double samplingScale) {
+    }
+
+    /** One posterior parameter draw {@code (sigmaSquared, mu)}. */
+    record ParameterDraw(double sigmaSquared, double mu) {
+    }
 
     private final double priorMean;
     private final double priorStrength;
@@ -113,10 +123,81 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
     }
 
     /**
+     * Computes the Normal-Inverse-Gamma posterior hyper-parameters for the context
+     * window, shared as the single source of posterior draws between this method
+     * and {@link PosteriorSmoothedResidualMonteCarloMethod}.
+     *
+     * @param context validated simulation inputs
+     * @return posterior hyper-parameters, or {@code null} when the window is empty
+     *         or non-finite, the posterior scale is invalid, or a nonzero
+     *         stochastic posterior parameter cannot reach primitive sampling
+     *         precision
+     * @since 0.25.1
+     */
+    Posterior posterior(MonteCarloContext context) {
+        List<Num> window = context.historicalLogReturns();
+        int observationCount = window.size();
+        if (observationCount == 0) {
+            return null;
+        }
+        NumFactory numFactory = context.numFactory();
+        Num observationCountValue = numFactory.numOf(observationCount);
+        Num sum = numFactory.zero();
+        for (Num value : window) {
+            if (!Num.isFinite(value)) {
+                return null;
+            }
+            sum = sum.plus(value);
+        }
+        Num meanValue = sum.dividedBy(observationCountValue);
+        Num squaredDeviations = numFactory.zero();
+        for (Num value : window) {
+            Num deviation = value.minus(meanValue);
+            squaredDeviations = squaredDeviations.plus(deviation.multipliedBy(deviation));
+        }
+        Num sampleVariance = observationCount > 1 ? squaredDeviations.dividedBy(numFactory.numOf(observationCount - 1))
+                : numFactory.zero();
+
+        double strength = empiricalPriors ? 1d : priorStrength;
+        double shape = empiricalPriors ? 2d : priorShape;
+        double posteriorStrength = strength + observationCount;
+        double posteriorShape = shape + observationCount / 2.0;
+        if (!Double.isFinite(posteriorStrength) || !Double.isFinite(posteriorShape)) {
+            return null;
+        }
+        Num meanPrior = empiricalPriors ? meanValue : numFactory.numOf(priorMean);
+        Num scale = empiricalPriors ? sampleVariance : numFactory.numOf(priorScale);
+        Num strengthValue = numFactory.numOf(strength);
+        Num posteriorStrengthValue = numFactory.numOf(posteriorStrength);
+        Num posteriorMean = strengthValue.multipliedBy(meanPrior)
+                .plus(observationCountValue.multipliedBy(meanValue))
+                .dividedBy(posteriorStrengthValue);
+        Num meanDifference = meanValue.minus(meanPrior);
+        Num posteriorScale = scale.plus(squaredDeviations.dividedBy(numFactory.two()))
+                .plus(strengthValue.multipliedBy(observationCountValue)
+                        .multipliedBy(meanDifference)
+                        .multipliedBy(meanDifference)
+                        .dividedBy(numFactory.two().multipliedBy(posteriorStrengthValue)));
+        if (!Num.isFinite(posteriorMean) || !Num.isFinite(posteriorScale) || posteriorScale.isNegative()) {
+            return null;
+        }
+        double samplingMean = samplingDouble(posteriorMean);
+        double samplingScale = samplingDouble(posteriorScale);
+        // Gamma and Gaussian draws require primitive doubles. Preserve exact
+        // zero-scale paths in the active Num domain.
+        if (!posteriorScale.isZero() && (!Double.isFinite(samplingMean) || !Double.isFinite(samplingScale))) {
+            return null;
+        }
+        return new Posterior(posteriorMean, posteriorStrength, posteriorShape, posteriorScale, samplingMean,
+                samplingScale);
+    }
+
+    /**
      * Draws posterior predictive parameters from the Normal-Inverse-Gamma posterior
      * fitted to the lookback window and compounds Normal increments into horizon
-     * cumulative log returns. Posteriors whose mean or scale cannot cross to the
-     * sampling precision degrade to an unstable result.
+     * cumulative log returns. A zero-scale posterior stays entirely in the active
+     * {@link Num} domain. Nonzero posterior parameters that cannot reach sampling
+     * precision degrade to an unstable result.
      *
      * @param context validated simulation inputs including the seeded random
      *                generator
@@ -126,60 +207,21 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
      */
     @Override
     public List<Num> terminalReturns(MonteCarloContext context) {
-        List<Num> window = context.historicalLogReturns();
-        int observationCount = window.size();
-        if (observationCount == 0) {
+        Posterior posterior = posterior(context);
+        if (posterior == null) {
             return null;
         }
-        NumFactory numFactory = context.numFactory();
-        Num sum = numFactory.zero();
-        for (Num value : window) {
-            if (!Num.isFinite(value)) {
-                return null;
-            }
-            sum = sum.plus(value);
+        if (posterior.scale().isZero()) {
+            return deterministicCumulativeReturns(posterior.mean(), context);
         }
-        Num meanValue = sum.dividedBy(numFactory.numOf(observationCount));
-        Num squaredDeviations = numFactory.zero();
-        for (Num value : window) {
-            Num deviation = value.minus(meanValue);
-            squaredDeviations = squaredDeviations.plus(deviation.multipliedBy(deviation));
-        }
-        double windowMean = meanValue.doubleValue();
-        double squaredDeviationSum = squaredDeviations.doubleValue();
-        if (!Double.isFinite(windowMean) || !Double.isFinite(squaredDeviationSum)) {
-            return null;
-        }
-        double sampleVariance = observationCount > 1 ? squaredDeviationSum / (observationCount - 1) : 0d;
-
-        double strength = empiricalPriors ? 1d : priorStrength;
-        double meanPrior = empiricalPriors ? windowMean : priorMean;
-        double shape = empiricalPriors ? 2d : priorShape;
-        double scale = empiricalPriors ? sampleVariance : priorScale;
-
-        double posteriorStrength = strength + observationCount;
-        double posteriorMean = (strength * meanPrior + observationCount * windowMean) / posteriorStrength;
-        double posteriorShape = shape + observationCount / 2.0;
-        double posteriorScale = scale + squaredDeviationSum / 2.0 + strength * observationCount
-                * (windowMean - meanPrior) * (windowMean - meanPrior) / (2.0 * posteriorStrength);
-        if (!isFinite(posteriorStrength, posteriorMean, posteriorShape, posteriorScale) || posteriorScale < 0d) {
-            return null;
-        }
-
         RandomGenerator random = context.random();
         List<Num> terminalReturns = new ArrayList<>(context.iterationCount());
         for (int iteration = 0; iteration < context.iterationCount(); iteration++) {
-            double sigmaSquared = posteriorScale == 0d ? 0d : nextInverseGamma(random, posteriorShape, posteriorScale);
-            double muDraw = posteriorMean + Math.sqrt(sigmaSquared / posteriorStrength) * random.nextGaussian();
-            double sigma = Math.sqrt(sigmaSquared);
-            double cumulativeReturn = 0d;
-            for (int step = 0; step < context.horizon(); step++) {
-                cumulativeReturn += muDraw + sigma * random.nextGaussian();
-            }
+            double cumulativeReturn = drawCumulativeReturn(posterior, context, random);
             if (!Double.isFinite(cumulativeReturn)) {
                 return null;
             }
-            Num converted = numFactory.numOf(BigDecimal.valueOf(cumulativeReturn));
+            Num converted = context.numFactory().numOf(BigDecimal.valueOf(cumulativeReturn));
             if (!Num.isFinite(converted)) {
                 return null;
             }
@@ -188,39 +230,70 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
         return terminalReturns;
     }
 
-    /**
-     * Samples from the inverse-gamma distribution with the requested shape and rate
-     * by inverting a gamma draw, using Marsaglia-Tsang sampling with the
-     * shape-acceleration boost for shapes below one.
-     *
-     * @return positive inverse-gamma draw
-     */
-    private double nextInverseGamma(RandomGenerator random, double shape, double rate) {
-        return rate / nextGamma(random, shape);
+    private static List<Num> deterministicCumulativeReturns(Num mean, MonteCarloContext context) {
+        NumFactory numFactory = context.numFactory();
+        Num normalizedMean = MonteCarloArithmetic.normalize(mean, numFactory);
+        if (normalizedMean == null) {
+            return null;
+        }
+        Num cumulativeReturn = normalizedMean.multipliedBy(numFactory.numOf(context.horizon()));
+        if (!Num.isFinite(cumulativeReturn)) {
+            return null;
+        }
+        List<Num> terminalReturns = new ArrayList<>(context.iterationCount());
+        for (int iteration = 0; iteration < context.iterationCount(); iteration++) {
+            terminalReturns.add(cumulativeReturn);
+        }
+        return terminalReturns;
     }
 
-    private double nextGamma(RandomGenerator random, double shape) {
-        if (shape < 1d) {
-            return nextGamma(random, shape + 1d) * Math.pow(random.nextDouble(), 1d / shape);
+    private static double drawCumulativeReturn(Posterior posterior, MonteCarloContext context, RandomGenerator random) {
+        ParameterDraw draw = drawParameters(posterior, random);
+        if (draw == null) {
+            return Double.NaN;
         }
-        double delta = shape - 1d / 3d;
-        double c = 1d / Math.sqrt(9d * delta);
-        while (true) {
-            double x;
-            double v;
-            do {
-                x = random.nextGaussian();
-                v = 1d + c * x;
-            } while (v <= 0d);
-            v = v * v * v;
-            double u = random.nextDouble();
-            if (u < 1d - 0.0331d * x * x * x * x) {
-                return delta * v;
-            }
-            if (Math.log(u) < 0.5d * x * x + delta * (1d - v + Math.log(v))) {
-                return delta * v;
-            }
+        double sigma = Math.sqrt(draw.sigmaSquared());
+        double cumulativeReturn = 0d;
+        for (int step = 0; step < context.horizon(); step++) {
+            cumulativeReturn += draw.mu() + sigma * random.nextGaussian();
         }
+        return cumulativeReturn;
+    }
+
+    /**
+     * Draws {@code (sigmaSquared, mu)} from the posterior predictive conditional,
+     * shared as the single source of parameter draws between this method and
+     * {@link PosteriorSmoothedResidualMonteCarloMethod} for identical seeds and
+     * windows.
+     *
+     * @param posterior fitted posterior hyper-parameters
+     * @param random    deterministic seeded random generator
+     * @return a single parameter draw, or {@code null} when the posterior cannot
+     *         reach primitive sampling precision
+     * @since 0.25.1
+     */
+    static ParameterDraw drawParameters(Posterior posterior, RandomGenerator random) {
+        double mean = posterior.samplingMean();
+        double scale = posterior.samplingScale();
+        if (!Double.isFinite(mean) || !Double.isFinite(scale)) {
+            return null;
+        }
+        double sigmaSquared = scale == 0d ? 0d : nextInverseGamma(random, posterior.shape(), scale);
+        if (!Double.isFinite(sigmaSquared)) {
+            return null;
+        }
+        double muDraw = mean + Math.sqrt(sigmaSquared / posterior.strength()) * random.nextGaussian();
+        return Double.isFinite(muDraw) ? new ParameterDraw(sigmaSquared, muDraw) : null;
+    }
+
+    private static double nextInverseGamma(RandomGenerator random, double shape, double rate) {
+        return rate / RandomSamplers.nextGamma(random, shape);
+    }
+
+    // Primitive gamma/Gaussian sampling must not erase a finite nonzero Num.
+    private static double samplingDouble(Num value) {
+        double primitive = value.doubleValue();
+        return Double.isFinite(primitive) && (primitive != 0d || value.isZero()) ? primitive : Double.NaN;
     }
 
     private static void requireFinite(double value, String name) {
@@ -229,12 +302,4 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
         }
     }
 
-    private static boolean isFinite(double... values) {
-        for (double value : values) {
-            if (!Double.isFinite(value)) {
-                return false;
-            }
-        }
-        return true;
-    }
 }
