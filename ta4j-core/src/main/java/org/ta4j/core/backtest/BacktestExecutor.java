@@ -418,14 +418,14 @@ public class BacktestExecutor {
         Objects.requireNonNull(tradingRecordRunner, "tradingRecordRunner must not be null");
         BarSeries managedSeries = seriesManager.getBarSeries();
         if (managedSeries instanceof ConcurrentBarSeries concurrentSeries) {
-            return concurrentSeries.withReadLock(() -> executeWithRuntimeReportLocked(strategies, tradeType,
-                    progressCallback, batchSize, tradingRecordRunner, managedSeries));
+            return concurrentSeries.withReadLock(() -> executeWithRuntimeReportLocked(strategies, progressCallback,
+                    batchSize, tradingRecordRunner, managedSeries));
         }
-        return executeWithRuntimeReportLocked(strategies, tradeType, progressCallback, batchSize, tradingRecordRunner,
+        return executeWithRuntimeReportLocked(strategies, progressCallback, batchSize, tradingRecordRunner,
                 managedSeries);
     }
 
-    private BacktestExecutionResult executeWithRuntimeReportLocked(List<Strategy> strategies, Trade.TradeType tradeType,
+    private BacktestExecutionResult executeWithRuntimeReportLocked(List<Strategy> strategies,
             Consumer<Integer> progressCallback, int batchSize, Function<Strategy, TradingRecord> tradingRecordRunner,
             BarSeries managedSeries) {
         BarSeries baseline = BacktestExecutionResult.snapshot(managedSeries);

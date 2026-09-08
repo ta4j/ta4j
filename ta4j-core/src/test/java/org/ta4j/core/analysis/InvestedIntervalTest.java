@@ -168,6 +168,7 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
         var indicator = new InvestedInterval(series, tradingRecord);
 
         assertThat(indicator.getValue(2)).as("trailing exit interval").isTrue();
+        assertThat(indicator.stream().toList()).containsExactly(false, false, true);
     }
 
     @Test
@@ -189,5 +190,6 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
 
         assertThat(indicator.getValue(1)).as("anchored invested interval").isTrue();
         assertThat(indicator.getValue(2)).as("never-calculated bar stays uninvested").isFalse();
+        assertThat(indicator.stream().toList()).containsExactly(false, true);
     }
 }

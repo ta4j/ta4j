@@ -5,6 +5,7 @@ package org.ta4j.core.analysis;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 import org.ta4j.core.*;
 import org.ta4j.core.num.Num;
@@ -253,6 +254,16 @@ public final class CumulativePnL implements PerformanceIndicator {
     @Override
     public Num getValue(int index) {
         return values.get(index);
+    }
+
+    /**
+     * @return values over the captured materialized window, independent of later
+     *         changes to the borrowed series bounds
+     * @since 0.25.1
+     */
+    @Override
+    public Stream<Num> stream() {
+        return values.stream();
     }
 
     /**

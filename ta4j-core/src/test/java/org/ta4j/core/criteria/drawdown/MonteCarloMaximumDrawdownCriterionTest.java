@@ -10,6 +10,7 @@ import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.BaseTrade;
@@ -28,6 +29,20 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
 
     public MonteCarloMaximumDrawdownCriterionTest(NumFactory numFactory) {
         super(params -> new MonteCarloMaximumDrawdownCriterion(), numFactory);
+    }
+
+    @Test(timeout = 5000)
+    public void pricesClosedBlockEndingAtMaximumIntegerIndex() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 50d).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(Integer.MAX_VALUE - 1)
+                .build();
+        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(Integer.MAX_VALUE - 1, series),
+                Trade.sellAt(Integer.MAX_VALUE, series));
+
+        assertNumEquals(0.5,
+                new MonteCarloMaximumDrawdownCriterion(1, null, 42L, Statistics.MAX).calculate(series, record));
     }
 
     @Test

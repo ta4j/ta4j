@@ -49,6 +49,9 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                 OpenPositionHandling.MARK_TO_MARKET);
 
         assertNumEquals(numFactory.numOf(3.5d).dividedBy(numFactory.numOf(1.5d)), cashFlow.getValue(2));
+        Num firstMaterializedValue = cashFlow.getValue(series.getBeginIndex());
+        series.barBuilder().closePrice(4.5d).add();
+        assertNumEquals(firstMaterializedValue, cashFlow.stream().findFirst().orElseThrow());
     }
 
     @Test
@@ -690,6 +693,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         CashFlow cashFlow = new CashFlow(series, tradingRecord);
         assertNumEquals(1, cashFlow.getValue(1));
         assertNumEquals(1.5, cashFlow.getValue(2));
+        assertNumEquals(1.5, cashFlow.stream().toList().getLast());
     }
 
     @Test

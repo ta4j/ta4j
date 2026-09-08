@@ -494,6 +494,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         Returns returns = new Returns(series, tradingRecord, ReturnRepresentation.DECIMAL);
 
         assertNumEquals(0.5, returns.getValue(2));
+        assertNumEquals(0.5, returns.stream().toList().getLast());
     }
 
     @Test
@@ -516,6 +517,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertEquals(1, rolling.getBeginIndex());
         assertNumEquals(anchoredReturn, returns.getValue(1));
         assertTrue(returns.getValue(2).isNaN());
+        assertEquals(returns.getValues(), returns.stream().toList());
     }
 
     @Test

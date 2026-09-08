@@ -5,6 +5,8 @@ package org.ta4j.core.analysis;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.Position;
@@ -79,6 +81,16 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
             return Boolean.FALSE;
         }
         return investedIntervals[(int) position];
+    }
+
+    /**
+     * @return invested flags over the captured materialized window, independent of
+     *         later changes to the borrowed series bounds
+     * @since 0.25.1
+     */
+    @Override
+    public Stream<Boolean> stream() {
+        return IntStream.range(0, investedIntervals.length).mapToObj(index -> investedIntervals[index]);
     }
 
     private boolean[] buildInvestedIntervals(TradingRecord tradingRecord, OpenPositionHandling openPositionHandling,

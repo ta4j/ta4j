@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Stream;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
@@ -301,6 +302,16 @@ public class Returns implements PerformanceIndicator {
             return NaN.NaN;
         }
         return values.get((int) position);
+    }
+
+    /**
+     * @return formatted values over the captured materialized window, independent
+     *         of later changes to the borrowed series bounds
+     * @since 0.25.1
+     */
+    @Override
+    public Stream<Num> stream() {
+        return values.stream();
     }
 
     /**

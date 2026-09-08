@@ -12,6 +12,8 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Trade;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
@@ -22,6 +24,22 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     public ExcessReturnsTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test(timeout = 5000)
+    public void compoundsIntervalEndingAtMaximumIntegerIndex() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 50d).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(Integer.MAX_VALUE - 1)
+                .build();
+        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(Integer.MAX_VALUE - 1, series),
+                Trade.sellAt(Integer.MAX_VALUE, series));
+
+        Num value = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO, record)
+                .excessReturn(Integer.MAX_VALUE - 1, Integer.MAX_VALUE);
+
+        assertEquals(numFactory.numOf(-0.5), value);
     }
 
     @Test

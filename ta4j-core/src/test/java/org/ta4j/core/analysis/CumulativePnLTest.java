@@ -47,6 +47,9 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
                 OpenPositionHandling.MARK_TO_MARKET);
 
         assertNumEquals(numFactory.numOf(3.5d).minus(numFactory.numOf(1.5d)), pnl.getValue(2));
+        Num firstMaterializedValue = pnl.getValue(series.getBeginIndex());
+        series.barBuilder().closePrice(4.5d).add();
+        assertNumEquals(firstMaterializedValue, pnl.stream().findFirst().orElseThrow());
     }
 
     @Test
@@ -449,5 +452,6 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
 
         assertNumEquals(0, pnl.getValue(0));
         assertNumEquals(10, pnl.getValue(2));
+        assertNumEquals(10, pnl.stream().toList().getLast());
     }
 }
