@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
  * Mutating operations outside the window are ignored, and index ranges are
  * clamped to the window.
  *
- * @since 0.24.2
+ * @since 0.25.1
  */
 final class OffsetNumBuffer {
 
