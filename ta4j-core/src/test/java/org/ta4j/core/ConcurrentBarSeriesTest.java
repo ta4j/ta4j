@@ -854,6 +854,16 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         assertNumEquals(20, bar.getClosePrice());
         assertEquals(1L, first.getBarHistoryRevision());
         assertEquals(1L, second.getBarHistoryRevision());
+
+        assertThrows(IllegalStateException.class, () -> first.addTrade(numOf(2), numOf(30)));
+        assertNumEquals(30, bar.getClosePrice());
+        assertEquals(2L, first.getBarHistoryRevision());
+        assertEquals(2L, second.getBarHistoryRevision());
+
+        assertThrows(IllegalStateException.class, () -> bar.addTrade(numOf(2), numOf(40)));
+        assertNumEquals(40, bar.getClosePrice());
+        assertEquals(3L, first.getBarHistoryRevision());
+        assertEquals(3L, second.getBarHistoryRevision());
     }
 
     @Test

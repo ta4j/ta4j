@@ -570,22 +570,35 @@ public class BaseBar implements Bar {
             state = new MutationState(this, previousState);
             MUTATION_STATE.set(state);
         }
-        state.suppressionDepth++;
         try {
-            addPrice(tradePrice);
-        } finally {
-            state.suppressionDepth--;
-            if (temporaryState) {
-                if (previousState == null) {
-                    MUTATION_STATE.remove();
-                } else {
-                    MUTATION_STATE.set(previousState);
+            state.suppressionDepth++;
+            try {
+                addPrice(tradePrice);
+            } finally {
+                state.suppressionDepth--;
+                if (temporaryState) {
+                    if (previousState == null) {
+                        MUTATION_STATE.remove();
+                    } else {
+                        MUTATION_STATE.set(previousState);
+                    }
                 }
             }
+            volume = volume.plus(tradeVolume);
+            amount = amount.plus(tradeVolume.multipliedBy(tradePrice));
+            trades++;
+        } catch (RuntimeException | Error failure) {
+            // A price hook can change OHLC before throwing. Restore the enclosing
+            // scope first so direct and nested calls publish through its sink.
+            try {
+                publishRetainedBarMutation();
+            } catch (RuntimeException | Error notificationFailure) {
+                if (notificationFailure != failure) {
+                    failure.addSuppressed(notificationFailure);
+                }
+            }
+            throw failure;
         }
-        volume = volume.plus(tradeVolume);
-        amount = amount.plus(tradeVolume.multipliedBy(tradePrice));
-        trades++;
     }
 
     /**
