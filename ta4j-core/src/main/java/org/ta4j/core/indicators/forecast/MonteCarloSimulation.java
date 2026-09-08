@@ -243,7 +243,7 @@ final class MonteCarloSimulation {
 
         @Override
         public long nextLong() {
-            state += MonteCarloKernel.GOLDEN_GAMMA;
+            state = MonteCarloKernel.advanceState(state);
             return MonteCarloKernel.mix64(state);
         }
 
