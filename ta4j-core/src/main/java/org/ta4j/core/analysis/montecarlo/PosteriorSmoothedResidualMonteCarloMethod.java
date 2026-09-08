@@ -94,8 +94,8 @@ public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCar
             return null;
         }
         NumFactory numFactory = context.numFactory();
-        Num drift = normalize(moments.drift(), numFactory);
-        Num variance = normalize(moments.variance(), numFactory);
+        Num drift = MonteCarloArithmetic.normalize(moments.drift(), numFactory);
+        Num variance = MonteCarloArithmetic.normalize(moments.variance(), numFactory);
         if (drift == null || variance == null || variance.isNegative()) {
             return null;
         }
@@ -125,7 +125,7 @@ public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCar
             }
             // Coerce the inner sample through the context factory so cross-factory
             // inner techniques compose without throwing.
-            Num innerSample = normalize(innerSamples.get(iteration), numFactory);
+            Num innerSample = MonteCarloArithmetic.normalize(innerSamples.get(iteration), numFactory);
             Num posteriorDrift = numFactory.numOf(BigDecimal.valueOf(draw.mu()));
             Num posteriorScale = numFactory.numOf(BigDecimal.valueOf(sigma));
             if (innerSample == null || !Num.isFinite(posteriorDrift) || !Num.isFinite(posteriorScale)) {
@@ -162,10 +162,6 @@ public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCar
             terminalReturns.add(cumulativeReturn);
         }
         return terminalReturns;
-    }
-
-    private static Num normalize(Num value, NumFactory numFactory) {
-        return Num.isFinite(value) ? numFactory.numOf(value.bigDecimalValue()) : null;
     }
 
     /**

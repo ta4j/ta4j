@@ -145,6 +145,15 @@ public class StudentTScaleMixingMonteCarloMethodTest {
     }
 
     @Test
+    public void rejectsSampleThatUnderflowsContextFactory() {
+        MonteCarloMethod inner = context -> List
+                .of(DecimalNumFactory.getInstance().numOf(new java.math.BigDecimal("1E-400")));
+        MonteCarloMethod method = new StudentTScaleMixingMonteCarloMethod(inner, 5);
+
+        assertNull(method.terminalReturns(context(1, 1, window(0.01d), moments(0d), 7L)));
+    }
+
+    @Test
     public void sameSeedReproducesIdenticalSamples() {
         MonteCarloMethod method = new StudentTScaleMixingMonteCarloMethod(
                 NormalInverseGammaForecastMethod.withEmpiricalPriors());

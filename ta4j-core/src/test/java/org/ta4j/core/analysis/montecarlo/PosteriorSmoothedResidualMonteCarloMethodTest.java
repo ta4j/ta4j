@@ -46,6 +46,14 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
         };
     }
 
+    @Test
+    public void rejectsSampleThatUnderflowsContextFactory() {
+        MonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
+                fixedInner(DECIMAL.numOf(new java.math.BigDecimal("1E-400"))));
+
+        assertNull(method.terminalReturns(context(1, 1, window(new double[] { 0.01d, 0.02d }), 7L)));
+    }
+
     private static MonteCarloMethod nullInner() {
         return context -> null;
     }

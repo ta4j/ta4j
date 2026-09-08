@@ -23,6 +23,15 @@ final class MonteCarloArithmetic {
     private MonteCarloArithmetic() {
     }
 
+    /** Coerces finite values without accepting overflow or nonzero underflow. */
+    static Num normalize(Num value, NumFactory numFactory) {
+        if (!Num.isFinite(value)) {
+            return null;
+        }
+        Num converted = numFactory.numOf(value.bigDecimalValue());
+        return Num.isFinite(converted) && (!converted.isZero() || value.isZero()) ? converted : null;
+    }
+
     /**
      * Evaluates {@code center + scale * (sample - center)} without avoidable
      * intermediate overflow.

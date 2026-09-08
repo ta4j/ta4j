@@ -134,7 +134,7 @@ public final class RecentVolatilityWideningMonteCarloMethod implements MonteCarl
         // unchanged, so no empirical center is necessary (or safe to accumulate).
         List<Num> converted = new ArrayList<>(context.iterationCount());
         for (Num sample : samples) {
-            Num normalized = normalize(sample, numFactory);
+            Num normalized = MonteCarloArithmetic.normalize(sample, numFactory);
             if (normalized == null) {
                 return null;
             }
@@ -165,14 +165,6 @@ public final class RecentVolatilityWideningMonteCarloMethod implements MonteCarl
             widened.add(scaled);
         }
         return widened;
-    }
-
-    private static Num normalize(Num value, NumFactory numFactory) {
-        if (!Num.isFinite(value)) {
-            return null;
-        }
-        Num converted = numFactory.numOf(value.bigDecimalValue());
-        return Num.isFinite(converted) ? converted : null;
     }
 
     /**

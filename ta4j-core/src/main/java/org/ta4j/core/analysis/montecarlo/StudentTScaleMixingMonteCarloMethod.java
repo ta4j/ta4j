@@ -109,7 +109,7 @@ public final class StudentTScaleMixingMonteCarloMethod implements MonteCarloMeth
         for (Num sample : samples) {
             // Coerce cross-factory inner samples through the context factory so the
             // arithmetic never throws (the seam explicitly supports foreign Num types).
-            Num converted = convert(sample, numFactory);
+            Num converted = MonteCarloArithmetic.normalize(sample, numFactory);
             if (converted == null) {
                 return null;
             }
@@ -125,10 +125,6 @@ public final class StudentTScaleMixingMonteCarloMethod implements MonteCarloMeth
             mixed.add(scaled);
         }
         return mixed;
-    }
-
-    private static Num convert(Num value, NumFactory numFactory) {
-        return Num.isFinite(value) ? numFactory.numOf(value.bigDecimalValue()) : null;
     }
 
     /**
