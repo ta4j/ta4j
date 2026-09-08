@@ -53,6 +53,11 @@ public class ElliottWaveCountIndicator extends CachedIndicator<Integer> {
     }
 
     @Override
+    public Integer getValue(final int index) {
+        return getBarSeries().withReadLock(() -> super.getValue(index));
+    }
+
+    @Override
     protected Integer calculate(final int index) {
         return Integer.valueOf(getSwings(index).size());
     }

@@ -6,9 +6,14 @@ package org.ta4j.core.indicators.wyckoff;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertThrows;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReadWriteLock;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -93,6 +98,28 @@ public class WyckoffCycleFacadeTest extends AbstractIndicatorTest<BarSeries, Num
         assertThat(secondPhaseIndicator.getBarSeries().getBarCount()).isEqualTo(10);
         assertThat(firstPhaseIndicator.getBarSeries().getEndIndex())
                 .isEqualTo(firstPhaseIndicator.getBarSeries().getBarCount() - 1);
+    }
+
+    /**
+     * Verifies that a live facade calculation keeps its multi-read phase and
+     * trading-range observation inside one coherent series read lease.
+     */
+    @Test
+    public void phaseCalculationUsesOneReadScopeForLiveSeries() {
+        AtomicBoolean armed = new AtomicBoolean();
+        AtomicBoolean writerAcquired = new AtomicBoolean();
+        ReadWriteLock probeLock = ConstrainedSeriesSupport.readLeaseProbe(armed, writerAcquired);
+        ConcurrentBarSeries concurrentSeries = ConstrainedSeriesSupport.seriesWithReadWriteLock(series, probeLock);
+        WyckoffCycleFacade facade = WyckoffCycleFacade.builder(concurrentSeries)
+                .withSwingConfiguration(1, 1, 0)
+                .withVolumeWindows(1, 4)
+                .build();
+        int endIndex = concurrentSeries.getEndIndex();
+        armed.set(true);
+
+        facade.tradingRangeHigh(endIndex);
+
+        assertThat(writerAcquired.get()).as("facade calculation released its outer read lease").isFalse();
     }
 
     /**

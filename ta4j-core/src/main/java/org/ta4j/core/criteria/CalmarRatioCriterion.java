@@ -10,7 +10,7 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
-import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
+import org.ta4j.core.criteria.drawdown.Drawdown;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -37,7 +37,7 @@ import java.util.Optional;
  * <ul>
  * <li>{@link CashFlow} to reuse the existing compounded equity curve and derive
  * CAGR from the evaluated start and end equity values.</li>
- * <li>{@link MaximumDrawdownCriterion} for denominator calculation.</li>
+ * <li>{@link Drawdown} for denominator calculation on that same curve.</li>
  * </ul>
  *
  * <p>
@@ -56,7 +56,6 @@ import java.util.Optional;
  */
 public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
 
-    private final MaximumDrawdownCriterion maximumDrawdownCriterion;
     private final ReturnRepresentation returnRepresentation;
 
     /**
@@ -135,7 +134,6 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
             OpenPositionHandling openPositionHandling) {
         super(equityCurveMode, openPositionHandling);
         this.returnRepresentation = Objects.requireNonNull(returnRepresentation, "returnRepresentation");
-        this.maximumDrawdownCriterion = new MaximumDrawdownCriterion(equityCurveMode, openPositionHandling);
     }
 
     @Override
@@ -149,26 +147,10 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        NumFactory numFactory = series.numFactory();
-        Num zero = numFactory.zero();
-        if (tradingRecord == null || series.isEmpty()) {
-            return zero;
+        if (tradingRecord == null) {
+            return series.numFactory().zero();
         }
-
-        int beginIndex = tradingRecord.getStartIndex(series);
-        int endIndex = tradingRecord.getEndIndex(series);
-        if (endIndex <= beginIndex) {
-            return zero;
-        }
-
-        Num annualizedReturn = annualizedReturn(series, tradingRecord, beginIndex, endIndex);
-
-        Num maximumDrawdown = maximumDrawdownCriterion.calculate(series, tradingRecord);
-        if (maximumDrawdown.isZero()) {
-            return toRepresentation(annualizedReturn);
-        }
-        Num calmarRatio = annualizedReturn.dividedBy(maximumDrawdown);
-        return toRepresentation(calmarRatio);
+        return series.withReadLock(() -> calculateTradingRecord(series, tradingRecord));
     }
 
     @Override
@@ -181,21 +163,44 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    private Num annualizedReturn(BarSeries series, TradingRecord tradingRecord, int beginIndex, int endIndex) {
+    private Num calculateTradingRecord(BarSeries series, TradingRecord tradingRecord) {
+        NumFactory numFactory = series.numFactory();
+        Num zero = numFactory.zero();
+        CashFlow cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
+        Integer explicitStartIndex = tradingRecord.getStartIndex();
+        int requestedBeginIndex = explicitStartIndex == null ? cashFlow.getBeginIndex() : explicitStartIndex;
+        int logicalBeginIndex = Math.max(requestedBeginIndex, cashFlow.getBeginIndex());
+        if (cashFlow.getEndIndex() <= logicalBeginIndex) {
+            return zero;
+        }
+
+        Num annualizedReturn = annualizedReturn(series, cashFlow, requestedBeginIndex);
+        Num maximumDrawdown = Drawdown.amount(series, tradingRecord, cashFlow);
+        if (maximumDrawdown.isZero()) {
+            return toRepresentation(annualizedReturn);
+        }
+        return toRepresentation(annualizedReturn.dividedBy(maximumDrawdown));
+    }
+
+    private Num annualizedReturn(BarSeries series, CashFlow cashFlow, int requestedBeginIndex) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
         Num one = numFactory.one();
-        Num years = BarSeriesUtils.deltaYears(series, beginIndex, endIndex);
+        int logicalBeginIndex = Math.max(requestedBeginIndex, cashFlow.getBeginIndex());
+        int logicalEndIndex = cashFlow.getEndIndex();
+        if (logicalEndIndex <= logicalBeginIndex) {
+            return zero;
+        }
+        Num years = BarSeriesUtils.deltaYears(series, logicalBeginIndex, logicalEndIndex);
         if (years.isZero()) {
             return zero;
         }
-        CashFlow cashFlow = new CashFlow(series, tradingRecord, endIndex, equityCurveMode, openPositionHandling);
-        Num startValue = cashFlow.getValue(beginIndex);
+        Num startValue = cashFlow.getValue(logicalBeginIndex);
         if (startValue.isNaN() || startValue.isZero()) {
             return NaN.NaN;
         }
 
-        Num endValue = cashFlow.getValue(endIndex);
+        Num endValue = cashFlow.getValue(logicalEndIndex);
         if (endValue.isNaN()) {
             return NaN.NaN;
         }

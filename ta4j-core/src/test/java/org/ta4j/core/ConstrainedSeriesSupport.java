@@ -5,7 +5,13 @@ package org.ta4j.core;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 
 import org.ta4j.core.bars.TimeBarBuilderFactory;
@@ -36,6 +42,86 @@ public final class ConstrainedSeriesSupport {
         };
         series.setMaximumBarCount(source.getBarCount());
         return series;
+    }
+
+    /** Builds a retained series backed by the supplied read/write lock. */
+    public static ConcurrentBarSeries seriesWithReadWriteLock(BarSeries source, ReadWriteLock readWriteLock) {
+        ConcurrentBarSeries series = new ConcurrentBarSeries("observed-read-lease",
+                new ArrayList<>(source.getBarData()), source.getBeginIndex(), source.getEndIndex(), false,
+                source.numFactory(), new MockBarBuilderFactory(), readWriteLock);
+        series.setMaximumBarCount(source.getBarCount());
+        return series;
+    }
+
+    /**
+     * Builds a read/write lock that probes whether a writer can acquire after a
+     * read unlock.
+     */
+    public static ReadWriteLock readLeaseProbe(AtomicBoolean armed, AtomicBoolean writerAcquired) {
+        return new ReadLeaseProbe(armed, writerAcquired);
+    }
+
+    private static final class ReadLeaseProbe implements ReadWriteLock {
+
+        private final ReentrantReadWriteLock delegate = new ReentrantReadWriteLock();
+        private final AtomicBoolean armed;
+        private final AtomicBoolean writerAcquired;
+        private final Lock readLock = new Lock() {
+            @Override
+            public void lock() {
+                delegate.readLock().lock();
+            }
+
+            @Override
+            public void lockInterruptibly() throws InterruptedException {
+                delegate.readLock().lockInterruptibly();
+            }
+
+            @Override
+            public boolean tryLock() {
+                return delegate.readLock().tryLock();
+            }
+
+            @Override
+            public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
+                return delegate.readLock().tryLock(time, unit);
+            }
+
+            @Override
+            public void unlock() {
+                delegate.readLock().unlock();
+                if (armed.compareAndSet(true, false)) {
+                    Lock writer = delegate.writeLock();
+                    if (writer.tryLock()) {
+                        try {
+                            writerAcquired.set(true);
+                        } finally {
+                            writer.unlock();
+                        }
+                    }
+                }
+            }
+
+            @Override
+            public Condition newCondition() {
+                return delegate.readLock().newCondition();
+            }
+        };
+
+        private ReadLeaseProbe(AtomicBoolean armed, AtomicBoolean writerAcquired) {
+            this.armed = Objects.requireNonNull(armed, "armed");
+            this.writerAcquired = Objects.requireNonNull(writerAcquired, "writerAcquired");
+        }
+
+        @Override
+        public Lock readLock() {
+            return readLock;
+        }
+
+        @Override
+        public Lock writeLock() {
+            return delegate.writeLock();
+        }
     }
 
     /**

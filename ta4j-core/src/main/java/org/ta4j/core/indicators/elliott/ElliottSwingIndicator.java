@@ -261,6 +261,11 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
     }
 
     @Override
+    public List<ElliottSwing> getValue(final int index) {
+        return getBarSeries().withReadLock(() -> super.getValue(index));
+    }
+
+    @Override
     public int getCountOfUnstableBars() {
         return Math.max(swingHighIndicator.getCountOfUnstableBars(), swingLowIndicator.getCountOfUnstableBars());
     }
@@ -295,15 +300,17 @@ public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {
      * @since 0.22.0
      */
     public List<Integer> getPivotIndexes(final int index) {
-        final List<Pivot> pivots = pivots(index);
-        if (pivots.isEmpty()) {
-            return List.of();
-        }
-        final List<Integer> indexes = new ArrayList<>(pivots.size());
-        for (Pivot pivot : pivots) {
-            indexes.add(pivot.index);
-        }
-        return List.copyOf(indexes);
+        return getBarSeries().withReadLock(() -> {
+            final List<Pivot> pivots = pivots(index);
+            if (pivots.isEmpty()) {
+                return List.of();
+            }
+            final List<Integer> indexes = new ArrayList<>(pivots.size());
+            for (Pivot pivot : pivots) {
+                indexes.add(pivot.index);
+            }
+            return List.copyOf(indexes);
+        });
     }
 
     /**

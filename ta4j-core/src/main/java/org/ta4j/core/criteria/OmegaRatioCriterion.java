@@ -209,16 +209,16 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
             return zero;
         }
 
+        final int capturedBeginIndex = series.getBeginIndex();
         Returns returns = new Returns(series, tradingRecord, ReturnRepresentation.DECIMAL, equityCurveMode,
                 openPositionHandling);
         BarSeries snapshot = returns.getBarSeries();
         int beginIndex = tradingRecord.getStartIndex(snapshot);
-        int endIndex = tradingRecord.getEndIndex(snapshot);
-        if (endIndex < beginIndex) {
+        int logicalEndIndex = tradingRecord.getEndIndex(snapshot);
+        if (logicalEndIndex < beginIndex) {
             return zero;
         }
 
-        int snapshotBeginIndex = snapshot.getBeginIndex();
         Num thresholdNum = series.numFactory().numOf(threshold);
         Num upsideExcess = zero;
         Num downsideShortfall = zero;
@@ -227,7 +227,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         // Retained-history seeds and exits at the recording boundary are real
         // returns, including a position opened and closed on that same bar.
         // An ordinary entry-only recording start has no prior-close observation.
-        boolean firstSlotSeeded = beginIndex == snapshotBeginIndex && !returnRates.isEmpty()
+        boolean firstSlotSeeded = beginIndex == capturedBeginIndex && !returnRates.isEmpty()
                 && !returnRates.get(0).isNaN();
         if (!firstSlotSeeded) {
             for (Position position : tradingRecord.getPositions()) {
@@ -241,8 +241,9 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         if (firstSlotSeeded) {
             firstRateIndex = beginIndex;
         }
-        for (long i = firstRateIndex; i <= endIndex; i++) {
-            Num returnRate = returnRates.get((int) i - snapshotBeginIndex);
+        long capturedEndIndex = (long) capturedBeginIndex + returns.getValues().size() - 1L;
+        for (long i = firstRateIndex; i <= capturedEndIndex; i++) {
+            Num returnRate = returns.getValue((int) i);
             if (returnRate.isNaN()) {
                 continue;
             }

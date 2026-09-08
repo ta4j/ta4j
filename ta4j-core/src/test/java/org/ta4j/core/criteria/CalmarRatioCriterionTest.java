@@ -14,11 +14,16 @@ import java.time.Instant;
 import java.util.Optional;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
+import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.utils.TimeConstants;
@@ -40,6 +45,54 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
         double expected = referenceCalmar(series, closes);
 
         assertNumEquals(numFactory.numOf(expected), actual, 1e-12);
+    }
+
+    @Test
+    public void trailingExitMatchesEquivalentUnconstrainedCalmarReference() {
+        double[] closes = new double[] { 100d, 110d, 55d };
+        BarSeries constrained = ConstrainedSeriesSupport.trailingConstrainedSeries("calmar-trailing-exit", numFactory,
+                1, closes);
+        BaseTradingRecord constrainedRecord = new BaseTradingRecord(Trade.buyAt(0, constrained),
+                Trade.sellAt(2, constrained));
+
+        BarSeries unconstrained = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closes).build();
+        BaseTradingRecord unconstrainedRecord = new BaseTradingRecord(Trade.buyAt(0, unconstrained),
+                Trade.sellAt(2, unconstrained));
+        CalmarRatioCriterion criterion = (CalmarRatioCriterion) getCriterion();
+
+        Num constrainedValue = criterion.calculate(constrained, constrainedRecord);
+        Num unconstrainedValue = criterion.calculate(unconstrained, unconstrainedRecord);
+
+        assertNumEquals(numFactory.numOf(referenceCalmar(unconstrained, closes)), unconstrainedValue, 1e-12);
+        assertNumEquals(unconstrainedValue, constrainedValue, 1e-12);
+    }
+
+    @Test
+    public void explicitRecordStartExcludesNeutralCashFlowPrefixFromAnnualization() {
+        double[] closes = new double[] { 100d, 100d, 100d, 50d };
+        BarSeries series = buildYearlySeries("calmar-explicit-start", closes);
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, 2, 3, new ZeroCostModel(), new ZeroCostModel());
+        record.operate(Trade.buyAt(2, series));
+        record.operate(Trade.sellAt(3, series));
+
+        double years = Duration.between(series.getBar(2).getEndTime(), series.getBar(3).getEndTime()).getSeconds()
+                / TimeConstants.SECONDS_PER_YEAR;
+        double expected = (Math.pow(0.5d, 1d / years) - 1d) / 0.5d;
+
+        assertNumEquals(numFactory.numOf(expected), getCriterion().calculate(series, record), 1e-12);
+    }
+
+    @Test
+    public void rawOnlySeriesUsesCapturedCashFlowRange() {
+        BarSeries rawOnly = ConstrainedSeriesSupport.emptyLogicalSeries("calmar-raw-only", numFactory, 100d, 50d);
+        BaseTradingRecord rawOnlyRecord = new BaseTradingRecord(Trade.buyAt(0, rawOnly), Trade.sellAt(1, rawOnly));
+        BarSeries logical = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 50d).build();
+        BaseTradingRecord logicalRecord = new BaseTradingRecord(Trade.buyAt(0, logical), Trade.sellAt(1, logical));
+
+        Num expected = getCriterion().calculate(logical, logicalRecord);
+        Num actual = getCriterion().calculate(rawOnly, rawOnlyRecord);
+
+        assertNumEquals(expected, actual, 1e-12);
     }
 
     @Test

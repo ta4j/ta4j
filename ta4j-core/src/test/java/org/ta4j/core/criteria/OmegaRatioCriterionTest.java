@@ -327,6 +327,18 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void includesMaterializedTrailingExitBeyondLogicalEnd() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("omega-trailing-exit", numFactory, 1,
+                100d, 110d, 55d);
+        TradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+
+        Num ratio = new OmegaRatioCriterion(ReturnRepresentation.DECIMAL, OpenPositionHandling.MARK_TO_MARKET)
+                .calculate(series, record);
+
+        assertNumEquals(numFactory.numOf(0.2d), ratio, 1e-12);
+    }
+
+    @Test
     public void omegaIncludesSeededFirstWindowReturn() {
         // The entry predates the retained window; the seeded -50% loss is a
         // real downside observation even though it lands in the first slot.

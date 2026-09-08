@@ -31,12 +31,12 @@ public class CashFlow implements PerformanceIndicator {
     private OffsetNumBuffer values;
 
     /**
-     * The first logical bar index materialized in {@link #values}.
+     * The first absolute bar index materialized in {@link #values}.
      */
     private int valueStartIndex;
 
     /**
-     * The last logical bar index materialized in {@link #values}.
+     * The last absolute bar index materialized in {@link #values}.
      */
     private int valueEndIndex;
     /**
@@ -72,8 +72,8 @@ public class CashFlow implements PerformanceIndicator {
      *
      * @param barSeries            the bar series
      * @param tradingRecord        the trading record
-     * @param startIndex           first logical bar index to materialize
-     * @param finalIndex           last logical bar index to materialize and to
+     * @param startIndex           first absolute bar index to materialize
+     * @param finalIndex           last absolute bar index to materialize and to
      *                             consider for open positions
      * @param equityCurveMode      the calculation mode
      * @param openPositionHandling how to handle open positions
@@ -337,6 +337,28 @@ public class CashFlow implements PerformanceIndicator {
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the borrowed caller series by contract.")
     public BarSeries getBarSeries() {
         return barSeries;
+    }
+
+    /**
+     * Returns the first absolute index of the captured curve, independent of later
+     * changes to the borrowed series.
+     *
+     * @return the captured begin index
+     * @since 0.25.1
+     */
+    public int getBeginIndex() {
+        return valueStartIndex;
+    }
+
+    /**
+     * Returns the last absolute index of the captured curve. An empty curve has an
+     * end index below {@link #getBeginIndex()}.
+     *
+     * @return the captured end index
+     * @since 0.25.1
+     */
+    public int getEndIndex() {
+        return valueEndIndex;
     }
 
     /**

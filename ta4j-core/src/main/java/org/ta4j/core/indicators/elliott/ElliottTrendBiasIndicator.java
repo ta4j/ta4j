@@ -68,6 +68,11 @@ public class ElliottTrendBiasIndicator extends CachedIndicator<ElliottTrendBias>
     }
 
     @Override
+    public ElliottTrendBias getValue(final int index) {
+        return getBarSeries().withReadLock(() -> super.getValue(index));
+    }
+
+    @Override
     protected ElliottTrendBias calculate(final int index) {
         ElliottScenarioSet scenarioSet = scenarioIndicator.getValue(index);
         return ElliottTrendBias.fromScenarios(scenarioSet.all(), neutralThreshold);

@@ -106,7 +106,7 @@ public final class WyckoffCycleFacade {
      * @since 0.22.3
      */
     public WyckoffPhaseIndicator phase() {
-        return createPhaseIndicator();
+        return series.withReadLock(this::createPhaseIndicator);
     }
 
     /**
@@ -117,7 +117,7 @@ public final class WyckoffCycleFacade {
      * @since 0.22.3
      */
     public WyckoffPhase phase(int index) {
-        return phaseIndicator.getValue(index);
+        return series.withReadLock(() -> phaseIndicator.getValue(index));
     }
 
     /**
@@ -128,8 +128,10 @@ public final class WyckoffCycleFacade {
      * @since 0.22.3
      */
     public Num tradingRangeHigh(int index) {
-        phaseIndicator.getValue(index);
-        return phaseIndicator.getTradingRangeHigh(index);
+        return series.withReadLock(() -> {
+            phaseIndicator.getValue(index);
+            return phaseIndicator.getTradingRangeHigh(index);
+        });
     }
 
     /**
@@ -140,8 +142,10 @@ public final class WyckoffCycleFacade {
      * @since 0.22.3
      */
     public Num tradingRangeLow(int index) {
-        phaseIndicator.getValue(index);
-        return phaseIndicator.getTradingRangeLow(index);
+        return series.withReadLock(() -> {
+            phaseIndicator.getValue(index);
+            return phaseIndicator.getTradingRangeLow(index);
+        });
     }
 
     /**
@@ -153,8 +157,10 @@ public final class WyckoffCycleFacade {
      * @since 0.22.3
      */
     public int lastPhaseTransitionIndex(int index) {
-        phaseIndicator.getValue(index);
-        return phaseIndicator.getLastPhaseTransitionIndex(index);
+        return series.withReadLock(() -> {
+            phaseIndicator.getValue(index);
+            return phaseIndicator.getLastPhaseTransitionIndex(index);
+        });
     }
 
     /**
@@ -164,7 +170,7 @@ public final class WyckoffCycleFacade {
      * @since 0.22.3
      */
     public int unstableBars() {
-        return phaseIndicator.getCountOfUnstableBars();
+        return series.withReadLock(phaseIndicator::getCountOfUnstableBars);
     }
 
     private WyckoffPhaseIndicator createPhaseIndicator() {

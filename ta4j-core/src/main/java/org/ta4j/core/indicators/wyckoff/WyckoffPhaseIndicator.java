@@ -122,6 +122,11 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
      * Calculates the indicator value at the requested index.
      */
     @Override
+    public WyckoffPhase getValue(final int index) {
+        return getBarSeries().withReadLock(() -> super.getValue(index));
+    }
+
+    @Override
     protected WyckoffPhase calculate(int index) {
         if (index < getBarSeries().getBeginIndex() + getCountOfUnstableBars()) {
             return WyckoffPhase.UNKNOWN;
@@ -242,8 +247,8 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
      * @return trading-range high or {@code NaN}
      * @since 0.22.3
      */
-    public Num getTradingRangeHigh(int index) {
-        return ensureStructureSnapshot(index).rangeHigh();
+    public Num getTradingRangeHigh(final int index) {
+        return getBarSeries().withReadLock(() -> ensureStructureSnapshot(index).rangeHigh());
     }
 
     /**
@@ -253,8 +258,8 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
      * @return trading-range low or {@code NaN}
      * @since 0.22.3
      */
-    public Num getTradingRangeLow(int index) {
-        return ensureStructureSnapshot(index).rangeLow();
+    public Num getTradingRangeLow(final int index) {
+        return getBarSeries().withReadLock(() -> ensureStructureSnapshot(index).rangeLow());
     }
 
     /**
@@ -265,15 +270,19 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
      *         recorded yet
      * @since 0.22.3
      */
-    public int getLastPhaseTransitionIndex(int index) {
+    public int getLastPhaseTransitionIndex(final int index) {
+        return getBarSeries().withReadLock(() -> getLastPhaseTransitionIndexUnderReadLock(index));
+    }
+
+    private int getLastPhaseTransitionIndexUnderReadLock(final int index) {
         revisionBoundCache.reconcile(structureSnapshots, lastTransitionIndices);
         final Integer transition = lastTransitionIndices.get(index);
         if (transition != null) {
             return transition;
         }
-        int begin = getBarSeries().getBeginIndex();
+        final int begin = getBarSeries().getBeginIndex();
         for (int i = index - 1; i >= begin; i--) {
-            Integer priorTransition = lastTransitionIndices.get(i);
+            final Integer priorTransition = lastTransitionIndices.get(i);
             if (priorTransition != null) {
                 return priorTransition;
             }

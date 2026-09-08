@@ -8,6 +8,8 @@ import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.analysis.EquityCurveMode;
+import org.ta4j.core.analysis.OpenPositionHandling;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -101,5 +103,42 @@ public class DrawdownTest extends AbstractIndicatorTest<org.ta4j.core.Indicator<
         Num amount = Drawdown.amount(series, record, guardedCurve, true);
 
         assertNumEquals(0, amount);
+    }
+
+    @Test
+    public void cashFlowUsesCapturedTrailingExitForDrawdown() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("drawdown-trailing-exit", numFactory, 1,
+                100d, 110d, 55d);
+        var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+        CashFlow cashFlow = new CashFlow(series, record);
+
+        assertNumEquals(0.5, Drawdown.amount(series, record, cashFlow));
+
+        CashFlow explicitWindow = new CashFlow(series, record, 0, 1, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        assertNumEquals(0, Drawdown.amount(series, record, explicitWindow));
+    }
+
+    @Test
+    public void cashFlowHonorsExplicitTradingRecordStart() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 100d, 100d, 50d)
+                .build();
+        var record = new BaseTradingRecord(TradeType.BUY, 2, 3, new ZeroCostModel(), new ZeroCostModel());
+        record.operate(Trade.buyAt(2, series));
+        record.operate(Trade.sellAt(3, series));
+        CashFlow cashFlow = new CashFlow(series, record);
+
+        assertNumEquals(1, Drawdown.length(series, record, cashFlow));
+    }
+
+    @Test
+    public void capturedCashFlowBoundsSurviveSeriesPruning() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 110d, 55d).build();
+        var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+        CashFlow cashFlow = new CashFlow(series, record);
+        series.setMaximumBarCount(2);
+
+        assertNumEquals(0.5, Drawdown.amount(series, record, cashFlow));
     }
 }
