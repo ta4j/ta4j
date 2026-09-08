@@ -30,11 +30,13 @@ public class BaseBar implements Bar {
     private static final ThreadLocal<MutationState> MUTATION_STATE = new ThreadLocal<>();
 
     /**
-     * Weak retaining-series registrations. The weak keys avoid retaining
-     * short-lived subseries through bars that they shallow-copy.
+     * Weak retaining-series registrations. The common single-owner case keeps only
+     * one weak registration; a map and reference queue are promoted lazily when a
+     * bar is shared by multiple series.
      */
-    private transient Map<IdentityKey<BaseBarSeries>, RetainingSeriesRegistration> retainingSeries = new HashMap<>();
-    private transient ReferenceQueue<BaseBarSeries> retainingSeriesQueue = new ReferenceQueue<>();
+    private transient RetainingSeriesRegistration retainingSeriesOwner;
+    private transient Map<RetainingSeriesRegistration, RetainingSeriesRegistration> retainingSeries;
+    private transient ReferenceQueue<BaseBarSeries> retainingSeriesQueue;
 
     private record RetainedSeriesMutation(BaseBarSeries series, int index) {
     }
@@ -158,15 +160,25 @@ public class BaseBar implements Bar {
     }
 
     /**
-     * A weak identity key keeps equal but distinct series registrations separate.
+     * A weak identity registration stores one series and all of its retained
+     * indexes. Shared bars use registrations as both weak map keys and values,
+     * avoiding a separate identity-key allocation.
      */
-    private static final class IdentityKey<K> extends WeakReference<K> {
+    private static final class RetainingSeriesRegistration extends WeakReference<BaseBarSeries> {
 
         private final int identityHash;
+        private int firstIndex;
+        private NavigableMap<Integer, Boolean> additionalIndexes;
 
-        private IdentityKey(final K referent, final ReferenceQueue<K> queue) {
-            super(referent, queue);
-            this.identityHash = System.identityHashCode(referent);
+        private RetainingSeriesRegistration(final BaseBarSeries series, final int index) {
+            this(series, index, null);
+        }
+
+        private RetainingSeriesRegistration(final BaseBarSeries series, final int index,
+                final ReferenceQueue<BaseBarSeries> queue) {
+            super(series, queue);
+            this.identityHash = System.identityHashCode(series);
+            this.firstIndex = index;
         }
 
         @Override
@@ -179,21 +191,11 @@ public class BaseBar implements Bar {
             if (other == this) {
                 return true;
             }
-            if (!(other instanceof IdentityKey<?>)) {
+            if (!(other instanceof RetainingSeriesRegistration registration)) {
                 return false;
             }
-            final K referent = get();
-            return referent != null && referent == ((IdentityKey<?>) other).get();
-        }
-    }
-
-    private static final class RetainingSeriesRegistration {
-
-        private int firstIndex;
-        private NavigableMap<Integer, Boolean> additionalIndexes;
-
-        private RetainingSeriesRegistration(final int index) {
-            this.firstIndex = index;
+            final BaseBarSeries series = get();
+            return series != null && series == registration.get();
         }
 
         private void attach(final int index) {
@@ -408,34 +410,94 @@ public class BaseBar implements Bar {
     }
 
     void attachToBarSeries(final BaseBarSeries series, final int index) {
-        synchronized (retainingSeries) {
+        synchronized (this) {
             purgeClearedRetainingSeries();
-            final IdentityKey<BaseBarSeries> lookupKey = new IdentityKey<>(series, null);
-            final RetainingSeriesRegistration registration = retainingSeries.get(lookupKey);
-            if (registration == null) {
-                retainingSeries.put(new IdentityKey<>(series, retainingSeriesQueue),
-                        new RetainingSeriesRegistration(index));
+            if (retainingSeries != null) {
+                final RetainingSeriesRegistration registration = findRetainingSeries(series);
+                if (registration != null) {
+                    registration.attach(index);
+                } else {
+                    final RetainingSeriesRegistration newRegistration = new RetainingSeriesRegistration(series, index,
+                            retainingSeriesQueue);
+                    retainingSeries.put(newRegistration, newRegistration);
+                }
+                return;
+            }
+            final RetainingSeriesRegistration ownerRegistration = retainingSeriesOwner;
+            final BaseBarSeries owner = ownerRegistration == null ? null : ownerRegistration.get();
+            if (owner == null) {
+                retainingSeriesOwner = new RetainingSeriesRegistration(series, index);
+            } else if (owner == series) {
+                ownerRegistration.attach(index);
             } else {
-                registration.attach(index);
+                promoteRetainingSeries(owner, ownerRegistration, series, index);
             }
         }
     }
 
     void detachFromBarSeries(final BaseBarSeries series, final int index) {
-        synchronized (retainingSeries) {
+        synchronized (this) {
             purgeClearedRetainingSeries();
-            final IdentityKey<BaseBarSeries> lookupKey = new IdentityKey<>(series, null);
-            final RetainingSeriesRegistration registration = retainingSeries.get(lookupKey);
-            if (registration != null && !registration.detach(index)) {
-                retainingSeries.remove(lookupKey);
+            if (retainingSeries != null) {
+                final RetainingSeriesRegistration registration = findRetainingSeries(series);
+                if (registration != null && !registration.detach(index)) {
+                    retainingSeries.remove(registration);
+                }
+                compactRetainingSeries();
+            } else if (retainingSeriesOwner != null && retainingSeriesOwner.get() == series
+                    && !retainingSeriesOwner.detach(index)) {
+                retainingSeriesOwner = null;
             }
         }
     }
 
+    private void promoteRetainingSeries(final BaseBarSeries owner, final RetainingSeriesRegistration ownerRegistration,
+            final BaseBarSeries series, final int index) {
+        final ReferenceQueue<BaseBarSeries> queue = new ReferenceQueue<>();
+        final Map<RetainingSeriesRegistration, RetainingSeriesRegistration> registrations = new HashMap<>(4);
+        final RetainingSeriesRegistration existing = new RetainingSeriesRegistration(owner,
+                ownerRegistration.firstIndex(), queue);
+        existing.additionalIndexes = ownerRegistration.additionalIndexes;
+        registrations.put(existing, existing);
+        final RetainingSeriesRegistration added = new RetainingSeriesRegistration(series, index, queue);
+        registrations.put(added, added);
+        retainingSeriesOwner = null;
+        retainingSeriesQueue = queue;
+        retainingSeries = registrations;
+    }
+
+    private RetainingSeriesRegistration findRetainingSeries(final BaseBarSeries series) {
+        for (final RetainingSeriesRegistration registration : retainingSeries.keySet()) {
+            if (registration.get() == series) {
+                return registration;
+            }
+        }
+        return null;
+    }
+
     private void purgeClearedRetainingSeries() {
-        IdentityKey<?> cleared;
-        while ((cleared = (IdentityKey<?>) retainingSeriesQueue.poll()) != null) {
+        if (retainingSeries == null) {
+            return;
+        }
+        RetainingSeriesRegistration cleared;
+        while ((cleared = (RetainingSeriesRegistration) retainingSeriesQueue.poll()) != null) {
             retainingSeries.remove(cleared);
+        }
+        compactRetainingSeries();
+    }
+
+    private void compactRetainingSeries() {
+        if (retainingSeries == null) {
+            return;
+        }
+        if (retainingSeries.isEmpty()) {
+            retainingSeriesOwner = null;
+            retainingSeries = null;
+            retainingSeriesQueue = null;
+        } else if (retainingSeries.size() == 1) {
+            retainingSeriesOwner = retainingSeries.values().iterator().next();
+            retainingSeries = null;
+            retainingSeriesQueue = null;
         }
     }
 
@@ -537,8 +599,12 @@ public class BaseBar implements Bar {
     private RetainedBarMutationPublication completeDeferredMutation(final MutationState previousState,
             final MutationState deferredState, final BaseBarSeries origin, final Throwable failure) {
         final boolean nestedMutation = previousState != null && previousState.defersNestedPublication();
-        final RetainedBarMutationPublication primaryPublication = deferredState.publicationCount > 0 || failure != null
-                ? captureRetainedBarMutation(deferredState.publicationCount, nestedMutation ? null : origin, failure)
+        // A partial failure can occur before addPrice reaches its publication call;
+        // still invalidate every retaining series exactly once.
+        final int publicationCount = failure == null ? deferredState.publicationCount
+                : Math.max(1, deferredState.publicationCount);
+        final RetainedBarMutationPublication primaryPublication = publicationCount > 0
+                ? captureRetainedBarMutation(publicationCount, nestedMutation ? null : origin, failure)
                 : null;
         final RetainedBarMutationPublication publication = RetainedBarMutationPublication.combine(primaryPublication,
                 deferredState.nestedPublications());
@@ -662,8 +728,9 @@ public class BaseBar implements Bar {
      */
     private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
         stream.defaultReadObject();
-        retainingSeries = new HashMap<>();
-        retainingSeriesQueue = new ReferenceQueue<>();
+        retainingSeriesOwner = null;
+        retainingSeries = null;
+        retainingSeriesQueue = null;
         try {
             validatePrices(openPrice, highPrice, lowPrice, closePrice);
         } catch (IllegalArgumentException e) {
@@ -688,15 +755,27 @@ public class BaseBar implements Bar {
     private RetainedBarMutationPublication captureRetainedBarMutation(final int publicationCount,
             final BaseBarSeries origin, final Throwable failure) {
         final List<RetainedSeriesMutation> mutations;
-        synchronized (retainingSeries) {
+        synchronized (this) {
             purgeClearedRetainingSeries();
-            mutations = new ArrayList<>(retainingSeries.size());
-            retainingSeries.forEach((key, registration) -> {
-                final BaseBarSeries series = key.get();
-                if (series != null) {
-                    mutations.add(new RetainedSeriesMutation(series, registration.firstIndex()));
+            if (retainingSeriesOwner == null && retainingSeries == null) {
+                mutations = List.of();
+            } else {
+                final int registrationCount = retainingSeries == null ? 1 : retainingSeries.size();
+                mutations = new ArrayList<>(registrationCount);
+                if (retainingSeries == null) {
+                    final BaseBarSeries series = retainingSeriesOwner.get();
+                    if (series != null) {
+                        mutations.add(new RetainedSeriesMutation(series, retainingSeriesOwner.firstIndex()));
+                    }
+                } else {
+                    retainingSeries.forEach((registration, ignored) -> {
+                        final BaseBarSeries series = registration.get();
+                        if (series != null) {
+                            mutations.add(new RetainedSeriesMutation(series, registration.firstIndex()));
+                        }
+                    });
                 }
-            });
+            }
         }
         // The top-level originating series still holds its write lock. Publish its
         // revision before unlock so readers never see a changed terminal bar with
