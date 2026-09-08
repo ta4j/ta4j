@@ -395,6 +395,13 @@ public interface TradingRecord extends Serializable {
                     .orElse(logicalEndIndex);
             endIndex = Math.max(logicalEndIndex, endIndex);
         }
+        // A bounded run can subsequently be closed on a retained raw bar after
+        // its logical end. The explicit run bound must not hide that exit.
+        for (Position position : getPositions()) {
+            if (position.isClosed() && position.getExit().getIndex() > logicalEndIndex) {
+                endIndex = Math.max(endIndex, position.getExit().getIndex());
+            }
+        }
         if (endIndex <= logicalEndIndex) {
             return endIndex;
         }

@@ -163,7 +163,9 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
     public void marksTrailingExitIntervalBeyondLogicalWindowEnd() {
         BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("trailing-exit", numFactory, 1, 10d, 20d,
                 30d);
-        var tradingRecord = new BaseTradingRecord(Trade.buyAt(1, series), Trade.sellAt(2, series));
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, 0, 1, null, null);
+        tradingRecord.enter(1, series.getBar(1).getClosePrice(), numFactory.one());
+        tradingRecord.exit(2, series.getBar(2).getClosePrice(), numFactory.one());
 
         var indicator = new InvestedInterval(series, tradingRecord);
 

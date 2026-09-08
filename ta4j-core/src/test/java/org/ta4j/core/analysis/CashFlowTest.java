@@ -688,7 +688,9 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     public void pricesTrailingExitBeyondLogicalWindowEnd() {
         BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("trailing-exit", numFactory, 1, 10d, 20d,
                 30d);
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(1, series), Trade.sellAt(2, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, 0, 1, null, null);
+        tradingRecord.enter(1, series.getBar(1).getClosePrice(), numFactory.one());
+        tradingRecord.exit(2, series.getBar(2).getClosePrice(), numFactory.one());
 
         CashFlow cashFlow = new CashFlow(series, tradingRecord);
         assertNumEquals(1, cashFlow.getValue(1));
