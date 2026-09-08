@@ -160,7 +160,7 @@ class FractalSwingDetectorTest {
         final BarSeries input = seriesWithHighsAndLows(new double[] { 5, 6, 10, 7 }, new double[] { 4, 5, 9, 6 });
         final BaseBarSeries series = new BaseBarSeries("head-eviction", new ArrayList<>(input.getBarData())) {
             @Override
-            public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
+            public synchronized BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
                 final BarSeriesChangeSnapshot snapshot = super.getBarSeriesChangeSnapshot(sinceRevision);
                 if (armEviction.compareAndSet(true, false)) {
                     shrinkAfterBeginRead.set(true);
