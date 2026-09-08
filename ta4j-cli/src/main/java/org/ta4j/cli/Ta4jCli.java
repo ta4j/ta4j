@@ -40,7 +40,7 @@ import picocli.CommandLine.Spec;
  * family.
  * </p>
  *
- * @since 0.23.1
+ * @since 0.25.1
  */
 @Command(name = "ta4j-cli", description = "Run bounded ta4j workflows from local files.", mixinStandardHelpOptions = true, versionProvider = Ta4jCli.VersionProvider.class, subcommands = {
         CliCommands.StrategyCommand.class, CliCommands.IndicatorCommand.class, CliCommands.RuleCommand.class,
@@ -77,7 +77,7 @@ public final class Ta4jCli implements Runnable {
     /**
      * Creates a CLI using standard input.
      *
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public Ta4jCli() {
         this(System.in);
@@ -91,7 +91,7 @@ public final class Ta4jCli implements Runnable {
      * Executes the CLI.
      *
      * @param args command-line arguments
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public static void main(String[] args) {
         int exitCode = run(args, new PrintWriter(System.out, true, StandardCharsets.UTF_8),

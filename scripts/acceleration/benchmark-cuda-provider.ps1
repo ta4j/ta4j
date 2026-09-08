@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = "Stop"
 $root = (Resolve-Path $RepoRoot).Path
 if ([string]::IsNullOrWhiteSpace($LibraryPath)) {
-    $LibraryPath = Join-Path $root "ta4j-cli\target\native\cuda\package\META-INF\native\windows-x86_64\ta4j-cuda-accelerator.dll"
+    $LibraryPath = Join-Path $root "ta4j-acceleration\target\native\cuda\package\META-INF\native\windows-x86_64\ta4j-cuda-accelerator.dll"
 }
 $library = (Resolve-Path $LibraryPath).Path
 if ([string]::IsNullOrWhiteSpace($OutputPath)) {
@@ -57,7 +57,7 @@ $measurements = @()
 foreach ($workload in $workloads) {
     for ($process = 1; $process -le 5; $process++) {
         $arguments = @(
-            "-B", "-pl", "ta4j-cli", "-am",
+            "-B", "-pl", "ta4j-acceleration", "-am",
             "-Dtest=CudaBenchmarkTest", "-Dsurefire.failIfNoSpecifiedTests=false",
             "-Dgroups=requires-cuda", "-Dta4j.excludedTestTags=requires-metal",
             "-Dta4j.runBenchmarks=true",

@@ -49,7 +49,7 @@ import picocli.CommandLine.Spec;
  * package-local support layer.
  * </p>
  *
- * @since 0.23.1
+ * @since 0.25.1
  */
 final class CliCommands {
 
@@ -59,7 +59,7 @@ final class CliCommands {
     /**
      * Common execution context for all concrete CLI workflow commands.
      *
-     * @since 0.23.1
+     * @since 0.25.1
      */
     @Command
     abstract static class WorkflowCommand implements Callable<Integer> {
@@ -229,7 +229,7 @@ final class CliCommands {
     /**
      * Shared local bar-series input options.
      *
-     * @since 0.23.1
+     * @since 0.25.1
      */
     @Command
     static final class DataOptions {
@@ -257,7 +257,7 @@ final class CliCommands {
     /**
      * Shared backtest execution options.
      *
-     * @since 0.23.1
+     * @since 0.25.1
      */
     @Command
     static final class ExecutionOptions {
@@ -301,7 +301,7 @@ final class CliCommands {
     /**
      * Shared output and progress options.
      *
-     * @since 0.23.1
+     * @since 0.25.1
      */
     @Command
     static final class ArtifactOptions {
@@ -322,7 +322,7 @@ final class CliCommands {
     /**
      * Shared analysis-criterion options.
      *
-     * @since 0.23.1
+     * @since 0.25.1
      */
     @Command
     static final class CriteriaOptions {
@@ -345,7 +345,7 @@ final class CliCommands {
     /**
      * Strategy input options shared by strategy execution commands.
      *
-     * @since 0.23.1
+     * @since 0.25.1
      */
     @Command
     static final class StrategyInputOptions {
@@ -379,7 +379,7 @@ final class CliCommands {
     /**
      * Emits a machine-readable catalog of supported aliases and execution models.
      *
-     * @since 0.23.1
+     * @since 0.25.1
      */
     @Command(name = "catalog", description = "List supported aliases, models, and JSON schema details.", mixinStandardHelpOptions = true)
     static final class CatalogCommand extends WorkflowCommand {
@@ -394,7 +394,7 @@ final class CliCommands {
     /**
      * Generates shell completion from the live picocli command model.
      *
-     * @since 0.23.1
+     * @since 0.25.1
      */
     @Command(name = "completion", description = "Generate a shell completion script.", mixinStandardHelpOptions = true)
     static final class CompletionCommand extends WorkflowCommand {
@@ -417,7 +417,7 @@ final class CliCommands {
     /**
      * Walk-forward split and ranking options.
      *
-     * @since 0.23.1
+     * @since 0.25.1
      */
     @Command
     static final class WalkForwardOptions {
@@ -458,7 +458,7 @@ final class CliCommands {
     /**
      * Implements {@code ta4j-cli strategy backtest}.
      *
-     * @since 0.23.1
+     * @since 0.25.1
      */
     @Command
     abstract static class StrategyBacktestWorkflow extends WorkflowCommand {
@@ -576,7 +576,7 @@ final class CliCommands {
     /**
      * Implements {@code ta4j-cli strategy walk-forward}.
      *
-     * @since 0.23.1
+     * @since 0.25.1
      */
     @Command
     abstract static class StrategyWalkForwardWorkflow extends WorkflowCommand {
@@ -724,7 +724,7 @@ final class CliCommands {
     /**
      * Implements {@code ta4j-cli strategy sweep}.
      *
-     * @since 0.23.1
+     * @since 0.25.1
      */
     @Command
     abstract static class StrategySweepWorkflow extends WorkflowCommand {
@@ -812,7 +812,7 @@ final class CliCommands {
     /**
      * Implements {@code ta4j-cli forecast run}.
      *
-     * @since 0.23.1
+     * @since 0.25.1
      */
     @Command
     abstract static class ForecastRunWorkflow extends WorkflowCommand {
@@ -948,7 +948,7 @@ final class CliCommands {
     /**
      * Implements {@code ta4j-cli indicator test}.
      *
-     * @since 0.23.1
+     * @since 0.25.1
      */
     @Command
     abstract static class IndicatorTestWorkflow extends WorkflowCommand {
@@ -1031,7 +1031,7 @@ final class CliCommands {
     /**
      * Implements {@code ta4j-cli rule test}.
      *
-     * @since 0.23.1
+     * @since 0.25.1
      */
     @Command
     abstract static class RuleTestWorkflow extends WorkflowCommand {

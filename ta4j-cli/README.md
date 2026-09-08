@@ -25,10 +25,12 @@ The package phase produces a runnable fat jar at `ta4j-cli/target/ta4j-cli-<vers
 
 ## Optional GPU Acceleration
 
-`ta4j-cli` also owns the optional native providers used transparently by
-ordinary `BarSeriesManager` backtests. The default artifact remains JVM-only.
-Build a platform classifier, place it on the application classpath with
-`ta4j-core`, and launch with:
+`ta4j-acceleration` owns the optional native providers used transparently by
+ordinary `BarSeriesManager` backtests. It is a thin library artifact: its
+platform classifiers contain provider classes and native resources, not
+`ta4j-core`, examples, picocli, or CLI command classes. Build a provider
+classifier from that module, place it beside one compatible `ta4j-core` on the
+application classpath, and launch with:
 
 ```text
 -Dta4j.acceleration.enabled=auto

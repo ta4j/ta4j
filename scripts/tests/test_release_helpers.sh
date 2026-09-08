@@ -754,7 +754,10 @@ test_artifact_manifest_validates_expected_release_jars() {
     "ta4j-cli/target/ta4j-cli-${version}.jar" \
     "ta4j-cli/target/ta4j-cli-${version}-jar-with-dependencies.jar" \
     "ta4j-cli/target/ta4j-cli-${version}-sources.jar" \
-    "ta4j-cli/target/ta4j-cli-${version}-javadoc.jar"; do
+    "ta4j-cli/target/ta4j-cli-${version}-javadoc.jar" \
+    "ta4j-acceleration/target/ta4j-acceleration-${version}.jar" \
+    "ta4j-acceleration/target/ta4j-acceleration-${version}-sources.jar" \
+    "ta4j-acceleration/target/ta4j-acceleration-${version}-javadoc.jar"; do
     mkdir -p "$(dirname "$file")"
     : > "$file"
   done

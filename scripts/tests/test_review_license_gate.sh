@@ -38,8 +38,8 @@ resolve_header_template() {
 
 modules="$(sed -n 's:.*<module>\([^<]*\)</module>.*:\1:p' "$ROOT/pom.xml" | sort -u)"
 count="$(printf '%s\n' "$modules" | grep -c . || true)"
-if [[ "$count" -lt 3 ]]; then
-  fail "expected at least ta4j-core, ta4j-examples, ta4j-cli in the reactor, found: $modules"
+if [[ "$count" -lt 4 ]]; then
+  fail "expected ta4j-core, ta4j-examples, ta4j-cli, and ta4j-acceleration in the reactor, found: $modules"
 fi
 
 unresolved=""

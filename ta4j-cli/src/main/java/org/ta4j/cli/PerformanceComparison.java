@@ -32,7 +32,7 @@ import org.ta4j.cli.performance.PerformanceExperimentRunner;
  * reporting timing deltas. A checksum mismatch fails the comparison because it
  * means the baseline and candidate did not exercise equivalent behavior.
  *
- * @since 0.23.1
+ * @since 0.25.1
  */
 final class PerformanceComparison {
 
@@ -62,7 +62,7 @@ final class PerformanceComparison {
      *                                  refers to {@code baseDir} or
      *                                  {@code candidateDir} (including symlink
      *                                  aliases)
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public static JsonObject compare(Path baseDir, Path candidateDir, Path outputDir, double maxRegressionPct)
             throws IOException {

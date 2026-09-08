@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = "Stop"
 $root = (Resolve-Path $RepoRoot).Path
 $maven = Join-Path $root "mvnw.cmd"
-$library = Join-Path $root "ta4j-cli\target\native\cuda\package\META-INF\native\windows-x86_64\ta4j-cuda-accelerator.dll"
+$library = Join-Path $root "ta4j-acceleration\target\native\cuda\package\META-INF\native\windows-x86_64\ta4j-cuda-accelerator.dll"
 
 Write-Host "CF-336 Windows CUDA root: $root"
 Write-Host "Operation ABI: ta4j.forecast.monte-carlo-price.v1"
@@ -31,7 +31,7 @@ if ($Action -eq "Preflight") {
 }
 
 if ($Action -in @("Build", "All")) {
-    & $maven -B -pl ta4j-cli -am -Pcuda-windows-x86_64 -DskipTests package
+    & $maven -B -pl ta4j-acceleration -am -Pcuda-windows-x86_64 -DskipTests package
     if ($LASTEXITCODE -ne 0) {
         throw "CUDA classifier build failed with exit code $LASTEXITCODE"
     }
@@ -41,7 +41,7 @@ if (-not (Test-Path -LiteralPath $library -PathType Leaf)) {
 }
 
 if ($Action -in @("Integration", "All")) {
-    & $maven -B -pl ta4j-cli -am "-Dtest=CudaNativeIntegrationTest" `
+    & $maven -B -pl ta4j-acceleration -am "-Dtest=CudaNativeIntegrationTest" `
         "-Dgroups=requires-cuda" `
         "-Dta4j.excludedTestTags=requires-metal" `
         "-Dta4j.acceleration.cuda.library=$library" test

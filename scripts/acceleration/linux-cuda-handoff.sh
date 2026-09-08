@@ -4,8 +4,8 @@ set -euo pipefail
 repo_root="${1:-.}"
 root="$(cd "$repo_root" && pwd)"
 
-if [[ ! -d "$root/ta4j-cli" ]]; then
-  echo "ta4j-cli module not found: $root" >&2
+if [[ ! -d "$root/ta4j-acceleration" ]]; then
+  echo "ta4j-acceleration module not found: $root" >&2
   exit 2
 fi
 
@@ -21,14 +21,14 @@ cat <<'COMMANDS'
   gcc --version
   cmake --version
   java -version
-  ./mvnw -B -pl ta4j-cli -am -Pcuda-linux-x86_64 -DskipTests package
-  ./mvnw -B -pl ta4j-cli -am -Dtest=CudaNativeIntegrationTest -Dgroups=requires-cuda -Dta4j.excludedTestTags=requires-metal -Dta4j.acceleration.cuda.library="$PWD/ta4j-cli/target/native/cuda/package/META-INF/native/linux-x86_64/libta4j-cuda-accelerator.so" test
+  ./mvnw -B -pl ta4j-acceleration -am -Pcuda-linux-x86_64 -DskipTests package
+  ./mvnw -B -pl ta4j-acceleration -am -Dtest=CudaNativeIntegrationTest -Dgroups=requires-cuda -Dta4j.excludedTestTags=requires-metal -Dta4j.acceleration.cuda.library="$PWD/ta4j-acceleration/target/native/cuda/package/META-INF/native/linux-x86_64/libta4j-cuda-accelerator.so" test
   scripts/run-full-build-quiet.sh
 COMMANDS
 
 echo
 echo "Linux-only checkpoints:"
-echo "  1. Build the ta4j-cli cuda-linux-x86_64 classifier from the frozen native ABI and CUDA sources."
+echo "  1. Build the ta4j-acceleration cuda-linux-x86_64 classifier from the frozen native ABI and CUDA sources."
 echo "  2. Validate supported distribution, GCC, glibc, libstdc++, JNI, and CUDA runtime linkage."
 echo "  3. Exercise classpath extraction, permissions, checksum, ldd, and wrong-architecture failures."
 echo "  4. Run native sanitizer plus Java integration, concurrency, memory-pressure, and device-loss tests."

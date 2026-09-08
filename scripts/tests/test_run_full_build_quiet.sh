@@ -263,6 +263,7 @@ test_validate_only_rejects_unformatted_source_without_repairing_it() {
   pass "test_validate_only_rejects_unformatted_source_without_repairing_it"
 }
 
+
 test_goals_override_and_maven_args_passthrough() {
   echo "Running test_goals_override_and_maven_args_passthrough"
   create_test_repo
@@ -516,31 +517,19 @@ EOF
 }
 
 test_powershell_entrypoint_classifier_parity() {
-  echo "Running test_powershell_entrypoint_classifier_parity"
-  create_test_repo
-  write_fake_maven
-
-  local ps1
-  ps1="$(<scripts/run-full-build-quiet.ps1)"
-  expect_contains "$ps1" "\$goals = @(\"clean\", \"license:format\", \"spotless:apply\", \"verify\")" "PowerShell local default should repair source"
-  expect_contains "$ps1" "'^--validate-only$'" "PowerShell should expose validate-only mode"
-  expect_contains "$ps1" "\$goals = @(\"clean\", \"license:check\", \"spotless:check\", \"verify\")" "PowerShell validate-only mode should preserve hosted goals"
-
-  if [[ "${TA4J_RUN_POWERSHELL_FIXTURE:-false}" == "true" ]] && command -v pwsh >/dev/null 2>&1; then
-    local output
-    output="$(FAKE_MAVEN_SUCCESS_UNEXPECTED=1 run_quiet_build pwsh -NoLogo -NoProfile -File scripts/run-full-build-quiet.ps1)"
-    expect_contains "$output" "Warnings summary:" "PowerShell warning digest should be visible"
-    expect_contains "$output" "Unexpected output summary:" "PowerShell unexpected digest should be visible"
-    expect_contains "$output" "java.lang.IllegalStateException: suspicious success diagnostic" "PowerShell should surface exceptions"
+  local shell fixture="$ROOT/scripts/tests/test_run_full_build_quiet.ps1"
+  if command -v pwsh >/dev/null 2>&1; then
+    shell=pwsh
+  elif command -v powershell.exe >/dev/null 2>&1; then
+    shell=powershell.exe
+    if command -v wslpath >/dev/null 2>&1; then
+      fixture="$(wslpath -w "$fixture")"
+    fi
   else
-    expect_contains "$ps1" "function Write-FailureDigest" "PowerShell script should define failure digest"
-    expect_contains "$ps1" "function Write-WarningSummary" "PowerShell script should define warning digest"
-    expect_contains "$ps1" "function Write-UnexpectedSummary" "PowerShell script should define unexpected digest"
-    expect_contains "$ps1" "Test-StackOrExceptionLine" "PowerShell script should classify exception and stack lines"
+    echo "PowerShell runtime unavailable; native gate fixtures require pwsh or powershell.exe"
+    return
   fi
-
-  finish_test_repo
-  pass "test_powershell_entrypoint_classifier_parity"
+  "$shell" -NoProfile -ExecutionPolicy Bypass -File "$fixture"
 }
 
 test_default_invocation_uses_local_repair_gate

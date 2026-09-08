@@ -32,11 +32,11 @@ if ! grep -qi 'cl_khr_fp64' "$CLINFO_FILE"; then
 fi
 grep -iE 'Platform Name|Device Name|Device Type|cl_khr_fp64' "$CLINFO_FILE" | head -20
 
-LIBRARY="$ROOT/ta4j-cli/target/native/opencl-$ARCH/package/META-INF/native/linux-$ARCH/libta4j-opencl-accelerator.so"
+LIBRARY="$ROOT/ta4j-acceleration/target/native/opencl-$ARCH/package/META-INF/native/linux-$ARCH/libta4j-opencl-accelerator.so"
 EXCLUDED="requires-cuda,requires-metal,requires-display,requires-headless"
 
-echo "==> Building ta4j-cli classifier for opencl-linux-$ARCH"
-./mvnw -B -ntp -pl ta4j-cli -am "-Popencl-linux-$ARCH" package
+echo "==> Building ta4j-acceleration classifier for opencl-linux-$ARCH"
+./mvnw -B -ntp -pl ta4j-acceleration -am "-Popencl-linux-$ARCH" package
 if [[ ! -f "$LIBRARY" ]]; then
     echo "error: native library was not built at $LIBRARY" >&2
     exit 1
@@ -44,7 +44,7 @@ fi
 sha256sum "$LIBRARY"
 
 echo "==> Running OpenClNativeIntegrationTest (native probe self-test)"
-./mvnw -B -ntp -pl ta4j-cli -am \
+./mvnw -B -ntp -pl ta4j-acceleration -am \
     -Dtest=OpenClNativeIntegrationTest \
     -Dgroups=requires-opencl \
     -Dta4j.excludedTestTags="$EXCLUDED" \
@@ -55,7 +55,7 @@ if [[ "$BENCHMARK" == "--benchmark" ]]; then
     REPORT="$ROOT/.agents/benchmarks/cf-336-validation/cf-336-transparent-opencl-backtest.json"
     rm -f "$REPORT"
     echo "==> Running OpenClBacktestBenchmarkTest (transparent end-to-end backtest)"
-    ./mvnw -B -ntp -pl ta4j-cli -am \
+    ./mvnw -B -ntp -pl ta4j-acceleration -am \
         -Dtest=OpenClBacktestBenchmarkTest \
         -Dsurefire.failIfNoSpecifiedTests=false \
         -Dgroups=benchmark \

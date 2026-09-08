@@ -50,8 +50,13 @@ CLI_JARS=(
   "ta4j-cli/target/ta4j-cli-%s-sources.jar"
   "ta4j-cli/target/ta4j-cli-%s-javadoc.jar"
 )
+ACCELERATION_JARS=(
+  "ta4j-acceleration/target/ta4j-acceleration-%s.jar"
+  "ta4j-acceleration/target/ta4j-acceleration-%s-sources.jar"
+  "ta4j-acceleration/target/ta4j-acceleration-%s-javadoc.jar"
+)
 
-ALL_JARS=("${CORE_JARS[@]}" "${EXAMPLES_JARS[@]}" "${CLI_JARS[@]}")
+ALL_JARS=("${CORE_JARS[@]}" "${EXAMPLES_JARS[@]}" "${CLI_JARS[@]}" "${ACCELERATION_JARS[@]}")
 
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/ta4j-manifest-sim.XXXXXX")"
 trap 'rm -rf "$tmp"' EXIT
@@ -59,7 +64,7 @@ trap 'rm -rf "$tmp"' EXIT
 # Positive case: the full reactor artifact set must pass --strict.
 make_tree "$tmp" "${ALL_JARS[@]}"
 if (cd "$tmp" && bash "$HELPER" artifact-manifest --version "$VERSION" --output manifest.txt --strict >/dev/null 2>&1); then
-  pass "artifact-manifest --strict accepts the ta4j-cli reactor artifacts"
+  pass "artifact-manifest --strict accepts the CLI and acceleration reactor artifacts"
 else
   fail "artifact-manifest --strict rejected the reactor artifacts (expected success)"
 fi

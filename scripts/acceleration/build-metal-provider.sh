@@ -2,8 +2,8 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-source_file="$repo_root/ta4j-cli/src/main/native/metal/ta4j_metal_jni.m"
-output_dir="${1:-$repo_root/ta4j-cli/target/native/metal/package/META-INF/native/macos-aarch64}"
+source_file="$repo_root/ta4j-acceleration/src/main/native/metal/ta4j_metal_jni.m"
+output_dir="${1:-$repo_root/ta4j-acceleration/target/native/metal/package/META-INF/native/macos-aarch64}"
 output_file="$output_dir/libta4j-metal-accelerator.dylib"
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
