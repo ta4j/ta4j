@@ -166,6 +166,7 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         Num normalized = factory.numOf(value.bigDecimalValue());
         return Num.isFinite(normalized) && (!normalized.isZero() || value.isZero()) ? normalized : null;
     }
+
     private static double shockModelCode(MonteCarloReturnProjectionIndicator.ShockModel model) {
         return switch (model) {
         case HISTORICAL_BOOTSTRAP -> 0d;
@@ -175,8 +176,7 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         };
     }
 
-    private static double volatilityUpdateModeCode(
-            MonteCarloReturnProjectionIndicator.VolatilityUpdateMode mode) {
+    private static double volatilityUpdateModeCode(MonteCarloReturnProjectionIndicator.VolatilityUpdateMode mode) {
         return switch (mode) {
         case CONSTANT -> 0d;
         case EWMA -> 1d;

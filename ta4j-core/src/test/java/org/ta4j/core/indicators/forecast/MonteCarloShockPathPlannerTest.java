@@ -100,6 +100,7 @@ public class MonteCarloShockPathPlannerTest {
         assertNull(new MonteCarloShockPathPlanner().plan(new ClosePriceIndicator(fixture.series), 2, 2,
                 fixture.series.numFactory()));
     }
+
     @Test
     public void declinesCustomMonteCarloMethods() {
         Fixture fixture = fixture(DoubleNumFactory.getInstance(), true);
