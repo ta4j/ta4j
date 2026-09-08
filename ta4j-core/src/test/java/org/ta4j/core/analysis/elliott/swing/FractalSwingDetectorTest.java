@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
@@ -24,6 +25,7 @@ import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.NumFactory;
 
 class FractalSwingDetectorTest {
@@ -246,6 +248,25 @@ class FractalSwingDetectorTest {
     }
 
     @Test
+    void inPlaceEarlierCustomBarMutationInvalidatesRevisionAwareReplayResult() {
+        final BaseBarSeries series = revisionAwareSeriesWithCustomBar();
+        final FractalSwingDetector shared = new FractalSwingDetector(1);
+
+        assertThat(shared.detectPivots(series, series.getEndIndex())).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(2, SwingPivotType.HIGH));
+        final long revisionBeforeMutation = series.getBarHistoryRevision();
+
+        series.getBar(1).addPrice(DecimalNum.valueOf(20));
+        series.getBar(1).addPrice(DecimalNum.valueOf(5.5));
+
+        assertThat(series.getBarHistoryRevision()).isEqualTo(revisionBeforeMutation);
+        assertThat(shared.detectPivots(series, series.getEndIndex()))
+                .isEqualTo(new FractalSwingDetector(1).detectPivots(series, series.getEndIndex()));
+        assertThat(shared.detectPivots(series, series.getEndIndex())).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(1, SwingPivotType.HIGH));
+    }
+
+    @Test
     void inPlaceMutationOfObservedLastBarIsDetectedAfterAppend() {
         // HIGH@2 is confirmed by the final bar's high (7 < 10). Raising that
         // bar's high to 11 withdraws the confirmation, and appending a further
@@ -378,6 +399,90 @@ class FractalSwingDetectorTest {
 
         final List<SwingPivot> middle = shared.detectPivots(series, end / 2);
         assertThat(shared.detectPivots(series, end / 2)).isSameAs(middle);
+    }
+
+    private static BaseBarSeries revisionAwareSeriesWithCustomBar() {
+        final double[] highs = { 5, 6, 10, 7 };
+        final double[] lows = { 4, 5, 9, 6 };
+        final List<Bar> bars = new ArrayList<>();
+        for (int index = 0; index < highs.length; index++) {
+            final Num close = DecimalNum.valueOf((highs[index] + lows[index]) / 2);
+            final BaseBar bar = new BaseBar(Duration.ofMinutes(1), Instant.EPOCH.plus(Duration.ofMinutes(index)),
+                    Instant.EPOCH.plus(Duration.ofMinutes(index + 1)), close, DecimalNum.valueOf(highs[index]),
+                    DecimalNum.valueOf(lows[index]), close, DecimalNum.valueOf(1), DecimalNum.valueOf(0), 0L);
+            bars.add(index == 1 ? new UntrackedBar(bar) : bar);
+        }
+        return new BaseBarSeries("custom-bars", bars);
+    }
+
+    private static final class UntrackedBar implements Bar {
+
+        private static final long serialVersionUID = 1L;
+        private final BaseBar delegate;
+
+        private UntrackedBar(final BaseBar delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public Duration getTimePeriod() {
+            return delegate.getTimePeriod();
+        }
+
+        @Override
+        public Instant getBeginTime() {
+            return delegate.getBeginTime();
+        }
+
+        @Override
+        public Instant getEndTime() {
+            return delegate.getEndTime();
+        }
+
+        @Override
+        public Num getOpenPrice() {
+            return delegate.getOpenPrice();
+        }
+
+        @Override
+        public Num getHighPrice() {
+            return delegate.getHighPrice();
+        }
+
+        @Override
+        public Num getLowPrice() {
+            return delegate.getLowPrice();
+        }
+
+        @Override
+        public Num getClosePrice() {
+            return delegate.getClosePrice();
+        }
+
+        @Override
+        public Num getVolume() {
+            return delegate.getVolume();
+        }
+
+        @Override
+        public Num getAmount() {
+            return delegate.getAmount();
+        }
+
+        @Override
+        public long getTrades() {
+            return delegate.getTrades();
+        }
+
+        @Override
+        public void addTrade(final Num tradeVolume, final Num tradePrice) {
+            delegate.addTrade(tradeVolume, tradePrice);
+        }
+
+        @Override
+        public void addPrice(final Num price) {
+            delegate.addPrice(price);
+        }
     }
 
     private static long replayAscending(final FractalSwingDetector detector, final CountedZigZagSeries fixture) {

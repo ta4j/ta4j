@@ -6,15 +6,17 @@ package org.ta4j.core;
 import java.io.IOException;
 import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.TreeMap;
-import java.util.WeakHashMap;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.num.Num;
@@ -29,9 +31,40 @@ public class BaseBar implements Bar {
      * Weak retaining-series registrations. The weak keys avoid retaining
      * short-lived subseries through bars that they shallow-copy.
      */
-    private transient Map<BaseBarSeries, RetainingSeriesRegistration> retainingSeries = new WeakHashMap<>();
+    private transient Map<IdentityKey<BaseBarSeries>, RetainingSeriesRegistration> retainingSeries = new HashMap<>();
+    private transient ReferenceQueue<BaseBarSeries> retainingSeriesQueue = new ReferenceQueue<>();
 
     private record RetainedSeriesMutation(BaseBarSeries series, int index) {
+    }
+
+    /**
+     * A weak identity key keeps equal but distinct series registrations separate.
+     */
+    private static final class IdentityKey<K> extends WeakReference<K> {
+
+        private final int identityHash;
+
+        private IdentityKey(final K referent, final ReferenceQueue<K> queue) {
+            super(referent, queue);
+            this.identityHash = System.identityHashCode(referent);
+        }
+
+        @Override
+        public int hashCode() {
+            return identityHash;
+        }
+
+        @Override
+        public boolean equals(final Object other) {
+            if (other == this) {
+                return true;
+            }
+            if (!(other instanceof IdentityKey<?>)) {
+                return false;
+            }
+            final K referent = get();
+            return referent != null && referent == ((IdentityKey<?>) other).get();
+        }
     }
 
     private static final class RetainingSeriesRegistration {
@@ -108,6 +141,7 @@ public class BaseBar implements Bar {
 
     /** The number of trades of the bar period. */
     private long trades;
+    private transient volatile boolean suppressRetainedBarMutationPublication;
 
     /**
      * Constructor.
@@ -256,22 +290,33 @@ public class BaseBar implements Bar {
 
     void attachToBarSeries(final BaseBarSeries series, final int index) {
         synchronized (retainingSeries) {
-            retainingSeries.compute(series, (ignored, registration) -> {
-                if (registration == null) {
-                    return new RetainingSeriesRegistration(index);
-                }
+            purgeClearedRetainingSeries();
+            final IdentityKey<BaseBarSeries> lookupKey = new IdentityKey<>(series, null);
+            final RetainingSeriesRegistration registration = retainingSeries.get(lookupKey);
+            if (registration == null) {
+                retainingSeries.put(new IdentityKey<>(series, retainingSeriesQueue),
+                        new RetainingSeriesRegistration(index));
+            } else {
                 registration.attach(index);
-                return registration;
-            });
+            }
         }
     }
 
     void detachFromBarSeries(final BaseBarSeries series, final int index) {
         synchronized (retainingSeries) {
-            final RetainingSeriesRegistration registration = retainingSeries.get(series);
+            purgeClearedRetainingSeries();
+            final IdentityKey<BaseBarSeries> lookupKey = new IdentityKey<>(series, null);
+            final RetainingSeriesRegistration registration = retainingSeries.get(lookupKey);
             if (registration != null && !registration.detach(index)) {
-                retainingSeries.remove(series);
+                retainingSeries.remove(lookupKey);
             }
+        }
+    }
+
+    private void purgeClearedRetainingSeries() {
+        IdentityKey<?> cleared;
+        while ((cleared = (IdentityKey<?>) retainingSeriesQueue.poll()) != null) {
+            retainingSeries.remove(cleared);
         }
     }
 
@@ -338,7 +383,13 @@ public class BaseBar implements Bar {
      */
     @SuppressFBWarnings(value = "AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE", justification = "BaseBar mutators are intentionally mutable; concurrent callers must synchronize at the series boundary.")
     protected final void applyTrade(Num tradeVolume, Num tradePrice) {
-        applyTradePrice(tradePrice);
+        final boolean wasSuppressed = suppressRetainedBarMutationPublication;
+        suppressRetainedBarMutationPublication = true;
+        try {
+            addPrice(tradePrice);
+        } finally {
+            suppressRetainedBarMutationPublication = wasSuppressed;
+        }
         volume = volume.plus(tradeVolume);
         amount = amount.plus(tradeVolume.multipliedBy(tradePrice));
         trades++;
@@ -352,7 +403,9 @@ public class BaseBar implements Bar {
     @Override
     public void addPrice(Num price) {
         applyTradePrice(price);
-        publishRetainedBarMutation();
+        if (!suppressRetainedBarMutationPublication) {
+            publishRetainedBarMutation();
+        }
     }
 
     private void applyTradePrice(Num price) {
@@ -398,7 +451,9 @@ public class BaseBar implements Bar {
      */
     private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
         stream.defaultReadObject();
-        retainingSeries = new WeakHashMap<>();
+        retainingSeries = new HashMap<>();
+        retainingSeriesQueue = new ReferenceQueue<>();
+        suppressRetainedBarMutationPublication = false;
         try {
             validatePrices(openPrice, highPrice, lowPrice, closePrice);
         } catch (IllegalArgumentException e) {
@@ -409,9 +464,14 @@ public class BaseBar implements Bar {
     protected final void publishRetainedBarMutation() {
         final List<RetainedSeriesMutation> mutations;
         synchronized (retainingSeries) {
+            purgeClearedRetainingSeries();
             mutations = new ArrayList<>(retainingSeries.size());
-            retainingSeries.forEach((series, registration) -> mutations
-                    .add(new RetainedSeriesMutation(series, registration.firstIndex())));
+            retainingSeries.forEach((key, registration) -> {
+                final BaseBarSeries series = key.get();
+                if (series != null) {
+                    mutations.add(new RetainedSeriesMutation(series, registration.firstIndex()));
+                }
+            });
         }
         for (RetainedSeriesMutation mutation : mutations) {
             mutation.series().retainedBarMutated(this, mutation.index());

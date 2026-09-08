@@ -9,6 +9,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collections;
 
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -49,6 +50,25 @@ public class BaseRealtimeBarTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(numOf(90), bar.getTakerAmount());
         assertEquals(1, bar.getMakerTrades());
         assertEquals(1, bar.getTakerTrades());
+    }
+
+    @Test
+    public void inheritedAddTradeDispatchesToOverriddenAddPriceOnce() {
+        final Instant start = Instant.parse("2024-01-01T00:00:00Z");
+        final Duration period = Duration.ofMinutes(1);
+        final TrackingPriceBar bar = new TrackingPriceBar(period, start, start.plus(period), numFactory.zero());
+        final BaseBarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(Collections.singletonList(bar))
+                .build();
+        final long initialRevision = series.getBarHistoryRevision();
+
+        series.addTrade(numOf(2), numOf(100));
+
+        assertEquals(1, bar.getPriceUpdates());
+        assertEquals(numOf(100), bar.getLastPrice());
+        assertEquals(numOf(100), bar.getClosePrice());
+        assertEquals(numOf(200), bar.getAmount());
+        assertEquals(initialRevision + 1, series.getBarHistoryRevision());
     }
 
     @Test
@@ -709,5 +729,30 @@ public class BaseRealtimeBarTest extends AbstractIndicatorTest<BarSeries, Num> {
         bar.addTrade(numOf(3), numOf(110), RealtimeBar.Side.BUY, RealtimeBar.Liquidity.MAKER);
         assertEquals(numOf(530), bar.getBuyAmount()); // 200 + 330
         assertEquals(numOf(530), bar.getMakerAmount()); // 200 + 330
+    }
+
+    private static final class TrackingPriceBar extends BaseBar {
+
+        private Num lastPrice;
+        private int priceUpdates;
+
+        private TrackingPriceBar(final Duration period, final Instant start, final Instant end, final Num zero) {
+            super(period, start, end, null, null, null, null, zero, zero, 0);
+        }
+
+        @Override
+        public void addPrice(final Num price) {
+            lastPrice = price;
+            priceUpdates++;
+            super.addPrice(price);
+        }
+
+        private Num getLastPrice() {
+            return lastPrice;
+        }
+
+        private int getPriceUpdates() {
+            return priceUpdates;
+        }
     }
 }

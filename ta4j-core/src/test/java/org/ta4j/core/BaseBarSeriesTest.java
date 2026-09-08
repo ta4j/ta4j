@@ -26,6 +26,8 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
@@ -178,6 +180,42 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         assertEquals(unrelatedRevision, unrelated.getBarHistoryRevision());
         assertEquals(-1, unrelated.getBarSeriesChangeSnapshot(unrelatedRevision).earliestChangedIndex());
+    }
+
+    @Test
+    public void testEqualDistinctSeriesRetainSharedBarIndependently() {
+        final Duration period = Duration.ofDays(1);
+        final Instant start = Instant.parse("2024-03-01T00:00:00Z");
+        final BaseBar sharedBar = new BaseBar(period, start, start.plus(period), numOf(10), numOf(10), numOf(10),
+                numOf(10), numFactory.zero(), numFactory.zero(), 0);
+        final EqualBarSeries first = new EqualBarSeries(sharedBar, numFactory, barBuilderFactory);
+        final EqualBarSeries second = new EqualBarSeries(sharedBar, numFactory, barBuilderFactory);
+        final SMAIndicator firstCached = new SMAIndicator(new ClosePriceIndicator(first), 1);
+        final SMAIndicator secondCached = new SMAIndicator(new ClosePriceIndicator(second), 1);
+
+        assertEquals(first, second);
+        assertEquals(numOf(10), firstCached.getValue(0));
+        assertEquals(numOf(10), secondCached.getValue(0));
+        final long firstRevision = first.getBarHistoryRevision();
+        final long secondRevision = second.getBarHistoryRevision();
+
+        sharedBar.addPrice(numOf(20));
+
+        assertEquals(firstRevision + 1, first.getBarHistoryRevision());
+        assertEquals(secondRevision + 1, second.getBarHistoryRevision());
+        assertEquals(numOf(20), firstCached.getValue(0));
+        assertEquals(numOf(20), secondCached.getValue(0));
+
+        first.replaceBar(0, new BaseBar(period, start, start.plus(period), numOf(20), numOf(20), numOf(20), numOf(20),
+                numFactory.zero(), numFactory.zero(), 0));
+        final long detachedFirstRevision = first.getBarHistoryRevision();
+        final long retainedSecondRevision = second.getBarHistoryRevision();
+
+        sharedBar.addPrice(numOf(30));
+
+        assertEquals(detachedFirstRevision, first.getBarHistoryRevision());
+        assertEquals(retainedSecondRevision + 1, second.getBarHistoryRevision());
+        assertEquals(numOf(30), secondCached.getValue(0));
     }
 
     @Test
@@ -788,5 +826,22 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     private static String buildOutOfBoundsMessage(BaseBarSeries series, int index) {
         return String.format("Size of series: %s bars, %s bars removed, index = %s", series.getBarData().size(),
                 series.getRemovedBarsCount(), index);
+    }
+
+    private static final class EqualBarSeries extends BaseBarSeries {
+
+        private EqualBarSeries(final Bar bar, final NumFactory numFactory, final BarBuilderFactory barBuilderFactory) {
+            super("equal-series", Collections.singletonList(bar), 0, 0, false, numFactory, barBuilderFactory);
+        }
+
+        @Override
+        public boolean equals(final Object other) {
+            return other instanceof EqualBarSeries;
+        }
+
+        @Override
+        public int hashCode() {
+            return 1;
+        }
     }
 }

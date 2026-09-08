@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.indicators.RecentFractalSwingHighIndicator;
 import org.ta4j.core.indicators.RecentFractalSwingLowIndicator;
 import org.ta4j.core.indicators.RecentSwingIndicator;
@@ -183,21 +184,27 @@ public final class FractalSwingDetector implements SwingDetector {
         private boolean resultDirty = true;
 
         // History observation mirroring the swing indicators' own reset rules.
-        // Revision-aware series changes are O(1); value snapshots are retained as
-        // a fallback for direct Bar mutations, which the series revision cannot see.
+        // Revision-aware BaseBar changes are O(1); sparse value snapshots cover
+        // direct mutations from bars that cannot publish a series revision.
         private long observedRevision;
         private int observedBeginIndex;
         private int observedEndIndex;
         private BarState observedLastBar;
 
         /**
-         * OHLC snapshots per retained bar, indexed from {@link #observedBarBaseIndex}.
-         * Direct {@link Bar} mutations can change a fractal's high/low input while
-         * restoring its close, so all three prices are retained for fallback validation
-         * on replay boundaries.
+         * OHLC snapshots per retained bar for legacy series, indexed from
+         * {@link #observedBarBaseIndex}. Revision-aware series keep only the snapshots
+         * for bars that cannot publish retained-bar mutations.
          */
         private final List<BarState> observedBars = new ArrayList<>();
         private int observedBarBaseIndex;
+
+        /**
+         * Sparse snapshots for custom {@link Bar} implementations. BaseBar instances
+         * publish their retained-bar mutations to a BaseBarSeries revision, while an
+         * arbitrary Bar implementation may mutate in place without any series signal.
+         */
+        private final Map<Integer, BarState> observedUntrackableBars = new LinkedHashMap<>();
 
         private final int lookbackLength;
         private final int lookforwardLength;
@@ -534,10 +541,17 @@ public final class FractalSwingDetector implements SwingDetector {
                     || (!revisionUnavailable && currentRevision != observedRevision)
                     || currentEndIndex < observedEndIndex;
             final boolean observedWindowExtended = currentEndIndex > observedEndIndex;
-            final boolean validateRetainedBars = !changed && revisionUnavailable
-                    && (observedWindowExtended || requestedIndex <= lastScannedIndex);
-            if (!changed && validateRetainedBars) {
-                changed = retainedBarsChanged(currentBeginIndex, Math.min(observedEndIndex, currentEndIndex));
+            final boolean replayPositionRequiresValidation = observedWindowExtended
+                    || requestedIndex <= lastScannedIndex;
+            final boolean validateLegacySnapshots = revisionUnavailable && replayPositionRequiresValidation;
+            final boolean validateUntrackableSnapshots = !observedUntrackableBars.isEmpty();
+            if (!changed && (validateLegacySnapshots || validateUntrackableSnapshots)) {
+                if (validateLegacySnapshots) {
+                    changed = retainedBarsChanged(currentBeginIndex, Math.min(observedEndIndex, currentEndIndex));
+                }
+                if (!changed && validateUntrackableSnapshots) {
+                    changed = untrackableBarsChanged(currentBeginIndex, currentEndIndex);
+                }
             }
             if (!changed && !series.isEmpty() && currentEndIndex == observedEndIndex) {
                 // The last bar is the live-forming bar: compare its full
@@ -546,6 +560,26 @@ public final class FractalSwingDetector implements SwingDetector {
             }
             observeSeries(changed, snapshot, currentBeginIndex);
             return changed;
+        }
+
+        /**
+         * Compares sparse snapshots of custom bars against the current retained window.
+         * These bars are intentionally checked even when the series revision is
+         * nonnegative because arbitrary Bar implementations cannot publish their
+         * in-place mutations to BaseBarSeries.
+         */
+        private boolean untrackableBarsChanged(final int fromIndex, final int toIndex) {
+            for (final Map.Entry<Integer, BarState> entry : observedUntrackableBars.entrySet()) {
+                final int index = entry.getKey();
+                if (index < fromIndex || index > toIndex) {
+                    continue;
+                }
+                final Bar bar = series.getBar(index);
+                if (bar instanceof BaseBar || !entry.getValue().sameAs(BarState.of(bar))) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /**
@@ -588,9 +622,19 @@ public final class FractalSwingDetector implements SwingDetector {
             observedLastBar = series.isEmpty() ? null : BarState.of(series.getLastBar());
             if (!snapshotBarValues) {
                 observedBars.clear();
+                if (refreshBarSnapshot) {
+                    observedUntrackableBars.clear();
+                    captureUntrackableBars(currentBeginIndex, currentEndIndex);
+                } else {
+                    observedUntrackableBars.entrySet()
+                            .removeIf(entry -> entry.getKey() < currentBeginIndex || entry.getKey() > currentEndIndex);
+                    captureUntrackableBars(Math.max((long) previousObservedEndIndex + 1L, currentBeginIndex),
+                            currentEndIndex);
+                }
             } else if (refreshBarSnapshot || enteringLegacySnapshots || series.isEmpty()) {
                 observedBarBaseIndex = currentBeginIndex;
                 observedBars.clear();
+                observedUntrackableBars.clear();
                 for (long index = currentBeginIndex; index <= (long) currentEndIndex; index++) {
                     observedBars.add(BarState.of(series.getBar((int) index)));
                 }
@@ -598,6 +642,15 @@ public final class FractalSwingDetector implements SwingDetector {
                 for (long index = Math.max((long) previousObservedEndIndex + 1L,
                         currentBeginIndex); index <= (long) currentEndIndex; index++) {
                     observedBars.add(BarState.of(series.getBar((int) index)));
+                }
+            }
+        }
+
+        private void captureUntrackableBars(final long fromIndex, final int toIndex) {
+            for (long index = fromIndex; index <= (long) toIndex; index++) {
+                final Bar bar = series.getBar((int) index);
+                if (!(bar instanceof BaseBar)) {
+                    observedUntrackableBars.put((int) index, BarState.of(bar));
                 }
             }
         }
