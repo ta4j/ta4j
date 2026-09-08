@@ -16,6 +16,7 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.acceleration.AccelerationRuntime;
 import org.ta4j.core.backtest.TradeExecutionModel.ExecutionTarget;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatementGenerator;
@@ -567,40 +568,42 @@ public class BarSeriesManager {
                     strategy, tradingRecord.getStartingType());
         }
 
-        int lastProcessedIndex = runEndIndex;
-        if (runBeginIndex <= runEndIndex) {
-            for (int i = runBeginIndex;; i++) {
-                lastProcessedIndex = i;
-                tradeExecutionModel.onBar(i, tradingRecord, barSeries);
-                // For each bar between both indexes...
-                if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradeExecutionModel.execute(i, tradingRecord, barSeries, amountResolver.apply(i));
-                }
-                if (i == runEndIndex) {
-                    break;
-                }
-            }
-        }
-
-        if (runEndIndex < Integer.MAX_VALUE && !tradingRecord.isClosed() && runEndIndex == barSeries.getEndIndex()) {
-            // If the last position is still open and there are still bars after the
-            // endIndex of the barSeries, then we execute the strategy on these bars
-            // to give an opportunity to close this position.
-            int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
-            for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
-                lastProcessedIndex = i;
-                tradeExecutionModel.onBar(i, tradingRecord, barSeries);
-                // For each bar after the end index of this run...
-                // --> Trying to close the last position
-                if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradeExecutionModel.execute(i, tradingRecord, barSeries, amountResolver.apply(i));
-                    break;
+        try (AccelerationRuntime.Scope ignored = AccelerationRuntime.open(barSeries, runBeginIndex, runEndIndex)) {
+            int lastProcessedIndex = runEndIndex;
+            if (runBeginIndex <= runEndIndex) {
+                for (int i = runBeginIndex;; i++) {
+                    lastProcessedIndex = i;
+                    tradeExecutionModel.onBar(i, tradingRecord, barSeries);
+                    // For each bar between both indexes...
+                    if (strategy.shouldOperate(i, tradingRecord)) {
+                        tradeExecutionModel.execute(i, tradingRecord, barSeries, amountResolver.apply(i));
+                    }
+                    if (i == runEndIndex) {
+                        break;
+                    }
                 }
             }
-        }
 
-        tradeExecutionModel.onRunEnd(lastProcessedIndex, tradingRecord);
-        return tradingRecord;
+            if (runEndIndex < Integer.MAX_VALUE && !tradingRecord.isClosed()
+                    && runEndIndex == barSeries.getEndIndex()) {
+                // If the last position is still open and there are still bars after the
+                // endIndex of the barSeries, then we execute the strategy on these bars
+                // to give an opportunity to close this position.
+                int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
+                for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
+                    lastProcessedIndex = i;
+                    tradeExecutionModel.onBar(i, tradingRecord, barSeries);
+                    // For each bar after the end index of this run...
+                    // --> Trying to close the last position
+                    if (strategy.shouldOperate(i, tradingRecord)) {
+                        tradeExecutionModel.execute(i, tradingRecord, barSeries, amountResolver.apply(i));
+                        break;
+                    }
+                }
+            }
+            tradeExecutionModel.onRunEnd(lastProcessedIndex, tradingRecord);
+            return tradingRecord;
+        }
     }
 
     private Num amountForIndex(PositionSizer positionSizer, int index, Strategy strategy, TradingRecord tradingRecord,

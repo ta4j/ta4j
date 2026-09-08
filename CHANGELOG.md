@@ -1,6 +1,7 @@
 ## Unreleased
 
-- _No changes yet._
+- **Transparent forecast acceleration preserves existing backtest APIs (`CF-336`)**: `BarSeriesManager` can batch eligible `DoubleNum` Monte Carlo price forecasts through the optional, ServiceLoader-based `org.ta4j.core.acceleration.AccelerationRuntime` SPI while preserving `Indicator#getValue(int)`, strategy, executor, and trading-record contracts. Acceleration is strictly opt-in and always falls back to complete scalar results for unsupported work, stale data, memory limits, or provider failures.
+- **Acceleration snapshots have an independent host-memory bound**: the Monte Carlo planner accounts for overlapping input copies and output staging before allocating arrays, declining batches above a quarter of the JVM maximum heap even when they fit the device-memory limit.
 
 ## 0.25.0 (2026-09-07)
 
