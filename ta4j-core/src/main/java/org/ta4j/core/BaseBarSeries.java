@@ -159,10 +159,14 @@ public class BaseBarSeries implements BarSeries {
      * index. A stale registration is ignored after a structural replacement or
      * retention removal.
      */
-    synchronized void retainedBarMutated(final BaseBar bar, final int index) {
-        final int innerIndex = index - this.removedBarsCount;
-        if (innerIndex >= 0 && innerIndex < this.bars.size() && this.bars.get(innerIndex) == bar) {
-            recordBarHistoryChange(index);
+    void retainedBarMutated(final BaseBar bar, final int index) {
+        // Keep monitor acquisition inside the hook so concurrent series can acquire
+        // their structural write lock first, matching ordinary mutation lock order.
+        synchronized (this) {
+            final int innerIndex = index - this.removedBarsCount;
+            if (innerIndex >= 0 && innerIndex < this.bars.size() && this.bars.get(innerIndex) == bar) {
+                recordBarHistoryChange(index);
+            }
         }
     }
 
