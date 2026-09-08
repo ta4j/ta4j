@@ -129,7 +129,7 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
      * @return posterior hyper-parameters, or {@code null} when no stable posterior
      *         can be produced (empty window, non-finite window, or degenerate
      *         posterior scale)
-     * @since 0.24.2
+     * @since 0.25.1
      */
     Posterior posterior(MonteCarloContext context) {
         List<Num> window = context.historicalLogReturns();
@@ -227,7 +227,7 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
      * @param posterior fitted posterior hyper-parameters
      * @param random    deterministic seeded random generator
      * @return a single parameter draw
-     * @since 0.24.2
+     * @since 0.25.1
      */
     static ParameterDraw drawParameters(Posterior posterior, RandomGenerator random) {
         double sigmaSquared = posterior.scale() == 0d ? 0d

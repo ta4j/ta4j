@@ -144,10 +144,14 @@ public final class RecentVolatilityWideningMonteCarloMethod implements MonteCarl
             return converted;
         }
         Num center = numFactory.zero();
+        int count = 0;
         for (Num sample : converted) {
-            center = center.plus(sample);
+            Num divisor = numFactory.numOf(++count);
+            // Same-sign subtraction cannot overflow. Opposite signs need a
+            // weighted sum instead, since their difference may exceed Num's range.
+            center = sample.isNegative() == center.isNegative() ? center.plus(sample.minus(center).dividedBy(divisor))
+                    : center.minus(center.dividedBy(divisor)).plus(sample.dividedBy(divisor));
         }
-        center = center.dividedBy(numFactory.numOf(converted.size()));
         if (!Num.isFinite(center)) {
             return null;
         }

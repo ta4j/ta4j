@@ -86,6 +86,15 @@ public class RecentVolatilityWideningMonteCarloMethodTest {
     }
 
     @Test
+    public void activeWideningPreservesIdenticalLargeFiniteSamples() {
+        MonteCarloMethod method = new RecentVolatilityWideningMonteCarloMethod(fixedSamples(1e308, 1e308), 2, 4d);
+
+        List<Num> samples = method.terminalReturns(context(2, 2, window(0.2d, 0.2d), moments(0.05d), 1L));
+
+        assertEquals(List.of(FACTORY.numOf(1e308), FACTORY.numOf(1e308)), samples);
+    }
+
+    @Test
     public void sameSeedReproducesIdenticalSamples() {
         MonteCarloMethod method = new RecentVolatilityWideningMonteCarloMethod(
                 NormalInverseGammaForecastMethod.withEmpiricalPriors());
