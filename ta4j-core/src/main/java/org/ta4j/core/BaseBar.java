@@ -599,13 +599,11 @@ public class BaseBar implements Bar {
     private RetainedBarMutationPublication completeDeferredMutation(final MutationState previousState,
             final MutationState deferredState, final BaseBarSeries origin, final Throwable failure) {
         final boolean nestedMutation = previousState != null && previousState.defersNestedPublication();
-        // A partial failure can occur before addPrice reaches its publication call;
-        // still invalidate every retaining series exactly once.
-        final int publicationCount = failure == null ? deferredState.publicationCount
-                : Math.max(1, deferredState.publicationCount);
-        final RetainedBarMutationPublication primaryPublication = publicationCount > 0
-                ? captureRetainedBarMutation(publicationCount, nestedMutation ? null : origin, failure)
-                : null;
+        // Subclass overrides and partial failures may mutate without publishing.
+        // Match the originating series' fallback for every retaining series.
+        final int publicationCount = Math.max(1, deferredState.publicationCount);
+        final RetainedBarMutationPublication primaryPublication = captureRetainedBarMutation(publicationCount,
+                nestedMutation ? null : origin, failure);
         final RetainedBarMutationPublication publication = RetainedBarMutationPublication.combine(primaryPublication,
                 deferredState.nestedPublications());
         if (nestedMutation) {

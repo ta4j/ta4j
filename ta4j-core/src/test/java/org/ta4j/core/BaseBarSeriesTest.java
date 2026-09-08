@@ -162,6 +162,12 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     @Test
     public void testAddPriceFallbackPublishesForBaseBarSubclassWithoutSuper() {
         final BaseBarSeries series = seriesWithUnpublishedMutationBar();
+        final BaseBarSeries peer = new BaseBarSeries("peer", List.of(series.getBar(0)), 0, 0, false, numFactory,
+                barBuilderFactory);
+        appendBar(peer);
+        final SMAIndicator peerCachedClose = new SMAIndicator(new ClosePriceIndicator(peer), 1);
+        assertNumEquals(10, peerCachedClose.getValue(0));
+        final long peerRevision = peer.getBarHistoryRevision();
         final SMAIndicator cachedClose = new SMAIndicator(new ClosePriceIndicator(series), 1);
         assertNumEquals(10, cachedClose.getValue(0));
         final long revisionBeforeMutation = series.getBarHistoryRevision();
@@ -171,11 +177,19 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         assertEquals(revisionBeforeMutation + 1, series.getBarHistoryRevision());
         assertNumEquals(20, cachedClose.getValue(0));
+        assertEquals(peerRevision + 1, peer.getBarHistoryRevision());
+        assertNumEquals(20, peerCachedClose.getValue(0));
     }
 
     @Test
     public void testAddTradeFallbackPublishesForBaseBarSubclassWithoutSuper() {
         final BaseBarSeries series = seriesWithUnpublishedMutationBar();
+        final BaseBarSeries peer = new BaseBarSeries("peer", List.of(series.getBar(0)), 0, 0, false, numFactory,
+                barBuilderFactory);
+        appendBar(peer);
+        final SMAIndicator peerCachedClose = new SMAIndicator(new ClosePriceIndicator(peer), 1);
+        assertNumEquals(10, peerCachedClose.getValue(0));
+        final long peerRevision = peer.getBarHistoryRevision();
         final SMAIndicator cachedClose = new SMAIndicator(new ClosePriceIndicator(series), 1);
         assertNumEquals(10, cachedClose.getValue(0));
         final long revisionBeforeMutation = series.getBarHistoryRevision();
@@ -185,6 +199,8 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         assertEquals(revisionBeforeMutation + 1, series.getBarHistoryRevision());
         assertNumEquals(20, cachedClose.getValue(0));
+        assertEquals(peerRevision + 1, peer.getBarHistoryRevision());
+        assertNumEquals(20, peerCachedClose.getValue(0));
     }
 
     @Test
