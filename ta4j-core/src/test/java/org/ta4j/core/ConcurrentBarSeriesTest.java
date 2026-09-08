@@ -40,6 +40,9 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
+import org.ta4j.core.analysis.EquityCurveMode;
+import org.ta4j.core.analysis.Returns;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.bars.TimeBarBuilderFactory;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -120,6 +123,33 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         assertTrue(record.getCurrentPosition().isOpened());
         assertEquals(2, record.getCurrentPosition().getEntry().getIndex());
         assertEquals(testBars.get(2).getClosePrice(), record.getCurrentPosition().getEntry().getPricePerAsset());
+    }
+
+    @Test
+    public void returnsCaptureRollingWindowAfterAcquiringReadLock() {
+        AtomicBoolean appendBeforeLock = new AtomicBoolean();
+        ConcurrentBarSeries series = new ConcurrentBarSeries("returns-lock", new ArrayList<>(testBars.subList(0, 2)), 0,
+                1, false, numFactory, barBuilderFactory) {
+            @Override
+            public void withReadLock(Runnable action) {
+                if (appendBeforeLock.compareAndSet(true, false)) {
+                    addBar(testBars.get(2));
+                }
+                super.withReadLock(action);
+            }
+        };
+        series.setMaximumBarCount(2);
+        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series));
+        appendBeforeLock.set(true);
+
+        Returns returns = new Returns(series, record, ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET);
+
+        Num expected = testBars.get(2)
+                .getClosePrice()
+                .dividedBy(testBars.get(1).getClosePrice())
+                .minus(numFactory.one());
+        TestUtils.assertNumEquals(expected, returns.getValue(2));
+        assertTrue(returns.getValue(0).isNaN());
     }
 
     // ==================== Constructor Tests ====================

@@ -207,7 +207,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         BarSeries snapshot = returns.getBarSeries();
         int beginIndex = tradingRecord.getStartIndex(snapshot);
         int endIndex = tradingRecord.getEndIndex(snapshot);
-        if (endIndex <= beginIndex) {
+        if (endIndex < beginIndex) {
             return zero;
         }
 

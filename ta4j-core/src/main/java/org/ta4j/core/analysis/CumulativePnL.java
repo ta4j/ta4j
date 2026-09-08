@@ -183,11 +183,12 @@ public final class CumulativePnL implements PerformanceIndicator {
             Num averageCostPerPeriod = averageHoldingCostPerPeriod(position, endIndex, numFactory);
             if (entryIndex < seriesBegin && endIndex != seriesBegin) {
                 // The entry predates the retained window and the first retained
-                // bar carries an intermediate mark: anchor its level at the first
-                // retained close. When endIndex == seriesBegin the exit delta is
-                // added below, so seeding here would double-count the level.
-                Num netIntermediate = addCost(barSeries.getBar(seriesBegin).getClosePrice(), averageCostPerPeriod,
-                        isLong);
+                // bar carries an intermediate mark: anchor its level at the
+                // first retained close after accruing every elapsed period
+                // before that window.
+                long elapsedPeriods = (long) seriesBegin - entryIndex;
+                Num accruedCost = averageCostPerPeriod.multipliedBy(numFactory.numOf(elapsedPeriods));
+                Num netIntermediate = addCost(barSeries.getBar(seriesBegin).getClosePrice(), accruedCost, isLong);
                 Num seedDelta = isLong ? netIntermediate.minus(netEntryPrice) : netEntryPrice.minus(netIntermediate);
                 addValue(seriesBegin, seedDelta);
             }

@@ -11,6 +11,7 @@ import java.util.Objects;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
@@ -58,7 +59,7 @@ public class Returns implements PerformanceIndicator {
      * arithmetic returns in DECIMAL format (0-based, e.g., 0.12 for +12%). Used by
      * {@link #getRawValues()} for statistical calculations.
      */
-    private final List<Num> rawValues;
+    private List<Num> rawValues;
 
     /**
      * The formatted return rates (according to the configured representation).
@@ -67,9 +68,9 @@ public class Returns implements PerformanceIndicator {
      * {@link ReturnRepresentation#toRepresentationFromRateOfReturn(Num)} for
      * arithmetic returns, or returned as-is for log returns.
      */
-    private final List<Num> values;
+    private List<Num> values;
 
-    private final OffsetNumBuffer returnFactors;
+    private OffsetNumBuffer returnFactors;
 
     /**
      * True when a position entered before the retained window marked the first
@@ -83,7 +84,7 @@ public class Returns implements PerformanceIndicator {
      * Later rolling advances of the borrowed series must not rebase the lookup, or
      * old returns leak onto never-calculated bars.
      */
-    private final int materializedBeginIndex;
+    private int materializedBeginIndex;
 
     /**
      * Constructor.
@@ -101,19 +102,41 @@ public class Returns implements PerformanceIndicator {
     public Returns(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
             ReturnRepresentation representation, EquityCurveMode equityCurveMode,
             OpenPositionHandling openPositionHandling) {
+        this(barSeries, tradingRecord, finalIndex, representation, equityCurveMode, openPositionHandling, false);
+    }
+
+    private Returns(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
+            ReturnRepresentation representation, EquityCurveMode equityCurveMode,
+            OpenPositionHandling openPositionHandling, boolean useRecordEnd) {
         this.barSeries = Objects.requireNonNull(barSeries, "barSeries");
         this.representation = Objects.requireNonNull(representation);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        Num one = this.barSeries.numFactory().one();
-        Num zero = this.barSeries.numFactory().zero();
-        Num initial = representation == ReturnRepresentation.LOG ? zero : one;
-        returnFactors = new OffsetNumBuffer(this.barSeries.getBeginIndex(), Math.max(this.barSeries.getEndIndex(),
-                Math.min(finalIndex, OffsetNumBuffer.addressableEndIndex(this.barSeries))), initial, NaN.NaN);
-        this.materializedBeginIndex = this.barSeries.getBeginIndex();
-        rawValues = new ArrayList<>(Collections.nCopies(returnFactors.size(), zero));
-        values = new ArrayList<>(Collections.nCopies(returnFactors.size(), zero));
-        calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
-        buildReturns();
+        initialize(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling),
+                useRecordEnd);
+    }
+
+    private void initialize(TradingRecord tradingRecord, int requestedFinalIndex,
+            OpenPositionHandling openPositionHandling, boolean useRecordEnd) {
+        Runnable action = () -> {
+            int finalIndex = useRecordEnd ? tradingRecord.getEndIndex(barSeries) : requestedFinalIndex;
+            Num one = barSeries.numFactory().one();
+            Num zero = barSeries.numFactory().zero();
+            Num initial = representation == ReturnRepresentation.LOG ? zero : one;
+            int beginIndex = barSeries.getBeginIndex();
+            int endIndex = Math.max(barSeries.getEndIndex(),
+                    Math.min(finalIndex, OffsetNumBuffer.addressableEndIndex(barSeries)));
+            returnFactors = new OffsetNumBuffer(beginIndex, endIndex, initial, NaN.NaN);
+            materializedBeginIndex = beginIndex;
+            rawValues = new ArrayList<>(Collections.nCopies(returnFactors.size(), zero));
+            values = new ArrayList<>(Collections.nCopies(returnFactors.size(), zero));
+            calculate(tradingRecord, finalIndex, openPositionHandling);
+            buildReturns();
+        };
+        if (barSeries instanceof ConcurrentBarSeries concurrent) {
+            concurrent.withReadLock(action);
+        } else {
+            action.run();
+        }
     }
 
     /**
@@ -180,8 +203,7 @@ public class Returns implements PerformanceIndicator {
      */
     public Returns(BarSeries barSeries, TradingRecord tradingRecord, ReturnRepresentation representation,
             EquityCurveMode equityCurveMode) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), representation, equityCurveMode,
-                OpenPositionHandling.MARK_TO_MARKET);
+        this(barSeries, tradingRecord, 0, representation, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET, true);
     }
 
     /**
@@ -233,8 +255,7 @@ public class Returns implements PerformanceIndicator {
      */
     public Returns(BarSeries barSeries, TradingRecord tradingRecord, ReturnRepresentation representation,
             OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), representation,
-                EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
+        this(barSeries, tradingRecord, 0, representation, EquityCurveMode.MARK_TO_MARKET, openPositionHandling, true);
     }
 
     /**
@@ -250,8 +271,7 @@ public class Returns implements PerformanceIndicator {
      */
     public Returns(BarSeries barSeries, TradingRecord tradingRecord, ReturnRepresentation representation,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), representation, equityCurveMode,
-                openPositionHandling);
+        this(barSeries, tradingRecord, 0, representation, equityCurveMode, openPositionHandling, true);
     }
 
     /**

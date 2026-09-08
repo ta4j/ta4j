@@ -142,6 +142,19 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void seededSingleRetainedReturnParticipatesInRatio() {
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d).build();
+        rolling.setMaximumBarCount(1);
+        Trade entry = Trade.buyAt(0, rolling);
+        rolling.barBuilder().closePrice(110d).add();
+        TradingRecord record = new BaseTradingRecord(entry, Trade.sellAt(1, rolling));
+
+        OmegaRatioCriterion criterion = (OmegaRatioCriterion) getCriterion(0d);
+
+        assertTrue(criterion.calculate(rolling, record).isNaN());
+    }
+
+    @Test
     public void returnsZeroWhenTradingRecordIsNull() {
         BarSeries series = buildSeries("omega_null_record", new double[] { 100d, 110d });
         OmegaRatioCriterion criterion = (OmegaRatioCriterion) getCriterion(0d);

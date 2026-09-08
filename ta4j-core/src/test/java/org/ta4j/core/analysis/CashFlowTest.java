@@ -631,6 +631,16 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         assertNumEquals(1, cashFlow.getValue(9));
         assertNumEquals(1, cashFlow.getValue(13));
+    }
+
+    @Test
+    public void disjointWindowReturnsNeutralValuesWithoutBuildingInvertedBuffer() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+
+        CashFlow cashFlow = new CashFlow(series, new BaseTradingRecord(), 10, 12, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        assertNumEquals(1, cashFlow.getValue(10));
         assertNumEquals(1, cashFlow.getValue(12));
     }
 

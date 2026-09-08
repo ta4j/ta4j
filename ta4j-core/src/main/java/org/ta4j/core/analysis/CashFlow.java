@@ -183,8 +183,9 @@ public class CashFlow implements PerformanceIndicator {
         this.barSeries = Objects.requireNonNull(barSeries, "barSeries");
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
         this.valueStartIndex = Math.max(Math.max(0, startIndex), this.barSeries.getBeginIndex());
-        this.valueEndIndex = Math.min(Math.max(endIndex, this.valueStartIndex),
-                OffsetNumBuffer.addressableEndIndex(this.barSeries));
+        int addressableEndIndex = OffsetNumBuffer.addressableEndIndex(this.barSeries);
+        this.valueEndIndex = valueStartIndex > addressableEndIndex ? valueStartIndex - 1
+                : Math.min(Math.max(endIndex, valueStartIndex), addressableEndIndex);
         Num one = this.barSeries.numFactory().one();
         this.values = new OffsetNumBuffer(valueStartIndex, valueEndIndex, one, one);
         calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));

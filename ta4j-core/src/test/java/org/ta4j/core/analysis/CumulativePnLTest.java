@@ -19,6 +19,7 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -67,6 +68,28 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         assertEquals(1, rolling.getBeginIndex());
         assertNumEquals(10, pnl.getValue(1));
         assertNumEquals(20, pnl.getValue(2));
+    }
+
+    @Test
+    public void retainedHeadAccruesAllPreWindowHoldingPeriods() {
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        rolling.setMaximumBarCount(2);
+        rolling.barBuilder().closePrice(100d).add();
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(),
+                new FixedTransactionCostModel(4d));
+        record.enter(0, rolling.getBar(0).getClosePrice(), numFactory.one());
+        rolling.barBuilder().closePrice(110d).add();
+        rolling.barBuilder().closePrice(120d).add();
+        rolling.barBuilder().closePrice(130d).add();
+        assertEquals(2, rolling.getBeginIndex());
+
+        CumulativePnL pnl = new CumulativePnL(rolling, record, EquityCurveMode.MARK_TO_MARKET);
+
+        Num averageCost = numFactory.numOf(4d).dividedBy(numFactory.numOf(3));
+        Num expected = numFactory.numOf(120d)
+                .minus(numFactory.numOf(100d))
+                .minus(averageCost.multipliedBy(numFactory.numOf(2)));
+        assertNumEquals(expected, pnl.getValue(2), 1e-12);
     }
 
     @Test
