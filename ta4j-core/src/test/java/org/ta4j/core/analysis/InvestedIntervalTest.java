@@ -5,11 +5,13 @@ package org.ta4j.core.analysis;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.ConstrainedSeriesSupport;
+import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
@@ -22,6 +24,19 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
 
     public InvestedIntervalTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void capturesRollingWindowUnderOneReadLease() {
+        AtomicBoolean appendBeforeLock = new AtomicBoolean();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.rollingSeriesWithAppendBeforeReadLock(numFactory,
+                appendBeforeLock, 1.5d, 2.5d, 3.5d);
+        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series));
+        appendBeforeLock.set(true);
+
+        InvestedInterval intervals = new InvestedInterval(series, record, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertThat(intervals.getValue(2)).isTrue();
     }
 
     @Test

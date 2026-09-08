@@ -5,6 +5,7 @@ package org.ta4j.core.analysis;
 
 import java.time.Instant;
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -13,6 +14,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.ConstrainedSeriesSupport;
+import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
@@ -33,6 +35,20 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     public CashFlowTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void capturesRollingWindowUnderOneReadLease() {
+        AtomicBoolean appendBeforeLock = new AtomicBoolean();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.rollingSeriesWithAppendBeforeReadLock(numFactory,
+                appendBeforeLock, 1.5d, 2.5d, 3.5d);
+        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series));
+        appendBeforeLock.set(true);
+
+        CashFlow cashFlow = new CashFlow(series, record, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        assertNumEquals(numFactory.numOf(3.5d).dividedBy(numFactory.numOf(1.5d)), cashFlow.getValue(2));
     }
 
     @Test

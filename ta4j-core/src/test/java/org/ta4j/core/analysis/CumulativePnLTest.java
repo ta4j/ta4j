@@ -9,8 +9,10 @@ import static org.junit.Assert.assertSame;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ConcurrentBarSeries;
 import org.junit.Test;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.ExecutionMatchPolicy;
@@ -31,6 +33,20 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
 
     public CumulativePnLTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void capturesRollingWindowUnderOneReadLease() {
+        AtomicBoolean appendBeforeLock = new AtomicBoolean();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.rollingSeriesWithAppendBeforeReadLock(numFactory,
+                appendBeforeLock, 1.5d, 2.5d, 3.5d);
+        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series));
+        appendBeforeLock.set(true);
+
+        CumulativePnL pnl = new CumulativePnL(series, record, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        assertNumEquals(numFactory.numOf(3.5d).minus(numFactory.numOf(1.5d)), pnl.getValue(2));
     }
 
     @Test

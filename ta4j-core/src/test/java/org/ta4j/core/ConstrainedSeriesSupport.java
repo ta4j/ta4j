@@ -3,17 +3,19 @@
  */
 package org.ta4j.core;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.ta4j.core.bars.TimeBarBuilderFactory;
+import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * Test support for building series whose raw storage retains readable trailing
- * bars beyond the logical window end. The package-private {@link BaseBarSeries}
- * constructor required for this shape is only reachable inside
- * {@code org.ta4j.core}, so analysis tests share this factory.
+ * Test support for series whose retention or logical bounds require
+ * package-private constructors. Analysis tests share these factories without
+ * exposing additional production constructors.
  */
 public final class ConstrainedSeriesSupport {
 
@@ -71,5 +73,29 @@ public final class ConstrainedSeriesSupport {
         BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(close).build();
         return new BaseBarSeries(name, List.copyOf(source.getBarData()), Integer.MAX_VALUE, Integer.MAX_VALUE,
                 Integer.MAX_VALUE, true, numFactory, new TimeBarBuilderFactory());
+    }
+
+    /**
+     * Builds a rolling window containing all but the last close. When armed, the
+     * next read lease appends the last bar immediately before acquiring the lock,
+     * reproducing retention advancement at the materialization boundary.
+     */
+    public static ConcurrentBarSeries rollingSeriesWithAppendBeforeReadLock(NumFactory numFactory,
+            AtomicBoolean appendBeforeLock, double... closes) {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closes).build();
+        int initialSize = source.getBarCount() - 1;
+        ConcurrentBarSeries series = new ConcurrentBarSeries("rolling-read-lease",
+                new ArrayList<>(source.getBarData().subList(0, initialSize)), 0, initialSize - 1, false, numFactory,
+                new MockBarBuilderFactory()) {
+            @Override
+            public void withReadLock(Runnable action) {
+                if (appendBeforeLock.compareAndSet(true, false)) {
+                    addBar(source.getBar(initialSize));
+                }
+                super.withReadLock(action);
+            }
+        };
+        series.setMaximumBarCount(initialSize);
+        return series;
     }
 }

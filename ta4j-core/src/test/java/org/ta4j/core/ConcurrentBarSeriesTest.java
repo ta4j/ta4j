@@ -40,11 +40,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
-import org.ta4j.core.analysis.CashFlow;
-import org.ta4j.core.analysis.CumulativePnL;
 import org.ta4j.core.analysis.EquityCurveMode;
-import org.ta4j.core.analysis.InvestedInterval;
-import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.Returns;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.bars.TimeBarBuilder;
@@ -154,76 +150,6 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                 .minus(numFactory.one());
         TestUtils.assertNumEquals(expected, returns.getValue(2));
         assertTrue(returns.getValue(0).isNaN());
-    }
-
-    @Test
-    public void cashFlowCapturesRollingWindowUnderOneReadLease() {
-        AtomicBoolean appendBeforeLock = new AtomicBoolean();
-        ConcurrentBarSeries series = new ConcurrentBarSeries("cash-flow-lock", new ArrayList<>(testBars.subList(0, 2)),
-                0, 1, false, numFactory, barBuilderFactory) {
-            @Override
-            public void withReadLock(Runnable action) {
-                if (appendBeforeLock.compareAndSet(true, false)) {
-                    addBar(testBars.get(2));
-                }
-                super.withReadLock(action);
-            }
-        };
-        series.setMaximumBarCount(2);
-        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series));
-        appendBeforeLock.set(true);
-
-        CashFlow cashFlow = new CashFlow(series, record, EquityCurveMode.MARK_TO_MARKET,
-                OpenPositionHandling.MARK_TO_MARKET);
-
-        Num expected = testBars.get(2).getClosePrice().dividedBy(testBars.get(0).getClosePrice());
-        TestUtils.assertNumEquals(expected, cashFlow.getValue(2));
-    }
-
-    @Test
-    public void cumulativePnLCapturesRollingWindowUnderOneReadLease() {
-        AtomicBoolean appendBeforeLock = new AtomicBoolean();
-        ConcurrentBarSeries series = new ConcurrentBarSeries("cumulative-pnl-lock",
-                new ArrayList<>(testBars.subList(0, 2)), 0, 1, false, numFactory, barBuilderFactory) {
-            @Override
-            public void withReadLock(Runnable action) {
-                if (appendBeforeLock.compareAndSet(true, false)) {
-                    addBar(testBars.get(2));
-                }
-                super.withReadLock(action);
-            }
-        };
-        series.setMaximumBarCount(2);
-        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series));
-        appendBeforeLock.set(true);
-
-        CumulativePnL pnl = new CumulativePnL(series, record, EquityCurveMode.MARK_TO_MARKET,
-                OpenPositionHandling.MARK_TO_MARKET);
-
-        Num expected = testBars.get(2).getClosePrice().minus(testBars.get(0).getClosePrice());
-        TestUtils.assertNumEquals(expected, pnl.getValue(2));
-    }
-
-    @Test
-    public void investedIntervalsCaptureRollingWindowUnderOneReadLease() {
-        AtomicBoolean appendBeforeLock = new AtomicBoolean();
-        ConcurrentBarSeries series = new ConcurrentBarSeries("invested-interval-lock",
-                new ArrayList<>(testBars.subList(0, 2)), 0, 1, false, numFactory, barBuilderFactory) {
-            @Override
-            public void withReadLock(Runnable action) {
-                if (appendBeforeLock.compareAndSet(true, false)) {
-                    addBar(testBars.get(2));
-                }
-                super.withReadLock(action);
-            }
-        };
-        series.setMaximumBarCount(2);
-        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series));
-        appendBeforeLock.set(true);
-
-        InvestedInterval intervals = new InvestedInterval(series, record, OpenPositionHandling.MARK_TO_MARKET);
-
-        assertTrue(intervals.getValue(2));
     }
 
     // ==================== Constructor Tests ====================
