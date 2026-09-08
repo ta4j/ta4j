@@ -9,7 +9,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
-
+import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -57,8 +57,10 @@ public class MonteCarloShockPathPlannerTest {
         assertEquals(2, request.outputsPerIndex());
         assertArrayEquals(new double[] { 100d, 100d }, request.inputs().get(MonteCarloKernel.INPUT_PRICES), 0d);
         assertArrayEquals(new double[] { DOWN, UP, UP, 0d }, request.inputs().get(MonteCarloKernel.INPUT_WINDOWS), 0d);
+        request.inputs().get(MonteCarloKernel.INPUT_PRICES)[0] = -1d;
+        assertEquals(100d, request.inputs().get(MonteCarloKernel.INPUT_PRICES)[0], 0d);
         double[] params = request.params();
-        assertEquals(MonteCarloReturnProjectionIndicator.ShockModel.HISTORICAL_BOOTSTRAP.ordinal(), params[0], 0d);
+        assertEquals(0d, params[0], 0d);
         assertEquals(1d, params[2], 0d);
         assertEquals(2d, params[3], 0d);
         assertEquals(2d, params[4], 0d);
@@ -98,8 +100,17 @@ public class MonteCarloShockPathPlannerTest {
         assertNull(new MonteCarloShockPathPlanner().plan(new ClosePriceIndicator(fixture.series), 2, 2,
                 fixture.series.numFactory()));
     }
+    @Test
+    public void declinesCustomMonteCarloMethods() {
+        Fixture fixture = fixture(DoubleNumFactory.getInstance(), true);
+        assertNull(new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 2, fixture.series.numFactory()));
+    }
 
     private static Fixture fixture(org.ta4j.core.num.NumFactory factory) {
+        return fixture(factory, false);
+    }
+
+    private static Fixture fixture(org.ta4j.core.num.NumFactory factory, boolean customMethod) {
         double[] prices = new double[4];
         Arrays.fill(prices, 100d);
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).withData(prices).build();
@@ -107,15 +118,17 @@ public class MonteCarloShockPathPlannerTest {
         FixedReturnIndicator returns = new FixedReturnIndicator(series, ReturnRepresentation.LOG, factory.numOf(0),
                 factory.numOf(DOWN), factory.numOf(UP), factory.numOf(0));
         FixedReturnStateIndicator state = new FixedReturnStateIndicator(returns, ReturnRepresentation.LOG);
-        MonteCarloPriceForecastIndicator indicator = MonteCarloPriceForecastIndicator.builder(close, state)
+        MonteCarloPriceForecastIndicator.Builder builder = MonteCarloPriceForecastIndicator.builder(close, state)
                 .horizon(1)
                 .iterationCount(2)
                 .lookbackBarCount(2)
                 .seed(3L)
                 .shockModel(MonteCarloReturnProjectionIndicator.ShockModel.HISTORICAL_BOOTSTRAP)
-                .quantiles(0.0, 0.5, 1.0)
-                .build();
-        return new Fixture(series, indicator);
+                .quantiles(0.0, 0.5, 1.0);
+        if (customMethod) {
+            builder.monteCarloMethod(context -> List.of(context.numFactory().zero(), context.numFactory().zero()));
+        }
+        return new Fixture(series, builder.build());
     }
 
     private record Fixture(BarSeries series, MonteCarloPriceForecastIndicator indicator) {

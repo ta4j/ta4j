@@ -61,6 +61,7 @@ public class TradingBotOnMovingBarSeries {
         // Limitating the number of bars to maxBarCount
         series.setMaximumBarCount(maxBarCount);
         LAST_BAR_CLOSE_PRICE = series.getBar(series.getEndIndex()).getClosePrice();
+        LAST_BAR_END_TIME = series.getBar(series.getEndIndex()).getEndTime();
         LOG.debug("Initial bar count: {} (limited to {}), close price = {}", series.getBarCount(), maxBarCount,
                 LAST_BAR_CLOSE_PRICE);
         return series;

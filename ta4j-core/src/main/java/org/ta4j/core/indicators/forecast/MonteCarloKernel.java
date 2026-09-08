@@ -43,12 +43,11 @@ package org.ta4j.core.indicators.forecast;
  * by {@link #advanceState(long)} and interprets the mixed output with
  * {@link #toUnitDouble(long)} for uniforms, {@link #gaussian(double, double)}
  * for standard normals, and the {@code nextInt} rejection loop of the scalar
- * lane for bootstrap selection. Shock model and volatility update mode are
- * identified by their enum ordinals
- * ({@link MonteCarloReturnProjectionIndicator.ShockModel},
- * {@link MonteCarloReturnProjectionIndicator.VolatilityUpdateMode}). Terminal
- * prices apply the scalar guard: cumulative log-returns whose magnitude exceeds
- * {@code 700} map to non-finite output.
+ * lane for bootstrap selection. Shock model and volatility update mode use the
+ * explicit stable codes defined by the planner (historical bootstrap,
+ * standardized empirical, smoothed empirical, normal; constant, EWMA), not
+ * enum declaration ordinals. Terminal prices apply the scalar guard: cumulative
+ * log-returns whose magnitude exceeds {@code 700} map to non-finite output.
  *
  * @since 0.25.1
  */

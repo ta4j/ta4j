@@ -47,6 +47,7 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
     private final MonteCarloReturnProjectionIndicator.ShockModel shockModel;
     private final MonteCarloReturnProjectionIndicator.VolatilityUpdateMode volatilityUpdateMode;
     private final double volatilityDecayFactor;
+    private final boolean defaultShockPathMethod;
 
     /**
      * Creates a one-bar forecast and infers price from {@link LogReturnIndicator}.
@@ -103,6 +104,7 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
         this.shockModel = builder.shockModel;
         this.volatilityUpdateMode = builder.volatilityUpdateMode;
         this.volatilityDecayFactor = builder.volatilityDecayFactor;
+        this.defaultShockPathMethod = builder.monteCarloMethod == null;
         this.simulation = new MonteCarloSimulation(builder.stateIndicator, builder.settings(),
                 builder.methodOrDefault());
     }
@@ -260,6 +262,10 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
      */
     double kernelVolatilityDecayFactor() {
         return volatilityDecayFactor;
+    }
+
+    boolean usesDefaultShockPathMethod() {
+        return defaultShockPathMethod;
     }
 
     private static Indicator<Num> sourceIndicator(

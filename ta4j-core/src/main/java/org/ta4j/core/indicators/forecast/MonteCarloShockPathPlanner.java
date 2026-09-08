@@ -54,6 +54,9 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         if (!(factory instanceof DoubleNumFactory)) {
             return null;
         }
+        if (!forecast.usesDefaultShockPathMethod()) {
+            return null;
+        }
         if (!MonteCarloSimulation.isPerPathRngSelected()) {
             return null;
         }
@@ -82,8 +85,8 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
                 return null;
             }
         }
-        double[] params = { (double) forecast.kernelShockModel().ordinal(),
-                (double) forecast.kernelVolatilityUpdateMode().ordinal(), (double) settings.horizon(),
+        double[] params = { shockModelCode(forecast.kernelShockModel()),
+                volatilityUpdateModeCode(forecast.kernelVolatilityUpdateMode()), (double) settings.horizon(),
                 (double) iterations, (double) lookback, forecast.kernelVolatilityDecayFactor() };
         List<double[]> inputs = List.of(prices, means, drifts, variances, windows);
         long steps = (long) size * iterations * settings.horizon();
@@ -136,6 +139,9 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         if (startIndex < returnIndicator.getBarSeries().getBeginIndex()) {
             return false;
         }
+        if (!Num.isFinite(mean) || !Num.isFinite(drift) || !Num.isFinite(variance)) {
+            return false;
+        }
         means[row] = mean.doubleValue();
         drifts[row] = drift.doubleValue();
         variances[row] = variance.doubleValue();
@@ -159,5 +165,21 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         }
         Num normalized = factory.numOf(value.bigDecimalValue());
         return Num.isFinite(normalized) && (!normalized.isZero() || value.isZero()) ? normalized : null;
+    }
+    private static double shockModelCode(MonteCarloReturnProjectionIndicator.ShockModel model) {
+        return switch (model) {
+        case HISTORICAL_BOOTSTRAP -> 0d;
+        case STANDARDIZED_EMPIRICAL -> 1d;
+        case SMOOTHED_EMPIRICAL -> 2d;
+        case NORMAL -> 3d;
+        };
+    }
+
+    private static double volatilityUpdateModeCode(
+            MonteCarloReturnProjectionIndicator.VolatilityUpdateMode mode) {
+        return switch (mode) {
+        case CONSTANT -> 0d;
+        case EWMA -> 1d;
+        };
     }
 }
