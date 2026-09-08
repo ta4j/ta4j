@@ -218,7 +218,7 @@ public class StudentTScaleMixingMonteCarloMethodTest {
     private static RandomGenerator fixedScaleDraw(double gaussian, double uniform) {
         return new java.util.Random() {
             @Override
-            public double nextGaussian() {
+            public synchronized double nextGaussian() {
                 return gaussian;
             }
 
