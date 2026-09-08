@@ -45,7 +45,8 @@ import org.ta4j.core.num.NumFactory;
  * {@code context.iterationCount()} finite samples, propagates a {@code null}
  * (unstable) result from the inner method, and declares the forecast unstable
  * when the inner method returns the wrong sample count or the posterior cannot
- * be fitted.
+ * be fitted. A zero state volatility with a zero-scale posterior instead produces
+ * the deterministic posterior-mean terminal return.
  *
  * @see MonteCarloMethod
  * @see NormalInverseGammaForecastMethod
@@ -99,41 +100,63 @@ public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCar
             return null;
         }
         Num volatility = variance.isZero() ? numFactory.zero() : variance.sqrt();
-        if (!Num.isFinite(volatility) || volatility.isZero()) {
+        if (!Num.isFinite(volatility)) {
             return null;
         }
 
         List<Num> innerSamples = inner.terminalReturns(context);
-        if (innerSamples == null) {
+        if (innerSamples == null || innerSamples.size() != context.iterationCount()) {
             return null;
         }
-        if (innerSamples.size() != context.iterationCount()) {
-            return null;
+        if (volatility.isZero()) {
+            return deterministicPosteriorReturns(posterior, context);
         }
-
         RandomGenerator random = context.random();
         List<Num> terminalReturns = new ArrayList<>(context.iterationCount());
         for (int iteration = 0; iteration < context.iterationCount(); iteration++) {
             NormalInverseGammaForecastMethod.ParameterDraw draw = NormalInverseGammaForecastMethod
                     .drawParameters(posterior, random);
             double sigma = Math.sqrt(draw.sigmaSquared());
+            if (!Double.isFinite(draw.mu()) || !Double.isFinite(sigma)) {
+                return null;
+            }
             // Coerce the inner sample through the context factory so cross-factory
             // inner techniques compose without throwing.
             Num innerSample = normalize(innerSamples.get(iteration), numFactory);
-            if (innerSample == null) {
+            Num posteriorDrift = numFactory.numOf(BigDecimal.valueOf(draw.mu()));
+            Num posteriorScale = numFactory.numOf(BigDecimal.valueOf(sigma));
+            if (innerSample == null || !Num.isFinite(posteriorDrift) || !Num.isFinite(posteriorScale)) {
                 return null;
             }
             Num residualPath = innerSample.minus(drift.multipliedBy(numFactory.numOf(context.horizon())))
                     .dividedBy(volatility);
-            double cumulativeReturn = draw.mu() * context.horizon() + sigma * residualPath.doubleValue();
-            if (!Double.isFinite(cumulativeReturn)) {
+            Num cumulativeReturn = posteriorDrift.multipliedBy(numFactory.numOf(context.horizon()))
+                    .plus(posteriorScale.multipliedBy(residualPath));
+            if (!Num.isFinite(cumulativeReturn)) {
                 return null;
             }
-            Num converted = numFactory.numOf(BigDecimal.valueOf(cumulativeReturn));
-            if (!Num.isFinite(converted)) {
+            terminalReturns.add(cumulativeReturn);
+        }
+        return terminalReturns;
+    }
+
+    private static List<Num> deterministicPosteriorReturns(NormalInverseGammaForecastMethod.Posterior posterior,
+            MonteCarloContext context) {
+        NumFactory numFactory = context.numFactory();
+        RandomGenerator random = context.random();
+        List<Num> terminalReturns = new ArrayList<>(context.iterationCount());
+        Num horizon = numFactory.numOf(context.horizon());
+        for (int iteration = 0; iteration < context.iterationCount(); iteration++) {
+            NormalInverseGammaForecastMethod.ParameterDraw draw = NormalInverseGammaForecastMethod
+                    .drawParameters(posterior, random);
+            if (!Double.isFinite(draw.mu())) {
                 return null;
             }
-            terminalReturns.add(converted);
+            Num cumulativeReturn = numFactory.numOf(BigDecimal.valueOf(draw.mu())).multipliedBy(horizon);
+            if (!Num.isFinite(cumulativeReturn)) {
+                return null;
+            }
+            terminalReturns.add(cumulativeReturn);
         }
         return terminalReturns;
     }

@@ -130,17 +130,22 @@ public final class RecentVolatilityWideningMonteCarloMethod implements MonteCarl
         Num factor = ratio.compareTo(numFactory.one()) < 0 ? numFactory.one()
                 : ratio.compareTo(numFactory.numOf(maxWiden)) > 0 ? numFactory.numOf(maxWiden) : ratio;
 
-        // Coerce to the context factory and locate the inner distribution's empirical
-        // center so widening scales dispersion without shifting the forecast location.
+        // Coerce to the context factory. A factor of one leaves every sample
+        // unchanged, so no empirical center is necessary (or safe to accumulate).
         List<Num> converted = new ArrayList<>(context.iterationCount());
-        Num center = numFactory.zero();
         for (Num sample : samples) {
             Num normalized = normalize(sample, numFactory);
             if (normalized == null) {
                 return null;
             }
             converted.add(normalized);
-            center = center.plus(normalized);
+        }
+        if (factor.compareTo(numFactory.one()) == 0) {
+            return converted;
+        }
+        Num center = numFactory.zero();
+        for (Num sample : converted) {
+            center = center.plus(sample);
         }
         center = center.dividedBy(numFactory.numOf(converted.size()));
         if (!Num.isFinite(center)) {

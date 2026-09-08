@@ -16,6 +16,7 @@ import org.junit.Test;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.forecast.state.ReturnMoments;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -29,6 +30,7 @@ import org.ta4j.core.num.NumFactory;
 public class PosteriorSmoothedResidualMonteCarloMethodTest {
 
     private static final NumFactory FACTORY = DoubleNumFactory.getInstance();
+    private static final NumFactory DECIMAL = DecimalNumFactory.getInstance();
 
     private static final double[] WINDOW_FINITE = { 0.012, -0.008, 0.02, -0.015, 0.005, 0.03, -0.022, 0.011, -0.004,
             0.017, -0.03, 0.009, 0.002, -0.012, 0.024, -0.007 };
@@ -93,6 +95,21 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
             TestUtils.assertNumEquals(FACTORY.numOf(3 * 0.01d), sample, 1e-12);
         }
     }
+    @Test
+    public void flatMomentsProduceDeterministicPosteriorReturns() {
+        List<Num> constantWindow = List.of(FACTORY.numOf(0.01d), FACTORY.numOf(0.01d), FACTORY.numOf(0.01d));
+        ReturnMoments flatMoments = ReturnMoments.stable(100, 3, ReturnRepresentation.LOG, FACTORY.zero(),
+                FACTORY.numOf(0.01d), FACTORY.zero());
+        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
+                fixedInner(FACTORY.one()));
+
+        List<Num> samples = method.terminalReturns(context(3, 10, constantWindow, flatMoments, 7L, FACTORY));
+
+        assertNotNull(samples);
+        for (Num sample : samples) {
+            TestUtils.assertNumEquals(FACTORY.numOf(0.03d), sample, 1e-12);
+        }
+    }
 
     @Test
     public void posteriorScaleWidensDistributionOverInnerShape() {
@@ -117,6 +134,22 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
         }
         variance = variance.dividedBy(FACTORY.numOf(samples.size()));
         assertTrue("posterior scale must produce positive sample variance", variance.doubleValue() > 0d);
+    }
+
+    @Test
+    public void decimalResidualBeyondDoubleRangeRemainsFinite() {
+        List<Num> window = List.of(DECIMAL.numOf(0.01d), DECIMAL.numOf(-0.01d));
+        ReturnMoments moments = ReturnMoments.stable(100, 2, ReturnRepresentation.LOG, DECIMAL.zero(), DECIMAL.zero(),
+                DECIMAL.one());
+        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
+                fixedInner(DECIMAL.numOf(new java.math.BigDecimal("1E400"))));
+
+        List<Num> samples = method.terminalReturns(context(1, 2, window, moments, 7L, DECIMAL));
+
+        assertNotNull(samples);
+        assertEquals(2, samples.size());
+        assertTrue(Num.isFinite(samples.get(0)));
+        assertTrue(Num.isFinite(samples.get(1)));
     }
 
     @Test
@@ -164,7 +197,12 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
     private static MonteCarloContext context(int horizon, int iterations, List<Num> historicalLogReturns, long seed) {
         ReturnMoments moments = ReturnMoments.stable(100, Math.max(1, historicalLogReturns.size()),
                 ReturnRepresentation.LOG, FACTORY.zero(), FACTORY.zero(), FACTORY.one());
-        return new MonteCarloContext(100, horizon, iterations, historicalLogReturns, moments,
-                new SplittableRandom(seed), FACTORY);
+        return context(horizon, iterations, historicalLogReturns, moments, seed, FACTORY);
+    }
+
+    private static MonteCarloContext context(int horizon, int iterations, List<Num> historicalLogReturns,
+            ReturnMoments moments, long seed, NumFactory numFactory) {
+        return new MonteCarloContext(100, horizon, iterations, historicalLogReturns, moments, new SplittableRandom(seed),
+                numFactory);
     }
 }
