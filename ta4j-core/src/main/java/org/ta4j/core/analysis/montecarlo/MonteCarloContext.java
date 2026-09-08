@@ -68,7 +68,7 @@ public record MonteCarloContext(int index, int horizon, int iterationCount, List
      *                             {@code index}
      * @param random               deterministic seeded random generator
      * @param numFactory           number factory of the underlying bar series
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public MonteCarloContext(int index, int horizon, int iterationCount, List<Num> historicalLogReturns,
             ReturnMoments moments, RandomGenerator random, NumFactory numFactory) {
@@ -84,7 +84,7 @@ public record MonteCarloContext(int index, int horizon, int iterationCount, List
      *
      * @param pathIndex zero-based index of the simulated path
      * @return the deterministic random generator for that path
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public RandomGenerator randomForPath(int pathIndex) {
         return perPathRandoms != null ? perPathRandoms.apply(pathIndex) : random;

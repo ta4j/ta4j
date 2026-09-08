@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.SplittableRandom;
 
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -36,6 +37,11 @@ import org.ta4j.core.num.DoubleNumFactory;
  * parity.
  */
 public class MonteCarloRngCompatibilityTest {
+
+    @Before
+    public void clearConfiguredRngVersion() {
+        System.clearProperty(MonteCarloSimulation.RNG_VERSION_PROPERTY);
+    }
 
     @After
     public void clearRngVersion() {
@@ -114,11 +120,11 @@ public class MonteCarloRngCompatibilityTest {
         assertEquals(legacy.support(), actual.support());
         assertEquals(legacy.horizon(), actual.horizon());
         assertEquals(legacy.sampleCount(), actual.sampleCount());
-        assertEquals(legacy.mean().doubleValue(), actual.mean().doubleValue(), 1e-9);
-        assertEquals(legacy.median().doubleValue(), actual.median().doubleValue(), 1e-9);
-        assertEquals(legacy.standardDeviation().doubleValue(), actual.standardDeviation().doubleValue(), 1e-9);
+        assertEquals(legacy.mean().doubleValue(), actual.mean().doubleValue(), 0d);
+        assertEquals(legacy.median().doubleValue(), actual.median().doubleValue(), 0d);
+        assertEquals(legacy.standardDeviation().doubleValue(), actual.standardDeviation().doubleValue(), 0d);
         for (Double probability : legacy.quantiles().keySet()) {
-            assertEquals(legacy.quantile(probability).doubleValue(), actual.quantile(probability).doubleValue(), 1e-9);
+            assertEquals(legacy.quantile(probability).doubleValue(), actual.quantile(probability).doubleValue(), 0d);
         }
     }
 

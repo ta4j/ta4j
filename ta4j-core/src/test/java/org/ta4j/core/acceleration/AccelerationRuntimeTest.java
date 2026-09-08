@@ -5,16 +5,22 @@ package org.ta4j.core.acceleration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import static org.ta4j.core.acceleration.AccelerationRuntime.open;
 import static org.ta4j.core.acceleration.AccelerationRuntime.useProvidersForTests;
 
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.jar.Manifest;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -63,6 +69,21 @@ class AccelerationRuntimeTest {
         System.clearProperty(AccelerationRuntime.PROPERTY);
         System.clearProperty(AccelerationRuntime.MAX_DEVICE_BYTES_PROPERTY);
         AccelerationRuntime.resetProvidersForTests();
+    }
+
+    @Test
+    void builtBundleExportsThePublicProviderSpi() throws Exception {
+        Path classes = Path.of(AccelerationRuntime.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+        try (InputStream input = Files.newInputStream(classes.resolve("META-INF/MANIFEST.MF"))) {
+            String exports = new Manifest(input).getMainAttributes().getValue("Export-Package");
+            assertNotNull(exports, "The built bundle must declare its public packages");
+            // Commas inside quoted uses directives do not separate exported packages.
+            assertTrue(
+                    Arrays.stream(exports.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)"))
+                            .map(clause -> clause.split(";", 2)[0].trim())
+                            .anyMatch(AccelerationRuntime.class.getPackageName()::equals),
+                    "OSGi providers must be able to import the acceleration SPI from the built bundle");
+        }
     }
 
     @Test

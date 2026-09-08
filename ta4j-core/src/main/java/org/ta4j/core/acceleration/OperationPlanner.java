@@ -23,7 +23,7 @@ import org.ta4j.core.num.NumFactory;
  * Core-internal extension point, not provider API: provider artifacts must
  * implement {@link AccelerationRuntime.Provider} instead.
  *
- * @since 0.24.2
+ * @since 0.25.1
  */
 public interface OperationPlanner {
 
@@ -36,7 +36,7 @@ public interface OperationPlanner {
      * @param toInclusive   last decision index
      * @param factory       owning factory used for scalar baselines and decoding
      * @return planned operation, or {@code null} when unclaimed
-     * @since 0.24.2
+     * @since 0.25.1
      */
     PlannedOperation plan(Indicator<?> indicator, int fromInclusive, int toInclusive, NumFactory factory);
 }

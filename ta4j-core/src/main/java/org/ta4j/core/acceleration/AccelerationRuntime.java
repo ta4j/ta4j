@@ -44,7 +44,7 @@ import org.ta4j.core.num.NumFactory;
  * and executed best-first with per-attempt fallback. Failure isolation is keyed
  * by provider, device, and operation version.
  *
- * @since 0.24.2
+ * @since 0.25.1
  */
 public final class AccelerationRuntime {
 
@@ -96,7 +96,7 @@ public final class AccelerationRuntime {
      * idempotent per planner class.
      *
      * @param planner planner to register
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public static synchronized void registerPlanner(OperationPlanner planner) {
         Objects.requireNonNull(planner, "planner must not be null");
@@ -116,7 +116,7 @@ public final class AccelerationRuntime {
      * @param from   inclusive run begin index
      * @param to     inclusive run end index
      * @return scope handle closing back to the enclosing scope
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public static Scope open(BarSeries series, int from, int to) {
         Objects.requireNonNull(series, "series must not be null");
@@ -139,7 +139,7 @@ public final class AccelerationRuntime {
      * @param index     requested index
      * @param <T>       value type
      * @return accelerated value, or empty to use scalar evaluation
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public static <T> Optional<T> value(Indicator<T> indicator, int index) {
         Context context = CURRENT.get();
@@ -153,7 +153,7 @@ public final class AccelerationRuntime {
      * Returns the latest diagnostic of the current scope, if a scope is open.
      *
      * @return current diagnostic, or empty without an open scope
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public static Optional<Diagnostic> lastDiagnostic() {
         Context context = CURRENT.get();
@@ -274,7 +274,7 @@ public final class AccelerationRuntime {
     /**
      * Auto-closeable acceleration scope.
      *
-     * @since 0.24.2
+     * @since 0.25.1
      */
     @FunctionalInterface
     public interface Scope extends AutoCloseable {
@@ -282,7 +282,7 @@ public final class AccelerationRuntime {
         /**
          * Closes the scope and restores any enclosing execution scope.
          *
-         * @since 0.24.2
+         * @since 0.25.1
          */
         @Override
         void close();
@@ -306,7 +306,7 @@ public final class AccelerationRuntime {
          * Returns the operation contract version.
          *
          * @return contract version
-         * @since 0.24.2
+         * @since 0.25.1
          */
         public int version() {
             return version;
@@ -357,7 +357,7 @@ public final class AccelerationRuntime {
      * @param code       stable code
      * @param providerId provider identifier, or {@code none}
      * @param detail     concise detail
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public record Diagnostic(DiagnosticCode code, String providerId, String detail) {
 
@@ -419,7 +419,7 @@ public final class AccelerationRuntime {
      *                                crossover comparison, non-positive when
      *                                unknown
      * @param peakDeviceBytesEstimate declared peak device memory in bytes
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public record KernelRequest(Operation operation, int fromInclusive, int toInclusive, int outputsPerIndex,
             NumericEncoding numeric, Determinism determinism, long seed, double tolerance, double[] params,
@@ -449,7 +449,7 @@ public final class AccelerationRuntime {
         /**
          * Returns the number of decision indexes in the batch.
          *
-         * @since 0.24.2
+         * @since 0.25.1
          */
         public int size() {
             return Math.addExact(Math.subtractExact(toInclusive, fromInclusive), 1);
@@ -459,7 +459,7 @@ public final class AccelerationRuntime {
          * Returns the expected raw output length.
          *
          * @return {@code size() * outputsPerIndex}
-         * @since 0.24.2
+         * @since 0.25.1
          */
         public int expectedOutputLength() {
             return Math.multiplyExact(size(), outputsPerIndex);
@@ -469,7 +469,7 @@ public final class AccelerationRuntime {
          * Returns a copy of the operation parameters.
          *
          * @return defensive copy, never the live buffer
-         * @since 0.24.2
+         * @since 0.25.1
          */
         @Override
         public double[] params() {
@@ -485,7 +485,7 @@ public final class AccelerationRuntime {
      *                          {@code request.size() * outputsPerIndex}
      * @param nativeInitialized whether native code was initialized
      * @param elapsedNanos      provider-measured kernel time
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public record KernelResult(double[] outputs, boolean nativeInitialized, long elapsedNanos) {
 
@@ -502,7 +502,7 @@ public final class AccelerationRuntime {
          * Returns a copy of the raw kernel outputs.
          *
          * @return defensive copy, never the live buffer
-         * @since 0.24.2
+         * @since 0.25.1
          */
         @Override
         public double[] outputs() {
@@ -523,7 +523,7 @@ public final class AccelerationRuntime {
      * @param deterministic       whether the provider meets the request determinism
      *                            contract
      * @param diagnostic          explanation when unsupported
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public record Assessment(boolean supported, Backend backend, String deviceId, long predictedTotalNanos,
             long peakDeviceBytes, boolean deterministic, Diagnostic diagnostic) {
@@ -538,7 +538,7 @@ public final class AccelerationRuntime {
         /**
          * Creates a supported assessment.
          *
-         * @since 0.24.2
+         * @since 0.25.1
          */
         public static Assessment supported(Backend backend, String deviceId, long predictedTotalNanos,
                 long peakDeviceBytes, boolean deterministic) {
@@ -549,7 +549,7 @@ public final class AccelerationRuntime {
         /**
          * Creates an unsupported assessment.
          *
-         * @since 0.24.2
+         * @since 0.25.1
          */
         public static Assessment unsupported(Backend backend, String deviceId, DiagnosticCode code, String providerId,
                 String detail) {
@@ -566,7 +566,7 @@ public final class AccelerationRuntime {
      * Provider constructors must not probe devices or load native libraries, and
      * {@link #assess(KernelRequest)} must not initialize native code.
      *
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public interface Provider {
 
@@ -574,7 +574,7 @@ public final class AccelerationRuntime {
          * Returns the stable provider identifier, defaulting to the class name.
          *
          * @return provider id
-         * @since 0.24.2
+         * @since 0.25.1
          */
         default String providerId() {
             return getClass().getName();

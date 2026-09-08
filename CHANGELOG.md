@@ -1,6 +1,7 @@
 ## Unreleased
 
 - **CLI workflows and optional acceleration (`CF-336`)**: Added the `ta4j-cli` module for bounded local strategy, indicator, rule, forecast, and performance workflows. Optional ServiceLoader native providers lower eligible Monte Carlo shock-path work through the versioned kernel ABI, assess before native initialization, preserve exact scalar semantics by default, and surface provider fallback diagnostics.
+- **Transparent forecast acceleration preserves existing backtest APIs (`CF-336`)**: `BarSeriesManager` can batch eligible `DoubleNum` Monte Carlo price forecasts through the optional, ServiceLoader-based `org.ta4j.core.acceleration.AccelerationRuntime` SPI while preserving `Indicator#getValue(int)`, strategy, executor, and trading-record contracts. Acceleration is strictly opt-in and always falls back to complete scalar results for unsupported work, stale data, memory limits, or provider failures.
 
 ## 0.25.0 (2026-09-07)
 
