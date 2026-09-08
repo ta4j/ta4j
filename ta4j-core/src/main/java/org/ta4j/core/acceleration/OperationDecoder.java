@@ -14,6 +14,11 @@ import org.ta4j.core.num.NumFactory;
  * {@link NumFactory} and must return {@code null} only via an exception: a
  * {@code null} return is treated as malformed provider output.
  *
+ * <p>
+ * Public visibility connects core planners in domain packages (for example,
+ * {@code org.ta4j.core.indicators.forecast}) to the runtime in this package.
+ * Providers receive only kernel requests and never receive or invoke decoders.
+ *
  * @since 0.25.1
  */
 @FunctionalInterface
