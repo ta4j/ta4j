@@ -203,6 +203,7 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
         assertThat(indicator.getValue(1)).isTrue();
 
         rolling.barBuilder().closePrice(50d).add();
+        rolling.barBuilder().closePrice(60d).add();
 
         assertThat(indicator.getValue(1)).as("anchored invested interval").isTrue();
         assertThat(indicator.getValue(2)).as("never-calculated bar stays uninvested").isFalse();

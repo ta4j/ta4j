@@ -69,6 +69,17 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
         investedIntervals = intervals[0];
     }
 
+    /**
+     * Returns the captured flag without remapping pruned indices through the live
+     * series cache.
+     *
+     * @since 0.25.1
+     */
+    @Override
+    public Boolean getValue(int index) {
+        return calculate(index);
+    }
+
     @Override
     protected Boolean calculate(int index) {
         long position = (long) index - materializedBeginIndex;

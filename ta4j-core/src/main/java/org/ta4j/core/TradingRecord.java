@@ -377,10 +377,10 @@ public interface TradingRecord extends Serializable {
      * @param series the bar series, not null
      * @return the {@link #getEndIndex()} if not null and less than
      *         {@link BarSeries#getEndIndex()}, otherwise
-     *         {@link BarSeries#getEndIndex()}. An end index beyond the logical
-     *         window is still returned when the trailing bar remains addressable in
-     *         raw storage, so analyses can price exits that landed after the window
-     *         end.
+     *         {@link BarSeries#getEndIndex()}. Actual trailing position activity
+     *         extends that end only while its bar remains addressable in raw
+     *         storage, so analyses can price exits after the logical window end. An
+     *         explicit run bound alone never extends the logical window.
      */
     default int getEndIndex(BarSeries series) {
         Integer endIndex = getEndIndex();
@@ -394,6 +394,8 @@ public interface TradingRecord extends Serializable {
                     .max()
                     .orElse(logicalEndIndex);
             endIndex = Math.max(logicalEndIndex, endIndex);
+        } else {
+            endIndex = Math.min(endIndex, logicalEndIndex);
         }
         // A bounded run can subsequently be closed on a retained raw bar after
         // its logical end. The explicit run bound must not hide that exit.

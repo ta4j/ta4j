@@ -1063,6 +1063,15 @@ class BaseTradingRecordTest {
         assertEquals(2, tradingRecord.getEndIndex(series));
     }
 
+    @Test
+    public void getEndIndexDoesNotExtendToAnInactiveExplicitRawBound() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("inactive-raw-end", numFactory, 1, 10d,
+                20d, 30d);
+        TradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY, 0, 2, null, null);
+
+        assertEquals(1, tradingRecord.getEndIndex(series));
+    }
+
     private void assertParity(AnalysisCriterion criterion, BarSeries series, TradingRecord baseRecord,
             TradingRecord liveRecord) {
         assertEquals(criterion.calculate(series, baseRecord), criterion.calculate(series, liveRecord),
