@@ -164,16 +164,6 @@ public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCar
         return terminalReturns;
     }
 
-    /**
-     * Inner technique generating the kernel-smoothed residual path shape, exposed
-     * for the package-private canonical operation description.
-     *
-     * @return the resolved inner technique (never {@code null})
-     */
-    MonteCarloMethod inner() {
-        return inner;
-    }
-
     @Override
     public String toString() {
         return "PosteriorSmoothedResidualMonteCarloMethod[" + inner + "]";

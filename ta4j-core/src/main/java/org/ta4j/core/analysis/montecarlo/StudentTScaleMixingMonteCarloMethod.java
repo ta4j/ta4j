@@ -127,26 +127,6 @@ public final class StudentTScaleMixingMonteCarloMethod implements MonteCarloMeth
         return mixed;
     }
 
-    /**
-     * Degrees of freedom of the mixing scale, exposed for the package-private
-     * canonical operation description.
-     *
-     * @return the configured degrees of freedom
-     */
-    int degreesOfFreedom() {
-        return degreesOfFreedom;
-    }
-
-    /**
-     * Inner technique whose centered samples are tail-mixed, exposed for the
-     * package-private canonical operation description.
-     *
-     * @return the wrapped technique
-     */
-    MonteCarloMethod inner() {
-        return inner;
-    }
-
     /** {@code sqrt(df / chiSq(df))} draw from the Student-t scale distribution. */
     private double tScaleDraw(RandomGenerator random) {
         return Math.sqrt(degreesOfFreedom / RandomSamplers.nextChiSquared(random, degreesOfFreedom));

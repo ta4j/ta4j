@@ -22,7 +22,9 @@ final class RandomSamplers {
     /**
      * Exact gamma variate with the given shape via the Marsaglia-Tsang rejection
      * method. For {@code shape < 1} a boosting draw is folded in, so the algorithm
-     * covers every positive shape in expected constant time.
+     * covers every positive shape in expected constant time. The boost uses
+     * {@code 1 - nextDouble()} to sample from {@code (0, 1]}, so a legal zero
+     * uniform never produces a zero multiplier.
      *
      * <p>
      * Consumption: one {@code nextGaussian()} plus one {@code nextDouble()} per
@@ -36,7 +38,7 @@ final class RandomSamplers {
      */
     static double nextGamma(RandomGenerator random, double shape) {
         if (shape < 1d) {
-            return nextGamma(random, shape + 1d) * Math.pow(random.nextDouble(), 1d / shape);
+            return nextGamma(random, shape + 1d) * Math.pow(1d - random.nextDouble(), 1d / shape);
         }
         double delta = shape - 1d / 3d;
         double c = 1d / Math.sqrt(9d * delta);

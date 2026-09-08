@@ -236,57 +236,6 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
         return new ParameterDraw(sigmaSquared, muDraw);
     }
 
-    /**
-     * Explicit prior mean {@code m0}, exposed for the package-private canonical
-     * operation description. Zero for empirical-prior instances.
-     *
-     * @return the configured prior mean
-     */
-    double priorMean() {
-        return priorMean;
-    }
-
-    /**
-     * Explicit prior strength {@code k0}, exposed for the package-private canonical
-     * operation description. Zero for empirical-prior instances.
-     *
-     * @return the configured prior strength
-     */
-    double priorStrength() {
-        return priorStrength;
-    }
-
-    /**
-     * Explicit prior shape {@code a0}, exposed for the package-private canonical
-     * operation description. Zero for empirical-prior instances.
-     *
-     * @return the configured prior shape
-     */
-    double priorShape() {
-        return priorShape;
-    }
-
-    /**
-     * Explicit prior scale {@code b0}, exposed for the package-private canonical
-     * operation description. Zero for empirical-prior instances.
-     *
-     * @return the configured prior scale
-     */
-    double priorScale() {
-        return priorScale;
-    }
-
-    /**
-     * Whether this instance derives weakly-informative data-driven priors from the
-     * lookback window, exposed for the package-private canonical operation
-     * description.
-     *
-     * @return {@code true} for empirical-prior instances
-     */
-    boolean empiricalPriors() {
-        return empiricalPriors;
-    }
-
     private static double nextInverseGamma(RandomGenerator random, double shape, double rate) {
         return rate / RandomSamplers.nextGamma(random, shape);
     }
