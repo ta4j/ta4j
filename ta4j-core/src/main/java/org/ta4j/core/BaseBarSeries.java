@@ -137,34 +137,32 @@ public class BaseBarSeries implements BarSeries {
     }
 
     private synchronized void attachRetainedBarMutationTracking() {
-        for (Bar bar : this.bars) {
-            attachBarMutationTracking(bar);
+        for (int innerIndex = 0; innerIndex < this.bars.size(); innerIndex++) {
+            attachBarMutationTracking(this.bars.get(innerIndex), this.removedBarsCount + innerIndex);
         }
     }
 
-    private void attachBarMutationTracking(final Bar bar) {
+    private void attachBarMutationTracking(final Bar bar, final int index) {
         if (bar instanceof BaseBar baseBar) {
-            baseBar.attachToBarSeries(this);
+            baseBar.attachToBarSeries(this, index);
         }
     }
 
-    private void detachBarMutationTracking(final Bar bar) {
+    private void detachBarMutationTracking(final Bar bar, final int index) {
         if (bar instanceof BaseBar baseBar) {
-            baseBar.detachFromBarSeries(this);
+            baseBar.detachFromBarSeries(this, index);
         }
     }
 
     /**
-     * Records a direct mutation for this bar only when this series still retains
-     * it. The bar calls only its retaining series, so unrelated series do not
-     * receive synthetic history changes.
+     * Records a direct mutation for this retained bar at its registered absolute
+     * index. A stale registration is ignored after a structural replacement or
+     * retention removal.
      */
-    synchronized void retainedBarMutated(final BaseBar bar) {
-        for (int innerIndex = 0; innerIndex < this.bars.size(); innerIndex++) {
-            if (this.bars.get(innerIndex) == bar) {
-                recordBarHistoryChange(this.removedBarsCount + innerIndex);
-                return;
-            }
+    synchronized void retainedBarMutated(final BaseBar bar, final int index) {
+        final int innerIndex = index - this.removedBarsCount;
+        if (innerIndex >= 0 && innerIndex < this.bars.size() && this.bars.get(innerIndex) == bar) {
+            recordBarHistoryChange(index);
         }
     }
 
@@ -337,8 +335,8 @@ public class BaseBarSeries implements BarSeries {
     public void clear() {
         if (!this.bars.isEmpty()) {
             recordBarHistoryChange(0);
-            for (Bar bar : this.bars) {
-                detachBarMutationTracking(bar);
+            for (int innerIndex = 0; innerIndex < this.bars.size(); innerIndex++) {
+                detachBarMutationTracking(this.bars.get(innerIndex), this.removedBarsCount + innerIndex);
             }
         }
         this.bars.clear();
@@ -402,8 +400,8 @@ public class BaseBarSeries implements BarSeries {
         if (!this.bars.isEmpty()) {
             if (replace) {
                 final Bar previousBar = this.bars.set(this.bars.size() - 1, bar);
-                detachBarMutationTracking(previousBar);
-                attachBarMutationTracking(bar);
+                detachBarMutationTracking(previousBar, this.seriesEndIndex);
+                attachBarMutationTracking(bar, this.seriesEndIndex);
                 recordBarHistoryChange(this.seriesEndIndex);
                 return;
             }
@@ -420,12 +418,12 @@ public class BaseBarSeries implements BarSeries {
         }
 
         this.bars.add(bar);
-        attachBarMutationTracking(bar);
         if (this.seriesBeginIndex == -1) {
             // The begin index is set to 0 if not already initialized:
             this.seriesBeginIndex = 0;
         }
         this.seriesEndIndex = Math.incrementExact(this.seriesEndIndex);
+        attachBarMutationTracking(bar, this.seriesEndIndex);
         removeExceedingBars();
     }
 
@@ -458,8 +456,8 @@ public class BaseBarSeries implements BarSeries {
             throw new IndexOutOfBoundsException(buildOutOfBoundsMessage(this, index));
         }
         final Bar previousBar = this.bars.set(innerIndex, bar);
-        detachBarMutationTracking(previousBar);
-        attachBarMutationTracking(bar);
+        detachBarMutationTracking(previousBar, index);
+        attachBarMutationTracking(bar, index);
         recordBarHistoryChange(index);
     }
 
@@ -470,12 +468,20 @@ public class BaseBarSeries implements BarSeries {
 
     @Override
     public void addTrade(final Num tradeVolume, final Num tradePrice) {
-        getLastBar().addTrade(tradeVolume, tradePrice);
+        final Bar lastBar = getLastBar();
+        lastBar.addTrade(tradeVolume, tradePrice);
+        if (!(lastBar instanceof BaseBar)) {
+            recordBarHistoryChange(this.seriesEndIndex);
+        }
     }
 
     @Override
     public void addPrice(final Num price) {
-        getLastBar().addPrice(price);
+        final Bar lastBar = getLastBar();
+        lastBar.addPrice(price);
+        if (!(lastBar instanceof BaseBar)) {
+            recordBarHistoryChange(this.seriesEndIndex);
+        }
     }
 
     private synchronized void recordBarHistoryChange(final int changedIndex) {
@@ -519,7 +525,7 @@ public class BaseBarSeries implements BarSeries {
             // Removing old bars
             final int nbBarsToRemove = barCount - this.maximumBarCount;
             for (int index = 0; index < nbBarsToRemove; index++) {
-                detachBarMutationTracking(this.bars.get(index));
+                detachBarMutationTracking(this.bars.get(index), this.removedBarsCount + index);
             }
             if (nbBarsToRemove == 1) {
                 this.bars.removeFirst();

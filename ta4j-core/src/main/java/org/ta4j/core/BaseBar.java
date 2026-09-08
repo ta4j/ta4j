@@ -8,10 +8,13 @@ import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.NavigableMap;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.TreeMap;
+import java.util.WeakHashMap;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.num.Num;
@@ -23,11 +26,56 @@ public class BaseBar implements Bar {
     private static final long serialVersionUID = 8038383777467488147L;
 
     /**
-     * Retaining series and their reference counts. A bar can appear more than once
-     * in one series and can be shared by several series, each of which must receive
-     * only its own mutation notification.
+     * Weak retaining-series registrations. The weak keys avoid retaining
+     * short-lived subseries through bars that they shallow-copy.
      */
-    private transient ConcurrentMap<BaseBarSeries, AtomicInteger> retainingSeries = new ConcurrentHashMap<>();
+    private transient Map<BaseBarSeries, RetainingSeriesRegistration> retainingSeries = new WeakHashMap<>();
+
+    private record RetainedSeriesMutation(BaseBarSeries series, int index) {
+    }
+
+    private static final class RetainingSeriesRegistration {
+
+        private int firstIndex;
+        private NavigableMap<Integer, Boolean> additionalIndexes;
+
+        private RetainingSeriesRegistration(final int index) {
+            this.firstIndex = index;
+        }
+
+        private void attach(final int index) {
+            if (index < firstIndex) {
+                indexes().put(firstIndex, Boolean.TRUE);
+                firstIndex = index;
+            } else if (index > firstIndex) {
+                indexes().put(index, Boolean.TRUE);
+            }
+        }
+
+        private boolean detach(final int index) {
+            if (index != firstIndex) {
+                additionalIndexes.remove(index);
+                return true;
+            }
+            if (additionalIndexes == null || additionalIndexes.isEmpty()) {
+                return false;
+            }
+            firstIndex = additionalIndexes.firstKey();
+            additionalIndexes.pollFirstEntry();
+            return true;
+        }
+
+        private int firstIndex() {
+            return firstIndex;
+        }
+
+        private NavigableMap<Integer, Boolean> indexes() {
+            if (additionalIndexes == null) {
+                additionalIndexes = new TreeMap<>();
+            }
+            return additionalIndexes;
+        }
+    }
 
     /** The time period (e.g. 1 day, 15 min, etc.) of the bar. */
     private final Duration timePeriod;
@@ -204,13 +252,25 @@ public class BaseBar implements Bar {
     private record ResolvedTimes(Duration timePeriod, Instant beginTime, Instant endTime) {
     }
 
-    void attachToBarSeries(final BaseBarSeries series) {
-        retainingSeries.computeIfAbsent(series, ignored -> new AtomicInteger()).incrementAndGet();
+    void attachToBarSeries(final BaseBarSeries series, final int index) {
+        synchronized (retainingSeries) {
+            retainingSeries.compute(series, (ignored, registration) -> {
+                if (registration == null) {
+                    return new RetainingSeriesRegistration(index);
+                }
+                registration.attach(index);
+                return registration;
+            });
+        }
     }
 
-    void detachFromBarSeries(final BaseBarSeries series) {
-        retainingSeries.computeIfPresent(series,
-                (ignored, references) -> references.decrementAndGet() == 0 ? null : references);
+    void detachFromBarSeries(final BaseBarSeries series, final int index) {
+        synchronized (retainingSeries) {
+            final RetainingSeriesRegistration registration = retainingSeries.get(series);
+            if (registration != null && !registration.detach(index)) {
+                retainingSeries.remove(series);
+            }
+        }
     }
 
     @Override
@@ -336,7 +396,7 @@ public class BaseBar implements Bar {
      */
     private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
         stream.defaultReadObject();
-        retainingSeries = new ConcurrentHashMap<>();
+        retainingSeries = new WeakHashMap<>();
         try {
             validatePrices(openPrice, highPrice, lowPrice, closePrice);
         } catch (IllegalArgumentException e) {
@@ -345,8 +405,14 @@ public class BaseBar implements Bar {
     }
 
     protected final void publishRetainedBarMutation() {
-        for (BaseBarSeries series : retainingSeries.keySet()) {
-            series.retainedBarMutated(this);
+        final List<RetainedSeriesMutation> mutations;
+        synchronized (retainingSeries) {
+            mutations = new ArrayList<>(retainingSeries.size());
+            retainingSeries.forEach((series, registration) ->
+                    mutations.add(new RetainedSeriesMutation(series, registration.firstIndex())));
+        }
+        for (RetainedSeriesMutation mutation : mutations) {
+            mutation.series().retainedBarMutated(this, mutation.index());
         }
     }
 
