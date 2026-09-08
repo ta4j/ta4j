@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.keltner;
 
+import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
@@ -18,9 +19,10 @@ import static org.ta4j.core.num.NaN.NaN;
  */
 public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
 
-    private final KeltnerChannelMiddleIndicator keltnerMiddleIndicator;
-    private transient ATRIndicator averageTrueRangeIndicator;
+    private final Indicator<Num> keltnerMiddleIndicator;
+    private transient Indicator<Num> averageTrueRangeIndicator;
     private final int atrBarCount;
+    private final transient int barCount;
     private final Num ratio;
 
     /**
@@ -42,10 +44,12 @@ public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
      * @param ratio  the {@link #ratio}
      */
     public KeltnerChannelUpperIndicator(KeltnerChannelMiddleIndicator middle, ATRIndicator atr, double ratio) {
-        super(middle.getBarSeries());
+        super(middle, atr);
+
         this.keltnerMiddleIndicator = middle;
         this.averageTrueRangeIndicator = atr;
         this.atrBarCount = atr.getBarCount();
+        this.barCount = middle.getBarCount();
         this.ratio = getBarSeries().numFactory().numOf(ratio);
     }
 
@@ -66,10 +70,10 @@ public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
 
     /** @return the bar count of {@link #keltnerMiddleIndicator} */
     public int getBarCount() {
-        return keltnerMiddleIndicator.getBarCount();
+        return barCount;
     }
 
-    private ATRIndicator getAverageTrueRangeIndicator() {
+    private Indicator<Num> getAverageTrueRangeIndicator() {
         if (averageTrueRangeIndicator == null) {
             averageTrueRangeIndicator = new ATRIndicator(getBarSeries(), atrBarCount);
         }

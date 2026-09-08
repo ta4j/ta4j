@@ -39,7 +39,7 @@ ta4j requires **Java 25+**. Most applications need only `ta4j-core`:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.24.1</version>
+  <version>0.25.0</version>
 </dependency>
 ```
 
@@ -65,7 +65,7 @@ Snapshot builds are published through the Sonatype Central snapshot repository:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.24.2-SNAPSHOT</version>
+  <version>0.25.1-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -79,7 +79,7 @@ Stable examples artifact:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.24.1</version>
+  <version>0.25.0</version>
 </dependency>
 ```
 
@@ -93,7 +93,7 @@ Snapshot examples artifact:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.24.2-SNAPSHOT</version>
+  <version>0.25.1-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -412,6 +412,7 @@ The `ta4j-examples` module is organized as progressive learning tracks:
 | Execution semantics | [`TradingRecordParityBacktest`](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradingRecordParityBacktest.java), [`TradeFillRecordingExample`](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradeFillRecordingExample.java) |
 | Parameter research | [`SimpleMovingAverageRangeBacktest`](ta4j-examples/src/main/java/ta4jexamples/backtesting/SimpleMovingAverageRangeBacktest.java), [`RelationshipObjectiveSearchExample`](ta4j-examples/src/main/java/ta4jexamples/research/RelationshipObjectiveSearchExample.java) |
 | Forecasting and calibration | [`RollingConformalForecastExample`](ta4j-examples/src/main/java/ta4jexamples/analysis/forecast/RollingConformalForecastExample.java), [`KinematicKalmanForecastExample`](ta4j-examples/src/main/java/ta4jexamples/analysis/forecast/KinematicKalmanForecastExample.java) |
+| Forecasting and robustness | [`CorrentropyKalmanExample`](ta4j-examples/src/main/java/ta4jexamples/analysis/forecast/CorrentropyKalmanExample.java) demonstrates ATR-derived Q/R, the robust estimate, residual, and measurement weight on an ossified S&P 500 weekly series |
 | Charting and diagnostics | [`IndicatorsToChart`](ta4j-examples/src/main/java/ta4jexamples/indicators/IndicatorsToChart.java), [`CashFlowToChart`](ta4j-examples/src/main/java/ta4jexamples/analysis/CashFlowToChart.java) |
 
 See [`ta4j-examples/README.md`](ta4j-examples/README.md) for the complete learning sequence and runnable commands.
@@ -455,9 +456,9 @@ Contributor reference:
 The repository requires Java 25+ and includes Maven Wrapper scripts pinned to Maven 3.9.16.
 
 - Standard wrapper: use `./mvnw ...` on macOS/Linux, `mvnw.cmd ...` on Windows, or system Maven 3.9+ intentionally.
-- Canonical quality gate: Use `scripts/run-full-build-quiet.sh` on macOS/Linux/Git Bash/WSL or `scripts/run-full-build-quiet.ps1` on Windows PowerShell with Git Bash available on `PATH`.
+- Canonical quality gate: Use `scripts/run-full-build-quiet.sh` on macOS/Linux/Git Bash/WSL or `scripts/run-full-build-quiet.ps1` on Windows PowerShell; it uses native Maven and WSL preflight when available, with Git Bash as the fallback.
 - Maven-only repair and verification: `./mvnw -B clean license:format spotless:apply verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless`
-- CI-equivalent validation: `./mvnw -B clean license:check spotless:check verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless`
+- Non-mutating Maven-only validation: `./mvnw -B clean license:check spotless:check verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless`
 - Focused formatting repair: `./mvnw -B license:format spotless:apply`
 - SpotBugs gate: `./mvnw -pl ta4j-core -am clean compile spotbugs:check`
 - JaCoCo gate: `./mvnw -pl ta4j-core -am test jacoco:report jacoco:check`

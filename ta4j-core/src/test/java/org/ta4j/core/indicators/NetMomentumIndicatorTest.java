@@ -8,6 +8,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -685,6 +686,80 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         Num tolerance = numOf(1e-9);
         assertTrue("Pruned-series large first access mismatch: expected=" + expected + " actual=" + actual,
                 expected.minus(actual).abs().isLessThan(tolerance));
+    }
+
+    @Test
+    public void reanchorsAtFirstRetainedBarAfterStochasticInvalidation() {
+        BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int index = 0; index < 8; index++) {
+            movingSeries.barBuilder().closePrice(40).add();
+        }
+        StochasticIndicator stochastic = new StochasticIndicator(new ClosePriceIndicator(movingSeries), 1);
+        NetMomentumIndicator subject = new NetMomentumIndicator(stochastic, 2, 50, 0.5);
+        subject.getValue(7);
+
+        movingSeries.setMaximumBarCount(5);
+
+        assertEquals(3, movingSeries.getBeginIndex());
+        assertTrue(subject.getValue(3).isEqual(numOf(100)));
+    }
+
+    @Test
+    public void retainsAllContributionsUntilTheFirstRetainedWindowExpires() {
+        BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int index = 0; index < 10; index++) {
+            movingSeries.barBuilder().closePrice(60).add();
+        }
+        movingSeries.setMaximumBarCount(5);
+
+        int timeFrame = 3;
+        NetMomentumIndicator subject = new NetMomentumIndicator(new ConstantIndicator<>(movingSeries, numOf(60)),
+                timeFrame, 50);
+        int beginIndex = movingSeries.getBeginIndex();
+
+        assertTrue(beginIndex > timeFrame);
+        assertTrue(subject.getValue(beginIndex).isEqual(numOf(-12)));
+        assertTrue(subject.getValue(beginIndex + 1).isEqual(numOf(-24)));
+        assertTrue(subject.getValue(beginIndex + 2).isEqual(numOf(-36)));
+    }
+
+    @Test
+    public void recomputedBandAnchorsExpirationAtRetainedHead() {
+        BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        movingSeries.setMaximumBarCount(5);
+
+        for (int i = 0; i < 20; i++) {
+            movingSeries.barBuilder().closePrice(55 + i).add();
+        }
+
+        // A constant oscillator keeps every contribution exactly -12
+        // (Kalman-smoothed delta 10, convex-weighted by pivot 50), so the
+        // expected partial-window sum at retained position k is -12 * (k + 1).
+        CachedIndicator<Num> constantOscillator = new CachedIndicator<>(movingSeries) {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            protected Num calculate(int index) {
+                return numOf(60);
+            }
+        };
+        NetMomentumIndicator indicator = new NetMomentumIndicator(constantOscillator, 7, 50, 1.0);
+
+        int beginIndex = movingSeries.getBeginIndex();
+        Num contribution = numOf(-12);
+        for (int i = beginIndex; i <= movingSeries.getEndIndex(); i++) {
+            int windowPosition = i - beginIndex;
+            Num expected = contribution.multipliedBy(numOf(windowPosition + 1));
+            assertClose(indicator.getValue(i), expected, i);
+        }
+    }
+
+    private void assertClose(Num actual, Num expected, int index) {
+        assertTrue("Anchored-expiration mismatch at index " + index + ": expected=" + expected + " actual=" + actual,
+                actual.minus(expected).abs().isLessThan(numOf(1e-9)));
     }
 
     private CachedIndicator<Num> buildOscillator() {

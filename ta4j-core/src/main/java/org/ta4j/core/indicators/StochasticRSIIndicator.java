@@ -73,4 +73,18 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
         return this.stochasticIndicator.getCountOfUnstableBars();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * The stochastic's zero-range carry chain rebuilds from the base case at the
+     * retained head after a series advance, so every cached entry is stale and must
+     * be evicted.
+     *
+     * @return {@code true}, evicting every cached entry
+     */
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
+    }
 }

@@ -62,11 +62,11 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
 
     @Override
     protected Boolean calculate(int index) {
-        int position = index - materializedBeginIndex;
+        long position = (long) index - materializedBeginIndex;
         if (position < 0 || position >= investedIntervals.length) {
             return Boolean.FALSE;
         }
-        return investedIntervals[position];
+        return investedIntervals[(int) position];
     }
 
     private boolean[] buildInvestedIntervals(TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {

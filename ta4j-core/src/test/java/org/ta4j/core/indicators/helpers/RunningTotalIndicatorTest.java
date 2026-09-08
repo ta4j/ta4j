@@ -47,7 +47,7 @@ public class RunningTotalIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
         assertNumEquals(12, runningTotal.getValue(4));
 
-        series.replaceBar(2, series.barBuilder().openPrice(2).highPrice(2).lowPrice(2).closePrice(10).build());
+        series.replaceBar(2, series.barBuilder().openPrice(2).highPrice(10).lowPrice(2).closePrice(10).build());
         series.addBar(series.barBuilder().openPrice(6).highPrice(6).lowPrice(6).closePrice(6).build());
 
         // window [3..5] = closes 4 + 5 + 6, not a stale partial sum

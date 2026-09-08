@@ -145,7 +145,7 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
     }
 
     private EaseOfMovementIndicator(Config config) {
-        super(config.series());
+        super(config.rawEaseOfMovementIndicator());
         this.barCount = config.barCount();
         this.volumeDivisor = config.volumeDivisor();
         this.highPriceIndicator = config.highPriceIndicator();
@@ -244,7 +244,7 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
 
         private RawEaseOfMovementIndicator(final Indicator<Num> highPriceIndicator,
                 final Indicator<Num> lowPriceIndicator, final Indicator<Num> volumeIndicator, final Num volumeDivisor) {
-            super(highPriceIndicator);
+            super(highPriceIndicator, lowPriceIndicator, volumeIndicator);
             this.highPriceIndicator = highPriceIndicator;
             this.lowPriceIndicator = lowPriceIndicator;
             this.volumeIndicator = volumeIndicator;

@@ -71,7 +71,7 @@ public class ElliottScenarioIndicator extends CachedIndicator<ElliottScenarioSet
     }
 
     private ElliottScenarioIndicator(final Config config) {
-        super(config.series());
+        super(config.swingIndicator(), config.channelIndicator());
         this.swingIndicator = config.swingIndicator();
         this.channelIndicator = config.channelIndicator();
         this.generator = config.generator();

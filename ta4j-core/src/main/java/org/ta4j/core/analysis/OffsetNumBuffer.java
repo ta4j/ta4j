@@ -68,11 +68,22 @@ final class OffsetNumBuffer {
     }
 
     private static int sizeOf(int startIndex, int endIndex) {
-        if (startIndex < 0 || endIndex < startIndex) {
+        if (startIndex == -1 && endIndex == -1) {
             return 0;
         }
-        long span = (long) endIndex - startIndex + 1;
-        return span > Integer.MAX_VALUE ? 0 : (int) span;
+        if (startIndex < 0 || endIndex < startIndex) {
+            if (endIndex == startIndex - 1) {
+                return 0;
+            }
+            throw new IllegalArgumentException(
+                    "Offset buffer range must be non-inverted: [" + startIndex + ", " + endIndex + "]");
+        }
+        long span = (long) endIndex - startIndex + 1L;
+        if (span > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException(
+                    "Offset buffer range is too large to materialize: [" + startIndex + ", " + endIndex + "]");
+        }
+        return (int) span;
     }
 
     /**

@@ -21,9 +21,11 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.KalmanNoiseIndicator;
+import org.ta4j.core.indicators.StochasticIndicator;
 import org.ta4j.core.indicators.forecast.state.KinematicKalmanForecastState;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
@@ -82,6 +84,26 @@ public class KinematicKalmanForecastStateIndicatorTest
                 .abs()
                 .isLessThan(baseline.getValue(1).position().minus(numOf(20)).abs()));
         assertEquals(numOf(100), dynamic.getValue(1).processNoise());
+    }
+
+    @Test
+    public void rebaselinesStateWhenDynamicNoiseRebases() {
+        BarSeries series = series(10, 20, 30, 50, 50, 50, 50, 50);
+        Indicator<Num> source = new ClosePriceIndicator(series);
+        KalmanNoiseIndicator processNoise = new KalmanNoiseIndicator(
+                NumericIndicator.of(new StochasticIndicator(source, 3)).plus(1));
+        KinematicKalmanForecastStateIndicator subject = new KinematicKalmanForecastStateIndicator(source, processNoise,
+                KalmanNoiseIndicator.constant(series, MEASUREMENT_NOISE));
+        subject.getValue(series.getEndIndex());
+
+        series.setMaximumBarCount(5);
+        int beginIndex = series.getBeginIndex();
+        KalmanNoiseIndicator freshProcessNoise = new KalmanNoiseIndicator(
+                NumericIndicator.of(new StochasticIndicator(source, 3)).plus(1));
+        KinematicKalmanForecastStateIndicator fresh = new KinematicKalmanForecastStateIndicator(source,
+                freshProcessNoise, KalmanNoiseIndicator.constant(series, MEASUREMENT_NOISE));
+
+        assertEquals(fresh.getValue(beginIndex), subject.getValue(beginIndex));
     }
 
     @Test

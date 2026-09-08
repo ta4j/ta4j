@@ -4,10 +4,10 @@ This file contains only repository-wide requirements.
 If your framework already injected this file into context, do not spend extra tool calls reopening it repeatedly.
 
 ## 1) Completion gate (MUST)
-Run the full verification script once when you have a candidate final patch:
+Run the platform-native full verification script once when you have a candidate final patch:
 
-- `scripts/run-full-build-quiet.sh`
-
+- Windows: `scripts/run-full-build-quiet.ps1`
+- macOS/Linux/Git Bash/WSL: `scripts/run-full-build-quiet.sh`
 You may skip this only when all changed files are exclusively within `.github/workflows/`, `CHANGELOG.md`, or documentation-only files (for example `*.md`, `docs/`).
 
 Required outcome:

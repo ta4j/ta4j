@@ -38,7 +38,7 @@ public class VWAPDeviationIndicator extends CachedIndicator<Num> {
     }
 
     private VWAPDeviationIndicator(Config config) {
-        super(config.series());
+        super(config.difference());
         this.priceIndicator = config.priceIndicator();
         this.difference = config.difference();
         this.vwapIndicator = config.vwapIndicator();

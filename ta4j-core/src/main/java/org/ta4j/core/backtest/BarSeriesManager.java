@@ -10,6 +10,7 @@ import java.util.function.IntFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
@@ -568,6 +569,15 @@ public class BarSeriesManager {
     }
 
     private TradingRecord run(Strategy strategy, TradingRecord tradingRecord, int startIndex, int finishIndex,
+            IntFunction<Num> amountResolver) {
+        if (barSeries instanceof ConcurrentBarSeries concurrentBarSeries) {
+            return concurrentBarSeries.withReadLock(
+                    () -> runUnlocked(strategy, tradingRecord, startIndex, finishIndex, amountResolver));
+        }
+        return runUnlocked(strategy, tradingRecord, startIndex, finishIndex, amountResolver);
+    }
+
+    private TradingRecord runUnlocked(Strategy strategy, TradingRecord tradingRecord, int startIndex, int finishIndex,
             IntFunction<Num> amountResolver) {
         Objects.requireNonNull(strategy, "strategy");
         Objects.requireNonNull(tradingRecord, "tradingRecord");

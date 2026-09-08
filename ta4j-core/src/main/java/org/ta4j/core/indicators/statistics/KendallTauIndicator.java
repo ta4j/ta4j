@@ -40,7 +40,7 @@ public class KendallTauIndicator extends CachedIndicator<Num> {
      * @since 0.22.7
      */
     public KendallTauIndicator(Indicator<Num> first, Indicator<Num> second, int barCount) {
-        super(first);
+        super(first, second);
         IndicatorUtils.requireSameSeries(first, second);
         this.first = first;
         this.second = second;

@@ -33,7 +33,7 @@ public class CloseLocationValueIndicatorTest extends AbstractIndicatorTest<Indic
         series.barBuilder().openPrice(11).closePrice(12).highPrice(12).lowPrice(10).add();
         series.barBuilder().openPrice(10).closePrice(10).highPrice(10).lowPrice(10).add();
         series.barBuilder().openPrice(11).closePrice(12).highPrice(12).lowPrice(10).add();
-        series.barBuilder().openPrice(11).closePrice(120).highPrice(140).lowPrice(100).add();
+        series.barBuilder().openPrice(120).closePrice(120).highPrice(140).lowPrice(100).add();
     }
 
     @Test

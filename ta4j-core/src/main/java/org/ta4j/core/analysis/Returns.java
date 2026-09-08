@@ -34,11 +34,11 @@ import org.ta4j.core.num.NumFactory;
  * {@link ReturnRepresentationPolicy#getDefaultRepresentation()}.
  *
  * <p>
- * The return values are materialized positionally within the window
- * {@code [barSeries.getBeginIndex(), barSeries.getEndIndex()]}: the first list
- * slot corresponds to {@code barSeries.getBeginIndex()}, and
- * {@link #getValue(int)} resolves to the neutral value {@link Double#NaN}
- * outside that window.
+ * The return values are materialized positionally from the captured series begin
+ * index through the materialized end, which may extend beyond
+ * {@code barSeries.getEndIndex()} when a trailing exit remains addressable in raw
+ * storage. {@link #getValue(int)} returns {@link Double#NaN} outside that
+ * materialized range.
  *
  * @see ReturnRepresentation
  * @see ReturnRepresentationPolicy
@@ -265,16 +265,16 @@ public class Returns implements PerformanceIndicator {
     /**
      * @param index the bar index
      * @return the return rate value at the index-th position (formatted according
-     *         to the configured representation), or {@link Double#NaN} for indices
-     *         outside the window materialized by the underlying series
+     *         to the configured representation), or {@link Double#NaN} outside
+     *         the materialized range captured by this instance
      */
     @Override
     public Num getValue(int index) {
-        int position = index - materializedBeginIndex;
+        long position = (long) index - materializedBeginIndex;
         if (position < 0 || position >= values.size()) {
             return NaN.NaN;
         }
-        return values.get(position);
+        return values.get((int) position);
     }
 
     /**
@@ -299,7 +299,7 @@ public class Returns implements PerformanceIndicator {
      * @return the number of materialized returns, including any trailing exit
      *         return beyond the logical window end. The leading no-prior-close
      *         placeholder is only excluded when the first slot carries no real
-     *         return (see {@link #isFirstSlotSeeded()}).
+     *         return.
      */
     public int getSize() {
         if (returnFactors.size() == 0) {
@@ -308,20 +308,6 @@ public class Returns implements PerformanceIndicator {
         return returnFactors.size() - (firstRetainedSlotSeeded ? 0 : 1);
     }
 
-    /**
-     * Returns whether the first retained slot carries a real return instead of the
-     * leading no-prior-close placeholder. This is the case when an entry predating
-     * the window seeds the whole entry-to-first-retained-close move, or when a
-     * position enters and exits on the first retained bar itself. Tail-risk
-     * criteria use this distinction to decide whether the leading slot joins the
-     * return distribution.
-     *
-     * @return {@code true} if the first retained slot holds a real return
-     * @since 0.24.2
-     */
-    public boolean isFirstSlotSeeded() {
-        return firstRetainedSlotSeeded;
-    }
 
     /**
      * Calculates the returns for a single position.
@@ -357,10 +343,11 @@ public class Returns implements PerformanceIndicator {
             Num avgCost = averageHoldingCostPerPeriod(position, endIndex, numFactory);
             Num lastPrice = entry.getNetPrice();
             if (entryIndex < seriesBegin) {
-                // The entry predates the retained window: the first retained
-                // slot carries the whole entry-to-first-retained-close move,
-                // and the intermediate chain anchors at that close.
-                Num firstNetPrice = addCost(barSeries.getBar(seriesBegin).getClosePrice(), avgCost, isLongTrade);
+                // The entry predates the retained window: charge all elapsed
+                // holding periods before anchoring at the first retained close.
+                long elapsedPeriods = (long) seriesBegin - entryIndex;
+                Num accruedCost = avgCost.multipliedBy(numFactory.numOf(elapsedPeriods));
+                Num firstNetPrice = addCost(barSeries.getBar(seriesBegin).getClosePrice(), accruedCost, isLongTrade);
                 Num rawReturn = calculateReturn(firstNetPrice, lastPrice);
                 combineReturnAtIndex(seriesBegin, isLongTrade ? rawReturn : rawReturn.multipliedBy(minusOne));
                 lastPrice = firstNetPrice;

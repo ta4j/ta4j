@@ -406,15 +406,16 @@ public class BacktestExecutor {
         Objects.requireNonNull(strategies, "strategies must not be null");
         Objects.requireNonNull(tradeType, "tradeType must not be null");
         Objects.requireNonNull(tradingRecordRunner, "tradingRecordRunner must not be null");
-
+        BarSeries managedSeries = seriesManager.getBarSeries();
+        BarSeries.BarSeriesChangeSnapshot baseline = managedSeries.getBarSeriesChangeSnapshot(-1L);
         if (batchSize <= 0) {
             throw new IllegalArgumentException("batchSize must be positive");
         }
 
         if (strategies.isEmpty()) {
             latestFailures = List.of();
-            return new BacktestExecutionResult(seriesManager.getBarSeries(), new ArrayList<>(),
-                    BacktestRuntimeReport.empty());
+            return BacktestExecutionResult.capture(managedSeries, new ArrayList<>(),
+                    BacktestRuntimeReport.empty(), List.of(), baseline);
         }
 
         Strategy[] strategyArray = strategies.toArray(Strategy[]::new);
@@ -469,8 +470,8 @@ public class BacktestExecutor {
 
         BacktestRuntimeReport runtimeReport = buildRuntimeReport(Arrays.copyOf(successfulDurations, successfulCount),
                 overallRuntime, strategyRuntimes);
-        return new BacktestExecutionResult(seriesManager.getBarSeries(), tradingStatements, runtimeReport,
-                executionFailures.stream().toList());
+        return BacktestExecutionResult.capture(managedSeries, tradingStatements, runtimeReport,
+                executionFailures.stream().toList(), baseline);
     }
 
     /**
@@ -849,14 +850,16 @@ public class BacktestExecutor {
         Objects.requireNonNull(strategies, "strategies must not be null");
         Objects.requireNonNull(criterion, "criterion must not be null");
         Objects.requireNonNull(tradingRecordRunner, "tradingRecordRunner must not be null");
+        BarSeries managedSeries = seriesManager.getBarSeries();
+        BarSeries.BarSeriesChangeSnapshot baseline = managedSeries.getBarSeriesChangeSnapshot(-1L);
 
         if (topK <= 0) {
             throw new IllegalArgumentException("topK must be positive");
         }
         if (strategies.isEmpty()) {
             latestFailures = List.of();
-            return new BacktestExecutionResult(seriesManager.getBarSeries(), new ArrayList<>(),
-                    BacktestRuntimeReport.empty());
+            return BacktestExecutionResult.capture(managedSeries, new ArrayList<>(),
+                    BacktestRuntimeReport.empty(), List.of(), baseline);
         }
         ConcurrentLinkedQueue<BacktestExecutionResult.StrategyFailure> executionFailures = new ConcurrentLinkedQueue<>();
         int strategyCount = strategies.size();
@@ -969,8 +972,8 @@ public class BacktestExecutor {
         BacktestRuntimeReport runtimeReport = buildRuntimeReport(Arrays.copyOf(successfulDurations, successfulCount),
                 overallRuntime, strategyRuntimes);
 
-        return new BacktestExecutionResult(seriesManager.getBarSeries(), resultStatements, runtimeReport,
-                executionFailures.stream().toList());
+        return BacktestExecutionResult.capture(managedSeries, resultStatements, runtimeReport,
+                executionFailures.stream().toList(), baseline);
     }
 
     private Comparator<StrategyEvaluation> createBestFirstComparator(AnalysisCriterion criterion) {

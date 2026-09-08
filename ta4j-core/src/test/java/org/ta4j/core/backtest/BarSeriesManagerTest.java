@@ -18,6 +18,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.BaseTradingRecord;
@@ -169,6 +170,47 @@ public class BarSeriesManagerTest {
 
         assertEquals(1, positions.size());
         assertTrue(positions.get(0).isOpened());
+    }
+
+    @Test
+    public void currentCloseModelClosesOpenPositionUsingTrailingRawBar() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("trailing", numFactory, 1, 10d, 20d,
+                30d);
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(2));
+
+        Position position = new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(strategy).getPositions()
+                .getFirst();
+
+        assertEquals(0, position.getEntry().getIndex());
+        assertEquals(2, position.getExit().getIndex());
+        assertEquals(series.getBar(2).getClosePrice(), position.getExit().getPricePerAsset());
+    }
+
+    @Test
+    public void runPreservesLeadingOrphanRawBarOffset() {
+        BarSeries series = ConstrainedSeriesSupport.offsetSeries("leading-orphan", numFactory, 1, 2, 0, 10d, 20d,
+                30d);
+        Strategy strategy = new BaseStrategy(new FixedRule(1), new FixedRule(2));
+
+        Position position = new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(strategy).getPositions()
+                .getFirst();
+
+        assertEquals(series.getBar(1).getClosePrice(), position.getEntry().getPricePerAsset());
+        assertEquals(series.getBar(2).getClosePrice(), position.getExit().getPricePerAsset());
+    }
+
+    @Test
+    public void closeScanReachesTrailingBarWithRemovedIndexOffset() {
+        BarSeries series = ConstrainedSeriesSupport.offsetSeries("offset-trailing", numFactory, 10, 11, 10, 10d,
+                20d, 30d);
+        Strategy strategy = new BaseStrategy(new FixedRule(10), new FixedRule(12));
+
+        Position position = new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(strategy).getPositions()
+                .getFirst();
+
+        assertEquals(10, position.getEntry().getIndex());
+        assertEquals(12, position.getExit().getIndex());
+        assertEquals(series.getBar(12).getClosePrice(), position.getExit().getPricePerAsset());
     }
 
     @Test

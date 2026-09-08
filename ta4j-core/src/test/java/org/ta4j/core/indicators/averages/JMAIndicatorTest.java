@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.averages;
 
+import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.*;
 
 import org.junit.Test;
@@ -262,6 +263,32 @@ public class JMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
             assertNumEquals(expectedDoubles[i], jma.getValue(i));
         }
 
+    }
+
+    @Test
+    public void boundedSeriesRebuildsChainedMapAfterHeadAdvance() {
+        // The JMA map chains every value from its predecessor, so a head
+        // advance that severs the chain must rebuild from the new first
+        // retained bar instead of serving stale chained values.
+        BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(0d, 50d, 50d, 50d, 50d, 50d)
+                .build();
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        JMAIndicator jma = new JMAIndicator(closePrice, 2, 0, 2);
+
+        // Populate the chained map against the original begin index so the
+        // advance below must sever and rebuild a populated chain.
+        jma.getValue(5);
+
+        barSeries.setMaximumBarCount(3);
+        assertEquals(3, barSeries.getBeginIndex());
+
+        // A fresh indicator chains from the seeded first retained bar; the
+        // bounded indicator must recompute to the same values.
+        JMAIndicator fresh = new JMAIndicator(closePrice, 2, 0, 2);
+        for (int i = 3; i <= 5; i++) {
+            assertNumEquals(fresh.getValue(i), jma.getValue(i));
+        }
     }
 
 }

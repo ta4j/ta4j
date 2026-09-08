@@ -42,7 +42,8 @@ public class LSMAIndicator extends CachedIndicator<Num> {
      * @param barCount  the moving average time window
      */
     public LSMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator.getBarSeries());
+        super(indicator);
+
         this.indicator = indicator;
         this.barCount = barCount;
         this.numFactory = indicator.getBarSeries().numFactory();

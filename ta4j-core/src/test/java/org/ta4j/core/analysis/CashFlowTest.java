@@ -590,6 +590,23 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
+    public void materializesLargeOffsetWindowWithoutAbsoluteAllocation() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        int beginIndex = 1_000_000_000;
+        BarSeries offset = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(beginIndex)
+                .build();
+        TradingRecord record = new BaseTradingRecord(Trade.buyAt(beginIndex, offset),
+                Trade.sellAt(beginIndex + 2, offset));
+
+        CashFlow cashFlow = new CashFlow(offset, record);
+
+        assertEquals(3, cashFlow.getSize());
+        assertNumEquals(3, cashFlow.getValue(beginIndex + 2));
+    }
+
+    @Test
     public void valuesAreAddressableAtTerminalOffsetWithoutAbsoluteSizing() {
         BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d).build();
         BarSeries terminal = new MockBarSeriesBuilder().withNumFactory(numFactory)

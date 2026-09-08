@@ -25,6 +25,8 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.logging.log4j.Level;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.AnalysisCriterion;
@@ -56,6 +58,23 @@ public class BacktestExecutorTest {
     private static final NumFactory DECIMAL_NUM_FACTORY = DecimalNumFactory.getInstance();
 
     private NumFactory numFactory = DoubleNumFactory.getInstance();
+
+    private TraceTestLogger backtestLogger;
+
+    @Before
+    public void suppressExpectedFailureLogs() {
+        // Failure-ledger tests intentionally throw during strategy execution;
+        // the executor records those failures at WARN with a stack trace. Keep
+        // that known noise off the console for this class.
+        backtestLogger = new TraceTestLogger();
+        backtestLogger.open();
+        backtestLogger.setLoggerLevel(BacktestExecutor.class, Level.OFF);
+    }
+
+    @After
+    public void restoreLoggerLevels() {
+        backtestLogger.close();
+    }
 
     private Num numOf(Number value) {
         return numFactory.numOf(value);
@@ -175,6 +194,17 @@ public class BacktestExecutorTest {
         assertEquals(strategies.size(), result.tradingStatements().size());
         assertEquals(strategies.size(), callbackCount.get());
         assertEquals(strategies.size(), lastCompletedCount.get());
+    }
+
+    @Test
+    public void resultCaptureFailsWhenSeriesChangesDuringExecution() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        BacktestExecutor executor = new BacktestExecutor(series);
+
+        assertThrows(IllegalStateException.class,
+                () -> executor.executeWithRuntimeReport(List.of(strategy), numOf(1), Trade.TradeType.BUY,
+                        completed -> series.addBar(series.getLastBar())));
     }
 
     @Test
@@ -639,9 +669,6 @@ public class BacktestExecutorTest {
             }
         };
 
-        TraceTestLogger traceLogger = new TraceTestLogger();
-        traceLogger.open();
-        traceLogger.setLoggerLevel(BacktestExecutor.class, Level.OFF);
         ExecutorService pool = Executors.newSingleThreadExecutor();
         try {
             Future<BacktestExecutionResult> firstExecution = pool
@@ -663,7 +690,6 @@ public class BacktestExecutorTest {
         } finally {
             ledgerCleared.countDown();
             pool.shutdownNow();
-            traceLogger.close();
         }
     }
 

@@ -18,6 +18,7 @@ import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.criteria.ExpectancyCriterion;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
@@ -134,16 +135,20 @@ public class BacktestExecutionResultTest {
     }
 
     @Test
-    public void barSeriesAccessorReturnsBorrowedInstance() {
+    public void barSeriesAccessorOwnsStableImmutableValues() {
         BaseBarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
 
         BacktestExecutionResult result = new BacktestExecutionResult(series, List.of(), BacktestRuntimeReport.empty());
+        BarSeries ownedSeries = result.barSeries();
+        series.getBar(1).addPrice(numFactory.numOf(99));
 
-        assertSame(series, result.barSeries());
+        assertNotSame(series, ownedSeries);
+        assertEquals(numFactory.numOf(20), ownedSeries.getBar(1).getClosePrice());
+        assertThrows(UnsupportedOperationException.class, () -> ownedSeries.getBar(1).addPrice(numFactory.one()));
     }
 
     @Test
-    public void barSeriesPreservesSeriesBeginIndexAndRemovedBarsOffset() {
+    public void barSeriesSnapshotPreservesSeriesBeginIndexAndRemovedBarsOffset() {
         BaseBarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
         BaseBarSeries offsetSeries = new BaseBarSeriesBuilder().withNumFactory(numFactory)
                 .withBeginIndex(10)
@@ -152,14 +157,29 @@ public class BacktestExecutionResultTest {
 
         BacktestExecutionResult result = new BacktestExecutionResult(offsetSeries, List.of(),
                 BacktestRuntimeReport.empty());
-        BarSeries borrowed = result.barSeries();
+        BarSeries snapshot = result.barSeries();
+        offsetSeries.getBar(12).addPrice(numFactory.numOf(99));
 
-        assertSame(offsetSeries, borrowed);
-        assertEquals(10, borrowed.getBeginIndex());
-        assertEquals(12, borrowed.getEndIndex());
-        assertEquals(10, borrowed.getRemovedBarsCount());
-        assertEquals(3, borrowed.getBarData().size());
-        assertEquals(offsetSeries.getBar(12).getClosePrice(), borrowed.getBar(12).getClosePrice());
+        assertNotSame(offsetSeries, snapshot);
+        assertEquals(10, snapshot.getBeginIndex());
+        assertEquals(12, snapshot.getEndIndex());
+        assertEquals(10, snapshot.getRemovedBarsCount());
+        assertEquals(3, snapshot.getBarData().size());
+        assertEquals(numFactory.numOf(30), snapshot.getBar(12).getClosePrice());
+    }
+
+    @Test
+    public void criterionScoreRemainsStableAfterSourceBarReplacement() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 50d, 110d).build();
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(2));
+        BacktestExecutionResult result = createBacktestResult(source, List.of(strategy), new int[] { 0, 2 });
+        TradingStatement statement = result.tradingStatements().getFirst();
+        MaximumDrawdownCriterion criterion = new MaximumDrawdownCriterion();
+
+        Num before = criterion.calculate(result.barSeries(), statement.getTradingRecord());
+        source.getBar(1).addPrice(numFactory.numOf(200));
+
+        assertEquals(before, criterion.calculate(result.barSeries(), statement.getTradingRecord()));
     }
 
     @Test

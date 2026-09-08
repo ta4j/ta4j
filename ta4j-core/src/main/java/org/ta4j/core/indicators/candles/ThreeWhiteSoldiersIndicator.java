@@ -5,111 +5,156 @@ package org.ta4j.core.indicators.candles;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.num.Num;
 
 /**
  * Three white soldiers indicator.
  *
+ * <p>
+ * Matches the documented three-candle three-white-soldiers morphology at
+ * {@code index} for the candles at {@code index - 2}, {@code index - 1}, and
+ * {@code index}:
+ *
+ * <pre>
+ * all three candles are bullish
+ * advancing closes (strict):
+ *     close(index - 1) &gt; close(index - 2) &amp;&amp; close(index) &gt; close(index - 1)
+ * the second and third opens sit within the previous real body (inclusive):
+ *     open(index - 1) in [open(index - 2), close(index - 2)]
+ *     open(index) in [open(index - 1), close(index - 1)]
+ * each candle has a very short upper shadow (inclusive):
+ *     upperShadow(k) &lt;= 0.1 * priorAverageRange(k) for k in {index - 2, index - 1, index}
+ * </pre>
+ *
+ * <p>
+ * The containment and upper-shadow conditions are inclusive, so an open exactly
+ * on a body endpoint or a shadow exactly at the adaptive threshold matches; the
+ * advancing closes are strict. The upper-shadow threshold is evaluated against
+ * the shared adaptive baseline of the preceding {@code averagePeriod} candles.
+ *
+ * <p>
+ * The default constructor uses a five-candle baseline ({@code averagePeriod} =
+ * 5).
+ *
+ * <p>
+ * The model is the canonical three-candle formation; it does not require a
+ * preceding bearish candle. Earlier releases of this class forced a preceding
+ * black candle and therefore a stricter four-bar variant; the class now
+ * documents and implements the three-candle model.
+ *
+ * <p>
+ * The three soldiers are thresholded at offsets 0 through 2, so this indicator
+ * is stable after {@code averagePeriod + 2} bars. Before that boundary, or when
+ * the retained history does not reach back to the first candle, it returns
+ * {@code false}.
+ *
+ * <p>
+ * Traditionally interpreted as a bullish reversal signal after a downtrend.
+ * This indicator does not evaluate the preceding trend or any direction
+ * context; the reversal context must be composed explicitly by the caller.
+ *
  * @see <a href="http://www.investopedia.com/terms/t/three_white_soldiers.asp">
  *      http://www.investopedia.com/terms/t/three_white_soldiers.asp</a>
  */
-public class ThreeWhiteSoldiersIndicator extends CachedIndicator<Boolean> {
+public class ThreeWhiteSoldiersIndicator extends CandlePatternIndicator {
 
-    /** Upper shadow. */
-    private final transient UpperShadowIndicator upperShadowInd;
+    /** Number of preceding candles averaged into the upper-shadow baseline. */
+    private final int averagePeriod;
 
-    /** Average upper shadow. */
-    private final transient SMAIndicator averageUpperShadowInd;
-
-    /** Number of bars used to calculate the average upper shadow. */
-    private final int barCount;
-
-    /** Factor used when checking if a candle has a very short upper shadow. */
-    private final Num factor;
+    private final transient Indicator<Num> upperShadow;
 
     /**
-     * Constructor.
+     * Constructor with the default average period.
      *
-     * @param series   the bar series
-     * @param barCount the number of bars used to calculate the average upper shadow
-     * @param factor   the factor used when checking if a candle has a very short
-     *                 upper shadow
+     * @param series the bar series
+     * @since 0.24.2
      */
-    public ThreeWhiteSoldiersIndicator(BarSeries series, int barCount, Num factor) {
-        super(series);
-        this.barCount = barCount;
-        this.upperShadowInd = new UpperShadowIndicator(series);
-        this.averageUpperShadowInd = new SMAIndicator(upperShadowInd, barCount);
-        this.factor = factor;
+    public ThreeWhiteSoldiersIndicator(BarSeries series) {
+        super(CandleThresholdSupport.validateSeriesAndAveragePeriod(series,
+                CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD),
+                CandleThresholdSupport.forSeries(series, CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD));
+        this.averagePeriod = CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD;
+        this.upperShadow = thresholds.upperShadow();
+    }
+
+    @Override
+    int latestBaselineIndex(final int index) {
+        return index - 2;
+    }
+
+    /**
+     * Constructor with a custom average period.
+     *
+     * @param series        the bar series
+     * @param averagePeriod the number of preceding candles averaged into the
+     *                      upper-shadow baseline
+     * @throws IllegalArgumentException if {@code averagePeriod} is below 1 or above
+     *                                  {@link CandleThresholdSupport#MAX_AVERAGE_PERIOD}
+     * @since 0.24.2
+     */
+    public ThreeWhiteSoldiersIndicator(BarSeries series, int averagePeriod) {
+        super(CandleThresholdSupport.validateSeriesAndAveragePeriod(series, averagePeriod),
+                CandleThresholdSupport.forSeries(series, averagePeriod));
+        this.averagePeriod = averagePeriod;
+        this.upperShadow = thresholds.upperShadow();
     }
 
     @Override
     protected Boolean calculate(int index) {
-        if (index < getCountOfUnstableBars()) {
+        BarSeries series = getBarSeries();
+        if (index < getCountOfUnstableBars() || index - 2 < series.getBeginIndex()) {
             return false;
         }
-        if (getBarSeries().getBeginIndex() > (index - 3)) {
-            // We need 4 candles: 1 black, 3 white
+        Bar firstBar = series.getBar(index - 2);
+        Bar secondBar = series.getBar(index - 1);
+        Bar thirdBar = series.getBar(index);
+        if (!Num.isFinite(firstBar.getOpenPrice()) || !Num.isFinite(firstBar.getClosePrice())
+                || !Num.isFinite(secondBar.getOpenPrice()) || !Num.isFinite(secondBar.getClosePrice())
+                || !Num.isFinite(thirdBar.getOpenPrice()) || !Num.isFinite(thirdBar.getClosePrice())) {
             return false;
         }
-        int blackCandleIndex = index - 3;
-        return getBarSeries().getBar(blackCandleIndex).isBearish() && isWhiteSoldier(index - 2, blackCandleIndex)
-                && isWhiteSoldier(index - 1, blackCandleIndex) && isWhiteSoldier(index, blackCandleIndex);
+        if (!firstBar.isBullish() || !secondBar.isBullish() || !thirdBar.isBullish()) {
+            return false;
+        }
+        // Optional OHLC endpoints carry no upper-shadow geometry; the shadow
+        // indicator would dereference a null high before the non-finite guard.
+        if (firstBar.getHighPrice() == null || secondBar.getHighPrice() == null || thirdBar.getHighPrice() == null) {
+            return false;
+        }
+
+        if (!Num.isFinite(upperShadow.getValue(index - 2)) || !Num.isFinite(upperShadow.getValue(index - 1))
+                || !Num.isFinite(upperShadow.getValue(index))) {
+            return false;
+        }
+        return secondBar.getClosePrice().isGreaterThan(firstBar.getClosePrice())
+                && thirdBar.getClosePrice().isGreaterThan(secondBar.getClosePrice())
+                && openWithinBody(secondBar, firstBar) && openWithinBody(thirdBar, secondBar)
+                && thresholds.isShortShadow(index - 2, upperShadow) && thresholds.isShortShadow(index - 1, upperShadow)
+                && thresholds.isShortShadow(index, upperShadow);
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(4, barCount + 2);
+        return averagePeriod + 2;
     }
 
     /**
-     * @param index the bar/candle index
-     * @return true if the bar/candle has a very short upper shadow, false otherwise
+     * @param bar   the candle whose open is checked
+     * @param prior the previous candle whose real body is the containment window
+     * @return true if the open of {@code bar} lies within the real body of
+     *         {@code prior}, endpoints included; signed-zero endpoints are treated
+     *         as equal
      */
-    private boolean hasVeryShortUpperShadow(int index, int blackCandleIndex) {
-        Num currentUpperShadow = upperShadowInd.getValue(index);
-        // We use the black candle index to remove to bias of the previous soldiers
-        Num averageUpperShadow = averageUpperShadowInd.getValue(blackCandleIndex);
-
-        return currentUpperShadow.isLessThan(averageUpperShadow.multipliedBy(factor));
-    }
-
-    /**
-     * @param index the current bar/candle index
-     * @return true if the current bar/candle is growing, false otherwise
-     */
-    private boolean isGrowing(int index) {
-        Bar prevBar = getBarSeries().getBar(index - 1);
-        Bar currBar = getBarSeries().getBar(index);
-        final Num prevOpenPrice = prevBar.getOpenPrice();
-        final Num prevClosePrice = prevBar.getClosePrice();
-        final Num currOpenPrice = currBar.getOpenPrice();
-        final Num currClosePrice = currBar.getClosePrice();
-
-        // Opens within the body of the previous candle
-        return currOpenPrice.isGreaterThan(prevOpenPrice) && currOpenPrice.isLessThan(prevClosePrice)
-        // Closes above the previous close price
-                && currClosePrice.isGreaterThan(prevClosePrice);
-    }
-
-    /**
-     * @param index the current bar/candle index
-     * @return true if the current bar/candle is a white soldier, false otherwise
-     */
-    private boolean isWhiteSoldier(int index, int blackCandleIndex) {
-        Bar prevBar = getBarSeries().getBar(index - 1);
-        Bar currBar = getBarSeries().getBar(index);
-        if (currBar.isBullish()) {
-            if (prevBar.isBearish()) {
-                // First soldier case
-                return hasVeryShortUpperShadow(index, blackCandleIndex)
-                        && currBar.getOpenPrice().isGreaterThan(prevBar.getLowPrice());
-            } else {
-                return hasVeryShortUpperShadow(index, blackCandleIndex) && isGrowing(index);
-            }
-        }
-        return false;
+    private static boolean openWithinBody(Bar bar, Bar prior) {
+        Num open = bar.getOpenPrice();
+        Num priorBodyBottom = prior.getOpenPrice().min(prior.getClosePrice());
+        Num priorBodyTop = prior.getOpenPrice().max(prior.getClosePrice());
+        // Signed zero is normalized in both inclusive bounds: DoubleNum
+        // orders -0.0 below +0.0, so two numerically equal zero endpoints
+        // must still count as containment.
+        return (open.isGreaterThanOrEqual(priorBodyBottom) || (open.isZero() && priorBodyBottom.isZero()))
+                && (open.isLessThanOrEqual(priorBodyTop) || (open.isZero() && priorBodyTop.isZero()));
     }
 }

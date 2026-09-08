@@ -102,7 +102,7 @@ public class ForceIndexIndicator extends CachedIndicator<Num> {
     }
 
     private ForceIndexIndicator(Config config) {
-        super(config.series());
+        super(config.smoothedForceIndexIndicator());
         this.barCount = config.barCount();
         this.closePriceIndicator = config.closePriceIndicator();
         this.volumeIndicator = config.volumeIndicator();

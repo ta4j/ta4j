@@ -217,10 +217,11 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         Num downsideShortfall = zero;
 
         List<Num> returnRates = returns.getRawValues();
-        // Skip the leading placeholder unless the first retained slot carries
-        // a seeded real return; then every materialized return participates.
+        // A finite first raw value is a seeded return; NaN denotes the
+        // leading no-prior-close placeholder.
+        boolean firstSlotSeeded = !returnRates.isEmpty() && !returnRates.get(0).isNaN();
         long firstRateIndex = Math.max(beginIndex,
-                returns.isFirstSlotSeeded() ? snapshotBeginIndex : snapshotBeginIndex + 1);
+                firstSlotSeeded ? snapshotBeginIndex : snapshotBeginIndex + 1);
         for (long i = firstRateIndex; i <= endIndex; i++) {
             Num returnRate = returnRates.get((int) i - snapshotBeginIndex);
             if (returnRate.isNaN()) {

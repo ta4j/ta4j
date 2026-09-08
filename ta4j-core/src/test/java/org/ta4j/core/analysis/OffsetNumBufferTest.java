@@ -3,7 +3,7 @@
  */
 package org.ta4j.core.analysis;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.junit.Assert.assertThrows;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -92,6 +92,12 @@ public class OffsetNumBufferTest extends AbstractIndicatorTest<Indicator<Num>, N
             assertNumEquals(numFactory.numOf(11), buffer.get(i));
         }
         assertNumEquals(numFactory.numOf(10), buffer.get(END));
+    }
+
+    @Test
+    public void rejectsRangesThatCannotBeMaterialized() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new OffsetNumBuffer(0, Integer.MAX_VALUE, numFactory.one(), numFactory.zero()));
     }
 
     private void assertWindowUntouched(OffsetNumBuffer buffer) {
