@@ -6,6 +6,7 @@ package org.ta4j.core;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 import org.ta4j.core.bars.TimeBarBuilderFactory;
 import org.ta4j.core.mocks.MockBarBuilderFactory;
@@ -93,6 +94,50 @@ public final class ConstrainedSeriesSupport {
                     addBar(source.getBar(initialSize));
                 }
                 super.withReadLock(action);
+            }
+        };
+        series.setMaximumBarCount(initialSize);
+        return series;
+    }
+
+    /**
+     * Appends the last close immediately after the next outermost read lease,
+     * reproducing retention advancement between materialization and consumption
+     * when a caller fails to hold one coherent lease.
+     */
+    public static ConcurrentBarSeries rollingSeriesWithAppendAfterReadLock(NumFactory numFactory,
+            AtomicBoolean appendAfterLock, double... closes) {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closes).build();
+        int initialSize = source.getBarCount() - 1;
+        ConcurrentBarSeries series = new ConcurrentBarSeries("rolling-read-lease",
+                new ArrayList<>(source.getBarData().subList(0, initialSize)), 0, initialSize - 1, false, numFactory,
+                new MockBarBuilderFactory()) {
+            private int readDepth;
+
+            @Override
+            public void withReadLock(Runnable action) {
+                readDepth++;
+                try {
+                    super.withReadLock(action);
+                } finally {
+                    appendAfterOutermostLease();
+                }
+            }
+
+            @Override
+            public <T> T withReadLock(Supplier<T> action) {
+                readDepth++;
+                try {
+                    return super.withReadLock(action);
+                } finally {
+                    appendAfterOutermostLease();
+                }
+            }
+
+            private void appendAfterOutermostLease() {
+                if (--readDepth == 0 && appendAfterLock.compareAndSet(true, false)) {
+                    addBar(source.getBar(initialSize));
+                }
             }
         };
         series.setMaximumBarCount(initialSize);

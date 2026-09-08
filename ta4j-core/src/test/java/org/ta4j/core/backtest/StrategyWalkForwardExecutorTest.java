@@ -13,6 +13,7 @@ import static org.junit.Assert.assertTrue;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
@@ -26,6 +27,7 @@ import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.criteria.EnterAndHoldCriterion;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -209,14 +211,42 @@ public class StrategyWalkForwardExecutorTest {
     }
 
     @Test
-    public void resultBorrowsSeriesAndAccessorReturnsIt() {
-        BarSeries series = buildSeries(48);
+    public void resultRetainsStableSeriesForPriceDependentMetricsAfterSourceMutationAndRetentionAdvance() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new MockBarBuilderFactory())
+                .withBars(buildSeries(48).getBarData())
+                .withMaxBarCount(48)
+                .build();
         Strategy strategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
-        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(series);
+        StrategyWalkForwardExecutionResult result = new StrategyWalkForwardExecutor(series).execute(strategy,
+                walkForwardConfig());
+        AnalysisCriterion criterion = EnterAndHoldCriterion.enterAndHoldReturnCriterion();
 
-        StrategyWalkForwardExecutionResult result = executor.execute(strategy, walkForwardConfig());
+        List<Num> expectedCriterionValues = result.criterionValues(criterion);
+        Map<String, Num> expectedCriterionValuesByFold = result.criterionValuesByFold(criterion);
+        Num expectedHoldoutValue = result.holdoutCriterionValue(criterion).orElseThrow();
+        BarSeries resultSeries = result.barSeries();
+        int resultBeginIndex = resultSeries.getBeginIndex();
+        int resultEndIndex = resultSeries.getEndIndex();
+        int resultBarCount = resultSeries.getBarCount();
+        int resultRemovedBarsCount = resultSeries.getRemovedBarsCount();
+        int resultMaximumBarCount = resultSeries.getMaximumBarCount();
 
-        assertSame(series, result.barSeries());
+        int sourceEndIndex = series.getEndIndex();
+        series.getBar(sourceEndIndex).addPrice(numFactory.numOf(1_000));
+        series.setMaximumBarCount(2);
+
+        assertEquals(numFactory.numOf(1_000), series.getBar(sourceEndIndex).getClosePrice());
+        assertEquals(sourceEndIndex - 1, series.getBeginIndex());
+        assertEquals(2, series.getBarCount());
+        assertEquals(resultBeginIndex, result.barSeries().getBeginIndex());
+        assertEquals(resultEndIndex, result.barSeries().getEndIndex());
+        assertEquals(resultBarCount, result.barSeries().getBarCount());
+        assertEquals(resultRemovedBarsCount, result.barSeries().getRemovedBarsCount());
+        assertEquals(resultMaximumBarCount, result.barSeries().getMaximumBarCount());
+        assertEquals(expectedCriterionValues, result.criterionValues(criterion));
+        assertEquals(expectedCriterionValuesByFold, result.criterionValuesByFold(criterion));
+        assertEquals(expectedHoldoutValue, result.holdoutCriterionValue(criterion).orElseThrow());
     }
 
     @Test

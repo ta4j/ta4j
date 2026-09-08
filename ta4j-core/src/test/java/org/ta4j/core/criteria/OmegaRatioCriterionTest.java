@@ -12,14 +12,14 @@ import static org.ta4j.core.criteria.RatioCriterionTestSupport.alwaysInvested;
 import static org.ta4j.core.criteria.RatioCriterionTestSupport.buildDailySeries;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.ConcurrentBarSeriesBuilder;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
@@ -60,6 +60,18 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
         double expected = referenceOmega(returnsFromCloses(closes), threshold);
 
         assertNumEquals(numFactory.numOf(expected), actual, 1e-12);
+    }
+
+    @Test
+    public void skipsUnseededRecordStartPlaceholderAtNonzeroThreshold() {
+        BarSeries series = buildSeries("omega_record_window", new double[] { 100d, 100d, 120d });
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, 1, 2, null, null);
+        tradingRecord.enter(1, series.getBar(1).getClosePrice(), numFactory.one());
+        tradingRecord.exit(2, series.getBar(2).getClosePrice(), numFactory.one());
+
+        Num actual = new OmegaRatioCriterion(0.05d).calculate(series, tradingRecord);
+
+        assertTrue(actual.isNaN());
     }
 
     @Test
@@ -152,6 +164,22 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
         OmegaRatioCriterion criterion = (OmegaRatioCriterion) getCriterion(0d);
 
         assertTrue(criterion.calculate(rolling, record).isNaN());
+    }
+
+    @Test
+    public void keepsReturnsAnchoredWhenRetentionAdvancesAfterMaterialization() {
+        AtomicBoolean appendAfterLock = new AtomicBoolean();
+        ConcurrentBarSeries rolling = ConstrainedSeriesSupport.rollingSeriesWithAppendAfterReadLock(numFactory,
+                appendAfterLock, 100d, 120d, 90d);
+        BaseTradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY, 0, 1, null, null);
+        record.enter(0, rolling.getBar(0).getClosePrice(), numFactory.one());
+        record.exit(1, rolling.getBar(1).getClosePrice(), numFactory.one());
+        appendAfterLock.set(true);
+
+        Num actual = new OmegaRatioCriterion().calculate(rolling, record);
+
+        assertTrue(actual.isNaN());
+        assertEquals(1, rolling.getBeginIndex());
     }
 
     @Test

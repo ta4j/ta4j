@@ -6,6 +6,7 @@ package org.ta4j.core.criteria;
 import java.util.List;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.EquityCurveMode;
@@ -198,7 +199,17 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
-        if (tradingRecord == null || series.isEmpty()) {
+        if (tradingRecord == null) {
+            return zero;
+        }
+        if (series instanceof ConcurrentBarSeries concurrent) {
+            return concurrent.withReadLock(() -> calculateTradingRecord(series, tradingRecord, zero));
+        }
+        return calculateTradingRecord(series, tradingRecord, zero);
+    }
+
+    private Num calculateTradingRecord(BarSeries series, TradingRecord tradingRecord, Num zero) {
+        if (series.isEmpty()) {
             return zero;
         }
 
@@ -212,15 +223,20 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         }
 
         int snapshotBeginIndex = snapshot.getBeginIndex();
-        Num thresholdNum = numFactory.numOf(threshold);
+        Num thresholdNum = series.numFactory().numOf(threshold);
         Num upsideExcess = zero;
         Num downsideShortfall = zero;
 
         List<Num> returnRates = returns.getRawValues();
-        // A finite first raw value is a seeded return; NaN denotes the
-        // leading no-prior-close placeholder.
-        boolean firstSlotSeeded = !returnRates.isEmpty() && !returnRates.get(0).isNaN();
-        long firstRateIndex = Math.max(beginIndex, firstSlotSeeded ? snapshotBeginIndex : snapshotBeginIndex + 1);
+        // A finite first raw value is a seeded return only when the recording
+        // starts at the materialized series boundary. Otherwise the recording
+        // boundary itself is the leading no-prior-close placeholder.
+        boolean firstSlotSeeded = beginIndex == snapshotBeginIndex && !returnRates.isEmpty()
+                && !returnRates.get(0).isNaN();
+        long firstRateIndex = (long) beginIndex + 1;
+        if (firstSlotSeeded) {
+            firstRateIndex = beginIndex;
+        }
         for (long i = firstRateIndex; i <= endIndex; i++) {
             Num returnRate = returnRates.get((int) i - snapshotBeginIndex);
             if (returnRate.isNaN()) {

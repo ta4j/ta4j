@@ -26,7 +26,8 @@ import org.ta4j.core.walkforward.WalkForwardSplit;
 /**
  * Wraps walk-forward execution output for one strategy.
  *
- * @param barSeries     series used for execution
+ * @param barSeries     immutable, offset-preserving snapshot of the series
+ *                      window used for execution
  * @param strategy      evaluated strategy
  * @param config        walk-forward configuration
  * @param folds         fold-level execution results
@@ -44,7 +45,9 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
     /**
      * Creates a validated result with no recorded fold failures.
      *
-     * @param barSeries     series used for execution
+     * @param barSeries     series used for execution; its retained window is copied
+     *                      into an immutable, offset-preserving snapshot before
+     *                      storage
      * @param strategy      evaluated strategy
      * @param config        walk-forward configuration
      * @param folds         fold-level execution results
@@ -59,7 +62,9 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
     /**
      * Creates a validated result.
      *
-     * @param barSeries     series used for execution
+     * @param barSeries     series used for execution; its retained window is copied
+     *                      into an immutable, offset-preserving snapshot before
+     *                      storage
      * @param strategy      evaluated strategy
      * @param config        walk-forward configuration
      * @param folds         fold-level execution results
@@ -67,10 +72,8 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
      * @param foldFailures  per-fold execution failures encountered during the run
      * @since 0.22.4
      */
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The result borrows the caller's live series so "
-            + "fold criteria evaluate the same instance execution observed; folds own all derived state.")
     public StrategyWalkForwardExecutionResult {
-        Objects.requireNonNull(barSeries, "barSeries must not be null");
+        barSeries = BacktestExecutionResult.snapshot(Objects.requireNonNull(barSeries, "barSeries must not be null"));
         strategy = StrategySnapshots.copy(strategy);
         config = Objects.requireNonNull(config, "config");
         folds = List.copyOf(Objects.requireNonNull(folds, "folds"));
@@ -78,8 +81,14 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
         foldFailures = foldFailures == null ? List.of() : List.copyOf(foldFailures);
     }
 
+    /**
+     * Returns the immutable, offset-preserving series snapshot owned by this
+     * result.
+     *
+     * @return the immutable series snapshot captured for this execution
+     */
     @Override
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the borrowed caller series by contract.")
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the immutable, offset-preserving series snapshot owned by this result.")
     public BarSeries barSeries() {
         return barSeries;
     }

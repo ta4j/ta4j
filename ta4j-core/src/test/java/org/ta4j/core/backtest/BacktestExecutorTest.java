@@ -849,7 +849,6 @@ public class BacktestExecutorTest {
                 config);
 
         BarSeries resultSeries = result.barSeries();
-        assertSame(series, resultSeries);
         assertEquals(series.getBarCount(), resultSeries.getBarCount());
         assertFalse(result.folds().isEmpty());
         assertEquals(result.folds().size(), result.runtimeReport().foldRuntimes().size());
