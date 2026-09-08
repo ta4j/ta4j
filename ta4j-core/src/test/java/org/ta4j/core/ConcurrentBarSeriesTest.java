@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.concurrent.BlockingQueue;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -760,6 +761,78 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     }
 
     @Test
+    public void symmetricCompanionMutationsDoNotInvertSeriesWriteLocks() throws Exception {
+        final CompanionMutatingTradeBar firstBar = new CompanionMutatingTradeBar(testBars.get(3));
+        final CompanionMutatingTradeBar secondBar = new CompanionMutatingTradeBar(testBars.get(4));
+        firstBar.setCompanionBar(secondBar);
+        secondBar.setCompanionBar(firstBar);
+        final CoordinatedMutationLockPhases phases = new CoordinatedMutationLockPhases();
+        final ConcurrentBarSeries first = new ConcurrentBarSeries("first-companion-bar", List.of(firstBar), 0, 0, false,
+                numFactory, barBuilderFactory, new CoordinatedMutationReadWriteLock(phases));
+        final ConcurrentBarSeries second = new ConcurrentBarSeries("second-companion-bar", List.of(secondBar), 0, 0,
+                false, numFactory, barBuilderFactory, new CoordinatedMutationReadWriteLock(phases));
+        final long firstTrades = firstBar.getTrades();
+        final long secondTrades = secondBar.getTrades();
+
+        final Future<?> firstTrade = executorService.submit(() -> first.addTrade(numOf(1), numOf(20)));
+        final Future<?> secondTrade = executorService.submit(() -> second.addTrade(numOf(1), numOf(30)));
+        try {
+            firstTrade.get(5, TimeUnit.SECONDS);
+            secondTrade.get(5, TimeUnit.SECONDS);
+        } finally {
+            firstTrade.cancel(true);
+            secondTrade.cancel(true);
+        }
+
+        assertEquals(firstTrades + 1, firstBar.getTrades());
+        assertEquals(secondTrades + 1, secondBar.getTrades());
+        assertEquals(2L, first.getBarHistoryRevision());
+        assertEquals(2L, second.getBarHistoryRevision());
+        assertEquals(0, first.getBarSeriesChangeSnapshot(0).earliestChangedIndex());
+        assertEquals(0, second.getBarSeriesChangeSnapshot(0).earliestChangedIndex());
+    }
+
+    @Test
+    public void nestedCompanionTradeMutationsDoNotBypassDeferral() throws Exception {
+        final Bar firstCompanion = testBars.get(1);
+        final Bar secondCompanion = testBars.get(2);
+        final CompanionForwardingBar firstIntermediate = new CompanionForwardingBar(testBars.get(3), secondCompanion,
+                CompanionMutation.PRICE);
+        final CompanionForwardingBar secondIntermediate = new CompanionForwardingBar(testBars.get(4), firstCompanion,
+                CompanionMutation.PRICE);
+        final CompanionForwardingBar firstTerminal = new CompanionForwardingBar(testBars.get(3), firstIntermediate,
+                CompanionMutation.TRADE);
+        final CompanionForwardingBar secondTerminal = new CompanionForwardingBar(testBars.get(4), secondIntermediate,
+                CompanionMutation.TRADE);
+        final CoordinatedMutationLockPhases phases = new CoordinatedMutationLockPhases();
+        final ConcurrentBarSeries first = new ConcurrentBarSeries("first-nested-companion",
+                List.of(firstCompanion, firstTerminal), 0, 1, false, numFactory, barBuilderFactory,
+                new CoordinatedMutationReadWriteLock(phases));
+        final ConcurrentBarSeries second = new ConcurrentBarSeries("second-nested-companion",
+                List.of(secondCompanion, secondTerminal), 0, 1, false, numFactory, barBuilderFactory,
+                new CoordinatedMutationReadWriteLock(phases));
+        final long firstTrades = firstTerminal.getTrades();
+        final long secondTrades = secondTerminal.getTrades();
+
+        final Future<?> firstTrade = executorService.submit(() -> first.addTrade(numOf(1), numOf(20)));
+        final Future<?> secondTrade = executorService.submit(() -> second.addTrade(numOf(1), numOf(30)));
+        try {
+            firstTrade.get(5, TimeUnit.SECONDS);
+            secondTrade.get(5, TimeUnit.SECONDS);
+        } finally {
+            firstTrade.cancel(true);
+            secondTrade.cancel(true);
+        }
+
+        assertEquals(firstTrades + 1, firstTerminal.getTrades());
+        assertEquals(secondTrades + 1, secondTerminal.getTrades());
+        assertEquals(2L, first.getBarHistoryRevision());
+        assertEquals(2L, second.getBarHistoryRevision());
+        assertEquals(0, first.getBarSeriesChangeSnapshot(0).earliestChangedIndex());
+        assertEquals(0, second.getBarSeriesChangeSnapshot(0).earliestChangedIndex());
+    }
+
+    @Test
     public void mutationFailureStillInvalidatesEveryRetainingSeries() {
         final Duration period = Duration.ofMinutes(1);
         final Instant start = Instant.parse("2024-05-01T00:00:00Z");
@@ -781,6 +854,46 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         assertNumEquals(20, bar.getClosePrice());
         assertEquals(1L, first.getBarHistoryRevision());
         assertEquals(1L, second.getBarHistoryRevision());
+    }
+
+    @Test
+    public void nestedMutationFailurePublishesCompanionAndRestoresDeferralScope() {
+        final Duration period = Duration.ofMinutes(1);
+        final Instant start = Instant.parse("2024-05-01T00:00:00Z");
+        final AtomicBoolean failFirstCompanionMutation = new AtomicBoolean(true);
+        final BaseBar companion = new BaseBar(period, start, start.plus(period), numOf(10), numOf(10), numOf(10),
+                numOf(10), numFactory.zero(), numFactory.zero(), 0) {
+            @Override
+            public void addPrice(final Num price) {
+                super.addPrice(price);
+                if (failFirstCompanionMutation.getAndSet(false)) {
+                    throw new IllegalStateException("Custom companion mutation failed after updating the bar");
+                }
+            }
+        };
+        final Instant terminalStart = start.plus(period);
+        final BaseBar terminal = new BaseBar(period, terminalStart, terminalStart.plus(period), numOf(10), numOf(10),
+                numOf(10), numOf(10), numFactory.zero(), numFactory.zero(), 0) {
+            @Override
+            public void addTrade(final Num tradeVolume, final Num tradePrice) {
+                companion.addPrice(tradePrice);
+                super.addTrade(tradeVolume, tradePrice);
+            }
+        };
+        final ConcurrentBarSeries first = new ConcurrentBarSeries("first-nested-failed-mutation", List.of(terminal), 0,
+                0, false, numFactory, barBuilderFactory);
+        final ConcurrentBarSeries second = new ConcurrentBarSeries("second-nested-failed-mutation", List.of(companion),
+                0, 0, false, numFactory, barBuilderFactory);
+
+        assertThrows(IllegalStateException.class, () -> first.addTrade(numOf(1), numOf(20)));
+
+        assertNumEquals(20, companion.getClosePrice());
+        assertEquals(1L, first.getBarHistoryRevision());
+        assertEquals(1L, second.getBarHistoryRevision());
+
+        companion.addPrice(numOf(30));
+
+        assertEquals(2L, second.getBarHistoryRevision());
     }
 
     @Test
@@ -2737,7 +2850,11 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
         private static final long serialVersionUID = 6157293408821547093L;
 
-        private final Bar companionBar;
+        private Bar companionBar;
+
+        private CompanionMutatingTradeBar(final Bar source) {
+            this(source, null);
+        }
 
         private CompanionMutatingTradeBar(final Bar source, final Bar companionBar) {
             super(source.getTimePeriod(), source.getBeginTime().plus(Duration.ofDays(7)),
@@ -2747,10 +2864,55 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
             this.companionBar = companionBar;
         }
 
+        private void setCompanionBar(final Bar companionBar) {
+            if (this.companionBar != null) {
+                throw new IllegalStateException("Companion bar is already configured");
+            }
+            this.companionBar = Objects.requireNonNull(companionBar, "companionBar");
+        }
+
         @Override
         public void addTrade(final Num tradeVolume, final Num tradePrice) {
-            companionBar.addPrice(tradePrice);
+            Objects.requireNonNull(companionBar, "companionBar").addPrice(tradePrice);
             super.addTrade(tradeVolume, tradePrice);
+        }
+    }
+
+    private enum CompanionMutation {
+        PRICE, TRADE
+    }
+
+    private static final class CompanionForwardingBar extends BaseBar {
+
+        private static final long serialVersionUID = -8504376430039869077L;
+
+        private final Bar companionBar;
+        private final CompanionMutation companionMutation;
+
+        private CompanionForwardingBar(final Bar source, final Bar companionBar,
+                final CompanionMutation companionMutation) {
+            super(source.getTimePeriod(), source.getBeginTime().plus(Duration.ofDays(7)),
+                    source.getEndTime().plus(Duration.ofDays(7)), source.getOpenPrice(), source.getHighPrice(),
+                    source.getLowPrice(), source.getClosePrice(), source.getVolume(), source.getAmount(),
+                    source.getTrades());
+            this.companionBar = Objects.requireNonNull(companionBar, "companionBar");
+            this.companionMutation = Objects.requireNonNull(companionMutation, "companionMutation");
+        }
+
+        @Override
+        public void addTrade(final Num tradeVolume, final Num tradePrice) {
+            if (companionMutation == CompanionMutation.TRADE) {
+                companionBar.addTrade(tradeVolume, tradePrice);
+            }
+            super.addTrade(tradeVolume, tradePrice);
+        }
+
+        @Override
+        public void addPrice(final Num price) {
+            if (companionMutation == CompanionMutation.PRICE) {
+                companionBar.addPrice(price);
+            }
+            super.addPrice(price);
         }
     }
 

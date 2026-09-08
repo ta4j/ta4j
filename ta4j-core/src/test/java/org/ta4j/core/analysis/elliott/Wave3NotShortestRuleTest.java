@@ -40,6 +40,14 @@ class Wave3NotShortestRuleTest {
     }
 
     @Test
+    void returnsUnavailableWhenFiniteDoubleEndpointsOverflowLegMagnitudes() {
+        final RuleEvidence evidence = rule
+                .evaluate(candidate(WaveDirection.BULLISH, -1.7e308, 1.7e308, -1.0e308, 1.0e308, -1.5e308, 1.5e308));
+
+        assertThat(evidence.state()).isEqualTo(EvidenceState.UNAVAILABLE);
+    }
+
+    @Test
     void mirrorsBullishAndBearishStates() {
         final RuleEvidence bullish = rule.evaluate(candidate(WaveDirection.BULLISH, 100, 130, 120, 125, 110, 150));
         final RuleEvidence bearish = rule.evaluate(candidate(WaveDirection.BEARISH, 100, 70, 80, 75, 90, 50));

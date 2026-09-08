@@ -475,7 +475,7 @@ public class BaseBarSeries implements BarSeries {
             lastBar.addTrade(tradeVolume, tradePrice);
             publication = null;
         }
-        if (publication == null && getBarHistoryRevision() == revisionBeforeMutation) {
+        if (getBarHistoryRevision() == revisionBeforeMutation) {
             recordBarHistoryChange(this.seriesEndIndex);
         }
         return publication;
@@ -491,7 +491,7 @@ public class BaseBarSeries implements BarSeries {
             lastBar.addPrice(price);
             publication = null;
         }
-        if (publication == null && getBarHistoryRevision() == revisionBeforeMutation) {
+        if (getBarHistoryRevision() == revisionBeforeMutation) {
             recordBarHistoryChange(this.seriesEndIndex);
         }
         return publication;

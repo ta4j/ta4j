@@ -45,38 +45,115 @@ public class BaseBar implements Bar {
         private final List<RetainedSeriesMutation> mutations;
         private final int publicationCount;
         private final Throwable failure;
+        private final List<RetainedBarMutationPublication> nestedPublications;
 
         private RetainedBarMutationPublication(final BaseBar bar, final List<RetainedSeriesMutation> mutations,
                 final int publicationCount, final Throwable failure) {
+            this(bar, mutations, publicationCount, failure, List.of());
+        }
+
+        private RetainedBarMutationPublication(final BaseBar bar, final List<RetainedSeriesMutation> mutations,
+                final int publicationCount, final Throwable failure,
+                final List<RetainedBarMutationPublication> nestedPublications) {
             this.bar = bar;
             this.mutations = mutations;
             this.publicationCount = publicationCount;
             this.failure = failure;
+            this.nestedPublications = List.copyOf(nestedPublications);
+        }
+
+        private static RetainedBarMutationPublication combine(final RetainedBarMutationPublication primary,
+                final List<RetainedBarMutationPublication> nestedPublications) {
+            if (nestedPublications.isEmpty()) {
+                return primary;
+            }
+            if (primary == null) {
+                return new RetainedBarMutationPublication(null, List.of(), 0, null, nestedPublications);
+            }
+            return new RetainedBarMutationPublication(primary.bar, primary.mutations, primary.publicationCount,
+                    primary.failure, nestedPublications);
         }
 
         void publish() {
-            for (int publication = 0; publication < publicationCount; publication++) {
-                for (RetainedSeriesMutation mutation : mutations) {
-                    mutation.series().retainedBarMutated(bar, mutation.index());
+            Throwable publicationFailure = mergeFailures(this.failure, publishCallbacks());
+            for (RetainedBarMutationPublication nestedPublication : nestedPublications) {
+                try {
+                    nestedPublication.publish();
+                } catch (RuntimeException | Error cause) {
+                    publicationFailure = mergeFailures(publicationFailure, cause);
                 }
             }
-            if (failure instanceof RuntimeException exception) {
+            if (publicationFailure instanceof RuntimeException exception) {
                 throw exception;
             }
-            if (failure instanceof Error error) {
+            if (publicationFailure instanceof Error error) {
                 throw error;
             }
+        }
+
+        private Throwable publishCallbacks() {
+            Throwable publicationFailure = null;
+            for (int publication = 0; publication < publicationCount; publication++) {
+                for (RetainedSeriesMutation mutation : mutations) {
+                    try {
+                        mutation.series().retainedBarMutated(bar, mutation.index());
+                    } catch (RuntimeException | Error cause) {
+                        publicationFailure = mergeFailures(publicationFailure, cause);
+                    }
+                }
+            }
+            return publicationFailure;
+        }
+
+        private static Throwable mergeFailures(final Throwable first, final Throwable second) {
+            if (first == null) {
+                return second;
+            }
+            if (second == null) {
+                return first;
+            }
+            if (first != second) {
+                first.addSuppressed(second);
+            }
+            return first;
         }
     }
 
     private static final class MutationState {
 
         private final BaseBar bar;
+        private final MutationState nestedPublicationSink;
+        private List<RetainedBarMutationPublication> nestedPublications;
         private int suppressionDepth;
         private int publicationCount;
 
-        private MutationState(final BaseBar bar) {
+        private MutationState(final BaseBar bar, final boolean defersNestedPublication) {
             this.bar = bar;
+            this.nestedPublicationSink = defersNestedPublication ? this : null;
+        }
+
+        private MutationState(final BaseBar bar, final MutationState enclosingState) {
+            this.bar = bar;
+            this.nestedPublicationSink = enclosingState == null ? null : enclosingState.nestedPublicationSink;
+        }
+
+        private boolean defersNestedPublication() {
+            return nestedPublicationSink != null;
+        }
+
+        private void deferNestedPublication(final RetainedBarMutationPublication publication) {
+            if (nestedPublicationSink != this) {
+                nestedPublicationSink.deferNestedPublication(publication);
+                return;
+            }
+            if (nestedPublications == null) {
+                nestedPublications = new ArrayList<>();
+            }
+            nestedPublications.add(publication);
+        }
+
+        private List<RetainedBarMutationPublication> nestedPublications() {
+            return nestedPublications == null ? List.of() : nestedPublications;
         }
     }
 
@@ -421,7 +498,7 @@ public class BaseBar implements Bar {
     final synchronized RetainedBarMutationPublication deferAddTrade(final BaseBarSeries origin, final Num tradeVolume,
             final Num tradePrice) {
         final MutationState previousState = MUTATION_STATE.get();
-        final MutationState deferredState = new MutationState(this);
+        final MutationState deferredState = new MutationState(this, true);
         Throwable failure = null;
         MUTATION_STATE.set(deferredState);
         try {
@@ -435,14 +512,12 @@ public class BaseBar implements Bar {
                 MUTATION_STATE.set(previousState);
             }
         }
-        return deferredState.publicationCount > 0 || failure != null
-                ? captureRetainedBarMutation(deferredState.publicationCount, origin, failure)
-                : null;
+        return completeDeferredMutation(previousState, deferredState, origin, failure);
     }
 
     final synchronized RetainedBarMutationPublication deferAddPrice(final BaseBarSeries origin, final Num price) {
         final MutationState previousState = MUTATION_STATE.get();
-        final MutationState deferredState = new MutationState(this);
+        final MutationState deferredState = new MutationState(this, true);
         Throwable failure = null;
         MUTATION_STATE.set(deferredState);
         try {
@@ -456,9 +531,24 @@ public class BaseBar implements Bar {
                 MUTATION_STATE.set(previousState);
             }
         }
-        return deferredState.publicationCount > 0 || failure != null
-                ? captureRetainedBarMutation(deferredState.publicationCount, origin, failure)
+        return completeDeferredMutation(previousState, deferredState, origin, failure);
+    }
+
+    private RetainedBarMutationPublication completeDeferredMutation(final MutationState previousState,
+            final MutationState deferredState, final BaseBarSeries origin, final Throwable failure) {
+        final boolean nestedMutation = previousState != null && previousState.defersNestedPublication();
+        final RetainedBarMutationPublication primaryPublication = deferredState.publicationCount > 0 || failure != null
+                ? captureRetainedBarMutation(deferredState.publicationCount, nestedMutation ? null : origin, failure)
                 : null;
+        final RetainedBarMutationPublication publication = RetainedBarMutationPublication.combine(primaryPublication,
+                deferredState.nestedPublications());
+        if (nestedMutation) {
+            if (publication != null) {
+                previousState.deferNestedPublication(publication);
+            }
+            return null;
+        }
+        return publication;
     }
 
     private MutationState currentMutationState() {
@@ -477,7 +567,7 @@ public class BaseBar implements Bar {
         MutationState state = currentMutationState();
         final boolean temporaryState = state == null;
         if (temporaryState) {
-            state = new MutationState(this);
+            state = new MutationState(this, previousState);
             MUTATION_STATE.set(state);
         }
         state.suppressionDepth++;
@@ -570,6 +660,11 @@ public class BaseBar implements Bar {
             state.publicationCount++;
             return;
         }
+        final MutationState deferredState = MUTATION_STATE.get();
+        if (deferredState != null && deferredState.defersNestedPublication()) {
+            deferredState.deferNestedPublication(captureRetainedBarMutation(1, null, null));
+            return;
+        }
         captureRetainedBarMutation(1, null, null).publish();
     }
 
@@ -586,19 +681,29 @@ public class BaseBar implements Bar {
                 }
             });
         }
-        // The originating series still holds its write lock. Publish its revision
-        // before unlock so readers never see a changed bar with an old cache key.
-        for (int index = mutations.size() - 1; index >= 0; index--) {
-            final RetainedSeriesMutation mutation = mutations.get(index);
-            if (mutation.series() == origin) {
-                for (int publication = 0; publication < publicationCount; publication++) {
-                    origin.retainedBarMutated(this, mutation.index());
+        // The top-level originating series still holds its write lock. Publish its
+        // revision before unlock so readers never see a changed terminal bar with
+        // an old cache key. Nested mutations pass a null origin and publish all
+        // callbacks after the owning operation releases its lock.
+        Throwable publicationFailure = failure;
+        if (origin != null) {
+            for (int index = mutations.size() - 1; index >= 0; index--) {
+                final RetainedSeriesMutation mutation = mutations.get(index);
+                if (mutation.series() == origin) {
+                    for (int publication = 0; publication < publicationCount; publication++) {
+                        try {
+                            origin.retainedBarMutated(this, mutation.index());
+                        } catch (RuntimeException | Error cause) {
+                            publicationFailure = RetainedBarMutationPublication.mergeFailures(publicationFailure,
+                                    cause);
+                        }
+                    }
+                    mutations.remove(index);
+                    break;
                 }
-                mutations.remove(index);
-                break;
             }
         }
-        return new RetainedBarMutationPublication(this, mutations, publicationCount, failure);
+        return new RetainedBarMutationPublication(this, mutations, publicationCount, publicationFailure);
     }
 
     /**

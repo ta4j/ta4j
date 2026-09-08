@@ -3,8 +3,9 @@
  */
 package org.ta4j.core.analysis.elliott;
 
-import org.ta4j.core.num.Num;
 import java.util.List;
+
+import org.ta4j.core.num.Num;
 
 /**
  * Rejects a motive whose third wave is strictly shorter than waves 1 and 5.
@@ -26,23 +27,26 @@ final class Wave3NotShortestRule implements RelationshipRule {
                     "wave 3 length comparison awaits the complete five-wave candidate");
         }
 
-        // Magnitudes compared in Num domain; doubleValue only for the
-        // observation strings below.
-        final Num wave1Leg = candidate.legSize(0);
-        final Num wave3Leg = candidate.legSize(2);
-        final Num wave5Leg = candidate.legSize(4);
-        if (magnitude(wave3Leg).isLessThan(magnitude(wave1Leg))
-                && magnitude(wave3Leg).isLessThan(magnitude(wave5Leg))) {
-            return RuleEvidence.fail(id(), observations(wave1Leg, wave3Leg, wave5Leg),
+        // Magnitudes compared in Num domain; primitive-backed overflow must not
+        // collapse distinct legs into an indeterminate ordering.
+        final Num wave1Magnitude = magnitude(candidate.legSize(0));
+        final Num wave3Magnitude = magnitude(candidate.legSize(2));
+        final Num wave5Magnitude = magnitude(candidate.legSize(4));
+        if (!Num.isFinite(wave1Magnitude) || !Num.isFinite(wave3Magnitude) || !Num.isFinite(wave5Magnitude)) {
+            return RuleEvidence.unavailable(id(), "wave 3 length comparison requires finite leg magnitudes");
+        }
+        if (wave3Magnitude.isLessThan(wave1Magnitude) && wave3Magnitude.isLessThan(wave5Magnitude)) {
+            return RuleEvidence.fail(id(), observations(wave1Magnitude, wave3Magnitude, wave5Magnitude),
                     "wave 3 is strictly the shortest motive wave");
         }
-        return RuleEvidence.pass(id(), observations(wave1Leg, wave3Leg, wave5Leg),
+        return RuleEvidence.pass(id(), observations(wave1Magnitude, wave3Magnitude, wave5Magnitude),
                 "wave 3 is not strictly the shortest motive wave");
     }
 
-    private static List<String> observations(final Num wave1Leg, final Num wave3Leg, final Num wave5Leg) {
-        return List.of("wave 1 magnitude=" + magnitude(wave1Leg), "wave 3 magnitude=" + magnitude(wave3Leg),
-                "wave 5 magnitude=" + magnitude(wave5Leg));
+    private static List<String> observations(final Num wave1Magnitude, final Num wave3Magnitude,
+            final Num wave5Magnitude) {
+        return List.of("wave 1 magnitude=" + wave1Magnitude, "wave 3 magnitude=" + wave3Magnitude,
+                "wave 5 magnitude=" + wave5Magnitude);
     }
 
     private static Num magnitude(final Num leg) {
