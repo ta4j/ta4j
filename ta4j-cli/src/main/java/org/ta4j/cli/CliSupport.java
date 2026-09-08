@@ -36,6 +36,7 @@ import org.ta4j.core.backtest.TradeOnNextOpenModel;
 import org.ta4j.core.backtest.StrategyWalkForwardExecutionResult;
 import org.ta4j.core.criteria.SharpeRatioCriterion;
 import org.ta4j.core.criteria.commissions.TotalFeesCriterion;
+import org.ta4j.core.criteria.drawdown.MonteCarloMaximumDrawdownCriterion;
 import org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
@@ -64,6 +65,7 @@ import org.ta4j.core.named.NamedAssetKind;
 import org.ta4j.core.named.NamedAssetRegistry;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.indicators.statistics.SimpleLinearRegressionIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.indicators.statistics.VarianceIndicator;
 import org.ta4j.core.reports.PositionStatsReport;
@@ -163,21 +165,10 @@ final class CliSupport {
     static final long MAX_FORECAST_HORIZON = 10_000_000L;
     static final long MAX_FORECAST_BAR_COUNT = 1_000_000L;
     /**
-     * Upper bound on a JSON market-data file before it is read into memory.
-     * {@link JsonFileBarSeriesDataSource} materializes the whole file with
-     * {@code Files.readAllBytes} and parses it into an in-memory document, so an
-     * oversized file must be rejected by size ahead of that allocation rather than
-     * exhausting the JVM heap.
+     * Bound file and stdin market data before JSON document or CSV bar-series
+     * materialization can exhaust the CLI heap or temporary storage.
      */
-    static final long MAX_JSON_DATA_FILE_BYTES = 512L * 1024 * 1024;
-
-    /**
-     * Upper bound on a CSV market-data file before it is read into memory.
-     * {@link CsvFileBarSeriesDataSource} streams every row into a growing
-     * {@link BarSeries}, so an oversized file would exhaust the CLI heap before any
-     * strategy or forecast work ceiling could be applied.
-     */
-    static final long MAX_CSV_DATA_FILE_BYTES = 512L * 1024 * 1024;
+    static final long MAX_DATA_FILE_BYTES = 512L * 1024 * 1024;
 
     private static final Gson GSON = new GsonBuilder().disableHtmlEscaping()
             .serializeNulls()
@@ -208,7 +199,7 @@ final class CliSupport {
             Path temporaryFile = null;
             try {
                 temporaryFile = Files.createTempFile("ta4j-cli-stdin-", "." + normalizedFormat);
-                Files.copy(input, temporaryFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                copyBoundedInput(input, temporaryFile, MAX_DATA_FILE_BYTES);
                 return loadSeries(temporaryFile.toString(), null, System.in, timeframeToken, fromDateToken,
                         toDateToken);
             } catch (IOException exception) {
@@ -228,10 +219,10 @@ final class CliSupport {
         BarSeries loadedSeries;
         String lowerCasePath = dataFile.toLowerCase(Locale.ROOT);
         if (lowerCasePath.endsWith(".csv")) {
-            requireBoundedCsvDataFile(normalizedPath);
+            requireBoundedDataFile(normalizedPath);
             loadedSeries = CsvFileBarSeriesDataSource.loadCsvSeries(normalizedPath);
         } else if (lowerCasePath.endsWith(".json")) {
-            requireBoundedJsonDataFile(normalizedPath);
+            requireBoundedDataFile(normalizedPath);
             loadedSeries = JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(normalizedPath);
         } else {
             throw new IllegalArgumentException("Unsupported data file format for " + dataFile + ". Use .csv or .json.");
@@ -280,6 +271,21 @@ final class CliSupport {
             throw new IllegalArgumentException("The selected date/timeframe filter produced an empty series.");
         }
         return effectiveSeries;
+    }
+
+    static void copyBoundedInput(InputStream input, Path target, long byteLimit) throws IOException {
+        try (java.io.OutputStream output = Files.newOutputStream(target)) {
+            byte[] buffer = new byte[8192];
+            long copied = 0;
+            int count;
+            while ((count = input.read(buffer, 0, (int) Math.min(buffer.length, byteLimit - copied + 1))) != -1) {
+                if (count > byteLimit - copied) {
+                    throw new IllegalArgumentException("Bar data from stdin exceeds " + byteLimit + " bytes.");
+                }
+                output.write(buffer, 0, count);
+                copied += count;
+            }
+        }
     }
 
     static void requireFiniteBars(BarSeries series, String dataFile) {
@@ -334,35 +340,17 @@ final class CliSupport {
         }
     }
 
-    private static void requireBoundedJsonDataFile(String normalizedPath) {
+    private static void requireBoundedDataFile(String normalizedPath) {
         long bytes;
         try {
             bytes = Files.size(Path.of(normalizedPath));
         } catch (IOException ex) {
-            // A missing or unreadable file is reported by the existing load path
-            // with the io category and exit code 74, so defer to that handling
-            // rather than masking it with a size error.
+            // Defer missing/unreadable files to the load path's IO category.
             return;
         }
-        if (bytes > MAX_JSON_DATA_FILE_BYTES) {
+        if (bytes > MAX_DATA_FILE_BYTES) {
             throw new IllegalArgumentException("Bar data file " + normalizedPath + " is " + bytes + " bytes; at most "
-                    + MAX_JSON_DATA_FILE_BYTES + " bytes are supported.");
-        }
-    }
-
-    private static void requireBoundedCsvDataFile(String normalizedPath) {
-        long bytes;
-        try {
-            bytes = Files.size(Path.of(normalizedPath));
-        } catch (IOException ex) {
-            // A missing or unreadable file is reported by the existing load path
-            // with the io category and exit code 74, so defer to that handling
-            // rather than masking it with a size error.
-            return;
-        }
-        if (bytes > MAX_CSV_DATA_FILE_BYTES) {
-            throw new IllegalArgumentException("Bar data file " + normalizedPath + " is " + bytes + " bytes; at most "
-                    + MAX_CSV_DATA_FILE_BYTES + " bytes are supported.");
+                    + MAX_DATA_FILE_BYTES + " bytes are supported.");
         }
     }
 
@@ -614,6 +602,27 @@ final class CliSupport {
         }
     }
 
+    static void requireBoundedSweepCriterionWork(List<CriterionSpec> criteria, long candidateCount, long bars,
+            int topK) {
+        BigInteger work = BigInteger.ZERO;
+        for (int index = 0; index < criteria.size(); index++) {
+            if (criteria.get(index).criterion() instanceof MonteCarloMaximumDrawdownCriterion monteCarlo) {
+                long evaluations = Math.min(candidateCount, topK) + (index == 0 ? candidateCount : 0L);
+                // Sampling is with replacement. Bound each selected block by the
+                // full history, and the default observed trade count by bar count.
+                long blocks = monteCarlo.getPathBlocks() == null ? bars : Math.max(0, monteCarlo.getPathBlocks());
+                work = work.add(BigInteger.valueOf(evaluations)
+                        .multiply(BigInteger.valueOf(Math.max(0, monteCarlo.getIterations())))
+                        .multiply(BigInteger.valueOf(blocks))
+                        .multiply(BigInteger.valueOf(bars)));
+            }
+        }
+        if (work.compareTo(BigInteger.valueOf(MAX_SWEEP_WORK)) > 0) {
+            throw new IllegalArgumentException("Sweep Monte Carlo criteria require up to " + work
+                    + " sampled-bar evaluations; at most " + MAX_SWEEP_WORK + " are supported.");
+        }
+    }
+
     private static long sumRollingWindowBarCounts(Indicator<?> indicator, Set<Indicator<?>> visited) {
         if (!visited.add(indicator)) {
             return 0L;
@@ -625,6 +634,8 @@ final class CliSupport {
             // A non-positive window normalizes the internal variance window to one,
             // so a negative serialized value must never cancel a positive one.
             barCounts = Math.max(1L, deviationIndicator.getBarCount());
+        } else if (indicator instanceof SimpleLinearRegressionIndicator regression) {
+            barCounts = 2L * Math.max(0, regression.getBarCount());
         }
         for (Indicator<?> dependency : indicator.getDependencies()) {
             barCounts = Math.addExact(barCounts, sumRollingWindowBarCounts(dependency, visited));
@@ -1124,11 +1135,12 @@ final class CliSupport {
         long baseWork;
         String description;
         if ("monte-carlo".equals(projectionModel)) {
-            description = "--samples x --horizon";
+            description = "--lookback-bars + --samples x --horizon";
             try {
-                baseWork = Math.multiplyExact(request.samples(), (long) request.horizon());
+                baseWork = Math.addExact(request.lookbackBars(),
+                        Math.multiplyExact(request.samples(), (long) request.horizon()));
             } catch (ArithmeticException ex) {
-                throw new IllegalArgumentException("--samples x --horizon is too large.", ex);
+                throw new IllegalArgumentException(description + " is too large.", ex);
             }
         } else {
             description = "--horizon x --lookback-bars";

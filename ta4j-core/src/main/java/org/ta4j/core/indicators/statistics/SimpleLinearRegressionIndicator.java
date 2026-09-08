@@ -61,6 +61,16 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
         this.type = type;
     }
 
+    /**
+     * Returns the configured regression window for execution work budgeting.
+     *
+     * @return the configured number of bars
+     * @since 0.25.1
+     */
+    public int getBarCount() {
+        return barCount;
+    }
+
     @Override
     protected Num calculate(int index) {
         final int startIndex = Math.max(Math.max(0, getBarSeries().getBeginIndex()), index - barCount + 1);

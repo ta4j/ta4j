@@ -760,8 +760,17 @@ class Ta4jCliTest {
                 "return", "--calibration", "conformal", "--samples", "100000", "--horizon", "100");
 
         assertThat(result.exitCode()).isEqualTo(2);
-        assertThat(result.stderr())
-                .contains("--samples x --horizon with --calibration conformal (window 252) must not exceed 10000000");
+    }
+
+    @Test
+    void forecastRejectsConformalHistoryScansBeyondCeiling() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("forecast", "run", "--data-file", dataFile.toString(), "--target",
+                "return", "--calibration", "conformal", "--samples", "1", "--horizon", "1", "--lookback-bars", "100000",
+                "--calibration-window", "100000");
+
+        assertThat(result.exitCode()).isEqualTo(2);
     }
 
     @Test

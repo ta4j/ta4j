@@ -31,6 +31,7 @@ import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedBooleanIndicator;
+import org.ta4j.core.indicators.statistics.SimpleLinearRegressionIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.indicators.statistics.VarianceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -48,6 +49,7 @@ import org.ta4j.core.walkforward.WalkForwardRuntimeReport;
 import ta4jexamples.rules.RsiThresholdRule;
 import ta4jexamples.strategies.DayOfWeekStrategy;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
@@ -68,6 +70,7 @@ import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Unit tests for {@link CliSupport}.
@@ -262,6 +265,40 @@ class CliSupportTest {
         assertThatThrownBy(() -> CliSupport.requireBoundedIndicatorWindowWork(deviation, series.getBarCount()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("rolling-window iterations");
+    }
+
+    @Test
+    void regressionDependenciesCountBothWindowScans() {
+        BarSeries series = syntheticSeries(3);
+        Indicator<Num> nested = new EMAIndicator(
+                new SimpleLinearRegressionIndicator(new ClosePriceIndicator(series), 50_000), 2);
+
+        CliSupport.requireBoundedIndicatorWindowWork(nested, 1_000);
+        assertThrows(IllegalArgumentException.class, () -> CliSupport.requireBoundedIndicatorWindowWork(nested, 1_001));
+    }
+
+    @Test
+    void sweepBudgetIncludesMonteCarloRankingPaths() {
+        List<CliSupport.CriterionSpec> criteria = CliSupport.resolveCriteria(
+                List.of("org.ta4j.core.criteria.drawdown.MonteCarloMaximumDrawdownCriterion"),
+                CliSupport.DEFAULT_SWEEP_CRITERIA);
+
+        CliSupport.requireBoundedSweepCriterionWork(criteria, 2, 10, 1);
+        assertThrows(IllegalArgumentException.class,
+                () -> CliSupport.requireBoundedSweepCriterionWork(criteria, 2, 100, 1));
+    }
+
+    @Test
+    void stdinCopyStopsAtByteCeilingWithoutDrainingInput() throws IOException {
+        Path target = tempDir.resolve("bounded-input.csv");
+        ByteArrayInputStream input = new ByteArrayInputStream(new byte[32]);
+
+        assertThrows(IllegalArgumentException.class, () -> CliSupport.copyBoundedInput(input, target, 4));
+
+        assertThat(input.available()).isEqualTo(27);
+        assertThat(Files.size(target)).isLessThanOrEqualTo(4L);
+        CliSupport.copyBoundedInput(new ByteArrayInputStream(new byte[] { 1, 2, 3, 4 }), target, 4);
+        assertThat(Files.readAllBytes(target)).containsExactly(1, 2, 3, 4);
     }
 
     @Test

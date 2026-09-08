@@ -767,6 +767,8 @@ final class CliCommands {
                     criteria.criteriaFiles, artifacts.output, artifacts.chart));
             BarSeries series = data.loadSeries(in());
             List<Strategy> strategies = CliSupport.buildSweepStrategies(params, paramGrids, parsedUnstableBars, series);
+            CliSupport.requireBoundedSweepCriterionWork(resolvedCriteria, strategies.size(), series.getBarCount(),
+                    topK);
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
                     execution.borrowRate, execution.borrowSide);
             CliSupport.PositionSizingSpec positionSizing = execution.resolvePositionSizing(series);

@@ -141,9 +141,9 @@
                                         <extraJar>${ta4j.native.resourceJar}</extraJar>
                                     </extraJars>
                                     <artifactSet>
-                                        <excludes>
-                                            <exclude>*:*</exclude>
-                                        </excludes>
+                                        <includes>
+                                            <include>org.ta4j:ta4j-acceleration</include>
+                                        </includes>
                                     </artifactSet>
                                     <transformers>
                                         <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
@@ -242,9 +242,9 @@
                                         <extraJar>${ta4j.native.resourceJar}</extraJar>
                                     </extraJars>
                                     <artifactSet>
-                                        <excludes>
-                                            <exclude>*:*</exclude>
-                                        </excludes>
+                                        <includes>
+                                            <include>org.ta4j:ta4j-acceleration</include>
+                                        </includes>
                                     </artifactSet>
                                     <transformers>
                                         <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
@@ -344,9 +344,9 @@
                                         <extraJar>${ta4j.native.resourceJar}</extraJar>
                                     </extraJars>
                                     <artifactSet>
-                                        <excludes>
-                                            <exclude>*:*</exclude>
-                                        </excludes>
+                                        <includes>
+                                            <include>org.ta4j:ta4j-acceleration</include>
+                                        </includes>
                                     </artifactSet>
                                     <transformers>
                                         <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
@@ -446,9 +446,9 @@
                                         <extraJar>${ta4j.native.resourceJar}</extraJar>
                                     </extraJars>
                                     <artifactSet>
-                                        <excludes>
-                                            <exclude>*:*</exclude>
-                                        </excludes>
+                                        <includes>
+                                            <include>org.ta4j:ta4j-acceleration</include>
+                                        </includes>
                                     </artifactSet>
                                     <transformers>
                                         <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
@@ -547,9 +547,9 @@
                                         <extraJar>${ta4j.native.resourceJar}</extraJar>
                                     </extraJars>
                                     <artifactSet>
-                                        <excludes>
-                                            <exclude>*:*</exclude>
-                                        </excludes>
+                                        <includes>
+                                            <include>org.ta4j:ta4j-acceleration</include>
+                                        </includes>
                                     </artifactSet>
                                     <transformers>
                                         <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>

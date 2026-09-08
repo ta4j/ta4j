@@ -148,11 +148,11 @@ public final class MetalAccelerationProvider extends ShockPathKernelProvider {
         Process process = null;
         try {
             process = new ProcessBuilder("sysctl", "-n", "machdep.cpu.brand_string").start();
-            byte[] output = process.getInputStream().readAllBytes();
             if (!process.waitFor(2, TimeUnit.SECONDS)) {
                 process.destroyForcibly();
                 return null;
             }
+            byte[] output = process.getInputStream().readAllBytes();
             String brand = new String(output, StandardCharsets.UTF_8).trim();
             return brand.isEmpty() ? null : normalizeFamily(brand);
         } catch (IOException exception) {
