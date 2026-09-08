@@ -18,7 +18,7 @@ final class Wave3NotShortestRule implements RelationshipRule {
 
     @Override
     public RuleEvidence evaluate(final TopologyCandidate candidate) {
-        if (!isApplicable(candidate)) {
+        if (candidate.grammar() != TopologyGrammar.MOTIVE_5 && candidate.grammar() != TopologyGrammar.CYCLE_5_3) {
             return RuleEvidence.notApplicable(id(), "wave 3 length comparison applies only to five-wave grammars");
         }
         if (candidate.pivots().size() < TopologyGrammar.MOTIVE_5.requiredPivots()) {
@@ -49,7 +49,4 @@ final class Wave3NotShortestRule implements RelationshipRule {
         return leg.isNegative() ? leg.negate() : leg;
     }
 
-    private boolean isApplicable(final TopologyCandidate candidate) {
-        return candidate.grammar() == TopologyGrammar.MOTIVE_5 || candidate.grammar() == TopologyGrammar.CYCLE_5_3;
-    }
 }

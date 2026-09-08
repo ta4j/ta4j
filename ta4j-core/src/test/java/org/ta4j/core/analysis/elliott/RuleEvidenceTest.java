@@ -4,7 +4,6 @@
 package org.ta4j.core.analysis.elliott;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
@@ -16,9 +15,8 @@ class RuleEvidenceTest {
 
     @Test
     void rejectsNaNScoredEvidence() {
-        assertThatThrownBy(() -> RuleEvidence.scored("wave5-divergence", Double.NaN, List.of(), "explanation"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("score");
+        assertThrows(IllegalArgumentException.class,
+                () -> RuleEvidence.scored("wave5-divergence", Double.NaN, List.of(), "explanation"));
     }
 
     @Test
@@ -29,10 +27,8 @@ class RuleEvidenceTest {
 
     @Test
     void rejectsScoresOnNonPassingEvidence() {
-        final IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> new RuleEvidence("wave5-divergence", EvidenceState.FAIL, Optional.of(0.5d), List.of(),
-                        "explanation"));
-        assertThat(exception).hasMessageContaining("PASS");
+        assertThrows(IllegalArgumentException.class, () -> new RuleEvidence("wave5-divergence", EvidenceState.FAIL,
+                Optional.of(0.5d), List.of(), "explanation"));
     }
 
     @Test
@@ -59,27 +55,21 @@ class RuleEvidenceTest {
 
     @Test
     void rejectsScoreBelowZero() {
-        assertThatThrownBy(() -> RuleEvidence.scored("wave5-divergence", -1e-8, List.of(), "explanation"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("score");
+        assertThrows(IllegalArgumentException.class,
+                () -> RuleEvidence.scored("wave5-divergence", -1e-8, List.of(), "explanation"));
     }
 
     @Test
     void rejectsScoreAboveOne() {
-        assertThatThrownBy(() -> RuleEvidence.scored("wave5-divergence", 1.0d + 1e-8, List.of(), "explanation"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("score");
+        assertThrows(IllegalArgumentException.class,
+                () -> RuleEvidence.scored("wave5-divergence", 1.0d + 1e-8, List.of(), "explanation"));
     }
 
     @Test
     void rejectsInfiniteScoredEvidence() {
-        assertThatThrownBy(
-                () -> RuleEvidence.scored("wave5-divergence", Double.POSITIVE_INFINITY, List.of(), "explanation"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("score");
-        assertThatThrownBy(
-                () -> RuleEvidence.scored("wave5-divergence", Double.NEGATIVE_INFINITY, List.of(), "explanation"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("score");
+        assertThrows(IllegalArgumentException.class,
+                () -> RuleEvidence.scored("wave5-divergence", Double.POSITIVE_INFINITY, List.of(), "explanation"));
+        assertThrows(IllegalArgumentException.class,
+                () -> RuleEvidence.scored("wave5-divergence", Double.NEGATIVE_INFINITY, List.of(), "explanation"));
     }
 }

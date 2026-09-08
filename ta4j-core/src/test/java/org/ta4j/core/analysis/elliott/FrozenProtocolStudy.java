@@ -39,6 +39,7 @@ import org.ta4j.core.num.Num;
 final class FrozenProtocolStudy {
 
     private static final Logger LOG = LogManager.getLogger(FrozenProtocolStudy.class);
+    private static final String FROZEN_PROTOCOL_FINGERPRINT = "51698bdb1ac4a385024cd9909a2c5ced74af254a53eafda5ab5aa12010e3bdb8";
     private static final List<String> FROZEN_COMPETING_MODES = List.of("3+3", "5+5", "7+3", "change-point-baseline");
     private static final List<String> FROZEN_METRICS = List.of("matchRate", "ambiguousRate", "noMatchRate",
             "confirmationLagBars", "labelStabilityJaccard", "evidencePassRate", "jointPassRate");
@@ -139,11 +140,13 @@ final class FrozenProtocolStudy {
         if (protocol == null) {
             throw new IllegalArgumentException("protocol must not be null");
         }
-        if (!"cf525-elliott-hypothesis-study".equals(protocol.protocolId()) || !"1.0.0".equals(protocol.version())
-                || !"retrospective-exploratory".equals(protocol.studyDesign()) || !"H1".equals(protocol.h1().id())
-                || !"MOTIVE_5".equals(protocol.h1().grammar()) || !"H2".equals(protocol.h2().id())
-                || !"CYCLE_5_3".equals(protocol.h2().grammar())) {
-            throw new IllegalArgumentException("protocol hypotheses or study design are not the frozen CF-525 path");
+        if (!FROZEN_PROTOCOL_FINGERPRINT.equals(protocol.fingerprintSha256())
+                || !"cf525-elliott-hypothesis-study".equals(protocol.protocolId())
+                || !"1.0.0".equals(protocol.version()) || !"retrospective-exploratory".equals(protocol.studyDesign())
+                || !"H1".equals(protocol.h1().id()) || !"MOTIVE_5".equals(protocol.h1().grammar())
+                || !"H2".equals(protocol.h2().id()) || !"CYCLE_5_3".equals(protocol.h2().grammar())) {
+            throw new IllegalArgumentException(
+                    "protocol fingerprint, hypotheses, or study design are not the frozen CF-525 path");
         }
         if (!FROZEN_COMPETING_MODES.equals(protocol.competingGrammars()) || !FROZEN_METRICS.equals(protocol.metrics())
                 || !RuleAblation.frozenModeNames().equals(protocol.ablationSet())) {

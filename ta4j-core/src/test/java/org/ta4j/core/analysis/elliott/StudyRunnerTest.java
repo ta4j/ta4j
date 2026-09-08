@@ -552,7 +552,7 @@ class StudyRunnerTest {
             final int[] pivotIndices = { 1, 3, 5, 7, 9, 11, 13, 15, 17 };
             final List<SwingPivot> pivots = new ArrayList<>();
             for (int pivotIndex : pivotIndices) {
-                if (pivotIndex <= index && pivotIndex < series.getBarCount()) {
+                if (pivotIndex >= series.getBeginIndex() && pivotIndex <= index && pivotIndex <= series.getEndIndex()) {
                     final SwingPivotType type = pivotIndex % 4 == 1 ? SwingPivotType.LOW : SwingPivotType.HIGH;
                     pivots.add(new SwingPivot(pivotIndex, series.getBar(pivotIndex).getClosePrice(), type));
                 }
@@ -705,9 +705,11 @@ class StudyRunnerTest {
     private static SwingDetector scriptedDetector() {
         return (series, index, degree) -> {
             final List<SwingPivot> pivots = new ArrayList<>();
-            for (int pivotIndex = 1; pivotIndex <= index && pivotIndex < series.getBarCount(); pivotIndex += 2) {
-                final SwingPivotType type = pivotIndex % 4 == 1 ? SwingPivotType.LOW : SwingPivotType.HIGH;
-                pivots.add(new SwingPivot(pivotIndex, series.getBar(pivotIndex).getClosePrice(), type));
+            for (int pivotIndex = 1; pivotIndex <= index && pivotIndex <= series.getEndIndex(); pivotIndex += 2) {
+                if (pivotIndex >= series.getBeginIndex()) {
+                    final SwingPivotType type = pivotIndex % 4 == 1 ? SwingPivotType.LOW : SwingPivotType.HIGH;
+                    pivots.add(new SwingPivot(pivotIndex, series.getBar(pivotIndex).getClosePrice(), type));
+                }
             }
             return new SwingDetectorResult(pivots, List.of());
         };
@@ -788,6 +790,16 @@ class StudyRunnerTest {
         assertNotNull(validationMetrics);
         assertEquals(12, validationMetrics.fromIndex());
         assertEquals(15, validationMetrics.toIndex());
+    }
+
+    @Test
+    void scriptedDetectorsExcludeTrimmedPivots() {
+        final BarSeries series = buildRollingWindowSeries(20, 12);
+
+        assertEquals(List.of(9, 11, 13, 15, 17),
+                detectorFactory().detectPivots(series, series.getEndIndex()).stream().map(SwingPivot::index).toList());
+        assertEquals(List.of(9, 11, 13, 15, 17, 19),
+                scriptedDetector().detectPivots(series, series.getEndIndex()).stream().map(SwingPivot::index).toList());
     }
 
     @Test

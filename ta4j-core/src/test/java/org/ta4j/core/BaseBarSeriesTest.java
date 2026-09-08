@@ -201,7 +201,7 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .lowPrice(numOf(10))
                 .closePrice(numOf(10))
                 .volume(numFactory.zero())
-                .build();
+                .add();
         long unrelatedRevision = unrelated.getBarHistoryRevision();
 
         seriesWithBars.getBar(1).addPrice(numOf(42));
