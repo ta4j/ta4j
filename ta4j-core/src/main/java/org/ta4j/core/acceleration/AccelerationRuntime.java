@@ -532,7 +532,7 @@ public final class AccelerationRuntime {
          *
          * @param request immutable kernel request
          * @return cost assessment
-         * @since 0.24.2
+         * @since 0.25.1
          */
         Assessment assess(KernelRequest request);
 
@@ -541,7 +541,7 @@ public final class AccelerationRuntime {
          *
          * @param request immutable kernel request
          * @return raw kernel output
-         * @since 0.24.2
+         * @since 0.25.1
          */
         KernelResult execute(KernelRequest request);
     }

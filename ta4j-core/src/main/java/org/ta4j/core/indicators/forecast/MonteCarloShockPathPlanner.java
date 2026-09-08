@@ -34,7 +34,7 @@ import org.ta4j.core.num.NumFactory;
  * scalar lane — which can mix unstable and stable forecasts — stays
  * authoritative outside the steady state.
  *
- * @since 0.24.2
+ * @since 0.25.1
  */
 final class MonteCarloShockPathPlanner implements OperationPlanner {
 
