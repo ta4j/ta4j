@@ -198,25 +198,52 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
-        if (tradingRecord == null || series.isEmpty()) {
+        if (tradingRecord == null) {
+            return zero;
+        }
+        return series.withReadLock(() -> calculateTradingRecord(series, tradingRecord, zero));
+    }
+
+    private Num calculateTradingRecord(BarSeries series, TradingRecord tradingRecord, Num zero) {
+        if (series.isEmpty()) {
             return zero;
         }
 
-        int beginIndex = tradingRecord.getStartIndex(series);
-        int endIndex = tradingRecord.getEndIndex(series);
-        if (endIndex <= beginIndex) {
-            return zero;
-        }
-
+        final int capturedBeginIndex = series.getBeginIndex();
         Returns returns = new Returns(series, tradingRecord, ReturnRepresentation.DECIMAL, equityCurveMode,
                 openPositionHandling);
-        Num thresholdNum = numFactory.numOf(threshold);
+        BarSeries snapshot = returns.getBarSeries();
+        int beginIndex = tradingRecord.getStartIndex(snapshot);
+        int logicalEndIndex = tradingRecord.getEndIndex(snapshot);
+        if (logicalEndIndex < beginIndex) {
+            return zero;
+        }
+
+        Num thresholdNum = series.numFactory().numOf(threshold);
         Num upsideExcess = zero;
         Num downsideShortfall = zero;
 
         List<Num> returnRates = returns.getRawValues();
-        for (int i = beginIndex + 1; i <= endIndex; i++) {
-            Num returnRate = returnRates.get(i);
+        // Retained-history seeds and exits at the recording boundary are real
+        // returns, including a position opened and closed on that same bar.
+        // An ordinary entry-only recording start has no prior-close observation.
+        boolean firstSlotSeeded = beginIndex == capturedBeginIndex && !returnRates.isEmpty()
+                && !returnRates.get(0).isNaN();
+        if (!firstSlotSeeded) {
+            for (Position position : tradingRecord.getPositions()) {
+                if (position.isClosed() && position.getExit().getIndex() == beginIndex) {
+                    firstSlotSeeded = true;
+                    break;
+                }
+            }
+        }
+        long firstRateIndex = (long) beginIndex + 1;
+        if (firstSlotSeeded) {
+            firstRateIndex = beginIndex;
+        }
+        long capturedEndIndex = (long) capturedBeginIndex + returns.getValues().size() - 1L;
+        for (long i = firstRateIndex; i <= capturedEndIndex; i++) {
+            Num returnRate = returns.getValue((int) i);
             if (returnRate.isNaN()) {
                 continue;
             }

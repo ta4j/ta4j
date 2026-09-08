@@ -15,6 +15,31 @@ final class AnalysisPositionSupport {
     private AnalysisPositionSupport() {
     }
 
+    /**
+     * Extends only materialized analysis windows to actual position activity in
+     * addressable raw storage; logical execution and benchmark bounds stay
+     * unchanged.
+     */
+    static int analysisEndIndex(BarSeries series, TradingRecord record, int addressableEndIndex) {
+        int logicalEndIndex = series.getEndIndex();
+        int endIndex = record.getEndIndex(series);
+        if (addressableEndIndex <= logicalEndIndex) {
+            return endIndex;
+        }
+        boolean unboundedRecord = record.getEndIndex() == null;
+        for (Position position : record.getPositions()) {
+            Trade activity = position.getExit();
+            if (activity == null && unboundedRecord) {
+                activity = position.getEntry();
+            }
+            if (activity != null && activity.getIndex() > logicalEndIndex
+                    && activity.getIndex() <= addressableEndIndex) {
+                endIndex = Math.max(endIndex, activity.getIndex());
+            }
+        }
+        return endIndex;
+    }
+
     static List<Position> positionsForAnalysis(TradingRecord record, int finalIndex,
             OpenPositionHandling openPositionHandling, EquityCurveMode equityCurveMode) {
         Objects.requireNonNull(record, "record");

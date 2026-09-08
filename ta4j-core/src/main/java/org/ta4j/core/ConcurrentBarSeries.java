@@ -360,12 +360,23 @@ public class ConcurrentBarSeries extends BaseBarSeries {
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * @since 0.25.1
+     */
+    @Override
+    public boolean isConcurrent() {
+        return true;
+    }
+
+    /**
      * Runs the supplied action while holding the read lock.
      *
      * @param action read-only action to execute
      *
      * @since 0.22.2
      */
+    @Override
     public void withReadLock(final Runnable action) {
         Objects.requireNonNull(action, "action cannot be null");
         this.readLock.lock();
@@ -385,6 +396,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      *
      * @since 0.22.2
      */
+    @Override
     public <T> T withReadLock(final Supplier<T> action) {
         Objects.requireNonNull(action, "action cannot be null");
         this.readLock.lock();

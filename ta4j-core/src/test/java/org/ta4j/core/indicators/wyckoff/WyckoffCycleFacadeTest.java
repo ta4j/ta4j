@@ -6,9 +6,14 @@ package org.ta4j.core.indicators.wyckoff;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertThrows;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReadWriteLock;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -69,29 +74,52 @@ public class WyckoffCycleFacadeTest extends AbstractIndicatorTest<BarSeries, Num
     }
 
     /**
-     * Verifies that facade accessors do not expose internal mutable references.
+     * Verifies that the facade exposes the borrowed live series and that fresh
+     * phase indicator instances stay bound to it across revisions.
      */
     @Test
-    public void shouldReturnDefensiveSeriesAndPhaseSnapshots() {
+    public void returnsLiveSeriesAndPhaseIndicatorsBoundToIt() {
         WyckoffCycleFacade facade = WyckoffCycleFacade.builder(series)
                 .withSwingConfiguration(1, 1, 0)
                 .withVolumeWindows(1, 4)
                 .build();
-        BarSeries firstSeriesSnapshot = facade.series();
-        BarSeries secondSeriesSnapshot = facade.series();
-        WyckoffPhaseIndicator firstPhaseSnapshot = facade.phase();
-        WyckoffPhaseIndicator secondPhaseSnapshot = facade.phase();
+        BarSeries firstSeries = facade.series();
+        BarSeries secondSeries = facade.series();
+        WyckoffPhaseIndicator firstPhaseIndicator = facade.phase();
+        WyckoffPhaseIndicator secondPhaseIndicator = facade.phase();
 
         addBar(series, 120, 125, 119, 123, 700);
 
-        assertThat(firstSeriesSnapshot).isNotSameAs(series);
-        assertThat(firstSeriesSnapshot).isNotSameAs(secondSeriesSnapshot);
-        assertThat(firstSeriesSnapshot.getBarCount()).isEqualTo(9);
-        assertThat(secondSeriesSnapshot.getBarCount()).isEqualTo(9);
-        assertThat(facade.series().getBarCount()).isEqualTo(9);
-        assertThat(firstPhaseSnapshot).isNotSameAs(secondPhaseSnapshot);
-        assertThat(firstPhaseSnapshot.getBarSeries().getBarCount()).isEqualTo(9);
-        assertThat(secondPhaseSnapshot.getBarSeries().getBarCount()).isEqualTo(9);
+        assertThat(firstSeries).isSameAs(series);
+        assertThat(secondSeries).isSameAs(series);
+        assertThat(facade.series().getBarCount()).isEqualTo(10);
+        assertThat(firstPhaseIndicator).isNotSameAs(secondPhaseIndicator);
+        assertThat(firstPhaseIndicator.getBarSeries().getBarCount()).isEqualTo(10);
+        assertThat(secondPhaseIndicator.getBarSeries().getBarCount()).isEqualTo(10);
+        assertThat(firstPhaseIndicator.getBarSeries().getEndIndex())
+                .isEqualTo(firstPhaseIndicator.getBarSeries().getBarCount() - 1);
+    }
+
+    /**
+     * Verifies that a live facade calculation keeps its multi-read phase and
+     * trading-range observation inside one coherent series read lease.
+     */
+    @Test
+    public void phaseCalculationUsesOneReadScopeForLiveSeries() {
+        AtomicBoolean armed = new AtomicBoolean();
+        AtomicBoolean writerAcquired = new AtomicBoolean();
+        ReadWriteLock probeLock = ConstrainedSeriesSupport.readLeaseProbe(armed, writerAcquired);
+        ConcurrentBarSeries concurrentSeries = ConstrainedSeriesSupport.seriesWithReadWriteLock(series, probeLock);
+        WyckoffCycleFacade facade = WyckoffCycleFacade.builder(concurrentSeries)
+                .withSwingConfiguration(1, 1, 0)
+                .withVolumeWindows(1, 4)
+                .build();
+        int endIndex = concurrentSeries.getEndIndex();
+        armed.set(true);
+
+        facade.tradingRangeHigh(endIndex);
+
+        assertThat(writerAcquired.get()).as("facade calculation released its outer read lease").isFalse();
     }
 
     /**

@@ -112,6 +112,11 @@ public class ElliottScenarioIndicator extends CachedIndicator<ElliottScenarioSet
     }
 
     @Override
+    public ElliottScenarioSet getValue(final int index) {
+        return getBarSeries().withReadLock(() -> super.getValue(index));
+    }
+
+    @Override
     protected ElliottScenarioSet calculate(final int index) {
         final List<ElliottSwing> swings = swingIndicator.getValue(index);
         if (swings.isEmpty()) {

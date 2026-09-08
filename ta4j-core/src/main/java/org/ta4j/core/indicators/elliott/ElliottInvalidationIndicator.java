@@ -41,6 +41,11 @@ public class ElliottInvalidationIndicator extends CachedIndicator<Boolean> {
     }
 
     @Override
+    public Boolean getValue(final int index) {
+        return getBarSeries().withReadLock(() -> super.getValue(index));
+    }
+
+    @Override
     protected Boolean calculate(final int index) {
         final ElliottSwingMetadata metadata = phaseIndicator.metadata(index);
         if (!metadata.isValid()) {

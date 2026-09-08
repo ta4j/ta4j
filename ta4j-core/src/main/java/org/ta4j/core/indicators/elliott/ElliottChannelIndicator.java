@@ -65,6 +65,11 @@ public class ElliottChannelIndicator extends CachedIndicator<ElliottChannel> {
     }
 
     @Override
+    public ElliottChannel getValue(final int index) {
+        return getBarSeries().withReadLock(() -> super.getValue(index));
+    }
+
+    @Override
     protected ElliottChannel calculate(final int index) {
         final List<ElliottSwing> swings = swingIndicator.getValue(index);
         if (swings.size() < 4) {

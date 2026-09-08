@@ -4,15 +4,18 @@
 package org.ta4j.core.analysis;
 
 import java.time.Instant;
-import java.time.Duration;
 import java.util.Collections;
+import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseTrade;
+import org.ta4j.core.ConstrainedSeriesSupport;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.Indicator;
@@ -35,6 +38,35 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
+    public void capturesRollingWindowUnderOneReadLease() {
+        AtomicBoolean appendBeforeLock = new AtomicBoolean();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.rollingSeriesWithAppendBeforeReadLock(numFactory,
+                appendBeforeLock, 1.5d, 2.5d, 3.5d);
+        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series));
+        appendBeforeLock.set(true);
+
+        CashFlow cashFlow = new CashFlow(series, record, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        assertNumEquals(numFactory.numOf(3.5d).dividedBy(numFactory.numOf(1.5d)), cashFlow.getValue(2));
+        Num firstMaterializedValue = cashFlow.getValue(series.getBeginIndex());
+        series.barBuilder().closePrice(4.5d).add();
+        assertNumEquals(firstMaterializedValue, cashFlow.stream().findFirst().orElseThrow());
+    }
+
+    @Test
+    public void sizeRemainsBoundToMaterializedValues() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        CashFlow cashFlow = new CashFlow(series, new BaseTradingRecord());
+
+        series.barBuilder().closePrice(4d).add();
+        assertEquals(3, cashFlow.getSize());
+        series.setMaximumBarCount(1);
+        assertEquals(3, cashFlow.getSize());
+        assertEquals(3L, cashFlow.stream().count());
+    }
+
+    @Test
     public void cashFlowSize() {
         var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1d, 2d, 3d, 4d, 5d)
@@ -50,19 +82,11 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void getBarSeriesReturnsDefensiveSnapshots() {
+    public void getBarSeriesReturnsBorrowedInstance() {
         BarSeries sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         CashFlow cashFlow = new CashFlow(sampleBarSeries, new BaseTradingRecord());
-        int originalSize = cashFlow.getSize();
-        BarSeries firstReturnedSeries = cashFlow.getBarSeries();
 
-        appendOneBar(sampleBarSeries, 4);
-        appendOneBar(firstReturnedSeries, 5);
-
-        assertEquals(originalSize, cashFlow.getSize());
-        assertEquals(originalSize, cashFlow.getBarSeries().getBarCount());
-        assertNotSame(sampleBarSeries, cashFlow.getBarSeries());
-        assertNotSame(firstReturnedSeries, cashFlow.getBarSeries());
+        assertSame(sampleBarSeries, cashFlow.getBarSeries());
     }
 
     @Test
@@ -483,7 +507,28 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         assertNumEquals(1, cashFlow.getValue(0));
         assertNumEquals(98d / 101d, cashFlow.getValue(1));
-        assertNumEquals(97d / 101d, cashFlow.getValue(2));
+        assertNumEquals(95d / 101d, cashFlow.getValue(2));
+    }
+
+    @Test
+    public void retainedSeedAndLaterMarksAccrueHoldingCostsFromEntry() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d)
+                .build();
+        CostModel transactionCost = new ZeroCostModel();
+        Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(12, series), transactionCost,
+                new FixedHoldingCostModel(12d));
+        CashFlow fullHistory = new CashFlow(series, position);
+        series.setMaximumBarCount(3);
+
+        CashFlow retained = new CashFlow(series, position);
+
+        assertNumEquals(0.90d, retained.getValue(10));
+        assertNumEquals(0.89d, retained.getValue(11));
+        assertNumEquals(0.88d, retained.getValue(12));
+        for (int index = 10; index <= 12; index++) {
+            assertEquals(fullHistory.getValue(index), retained.getValue(index));
+        }
     }
 
     @Test
@@ -549,19 +594,6 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(expectedAt2, cashFlow.getValue(2));
     }
 
-    private static void appendOneBar(final BarSeries targetSeries, final Number closePrice) {
-        Duration period = targetSeries.getLastBar().getTimePeriod();
-        targetSeries.barBuilder()
-                .timePeriod(period)
-                .endTime(targetSeries.getLastBar().getEndTime().plus(period))
-                .openPrice(closePrice)
-                .highPrice(closePrice)
-                .lowPrice(closePrice)
-                .closePrice(closePrice)
-                .volume(1)
-                .add();
-    }
-
     private record FixedHoldingCostModel(double fee) implements CostModel {
 
         @Override
@@ -592,4 +624,112 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         }
     }
 
+    @Test
+    public void preservesLogicalOffsetForTradeAtNonzeroIndex() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BarSeries offset = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(10)
+                .build();
+        var record = new BaseTradingRecord(Trade.buyAt(10, offset), Trade.sellAt(12, offset));
+
+        CashFlow cashFlow = new CashFlow(offset, record);
+
+        assertEquals(10, cashFlow.getBarSeries().getBeginIndex());
+        assertEquals(12, cashFlow.getBarSeries().getEndIndex());
+        assertEquals(10, cashFlow.getBarSeries().getRemovedBarsCount());
+        assertNumEquals(3, cashFlow.getValue(12));
+    }
+
+    @Test
+    public void materializesLargeOffsetWindowWithoutAbsoluteAllocation() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        int beginIndex = 1_000_000_000;
+        BarSeries offset = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(beginIndex)
+                .build();
+        TradingRecord record = new BaseTradingRecord(Trade.buyAt(beginIndex, offset),
+                Trade.sellAt(beginIndex + 2, offset));
+
+        CashFlow cashFlow = new CashFlow(offset, record);
+
+        assertEquals(3, cashFlow.getSize());
+        assertNumEquals(3, cashFlow.getValue(beginIndex + 2));
+    }
+
+    @Test
+    public void valuesAreAddressableAtTerminalOffsetWithoutAbsoluteSizing() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d).build();
+        BarSeries terminal = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(Integer.MAX_VALUE)
+                .build();
+        CashFlow cashFlow = new CashFlow(terminal, new BaseTradingRecord());
+
+        assertEquals(Integer.MAX_VALUE, cashFlow.getBarSeries().getEndIndex());
+        assertEquals(1, cashFlow.getSize());
+        assertNumEquals(1, cashFlow.getValue(Integer.MAX_VALUE));
+    }
+
+    @Test
+    public void outOfWindowReadsReturnNeutralOne() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BarSeries offset = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(10)
+                .build();
+        CashFlow cashFlow = new CashFlow(offset, new BaseTradingRecord());
+
+        assertNumEquals(1, cashFlow.getValue(9));
+        assertNumEquals(1, cashFlow.getValue(13));
+    }
+
+    @Test
+    public void disjointWindowReturnsNeutralValuesWithoutBuildingInvertedBuffer() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+
+        CashFlow cashFlow = new CashFlow(series, new BaseTradingRecord(), 10, 12, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        assertNumEquals(1, cashFlow.getValue(10));
+        assertNumEquals(1, cashFlow.getValue(12));
+    }
+
+    @Test
+    public void pricesTrailingExitBeyondLogicalWindowEnd() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("trailing-exit", numFactory, 1, 10d, 20d,
+                30d);
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, 0, 1, null, null);
+        tradingRecord.enter(1, series.getBar(1).getClosePrice(), numFactory.one());
+        tradingRecord.exit(2, series.getBar(2).getClosePrice(), numFactory.one());
+
+        CashFlow cashFlow = new CashFlow(series, tradingRecord);
+        assertNumEquals(1, cashFlow.getValue(1));
+        assertNumEquals(1.5, cashFlow.getValue(2));
+        assertNumEquals(1.5, cashFlow.stream().toList().getLast());
+    }
+
+    @Test
+    public void pricesRawExitWhenLogicalWindowIsEmpty() {
+        BarSeries series = ConstrainedSeriesSupport.emptyLogicalSeries("empty-window", numFactory, 100d);
+        Num one = numFactory.one();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, numFactory.numOf(100d), one),
+                Trade.sellAt(0, numFactory.numOf(50d), one));
+
+        CashFlow cashFlow = new CashFlow(series, tradingRecord);
+
+        assertNumEquals(numFactory.numOf(0.5d), cashFlow.getValue(0));
+    }
+
+    @Test
+    public void sameBarPositionOnTerminalIndexDoesNotOverflow() {
+        BarSeries series = ConstrainedSeriesSupport.terminalOneBarSeries("terminal", numFactory, 100d);
+        var record = new BaseTradingRecord(Trade.buyAt(Integer.MAX_VALUE, series),
+                Trade.sellAt(Integer.MAX_VALUE, series));
+
+        CashFlow cashFlow = new CashFlow(series, record);
+
+        assertNumEquals(1, cashFlow.getValue(Integer.MAX_VALUE));
+    }
 }

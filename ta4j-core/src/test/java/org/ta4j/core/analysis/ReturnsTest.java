@@ -5,25 +5,29 @@ package org.ta4j.core.analysis;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
+
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.MathContext;
 import java.math.RoundingMode;
-import java.time.Duration;
 import java.time.Instant;
-
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -57,20 +61,61 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void getBarSeriesReturnsDefensiveSnapshots() {
+    public void getBarSeriesReturnsBorrowedInstance() {
         BarSeries sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         Returns returns = new Returns(sampleBarSeries, new BaseTradingRecord(), ReturnRepresentation.DECIMAL);
-        int originalSeriesCount = returns.getBarSeries().getBarCount();
-        int originalSize = returns.getSize();
-        BarSeries firstReturnedSeries = returns.getBarSeries();
 
-        appendOneBar(sampleBarSeries, 4);
-        appendOneBar(firstReturnedSeries, 5);
+        assertSame(sampleBarSeries, returns.getBarSeries());
+    }
 
-        assertEquals(originalSize, returns.getSize());
-        assertEquals(originalSeriesCount, returns.getBarSeries().getBarCount());
-        assertNotSame(sampleBarSeries, returns.getBarSeries());
-        assertNotSame(firstReturnedSeries, returns.getBarSeries());
+    @Test
+    public void seedsFirstRetainedSlotWhenEntryPredatesWindow() {
+        // A rolling window capped at two bars evicts the entry bar (close 30):
+        // the first retained slot must still mark the whole move from the
+        // entry price (40 / 30 - 1), not sit at a neutral 0%.
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        rolling.setMaximumBarCount(2);
+        rolling.barBuilder().closePrice(30d).add();
+        Trade entry = Trade.buyAt(0, rolling);
+        rolling.barBuilder().closePrice(40d).add();
+        rolling.barBuilder().closePrice(50d).add();
+        var tradingRecord = new BaseTradingRecord(entry, Trade.sellAt(2, rolling));
+
+        Returns returns = new Returns(rolling, tradingRecord, ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET);
+
+        assertEquals(1, rolling.getBeginIndex());
+        assertNumEquals(40d / 30d - 1d, returns.getValue(1));
+        assertNumEquals(50d / 40d - 1d, returns.getValue(2));
+    }
+
+    @Test
+    public void retainedHeadHoldingCostRemainsCumulativeAcrossMarks() {
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        rolling.setMaximumBarCount(2);
+        rolling.barBuilder().closePrice(100d).add();
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(),
+                new FixedTransactionCostModel(4d));
+        record.enter(0, rolling.getBar(0).getClosePrice(), numFactory.one());
+        rolling.barBuilder().closePrice(100d).add();
+        rolling.barBuilder().closePrice(100d).add();
+        rolling.barBuilder().closePrice(100d).add();
+
+        Returns returns = new Returns(rolling, record, ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        Num accruedAtHead = numFactory.numOf(4d).dividedBy(numFactory.numOf(3)).multipliedBy(numFactory.numOf(2));
+        Num expectedHead = numFactory.numOf(100d)
+                .minus(accruedAtHead)
+                .dividedBy(numFactory.numOf(100d))
+                .minus(numFactory.one());
+        Num expectedNext = numFactory.numOf(100d)
+                .minus(numFactory.numOf(4d))
+                .dividedBy(numFactory.numOf(100d).minus(accruedAtHead))
+                .minus(numFactory.one());
+        assertNumEquals(expectedHead, returns.getValue(2));
+        assertNumEquals(expectedNext, returns.getValue(3));
+        assertTrue(returns.getValue(3).isNegative());
     }
 
     @Test
@@ -180,7 +225,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void returnListsAreImmutableSnapshots() {
+    public void returnedValueListsAreImmutable() {
         BarSeries sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d).build();
         BaseTradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries),
                 Trade.sellAt(1, sampleBarSeries));
@@ -397,16 +442,166 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(expectedAt2, returns.getValue(2));
     }
 
-    private static void appendOneBar(final BarSeries targetSeries, final Number closePrice) {
-        Duration period = targetSeries.getLastBar().getTimePeriod();
-        targetSeries.barBuilder()
-                .timePeriod(period)
-                .endTime(targetSeries.getLastBar().getEndTime().plus(period))
-                .openPrice(closePrice)
-                .highPrice(closePrice)
-                .lowPrice(closePrice)
-                .closePrice(closePrice)
-                .volume(1)
-                .add();
+    @Test
+    public void preservesLogicalOffsetForTradeAtNonzeroIndex() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BarSeries offset = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(10)
+                .build();
+        var record = new BaseTradingRecord(Trade.buyAt(10, offset), Trade.sellAt(12, offset));
+
+        Returns returns = new Returns(offset, record, ReturnRepresentation.DECIMAL, EquityCurveMode.REALIZED);
+
+        assertEquals(10, returns.getBarSeries().getBeginIndex());
+        assertEquals(12, returns.getBarSeries().getEndIndex());
+        assertEquals(10, returns.getBarSeries().getRemovedBarsCount());
+        assertNumEquals(2.0, returns.getValue(12));
+    }
+
+    @Test
+    public void valuesAreAddressableAtTerminalOffsetWithoutAbsoluteSizing() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d).build();
+        BarSeries terminal = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(Integer.MAX_VALUE)
+                .build();
+        Returns returns = new Returns(terminal, new BaseTradingRecord(), ReturnRepresentation.DECIMAL);
+
+        assertEquals(0, returns.getSize());
+        assertTrue(returns.getValue(Integer.MAX_VALUE).isNaN());
+    }
+
+    @Test
+    public void outOfWindowReadsReturnNaN() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BarSeries offset = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(10)
+                .build();
+        Returns returns = new Returns(offset, new BaseTradingRecord(), ReturnRepresentation.DECIMAL);
+
+        assertTrue(returns.getValue(9).isNaN());
+        assertTrue(returns.getValue(13).isNaN());
+    }
+
+    @Test
+    public void pricesTrailingExitBeyondLogicalWindowEnd() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("trailing-exit", numFactory, 1, 10d, 20d,
+                30d);
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, 0, 1, null, null);
+        tradingRecord.enter(1, series.getBar(1).getClosePrice(), numFactory.one());
+        tradingRecord.exit(2, series.getBar(2).getClosePrice(), numFactory.one());
+
+        Returns returns = new Returns(series, tradingRecord, ReturnRepresentation.DECIMAL);
+
+        assertNumEquals(0.5, returns.getValue(2));
+        assertNumEquals(0.5, returns.stream().toList().getLast());
+    }
+
+    @Test
+    public void getValueStaysAnchoredToMaterializedWindow() {
+        // The buffer is materialized against the window at construction time;
+        // later rolling advances of the borrowed series must not rebase the
+        // lookup, or old returns leak onto never-calculated bars.
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        rolling.setMaximumBarCount(2);
+        rolling.barBuilder().closePrice(100d).add();
+        Trade entry = Trade.buyAt(0, rolling);
+        rolling.barBuilder().closePrice(110d).add();
+        var record = new BaseTradingRecord(entry, Trade.sellAt(1, rolling));
+        Returns returns = new Returns(rolling, record, rolling.getEndIndex(), ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        Num anchoredReturn = returns.getValue(1);
+
+        rolling.barBuilder().closePrice(120d).add();
+
+        assertEquals(1, rolling.getBeginIndex());
+        assertNumEquals(anchoredReturn, returns.getValue(1));
+        assertTrue(returns.getValue(2).isNaN());
+        assertEquals(returns.getValues(), returns.stream().toList());
+    }
+
+    @Test
+    public void sizeIncludesTrailingExitReturn() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("tail", numFactory, 1, 100d, 110d, 55d);
+        var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+
+        Returns returns = new Returns(series, record, ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        assertEquals(2, returns.getSize());
+        Returns boundedReturns = new Returns(series, record, record.getEndIndex(series), ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        assertEquals(1, boundedReturns.getSize());
+    }
+
+    @Test
+    public void sameBarReturnSurvivesAtOffsetWindowStart() {
+        // A position entering and exiting on the first retained bar writes a
+        // real return into the first buffer slot; the placeholder overwrite
+        // must not erase it just because no entry predates the window.
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        rolling.setMaximumBarCount(1);
+        for (int i = 0; i < 10; i++) {
+            rolling.barBuilder().closePrice(100d).add();
+        }
+        rolling.barBuilder().closePrice(110d).add();
+        var record = new BaseTradingRecord(Trade.buyAt(10, rolling), Trade.sellAt(10, rolling));
+
+        Returns returns = new Returns(rolling, record, rolling.getEndIndex(), ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertEquals(10, rolling.getBeginIndex());
+        assertNumEquals(numFactory.numOf(0d), returns.getValue(10));
+    }
+
+    @Test
+    public void sizeCountsSeededFirstWindowReturn() {
+        // The entry predates the retained window, so the first slot carries a
+        // real entry-to-close return instead of a placeholder; the reported
+        // size must include it or tail-risk criteria silently drop the loss.
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        rolling.setMaximumBarCount(2);
+        rolling.barBuilder().closePrice(100d).add();
+        Trade entry = Trade.buyAt(0, rolling);
+        rolling.barBuilder().closePrice(50d).add();
+        rolling.barBuilder().closePrice(120d).add();
+        var record = new BaseTradingRecord(entry, Trade.sellAt(2, rolling));
+
+        Returns returns = new Returns(rolling, record, rolling.getEndIndex(), ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertNumEquals(numFactory.numOf(-0.5d), returns.getValue(1));
+        assertEquals(2, returns.getSize());
+    }
+
+    @Test
+    public void pricesRawExitWhenLogicalWindowIsEmpty() {
+        BarSeries series = ConstrainedSeriesSupport.emptyLogicalSeries("empty-window", numFactory, 100d);
+        Num one = numFactory.one();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, numFactory.numOf(100d), one),
+                Trade.sellAt(0, numFactory.numOf(50d), one));
+
+        Returns returns = new Returns(series, tradingRecord, ReturnRepresentation.DECIMAL);
+
+        assertNumEquals(numFactory.numOf(-0.5d), returns.getValue(0));
+        assertEquals(1, returns.getSize());
+    }
+
+    @Test
+    public void retainsUndefinedSeededReturnInMaterializedSize() {
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        rolling.setMaximumBarCount(2);
+        rolling.barBuilder().closePrice(0d).add();
+        Trade entry = Trade.buyAt(0, rolling);
+        rolling.barBuilder().closePrice(20d).add();
+        rolling.barBuilder().closePrice(30d).add();
+        TradingRecord tradingRecord = new BaseTradingRecord(entry, Trade.sellAt(2, rolling));
+
+        Returns returns = new Returns(rolling, tradingRecord, ReturnRepresentation.LOG);
+
+        assertTrue(returns.getRawValues().get(0).isNaN());
+        assertEquals(2, returns.getSize());
     }
 }

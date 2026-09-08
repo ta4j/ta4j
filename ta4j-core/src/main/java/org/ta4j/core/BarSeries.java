@@ -7,6 +7,7 @@ import java.io.Serializable;
 import java.io.Serial;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -125,6 +126,45 @@ public interface BarSeries extends Serializable {
      * @return the raw bar data
      */
     List<Bar> getBarData();
+
+    /**
+     * Whether this series synchronizes coherent reads with a thread-owned lock.
+     * Work nested inside its read scope must stay on the scope-owning thread;
+     * dispatching it to workers can deadlock behind a queued writer. Views preserve
+     * their source's answer.
+     *
+     * @return true for a concurrent, locked series; false for an ordinary series
+     * @since 0.25.1
+     */
+    default boolean isConcurrent() {
+        return false;
+    }
+
+    /**
+     * Executes a read-only action within this series' coherent read scope.
+     * Concurrent implementations hold their read lock; non-concurrent series
+     * execute the action directly. Views must delegate this scope to their source.
+     * Concurrent scopes must support nested read-only actions on the same thread.
+     *
+     * @param action read-only action
+     * @since 0.25.1
+     */
+    default void withReadLock(Runnable action) {
+        action.run();
+    }
+
+    /**
+     * Executes a read-only computation within this series' coherent read scope. See
+     * {@link #withReadLock(Runnable)} for the synchronization contract.
+     *
+     * @param action read-only computation
+     * @param <T>    result type
+     * @return the computation result
+     * @since 0.25.1
+     */
+    default <T> T withReadLock(Supplier<T> action) {
+        return action.get();
+    }
 
     /**
      * Returns a monotonically increasing revision for changes to already published

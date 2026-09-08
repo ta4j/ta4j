@@ -5,6 +5,7 @@ package org.ta4j.core.backtest;
 
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
@@ -35,6 +36,15 @@ import java.util.stream.IntStream;
  * Prefer this class when running many candidate strategies, parameter sweeps,
  * or weighted ranking workflows. For one strategy over one series, use
  * {@link BarSeriesManager} for lower setup overhead.
+ * </p>
+ * <p>
+ * When the managed series is a {@link ConcurrentBarSeries}, each batch
+ * execution holds one read lease from its baseline snapshot through final
+ * result capture. Candidate strategies run sequentially on the lease-owning
+ * thread in that mode: waiting for worker-thread read locks while a writer is
+ * queued can deadlock. Strategy and progress callbacks must not mutate that
+ * series while execution is in progress. Ordinary series retain their existing
+ * parallel scheduling.
  * </p>
  */
 public class BacktestExecutor {
@@ -406,15 +416,23 @@ public class BacktestExecutor {
         Objects.requireNonNull(strategies, "strategies must not be null");
         Objects.requireNonNull(tradeType, "tradeType must not be null");
         Objects.requireNonNull(tradingRecordRunner, "tradingRecordRunner must not be null");
+        BarSeries managedSeries = seriesManager.getBarSeries();
+        return managedSeries.withReadLock(() -> executeWithRuntimeReportLocked(strategies, progressCallback, batchSize,
+                tradingRecordRunner, managedSeries));
+    }
 
+    private BacktestExecutionResult executeWithRuntimeReportLocked(List<Strategy> strategies,
+            Consumer<Integer> progressCallback, int batchSize, Function<Strategy, TradingRecord> tradingRecordRunner,
+            BarSeries managedSeries) {
+        BarSeries baseline = BacktestExecutionResult.snapshot(managedSeries);
         if (batchSize <= 0) {
             throw new IllegalArgumentException("batchSize must be positive");
         }
 
         if (strategies.isEmpty()) {
             latestFailures = List.of();
-            return new BacktestExecutionResult(seriesManager.getBarSeries(), new ArrayList<>(),
-                    BacktestRuntimeReport.empty());
+            return BacktestExecutionResult.capture(managedSeries, new ArrayList<>(), BacktestRuntimeReport.empty(),
+                    List.of(), baseline);
         }
 
         Strategy[] strategyArray = strategies.toArray(Strategy[]::new);
@@ -430,9 +448,13 @@ public class BacktestExecutor {
 
         long overallStart = System.nanoTime();
 
-        // For large strategy counts, use batched processing to prevent memory
-        // exhaustion. Use smaller batches for very large counts.
-        if (usesBatchedExecution(strategyCount)) {
+        // A concurrent series is kept under the lease acquired by the caller.
+        // Running its strategy tasks sequentially avoids worker threads waiting
+        // for a read lock while this thread waits for those workers.
+        if (managedSeries.isConcurrent()) {
+            executeSequential(strategyArray, statements, durations, tradingRecordRunner, effectiveCallback,
+                    executionFailures);
+        } else if (usesBatchedExecution(strategyCount)) {
             int effectiveBatchSize = effectiveBatchSize(strategyCount, batchSize);
             executeBatched(strategyArray, statements, durations, tradingRecordRunner, effectiveCallback,
                     effectiveBatchSize, executionFailures);
@@ -469,8 +491,8 @@ public class BacktestExecutor {
 
         BacktestRuntimeReport runtimeReport = buildRuntimeReport(Arrays.copyOf(successfulDurations, successfulCount),
                 overallRuntime, strategyRuntimes);
-        return new BacktestExecutionResult(seriesManager.getBarSeries(), tradingStatements, runtimeReport,
-                executionFailures.stream().toList());
+        return BacktestExecutionResult.capture(managedSeries, tradingStatements, runtimeReport,
+                executionFailures.stream().toList(), baseline);
     }
 
     /**
@@ -849,14 +871,22 @@ public class BacktestExecutor {
         Objects.requireNonNull(strategies, "strategies must not be null");
         Objects.requireNonNull(criterion, "criterion must not be null");
         Objects.requireNonNull(tradingRecordRunner, "tradingRecordRunner must not be null");
+        BarSeries managedSeries = seriesManager.getBarSeries();
+        return managedSeries.withReadLock(() -> executeAndKeepTopKLocked(strategies, criterion, topK, progressCallback,
+                tradingRecordRunner, managedSeries));
+    }
 
+    private BacktestExecutionResult executeAndKeepTopKLocked(List<Strategy> strategies, AnalysisCriterion criterion,
+            int topK, Consumer<Integer> progressCallback, Function<Strategy, TradingRecord> tradingRecordRunner,
+            BarSeries managedSeries) {
+        BarSeries baseline = BacktestExecutionResult.snapshot(managedSeries);
         if (topK <= 0) {
             throw new IllegalArgumentException("topK must be positive");
         }
         if (strategies.isEmpty()) {
             latestFailures = List.of();
-            return new BacktestExecutionResult(seriesManager.getBarSeries(), new ArrayList<>(),
-                    BacktestRuntimeReport.empty());
+            return BacktestExecutionResult.capture(managedSeries, new ArrayList<>(), BacktestRuntimeReport.empty(),
+                    List.of(), baseline);
         }
         ConcurrentLinkedQueue<BacktestExecutionResult.StrategyFailure> executionFailures = new ConcurrentLinkedQueue<>();
         int strategyCount = strategies.size();
@@ -889,8 +919,14 @@ public class BacktestExecutor {
 
             batchResults.clear();
 
-            // Evaluate batch in parallel
-            IntStream.range(0, batchEnd - batchStart).parallel().forEach(localIndex -> {
+            // Concurrent series execute on the lease-owning thread so worker
+            // tasks cannot deadlock acquiring nested read locks. Ordinary
+            // series retain the existing parallel batch scheduling.
+            IntStream strategyIndexes = IntStream.range(0, batchEnd - batchStart);
+            if (!managedSeries.isConcurrent()) {
+                strategyIndexes = strategyIndexes.parallel();
+            }
+            strategyIndexes.forEach(localIndex -> {
                 int globalIndex = batchStartFinal + localIndex;
                 Strategy strategy = strategyArray[globalIndex];
 
@@ -969,8 +1005,8 @@ public class BacktestExecutor {
         BacktestRuntimeReport runtimeReport = buildRuntimeReport(Arrays.copyOf(successfulDurations, successfulCount),
                 overallRuntime, strategyRuntimes);
 
-        return new BacktestExecutionResult(seriesManager.getBarSeries(), resultStatements, runtimeReport,
-                executionFailures.stream().toList());
+        return BacktestExecutionResult.capture(managedSeries, resultStatements, runtimeReport,
+                executionFailures.stream().toList(), baseline);
     }
 
     private Comparator<StrategyEvaluation> createBestFirstComparator(AnalysisCriterion criterion) {
@@ -1051,6 +1087,26 @@ public class BacktestExecutor {
         public BacktestAndWalkForwardResult {
             backtest = Objects.requireNonNull(backtest, "backtest");
             walkForward = Objects.requireNonNull(walkForward, "walkForward");
+        }
+    }
+
+    /**
+     * Executes strategies sequentially on the current thread.
+     *
+     * <p>
+     * This is used while a {@link ConcurrentBarSeries} read lease is held by the
+     * caller. Delegating work to parallel workers would make those workers acquire
+     * nested read locks while the lease-owning thread waits for their completion; a
+     * queued writer can then deadlock the execution.
+     * </p>
+     */
+    private void executeSequential(Strategy[] strategyArray, TradingStatement[] statements, long[] durations,
+            Function<Strategy, TradingRecord> tradingRecordRunner, Consumer<Integer> progressCallback,
+            ConcurrentLinkedQueue<BacktestExecutionResult.StrategyFailure> failureLedger) {
+        ProgressTracker progressTracker = ProgressTracker.create(progressCallback);
+        for (int index = 0; index < strategyArray.length; index++) {
+            executeSingleStrategy(index, strategyArray, statements, durations, tradingRecordRunner, progressTracker,
+                    failureLedger);
         }
     }
 

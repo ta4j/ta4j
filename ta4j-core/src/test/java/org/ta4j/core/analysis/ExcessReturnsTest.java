@@ -11,7 +11,10 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Trade;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
@@ -22,6 +25,39 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     public ExcessReturnsTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test(timeout = 5000)
+    public void compoundsIntervalEndingAtMaximumIntegerIndex() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 50d).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(Integer.MAX_VALUE - 1)
+                .build();
+        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(Integer.MAX_VALUE - 1, series),
+                Trade.sellAt(Integer.MAX_VALUE, series));
+
+        Num value = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO, record)
+                .excessReturn(Integer.MAX_VALUE - 1, Integer.MAX_VALUE);
+
+        assertEquals(numFactory.numOf(-0.5), value);
+    }
+
+    @Test
+    public void appliesInvestedPolicyToRawExitWhenLogicalWindowIsEmpty() {
+        BarSeries series = ConstrainedSeriesSupport.emptyLogicalSeries("empty-window", numFactory, 100d, 100d);
+        Num one = numFactory.one();
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, numFactory.numOf(100d), one),
+                Trade.sellAt(1, numFactory.numOf(100d), one));
+        double annualRiskFreeRate = 0.05d;
+
+        Num actual = new ExcessReturns(series, numFactory.numOf(annualRiskFreeRate),
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, tradingRecord).excessReturn(0, 1);
+
+        double expected = Math.pow(1d + annualRiskFreeRate,
+                -Duration.ofMinutes(1).getSeconds() / (double) TimeConstants.SECONDS_PER_YEAR) - 1d;
+        assertEquals(expected, actual.doubleValue(), 1e-12);
+        assertTrue(actual.isNegative());
     }
 
     @Test

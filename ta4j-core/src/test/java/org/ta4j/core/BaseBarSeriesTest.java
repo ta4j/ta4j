@@ -699,6 +699,13 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals("", series.getName());
     }
 
+    @Test
+    public void testGetBarDataIsUnmodifiable() {
+        BaseBarSeries series = new BaseBarSeries("unmodifiable", new ArrayList<>(testBars));
+
+        assertThrows(UnsupportedOperationException.class, () -> series.getBarData().add(testBars.get(0)));
+    }
+
     // ==================== Utility Methods Tests ====================
 
     @Test

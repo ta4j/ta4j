@@ -7,9 +7,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReadWriteLock;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -30,16 +34,32 @@ class ElliottWaveFacadeTest {
 
         var suite = ElliottWaveFacade.fractal(series, 1, ElliottDegree.MINOR);
 
-        BarSeries seriesSnapshot = suite.series();
-        assertThat(seriesSnapshot).isNotSameAs(series);
-        assertThat(seriesSnapshot.getBarData()).containsExactlyElementsOf(series.getBarData());
+        BarSeries facadeSeries = suite.series();
+        assertThat(facadeSeries).isSameAs(series);
         assertThat(suite.swing()).isNotNull();
         assertThat(suite.phase()).isNotNull();
         assertThat(suite.ratio()).isNotNull();
         assertThat(suite.channel()).isNotNull();
         assertThat(suite.waveCount()).isNotNull();
+
         assertThat(suite.confluence()).isNotNull();
         assertThat(suite.invalidation()).isNotNull();
+    }
+
+    @Test
+    void scenarioCalculationUsesOneReadScopeForLiveSeries() {
+        BarSeries source = new MockBarSeriesBuilder().withData(10, 12, 9, 13, 8, 14, 7, 15, 6, 16, 5, 17, 4).build();
+        AtomicBoolean armed = new AtomicBoolean();
+        AtomicBoolean writerAcquired = new AtomicBoolean();
+        ReadWriteLock probeLock = ConstrainedSeriesSupport.readLeaseProbe(armed, writerAcquired);
+        ConcurrentBarSeries concurrentSeries = ConstrainedSeriesSupport.seriesWithReadWriteLock(source, probeLock);
+        ElliottWaveFacade facade = ElliottWaveFacade.fractal(concurrentSeries, 1, ElliottDegree.MINOR);
+        int endIndex = concurrentSeries.getEndIndex();
+        armed.set(true);
+
+        facade.primaryScenario(endIndex);
+
+        assertThat(writerAcquired.get()).as("facade calculation released its outer read lease").isFalse();
     }
 
     @Test

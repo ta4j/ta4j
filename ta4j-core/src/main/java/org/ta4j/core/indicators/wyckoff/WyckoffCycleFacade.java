@@ -3,10 +3,10 @@
  */
 package org.ta4j.core.indicators.wyckoff;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -50,7 +50,7 @@ public final class WyckoffCycleFacade {
      * Creates a new WyckoffCycleFacade instance.
      */
     private WyckoffCycleFacade(Builder builder) {
-        this.series = snapshotSeries(builder.series);
+        this.series = Objects.requireNonNull(builder.series, "series");
         this.precedingSwingBars = builder.precedingSwingBars;
         this.followingSwingBars = builder.followingSwingBars;
         this.allowedEqualSwingBars = builder.allowedEqualSwingBars;
@@ -93,8 +93,10 @@ public final class WyckoffCycleFacade {
      * @return bar series
      * @since 0.22.3
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the borrowed caller series by contract; "
+            + "cycle analysis reads the live series the indicators are bound to.")
     public BarSeries series() {
-        return snapshotSeries(series);
+        return series;
     }
 
     /**
@@ -104,7 +106,7 @@ public final class WyckoffCycleFacade {
      * @since 0.22.3
      */
     public WyckoffPhaseIndicator phase() {
-        return createPhaseIndicator();
+        return series.withReadLock(this::createPhaseIndicator);
     }
 
     /**
@@ -115,7 +117,7 @@ public final class WyckoffCycleFacade {
      * @since 0.22.3
      */
     public WyckoffPhase phase(int index) {
-        return phaseIndicator.getValue(index);
+        return series.withReadLock(() -> phaseIndicator.getValue(index));
     }
 
     /**
@@ -126,8 +128,10 @@ public final class WyckoffCycleFacade {
      * @since 0.22.3
      */
     public Num tradingRangeHigh(int index) {
-        phaseIndicator.getValue(index);
-        return phaseIndicator.getTradingRangeHigh(index);
+        return series.withReadLock(() -> {
+            phaseIndicator.getValue(index);
+            return phaseIndicator.getTradingRangeHigh(index);
+        });
     }
 
     /**
@@ -138,8 +142,10 @@ public final class WyckoffCycleFacade {
      * @since 0.22.3
      */
     public Num tradingRangeLow(int index) {
-        phaseIndicator.getValue(index);
-        return phaseIndicator.getTradingRangeLow(index);
+        return series.withReadLock(() -> {
+            phaseIndicator.getValue(index);
+            return phaseIndicator.getTradingRangeLow(index);
+        });
     }
 
     /**
@@ -151,8 +157,10 @@ public final class WyckoffCycleFacade {
      * @since 0.22.3
      */
     public int lastPhaseTransitionIndex(int index) {
-        phaseIndicator.getValue(index);
-        return phaseIndicator.getLastPhaseTransitionIndex(index);
+        return series.withReadLock(() -> {
+            phaseIndicator.getValue(index);
+            return phaseIndicator.getLastPhaseTransitionIndex(index);
+        });
     }
 
     /**
@@ -162,22 +170,13 @@ public final class WyckoffCycleFacade {
      * @since 0.22.3
      */
     public int unstableBars() {
-        return phaseIndicator.getCountOfUnstableBars();
+        return series.withReadLock(phaseIndicator::getCountOfUnstableBars);
     }
 
     private WyckoffPhaseIndicator createPhaseIndicator() {
         return new WyckoffPhaseIndicator(series, precedingSwingBars, followingSwingBars, allowedEqualSwingBars,
                 volumeShortWindow, volumeLongWindow, breakoutTolerance, retestTolerance, climaxThreshold,
                 dryUpThreshold);
-    }
-
-    private static BarSeries snapshotSeries(BarSeries barSeries) {
-        BarSeries source = Objects.requireNonNull(barSeries, "series");
-        return new BaseBarSeriesBuilder().withName(source.getName())
-                .withNumFactory(source.numFactory())
-                .withBars(source.getBarData())
-                .withMaxBarCount(source.getMaximumBarCount())
-                .build();
     }
 
     /**

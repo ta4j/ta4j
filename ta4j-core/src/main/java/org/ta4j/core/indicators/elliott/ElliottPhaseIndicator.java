@@ -72,6 +72,11 @@ public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase
     }
 
     @Override
+    public ElliottPhase getValue(final int index) {
+        return getBarSeries().withReadLock(() -> super.getValue(index));
+    }
+
+    @Override
     protected ElliottPhase calculate(final int index) {
         final ElliottSwingMetadata metadata = metadata(index);
         if (!metadata.isValid() || metadata.isEmpty()) {

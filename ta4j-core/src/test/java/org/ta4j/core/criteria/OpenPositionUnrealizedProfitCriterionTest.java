@@ -11,6 +11,9 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
+import org.ta4j.core.Trade;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
@@ -24,6 +27,16 @@ public class OpenPositionUnrealizedProfitCriterionTest extends AbstractCriterion
 
     public OpenPositionUnrealizedProfitCriterionTest(NumFactory numFactory) {
         super(params -> new OpenPositionUnrealizedProfitCriterion(), numFactory);
+    }
+
+    @Test
+    public void openPositionUsesLogicalCloseDespiteEarlierTrailingExit() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("unrealized-end", numFactory, 1, 10d, 20d,
+                30d);
+        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+        record.enter(1, series.getBar(1).getClosePrice(), numFactory.one());
+
+        assertNumEquals(0d, getCriterion().calculate(series, record));
     }
 
     @Test

@@ -38,6 +38,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
+import org.ta4j.core.backtest.BarSeriesManager;
+import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
+import org.ta4j.core.analysis.EquityCurveMode;
+import org.ta4j.core.analysis.Returns;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.bars.TimeBarBuilderFactory;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -46,6 +51,7 @@ import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.rules.FixedRule;
 import org.ta4j.core.utils.BarSeriesUtils;
 
 /**
@@ -93,6 +99,57 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         if (executorService != null) {
             executorService.shutdownNow();
         }
+    }
+
+    @Test
+    public void managerResolvesRollingWindowAfterAcquiringRunLock() {
+        AtomicBoolean appendBeforeLock = new AtomicBoolean();
+        ConcurrentBarSeries series = new ConcurrentBarSeries("rolling-manager", new ArrayList<>(testBars.subList(0, 2)),
+                0, 1, false, numFactory, barBuilderFactory) {
+            @Override
+            public <T> T withReadLock(Supplier<T> action) {
+                if (appendBeforeLock.compareAndSet(true, false)) {
+                    addBar(testBars.get(2));
+                }
+                return super.withReadLock(action);
+            }
+        };
+        series.setMaximumBarCount(2);
+        BarSeriesManager manager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        appendBeforeLock.set(true);
+
+        TradingRecord record = manager.run(new BaseStrategy(new FixedRule(2), new FixedRule()));
+
+        assertTrue(record.getCurrentPosition().isOpened());
+        assertEquals(2, record.getCurrentPosition().getEntry().getIndex());
+        assertEquals(testBars.get(2).getClosePrice(), record.getCurrentPosition().getEntry().getPricePerAsset());
+    }
+
+    @Test
+    public void returnsCaptureRollingWindowAfterAcquiringReadLock() {
+        AtomicBoolean appendBeforeLock = new AtomicBoolean();
+        ConcurrentBarSeries series = new ConcurrentBarSeries("returns-lock", new ArrayList<>(testBars.subList(0, 2)), 0,
+                1, false, numFactory, barBuilderFactory) {
+            @Override
+            public void withReadLock(Runnable action) {
+                if (appendBeforeLock.compareAndSet(true, false)) {
+                    addBar(testBars.get(2));
+                }
+                super.withReadLock(action);
+            }
+        };
+        series.setMaximumBarCount(2);
+        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series));
+        appendBeforeLock.set(true);
+
+        Returns returns = new Returns(series, record, ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET);
+
+        Num expected = testBars.get(2)
+                .getClosePrice()
+                .dividedBy(testBars.get(1).getClosePrice())
+                .minus(numFactory.one());
+        TestUtils.assertNumEquals(expected, returns.getValue(2));
+        assertTrue(returns.getValue(0).isNaN());
     }
 
     // ==================== Constructor Tests ====================
