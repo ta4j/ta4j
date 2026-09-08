@@ -98,6 +98,20 @@ public class StudentTScaleMixingMonteCarloMethodTest {
     }
 
     @Test
+    public void oppositeSignSamplesContractWithoutIntermediateOverflow() {
+        MonteCarloMethod unitMethod = new StudentTScaleMixingMonteCarloMethod(fixedSamples(-1d), 5);
+        double unitResult = unitMethod.terminalReturns(context(1, 1, window(0.01d), moments(1d), 7L))
+                .get(0)
+                .doubleValue();
+        assertTrue(Math.abs(unitResult) < 1d);
+        MonteCarloMethod method = new StudentTScaleMixingMonteCarloMethod(fixedSamples(-1e308), 5);
+
+        List<Num> samples = method.terminalReturns(context(1, 1, window(0.01d), moments(1e308), 7L));
+
+        assertEquals(unitResult, samples.get(0).doubleValue() / 1e308, 1e-12);
+    }
+
+    @Test
     public void sameSeedReproducesIdenticalSamples() {
         MonteCarloMethod method = new StudentTScaleMixingMonteCarloMethod(
                 NormalInverseGammaForecastMethod.withEmpiricalPriors());

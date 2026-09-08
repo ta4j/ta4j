@@ -114,8 +114,12 @@ public final class StudentTScaleMixingMonteCarloMethod implements MonteCarloMeth
                 return null;
             }
             double factor = tScaleDraw(random) / scaleMean;
-            Num centered = converted.minus(driftPath);
-            Num scaled = driftPath.plus(centered.multipliedBy(numFactory.numOf(factor)));
+            Num scale = numFactory.numOf(factor);
+            // A contracting affine combination stays finite even when subtracting
+            // opposite-sign endpoints would overflow before applying the scale.
+            Num scaled = factor <= 1d
+                    ? driftPath.multipliedBy(numFactory.one().minus(scale)).plus(converted.multipliedBy(scale))
+                    : driftPath.plus(converted.minus(driftPath).multipliedBy(scale));
             if (!Num.isFinite(scaled)) {
                 return null;
             }

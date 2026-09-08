@@ -109,6 +109,9 @@ public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCar
             return null;
         }
         if (volatility.isZero()) {
+            if (posterior.scale() != 0d) {
+                return null;
+            }
             return deterministicPosteriorReturns(posterior, context);
         }
         RandomGenerator random = context.random();

@@ -101,8 +101,7 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
         List<Num> constantWindow = List.of(FACTORY.numOf(0.01d), FACTORY.numOf(0.01d), FACTORY.numOf(0.01d));
         ReturnMoments flatMoments = ReturnMoments.stable(100, 3, ReturnRepresentation.LOG, FACTORY.zero(),
                 FACTORY.numOf(0.01d), FACTORY.zero());
-        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
-                fixedInner(FACTORY.one()));
+        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(null);
 
         List<Num> samples = method.terminalReturns(context(3, 10, constantWindow, flatMoments, 7L, FACTORY));
 
@@ -110,6 +109,16 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
         for (Num sample : samples) {
             TestUtils.assertNumEquals(FACTORY.numOf(0.03d), sample, 1e-12);
         }
+    }
+
+    @Test
+    public void zeroVolatilityRejectsNonzeroPosteriorScale() {
+        ReturnMoments flatMoments = ReturnMoments.stable(100, 2, ReturnRepresentation.LOG, FACTORY.zero(),
+                FACTORY.zero(), FACTORY.zero());
+        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(null);
+
+        assertNull(method.terminalReturns(
+                context(3, 10, List.of(FACTORY.numOf(-0.01d), FACTORY.numOf(0.01d)), flatMoments, 7L, FACTORY)));
     }
 
     @Test

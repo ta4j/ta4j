@@ -95,6 +95,14 @@ public class RecentVolatilityWideningMonteCarloMethodTest {
     }
 
     @Test
+    public void calmWindowRejectsSampleThatOverflowsContextFactory() {
+        MonteCarloMethod inner = context -> List.of(DECIMAL.numOf(new java.math.BigDecimal("1E400")));
+        MonteCarloMethod method = new RecentVolatilityWideningMonteCarloMethod(inner, 2, 4d);
+
+        assertNull(method.terminalReturns(context(2, 1, window(0.2d, 0.2d), moments(1d), 1L)));
+    }
+
+    @Test
     public void sameSeedReproducesIdenticalSamples() {
         MonteCarloMethod method = new RecentVolatilityWideningMonteCarloMethod(
                 NormalInverseGammaForecastMethod.withEmpiricalPriors());

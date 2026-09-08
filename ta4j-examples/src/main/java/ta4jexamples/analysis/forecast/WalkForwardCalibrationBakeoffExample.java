@@ -429,7 +429,7 @@ public final class WalkForwardCalibrationBakeoffExample {
             try {
                 Files.move(tmp, path, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
                         java.nio.file.StandardCopyOption.ATOMIC_MOVE);
-            } catch (java.nio.file.AtomicMoveNotSupportedException e) {
+            } catch (java.nio.file.AtomicMoveNotSupportedException | java.nio.file.FileAlreadyExistsException e) {
                 Files.move(tmp, path, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
             }
         } catch (java.io.IOException e) {

@@ -169,7 +169,11 @@ public final class RecentVolatilityWideningMonteCarloMethod implements MonteCarl
     }
 
     private static Num normalize(Num value, NumFactory numFactory) {
-        return Num.isFinite(value) ? numFactory.numOf(value.bigDecimalValue()) : null;
+        if (!Num.isFinite(value)) {
+            return null;
+        }
+        Num converted = numFactory.numOf(value.bigDecimalValue());
+        return Num.isFinite(converted) ? converted : null;
     }
 
     /**
