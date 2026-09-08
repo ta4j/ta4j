@@ -58,14 +58,15 @@ final class FractalDetectionHelper {
         if (maxAvailableIndex < beginIndex || maxAvailableIndex > endIndex) {
             return -1;
         }
-        final int earliestCandidate = beginIndex + precedingBars;
-        if (maxAvailableIndex < earliestCandidate) {
+        final long earliestCandidate = (long) beginIndex + precedingBars;
+        if ((long) maxAvailableIndex < earliestCandidate) {
             return -1;
         }
-        for (int candidateIndex = maxAvailableIndex; candidateIndex >= earliestCandidate; candidateIndex--) {
-            if (isConfirmedFractal(indicator, series, candidateIndex, precedingBars, followingBars, maxAvailableIndex,
+        for (long candidateIndex = maxAvailableIndex; candidateIndex >= earliestCandidate; candidateIndex--) {
+            final int candidate = (int) candidateIndex;
+            if (isConfirmedFractal(indicator, series, candidate, precedingBars, followingBars, maxAvailableIndex,
                     allowedEqualBars, direction)) {
-                return candidateIndex;
+                return candidate;
             }
         }
         return -1;

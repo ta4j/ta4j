@@ -3,13 +3,8 @@
  */
 package org.ta4j.core;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.ta4j.core.bars.TimeBarBuilderFactory;
-import org.ta4j.core.num.DecimalNumFactory;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
-
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.Serial;
 import java.time.Instant;
 import java.util.ArrayDeque;
@@ -17,6 +12,15 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.ta4j.core.bars.TimeBarBuilderFactory;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Base implementation of a {@link BarSeries}.
@@ -36,7 +40,7 @@ public class BaseBarSeries implements BarSeries {
     /**
      * The logger.
      */
-    private final transient Logger log = LoggerFactory.getLogger(getClass());
+    private transient Logger log = LoggerFactory.getLogger(getClass());
 
     /**
      * The name of the bar series.
@@ -73,6 +77,15 @@ public class BaseBarSeries implements BarSeries {
     private int removedBarsCount = 0;
     private long barHistoryRevision;
     private transient Deque<BarHistoryChange> barHistoryChanges;
+
+    @Serial
+    private void readObject(final ObjectInputStream inputStream) throws IOException, ClassNotFoundException {
+        inputStream.defaultReadObject();
+        // Transient fields are null after deserialization; restore the logger
+        // before any retained-bar access can reach the trace-logging branch.
+        this.log = LoggerFactory.getLogger(getClass());
+        attachRetainedBarMutationTracking();
+    }
 
     /**
      * Convenience constructor for BaseBarSeries minimizing upfront parameter
@@ -120,6 +133,47 @@ public class BaseBarSeries implements BarSeries {
         this.seriesEndIndex = config.seriesEndIndex();
         this.removedBarsCount = config.removedBarsCount();
         this.constrained = config.constrained();
+        attachRetainedBarMutationTracking();
+    }
+
+    private synchronized void attachRetainedBarMutationTracking() {
+        for (int innerIndex = 0; innerIndex < this.bars.size(); innerIndex++) {
+            attachBarMutationTracking(this.bars.get(innerIndex), this.removedBarsCount + innerIndex);
+        }
+    }
+
+    private void attachBarMutationTracking(final Bar bar, final int index) {
+        if (bar instanceof BaseBar baseBar) {
+            baseBar.attachToBarSeries(this, index);
+        }
+    }
+
+    private void detachBarMutationTracking(final Bar bar, final int index) {
+        if (bar instanceof BaseBar baseBar) {
+            baseBar.detachFromBarSeries(this, index);
+        }
+    }
+
+    /**
+     * Records a direct mutation for this retained bar at its registered absolute
+     * index. A captured index can become stale while a concurrent callback waits
+     * for the series write lock, so the current retained alias is checked before
+     * discarding the notification.
+     */
+    void retainedBarMutated(final BaseBar bar, final int index) {
+        synchronized (this) {
+            final int innerIndex = index - this.removedBarsCount;
+            if (innerIndex >= 0 && innerIndex < this.bars.size() && this.bars.get(innerIndex) == bar) {
+                recordBarHistoryChange(index);
+                return;
+            }
+            for (int currentInnerIndex = 0; currentInnerIndex < this.bars.size(); currentInnerIndex++) {
+                if (this.bars.get(currentInnerIndex) == bar) {
+                    recordBarHistoryChange(this.removedBarsCount + currentInnerIndex);
+                    return;
+                }
+            }
+        }
     }
 
     private static Config defaultConfig(final String name, final List<Bar> bars) {
@@ -266,7 +320,7 @@ public class BaseBarSeries implements BarSeries {
      * @since 0.23.1
      */
     @Override
-    public long getBarHistoryRevision() {
+    public synchronized long getBarHistoryRevision() {
         return this.barHistoryRevision;
     }
 
@@ -276,7 +330,7 @@ public class BaseBarSeries implements BarSeries {
      * @since 0.24.1
      */
     @Override
-    public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
+    public synchronized BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
         return new BarSeriesChangeSnapshot(this.barHistoryRevision, earliestChangedIndexSince(sinceRevision),
                 this.removedBarsCount - 1, this.maximumBarCount, this.seriesEndIndex);
     }
@@ -287,9 +341,13 @@ public class BaseBarSeries implements BarSeries {
      * @since 0.22.9
      */
     @Override
+    @SuppressFBWarnings(value = "AT_STALE_THREAD_WRITE_OF_PRIMITIVE", justification = "BaseBarSeries structural indexes are intentionally single-threaded; concurrent callers must use ConcurrentBarSeries.")
     public void clear() {
         if (!this.bars.isEmpty()) {
             recordBarHistoryChange(0);
+            for (int innerIndex = 0; innerIndex < this.bars.size(); innerIndex++) {
+                detachBarMutationTracking(this.bars.get(innerIndex), this.removedBarsCount + innerIndex);
+            }
         }
         this.bars.clear();
         this.seriesBeginIndex = -1;
@@ -317,6 +375,7 @@ public class BaseBarSeries implements BarSeries {
     }
 
     @Override
+    @SuppressFBWarnings(value = "AT_STALE_THREAD_WRITE_OF_PRIMITIVE", justification = "BaseBarSeries structural indexes are intentionally single-threaded; concurrent callers must use ConcurrentBarSeries.")
     public void setMaximumBarCount(final int maximumBarCount) {
         if (this.constrained) {
             throw new IllegalStateException("Cannot set a maximum bar count on a constrained bar series");
@@ -339,6 +398,7 @@ public class BaseBarSeries implements BarSeries {
      *                              beyond {@link Integer#MAX_VALUE}
      */
     @Override
+    @SuppressFBWarnings(value = "AT_STALE_THREAD_WRITE_OF_PRIMITIVE", justification = "BaseBarSeries structural indexes are intentionally single-threaded; concurrent callers must use ConcurrentBarSeries.")
     public void addBar(final Bar bar, final boolean replace) {
         Objects.requireNonNull(bar, "bar must not be null");
         if (!numFactory.produces(bar.getClosePrice())) {
@@ -349,7 +409,9 @@ public class BaseBarSeries implements BarSeries {
 
         if (!this.bars.isEmpty()) {
             if (replace) {
-                this.bars.set(this.bars.size() - 1, bar);
+                final Bar previousBar = this.bars.set(this.bars.size() - 1, bar);
+                detachBarMutationTracking(previousBar, this.seriesEndIndex);
+                attachBarMutationTracking(bar, this.seriesEndIndex);
                 recordBarHistoryChange(this.seriesEndIndex);
                 return;
             }
@@ -371,6 +433,7 @@ public class BaseBarSeries implements BarSeries {
             this.seriesBeginIndex = 0;
         }
         this.seriesEndIndex = Math.incrementExact(this.seriesEndIndex);
+        attachBarMutationTracking(bar, this.seriesEndIndex);
         removeExceedingBars();
     }
 
@@ -402,8 +465,42 @@ public class BaseBarSeries implements BarSeries {
         if (innerIndex < 0 || innerIndex >= this.bars.size()) {
             throw new IndexOutOfBoundsException(buildOutOfBoundsMessage(this, index));
         }
-        this.bars.set(innerIndex, bar);
+        final Bar previousBar = this.bars.set(innerIndex, bar);
+        detachBarMutationTracking(previousBar, index);
+        attachBarMutationTracking(bar, index);
         recordBarHistoryChange(index);
+    }
+
+    final BaseBar.RetainedBarMutationPublication mutateLastBarTrade(final Num tradeVolume, final Num tradePrice) {
+        final Bar lastBar = getLastBar();
+        final long revisionBeforeMutation = getBarHistoryRevision();
+        final BaseBar.RetainedBarMutationPublication publication;
+        if (lastBar instanceof BaseBar baseBar) {
+            publication = baseBar.deferAddTrade(this, tradeVolume, tradePrice);
+        } else {
+            lastBar.addTrade(tradeVolume, tradePrice);
+            publication = null;
+        }
+        if (getBarHistoryRevision() == revisionBeforeMutation) {
+            recordBarHistoryChange(this.seriesEndIndex);
+        }
+        return publication;
+    }
+
+    final BaseBar.RetainedBarMutationPublication mutateLastBarPrice(final Num price) {
+        final Bar lastBar = getLastBar();
+        final long revisionBeforeMutation = getBarHistoryRevision();
+        final BaseBar.RetainedBarMutationPublication publication;
+        if (lastBar instanceof BaseBar baseBar) {
+            publication = baseBar.deferAddPrice(this, price);
+        } else {
+            lastBar.addPrice(price);
+            publication = null;
+        }
+        if (getBarHistoryRevision() == revisionBeforeMutation) {
+            recordBarHistoryChange(this.seriesEndIndex);
+        }
+        return publication;
     }
 
     @Override
@@ -413,17 +510,21 @@ public class BaseBarSeries implements BarSeries {
 
     @Override
     public void addTrade(final Num tradeVolume, final Num tradePrice) {
-        getLastBar().addTrade(tradeVolume, tradePrice);
-        recordBarHistoryChange(this.seriesEndIndex);
+        final BaseBar.RetainedBarMutationPublication publication = mutateLastBarTrade(tradeVolume, tradePrice);
+        if (publication != null) {
+            publication.publish();
+        }
     }
 
     @Override
     public void addPrice(final Num price) {
-        getLastBar().addPrice(price);
-        recordBarHistoryChange(this.seriesEndIndex);
+        final BaseBar.RetainedBarMutationPublication publication = mutateLastBarPrice(price);
+        if (publication != null) {
+            publication.publish();
+        }
     }
 
-    private void recordBarHistoryChange(final int changedIndex) {
+    private synchronized void recordBarHistoryChange(final int changedIndex) {
         this.barHistoryRevision++;
         if (this.barHistoryChanges == null) {
             this.barHistoryChanges = new ArrayDeque<>(BAR_HISTORY_CHANGE_CAPACITY);
@@ -433,7 +534,7 @@ public class BaseBarSeries implements BarSeries {
         this.barHistoryChanges.addLast(new BarHistoryChange(this.barHistoryRevision, changedIndex));
     }
 
-    private int earliestChangedIndexSince(final long sinceRevision) {
+    private synchronized int earliestChangedIndexSince(final long sinceRevision) {
         if (sinceRevision == this.barHistoryRevision) {
             return -1;
         }
@@ -457,11 +558,15 @@ public class BaseBarSeries implements BarSeries {
     /**
      * Removes the first N bars that exceed the {@link #maximumBarCount}.
      */
+    @SuppressFBWarnings(value = "AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE", justification = "BaseBarSeries structural indexes are intentionally single-threaded; concurrent callers must use ConcurrentBarSeries.")
     protected void removeExceedingBars() {
         final int barCount = this.bars.size();
         if (barCount > this.maximumBarCount) {
             // Removing old bars
             final int nbBarsToRemove = barCount - this.maximumBarCount;
+            for (int index = 0; index < nbBarsToRemove; index++) {
+                detachBarMutationTracking(this.bars.get(index), this.removedBarsCount + index);
+            }
             if (nbBarsToRemove == 1) {
                 this.bars.removeFirst();
             } else {

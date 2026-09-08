@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "protocolId": "cf525-elliott-hypothesis-study",
+  "protocolVersion": "1.0.0",
+  "frozenAt": "2026-08-24",
+  "studyDesign": "retrospective-exploratory",
+  "hypotheses": {
+    "H1": {
+      "id": "H1",
+      "statement": "Directional moves unfold as five alternating legs with three trend-direction thrusts (MOTIVE_5) more often than under price-like null ensembles and competing grammars.",
+      "grammar": "MOTIVE_5"
+    },
+    "H2": {
+      "id": "H2",
+      "statement": "Complete five-leg motives are followed by three-leg countertrend corrections (CYCLE_5_3) more often than under nulls and competing grammars.",
+      "grammar": "CYCLE_5_3"
+    }
+  },
+  "datasets": [
+    {
+      "id": "primary",
+      "resource": "/TradingView-INDEX_BTCUSD-PT1D-20091005_20260306.json",
+      "role": "primary",
+      "asset": "BTC-USD",
+      "barSize": "PT1D",
+      "sha256": "19621e98cb310fce9bf013d4963da0f6c7ab7f26f89a42af16a1a2408254e2fe"
+    },
+    {
+      "id": "transfer-portability",
+      "resource": "/Coinbase-ETH-USD-PT1D-20160517_20251028.json",
+      "role": "transfer-portability",
+      "asset": "ETH-USD",
+      "barSize": "PT1D",
+      "sha256": "11f81500ef33b08fb6fe8d03c75b4afa343668521448afe345611ee83171a384"
+    }
+  ],
+  "partitions": {
+    "calibration": {
+      "start": "2010-01-01",
+      "end": "2019-12-31"
+    },
+    "validation": {
+      "start": "2020-01-01",
+      "end": "2023-06-15"
+    },
+    "holdout": {
+      "start": "2023-06-16",
+      "end": "2026-03-06"
+    },
+    "forbiddenCalibrationStart": "2024-01-01"
+  },
+  "primaryDetector": "fractal-w5",
+  "momentumIndicator": {
+    "type": "RSI",
+    "barCount": 14
+  },
+  "detectorConfigurations": [
+    {
+      "name": "fractal-w3",
+      "factory": "fractal",
+      "params": [3]
+    },
+    {
+      "name": "fractal-w5",
+      "factory": "fractal",
+      "params": [5]
+    },
+    {
+      "name": "prominence-default",
+      "factory": "prominence",
+      "params": []
+    },
+    {
+      "name": "slope-change-w5",
+      "factory": "slopeChange",
+      "params": [5]
+    }
+  ],
+  "nullEnsemble": {
+    "type": "stationary-block-bootstrap",
+    "expectedBlockLengths": [20, 60],
+    "ensembleSize": 200,
+    "seed": 5252026
+  },
+  "competingGrammars": [
+    "3+3",
+    "5+5",
+    "7+3",
+    "change-point-baseline"
+  ],
+  "metrics": [
+    "matchRate",
+    "ambiguousRate",
+    "noMatchRate",
+    "confirmationLagBars",
+    "labelStabilityJaccard",
+    "evidencePassRate",
+    "jointPassRate"
+  ],
+  "ablationSet": [
+    "topology-only",
+    "+wave2-origin",
+    "+wave3-not-shortest",
+    "+wave4-nonoverlap",
+    "+wave5-divergence",
+    "classical-all"
+  ]
+}

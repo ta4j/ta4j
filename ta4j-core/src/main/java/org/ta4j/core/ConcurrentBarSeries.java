@@ -432,6 +432,22 @@ public class ConcurrentBarSeries extends BaseBarSeries {
     }
 
     /**
+     * Serializes direct retained-bar callbacks with structural mutations.
+     * {@link BaseBar} releases its retaining-series monitor before invoking this
+     * method, so acquiring the write lock here cannot invert the attachment lock
+     * order.
+     */
+    @Override
+    void retainedBarMutated(final BaseBar bar, final int index) {
+        this.writeLock.lock();
+        try {
+            super.retainedBarMutated(bar, index);
+        } finally {
+            this.writeLock.unlock();
+        }
+    }
+
+    /**
      * {@inheritDoc}
      * <p>
      * Acquires the write lock so live bar restatements cannot interleave with
@@ -461,31 +477,34 @@ public class ConcurrentBarSeries extends BaseBarSeries {
 
     @Override
     public void addTrade(final Number tradeVolume, final Number tradePrice) {
-        this.writeLock.lock();
-        try {
-            super.addTrade(tradeVolume, tradePrice);
-        } finally {
-            this.writeLock.unlock();
-        }
+        addTrade(numFactory().numOf(tradeVolume), numFactory().numOf(tradePrice));
     }
 
     @Override
     public void addTrade(final Num tradeVolume, final Num tradePrice) {
+        BaseBar.RetainedBarMutationPublication publication = null;
         this.writeLock.lock();
         try {
-            super.addTrade(tradeVolume, tradePrice);
+            publication = super.mutateLastBarTrade(tradeVolume, tradePrice);
         } finally {
             this.writeLock.unlock();
+        }
+        if (publication != null) {
+            publication.publish();
         }
     }
 
     @Override
     public void addPrice(final Num price) {
+        BaseBar.RetainedBarMutationPublication publication = null;
         this.writeLock.lock();
         try {
-            super.addPrice(price);
+            publication = super.mutateLastBarPrice(price);
         } finally {
             this.writeLock.unlock();
+        }
+        if (publication != null) {
+            publication.publish();
         }
     }
 
