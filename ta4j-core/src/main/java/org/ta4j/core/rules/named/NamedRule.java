@@ -44,7 +44,7 @@ import java.util.Optional;
  * {@link NamedComponentRegistry}.
  * </p>
  *
- * @since 0.24.2
+ * @since 0.25.1
  */
 public abstract class NamedRule extends AbstractRule {
 
@@ -58,7 +58,7 @@ public abstract class NamedRule extends AbstractRule {
      *
      * @param label compact label produced by {@link #buildLabel(Class, String...)}
      *              and used for lookup and serialization
-     * @since 0.24.2
+     * @since 0.25.1
      */
     protected NamedRule(String label) {
         this.label = label;
@@ -70,7 +70,7 @@ public abstract class NamedRule extends AbstractRule {
      * before returning.
      *
      * @param basePackages optional extra packages to scan
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public static void initializeRegistry(String... basePackages) {
         REGISTRY.initializeRegistry(basePackages);
@@ -82,7 +82,7 @@ public abstract class NamedRule extends AbstractRule {
      * @param type named rule subtype
      * @throws IllegalArgumentException when the type name cannot form a valid
      *                                  compact label
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public static void registerImplementation(Class<? extends NamedRule> type) {
         REGISTRY.registerImplementation(type);
@@ -94,7 +94,7 @@ public abstract class NamedRule extends AbstractRule {
      *
      * @param type named rule subtype
      * @return {@code true} when the rule was removed
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public static boolean unregisterImplementation(Class<? extends NamedRule> type) {
         return REGISTRY.unregisterImplementation(type);
@@ -107,7 +107,7 @@ public abstract class NamedRule extends AbstractRule {
      *
      * @param simpleName simple class name
      * @return optional containing the registered type
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public static Optional<Class<? extends NamedRule>> lookup(String simpleName) {
         return REGISTRY.lookup(simpleName);
@@ -123,7 +123,7 @@ public abstract class NamedRule extends AbstractRule {
      *                                  blank simple name, or when the rule type or
      *                                  a parameter contains the underscore label
      *                                  delimiter
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public static String buildLabel(Class<? extends NamedRule> type, String... parameters) {
         return REGISTRY.buildLabel(type, parameters);
@@ -134,7 +134,7 @@ public abstract class NamedRule extends AbstractRule {
      *
      * @param label serialized label
      * @return immutable token list
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public static List<String> splitLabel(String label) {
         return REGISTRY.splitLabel(label);
@@ -145,7 +145,7 @@ public abstract class NamedRule extends AbstractRule {
      *
      * @param simpleName named rule simple class name
      * @return registered type
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public static Class<? extends NamedRule> requireRegistered(String simpleName) {
         return REGISTRY.requireRegistered(simpleName);
@@ -164,7 +164,7 @@ public abstract class NamedRule extends AbstractRule {
      * Keeps the reconstruction label fixed by ignoring rename attempts.
      *
      * @param name ignored because named-rule labels are reconstruction-critical
-     * @since 0.24.2
+     * @since 0.25.1
      */
     @Override
     public final void setName(String name) {
@@ -175,7 +175,7 @@ public abstract class NamedRule extends AbstractRule {
      * Returns the compact reconstruction label.
      *
      * @return compact rule label
-     * @since 0.24.2
+     * @since 0.25.1
      */
     @Override
     public final String getName() {
@@ -187,7 +187,7 @@ public abstract class NamedRule extends AbstractRule {
      * name.
      *
      * @return always {@code true}
-     * @since 0.24.2
+     * @since 0.25.1
      */
     @Override
     public boolean hasCustomName() {
@@ -198,7 +198,7 @@ public abstract class NamedRule extends AbstractRule {
      * Returns the compact reconstruction label as the default name.
      *
      * @return compact rule label
-     * @since 0.24.2
+     * @since 0.25.1
      */
     @Override
     protected final String createDefaultName() {
@@ -211,7 +211,7 @@ public abstract class NamedRule extends AbstractRule {
      * implementation class.
      *
      * @return compact rule label used in trace logs
-     * @since 0.24.2
+     * @since 0.25.1
      */
     @Override
     protected final String getTraceDisplayName() {
@@ -226,7 +226,7 @@ public abstract class NamedRule extends AbstractRule {
      * @param index         the bar index
      * @param tradingRecord trading history
      * @return true if the delegate rule is satisfied
-     * @since 0.24.2
+     * @since 0.25.1
      */
     protected final boolean evaluateDelegate(Rule delegateRule, int index, TradingRecord tradingRecord) {
         boolean satisfied = evaluateChildRule(delegateRule, "delegate", index, tradingRecord);

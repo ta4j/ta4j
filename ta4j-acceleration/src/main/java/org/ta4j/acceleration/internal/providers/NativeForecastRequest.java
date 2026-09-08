@@ -12,6 +12,5 @@ package org.ta4j.acceleration.internal.providers;
  */
 record NativeForecastRequest(int fromInclusive, int decisionCount, int horizon, int iterationCount,
         int lookbackBarCount, long seed, int shockModel, int volatilityMode, double volatilityDecayFactor,
-        double[] quantiles, int[] stable, double[] prices, double[] means, double[] drifts, double[] variances,
-        double[] historicalReturns) {
+        int[] stable, double[] prices, double[] means, double[] drifts, double[] variances, double[] historicalReturns) {
 }

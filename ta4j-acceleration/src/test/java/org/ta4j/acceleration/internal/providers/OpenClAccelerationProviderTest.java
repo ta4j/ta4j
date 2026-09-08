@@ -6,10 +6,14 @@ package org.ta4j.acceleration.internal.providers;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.ta4j.core.acceleration.AccelerationRuntime.Assessment;
 import org.ta4j.core.acceleration.AccelerationRuntime.Determinism;
 import org.ta4j.core.acceleration.AccelerationRuntime.DiagnosticCode;
@@ -26,7 +30,7 @@ class OpenClAccelerationProviderTest {
     }
 
     @Test
-    void declinesExactWithReducedRowReason() {
+    void declinesBitwiseIdentity() {
         OpenClAccelerationProvider provider = new OpenClAccelerationProvider();
 
         Assessment assessment = provider.assess(request(Double.NaN));
@@ -34,31 +38,21 @@ class OpenClAccelerationProviderTest {
         assertThat(assessment.supported()).isFalse();
         assertThat(assessment.diagnostic().code()).isEqualTo(DiagnosticCode.PROVIDER_UNAVAILABLE);
         assertThat(assessment.diagnostic().providerId()).isEqualTo("opencl");
-        assertThat(assessment.diagnostic().detail()).contains("reduced forecast rows");
     }
 
     @Test
-    void declinesApproximateWithReducedRowReason() {
-        OpenClAccelerationProvider provider = new OpenClAccelerationProvider();
+    void assessesApproximateRequestsWithoutLoadingLibrary(@TempDir Path directory) throws IOException {
+        System.setProperty(OpenClNativeLibrary.LIBRARY_PROPERTY,
+                Files.createFile(directory.resolve("unloaded.so")).toString());
 
-        Assessment assessment = provider.assess(request(0.01d));
+        Assessment assessment = new OpenClAccelerationProvider().assess(request(0.01d));
 
-        assertThat(assessment.supported()).isFalse();
-        assertThat(assessment.diagnostic().code()).isEqualTo(DiagnosticCode.PROVIDER_UNAVAILABLE);
-        assertThat(assessment.diagnostic().detail()).contains("reduced forecast rows");
+        assertThat(assessment.supported()).isTrue();
     }
 
     @Test
-    void assessmentNeverInitializesNative() {
-        OpenClAccelerationProvider provider = new OpenClAccelerationProvider();
-
-        Assessment assessment = provider.assess(request(Double.NaN));
-
-        assertThat(assessment.supported()).isFalse();
-    }
-
-    @Test
-    void executeIsUnreachable() {
+    void reportsMissingLibraryOnExecution(@TempDir Path directory) {
+        System.setProperty(OpenClNativeLibrary.LIBRARY_PROPERTY, directory.resolve("missing.so").toString());
         OpenClAccelerationProvider provider = new OpenClAccelerationProvider();
 
         assertThrows(NativeProviderException.class, () -> provider.execute(request(Double.NaN)));

@@ -27,7 +27,7 @@ import org.junit.jupiter.api.io.TempDir;
  * like parse failures and also return {@code null} rather than silently
  * truncating the series at the malformed row.
  * 
- * @since 0.23.1
+ * @since 0.25.1
  */
 class CsvMalformedRowTest {
 

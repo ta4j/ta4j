@@ -10,7 +10,7 @@ $maven = Join-Path $root "mvnw.cmd"
 $library = Join-Path $root "ta4j-acceleration\target\native\cuda\package\META-INF\native\windows-x86_64\ta4j-cuda-accelerator.dll"
 
 Write-Host "CF-336 Windows CUDA root: $root"
-Write-Host "Operation ABI: ta4j.forecast.monte-carlo-price.v1"
+Write-Host "CUDA sample-output provider uses MONTE_CARLO_SHOCK_PATHS_V1 row-major terminal prices with approximate tolerance."
 Write-Host "Implementation record: https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration"
 
 if ([System.Environment]::OSVersion.Platform -ne [System.PlatformID]::Win32NT) {
@@ -52,6 +52,9 @@ if ($Action -in @("Integration", "All")) {
 
 if ($Action -in @("Benchmark", "All")) {
     & (Join-Path $root "scripts\acceleration\benchmark-cuda-provider.ps1") -RepoRoot $root -LibraryPath $library
+    if ($LASTEXITCODE -ne 0) {
+        throw "CUDA benchmark failed with exit code $LASTEXITCODE"
+    }
 }
 
 if ($Action -eq "All") {

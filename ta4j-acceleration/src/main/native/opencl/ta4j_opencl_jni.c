@@ -14,7 +14,7 @@
 #include <string.h>
 #include <time.h>
 
-#define ABI_VERSION 1
+#define ABI_VERSION 2
 #define GOLDEN_GAMMA 0x9E3779B97F4A7C15ULL
 #define DOUBLE_UNIT 0x1.0p-53
 #define STATE_ERROR_BUFFER 512
@@ -924,7 +924,7 @@ JNIEXPORT jdoubleArray JNICALL
 Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvaluate(
         JNIEnv* environment, jclass, jint abi_version, jint from_inclusive, jint decision_count, jint horizon,
         jint iteration_count, jint lookback, jlong seed, jint shock_model, jint volatility_mode, jdouble decay,
-        jdoubleArray quantiles_array, jintArray stable_array, jdoubleArray prices_array, jdoubleArray means_array,
+        jintArray stable_array, jdoubleArray prices_array, jdoubleArray means_array,
         jdoubleArray drifts_array, jdoubleArray variances_array, jdoubleArray historical_returns_array) {
     char error[STATE_ERROR_BUFFER];
     double total_start = now_micros();
@@ -932,7 +932,6 @@ Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvalua
     double kernel_micros = 0.0;
     double reduction_micros = 0.0;
     jdoubleArray result = NULL;
-    double* quantiles = NULL;
     int* stable = NULL;
     double* prices = NULL;
     double* means = NULL;
@@ -940,22 +939,12 @@ Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvalua
     double* variances = NULL;
     double* historical_returns = NULL;
     double* payload = NULL;
-    double* padded_host = NULL;
-    double* summary = NULL;
     cl_mem device_samples = NULL;
     cl_mem device_history = NULL;
-    cl_mem device_quantiles = NULL;
-    cl_mem device_summary = NULL;
     cl_mem device_status = NULL;
-    jsize quantile_count = 0;
     size_t history_count = 0;
     size_t row_length = 0;
     size_t payload_size = 0;
-    size_t padded = 0;
-    size_t summary_size = 0;
-    size_t one = 1;
-    cl_int padded_int = 0;
-    int use_parallel = 0;
     int status = -1;
 
     if (pthread_mutex_lock(&STATE_MUTEX) != 0) {
@@ -975,32 +964,16 @@ Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvalua
         pthread_mutex_unlock(&STATE_MUTEX);
         return NULL;
     }
-    if (quantiles_array == NULL) {
-        throw_java(environment, "quantiles must not be null");
-        pthread_mutex_unlock(&STATE_MUTEX);
-        return NULL;
-    }
-    quantile_count = (*environment)->GetArrayLength(environment, quantiles_array);
-    if (quantile_count < 1) {
-        throw_java(environment, "at least one quantile is required");
-        pthread_mutex_unlock(&STATE_MUTEX);
-        return NULL;
-    }
     history_count = (size_t)decision_count * (size_t)lookback;
-    row_length = 4U + (size_t)quantile_count;
+    row_length = (size_t)iteration_count;
     payload_size = 4U + (size_t)decision_count * row_length;
-    summary_size = 3U + (size_t)quantile_count;
-    padded = next_power_of_two((size_t)iteration_count);
-    if (history_count > (size_t)INT32_MAX || payload_size > (size_t)INT32_MAX || padded > (size_t)INT32_MAX) {
+    if (history_count > (size_t)INT32_MAX || payload_size > (size_t)INT32_MAX) {
         throw_java(environment, "forecast buffers exceed JNI limits");
         pthread_mutex_unlock(&STATE_MUTEX);
         return NULL;
     }
-    padded_int = (cl_int)padded;
-    use_parallel = padded <= STATE.max_work_group_size;
 
-    if (!copy_doubles(environment, quantiles_array, quantile_count, "quantiles", &quantiles, error, sizeof(error))
-            || !copy_ints(environment, stable_array, decision_count, "stable", &stable, error, sizeof(error))
+    if (!copy_ints(environment, stable_array, decision_count, "stable", &stable, error, sizeof(error))
             || !copy_doubles(environment, prices_array, decision_count, "prices", &prices, error, sizeof(error))
             || !copy_doubles(environment, means_array, decision_count, "means", &means, error, sizeof(error))
             || !copy_doubles(environment, drifts_array, decision_count, "drifts", &drifts, error, sizeof(error))
@@ -1015,19 +988,16 @@ Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvalua
     }
 
     payload = (double*)calloc(payload_size, sizeof(double));
-    padded_host = (double*)malloc(padded * sizeof(double));
-    summary = (double*)calloc(summary_size, sizeof(double));
-    if (payload == NULL || padded_host == NULL || summary == NULL) {
+    if (payload == NULL) {
         throw_java(environment, "out of host memory");
         goto cleanup;
     }
-    for (size_t index = 0; index < padded; ++index) {
-        padded_host[index] = DBL_MAX;
+    for (size_t index = 4U; index < payload_size; ++index) {
+        payload[index] = NAN;
     }
-
     {
         cl_int create_status = CL_SUCCESS;
-        device_samples = clCreateBuffer(STATE.context, CL_MEM_READ_WRITE, padded * sizeof(double), NULL,
+        device_samples = clCreateBuffer(STATE.context, CL_MEM_READ_WRITE, (size_t)iteration_count * sizeof(double), NULL,
                                         &create_status);
         if (create_status != CL_SUCCESS || device_samples == NULL) {
             snprintf(error, sizeof(error), "samples buffer creation: %s", cl_error_string(create_status));
@@ -1041,20 +1011,6 @@ Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvalua
             throw_java(environment, error);
             goto cleanup;
         }
-        device_quantiles = clCreateBuffer(STATE.context, CL_MEM_READ_WRITE, (size_t)quantile_count * sizeof(double),
-                                          NULL, &create_status);
-        if (create_status != CL_SUCCESS || device_quantiles == NULL) {
-            snprintf(error, sizeof(error), "quantile buffer creation: %s", cl_error_string(create_status));
-            throw_java(environment, error);
-            goto cleanup;
-        }
-        device_summary = clCreateBuffer(STATE.context, CL_MEM_READ_WRITE, summary_size * sizeof(double), NULL,
-                                        &create_status);
-        if (create_status != CL_SUCCESS || device_summary == NULL) {
-            snprintf(error, sizeof(error), "summary buffer creation: %s", cl_error_string(create_status));
-            throw_java(environment, error);
-            goto cleanup;
-        }
         device_status = clCreateBuffer(STATE.context, CL_MEM_READ_WRITE, sizeof(int), NULL, &create_status);
         if (create_status != CL_SUCCESS || device_status == NULL) {
             snprintf(error, sizeof(error), "status buffer creation: %s", cl_error_string(create_status));
@@ -1063,27 +1019,9 @@ Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvalua
         }
     }
 
-    {
-        cl_int write_status = clEnqueueWriteBuffer(STATE.queue, device_quantiles, CL_TRUE, 0,
-                                                   (size_t)quantile_count * sizeof(double), quantiles, 0, NULL, NULL);
-        if (write_status != CL_SUCCESS) {
-            snprintf(error, sizeof(error), "quantile transfer: %s", cl_error_string(write_status));
-            throw_java(environment, error);
-            goto cleanup;
-        }
-        write_status = clEnqueueWriteBuffer(STATE.queue, device_samples, CL_TRUE, 0, padded * sizeof(double),
-                                            padded_host, 0, NULL, NULL);
-        if (write_status != CL_SUCCESS) {
-            snprintf(error, sizeof(error), "sample padding transfer: %s", cl_error_string(write_status));
-            throw_java(environment, error);
-            goto cleanup;
-        }
-    }
 
     for (int decision = 0; decision < decision_count; ++decision) {
-        size_t row = 4U + (size_t)decision * row_length;
         if (stable[decision] == 0) {
-            payload[row] = 1.0;
             continue;
         }
         {
@@ -1121,9 +1059,7 @@ Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvalua
             cl_int shock_arg = shock_model;
             cl_int volatility_arg = volatility_mode;
             double decay_arg = decay;
-            cl_int sort_n = padded_int;
             size_t global_paths = (size_t)iteration_count;
-            size_t local_sort = padded;
             cl_int argument_error = CL_SUCCESS;
 
             argument_error = clSetKernelArg(STATE.path_kernel, 0, sizeof(double), &price);
@@ -1191,136 +1127,9 @@ Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvalua
                     goto cleanup;
                 }
             }
-
-            argument_error = clSetKernelArg(STATE.moments_kernel, 0, sizeof(cl_mem), &device_samples);
-            if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.moments_kernel, 1, sizeof(cl_int), &iteration_arg);
-            }
-            if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.moments_kernel, 2, sizeof(cl_mem), &device_summary);
-            }
-            if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.moments_kernel, 3, sizeof(cl_mem), &device_status);
-            }
-            if (argument_error != CL_SUCCESS) {
-                snprintf(error, sizeof(error), "moments kernel arguments: %s", cl_error_string(argument_error));
-                throw_java(environment, error);
-                goto cleanup;
-            }
-            {
-                cl_int launch_status = clEnqueueNDRangeKernel(STATE.queue, STATE.moments_kernel, 1, NULL, &one, NULL,
-                                                              0, NULL, NULL);
-                if (launch_status != CL_SUCCESS) {
-                    snprintf(error, sizeof(error), "moments kernel launch: %s", cl_error_string(launch_status));
-                    throw_java(environment, error);
-                    goto cleanup;
-                }
-            }
-            {
-                cl_int finish_status = clFinish(STATE.queue);
-                if (finish_status != CL_SUCCESS) {
-                    snprintf(error, sizeof(error), "moments kernel finish: %s", cl_error_string(finish_status));
-                    throw_java(environment, error);
-                    goto cleanup;
-                }
-            }
-
-            if (use_parallel) {
-                argument_error = clSetKernelArg(STATE.bitonic_parallel, 0, sizeof(cl_mem), &device_samples);
-                if (argument_error == CL_SUCCESS) {
-                    argument_error = clSetKernelArg(STATE.bitonic_parallel, 1, sizeof(cl_int), &sort_n);
-                }
-                if (argument_error != CL_SUCCESS) {
-                    snprintf(error, sizeof(error), "bitonic kernel arguments: %s", cl_error_string(argument_error));
-                    throw_java(environment, error);
-                    goto cleanup;
-                }
-                {
-                    cl_int launch_status = clEnqueueNDRangeKernel(STATE.queue, STATE.bitonic_parallel, 1, NULL,
-                                                                  &local_sort, &local_sort, 0, NULL, NULL);
-                    if (launch_status != CL_SUCCESS) {
-                        snprintf(error, sizeof(error), "bitonic kernel launch: %s", cl_error_string(launch_status));
-                        throw_java(environment, error);
-                        goto cleanup;
-                    }
-                }
-            } else {
-                argument_error = clSetKernelArg(STATE.bitonic_serial, 0, sizeof(cl_mem), &device_samples);
-                if (argument_error == CL_SUCCESS) {
-                    argument_error = clSetKernelArg(STATE.bitonic_serial, 1, sizeof(cl_int), &sort_n);
-                }
-                if (argument_error != CL_SUCCESS) {
-                    snprintf(error, sizeof(error), "bitonic serial kernel arguments: %s",
-                             cl_error_string(argument_error));
-                    throw_java(environment, error);
-                    goto cleanup;
-                }
-                {
-                    cl_int launch_status = clEnqueueNDRangeKernel(STATE.queue, STATE.bitonic_serial, 1, NULL, &one,
-                                                                  NULL, 0, NULL, NULL);
-                    if (launch_status != CL_SUCCESS) {
-                        snprintf(error, sizeof(error), "bitonic serial kernel launch: %s",
-                                 cl_error_string(launch_status));
-                        throw_java(environment, error);
-                        goto cleanup;
-                    }
-                }
-            }
-            {
-                cl_int finish_status = clFinish(STATE.queue);
-                if (finish_status != CL_SUCCESS) {
-                    snprintf(error, sizeof(error), "sort kernel finish: %s", cl_error_string(finish_status));
-                    throw_java(environment, error);
-                    goto cleanup;
-                }
-            }
             kernel_micros += now_micros() - kernel_start;
         }
 
-        {
-            double reduction_start = now_micros();
-            cl_int count_arg = iteration_count;
-            cl_int probability_arg = quantile_count;
-            cl_int argument_error = clSetKernelArg(STATE.quantile_kernel, 0, sizeof(cl_mem), &device_samples);
-            if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.quantile_kernel, 1, sizeof(cl_int), &count_arg);
-            }
-            if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.quantile_kernel, 2, sizeof(cl_mem), &device_quantiles);
-            }
-            if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.quantile_kernel, 3, sizeof(cl_int), &probability_arg);
-            }
-            if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.quantile_kernel, 4, sizeof(cl_mem), &device_summary);
-            }
-            if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.quantile_kernel, 5, sizeof(cl_mem), &device_status);
-            }
-            if (argument_error != CL_SUCCESS) {
-                snprintf(error, sizeof(error), "quantile kernel arguments: %s", cl_error_string(argument_error));
-                throw_java(environment, error);
-                goto cleanup;
-            }
-            {
-                cl_int launch_status = clEnqueueNDRangeKernel(STATE.queue, STATE.quantile_kernel, 1, NULL, &one, NULL,
-                                                              0, NULL, NULL);
-                if (launch_status != CL_SUCCESS) {
-                    snprintf(error, sizeof(error), "quantile kernel launch: %s", cl_error_string(launch_status));
-                    throw_java(environment, error);
-                    goto cleanup;
-                }
-            }
-            {
-                cl_int finish_status = clFinish(STATE.queue);
-                if (finish_status != CL_SUCCESS) {
-                    snprintf(error, sizeof(error), "quantile kernel finish: %s", cl_error_string(finish_status));
-                    throw_java(environment, error);
-                    goto cleanup;
-                }
-            }
-            reduction_micros += now_micros() - reduction_start;
-        }
 
         {
             double output_start = now_micros();
@@ -1331,17 +1140,19 @@ Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvalua
                 throw_java(environment, error);
                 goto cleanup;
             }
-            read_status = clEnqueueReadBuffer(STATE.queue, device_summary, CL_TRUE, 0, summary_size * sizeof(double),
-                                              summary, 0, NULL, NULL);
+            read_status = clEnqueueReadBuffer(STATE.queue, device_samples, CL_TRUE, 0,
+                                              (size_t)iteration_count * sizeof(double),
+                                              payload + 4U + (size_t)decision * row_length, 0, NULL, NULL);
             if (read_status != CL_SUCCESS) {
-                snprintf(error, sizeof(error), "summary transfer: %s", cl_error_string(read_status));
+                snprintf(error, sizeof(error), "sample transfer: %s", cl_error_string(read_status));
                 throw_java(environment, error);
                 goto cleanup;
             }
             transfer_micros += now_micros() - output_start;
-            payload[row] = (double)status;
-            if (status == 0) {
-                memcpy(payload + row + 1, summary, summary_size * sizeof(double));
+            if (status != 0) {
+                snprintf(error, sizeof(error), "OpenCL forecast kernel produced invalid terminal prices");
+                throw_java(environment, error);
+                goto cleanup;
             }
         }
     }
@@ -1359,12 +1170,8 @@ Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvalua
 
 cleanup:
     release_mem(&device_status);
-    release_mem(&device_summary);
-    release_mem(&device_quantiles);
     release_mem(&device_history);
     release_mem(&device_samples);
-    free(summary);
-    free(padded_host);
     free(payload);
     free(historical_returns);
     free(variances);
@@ -1372,7 +1179,6 @@ cleanup:
     free(means);
     free(prices);
     free(stable);
-    free(quantiles);
     pthread_mutex_unlock(&STATE_MUTEX);
     return result;
 }

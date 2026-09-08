@@ -40,8 +40,6 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Provider;
  */
 abstract class ShockPathKernelProvider implements Provider {
 
-    /** Quantile vector handed to sample kernels; core decodes quantiles itself. */
-    private static final double[] NO_QUANTILES = new double[0];
 
     /**
      * Certified relative-tolerance floor of the fp32 approximate lane, per horizon
@@ -93,6 +91,11 @@ abstract class ShockPathKernelProvider implements Provider {
             return unsupported(DiagnosticCode.UNSUPPORTED,
                     providerId + " consumes FLOAT64 buffers, not " + request.numeric());
         }
+        double[] params = request.params();
+        if (params.length != 6 || (params[0] != 0d && params[0] != 1d && params[0] != 3d)) {
+            return unsupported(DiagnosticCode.UNSUPPORTED,
+                    providerId + " supports standardized empirical, historical bootstrap, and normal shocks");
+        }
         boolean exact = request.determinism() == Determinism.BITWISE_IDENTICAL;
         if (!exact && Double.isNaN(request.tolerance())) {
             return unsupported(DiagnosticCode.UNSUPPORTED,
@@ -106,7 +109,7 @@ abstract class ShockPathKernelProvider implements Provider {
         }
         Dimensions dimensions;
         try {
-            dimensions = dimensions(request);
+            dimensions = dimensions(request, params);
         } catch (ArithmeticException exception) {
             return unsupported(DiagnosticCode.UNSUPPORTED,
                     providerId + " request dimensions overflow: " + exception.getMessage());
@@ -141,9 +144,9 @@ abstract class ShockPathKernelProvider implements Provider {
     public final KernelResult execute(KernelRequest request) {
         Objects.requireNonNull(request, "request must not be null");
         long started = System.nanoTime();
-        Dimensions dimensions = dimensions(request);
-        SampleKernel kernel = ensureKernel();
         double[] params = request.params();
+        Dimensions dimensions = dimensions(request, params);
+        SampleKernel kernel = ensureKernel();
         List<double[]> inputs = request.inputs();
         double[] raw = new double[request.expectedOutputLength()];
         double totalMicros = 0d;
@@ -252,8 +255,7 @@ abstract class ShockPathKernelProvider implements Provider {
      * horizon, iteration count, lookback, decay factor. No buffers are allocated
      * here; rejection stays ahead of materialization.
      */
-    private Dimensions dimensions(KernelRequest request) {
-        double[] params = request.params();
+    private Dimensions dimensions(KernelRequest request, double[] params) {
         int horizon = (int) params[2];
         int iterations = (int) params[3];
         int lookback = (int) params[4];
@@ -300,9 +302,16 @@ abstract class ShockPathKernelProvider implements Provider {
         double[] chunkVariances = Arrays.copyOfRange(variances, base, base + count);
         double[] chunkWindows = Arrays.copyOfRange(windows, base * dimensions.lookback(),
                 (base + count) * dimensions.lookback());
+        // The native kernels predate the planner's versioned operation codes.
+        int nativeShockModel = switch ((int) params[0]) {
+        case 0 -> 1; // STANDARDIZED_EMPIRICAL
+        case 1 -> 0; // HISTORICAL_BOOTSTRAP
+        case 3 -> 2; // NORMAL
+        default -> throw new IllegalArgumentException("Unsupported native shock model: " + params[0]);
+        };
         return new NativeForecastRequest(from, count, dimensions.horizon(), dimensions.iterations(),
-                dimensions.lookback(), request.seed(), (int) params[0], (int) params[1], params[5], NO_QUANTILES,
-                stable, chunkPrices, chunkMeans, chunkDrifts, chunkVariances, chunkWindows);
+                dimensions.lookback(), request.seed(), nativeShockModel, (int) params[1], params[5], stable, chunkPrices,
+                chunkMeans, chunkDrifts, chunkVariances, chunkWindows);
     }
 
     private record Dimensions(int decisions, int horizon, int iterations, int lookback, long steps, long stagedBytes,

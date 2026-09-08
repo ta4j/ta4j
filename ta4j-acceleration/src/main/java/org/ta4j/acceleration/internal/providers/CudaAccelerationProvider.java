@@ -7,42 +7,30 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
-import org.ta4j.core.acceleration.AccelerationRuntime.KernelRequest;
 
 /**
  * NVIDIA CUDA provider for {@code MONTE_CARLO_SHOCK_PATHS_V1}.
  *
- * <p>
- * The CUDA native lane returns reduced forecast rows, not per-sample terminal
- * prices, so it cannot serve the versioned sample-output contract and always
- * declines it with a diagnostic that says so. The provider stays installed so
- * the fallback chain reports its presence, and so future operations with a
- * reduced-row contract can reuse its library presence and probe machinery. The
- * public constructor exists solely for {@link java.util.ServiceLoader} and
- * performs no probe or native loading.
+ * <p>The native lane returns row-major per-sample terminal prices. Assessment
+ * remains lazy; loading and probing happen only when the provider is selected.
  *
  * @since 0.25.1
  */
 public final class CudaAccelerationProvider extends ShockPathKernelProvider {
 
     static final String MAX_MEMORY_PROPERTY = "ta4j.acceleration.cuda.maxBytes";
-
     private static final long DEFAULT_MAX_MEMORY_BYTES = 512L * 1024L * 1024L;
+    private final Object kernelLock = new Object();
+    private volatile SampleKernel kernel;
 
-    /**
-     * Creates a lazy CUDA provider.
-     */
     public CudaAccelerationProvider() {
-        super(Backend.CUDA, "cuda", MAX_MEMORY_PROPERTY, DEFAULT_MAX_MEMORY_BYTES, false, false);
+        super(Backend.CUDA, "cuda", MAX_MEMORY_PROPERTY, DEFAULT_MAX_MEMORY_BYTES, false, true);
     }
 
     @Override
     boolean libraryPresent() {
         String configured = System.getProperty(CudaNativeLibrary.LIBRARY_PROPERTY, "").trim();
-        if (!configured.isEmpty() && Files.exists(Path.of(configured))) {
-            return true;
-        }
-        return CudaNativeLibrary.packagedResourcePresent();
+        return (!configured.isEmpty() && Files.exists(Path.of(configured))) || CudaNativeLibrary.packagedResourcePresent();
     }
 
     @Override
@@ -52,14 +40,37 @@ public final class CudaAccelerationProvider extends ShockPathKernelProvider {
     }
 
     @Override
-    String accuracyDetail(KernelRequest request, boolean exact) {
-        return "cuda declines MONTE_CARLO_SHOCK_PATHS_V1: its native lane returns reduced forecast rows, "
-                + "not per-sample terminal prices";
-    }
-
-    @Override
     SampleKernel ensureKernel() {
-        throw new NativeProviderException(
-                "cuda serves no MONTE_CARLO_SHOCK_PATHS_V1 sample kernel; assessment always declines");
+        SampleKernel installed = kernel;
+        if (installed != null) {
+            return installed;
+        }
+        synchronized (kernelLock) {
+            installed = kernel;
+            if (installed != null) {
+                return installed;
+            }
+            CudaNativeLibrary.LoadResult load = CudaNativeLibrary.load();
+            if (!load.loaded()) {
+                throw new NativeProviderException("cuda", load.detail());
+            }
+            CudaNativeBridge nativeBridge = new JniCudaNativeBridge();
+            CudaProbeResult probe = nativeBridge.probe();
+            if (!probe.available()) {
+                throw new NativeProviderException("cuda", probe.detail());
+            }
+            recordProbe(probe.deviceName(), probe.freeMemoryBytes());
+            installed = request -> {
+                CudaEvaluationResult result = nativeBridge.evaluate(request);
+                double[] values = result.terminalPrices();
+                float[] terminalPrices = new float[values.length];
+                for (int i = 0; i < values.length; i++) {
+                    terminalPrices[i] = (float) values[i];
+                }
+                return new SampleKernel.SampleResult(terminalPrices, result.totalMicros());
+            };
+            kernel = installed;
+            return installed;
+        }
     }
 }

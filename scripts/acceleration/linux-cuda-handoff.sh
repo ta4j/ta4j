@@ -34,4 +34,4 @@ echo "  3. Exercise classpath extraction, permissions, checksum, ldd, and wrong-
 echo "  4. Run native sanitizer plus Java integration, concurrency, memory-pressure, and device-loss tests."
 echo "  5. Emit the Linux manifest/report without changing Windows or Metal golden fixtures."
 echo
-echo "Frozen contracts: CUDA ABI 1, RNG version 1, FP64 tolerance 1e-4, shared ta4j_cuda_jni.cu."
+echo "Frozen contracts: CUDA ABI 2, RNG version 1, FP64 tolerance 1e-4, shared ta4j_cuda_jni.cu."

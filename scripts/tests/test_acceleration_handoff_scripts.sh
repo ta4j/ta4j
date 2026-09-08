@@ -4,18 +4,18 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/ta4j-acceleration-handoff.XXXXXX")"
 trap 'rm -rf "$TMP"' EXIT
-
 grep -q "libta4j-metal-accelerator.dylib" "$ROOT/scripts/acceleration/build-metal-provider.sh"
 grep -q "MTLCreateSystemDefaultDevice" "$ROOT/ta4j-acceleration/src/main/native/metal/ta4j_metal_jni.m"
-if grep -q "NOT_IMPLEMENTED" "$ROOT/ta4j-acceleration/src/main/java/org/ta4j/acceleration/internal/providers/CudaAccelerationProviderFactory.java"; then
-  echo "CUDA factory must not retain its unavailable skeleton" >&2
+if grep -q "NOT_IMPLEMENTED" "$ROOT/ta4j-acceleration/src/main/java/org/ta4j/acceleration/internal/providers/CudaAccelerationProvider.java"; then
+  echo "CUDA provider must not retain an unavailable implementation skeleton" >&2
   exit 1
 fi
 grep -Fq 'mvnw.cmd' "$ROOT/scripts/acceleration/windows-cuda-handoff.ps1"
-grep -q "ta4j.forecast.monte-carlo-price.v1" "$ROOT/scripts/acceleration/windows-cuda-handoff.ps1"
+grep -q "row-major terminal prices with approximate tolerance" "$ROOT/scripts/acceleration/windows-cuda-handoff.ps1"
 grep -q "cuda-windows-x86_64" "$ROOT/scripts/acceleration/windows-cuda-handoff.ps1"
-grep -q "ta4j.runBenchmarks=true" "$ROOT/scripts/acceleration/benchmark-cuda-provider.ps1"
-grep -q "status --porcelain" "$ROOT/scripts/acceleration/benchmark-cuda-provider.ps1"
+grep -q '"-pl", "ta4j-acceleration", "-am"' "$ROOT/scripts/acceleration/benchmark-cuda-provider.ps1"
+grep -q '"-Dta4j.runBenchmarks=true"' "$ROOT/scripts/acceleration/benchmark-cuda-provider.ps1"
+grep -q '"-Dta4j.acceleration.approximateTolerance=1e-4"' "$ROOT/scripts/acceleration/benchmark-cuda-provider.ps1"
 grep -q "uname -m" "$ROOT/scripts/acceleration/build-metal-provider.sh"
 grep -Fq '<extraJar>${ta4j.native.resourceJar}</extraJar>' "$ROOT/ta4j-acceleration/pom.xml"
 grep -Fq '<exclude>*:*</exclude>' "$ROOT/ta4j-acceleration/pom.xml"

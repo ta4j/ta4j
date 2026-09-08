@@ -37,11 +37,14 @@ application classpath, and launch with:
 ```
 
 Omitting the property or setting `-Dta4j.acceleration.enabled=off` performs no provider
-discovery or native loading. `auto` currently accelerates eligible `DoubleNum`
-Monte Carlo price forecasts and falls back to their scalar `getValue(int)` path
-for every unsupported, unavailable, slower, stale, or failed request. See
-[the acceleration guide](https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration) for classifiers,
-platform status, diagnostics, rollback, and benchmark evidence.
+discovery or native loading. `auto` accelerates eligible `DoubleNum` Monte Carlo
+price forecasts on qualified native lanes when an explicit tolerance is supplied;
+it falls back to their scalar `getValue(int)` path for every unsupported,
+unavailable, slower, stale, or failed request. CUDA and OpenCL return row-major
+per-sample terminal prices through the versioned operation ABI; they are not
+bitwise-identical lanes, so no exact-mode claim is made. See [the acceleration
+guide](https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration) for
+classifiers, platform status, diagnostics, rollback, and benchmark evidence.
 
 The Metal provider's approximate fp32 execution lane engages only when the
 run opts into a tolerance via `-Dta4j.acceleration.approximateTolerance=<value>`

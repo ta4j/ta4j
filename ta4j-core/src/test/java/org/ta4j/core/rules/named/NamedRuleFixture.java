@@ -11,7 +11,7 @@ import org.ta4j.core.num.Num;
 /**
  * Test fixture for {@link NamedRule}.
  *
- * @since 0.22.7
+ * @since 0.25.1
  */
 final class NamedRuleFixture extends NamedRule {
 

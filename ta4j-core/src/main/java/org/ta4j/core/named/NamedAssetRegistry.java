@@ -162,7 +162,7 @@ public final class NamedAssetRegistry {
      *
      * @param kind asset family
      * @return immutable registered alias list
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public List<String> aliases(NamedAssetKind kind) {
         Objects.requireNonNull(kind, "kind");

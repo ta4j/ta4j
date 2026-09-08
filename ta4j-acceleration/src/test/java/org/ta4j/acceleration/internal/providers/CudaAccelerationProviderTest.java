@@ -6,10 +6,14 @@ package org.ta4j.acceleration.internal.providers;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.ta4j.core.acceleration.AccelerationRuntime.Assessment;
 import org.ta4j.core.acceleration.AccelerationRuntime.Determinism;
 import org.ta4j.core.acceleration.AccelerationRuntime.DiagnosticCode;
@@ -26,7 +30,7 @@ class CudaAccelerationProviderTest {
     }
 
     @Test
-    void declinesExactWithReducedRowReason() {
+    void declinesBitwiseIdentity() {
         CudaAccelerationProvider provider = new CudaAccelerationProvider();
 
         Assessment assessment = provider.assess(request(Double.NaN));
@@ -34,31 +38,21 @@ class CudaAccelerationProviderTest {
         assertThat(assessment.supported()).isFalse();
         assertThat(assessment.diagnostic().code()).isEqualTo(DiagnosticCode.PROVIDER_UNAVAILABLE);
         assertThat(assessment.diagnostic().providerId()).isEqualTo("cuda");
-        assertThat(assessment.diagnostic().detail()).contains("reduced forecast rows");
     }
 
     @Test
-    void declinesApproximateWithReducedRowReason() {
-        CudaAccelerationProvider provider = new CudaAccelerationProvider();
+    void assessesApproximateRequestsWithoutLoadingLibrary(@TempDir Path directory) throws IOException {
+        System.setProperty(CudaNativeLibrary.LIBRARY_PROPERTY,
+                Files.createFile(directory.resolve("unloaded.dll")).toString());
 
-        Assessment assessment = provider.assess(request(0.01d));
+        Assessment assessment = new CudaAccelerationProvider().assess(request(0.01d));
 
-        assertThat(assessment.supported()).isFalse();
-        assertThat(assessment.diagnostic().code()).isEqualTo(DiagnosticCode.PROVIDER_UNAVAILABLE);
-        assertThat(assessment.diagnostic().detail()).contains("reduced forecast rows");
+        assertThat(assessment.supported()).isTrue();
     }
 
     @Test
-    void assessmentNeverInitializesNative() {
-        CudaAccelerationProvider provider = new CudaAccelerationProvider();
-
-        Assessment assessment = provider.assess(request(Double.NaN));
-
-        assertThat(assessment.supported()).isFalse();
-    }
-
-    @Test
-    void executeIsUnreachable() {
+    void reportsMissingLibraryOnExecution(@TempDir Path directory) {
+        System.setProperty(CudaNativeLibrary.LIBRARY_PROPERTY, directory.resolve("missing.dll").toString());
         CudaAccelerationProvider provider = new CudaAccelerationProvider();
 
         assertThrows(NativeProviderException.class, () -> provider.execute(request(Double.NaN)));

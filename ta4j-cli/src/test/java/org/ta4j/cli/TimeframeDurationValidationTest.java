@@ -32,7 +32,7 @@ import org.junit.jupiter.api.io.TempDir;
  * rejected outright because the bar series model only expresses whole-second
  * bar durations.
  *
- * @since 0.23.1
+ * @since 0.25.1
  */
 class TimeframeDurationValidationTest {
 

@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
  * gates ({@code scripts/run-full-build-quiet.sh} repair and CI-equivalent
  * validation) cannot pass.
  *
- * @since 0.23.1
+ * @since 0.25.1
  */
 class Ta4jCliLicenseGateTest {
 

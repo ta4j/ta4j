@@ -170,7 +170,7 @@ public final class AccelerationRuntime {
      * against the same budget before provider assessment.
      *
      * @return positive device-memory budget in bytes
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public static long maxDeviceBytes() {
         String configured = System.getProperty(MAX_DEVICE_BYTES_PROPERTY);
@@ -199,7 +199,7 @@ public final class AccelerationRuntime {
      * configuration never silently widens accuracy; it degrades to exact.
      *
      * @return finite positive approximate tolerance, or {@code NaN} for exact
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public static double approximateTolerance() {
         String configured = System.getProperty(APPROXIMATE_TOLERANCE_PROPERTY);
@@ -594,7 +594,7 @@ public final class AccelerationRuntime {
          *
          * @param request immutable kernel request
          * @return cost assessment
-         * @since 0.24.2
+         * @since 0.25.1
          */
         Assessment assess(KernelRequest request);
 
@@ -603,7 +603,7 @@ public final class AccelerationRuntime {
          *
          * @param request immutable kernel request
          * @return raw kernel output
-         * @since 0.24.2
+         * @since 0.25.1
          */
         KernelResult execute(KernelRequest request);
     }

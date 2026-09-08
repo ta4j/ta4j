@@ -32,7 +32,7 @@ import org.junit.jupiter.api.io.TempDir;
  * threshold silently disables the regression gate instead of failing as a usage
  * error.
  *
- * @since 0.23.1
+ * @since 0.25.1
  */
 class PerformanceCompareNanThresholdTest {
 

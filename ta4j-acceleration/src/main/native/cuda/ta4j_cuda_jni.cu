@@ -4,9 +4,9 @@
 #include <cuda_runtime.h>
 #include <jni.h>
 
+
 #include <thrust/device_ptr.h>
 #include <thrust/sort.h>
-
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -21,7 +21,7 @@
 
 namespace {
 
-constexpr int ABI_VERSION = 1;
+constexpr int ABI_VERSION = 2;
 constexpr std::uint64_t GOLDEN_GAMMA = 0x9E3779B97F4A7C15ULL;
 constexpr double DOUBLE_UNIT = 0x1.0p-53;
 constexpr int THREADS_PER_BLOCK = 256;
@@ -170,6 +170,7 @@ __global__ void path_kernel(double price, double mean, double drift, double vari
     }
     samples[path_index] = terminal;
 }
+
 
 __global__ void moments_kernel(const double* samples, int count, double* summary, int* status) {
     if (blockIdx.x != 0 || threadIdx.x != 0 || *status != 0) {
@@ -365,8 +366,8 @@ extern "C" JNIEXPORT jdoubleArray JNICALL
 Java_org_ta4j_acceleration_internal_providers_JniCudaNativeBridge_nativeEvaluate(
         JNIEnv* environment, jclass, jint abi_version, jint from_inclusive, jint decision_count, jint horizon,
         jint iteration_count, jint lookback, jlong seed, jint shock_model, jint volatility_mode, jdouble decay,
-        jdoubleArray quantiles_array, jintArray stable_array, jdoubleArray prices_array, jdoubleArray means_array,
-        jdoubleArray drifts_array, jdoubleArray variances_array, jdoubleArray historical_returns_array) {
+        jintArray stable_array, jdoubleArray prices_array, jdoubleArray means_array, jdoubleArray drifts_array,
+        jdoubleArray variances_array, jdoubleArray historical_returns_array) {
     try {
         std::lock_guard<std::mutex> guard(execution_mutex);
         auto total_start = std::chrono::steady_clock::now();
@@ -375,18 +376,12 @@ Java_org_ta4j_acceleration_internal_providers_JniCudaNativeBridge_nativeEvaluate
                 || !(decay > 0.0 && decay < 1.0)) {
             throw std::invalid_argument("invalid CUDA ABI or request metadata");
         }
-        if (quantiles_array == nullptr) {
-            throw std::invalid_argument("quantiles must not be null");
-        }
-        jsize quantile_count = environment->GetArrayLength(quantiles_array);
-        if (quantile_count < 1) {
-            throw std::invalid_argument("at least one quantile is required");
-        }
         std::size_t history_count = static_cast<std::size_t>(decision_count) * static_cast<std::size_t>(lookback);
-        if (history_count > static_cast<std::size_t>(std::numeric_limits<jsize>::max())) {
-            throw std::invalid_argument("historical return buffer exceeds JNI limits");
+        std::size_t sample_count = static_cast<std::size_t>(decision_count) * static_cast<std::size_t>(iteration_count);
+        if (history_count > static_cast<std::size_t>(std::numeric_limits<jsize>::max())
+                || sample_count > static_cast<std::size_t>(std::numeric_limits<jsize>::max() - 4)) {
+            throw std::invalid_argument("CUDA forecast buffers exceed JNI limits");
         }
-        std::vector<double> quantiles = copy_doubles(environment, quantiles_array, quantile_count, "quantiles");
         std::vector<int> stable = copy_ints(environment, stable_array, decision_count, "stable");
         std::vector<double> prices = copy_doubles(environment, prices_array, decision_count, "prices");
         std::vector<double> means = copy_doubles(environment, means_array, decision_count, "means");
@@ -394,35 +389,19 @@ Java_org_ta4j_acceleration_internal_providers_JniCudaNativeBridge_nativeEvaluate
         std::vector<double> variances = copy_doubles(environment, variances_array, decision_count, "variances");
         std::vector<double> historical_returns = copy_doubles(environment, historical_returns_array,
                                                               static_cast<jsize>(history_count), "historicalReturns");
-
-        std::size_t row_length = 4U + static_cast<std::size_t>(quantile_count);
-        std::size_t payload_size = 4U + static_cast<std::size_t>(decision_count) * row_length;
-        if (payload_size > static_cast<std::size_t>(std::numeric_limits<jsize>::max())) {
-            throw std::invalid_argument("forecast payload exceeds JNI limits");
-        }
-        std::vector<double> payload(payload_size, 0.0);
+        std::vector<double> payload(4U + sample_count, NAN);
         device_buffer<double> device_samples(static_cast<std::size_t>(iteration_count));
         device_buffer<double> device_history(static_cast<std::size_t>(lookback));
-        device_buffer<double> device_quantiles(static_cast<std::size_t>(quantile_count));
-        device_buffer<double> device_summary(static_cast<std::size_t>(3 + quantile_count));
         device_buffer<int> device_status(1);
         cuda_stream stream;
-        check_cuda(cudaMemcpyAsync(device_quantiles.get(), quantiles.data(), quantile_count * sizeof(double),
-                                   cudaMemcpyHostToDevice, stream.get()), "quantile transfer");
-        check_cuda(cudaStreamSynchronize(stream.get()), "quantile synchronization");
-
         double transfer_micros = 0.0;
         double kernel_micros = 0.0;
-        double reduction_micros = 0.0;
-        std::vector<double> summary(static_cast<std::size_t>(3 + quantile_count));
         for (int decision = 0; decision < decision_count; ++decision) {
-            std::size_t row = 4 + static_cast<std::size_t>(decision) * row_length;
             if (stable[decision] == 0) {
-                payload[row] = 1.0;
                 continue;
             }
-            auto transfer_start = std::chrono::steady_clock::now();
             const double* history = historical_returns.data() + static_cast<std::size_t>(decision) * lookback;
+            auto transfer_start = std::chrono::steady_clock::now();
             check_cuda(cudaMemcpyAsync(device_history.get(), history, lookback * sizeof(double), cudaMemcpyHostToDevice,
                                        stream.get()), "historical return transfer");
             check_cuda(cudaMemsetAsync(device_status.get(), 0, sizeof(int), stream.get()), "status reset");
@@ -442,43 +421,30 @@ Java_org_ta4j_acceleration_internal_providers_JniCudaNativeBridge_nativeEvaluate
             check_cuda(cudaEventRecord(kernel_finish.get(), stream.get()), "kernel finish event");
             kernel_micros += elapsed_micros(kernel_start, kernel_finish);
 
-            cuda_event reduction_start;
-            cuda_event reduction_finish;
-            check_cuda(cudaEventRecord(reduction_start.get(), stream.get()), "reduction start event");
-            moments_kernel<<<1, 1, 0, stream.get()>>>(device_samples.get(), iteration_count, device_summary.get(),
-                                                     device_status.get());
-            check_cuda(cudaGetLastError(), "moments kernel launch");
-            check_cuda(cudaStreamSynchronize(stream.get()), "moments synchronization");
-            thrust::device_ptr<double> begin(device_samples.get());
-            thrust::sort(thrust::cuda::par.on(stream.get()), begin, begin + iteration_count);
-            quantile_kernel<<<1, 1, 0, stream.get()>>>(device_samples.get(), iteration_count, device_quantiles.get(),
-                                                      quantile_count, device_summary.get(), device_status.get());
-            check_cuda(cudaGetLastError(), "quantile kernel launch");
-            check_cuda(cudaEventRecord(reduction_finish.get(), stream.get()), "reduction finish event");
-            reduction_micros += elapsed_micros(reduction_start, reduction_finish);
-
             int status = 0;
+            std::vector<double> samples(static_cast<std::size_t>(iteration_count));
             auto output_start = std::chrono::steady_clock::now();
             check_cuda(cudaMemcpyAsync(&status, device_status.get(), sizeof(int), cudaMemcpyDeviceToHost, stream.get()),
                        "status transfer");
-            check_cuda(cudaMemcpyAsync(summary.data(), device_summary.get(), summary.size() * sizeof(double),
-                                       cudaMemcpyDeviceToHost, stream.get()), "summary transfer");
+            check_cuda(cudaMemcpyAsync(samples.data(), device_samples.get(), iteration_count * sizeof(double),
+                                       cudaMemcpyDeviceToHost, stream.get()), "sample transfer");
             check_cuda(cudaStreamSynchronize(stream.get()), "output synchronization");
             transfer_micros += std::chrono::duration<double, std::micro>(
                     std::chrono::steady_clock::now() - output_start).count();
-            payload[row] = static_cast<double>(status);
-            if (status == 0) {
-                std::copy(summary.begin(), summary.end(), payload.begin() + static_cast<std::ptrdiff_t>(row + 1));
+            if (status != 0) {
+                throw std::runtime_error("CUDA forecast kernel produced invalid terminal prices");
             }
+            std::copy(samples.begin(), samples.end(),
+                      payload.begin() + 4U + static_cast<std::size_t>(decision) * iteration_count);
         }
         payload[1] = transfer_micros;
         payload[2] = kernel_micros;
-        payload[3] = reduction_micros;
+        payload[3] = 0.0;
         payload[0] = std::chrono::duration<double, std::micro>(
                 std::chrono::steady_clock::now() - total_start).count();
         jdoubleArray result = environment->NewDoubleArray(static_cast<jsize>(payload.size()));
         if (result == nullptr) {
-            throw std::runtime_error("unable to allocate JNI result array");
+            throw std::runtime_error("unable to allocate CUDA result array");
         }
         environment->SetDoubleArrayRegion(result, 0, static_cast<jsize>(payload.size()), payload.data());
         return result;

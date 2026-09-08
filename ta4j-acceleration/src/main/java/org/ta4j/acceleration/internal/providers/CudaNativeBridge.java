@@ -7,7 +7,7 @@ import java.util.Arrays;
 
 interface CudaNativeBridge {
 
-    int ABI_VERSION = 1;
+    int ABI_VERSION = 2;
 
     CudaProbeResult probe();
 
@@ -19,15 +19,15 @@ record CudaProbeResult(boolean available, String deviceName, int computeMajor, i
 }
 
 record CudaEvaluationResult(double totalMicros, double transferMicros, double kernelMicros, double reductionMicros,
-        double[] rows) {
+        double[] terminalPrices) {
 
     CudaEvaluationResult {
-        rows = Arrays.copyOf(rows, rows.length);
+        terminalPrices = Arrays.copyOf(terminalPrices, terminalPrices.length);
     }
 
     @Override
-    public double[] rows() {
-        return Arrays.copyOf(rows, rows.length);
+    public double[] terminalPrices() {
+        return Arrays.copyOf(terminalPrices, terminalPrices.length);
     }
 }
 
@@ -70,20 +70,18 @@ final class JniCudaNativeBridge implements CudaNativeBridge {
     public CudaEvaluationResult evaluate(NativeForecastRequest request) {
         double[] payload = nativeEvaluate(ABI_VERSION, request.fromInclusive(), request.decisionCount(),
                 request.horizon(), request.iterationCount(), request.lookbackBarCount(), request.seed(),
-                request.shockModel(), request.volatilityMode(), request.volatilityDecayFactor(), request.quantiles(),
-                request.stable(), request.prices(), request.means(), request.drifts(), request.variances(),
-                request.historicalReturns());
+                request.shockModel(), request.volatilityMode(), request.volatilityDecayFactor(), request.stable(),
+                request.prices(), request.means(), request.drifts(), request.variances(), request.historicalReturns());
         if (payload == null || payload.length < HEADER_LENGTH) {
             throw new IllegalStateException("CUDA evaluation returned no result payload");
         }
         return new CudaEvaluationResult(payload[0], payload[1], payload[2], payload[3],
                 Arrays.copyOfRange(payload, HEADER_LENGTH, payload.length));
     }
-
     private static native String nativeProbe(int abiVersion);
 
     private static native double[] nativeEvaluate(int abiVersion, int fromInclusive, int decisionCount, int horizon,
             int iterationCount, int lookbackBarCount, long seed, int shockModel, int volatilityMode,
-            double volatilityDecayFactor, double[] quantiles, int[] stable, double[] prices, double[] means,
-            double[] drifts, double[] variances, double[] historicalReturns);
+            double volatilityDecayFactor, int[] stable, double[] prices, double[] means, double[] drifts,
+            double[] variances, double[] historicalReturns);
 }
