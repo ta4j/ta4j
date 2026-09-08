@@ -19,16 +19,20 @@ import java.io.ObjectInputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.concurrent.BlockingQueue;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
@@ -854,6 +858,67 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(baselineRevision);
         assertTrue("Concurrently mutated retained bar must be journaled, but earliest changed index was "
                 + snapshot.earliestChangedIndex(), snapshot.earliestChangedIndex() <= 1);
+    }
+
+    @Test
+    public void directRetainedMutationWaitsForConcurrentHeadEviction() throws Exception {
+        final BlockingQueue<RetainedMutationEvent> events = new LinkedBlockingQueue<>();
+        final AtomicReference<Thread> mutationThread = new AtomicReference<>();
+        final MutationEventReadWriteLock lock = new MutationEventReadWriteLock(events, mutationThread);
+        final RetainedMutationEventBar retainedBar = new RetainedMutationEventBar(testBars.get(1), events,
+                mutationThread);
+        final List<Bar> bars = new ArrayList<>(List.of(testBars.get(0), retainedBar));
+        final ConcurrentBarSeries series = new ConcurrentBarSeries(
+                "directRetainedMutationWaitsForConcurrentHeadEviction", bars, 0, 1, false, numFactory,
+                barBuilderFactory, lock);
+        series.setMaximumBarCount(2);
+        final long revisionBeforeMutation = series.getBarHistoryRevision();
+        final CountDownLatch writerLocked = new CountDownLatch(1);
+        final CountDownLatch evictHead = new CountDownLatch(1);
+        final CountDownLatch evictionComplete = new CountDownLatch(1);
+        final CountDownLatch releaseWriter = new CountDownLatch(1);
+        final Bar appendedBar = streamingBar(Duration.ofDays(1), retainedBar.getEndTime(), 10, 10, 10, 10, 1);
+
+        final Future<?> eviction = executorService.submit(() -> {
+            lock.writeLock().lock();
+            try {
+                writerLocked.countDown();
+                try {
+                    evictHead.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new AssertionError(e);
+                }
+                series.addBar(appendedBar, false);
+                evictionComplete.countDown();
+                try {
+                    releaseWriter.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new AssertionError(e);
+                }
+            } finally {
+                lock.writeLock().unlock();
+            }
+        });
+        writerLocked.await();
+        final Future<?> mutation = executorService.submit(() -> retainedBar.addPrice(numOf(20)));
+        try {
+            assertEquals(RetainedMutationEvent.WRITE_LOCK_ATTEMPT, events.take());
+            evictHead.countDown();
+            evictionComplete.await();
+        } finally {
+            evictHead.countDown();
+            releaseWriter.countDown();
+        }
+        mutation.get(10, TimeUnit.SECONDS);
+        eviction.get(10, TimeUnit.SECONDS);
+
+        assertEquals(1, series.getBeginIndex());
+        assertEquals(2, series.getEndIndex());
+        assertEquals(2, series.getBarCount());
+        assertEquals(revisionBeforeMutation + 1, series.getBarHistoryRevision());
+        assertEquals(1, series.getBarSeriesChangeSnapshot(revisionBeforeMutation).earliestChangedIndex());
     }
 
     @Test
@@ -2430,6 +2495,99 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                 .trades(1)
                 .build();
         return new WriteLockObservingBar(replacementBar, lock);
+    }
+
+    private enum RetainedMutationEvent {
+        WRITE_LOCK_ATTEMPT, MUTATION_COMPLETE
+    }
+
+    private static final class MutationEventReadWriteLock implements ReadWriteLock {
+
+        private final ReentrantReadWriteLock delegate = new ReentrantReadWriteLock();
+        private final BlockingQueue<RetainedMutationEvent> events;
+        private final AtomicReference<Thread> mutationThread;
+        private final Lock writeLock = new Lock() {
+
+            @Override
+            public void lock() {
+                recordMutationWriteLockAttempt();
+                delegate.writeLock().lock();
+            }
+
+            @Override
+            public void lockInterruptibly() throws InterruptedException {
+                recordMutationWriteLockAttempt();
+                delegate.writeLock().lockInterruptibly();
+            }
+
+            @Override
+            public boolean tryLock() {
+                recordMutationWriteLockAttempt();
+                return delegate.writeLock().tryLock();
+            }
+
+            @Override
+            public boolean tryLock(final long time, final TimeUnit unit) throws InterruptedException {
+                recordMutationWriteLockAttempt();
+                return delegate.writeLock().tryLock(time, unit);
+            }
+
+            @Override
+            public void unlock() {
+                delegate.writeLock().unlock();
+            }
+
+            @Override
+            public Condition newCondition() {
+                return delegate.writeLock().newCondition();
+            }
+        };
+
+        private MutationEventReadWriteLock(final BlockingQueue<RetainedMutationEvent> events,
+                final AtomicReference<Thread> mutationThread) {
+            this.events = events;
+            this.mutationThread = mutationThread;
+        }
+
+        @Override
+        public Lock readLock() {
+            return delegate.readLock();
+        }
+
+        @Override
+        public Lock writeLock() {
+            return writeLock;
+        }
+
+        private void recordMutationWriteLockAttempt() {
+            if (Thread.currentThread() == mutationThread.get()) {
+                events.add(RetainedMutationEvent.WRITE_LOCK_ATTEMPT);
+            }
+        }
+    }
+
+    private static final class RetainedMutationEventBar extends BaseBar {
+
+        private static final long serialVersionUID = 2567835443283232270L;
+
+        private final BlockingQueue<RetainedMutationEvent> events;
+        private final AtomicReference<Thread> mutationThread;
+
+        private RetainedMutationEventBar(final Bar source, final BlockingQueue<RetainedMutationEvent> events,
+                final AtomicReference<Thread> mutationThread) {
+            super(source.getTimePeriod(), source.getBeginTime(), source.getEndTime(), source.getOpenPrice(),
+                    source.getHighPrice(), source.getLowPrice(), source.getClosePrice(), source.getVolume(),
+                    source.getAmount(), source.getTrades());
+            this.events = events;
+            this.mutationThread = mutationThread;
+        }
+
+        @Override
+        public void addPrice(final Num price) {
+            mutationThread.set(Thread.currentThread());
+            super.addPrice(price);
+            events.add(RetainedMutationEvent.MUTATION_COMPLETE);
+        }
     }
 
     private static final class RecordingReadWriteLock implements ReadWriteLock {

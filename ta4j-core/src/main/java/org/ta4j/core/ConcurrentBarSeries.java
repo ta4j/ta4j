@@ -432,6 +432,22 @@ public class ConcurrentBarSeries extends BaseBarSeries {
     }
 
     /**
+     * Serializes direct retained-bar callbacks with structural mutations.
+     * {@link BaseBar} releases its retaining-series monitor before invoking this
+     * method, so acquiring the write lock here cannot invert the attachment lock
+     * order.
+     */
+    @Override
+    void retainedBarMutated(final BaseBar bar, final int index) {
+        this.writeLock.lock();
+        try {
+            super.retainedBarMutated(bar, index);
+        } finally {
+            this.writeLock.unlock();
+        }
+    }
+
+    /**
      * {@inheritDoc}
      * <p>
      * Acquires the write lock so live bar restatements cannot interleave with

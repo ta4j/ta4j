@@ -469,8 +469,9 @@ public class BaseBarSeries implements BarSeries {
     @Override
     public void addTrade(final Num tradeVolume, final Num tradePrice) {
         final Bar lastBar = getLastBar();
+        final long revisionBeforeMutation = getBarHistoryRevision();
         lastBar.addTrade(tradeVolume, tradePrice);
-        if (!(lastBar instanceof BaseBar)) {
+        if (getBarHistoryRevision() == revisionBeforeMutation) {
             recordBarHistoryChange(this.seriesEndIndex);
         }
     }
@@ -478,8 +479,9 @@ public class BaseBarSeries implements BarSeries {
     @Override
     public void addPrice(final Num price) {
         final Bar lastBar = getLastBar();
+        final long revisionBeforeMutation = getBarHistoryRevision();
         lastBar.addPrice(price);
-        if (!(lastBar instanceof BaseBar)) {
+        if (getBarHistoryRevision() == revisionBeforeMutation) {
             recordBarHistoryChange(this.seriesEndIndex);
         }
     }

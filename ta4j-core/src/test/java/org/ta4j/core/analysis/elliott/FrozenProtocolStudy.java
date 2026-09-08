@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  * anything not encoded by the protocol fails to load or resolve.
  * </p>
  *
- * @since 0.24.2
+ * @since 0.25.1
  */
 final class FrozenProtocolStudy {
 

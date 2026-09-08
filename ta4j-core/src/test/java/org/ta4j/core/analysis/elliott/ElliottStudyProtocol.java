@@ -451,7 +451,7 @@ final class ElliottStudyProtocol {
      * participates in the protocol fingerprint, so two executions cannot silently
      * use different momentum readings while claiming the same protocol.
      *
-     * @since 0.24.2
+     * @since 0.25.1
      */
     record MomentumSpec(String type, int barCount) {
         MomentumSpec {

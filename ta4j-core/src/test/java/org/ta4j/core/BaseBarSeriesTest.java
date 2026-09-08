@@ -160,6 +160,34 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void testAddPriceFallbackPublishesForBaseBarSubclassWithoutSuper() {
+        final BaseBarSeries series = seriesWithUnpublishedMutationBar();
+        final SMAIndicator cachedClose = new SMAIndicator(new ClosePriceIndicator(series), 1);
+        assertNumEquals(10, cachedClose.getValue(0));
+        final long revisionBeforeMutation = series.getBarHistoryRevision();
+
+        series.addPrice(numOf(20));
+        appendBar(series);
+
+        assertEquals(revisionBeforeMutation + 1, series.getBarHistoryRevision());
+        assertNumEquals(20, cachedClose.getValue(0));
+    }
+
+    @Test
+    public void testAddTradeFallbackPublishesForBaseBarSubclassWithoutSuper() {
+        final BaseBarSeries series = seriesWithUnpublishedMutationBar();
+        final SMAIndicator cachedClose = new SMAIndicator(new ClosePriceIndicator(series), 1);
+        assertNumEquals(10, cachedClose.getValue(0));
+        final long revisionBeforeMutation = series.getBarHistoryRevision();
+
+        series.addTrade(numFactory.one(), numOf(20));
+        appendBar(series);
+
+        assertEquals(revisionBeforeMutation + 1, series.getBarHistoryRevision());
+        assertNumEquals(20, cachedClose.getValue(0));
+    }
+
+    @Test
     public void testRetainedBarMutationDoesNotInvalidateUnrelatedSeries() {
         BaseBarSeries unrelated = new BaseBarSeriesBuilder().withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
@@ -828,6 +856,23 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
                 series.getRemovedBarsCount(), index);
     }
 
+    private BaseBarSeries seriesWithUnpublishedMutationBar() {
+        final Num price = numOf(10);
+        final Num zero = numFactory.zero();
+        final Instant endTime = Instant.parse("2024-04-02T00:00:00Z");
+        final Bar bar = new UnpublishedMutationBar(Duration.ofDays(1), endTime.minus(Duration.ofDays(1)), endTime,
+                price, zero);
+        return new BaseBarSeries("unpublished-mutation", List.of(bar), 0, 0, false, numFactory, barBuilderFactory);
+    }
+
+    private void appendBar(final BaseBarSeries series) {
+        final Bar lastBar = series.getLastBar();
+        final Num closePrice = lastBar.getClosePrice();
+        final Instant endTime = lastBar.getEndTime().plus(lastBar.getTimePeriod());
+        series.addBar(new BaseBar(lastBar.getTimePeriod(), lastBar.getEndTime(), endTime, closePrice, closePrice,
+                closePrice, closePrice, numFactory.zero(), numFactory.zero(), 0));
+    }
+
     private static final class EqualBarSeries extends BaseBarSeries {
 
         private EqualBarSeries(final Bar bar, final NumFactory numFactory, final BarBuilderFactory barBuilderFactory) {
@@ -842,6 +887,34 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         @Override
         public int hashCode() {
             return 1;
+        }
+    }
+
+    private static final class UnpublishedMutationBar extends BaseBar {
+
+        private static final long serialVersionUID = -3583567426533046727L;
+
+        private Num reportedClosePrice;
+
+        private UnpublishedMutationBar(final Duration period, final Instant beginTime, final Instant endTime,
+                final Num price, final Num zero) {
+            super(period, beginTime, endTime, price, price, price, price, zero, zero, 0);
+            this.reportedClosePrice = price;
+        }
+
+        @Override
+        public void addTrade(final Num tradeVolume, final Num tradePrice) {
+            this.reportedClosePrice = tradePrice;
+        }
+
+        @Override
+        public void addPrice(final Num price) {
+            this.reportedClosePrice = price;
+        }
+
+        @Override
+        public Num getClosePrice() {
+            return this.reportedClosePrice;
         }
     }
 }
