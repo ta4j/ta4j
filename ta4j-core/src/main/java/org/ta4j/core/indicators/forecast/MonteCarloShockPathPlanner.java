@@ -110,7 +110,8 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
             return null;
         }
         if (peakBytes > memoryLimitBytes || hostBytes > hostMemoryLimitBytes) {
-            LOG.warn("Declining {} over [{}..{}]: device estimate {} / budget {}, host staging {} / budget {}; scalar path",
+            LOG.warn(
+                    "Declining {} over [{}..{}]: device estimate {} / budget {}, host staging {} / budget {}; scalar path",
                     AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1, fromInclusive, toInclusive, peakBytes,
                     memoryLimitBytes, hostBytes, hostMemoryLimitBytes);
             return null;

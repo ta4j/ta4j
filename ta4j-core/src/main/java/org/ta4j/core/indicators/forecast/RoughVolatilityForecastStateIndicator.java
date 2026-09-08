@@ -342,7 +342,7 @@ public final class RoughVolatilityForecastStateIndicator extends CachedIndicator
          * Sets the number of cumulative variance horizons emitted by each state.
          *
          * @param value positive horizon count of at most
-         *              {@link #MAX_HORIZON_VARIANCE_STEPS}
+         *              {@link RoughVolatilityForecastStateIndicator#MAX_HORIZON_VARIANCE_STEPS}
          * @return this builder
          * @since 0.23.1
          */

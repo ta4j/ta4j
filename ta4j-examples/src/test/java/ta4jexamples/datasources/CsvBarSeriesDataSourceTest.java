@@ -6,7 +6,10 @@ package ta4jexamples.datasources;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 
+import java.io.BufferedReader;
+import java.io.File;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -14,11 +17,22 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.Locale;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsNull.notNullValue;
 import static org.junit.Assume.assumeThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Unit tests for the {@link CsvFileBarSeriesDataSource} class.
@@ -68,31 +82,63 @@ public class CsvBarSeriesDataSourceTest {
         // the relative name, because callers would start analyzing different data
         // without any signal.
         String bundledFile = "AAPL-PT1D-20130102_20131231.csv";
-        InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(bundledFile);
-        assumeThat("File " + bundledFile + " does not exist", resourceStream, is(notNullValue()));
-        int bundledBarCount;
-        try (resourceStream; java.io.InputStreamReader reader = new java.io.InputStreamReader(resourceStream)) {
-            bundledBarCount = reader.read() == -1 ? 0 : 252;
+        long bundledBarCount;
+        try (InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(bundledFile)) {
+            assertNotNull(resourceStream, "Missing bundled resource: " + bundledFile);
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(resourceStream, StandardCharsets.UTF_8))) {
+                bundledBarCount = reader.lines().skip(1).count();
+            }
         }
 
-        Path shadow = Path.of(bundledFile);
-        boolean created = false;
+        Path isolatedDirectory = Files.createTempDirectory("ta4j-csv-precedence-");
         try {
-            // CREATE_NEW keeps a caller-owned same-named file intact; the test
-            // mutates the working directory only when the file is absent.
-            Files.writeString(shadow, "date,open,high,low,close,volume\n2013-01-02,1.0,1.0,1.0,1.0,1\n",
-                    StandardCharsets.US_ASCII, StandardOpenOption.CREATE_NEW);
-            created = true;
-            BarSeries series = CsvFileBarSeriesDataSource.loadCsvSeries(bundledFile);
-            assertNotNull(series, "Should load series from the bundled resource");
-            assertEquals(bundledBarCount, series.getBarCount(),
+            // Run from a private working directory so the test never overwrites or
+            // skips around a caller-owned file in the test JVM's current directory.
+            Path shadow = isolatedDirectory.resolve(bundledFile);
+            Files.writeString(shadow, "date,open,high,low,close,volume\n", StandardCharsets.US_ASCII,
+                    StandardOpenOption.CREATE_NEW);
+
+            String classPath = Arrays
+                    .stream(System.getProperty("java.class.path").split(Pattern.quote(File.pathSeparator)))
+                    .map(entry -> Path.of(entry).toAbsolutePath().normalize().toString())
+                    .collect(Collectors.joining(File.pathSeparator));
+            String javaCommand = System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("win") ? "java.exe"
+                    : "java";
+            Path javaExecutable = Path.of(System.getProperty("java.home"), "bin", javaCommand);
+            Path probeOutput = isolatedDirectory.resolve("probe-output.txt");
+            ProcessBuilder probe = new ProcessBuilder(javaExecutable.toString(), "-cp", classPath,
+                    ClasspathPrecedenceProbe.class.getName(), bundledFile).directory(isolatedDirectory.toFile())
+                    .redirectErrorStream(true)
+                    .redirectOutput(probeOutput.toFile());
+            Process process = probe.start();
+            boolean completed = process.waitFor(30, TimeUnit.SECONDS);
+            if (!completed) {
+                process.destroyForcibly();
+                boolean terminated = process.waitFor(5, TimeUnit.SECONDS);
+                throw new AssertionError("Classpath precedence probe timed out; terminated=" + terminated);
+            }
+            int exitCode = process.exitValue();
+            String output = Files.readString(probeOutput, StandardCharsets.UTF_8);
+            assertEquals(0, exitCode, "Classpath precedence probe failed: " + output);
+
+            String markerPrefix = "TA4J_PROBE_BAR_COUNT=";
+            String marker = output.lines()
+                    .filter(line -> line.startsWith(markerPrefix))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Probe output omitted bar count: " + output));
+            long loadedBarCount = Long.parseLong(marker.substring(markerPrefix.length()));
+            assertEquals(bundledBarCount, loadedBarCount,
                     "Bundled classpath data must win over a same-named local file");
-        } catch (java.nio.file.FileAlreadyExistsException exception) {
-            throw new org.opentest4j.TestAbortedException(
-                    "working directory already contains " + bundledFile + "; skipping shadow test");
         } finally {
-            if (created) {
-                Files.deleteIfExists(shadow);
+            try (Stream<Path> paths = Files.walk(isolatedDirectory)) {
+                paths.sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (java.io.IOException exception) {
+                        throw new UncheckedIOException(exception);
+                    }
+                });
             }
         }
     }
@@ -308,4 +354,22 @@ public class CsvBarSeriesDataSourceTest {
             Files.deleteIfExists(tempFile);
         }
     }
+
+    public static final class ClasspathPrecedenceProbe {
+
+        private ClasspathPrecedenceProbe() {
+        }
+
+        public static void main(String[] args) {
+            if (args.length != 1) {
+                throw new IllegalArgumentException("Expected one CSV filename");
+            }
+            BarSeries series = CsvFileBarSeriesDataSource.loadCsvSeries(args[0]);
+            if (series == null) {
+                throw new IllegalStateException("CSV resource did not load: " + args[0]);
+            }
+            System.out.println("TA4J_PROBE_BAR_COUNT=" + series.getBarCount());
+        }
+    }
+
 }

@@ -18,15 +18,6 @@ record MetalProbeResult(boolean available, String deviceName, long recommendedMa
 }
 
 record MetalEvaluationResult(double totalMicros, double transferMicros, double kernelMicros, float[] terminalPrices) {
-
-    MetalEvaluationResult {
-        terminalPrices = Arrays.copyOf(terminalPrices, terminalPrices.length);
-    }
-
-    @Override
-    public float[] terminalPrices() {
-        return Arrays.copyOf(terminalPrices, terminalPrices.length);
-    }
 }
 
 final class JniMetalNativeBridge implements MetalNativeBridge {
@@ -35,7 +26,10 @@ final class JniMetalNativeBridge implements MetalNativeBridge {
 
     @Override
     public MetalProbeResult probe() {
-        String payload = nativeProbe(ABI_VERSION);
+        return parseProbePayload(nativeProbe(ABI_VERSION));
+    }
+
+    static MetalProbeResult parseProbePayload(String payload) {
         if (payload == null || payload.isBlank()) {
             return new MetalProbeResult(false, "", 0L, "Metal probe returned no metadata");
         }

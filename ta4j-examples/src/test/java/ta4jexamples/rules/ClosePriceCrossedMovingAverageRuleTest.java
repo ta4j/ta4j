@@ -48,6 +48,7 @@ class ClosePriceCrossedMovingAverageRuleTest {
         traceTestLogger.open();
         LoggerContext context = (LoggerContext) LogManager.getContext(false);
         Configuration config = context.getConfiguration();
+        LoggerConfig previousLoggerConfig = config.getLoggers().get("ta4jexamples.rules");
         config.removeLogger("ta4jexamples.rules");
         config.addLogger("ta4jexamples.rules", new LoggerConfig("ta4jexamples.rules", Level.TRACE, true));
         context.updateLoggers();
@@ -60,7 +61,9 @@ class ClosePriceCrossedMovingAverageRuleTest {
             assertTrue(logOutput.contains("path=root.delegate depth=1"));
         } finally {
             config.removeLogger("ta4jexamples.rules");
-            config.addLogger("ta4jexamples.rules", new LoggerConfig("ta4jexamples.rules", Level.OFF, false));
+            if (previousLoggerConfig != null) {
+                config.addLogger("ta4jexamples.rules", previousLoggerConfig);
+            }
             context.updateLoggers();
             traceTestLogger.close();
         }

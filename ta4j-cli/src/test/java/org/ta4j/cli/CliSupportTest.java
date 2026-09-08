@@ -35,6 +35,12 @@ import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedBooleanIndicator;
+import org.ta4j.core.indicators.helpers.HighestValueIndicator;
+import org.ta4j.core.indicators.helpers.LowestValueIndicator;
+import org.ta4j.core.indicators.helpers.PercentRankIndicator;
+import org.ta4j.core.indicators.statistics.CovarianceIndicator;
+import org.ta4j.core.indicators.statistics.MeanDeviationIndicator;
+import org.ta4j.core.indicators.statistics.PearsonCorrelationIndicator;
 import org.ta4j.core.indicators.statistics.SimpleLinearRegressionIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.indicators.statistics.VarianceIndicator;
@@ -283,6 +289,35 @@ class CliSupportTest {
     }
 
     @Test
+    void indicatorWindowWorkCoversExtremaRankAndStatisticsScans() {
+        BarSeries series = syntheticSeries(3);
+        Indicator<Num> close = new ClosePriceIndicator(series);
+        int window = 50_000;
+        List<Indicator<?>> scanners = List.of(new HighestValueIndicator(close, window),
+                new LowestValueIndicator(close, window), new PercentRankIndicator(close, window),
+                new MeanDeviationIndicator(close, window), new CovarianceIndicator(close, close, window),
+                new PearsonCorrelationIndicator(close, close, window));
+
+        for (Indicator<?> scanner : scanners) {
+            assertThatThrownBy(() -> CliSupport.requireBoundedIndicatorWindowWork(scanner, 2_001))
+                    .as(scanner.getClass().getSimpleName() + " must be included in the scan-work ceiling")
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("rolling-window iterations");
+        }
+
+        CliSupport.requireBoundedIndicatorWindowWork(new EMAIndicator(close, window), 2_001);
+    }
+
+    @Test
+    void scannerWarmupOverflowCannotBypassWorkBudget() {
+        BarSeries series = syntheticSeries(3);
+        Indicator<Num> recursive = new EMAIndicator(new ClosePriceIndicator(series), 1_500_000_000);
+        Indicator<Num> scanner = new HighestValueIndicator(recursive, 1_000_000_000);
+
+        assertThrows(IllegalArgumentException.class, () -> CliSupport.requireBoundedIndicatorWindowWork(scanner, 1));
+    }
+
+    @Test
     void sweepBudgetIncludesMonteCarloRankingPaths() {
         List<CliSupport.CriterionSpec> criteria = CliSupport.resolveCriteria(
                 List.of("org.ta4j.core.criteria.drawdown.MonteCarloMaximumDrawdownCriterion"),
@@ -492,10 +527,13 @@ class CliSupportTest {
         NamedStrategy.unregisterImplementation(DayOfWeekStrategy.class);
         resetNamedStrategyRegistryForTests();
 
-        Strategy strategy = CliSupport.buildStrategy(null, strategyJsonFile.toString(), null, series);
+        try {
+            Strategy strategy = CliSupport.buildStrategy(null, strategyJsonFile.toString(), null, series);
 
-        assertThat(strategy.getName()).isEqualTo("DayOfWeekStrategy_MONDAY_FRIDAY");
-        NamedStrategy.initializeRegistry("ta4jexamples.strategies");
+            assertThat(strategy.getName()).isEqualTo("DayOfWeekStrategy_MONDAY_FRIDAY");
+        } finally {
+            NamedStrategy.initializeRegistry("ta4jexamples.strategies");
+        }
     }
 
     @Test

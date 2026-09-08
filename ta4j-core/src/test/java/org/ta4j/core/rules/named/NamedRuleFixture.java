@@ -23,18 +23,18 @@ final class NamedRuleFixture extends NamedRule {
     private final Num threshold;
     private final Comparison comparison;
 
-    public NamedRuleFixture(ClosePriceIndicator closePriceIndicator, Num threshold, Comparison comparison) {
+    NamedRuleFixture(ClosePriceIndicator closePriceIndicator, Num threshold, Comparison comparison) {
         super(buildLabel(comparison, threshold));
         this.closePriceIndicator = closePriceIndicator;
         this.threshold = threshold;
         this.comparison = comparison;
     }
 
-    public NamedRuleFixture(BarSeries series, Comparison comparison, Num threshold) {
+    NamedRuleFixture(BarSeries series, Comparison comparison, Num threshold) {
         this(new ClosePriceIndicator(series), threshold, comparison);
     }
 
-    public NamedRuleFixture(BarSeries series, String... parameters) {
+    NamedRuleFixture(BarSeries series, String... parameters) {
         this(series, parseComparison(parameters), parseThreshold(series, parameters));
     }
 
@@ -47,11 +47,11 @@ final class NamedRuleFixture extends NamedRule {
         return satisfied;
     }
 
-    public Num getThreshold() {
+    Num getThreshold() {
         return threshold;
     }
 
-    public Comparison getComparison() {
+    Comparison getComparison() {
         return comparison;
     }
 

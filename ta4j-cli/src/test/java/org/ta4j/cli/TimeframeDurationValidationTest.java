@@ -5,6 +5,7 @@ package org.ta4j.cli;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -27,8 +28,8 @@ import org.junit.jupiter.api.io.TempDir;
  * {@code DurationBarAggregator}, whose aggregation loop never advances for a
  * non-positive period and spins forever allocating aggregated bars until the
  * CLI hangs or exhausts memory. A hostile or mistyped {@code --timeframe PT0S}
- * (or {@code P0D}/{@code PT-1D}) therefore hangs the CLI instead of failing
- * fast as a usage error. Sub-second precision (for example {@code PT60.5S}) is
+ * (or {@code P0D}/{@code -P1D}) therefore hangs the CLI instead of failing fast
+ * as a usage error. Sub-second precision (for example {@code PT60.5S}) is
  * rejected outright because the bar series model only expresses whole-second
  * bar durations.
  *
@@ -67,7 +68,12 @@ class TimeframeDurationValidationTest {
     }
 
     @Test
-    void negativeIsoTimeframeIsRejected() throws IOException {
+    void negativeIsoTimeframeIsRejectedAsNonPositive() throws IOException {
+        assertRejected("-P1D");
+    }
+
+    @Test
+    void malformedIsoTimeframeIsRejectedAsMalformed() throws IOException {
         assertRejected("PT-1D");
     }
 

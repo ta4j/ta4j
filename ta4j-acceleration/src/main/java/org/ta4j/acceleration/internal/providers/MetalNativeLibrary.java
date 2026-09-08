@@ -19,24 +19,28 @@ final class MetalNativeLibrary {
      * never initializes the native lane.
      */
     static boolean packagedResourcePresent() {
-        String operatingSystem = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-        String architecture = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);
-        if (!operatingSystem.contains("mac") || !(architecture.equals("aarch64") || architecture.equals("arm64"))) {
-            return false;
-        }
-        return MetalNativeLibrary.class
-                .getResource("/META-INF/native/macos-aarch64/libta4j-metal-accelerator.dylib") != null;
+        String resource = platformResource();
+        return resource != null && MetalNativeLibrary.class.getResource(resource) != null;
     }
 
     static LoadResult load() {
+        String resource = platformResource();
+        if (resource == null) {
+            return LoadResult.failure("Metal provider requires macOS arm64");
+        }
+        int lastSlash = resource.lastIndexOf('/') + 1;
+        NativeLibraryLoader.LoadResult loaded = NativeLibraryLoader.load("metal", LIBRARY_PROPERTY,
+                resource.substring(0, lastSlash), resource.substring(lastSlash), MetalNativeBridge.ABI_VERSION);
+        return new LoadResult(loaded.loaded(), loaded.path(), loaded.detail());
+    }
+
+    private static String platformResource() {
         String operatingSystem = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         String architecture = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);
         if (!operatingSystem.contains("mac") || !(architecture.equals("aarch64") || architecture.equals("arm64"))) {
-            return LoadResult.failure("Metal provider requires macOS arm64");
+            return null;
         }
-        NativeLibraryLoader.LoadResult loaded = NativeLibraryLoader.load("metal", LIBRARY_PROPERTY,
-                "/META-INF/native/macos-aarch64/", "libta4j-metal-accelerator.dylib", MetalNativeBridge.ABI_VERSION);
-        return new LoadResult(loaded.loaded(), loaded.path(), loaded.detail());
+        return "/META-INF/native/macos-aarch64/libta4j-metal-accelerator.dylib";
     }
 
     record LoadResult(boolean loaded, Path path, String detail) {

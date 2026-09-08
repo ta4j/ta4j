@@ -41,11 +41,11 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Provider;
 abstract class ShockPathKernelProvider implements Provider {
 
     /**
-     * Certified relative-tolerance floor of the fp32 approximate lane, per horizon
-     * step. Each terminal price compounds {@code horizon} fp32 multiply-adds whose
-     * per-operation relative rounding error is bounded by roughly 2^-24;
-     * {@code 1e-6} per step leaves about an order of magnitude of headroom, so
-     * requests at or above the floor can never silently violate their tolerance.
+     * Configured relative-tolerance eligibility floor of the fp32 approximate lane,
+     * per horizon step. Each terminal price compounds {@code horizon} fp32
+     * multiply-adds whose per-operation relative rounding error is bounded by
+     * roughly 2^-24; {@code 1e-6} per step is a conservative headroom bound for
+     * provider selection, not an end-to-end output oracle.
      */
     private static final double MIN_CERTIFIED_RELATIVE_TOLERANCE_PER_STEP = 1e-6;
 
@@ -75,53 +75,14 @@ abstract class ShockPathKernelProvider implements Provider {
     }
 
     @Override
-    public final String providerId() {
-        return providerId;
-    }
-
-    @Override
     public final Assessment assess(KernelRequest request) {
-        Objects.requireNonNull(request, "request must not be null");
-        if (request.operation() != Operation.MONTE_CARLO_SHOCK_PATHS_V1) {
-            return unsupported(DiagnosticCode.UNSUPPORTED,
-                    providerId + " implements only MONTE_CARLO_SHOCK_PATHS_V1, not " + request.operation());
+        RequestValidation validation = validateRequest(request);
+        if (!validation.supported()) {
+            return unsupported(validation.code(), validation.detail());
         }
-        if (request.numeric() != NumericEncoding.FLOAT64) {
-            return unsupported(DiagnosticCode.UNSUPPORTED,
-                    providerId + " consumes FLOAT64 buffers, not " + request.numeric());
-        }
-        double[] params = request.params();
-        if (params.length != 6 || (params[0] != 0d && params[0] != 1d && params[0] != 3d)) {
-            return unsupported(DiagnosticCode.UNSUPPORTED,
-                    providerId + " supports standardized empirical, historical bootstrap, and normal shocks");
-        }
-        boolean exact = request.determinism() == Determinism.BITWISE_IDENTICAL;
-        if (!exact && Double.isNaN(request.tolerance())) {
-            return unsupported(DiagnosticCode.UNSUPPORTED,
-                    providerId + " approximate requests require a finite positive tolerance");
-        }
-        if (exact ? !exactCapable : !approximateCapable) {
-            return unsupported(DiagnosticCode.PROVIDER_UNAVAILABLE, accuracyDetail(request, exact));
-        }
+        Dimensions dimensions = validation.dimensions();
         if (!libraryPresent()) {
             return unsupported(DiagnosticCode.PROVIDER_UNAVAILABLE, libraryDetail());
-        }
-        Dimensions dimensions;
-        try {
-            dimensions = dimensions(request, params);
-        } catch (ArithmeticException exception) {
-            return unsupported(DiagnosticCode.UNSUPPORTED,
-                    providerId + " request dimensions overflow: " + exception.getMessage());
-        }
-        if (!exact) {
-            double floor = certifiedRelativeToleranceFloor(dimensions.horizon());
-            if (request.tolerance() < floor) {
-                return unsupported(DiagnosticCode.UNSUPPORTED,
-                        providerId + " cannot certify approximate tolerance " + request.tolerance() + " for a "
-                                + dimensions.horizon() + "-step horizon: the fp32 lane's"
-                                + " certified relative-tolerance floor is " + floor + "; raise -D"
-                                + AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY + " or run the scalar path");
-            }
         }
         long ceiling = memoryCeiling();
         if (ceiling <= 0L) {
@@ -136,15 +97,19 @@ abstract class ShockPathKernelProvider implements Provider {
         long predicted = ShockPathQualification.predictedTotalNanos(backend, request.operation().version(), family,
                 dimensions.steps(), dimensions.stagedBytes(), resident);
         long peak = Math.min(dimensions.peakBytes(), ceiling);
+        boolean exact = request.determinism() == Determinism.BITWISE_IDENTICAL;
         return Assessment.supported(backend, deviceId(), predicted, peak, exact ? exactCapable : approximateCapable);
     }
 
     @Override
     public final KernelResult execute(KernelRequest request) {
-        Objects.requireNonNull(request, "request must not be null");
+        RequestValidation validation = validateRequest(request);
+        if (!validation.supported()) {
+            throw new NativeProviderException(backendName(), validation.detail());
+        }
         long started = System.nanoTime();
-        double[] params = request.params();
-        Dimensions dimensions = dimensions(request, params);
+        double[] params = validation.params();
+        Dimensions dimensions = validation.dimensions();
         SampleKernel kernel = ensureKernel();
         List<double[]> inputs = request.inputs();
         double[] raw = new double[request.expectedOutputLength()];
@@ -178,6 +143,53 @@ abstract class ShockPathKernelProvider implements Provider {
         }
         resident = true;
         return new KernelResult(raw, true, System.nanoTime() - started);
+    }
+
+    private RequestValidation validateRequest(KernelRequest request) {
+        Objects.requireNonNull(request, "request must not be null");
+        if (request.operation() != Operation.MONTE_CARLO_SHOCK_PATHS_V1) {
+            return RequestValidation.unsupported(DiagnosticCode.UNSUPPORTED,
+                    providerId + " implements only MONTE_CARLO_SHOCK_PATHS_V1, not " + request.operation());
+        }
+        if (request.numeric() != NumericEncoding.FLOAT64) {
+            return RequestValidation.unsupported(DiagnosticCode.UNSUPPORTED,
+                    providerId + " consumes FLOAT64 buffers, not " + request.numeric());
+        }
+        double[] params = request.params();
+        if (params.length != 6 || (params[0] != 0d && params[0] != 1d && params[0] != 3d)) {
+            return RequestValidation.unsupported(DiagnosticCode.UNSUPPORTED,
+                    providerId + " supports standardized empirical, historical bootstrap, and normal shocks");
+        }
+        boolean exact = request.determinism() == Determinism.BITWISE_IDENTICAL;
+        if (!exact && (!Double.isFinite(request.tolerance()) || request.tolerance() <= 0d)) {
+            return RequestValidation.unsupported(DiagnosticCode.UNSUPPORTED,
+                    providerId + " approximate requests require a finite positive tolerance");
+        }
+        if (exact ? !exactCapable : !approximateCapable) {
+            return RequestValidation.unsupported(DiagnosticCode.PROVIDER_UNAVAILABLE, accuracyDetail(request, exact));
+        }
+        Dimensions dimensions;
+        try {
+            dimensions = dimensions(request, params);
+        } catch (ArithmeticException exception) {
+            return RequestValidation.unsupported(DiagnosticCode.UNSUPPORTED,
+                    providerId + " request dimensions overflow: " + exception.getMessage());
+        }
+        if (request.outputsPerIndex() != dimensions.iterations()) {
+            return RequestValidation.unsupported(DiagnosticCode.UNSUPPORTED, providerId + " returns "
+                    + dimensions.iterations() + " outputs per index, not " + request.outputsPerIndex());
+        }
+        if (!exact) {
+            double floor = certifiedRelativeToleranceFloor(dimensions.horizon());
+            if (request.tolerance() < floor) {
+                return RequestValidation.unsupported(DiagnosticCode.UNSUPPORTED,
+                        providerId + " cannot certify approximate tolerance " + request.tolerance() + " for a "
+                                + dimensions.horizon() + "-step horizon: the fp32 lane's"
+                                + " certified relative-tolerance floor is " + floor + "; raise -D"
+                                + AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY + " or run the scalar path");
+            }
+        }
+        return RequestValidation.supported(params, dimensions);
     }
 
     /**
@@ -315,5 +327,20 @@ abstract class ShockPathKernelProvider implements Provider {
 
     private record Dimensions(int decisions, int horizon, int iterations, int lookback, long steps, long stagedBytes,
             long bytesPerDecision, long peakBytes) {
+    }
+
+    private record RequestValidation(double[] params, Dimensions dimensions, DiagnosticCode code, String detail) {
+
+        static RequestValidation supported(double[] params, Dimensions dimensions) {
+            return new RequestValidation(params, dimensions, null, null);
+        }
+
+        static RequestValidation unsupported(DiagnosticCode code, String detail) {
+            return new RequestValidation(null, null, code, detail);
+        }
+
+        boolean supported() {
+            return code == null;
+        }
     }
 }

@@ -5,6 +5,7 @@ package org.ta4j.core.rules.named;
 
 import static org.junit.Assert.assertTrue;
 
+import org.junit.After;
 import org.junit.Test;
 
 /**
@@ -21,6 +22,12 @@ import org.junit.Test;
  * does.
  */
 public class NamedRuleLookupInitializationTest {
+
+    @After
+    public void resetRegistry() {
+        NamedRule.resetRegistryStateForTests();
+        NamedRule.unregisterImplementation(ScanOnlyProbeRule.class);
+    }
 
     @Test
     public void lookupResolvesDefaultScannedRulesWithoutPriorInitialization() {

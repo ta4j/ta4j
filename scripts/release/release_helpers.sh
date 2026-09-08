@@ -1424,12 +1424,15 @@ command_artifact_manifest() {
   done
   [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "Release artifact version must be major.minor.patch: $version"
 
-  local expected_file existing_file missing_file unexpected_file
+  local required_file optional_file expected_file existing_file present_file missing_file unexpected_file
+  required_file="$(new_tmp_file)"
+  optional_file="$(new_tmp_file)"
   expected_file="$(new_tmp_file)"
   existing_file="$(new_tmp_file)"
+  present_file="$(new_tmp_file)"
   missing_file="$(new_tmp_file)"
   unexpected_file="$(new_tmp_file)"
-  cat > "$expected_file" <<EOF
+  cat > "$required_file" <<EOF
 ta4j-core/target/ta4j-core-${version}.jar
 ta4j-core/target/ta4j-core-${version}-sources.jar
 ta4j-core/target/ta4j-core-${version}-javadoc.jar
@@ -1445,10 +1448,19 @@ ta4j-acceleration/target/ta4j-acceleration-${version}.jar
 ta4j-acceleration/target/ta4j-acceleration-${version}-sources.jar
 ta4j-acceleration/target/ta4j-acceleration-${version}-javadoc.jar
 EOF
+  cat > "$optional_file" <<EOF
+ta4j-acceleration/target/ta4j-acceleration-${version}-metal-macos-aarch64.jar
+ta4j-acceleration/target/ta4j-acceleration-${version}-cuda-windows-x86_64.jar
+ta4j-acceleration/target/ta4j-acceleration-${version}-cuda-linux-x86_64.jar
+ta4j-acceleration/target/ta4j-acceleration-${version}-opencl-linux-x86_64.jar
+ta4j-acceleration/target/ta4j-acceleration-${version}-opencl-linux-aarch64.jar
+EOF
+  cat "$required_file" "$optional_file" > "$expected_file"
   while IFS= read -r file; do
     [[ -e "$file" ]] || printf '%s\n' "$file"
-  done < "$expected_file" | sort > "$missing_file"
+  done < "$required_file" | sort > "$missing_file"
   find . -path './*/target/*.jar' -type f | sed 's#^\./##' | sort > "$existing_file"
+  grep -Fxf "$existing_file" "$expected_file" > "$present_file" || true
   grep -Fvx -f "$expected_file" "$existing_file" > "$unexpected_file" || true
 
   {
@@ -1461,7 +1473,7 @@ EOF
     [[ -s "$unexpected_file" ]] && sed 's/^/- /' "$unexpected_file" || printf -- '- (none)\n'
     printf '\n'
   } > "$output"
-  append_output "files" "$(cat "$expected_file")" "$github_output"
+  append_output "files" "$(cat "$present_file")" "$github_output"
   append_output "artifact_manifest" "$output" "$github_output"
   append_output "missing_count" "$(grep -c . "$missing_file" || true)" "$github_output"
   append_output "unexpected_count" "$(grep -c . "$unexpected_file" || true)" "$github_output"

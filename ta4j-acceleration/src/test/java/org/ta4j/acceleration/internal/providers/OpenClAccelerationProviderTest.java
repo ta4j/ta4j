@@ -55,7 +55,7 @@ class OpenClAccelerationProviderTest {
         System.setProperty(OpenClNativeLibrary.LIBRARY_PROPERTY, directory.resolve("missing.so").toString());
         OpenClAccelerationProvider provider = new OpenClAccelerationProvider();
 
-        assertThrows(NativeProviderException.class, () -> provider.execute(request(Double.NaN)));
+        assertThrows(NativeProviderException.class, () -> provider.execute(request(0.01d)));
     }
 
     private static KernelRequest request(double tolerance) {

@@ -6,10 +6,11 @@ package org.ta4j.acceleration.internal.providers;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIOException;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
-
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -60,5 +61,29 @@ class NativeLibraryLoaderTest {
                 .isThrownBy(() -> NativeLibraryLoader.finalizeExtractedLibrary(symbolicLink, "unused", "metal"))
                 .withMessageContaining("not a regular file");
         assertThat(Files.getPosixFilePermissions(destination)).containsExactlyInAnyOrderElementsOf(originalPermissions);
+    }
+
+    @Test
+    void rejectsExtractedLibraryWithChecksumMismatch() throws Exception {
+        Path target = tempDir.resolve("checksum-mismatch.dylib");
+        Files.writeString(target, "native");
+
+        assertThatIOException()
+                .isThrownBy(() -> NativeLibraryLoader.finalizeExtractedLibrary(target, "0".repeat(64), "metal"))
+                .withMessageContaining("checksum mismatch");
+    }
+
+    @Test
+    void finalizesExtractedLibraryWithMatchingChecksum() throws Exception {
+        Path target = tempDir.resolve("checksum-match.dylib");
+        byte[] contents = "native".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        Files.write(target, contents);
+        String checksum = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(contents));
+
+        NativeLibraryLoader.finalizeExtractedLibrary(target, checksum, "metal");
+
+        if (target.getFileSystem().supportedFileAttributeViews().contains("posix")) {
+            assertThat(Files.getPosixFilePermissions(target)).contains(PosixFilePermission.OWNER_EXECUTE);
+        }
     }
 }

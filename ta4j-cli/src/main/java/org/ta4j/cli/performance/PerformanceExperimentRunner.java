@@ -259,11 +259,17 @@ public final class PerformanceExperimentRunner {
     static Optional<String> commandOutput(long timeout, TimeUnit unit, String... command) {
         ProcessBuilder processBuilder = new ProcessBuilder(command);
         processBuilder.redirectErrorStream(true);
-        Process process = null;
+        try {
+            return commandOutput(processBuilder.start(), timeout, unit);
+        } catch (IOException exception) {
+            return Optional.empty();
+        }
+    }
+
+    static Optional<String> commandOutput(Process process, long timeout, TimeUnit unit) {
         Thread reader = null;
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         try {
-            process = processBuilder.start();
             // Drain the child's merged output concurrently so a chatty child
             // cannot block forever on a full pipe buffer while we wait for it
             // to exit (the OS pipe is typically 64 KiB or smaller).
@@ -291,12 +297,8 @@ public final class PerformanceExperimentRunner {
             if (exitCode == 0 && !output.isBlank()) {
                 return Optional.of(output);
             }
-        } catch (IOException e) {
-            return Optional.empty();
         } catch (InterruptedException e) {
-            if (process != null) {
-                process.destroyForcibly();
-            }
+            process.destroyForcibly();
             Thread.currentThread().interrupt();
             return Optional.empty();
         }

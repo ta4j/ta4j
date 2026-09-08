@@ -37,7 +37,10 @@ final class JniOpenClNativeBridge implements OpenClNativeBridge {
 
     @Override
     public OpenClProbeResult probe() {
-        String payload = nativeProbe(ABI_VERSION);
+        return parseProbePayload(nativeProbe(ABI_VERSION));
+    }
+
+    static OpenClProbeResult parseProbePayload(String payload) {
         if (payload == null || payload.isBlank()) {
             return new OpenClProbeResult(false, "", 0, 0, 0L, 0L, 0, 0, false, "OpenCL probe returned no metadata");
         }

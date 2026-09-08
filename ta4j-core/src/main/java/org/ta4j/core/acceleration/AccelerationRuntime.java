@@ -61,8 +61,8 @@ public final class AccelerationRuntime {
     public static final String MAX_DEVICE_BYTES_PROPERTY = "ta4j.acceleration.maxDeviceBytes";
 
     /**
-     * System property opting execution into an approximate tolerance, a finite
-     * positive value compared against the scalar oracle. Unset (or invalid) leaves
+     * System property opting execution into a finite positive approximate tolerance
+     * that providers must meet against the scalar oracle. Unset (or invalid) leaves
      * exact, bitwise-identical execution as the only mode.
      */
     public static final String APPROXIMATE_TOLERANCE_PROPERTY = "ta4j.acceleration.approximateTolerance";
@@ -330,7 +330,10 @@ public final class AccelerationRuntime {
 
         /**
          * Within an explicitly requested numeric tolerance of the scalar oracle. Using
-         * this contract requires a finite positive kernel-request tolerance.
+         * this contract requires a finite positive kernel-request tolerance. Providers
+         * are responsible for qualifying this accuracy contract against the scalar
+         * oracle. The runtime validates output shape, finiteness and series freshness;
+         * it does not replay the scalar workload on every execution.
          */
         APPROXIMATE
     }
@@ -600,6 +603,12 @@ public final class AccelerationRuntime {
 
         /**
          * Executes a request and returns raw primitives.
+         *
+         * <p>
+         * Implementations must enforce the request's numeric and determinism contracts,
+         * including approximate tolerance. Returning finite output alone is not
+         * sufficient conformance. Runtime structural validation is not an independent
+         * numerical-accuracy check.
          *
          * @param request immutable kernel request
          * @return raw kernel output

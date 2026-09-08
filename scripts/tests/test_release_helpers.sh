@@ -762,9 +762,54 @@ test_artifact_manifest_validates_expected_release_jars() {
     : > "$file"
   done
 
-  bash "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --strict
+  # Native classifiers are produced only by their platform-specific profiles,
+  # so their absence must not fail an ordinary default release build.
+  bash "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --github-output outputs.txt --strict
   expect_file_contains artifact-manifest.txt "Missing release artifacts:" "manifest should include missing section"
   expect_file_contains artifact-manifest.txt "- (none)" "manifest should report no missing artifacts"
+  if ! awk -v path="ta4j-core/target/ta4j-core-${version}.jar" '
+    /^files<<EOF_files_/ { in_files=1; next }
+    in_files && /^EOF_files_/ { in_files=0; next }
+    in_files && index($0, path) { found=1 }
+    END { if (found) exit 0; exit 1 }
+  ' outputs.txt; then
+    fail "release output should include present required artifacts"
+  fi
+  if awk -v path="ta4j-acceleration/target/ta4j-acceleration-${version}-metal-macos-aarch64.jar" '
+    /^files<<EOF_files_/ { in_files=1; next }
+    in_files && /^EOF_files_/ { in_files=0; next }
+    in_files && index($0, path) { found=1 }
+    END { if (found) exit 0; exit 1 }
+  ' outputs.txt; then
+    fail "release output must not include an absent optional classifier"
+  fi
+
+  for file in \
+    "ta4j-acceleration/target/ta4j-acceleration-${version}-metal-macos-aarch64.jar" \
+    "ta4j-acceleration/target/ta4j-acceleration-${version}-cuda-windows-x86_64.jar" \
+    "ta4j-acceleration/target/ta4j-acceleration-${version}-cuda-linux-x86_64.jar" \
+    "ta4j-acceleration/target/ta4j-acceleration-${version}-opencl-linux-x86_64.jar" \
+    "ta4j-acceleration/target/ta4j-acceleration-${version}-opencl-linux-aarch64.jar"; do
+    mkdir -p "$(dirname "$file")"
+    : > "$file"
+  done
+  bash "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --github-output native-outputs.txt --strict
+  for file in \
+    "ta4j-acceleration/target/ta4j-acceleration-${version}-metal-macos-aarch64.jar" \
+    "ta4j-acceleration/target/ta4j-acceleration-${version}-cuda-windows-x86_64.jar" \
+    "ta4j-acceleration/target/ta4j-acceleration-${version}-cuda-linux-x86_64.jar" \
+    "ta4j-acceleration/target/ta4j-acceleration-${version}-opencl-linux-x86_64.jar" \
+    "ta4j-acceleration/target/ta4j-acceleration-${version}-opencl-linux-aarch64.jar"; do
+    expect_file_contains artifact-manifest.txt "$file" "manifest should inventory the known native classifier"
+  done
+  if ! awk -v path="ta4j-acceleration/target/ta4j-acceleration-${version}-metal-macos-aarch64.jar" '
+    /^files<<EOF_files_/ { in_files=1; next }
+    in_files && /^EOF_files_/ { in_files=0; next }
+    in_files && index($0, path) { found=1 }
+    END { if (found) exit 0; exit 1 }
+  ' native-outputs.txt; then
+    fail "release output should include a present optional classifier"
+  fi
 
   : > "ta4j-core/target/unexpected.jar"
   if bash "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --strict >manifest.log 2>&1; then

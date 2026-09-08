@@ -44,8 +44,13 @@ import org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.indicators.ReturnIndicator;
+import org.ta4j.core.indicators.UlcerIndexIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
+import org.ta4j.core.indicators.averages.LSMAIndicator;
+import org.ta4j.core.indicators.averages.LWMAIndicator;
+import org.ta4j.core.indicators.averages.SGMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.averages.WMAIndicator;
 import org.ta4j.core.indicators.forecast.AnalogReturnProjectionIndicator;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
@@ -63,13 +68,30 @@ import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.state.ReturnMomentState;
 import org.ta4j.core.indicators.forecast.state.RoughVolatilityForecastState;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
+import org.ta4j.core.indicators.helpers.LowestValueIndicator;
+import org.ta4j.core.indicators.helpers.PercentRankIndicator;
 import org.ta4j.core.named.NamedAssetKind;
 import org.ta4j.core.named.NamedAssetRegistry;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.indicators.statistics.CorrelationCoefficientIndicator;
+import org.ta4j.core.indicators.statistics.CovarianceIndicator;
+import org.ta4j.core.indicators.statistics.DistanceCorrelationIndicator;
+import org.ta4j.core.indicators.statistics.DynamicTimeWarpingDistanceIndicator;
+import org.ta4j.core.indicators.statistics.HurstExponentIndicator;
+import org.ta4j.core.indicators.statistics.KendallTauIndicator;
+import org.ta4j.core.indicators.statistics.LaggedCorrelationIndicator;
+import org.ta4j.core.indicators.statistics.LeadLagCorrelationIndicator;
+import org.ta4j.core.indicators.statistics.MeanDeviationIndicator;
+import org.ta4j.core.indicators.statistics.MutualInformationIndicator;
+import org.ta4j.core.indicators.statistics.PearsonCorrelationIndicator;
+import org.ta4j.core.indicators.statistics.RegimeSegmentedCorrelationIndicator;
 import org.ta4j.core.indicators.statistics.SimpleLinearRegressionIndicator;
+import org.ta4j.core.indicators.statistics.SpearmanRankCorrelationIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
+import org.ta4j.core.indicators.statistics.StandardErrorIndicator;
 import org.ta4j.core.indicators.statistics.VarianceIndicator;
 import org.ta4j.core.reports.PositionStatsReport;
 import org.ta4j.core.reports.TradingStatement;
@@ -595,12 +617,12 @@ final class CliSupport {
 
     /**
      * Rejects an indicator test whose rolling-window scans exceed
-     * {@link #MAX_BATCH_STRATEGY_WORK} before execution. A
-     * {@link VarianceIndicator} or {@link StandardDeviationIndicator} recomputes
-     * its full {@code barCount} window at every stable bar, so each discovered
-     * instance contributes {@code bars * barCount} operations. The sum is checked
-     * ahead of execution so a long series over a wide window cannot run away while
-     * still passing the strategy-batch ceiling.
+     * {@link #MAX_BATCH_STRATEGY_WORK} before execution. The preflight accounts for
+     * the built-in indicators that inspect a complete window at every stable bar,
+     * including the highest/lowest/rank helpers and the linear and quadratic
+     * statistical scanners. Recursive and constant-work rolling indicators are
+     * intentionally excluded: a large period alone does not make their per-index
+     * calculation a window scan.
      */
     static void requireBoundedIndicatorWindowWork(Indicator<?> indicator, long bars) {
         long windowBarCounts = sumRollingWindowBarCounts(indicator, Collections.newSetFromMap(new IdentityHashMap<>()));
@@ -639,20 +661,110 @@ final class CliSupport {
         if (!visited.add(indicator)) {
             return 0L;
         }
-        long barCounts = 0L;
-        if (indicator instanceof VarianceIndicator varianceIndicator) {
-            barCounts = varianceIndicator.getBarCount();
-        } else if (indicator instanceof StandardDeviationIndicator deviationIndicator) {
-            // A non-positive window normalizes the internal variance window to one,
-            // so a negative serialized value must never cancel a positive one.
-            barCounts = Math.max(1L, deviationIndicator.getBarCount());
-        } else if (indicator instanceof SimpleLinearRegressionIndicator regression) {
-            barCounts = 2L * Math.max(0, regression.getBarCount());
-        }
+        long barCounts = rollingWindowWork(indicator);
         for (Indicator<?> dependency : indicator.getDependencies()) {
-            barCounts = Math.addExact(barCounts, sumRollingWindowBarCounts(dependency, visited));
+            barCounts = saturatingAdd(barCounts, sumRollingWindowBarCounts(dependency, visited));
         }
         return barCounts;
+    }
+
+    private static long rollingWindowWork(Indicator<?> indicator) {
+        if (indicator instanceof VarianceIndicator varianceIndicator) {
+            return Math.max(1L, varianceIndicator.getBarCount());
+        }
+        if (indicator instanceof StandardDeviationIndicator deviationIndicator) {
+            // A non-positive window normalizes the internal variance window to
+            // one, so a negative serialized value must never cancel a positive
+            // one.
+            return Math.max(1L, deviationIndicator.getBarCount());
+        }
+        if (indicator instanceof SimpleLinearRegressionIndicator regression) {
+            return saturatingMultiply(2L, Math.max(0L, regression.getBarCount()));
+        }
+
+        long window = inferredWindowSize(indicator);
+        if (indicator instanceof HighestValueIndicator || indicator instanceof LowestValueIndicator
+                || indicator instanceof PercentRankIndicator || indicator instanceof LSMAIndicator
+                || indicator instanceof LWMAIndicator || indicator instanceof SGMAIndicator
+                || indicator instanceof WMAIndicator || indicator instanceof MeanDeviationIndicator
+                || indicator instanceof CovarianceIndicator || indicator instanceof PearsonCorrelationIndicator
+                || indicator instanceof StandardErrorIndicator || indicator instanceof UlcerIndexIndicator) {
+            return window;
+        }
+        if (indicator instanceof CorrelationCoefficientIndicator) {
+            return saturatingMultiply(3L, window);
+        }
+        if (indicator instanceof LaggedCorrelationIndicator
+                || indicator instanceof RegimeSegmentedCorrelationIndicator) {
+            // Window materialization plus the Pearson passes are all linear in
+            // the configured window.
+            return saturatingMultiply(4L, window);
+        }
+        if (indicator instanceof KendallTauIndicator || indicator instanceof DistanceCorrelationIndicator
+                || indicator instanceof DynamicTimeWarpingDistanceIndicator
+                || indicator instanceof HurstExponentIndicator || indicator instanceof LeadLagCorrelationIndicator
+                || indicator instanceof SpearmanRankCorrelationIndicator) {
+            // These implementations compare, rank, or align complete windows.
+            // The quadratic ceiling also covers an explicit lag range or maximum
+            // lag without adding a public work-estimation API to core.
+            return saturatingMultiply(window, window);
+        }
+        if (indicator instanceof MutualInformationIndicator) {
+            long bins = Math.max(1L, serializedIntegerParameter(indicator, "binCount"));
+            long dimension = Math.max(window, bins);
+            return saturatingMultiply(dimension, dimension);
+        }
+        return 0L;
+    }
+
+    private static long inferredWindowSize(Indicator<?> indicator) {
+        long unstableBars = indicator.getCountOfUnstableBars();
+        long dependencyUnstableBars = 0L;
+        for (Indicator<?> dependency : indicator.getDependencies()) {
+            dependencyUnstableBars = Math.max(dependencyUnstableBars,
+                    Math.max(0L, dependency.getCountOfUnstableBars()));
+        }
+        long window = unstableBars - dependencyUnstableBars + 1L;
+        if (window <= 0L) {
+            // An int-valued warm-up sum may overflow when a long-period recursive
+            // source feeds a scanner. Never interpret that overflow as a tiny scan.
+            return Long.MAX_VALUE;
+        }
+        return window;
+    }
+
+    private static long serializedIntegerParameter(Indicator<?> indicator, String parameterName) {
+        try {
+            JsonObject descriptor = JsonParser.parseString(indicator.toJson()).getAsJsonObject();
+            JsonElement parameters = descriptor.get("parameters");
+            if (parameters != null && parameters.isJsonObject()) {
+                JsonElement value = parameters.getAsJsonObject().get(parameterName);
+                if (value != null && value.isJsonPrimitive()) {
+                    return Math.max(0L, value.getAsLong());
+                }
+            }
+        } catch (RuntimeException ignored) {
+            // The type-specific window bound remains conservative when a custom
+            // serializer omits optional parameter metadata.
+        }
+        return 0L;
+    }
+
+    private static long saturatingAdd(long left, long right) {
+        if (right > 0L && left > Long.MAX_VALUE - right) {
+            return Long.MAX_VALUE;
+        }
+        return left + right;
+    }
+
+    private static long saturatingMultiply(long left, long right) {
+        if (left <= 0L || right <= 0L) {
+            return 0L;
+        }
+        if (left > Long.MAX_VALUE / right) {
+            return Long.MAX_VALUE;
+        }
+        return left * right;
     }
 
     static void reportInvalidStrategies(List<String> invalidStrategies, PrintWriter err) {
@@ -1969,22 +2081,23 @@ final class CliSupport {
         case "4h" -> Duration.ofHours(4);
         case "1d" -> Duration.ofDays(1);
         default -> {
+            Duration duration;
             try {
-                Duration duration = Duration.parse(token);
-                if (duration.isZero() || duration.isNegative()) {
-                    throw new IllegalArgumentException("Unsupported timeframe '" + token
-                            + "'. Use 1m, 5m, 15m, 1h, 4h, 1d, or a positive ISO-8601 duration.");
-                }
-                if (duration.getNano() != 0) {
-                    throw new IllegalArgumentException("Unsupported timeframe '" + token
-                            + "'. ISO-8601 durations must not contain fractional seconds.");
-                }
-                yield duration;
+                duration = Duration.parse(token);
             } catch (DateTimeParseException ex) {
                 throw new IllegalArgumentException(
                         "Unsupported timeframe '" + token + "'. Use 1m, 5m, 15m, 1h, 4h, 1d, or an ISO-8601 duration.",
                         ex);
             }
+            if (duration.isZero() || duration.isNegative()) {
+                throw new IllegalArgumentException("Unsupported timeframe '" + token
+                        + "'. Use 1m, 5m, 15m, 1h, 4h, 1d, or a positive ISO-8601 duration.");
+            }
+            if (duration.getNano() != 0) {
+                throw new IllegalArgumentException("Unsupported timeframe '" + token
+                        + "'. ISO-8601 durations must not contain fractional seconds.");
+            }
+            yield duration;
         }
         };
     }

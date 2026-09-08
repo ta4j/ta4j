@@ -55,7 +55,7 @@ class CudaAccelerationProviderTest {
         System.setProperty(CudaNativeLibrary.LIBRARY_PROPERTY, directory.resolve("missing.dll").toString());
         CudaAccelerationProvider provider = new CudaAccelerationProvider();
 
-        assertThrows(NativeProviderException.class, () -> provider.execute(request(Double.NaN)));
+        assertThrows(NativeProviderException.class, () -> provider.execute(request(0.01d)));
     }
 
     private static KernelRequest request(double tolerance) {

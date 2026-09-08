@@ -20,15 +20,6 @@ record CudaProbeResult(boolean available, String deviceName, int computeMajor, i
 
 record CudaEvaluationResult(double totalMicros, double transferMicros, double kernelMicros, double reductionMicros,
         double[] terminalPrices) {
-
-    CudaEvaluationResult {
-        terminalPrices = Arrays.copyOf(terminalPrices, terminalPrices.length);
-    }
-
-    @Override
-    public double[] terminalPrices() {
-        return Arrays.copyOf(terminalPrices, terminalPrices.length);
-    }
 }
 
 final class JniCudaNativeBridge implements CudaNativeBridge {

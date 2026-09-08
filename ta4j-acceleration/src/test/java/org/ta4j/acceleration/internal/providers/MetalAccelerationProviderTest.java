@@ -50,14 +50,17 @@ class MetalAccelerationProviderTest {
     }
 
     @Test
-    void approximateDeterminismRequiresFiniteTolerance() {
+    void approximateDeterminismRequiresFinitePositiveTolerance() {
         MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(true), bridgeFailing());
 
-        Assessment assessment = provider.assess(request(Determinism.APPROXIMATE, Double.NaN));
+        for (double tolerance : new double[] { Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, 0d,
+                -0.01d }) {
+            Assessment assessment = provider.assess(request(Determinism.APPROXIMATE, tolerance));
 
-        assertThat(assessment.supported()).isFalse();
-        assertThat(assessment.diagnostic().code()).isEqualTo(DiagnosticCode.UNSUPPORTED);
-        assertThat(assessment.diagnostic().detail()).contains("finite positive tolerance");
+            assertThat(assessment.supported()).isFalse();
+            assertThat(assessment.diagnostic().code()).isEqualTo(DiagnosticCode.UNSUPPORTED);
+            assertThat(assessment.diagnostic().detail()).contains("finite positive tolerance");
+        }
     }
 
     @Test
@@ -130,7 +133,7 @@ class MetalAccelerationProviderTest {
         };
         MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(true), bridge);
 
-        KernelResult result = provider.execute(request(Double.NaN));
+        KernelResult result = provider.execute(request(0.01d));
 
         assertThat(evaluations.get()).isEqualTo(4);
         assertThat(result.nativeInitialized()).isTrue();
@@ -148,7 +151,7 @@ class MetalAccelerationProviderTest {
         };
         MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(true), shortBridge);
 
-        assertThrows(NativeProviderException.class, () -> provider.execute(request(Double.NaN)));
+        assertThrows(NativeProviderException.class, () -> provider.execute(request(0.01d)));
     }
 
     @Test
@@ -163,7 +166,7 @@ class MetalAccelerationProviderTest {
         MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(true), failing);
 
         NativeProviderException failure = assertThrows(NativeProviderException.class,
-                () -> provider.execute(request(Double.NaN)));
+                () -> provider.execute(request(0.01d)));
         assertThat(failure.getCause()).isInstanceOf(IllegalStateException.class);
     }
 
@@ -178,7 +181,7 @@ class MetalAccelerationProviderTest {
         };
         MetalAccelerationProvider provider = new MetalAccelerationProvider(loaderWith(true), unavailable);
 
-        assertThrows(NativeProviderException.class, () -> provider.execute(request(Double.NaN)));
+        assertThrows(NativeProviderException.class, () -> provider.execute(request(0.01d)));
     }
 
     private void useLibraryFile() throws Exception {

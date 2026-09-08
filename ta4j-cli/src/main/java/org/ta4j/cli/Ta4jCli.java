@@ -10,7 +10,7 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -54,7 +54,7 @@ public final class Ta4jCli implements Runnable {
 
     private static final int IO_ERROR_EXIT_CODE = 74;
 
-    private static final AtomicBoolean QUIET_LOGGING_CONFIGURED = new AtomicBoolean();
+    private static Boolean quietLoggingMode;
 
     private final InputStream input;
 
@@ -129,8 +129,8 @@ public final class Ta4jCli implements Runnable {
      * routing deterministic.
      * </p>
      */
-    private static void configureQuietLogging(boolean suppressOperationalLogs) {
-        if (!QUIET_LOGGING_CONFIGURED.compareAndSet(false, true)) {
+    private static synchronized void configureQuietLogging(boolean suppressOperationalLogs) {
+        if (quietLoggingMode != null && quietLoggingMode.booleanValue() == suppressOperationalLogs) {
             return;
         }
         ConfigurationBuilder<BuiltConfiguration> configurationBuilder = ConfigurationBuilderFactory
@@ -143,11 +143,13 @@ public final class Ta4jCli implements Runnable {
             configurationBuilder.add(configurationBuilder.newRootLogger(Level.OFF));
             LoggerContext context = (LoggerContext) LogManager.getContext(Ta4jCli.class.getClassLoader(), false);
             context.setConfiguration(configurationBuilder.build());
+            quietLoggingMode = true;
             return;
         }
         configurationBuilder.setStatusLevel(Level.WARN);
         AppenderComponentBuilder stderrAppender = configurationBuilder.newAppender("stderr", "CONSOLE")
                 .addAttribute("target", "SYSTEM_ERR")
+                .addAttribute("follow", true)
                 .add(configurationBuilder.newLayout("PatternLayout")
                         .addAttribute("pattern", "%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n%throwable"));
         configurationBuilder.add(stderrAppender);
@@ -155,6 +157,7 @@ public final class Ta4jCli implements Runnable {
                 .add(configurationBuilder.newRootLogger(Level.WARN).add(configurationBuilder.newAppenderRef("stderr")));
         LoggerContext context = (LoggerContext) LogManager.getContext(Ta4jCli.class.getClassLoader(), false);
         context.setConfiguration(configurationBuilder.build());
+        quietLoggingMode = false;
     }
 
     private static boolean requestsJsonErrorFormat(String[] args) {

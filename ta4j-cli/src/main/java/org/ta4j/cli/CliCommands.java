@@ -636,18 +636,22 @@ final class CliCommands {
                     : null;
             for (int index = 0; index < resolvedStrategies.strategies().size(); index++) {
                 Strategy strategy = resolvedStrategies.strategies().get(index);
+                String strategyJson;
                 BacktestExecutionResult backtest;
                 StrategyWalkForwardExecutionResult walkForwardResult;
                 try {
-                    backtest = executor.executeWithRuntimeReport(List.of(strategy), positionSizing.positionSizer(),
-                            strategy.getStartingType());
+                    strategyJson = strategy.toJson();
+                    Strategy backtestStrategy = Strategy.fromJson(series, strategyJson);
+                    backtest = executor.executeWithRuntimeReport(List.of(backtestStrategy),
+                            positionSizing.positionSizer(), backtestStrategy.getStartingType());
                 } catch (RuntimeException ex) {
                     failedStrategies.add(failureEntry(strategy.getName(), ex.getMessage()));
                     reportProgress(artifacts.progress && !singleStrategy, err(), "strategy walk-forward", index + 1);
                     continue;
                 }
                 try {
-                    walkForwardResult = executor.executeWalkForward(strategy, positionSizing.positionSizer(),
+                    walkForwardResult = executor.executeWalkForward(strategy,
+                            ignored -> Strategy.fromJson(series, strategyJson), positionSizing.positionSizer(),
                             strategy.getStartingType(), config, progressCallback);
                 } catch (RuntimeException ex) {
                     failedStrategies.add(failureEntry(strategy.getName(), ex.getMessage()));

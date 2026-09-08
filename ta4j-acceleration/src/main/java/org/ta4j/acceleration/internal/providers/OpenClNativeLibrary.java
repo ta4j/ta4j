@@ -19,39 +19,43 @@ final class OpenClNativeLibrary {
      * never initializes the native lane.
      */
     static boolean packagedResourcePresent() {
-        String operatingSystem = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-        String architecture = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);
-        if (!operatingSystem.contains("linux")) {
-            return false;
-        }
-        if (architecture.equals("amd64") || architecture.equals("x86_64")) {
-            return OpenClNativeLibrary.class
-                    .getResource("/META-INF/native/linux-x86_64/libta4j-opencl-accelerator.so") != null;
-        }
-        if (architecture.equals("aarch64") || architecture.equals("arm64")) {
-            return OpenClNativeLibrary.class
-                    .getResource("/META-INF/native/linux-aarch64/libta4j-opencl-accelerator.so") != null;
-        }
-        return false;
+        String resource = platformResource();
+        return resource != null && OpenClNativeLibrary.class.getResource(resource) != null;
     }
 
     static LoadResult load() {
-        String operatingSystem = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         String architecture = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);
-        String resourceDirectory;
-        if (architecture.equals("amd64") || architecture.equals("x86_64")) {
-            resourceDirectory = "/META-INF/native/linux-x86_64/";
-        } else if (architecture.equals("aarch64") || architecture.equals("arm64")) {
-            resourceDirectory = "/META-INF/native/linux-aarch64/";
-        } else {
+        if (!supportedArchitecture(architecture)) {
             return LoadResult.failure("OpenCL provider requires Linux x86_64 or aarch64, found " + architecture);
         }
-        if (!operatingSystem.contains("linux")) {
+        String resource = platformResource();
+        if (resource == null) {
             return LoadResult.failure("OpenCL provider requires Linux");
         }
-        NativeLibraryLoader.LoadResult loaded = NativeLibraryLoader.load("opencl", LIBRARY_PROPERTY, resourceDirectory,
-                "libta4j-opencl-accelerator.so", OpenClNativeBridge.ABI_VERSION);
+        int lastSlash = resource.lastIndexOf('/') + 1;
+        NativeLibraryLoader.LoadResult loaded = NativeLibraryLoader.load("opencl", LIBRARY_PROPERTY,
+                resource.substring(0, lastSlash), resource.substring(lastSlash), OpenClNativeBridge.ABI_VERSION);
         return new LoadResult(loaded.loaded(), loaded.path(), loaded.detail());
+    }
+
+    private static String platformResource() {
+        String operatingSystem = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        if (!operatingSystem.contains("linux")) {
+            return null;
+        }
+        String architecture = System.getProperty("os.arch", "").toLowerCase(Locale.ROOT);
+        if (architecture.equals("amd64") || architecture.equals("x86_64")) {
+            return "/META-INF/native/linux-x86_64/libta4j-opencl-accelerator.so";
+        }
+        if (architecture.equals("aarch64") || architecture.equals("arm64")) {
+            return "/META-INF/native/linux-aarch64/libta4j-opencl-accelerator.so";
+        }
+        return null;
+    }
+
+    private static boolean supportedArchitecture(String architecture) {
+        return architecture.equals("amd64") || architecture.equals("x86_64") || architecture.equals("aarch64")
+                || architecture.equals("arm64");
     }
 
     record LoadResult(boolean loaded, Path path, String detail) {

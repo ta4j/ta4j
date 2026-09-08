@@ -71,7 +71,7 @@ Regular PR and push CI skips test tags configured by `ta4j.excludedTestTags`.
 Run tagged suites manually from GitHub Actions, or locally with:
 
 - `xvfb-run ./mvnw -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-opencl,requires-display,requires-headless`
-- `xvfb-run ./mvnw -B test -Dgroups=benchmark -Dta4j.excludedTestTags=`
+- `xvfb-run ./mvnw -B test -Dgroups=benchmark -Dta4j.excludedTestTags=requires-cuda,requires-metal,requires-opencl`
 - `xvfb-run ./mvnw -B test -Dgroups=analysis-demo -Dta4j.excludedTestTags= -Dta4j.analysisDemoInstrument=coinbase:BTC-USD -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave`
 
 These examples match the Linux GitHub Actions runners. On macOS, use XQuartz or

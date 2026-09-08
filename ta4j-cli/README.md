@@ -471,6 +471,7 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --strategy DayOfWeekStrategy_MONDAY_FRIDAY \
   --strategies HourOfDayStrategy_9_17,MissingStrategy_VALUE \
+  --invalid-input skip \
   --strategy-json-file /absolute/path/exported-strategy.json \
   --strategies-json-file /absolute/path/exported-strategies.json \
   --output /tmp/backtest-mixed-inputs.json

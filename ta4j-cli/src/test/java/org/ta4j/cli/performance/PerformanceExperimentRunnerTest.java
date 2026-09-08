@@ -9,6 +9,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -92,23 +96,69 @@ class PerformanceExperimentRunnerTest {
     }
 
     @Test
-    @org.junit.jupiter.api.condition.EnabledOnOs({ org.junit.jupiter.api.condition.OS.LINUX,
-            org.junit.jupiter.api.condition.OS.MAC })
     void commandOutputReturnsEmptyWhenProcessTimesOut() {
-        Optional<String> output = PerformanceExperimentRunner.commandOutput(100, TimeUnit.MILLISECONDS, "/bin/sh", "-c",
-                "sleep 5; printf late");
+        ProbeProcess process = new ProbeProcess(false, "late");
+        Optional<String> output = PerformanceExperimentRunner.commandOutput(process, 100, TimeUnit.MILLISECONDS);
 
         assertTrue(output.isEmpty());
+        assertTrue(process.destroyed);
     }
 
     @Test
-    @org.junit.jupiter.api.condition.EnabledOnOs({ org.junit.jupiter.api.condition.OS.LINUX,
-            org.junit.jupiter.api.condition.OS.MAC })
     void commandOutputReturnsTrimmedOutputForSuccessfulProcess() {
-        Optional<String> output = PerformanceExperimentRunner.commandOutput(5, TimeUnit.SECONDS, "/bin/sh", "-c",
-                "printf ' ok '");
+        ProbeProcess process = new ProbeProcess(true, " ok ");
+        Optional<String> output = PerformanceExperimentRunner.commandOutput(process, 5, TimeUnit.SECONDS);
 
         assertEquals(Optional.of("ok"), output);
+    }
+
+    private static final class ProbeProcess extends Process {
+        private final boolean completed;
+        private final InputStream output;
+        private boolean destroyed;
+
+        private ProbeProcess(boolean completed, String output) {
+            this.completed = completed;
+            this.output = new ByteArrayInputStream(output.getBytes(StandardCharsets.UTF_8));
+        }
+
+        @Override
+        public InputStream getInputStream() {
+            return output;
+        }
+
+        @Override
+        public InputStream getErrorStream() {
+            return InputStream.nullInputStream();
+        }
+
+        @Override
+        public OutputStream getOutputStream() {
+            return OutputStream.nullOutputStream();
+        }
+
+        @Override
+        public boolean waitFor(long timeout, TimeUnit unit) {
+            return completed || destroyed;
+        }
+
+        @Override
+        public int waitFor() {
+            throw new AssertionError("An unbounded process wait is not permitted");
+        }
+
+        @Override
+        public int exitValue() {
+            if (!completed && !destroyed) {
+                throw new IllegalThreadStateException("Process is still running");
+            }
+            return 0;
+        }
+
+        @Override
+        public void destroy() {
+            destroyed = true;
+        }
     }
 
     @Test

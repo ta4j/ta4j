@@ -3,15 +3,14 @@ set -euo pipefail
 
 # Policy check: the release artifact manifest gate
 # (scripts/release/release_helpers.sh artifact-manifest --strict, invoked by
-# publish-release.yml after `-Pproduction-release package`) must accept the
-# artifacts the reactor produces. The new ta4j-cli module is part of the
-# reactor and produces ta4j-cli/target/ta4j-cli-<version>[-sources|-javadoc].jar
-# during the release build, but the manifest's expected list only covered
-# ta4j-core and ta4j-examples, so --strict failed the release with
-# "Unexpected target jars".
+# publish-release.yml after `-Pproduction-release package`) must accept every
+# artifact produced by the reactor. The ta4j-acceleration module owns optional
+# platform-native classifier JARs; their absence is valid in the ordinary
+# default build, while unknown target JARs must still fail strict validation.
 #
-# The check simulates the release build tree with fake jars and runs the exact
-# helper invocation used by publish-release.yml.
+# The check simulates both the default release tree and a tree containing all
+# known native classifiers with fake jars, then runs the exact helper
+# invocation used by publish-release.yml.
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 HELPER="$ROOT/scripts/release/release_helpers.sh"
@@ -55,19 +54,39 @@ ACCELERATION_JARS=(
   "ta4j-acceleration/target/ta4j-acceleration-%s-sources.jar"
   "ta4j-acceleration/target/ta4j-acceleration-%s-javadoc.jar"
 )
+NATIVE_CLASSIFIER_JARS=(
+  "ta4j-acceleration/target/ta4j-acceleration-%s-metal-macos-aarch64.jar"
+  "ta4j-acceleration/target/ta4j-acceleration-%s-cuda-windows-x86_64.jar"
+  "ta4j-acceleration/target/ta4j-acceleration-%s-cuda-linux-x86_64.jar"
+  "ta4j-acceleration/target/ta4j-acceleration-%s-opencl-linux-x86_64.jar"
+  "ta4j-acceleration/target/ta4j-acceleration-%s-opencl-linux-aarch64.jar"
+)
 
 ALL_JARS=("${CORE_JARS[@]}" "${EXAMPLES_JARS[@]}" "${CLI_JARS[@]}" "${ACCELERATION_JARS[@]}")
-
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/ta4j-manifest-sim.XXXXXX")"
 trap 'rm -rf "$tmp"' EXIT
 
-# Positive case: the full reactor artifact set must pass --strict.
+
 make_tree "$tmp" "${ALL_JARS[@]}"
 if (cd "$tmp" && bash "$HELPER" artifact-manifest --version "$VERSION" --output manifest.txt --strict >/dev/null 2>&1); then
-  pass "artifact-manifest --strict accepts the CLI and acceleration reactor artifacts"
+  pass "artifact-manifest --strict accepts the default reactor artifact set without native profiles"
 else
-  fail "artifact-manifest --strict rejected the reactor artifacts (expected success)"
+  fail "artifact-manifest --strict rejected the default reactor artifacts (expected success)"
 fi
+
+make_tree "$tmp" "${NATIVE_CLASSIFIER_JARS[@]}"
+if (cd "$tmp" && bash "$HELPER" artifact-manifest --version "$VERSION" --output manifest.txt --strict >/dev/null 2>&1); then
+  pass "artifact-manifest --strict accepts all known acceleration classifier artifacts"
+else
+  fail "artifact-manifest --strict rejected known acceleration classifier artifacts (expected success)"
+fi
+
+printf 'unknown classifier\n' > "$tmp/ta4j-acceleration/target/ta4j-acceleration-${VERSION}-unknown.jar"
+if (cd "$tmp" && bash "$HELPER" artifact-manifest --version "$VERSION" --output manifest.txt --strict >/dev/null 2>&1); then
+  fail "unknown acceleration classifier must fail strict manifest validation"
+fi
+rm -f "$tmp/ta4j-acceleration/target/ta4j-acceleration-${VERSION}-unknown.jar"
+pass "artifact-manifest --strict rejects unknown acceleration classifiers"
 
 # Negative control: the gate must keep failing when a required artifact is
 # missing; the check is not satisfied by relaxing the manifest.

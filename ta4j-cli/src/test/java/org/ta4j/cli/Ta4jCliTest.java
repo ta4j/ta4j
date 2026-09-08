@@ -6,10 +6,12 @@ package org.ta4j.cli;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.apache.logging.log4j.LogManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TraceTestLogger;
@@ -25,11 +27,14 @@ import org.ta4j.core.rules.AbstractRule;
 import org.ta4j.core.rules.JustOnceRule;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.RandomAccessFile;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -115,6 +120,35 @@ class Ta4jCliTest {
         assertThat(payload.get("schemaVersion").getAsInt()).isEqualTo(1);
         assertThat(payload.get("status").getAsString()).isEqualTo("error");
         assertThat(payload.getAsJsonObject("error").get("category").getAsString()).isEqualTo("usage");
+    }
+
+    @Test
+    void quietLoggingReconfiguresWhenErrorFormatChanges() {
+        ByteArrayOutputStream captured = new ByteArrayOutputStream();
+        PrintStream originalErr = System.err;
+        try (PrintStream redirectedErr = new PrintStream(captured, true, StandardCharsets.UTF_8)) {
+            System.setErr(redirectedErr);
+            runCliAllowingError("backtest");
+            LogManager.getLogger(Ta4jCliTest.class).warn("text-mode-warning");
+            redirectedErr.flush();
+            assertThat(captured.toString(StandardCharsets.UTF_8)).contains("text-mode-warning");
+
+            captured.reset();
+            CliRunResult json = runCliAllowingError("--error-format", "json", "backtest");
+            LogManager.getLogger(Ta4jCliTest.class).warn("json-mode-warning");
+            redirectedErr.flush();
+            assertThat(captured.toString(StandardCharsets.UTF_8)).doesNotContain("json-mode-warning");
+            assertThat(JsonParser.parseString(json.stderr()).getAsJsonObject().get("status").getAsString())
+                    .isEqualTo("error");
+
+            captured.reset();
+            runCliAllowingError("--error-format", "text", "backtest");
+            LogManager.getLogger(Ta4jCliTest.class).warn("restored-text-mode-warning");
+            redirectedErr.flush();
+            assertThat(captured.toString(StandardCharsets.UTF_8)).contains("restored-text-mode-warning");
+        } finally {
+            System.setErr(originalErr);
+        }
     }
 
     @Test
@@ -265,6 +299,28 @@ class Ta4jCliTest {
         assertThat(exitCode).isZero();
 
         JsonArray folds = result(readJson(outputFile)).getAsJsonObject("walkForward").getAsJsonArray("folds");
+        assertThat(folds).isNotEmpty();
+        for (var fold : folds) {
+            assertThat(fold.getAsJsonObject().getAsJsonObject("statement").get("positionCount").getAsInt())
+                    .isEqualTo(1);
+        }
+    }
+
+    @Test
+    void strategyWalkForwardRebuildsSerializedStatefulStrategyForBacktestAndFolds() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Strategy statefulStrategy = new BaseStrategy("just-once-strategy", new JustOnceRule(), new JustOnceRule());
+        Path strategyFile = writeSerializedStrategy("just-once-strategy.json", statefulStrategy);
+        Path outputFile = tempDir.resolve("just-once-strategy-walk-forward.json");
+
+        int exitCode = runCli("strategy", "walk-forward", "--data-file", dataFile.toString(), "--strategy-json-file",
+                strategyFile.toString(), "--output", outputFile.toString(), "--min-train-bars", "40", "--test-bars",
+                "20", "--step-bars", "20", "--holdout-bars", "20");
+        assertThat(exitCode).isZero();
+
+        JsonObject result = result(readJson(outputFile));
+        assertThat(result.getAsJsonObject("backtest").get("positionCount").getAsInt()).isEqualTo(1);
+        JsonArray folds = result.getAsJsonObject("walkForward").getAsJsonArray("folds");
         assertThat(folds).isNotEmpty();
         for (var fold : folds) {
             assertThat(fold.getAsJsonObject().getAsJsonObject("statement").get("positionCount").getAsInt())

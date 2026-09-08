@@ -736,12 +736,18 @@ static cl_int initialize_state(char* error, size_t error_size) {
         cl_context_properties properties[] = {CL_CONTEXT_PLATFORM, (cl_context_properties)STATE.platform, 0};
         STATE.context = clCreateContext(properties, 1, &STATE.device, NULL, NULL, &error_status);
         if (error_status != CL_SUCCESS || STATE.context == NULL) {
+            if (error_status == CL_SUCCESS) {
+                error_status = CL_OUT_OF_HOST_MEMORY;
+            }
             fail(error, error_size, "context creation failed");
             goto cleanup;
         }
     }
     STATE.queue = clCreateCommandQueue(STATE.context, STATE.device, 0, &error_status);
     if (error_status != CL_SUCCESS || STATE.queue == NULL) {
+        if (error_status == CL_SUCCESS) {
+            error_status = CL_OUT_OF_HOST_MEMORY;
+        }
         fail(error, error_size, "command queue creation failed");
         goto cleanup;
     }
@@ -749,6 +755,9 @@ static cl_int initialize_state(char* error, size_t error_size) {
         const char* sources[] = {KERNEL_SOURCE};
         STATE.program = clCreateProgramWithSource(STATE.context, 1, sources, NULL, &error_status);
         if (error_status != CL_SUCCESS || STATE.program == NULL) {
+            if (error_status == CL_SUCCESS) {
+                error_status = CL_OUT_OF_HOST_MEMORY;
+            }
             fail(error, error_size, "program source creation failed");
             goto cleanup;
         }
@@ -773,37 +782,56 @@ static cl_int initialize_state(char* error, size_t error_size) {
     }
     STATE.path_kernel = clCreateKernel(STATE.program, "path_kernel", &error_status);
     if (error_status != CL_SUCCESS || STATE.path_kernel == NULL) {
+        if (error_status == CL_SUCCESS) {
+            error_status = CL_OUT_OF_HOST_MEMORY;
+        }
         fail(error, error_size, "path kernel creation failed");
         goto cleanup;
     }
     STATE.moments_kernel = clCreateKernel(STATE.program, "moments_kernel", &error_status);
     if (error_status != CL_SUCCESS || STATE.moments_kernel == NULL) {
+        if (error_status == CL_SUCCESS) {
+            error_status = CL_OUT_OF_HOST_MEMORY;
+        }
         fail(error, error_size, "moments kernel creation failed");
         goto cleanup;
     }
     STATE.quantile_kernel = clCreateKernel(STATE.program, "quantile_kernel", &error_status);
     if (error_status != CL_SUCCESS || STATE.quantile_kernel == NULL) {
+        if (error_status == CL_SUCCESS) {
+            error_status = CL_OUT_OF_HOST_MEMORY;
+        }
         fail(error, error_size, "quantile kernel creation failed");
         goto cleanup;
     }
     STATE.bitonic_parallel = clCreateKernel(STATE.program, "bitonic_sort_parallel", &error_status);
     if (error_status != CL_SUCCESS || STATE.bitonic_parallel == NULL) {
+        if (error_status == CL_SUCCESS) {
+            error_status = CL_OUT_OF_HOST_MEMORY;
+        }
         fail(error, error_size, "bitonic parallel kernel creation failed");
         goto cleanup;
     }
     STATE.bitonic_serial = clCreateKernel(STATE.program, "bitonic_sort_serial", &error_status);
     if (error_status != CL_SUCCESS || STATE.bitonic_serial == NULL) {
+        if (error_status == CL_SUCCESS) {
+            error_status = CL_OUT_OF_HOST_MEMORY;
+        }
         fail(error, error_size, "bitonic serial kernel creation failed");
         goto cleanup;
     }
     STATE.rng_self_test = clCreateKernel(STATE.program, "rng_self_test_kernel", &error_status);
     if (error_status != CL_SUCCESS || STATE.rng_self_test == NULL) {
+        if (error_status == CL_SUCCESS) {
+            error_status = CL_OUT_OF_HOST_MEMORY;
+        }
         fail(error, error_size, "RNG self-test kernel creation failed");
         goto cleanup;
     }
 
-    if (clGetDeviceInfo(STATE.device, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(STATE.max_work_group_size),
-                        &STATE.max_work_group_size, NULL) != CL_SUCCESS) {
+    error_status = clGetDeviceInfo(STATE.device, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(STATE.max_work_group_size),
+            &STATE.max_work_group_size, NULL);
+    if (error_status != CL_SUCCESS) {
         fail(error, error_size, "unable to query work group limit");
         goto cleanup;
     }
