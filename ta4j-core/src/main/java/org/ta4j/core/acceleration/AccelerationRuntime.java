@@ -664,8 +664,8 @@ public final class AccelerationRuntime {
 
         private <T> CachedBatch evaluate(Indicator<T> indicator, int index) {
             BarSeries indicatorSeries = indicator.getBarSeries();
-            long revision = indicatorSeries.getBarHistoryRevision();
-            if (revision < 0L) {
+            BarSeriesChangeSnapshot beforePlanning = indicatorSeries.getBarSeriesChangeSnapshot(-1L);
+            if (indicatorSeries.getBarHistoryRevision() < 0L) {
                 diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none",
                         "series does not track bar-data revisions; accelerated batches cannot be invalidated");
                 return null;
@@ -712,39 +712,45 @@ public final class AccelerationRuntime {
                 }
                 return null;
             }
-            BarSeriesChangeSnapshot before = indicatorSeries.getBarSeriesChangeSnapshot(revision);
             for (RankedProvider candidate : candidates) {
                 if (quarantine.containsKey(quarantineKey(candidate, request))) {
                     continue;
                 }
-                KernelResult result;
+                if (!matchesSeriesState(indicatorSeries, beforePlanning)) {
+                    diagnostic = new Diagnostic(DiagnosticCode.STALE_SERIES, candidate.providerId,
+                            "series changed after planning and before provider execution");
+                    return null;
+                }
+                KernelResult result = null;
                 suspended = true;
                 long started = System.nanoTime();
                 try {
                     result = Objects.requireNonNull(candidate.provider.execute(request),
                             "acceleration provider returned null");
+                    nativeInitialized |= result.nativeInitialized();
                 } catch (LinkageError | RuntimeException exception) {
                     quarantine.put(quarantineKey(candidate, request), failureMessage(exception));
                     diagnostic = new Diagnostic(DiagnosticCode.PROVIDER_FAILURE, candidate.providerId,
                             failureMessage(exception));
-                    continue;
                 } finally {
                     providerElapsedNanos += System.nanoTime() - started;
                     suspended = false;
                 }
-                nativeInitialized |= result.nativeInitialized();
+                BarSeriesChangeSnapshot after = indicatorSeries.getBarSeriesChangeSnapshot(beforePlanning.revision());
+                if (!sameSeriesState(beforePlanning, after)) {
+                    diagnostic = new Diagnostic(DiagnosticCode.STALE_SERIES, candidate.providerId,
+                            "series changed while the provider was evaluating");
+                    return null;
+                }
+                if (result == null) {
+                    continue;
+                }
                 double[] rawOutputs = result.outputs();
                 if (rawOutputs.length != request.expectedOutputLength() || !allFinite(rawOutputs)) {
                     quarantine.put(quarantineKey(candidate, request), "malformed raw output");
                     diagnostic = new Diagnostic(DiagnosticCode.INVALID_RESULT, candidate.providerId,
                             "provider output was malformed or non-finite for [%d, %d]"
                                     .formatted(request.fromInclusive(), request.toInclusive()));
-                    continue;
-                }
-                BarSeriesChangeSnapshot after = indicatorSeries.getBarSeriesChangeSnapshot(revision);
-                if (!sameSeriesState(before, after)) {
-                    diagnostic = new Diagnostic(DiagnosticCode.STALE_SERIES, candidate.providerId,
-                            "series changed while the provider was evaluating");
                     continue;
                 }
                 List<Object> decoded;
@@ -887,6 +893,10 @@ public final class AccelerationRuntime {
                 && left.maximumBarCount() == right.maximumBarCount() && left.endIndex() == right.endIndex();
     }
 
+    private static boolean matchesSeriesState(BarSeries series, BarSeriesChangeSnapshot snapshot) {
+        return sameSeriesState(series.getBarSeriesChangeSnapshot(snapshot.revision()), snapshot);
+    }
+
     private record CachedBatch(int fromInclusive, List<?> values, BarSeriesChangeSnapshot snapshot) {
 
         private CachedBatch {
@@ -900,7 +910,7 @@ public final class AccelerationRuntime {
         }
 
         private boolean matchesCurrentSeries(BarSeries series) {
-            return sameSeriesState(series.getBarSeriesChangeSnapshot(snapshot.revision()), snapshot);
+            return matchesSeriesState(series, snapshot);
         }
     }
 
