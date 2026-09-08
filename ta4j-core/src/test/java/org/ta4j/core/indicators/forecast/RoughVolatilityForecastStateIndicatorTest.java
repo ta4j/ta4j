@@ -5,6 +5,7 @@ package org.ta4j.core.indicators.forecast;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -279,8 +280,22 @@ public class RoughVolatilityForecastStateIndicatorTest
                 () -> RoughVolatilityForecastStateIndicator.builder(log.returns()).volOfVolWindow(1).build());
         assertThrows(IllegalArgumentException.class,
                 () -> RoughVolatilityForecastStateIndicator.builder(log.returns()).horizon(0).build());
-        assertThrows(NullPointerException.class,
-                () -> RoughVolatilityForecastStateIndicator.builder(log.returns()).driftMode(null).build());
+        IllegalArgumentException horizonCap = assertThrows(IllegalArgumentException.class,
+                () -> RoughVolatilityForecastStateIndicator.builder(log.returns())
+                        .horizon(RoughVolatilityForecastStateIndicator.MAX_HORIZON_VARIANCE_STEPS + 1)
+                        .build());
+        assertEquals("horizon must be <= 100000", horizonCap.getMessage());
+    }
+
+    @Test
+    public void horizonAtMemoryAwareBoundBuildsWithoutAllocatingTermStructure() {
+        Fixture log = fixture(ReturnRepresentation.LOG, 0, 0, 0, 0);
+
+        RoughVolatilityForecastStateIndicator indicator = RoughVolatilityForecastStateIndicator.builder(log.returns())
+                .horizon(RoughVolatilityForecastStateIndicator.MAX_HORIZON_VARIANCE_STEPS)
+                .build();
+
+        assertNotNull(indicator);
     }
 
     private RoughVolatilityForecastStateIndicator configured(ReturnIndicator returns, int horizon) {

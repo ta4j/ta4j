@@ -14,6 +14,7 @@ import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.reports.TradingStatementGenerator;
 import org.ta4j.core.walkforward.AnchoredExpandingWalkForwardSplitter;
 import org.ta4j.core.walkforward.WalkForwardConfig;
+import org.ta4j.core.walkforward.WalkForwardSplit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -686,6 +687,32 @@ public class BacktestExecutor {
         StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(seriesManager, tradingStatementGenerator,
                 new AnchoredExpandingWalkForwardSplitter());
         return executor.execute(strategy, tradeType, positionSizer, config, progressCallback);
+    }
+
+    /**
+     * Executes walk-forward testing with a fresh strategy for each independent
+     * fold.
+     *
+     * @param strategy         pristine strategy snapshot for the result
+     * @param strategyFactory  factory creating a fresh strategy for each fold
+     * @param positionSizer    dynamic entry position sizer
+     * @param tradeType        trade type used to open positions
+     * @param config           walk-forward configuration
+     * @param progressCallback optional callback receiving completed fold count
+     * @return walk-forward execution result
+     * @since 0.25.1
+     */
+    public StrategyWalkForwardExecutionResult executeWalkForward(Strategy strategy,
+            Function<WalkForwardSplit, Strategy> strategyFactory, PositionSizer positionSizer,
+            Trade.TradeType tradeType, WalkForwardConfig config, Consumer<Integer> progressCallback) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(strategyFactory, "strategyFactory");
+        Objects.requireNonNull(positionSizer, "positionSizer");
+        Objects.requireNonNull(tradeType, "tradeType");
+        Objects.requireNonNull(config, "config");
+        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(seriesManager, tradingStatementGenerator,
+                new AnchoredExpandingWalkForwardSplitter());
+        return executor.execute(strategy, strategyFactory, tradeType, positionSizer, config, progressCallback);
     }
 
     /**

@@ -148,6 +148,38 @@ class NamedStrategyTest {
         assertEquals(TestUnregisterStrategy.class, NamedStrategy.lookup("TestUnregisterStrategy").get());
     }
 
+    @Test
+    void lookupInitializesDefaultRegistryScan() {
+        NamedStrategy.resetRegistryStateForTests();
+        NamedStrategy.unregisterImplementation(ScanOnlyStrategyProbe.class);
+
+        assertTrue(NamedStrategy.lookup("ScanOnlyStrategyProbe").isPresent());
+    }
+
+    @Test
+    void registryScanSkipsInvalidStrategyClassesAndContinues() {
+        NamedStrategy.resetRegistryStateForTests();
+        NamedStrategy.unregisterImplementation(ScanOnlyStrategyProbe.class);
+
+        NamedStrategy.initializeRegistry("org.ta4j.core.strategy.named");
+
+        assertTrue(NamedStrategy.lookup("ScanOnlyStrategyProbe").isPresent());
+    }
+
+    @Test
+    void buildLabelRejectsUnderscoreClassNames() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> NamedStrategy.buildLabel(Invalid_Strategy.class, "ABOVE"));
+
+        assertEquals("Named strategy class names cannot contain underscores: Invalid_Strategy", exception.getMessage());
+    }
+
+    @Test
+    void registerImplementationRejectsUnderscoreClassNames() {
+        assertThrows(IllegalArgumentException.class,
+                () -> NamedStrategy.registerImplementation(Invalid_Strategy.class));
+    }
+
     /**
      * Test fixture strategy for testing unregister functionality. This class does
      * NOT have a static initializer to avoid auto-registration.
@@ -160,6 +192,29 @@ class NamedStrategyTest {
 
         public TestUnregisterStrategy(BarSeries series, String... parameters) {
             this(series);
+        }
+    }
+
+    /**
+     * Scan-only probe strategy without a static initializer: only the default
+     * package scan registers it, and it is never instantiated.
+     */
+    private static final class ScanOnlyStrategyProbe extends NamedStrategy {
+
+        private ScanOnlyStrategyProbe() {
+            super("ScanOnlyStrategyProbe", new FixedRule(1), new FixedRule(2), 0);
+        }
+    }
+
+    /**
+     * Strategy fixture whose underscore class name violates the compact-label
+     * convention. Package scans must skip it and continue registering valid
+     * classes. It is never instantiated.
+     */
+    private static final class Invalid_Strategy extends NamedStrategy {
+
+        private Invalid_Strategy() {
+            super("unreachable", new FixedRule(1), new FixedRule(2), 0);
         }
     }
 }

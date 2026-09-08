@@ -7,6 +7,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.acceleration.AccelerationRuntime;
 import org.ta4j.core.acceleration.OperationDecoder;
@@ -37,6 +40,8 @@ import org.ta4j.core.num.NumFactory;
  * @since 0.25.1
  */
 final class MonteCarloShockPathPlanner implements OperationPlanner {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MonteCarloShockPathPlanner.class);
 
     /** Order-of-magnitude scalar cost per simulated path step, in nanoseconds. */
     static final long NANOS_PER_PATH_STEP = 50L;
@@ -99,9 +104,16 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
             hostBytes = Math.addExact(Math.multiplyExact(inputBytes, 3L), Math.multiplyExact(outputBytes, 4L));
             estimatedScalarNanos = Math.multiplyExact(steps, NANOS_PER_PATH_STEP);
         } catch (ArithmeticException exception) {
+            LOG.warn("Declining {} over [{}..{}]: dimensions overflow ({}); scalar path",
+                    AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1, fromInclusive, toInclusive,
+                    exception.getMessage());
             return null;
         }
         if (peakBytes > memoryLimitBytes || hostBytes > hostMemoryLimitBytes) {
+            LOG.warn(
+                    "Declining {} over [{}..{}]: device estimate {} / budget {}, host staging {} / budget {}; scalar path",
+                    AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1, fromInclusive, toInclusive, peakBytes,
+                    memoryLimitBytes, hostBytes, hostMemoryLimitBytes);
             return null;
         }
         double[] prices = new double[size];
@@ -123,10 +135,14 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
                 volatilityUpdateModeCode(forecast.kernelVolatilityUpdateMode()), (double) settings.horizon(),
                 (double) iterations, (double) lookback, forecast.kernelVolatilityDecayFactor() };
         List<double[]> inputs = List.of(prices, means, drifts, variances, windows);
+        double tolerance = AccelerationRuntime.approximateTolerance();
+        boolean approximate = !Double.isNaN(tolerance);
+        AccelerationRuntime.Determinism determinism = approximate ? AccelerationRuntime.Determinism.APPROXIMATE
+                : AccelerationRuntime.Determinism.BITWISE_IDENTICAL;
         AccelerationRuntime.KernelRequest request = new AccelerationRuntime.KernelRequest(
                 AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1, fromInclusive, toInclusive, iterations,
-                AccelerationRuntime.NumericEncoding.FLOAT64, AccelerationRuntime.Determinism.BITWISE_IDENTICAL,
-                settings.seed(), Double.NaN, params, inputs, estimatedScalarNanos, peakBytes);
+                AccelerationRuntime.NumericEncoding.FLOAT64, determinism, settings.seed(), tolerance, params, inputs,
+                estimatedScalarNanos, peakBytes);
         List<Double> quantiles = List.copyOf(settings.quantileProbabilities());
         int horizon = settings.horizon();
         OperationDecoder decoder = (slice, index, decodingFactory) -> {
