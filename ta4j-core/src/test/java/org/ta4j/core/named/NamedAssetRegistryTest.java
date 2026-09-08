@@ -152,7 +152,6 @@ public class NamedAssetRegistryTest {
                 "Custom(\"a,b\",SMA(7,21))");
     }
 
-
     @Test
     public void duplicateAliasThrowsDuringBuild() {
         NamedAssetRegistry.Builder builder = NamedAssetRegistry.builder()
