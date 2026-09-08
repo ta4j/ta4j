@@ -228,11 +228,19 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         Num downsideShortfall = zero;
 
         List<Num> returnRates = returns.getRawValues();
-        // A finite first raw value is a seeded return only when the recording
-        // starts at the materialized series boundary. Otherwise the recording
-        // boundary itself is the leading no-prior-close placeholder.
+        // Retained-history seeds and exits at the recording boundary are real
+        // returns, including a position opened and closed on that same bar.
+        // An ordinary entry-only recording start has no prior-close observation.
         boolean firstSlotSeeded = beginIndex == snapshotBeginIndex && !returnRates.isEmpty()
                 && !returnRates.get(0).isNaN();
+        if (!firstSlotSeeded) {
+            for (Position position : tradingRecord.getPositions()) {
+                if (position.isClosed() && position.getExit().getIndex() == beginIndex) {
+                    firstSlotSeeded = true;
+                    break;
+                }
+            }
+        }
         long firstRateIndex = (long) beginIndex + 1;
         if (firstSlotSeeded) {
             firstRateIndex = beginIndex;

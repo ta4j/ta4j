@@ -75,6 +75,18 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void includesSameBarExitAtBoundedRecordingStart() {
+        BarSeries series = buildSeries("omega_same_bar", new double[] { 100d, 100d, 100d });
+        BaseTradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY, 1, 2, null, null);
+        record.enter(1, numFactory.numOf(100), numFactory.one());
+        record.exit(1, numFactory.numOf(90), numFactory.one());
+        record.enter(2, numFactory.numOf(100), numFactory.one());
+        record.exit(2, numFactory.numOf(120), numFactory.one());
+
+        assertNumEquals(numFactory.two(), new OmegaRatioCriterion().calculate(series, record), 1e-12);
+    }
+
+    @Test
     public void returnsPercentageRepresentation() {
         double[] closes = new double[] { 100d, 120d, 90d, 99d };
         BarSeries series = buildSeries("omega_percentage", closes);
