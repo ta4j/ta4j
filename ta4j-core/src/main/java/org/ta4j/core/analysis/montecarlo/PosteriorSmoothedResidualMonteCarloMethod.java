@@ -4,6 +4,7 @@
 package org.ta4j.core.analysis.montecarlo;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.random.RandomGenerator;
@@ -116,6 +117,8 @@ public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCar
         }
         RandomGenerator random = context.random();
         List<Num> terminalReturns = new ArrayList<>(context.iterationCount());
+        Num horizon = numFactory.numOf(context.horizon());
+        Num driftPath = drift.multipliedBy(horizon);
         for (int iteration = 0; iteration < context.iterationCount(); iteration++) {
             NormalInverseGammaForecastMethod.ParameterDraw draw = NormalInverseGammaForecastMethod
                     .drawParameters(posterior, random);
@@ -134,10 +137,16 @@ public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCar
             if (innerSample == null || !Num.isFinite(posteriorDrift) || !Num.isFinite(posteriorScale)) {
                 return null;
             }
-            Num residualPath = innerSample.minus(drift.multipliedBy(numFactory.numOf(context.horizon())))
-                    .dividedBy(volatility);
-            Num cumulativeReturn = posteriorDrift.multipliedBy(numFactory.numOf(context.horizon()))
-                    .plus(posteriorScale.multipliedBy(residualPath));
+            Num residualPath = innerSample.minus(driftPath).dividedBy(volatility);
+            if (!Num.isFinite(residualPath)) {
+                // Finite endpoints can overflow before division makes the
+                // standardized difference representable. Narrow only afterwards.
+                BigDecimal difference = innerSample.bigDecimalValue()
+                        .subtract(drift.bigDecimalValue().multiply(BigDecimal.valueOf(context.horizon())));
+                residualPath = numFactory
+                        .numOf(difference.divide(volatility.bigDecimalValue(), MathContext.DECIMAL128));
+            }
+            Num cumulativeReturn = posteriorDrift.multipliedBy(horizon).plus(posteriorScale.multipliedBy(residualPath));
             if (!Num.isFinite(cumulativeReturn)) {
                 return null;
             }

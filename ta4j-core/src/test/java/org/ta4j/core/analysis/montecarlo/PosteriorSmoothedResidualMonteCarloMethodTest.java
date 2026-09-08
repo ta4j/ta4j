@@ -35,6 +35,24 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
     private static final double[] WINDOW_FINITE = { 0.012, -0.008, 0.02, -0.015, 0.005, 0.03, -0.022, 0.011, -0.004,
             0.017, -0.03, 0.009, 0.002, -0.012, 0.024, -0.007 };
 
+    @Test
+    public void standardizesResidualWhoseUnscaledDifferenceOverflows() {
+        List<Num> history = window(WINDOW_FINITE);
+        ReturnMoments extremeMoments = ReturnMoments.stable(100, history.size(), ReturnRepresentation.LOG,
+                FACTORY.zero(), FACTORY.numOf(1e308), FACTORY.numOf(1e308));
+        ReturnMoments standardizedMoments = ReturnMoments.stable(100, history.size(), ReturnRepresentation.LOG,
+                FACTORY.zero(), FACTORY.zero(), FACTORY.one());
+        MonteCarloMethod extreme = new PosteriorSmoothedResidualMonteCarloMethod(fixedInner(FACTORY.numOf(-1e308)));
+        MonteCarloMethod standardized = new PosteriorSmoothedResidualMonteCarloMethod(
+                fixedInner(FACTORY.numOf(-2e154)));
+
+        List<Num> expected = standardized.terminalReturns(context(1, 2, history, standardizedMoments, 7L, FACTORY));
+        List<Num> actual = extreme.terminalReturns(context(1, 2, history, extremeMoments, 7L, FACTORY));
+
+        assertNotNull(actual);
+        assertEquals(expected, actual);
+    }
+
     /** Inner technique returning a fixed sample per iteration. */
     private static MonteCarloMethod fixedInner(Num value) {
         return context -> {
