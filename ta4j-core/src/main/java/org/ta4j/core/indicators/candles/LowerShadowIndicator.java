@@ -12,8 +12,10 @@ import org.ta4j.core.num.Num;
  * Lower shadow height indicator.
  *
  * <p>
- * Provides the (absolute) difference between the low price and the lowest price
- * of the candle body. I.e.: low price - min(open price, close price)
+ * Provides the (absolute) difference between the lowest price of the candle
+ * body and the low price of the candle. I.e.: min(open price, close price) -
+ * low price. The value is the length of the lower wick and is always
+ * non-negative for well-formed OHLC bars.
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#formation">

@@ -7,6 +7,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
+import java.util.List;
 import java.util.function.UnaryOperator;
 
 /**
@@ -192,6 +193,11 @@ public class UnaryOperationIndicator implements Indicator<Num> {
     public Num getValue(int index) {
         Num n = operand.getValue(index);
         return operator.apply(n);
+    }
+
+    @Override
+    public List<Indicator<?>> getDependencies() {
+        return List.of(operand);
     }
 
     @Override

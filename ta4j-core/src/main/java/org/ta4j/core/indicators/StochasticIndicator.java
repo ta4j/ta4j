@@ -32,7 +32,7 @@ import static org.ta4j.core.num.NaN.NaN;
  *      Stochastic Oscillator</a>
  * @since 0.20
  */
-public class StochasticIndicator extends CachedIndicator<Num> {
+public class StochasticIndicator extends RecursiveCachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final transient HighestValueIndicator highest;
@@ -84,8 +84,12 @@ public class StochasticIndicator extends CachedIndicator<Num> {
         }
         Num range = highestValue.minus(lowestValue);
         if (range.isZero()) {
-            int beginIndex = getBarSeries().getBeginIndex();
-            return index <= beginIndex ? getBarSeries().numFactory().zero() : getValue(index - 1);
+            final Num zero = getBarSeries().numFactory().zero();
+            if (index <= getBarSeries().getBeginIndex()) {
+                return zero;
+            }
+            final Num previous = getValue(index - 1);
+            return Num.isFinite(previous) ? previous : zero;
         }
         return value.minus(lowestValue).dividedBy(range).multipliedBy(getBarSeries().numFactory().hundred());
     }
@@ -98,4 +102,21 @@ public class StochasticIndicator extends CachedIndicator<Num> {
     private record Config(Indicator<Num> indicator, HighestValueIndicator highest, LowestValueIndicator lowest,
             int lookback) {
     }
+
+    /**
+     * Discards the whole cache when the series head advances. The zero-range branch
+     * recurses into earlier results only while the retained window is flat, so any
+     * cached value - recursive or not - is recomputable from the retained window
+     * and the begin-index base case. Keeping only the recursively derived band
+     * would preserve stale results that were computed from evicted bars. After the
+     * eviction the inherited {@link RecursiveCachedIndicator} prefill rebuilds long
+     * flat stretches iteratively instead of recursing.
+     *
+     * @return {@code true}, evicting every cached entry
+     */
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
+    }
+
 }

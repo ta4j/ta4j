@@ -35,7 +35,7 @@ public class MarketFacilitationIndexIndicatorTest extends AbstractIndicatorTest<
     public void shouldComputePriceRangePerVolume() {
         series.barBuilder().openPrice(10).closePrice(10).highPrice(12).lowPrice(10).volume(4).add(); // 0.5
         series.barBuilder().openPrice(10).closePrice(10).highPrice(15).lowPrice(9).volume(3).add(); // 2.0
-        series.barBuilder().openPrice(10).closePrice(10).highPrice(20).lowPrice(16).volume(8).add(); // 0.5
+        series.barBuilder().openPrice(16).closePrice(16).highPrice(20).lowPrice(16).volume(8).add(); // 0.5
 
         final var indicator = new MarketFacilitationIndexIndicator(series);
 
@@ -159,7 +159,7 @@ public class MarketFacilitationIndexIndicatorTest extends AbstractIndicatorTest<
     public void serializationRoundTrip() {
         series.barBuilder().openPrice(10).closePrice(10).highPrice(12).lowPrice(10).volume(4).add();
         series.barBuilder().openPrice(10).closePrice(10).highPrice(15).lowPrice(9).volume(3).add();
-        series.barBuilder().openPrice(10).closePrice(10).highPrice(20).lowPrice(16).volume(8).add();
+        series.barBuilder().openPrice(16).closePrice(16).highPrice(20).lowPrice(16).volume(8).add();
 
         final var original = new MarketFacilitationIndexIndicator(series);
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {

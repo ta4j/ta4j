@@ -82,4 +82,5 @@ public class StreakIndicator extends RecursiveCachedIndicator<Num> {
     public int getCountOfUnstableBars() {
         return indicator.getCountOfUnstableBars() + 1;
     }
+
 }

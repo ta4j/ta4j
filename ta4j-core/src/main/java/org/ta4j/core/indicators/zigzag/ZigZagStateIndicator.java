@@ -6,7 +6,7 @@ package org.ta4j.core.indicators.zigzag;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.ATRIndicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
@@ -50,7 +50,7 @@ import org.ta4j.core.num.Num;
  * @see RecentZigZagSwingLowIndicator
  * @since 0.20
  */
-public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
+public class ZigZagStateIndicator extends RecursiveCachedIndicator<ZigZagState> {
 
     private final Indicator<Num> highPrice;
     private final Indicator<Num> lowPrice;
@@ -98,7 +98,7 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
      */
     public ZigZagStateIndicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, Indicator<Num> confirmationPrice,
             Indicator<Num> reversalAmount) {
-        super(requireHighPrice(highPrice));
+        super(requireHighPrice(highPrice), lowPrice, confirmationPrice, reversalAmount);
         this.highPrice = highPrice;
         this.lowPrice = IndicatorUtils.requireIndicator(lowPrice, "lowPrice");
         IndicatorUtils.requireSameSeries(this.highPrice, this.lowPrice);
@@ -347,4 +347,5 @@ public class ZigZagStateIndicator extends CachedIndicator<ZigZagState> {
         return Math.max(Math.max(reversalAmount.getCountOfUnstableBars(), confirmationPrice.getCountOfUnstableBars()),
                 Math.max(highPrice.getCountOfUnstableBars(), lowPrice.getCountOfUnstableBars()));
     }
+
 }

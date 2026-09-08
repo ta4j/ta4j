@@ -7,11 +7,15 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Utility class for {@code Num} tests.
@@ -286,4 +290,48 @@ public class TestUtils {
         throw new AssertionError("Indicators match to " + delta);
     }
 
+    /**
+     * Builds a {@link BaseBarSeries} whose retained window occupies the index range
+     * just below {@link Integer#MAX_VALUE}, where the discard-everything sentinel
+     * in {@link org.ta4j.core.indicators.CachedIndicator} collides with real bar
+     * indexes. The backing package-private constructor is only reachable from this
+     * package, so tests outside {@code org.ta4j.core} construct such series through
+     * this factory.
+     *
+     * @param bars            the bar data
+     * @param beginIndex      the first retained index
+     * @param endIndex        the last available index
+     * @param maximumBarCount the maximum number of retained bars
+     * @return the saturated series
+     */
+    public static BaseBarSeries saturatedRetainedWindowSeries(List<Bar> bars, int beginIndex, int endIndex,
+            int maximumBarCount) {
+        return new BaseBarSeries("saturated", bars, beginIndex, endIndex, maximumBarCount, false,
+                DoubleNumFactory.getInstance(), new MockBarBuilderFactory());
+    }
+
+    /**
+     * Builds a {@link BaseBarSeries} whose {@link Object#equals} collides with
+     * every other series produced by this method: identity grouping must treat each
+     * instance as a distinct dependency observation.
+     *
+     * @param name       the series name
+     * @param bars       the bar data
+     * @param numFactory the factory of numbers used in series {@link Num Num}
+     *                   implementation
+     * @return the series
+     */
+    public static BaseBarSeries equalsCollidingSeries(String name, List<Bar> bars, NumFactory numFactory) {
+        return new BaseBarSeries(name, bars, 0, bars.size() - 1, 0, false, numFactory, new MockBarBuilderFactory()) {
+            @Override
+            public boolean equals(Object other) {
+                return other != null && other.getClass() == getClass();
+            }
+
+            @Override
+            public int hashCode() {
+                return 42;
+            }
+        };
+    }
 }

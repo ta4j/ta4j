@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.StochasticIndicator;
+import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -55,6 +57,36 @@ class LPPLFitIndicatorTest {
         assertThat(indicator.getCountOfUnstableBars()).isEqualTo(LPPLTestFixtures.WINDOW);
         assertThat(indicator.getValue(LPPLTestFixtures.WINDOW - 1).status()).isEqualTo(LPPLFitStatus.INSUFFICIENT_DATA);
         assertThat(indicator.getValue(LPPLTestFixtures.WINDOW).status()).isEqualTo(LPPLFitStatus.INVALID_INPUT);
+    }
+
+    @Test
+    void rebasesCachedFitWhenCustomPriceSourceRebasesAtRetainedHead() {
+        LPPLCalibrationProfile profile = LPPLCalibrationProfile.defaults()
+                .withWindow(5)
+                .withExponentSearch(0.4, 0.6, 1)
+                .withFrequencySearch(7.5, 8.5, 1)
+                .withCriticalTimeSearch(1, 1, 1)
+                .withOptimizerSettings(10, 0.0);
+        double[] prices = new double[20];
+        prices[0] = 0.0;
+        for (int index = 1; index < prices.length; index++) {
+            prices[index] = 50.0;
+        }
+        BarSeries series = new MockBarSeriesBuilder().withData(prices).build();
+        StochasticIndicator stochastic = new StochasticIndicator(new ClosePriceIndicator(series), 3);
+        Indicator<Num> priceIndicator = BinaryOperationIndicator.sum(stochastic, 100);
+        LPPLFitIndicator cached = new LPPLFitIndicator(priceIndicator, profile);
+        int targetIndex = series.getEndIndex() - 1;
+
+        assertThat(cached.getDependencies()).containsExactly(priceIndicator);
+        LPPLFit fitBeforeHeadAdvance = cached.getValue(targetIndex);
+
+        series.setMaximumBarCount(profile.window() + 4);
+
+        LPPLFit expected = new LPPLFitIndicator(priceIndicator, profile).getValue(targetIndex);
+
+        assertThat(fitBeforeHeadAdvance).isNotEqualTo(expected);
+        assertThat(cached.getValue(targetIndex)).isEqualTo(expected);
     }
 
     @Test

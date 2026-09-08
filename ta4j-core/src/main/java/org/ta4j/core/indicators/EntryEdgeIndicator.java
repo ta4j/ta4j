@@ -73,7 +73,7 @@ public class EntryEdgeIndicator extends CachedIndicator<Num> {
     }
 
     private EntryEdgeIndicator(Config config) {
-        super(config.series());
+        super(config.signalIndicator(), config.priceIndicator());
         this.signalIndicator = config.signalIndicator();
         this.priceIndicator = config.priceIndicator();
         this.tradeType = config.tradeType();
@@ -220,7 +220,7 @@ public class EntryEdgeIndicator extends CachedIndicator<Num> {
     }
 
     private Indicator<Integer> createLatestMaturedSignalIndexIndicator() {
-        return new RecursiveCachedIndicator<>(getBarSeries()) {
+        return new RecursiveCachedIndicator<>(signalIndicator, priceIndicator) {
             @Override
             protected Integer calculate(int index) {
                 int beginIndex = firstEligibleSignalIndex();

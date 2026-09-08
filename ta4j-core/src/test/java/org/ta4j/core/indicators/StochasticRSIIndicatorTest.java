@@ -78,7 +78,8 @@ public class StochasticRSIIndicatorTest extends AbstractIndicatorTest<Indicator<
 
     @Test
     public void testStochasticRSIWithEqualMinMax() {
-        // Test data: RSI values will be [100, 100, 100] over 3-period
+        // Test data: RSI values become [100, 100, 100] over 3 periods. The
+        // stable flat range is neutral, while its warm-up values remain NaN.
         data = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 20, 20, 20, 20).build();
         var subject = new StochasticRSIIndicator(data, 3);
 
@@ -87,7 +88,7 @@ public class StochasticRSIIndicatorTest extends AbstractIndicatorTest<Indicator<
             assertThat(Num.isNaNOrNull(subject.getValue(i))).isTrue();
         }
         for (int i = unstableBars; i < data.getBarCount(); i++) {
-            assertThat(Num.isNaNOrNull(subject.getValue(i))).isTrue();
+            assertThat(subject.getValue(i)).isEqualByComparingTo(numFactory.zero());
         }
     }
 
@@ -109,6 +110,36 @@ public class StochasticRSIIndicatorTest extends AbstractIndicatorTest<Indicator<
                 barCount);
 
         assertEquals(barCount + barCount - 1, subject.getCountOfUnstableBars());
+    }
+
+    @Test
+    public void recomputesAfterSeriesHeadAdvances() {
+        // Alternating closes put the RSI into a short exact-equality run once
+        // the flat stretch begins: the zero-range carry chain seeds the band
+        // with a value computed before the advance. After the head advance,
+        // the substituted below-begin RSI reads make the rebaseline window
+        // exactly flat, so the base case returns zero and the whole carry
+        // chain must be rebuilt. A surviving band would keep returning the
+        // pre-advance carried value.
+        final var closes = new double[30];
+        for (int i = 0; i < 8; i++) {
+            closes[i] = 10 + (i % 2);
+        }
+        for (int i = 8; i < closes.length; i++) {
+            closes[i] = 11;
+        }
+        final BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closes).build();
+        final var indicator = new StochasticRSIIndicator(new ClosePriceIndicator(series), 3);
+
+        Num before = indicator.getValue(12);
+        assertThat(Num.isNaNOrNull(before)).isFalse();
+
+        series.setMaximumBarCount(23);
+        assertThat(series.getBeginIndex()).isEqualTo(7);
+
+        Num after = indicator.getValue(12);
+        assertThat(Num.isNaNOrNull(after)).isFalse();
+        assertThat(after).isNotEqualByComparingTo(before);
     }
 
     @Override

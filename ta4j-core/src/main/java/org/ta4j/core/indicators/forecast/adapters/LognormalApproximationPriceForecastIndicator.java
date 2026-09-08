@@ -14,7 +14,6 @@ import org.apache.commons.math3.distribution.NormalDistribution;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.forecast.projection.ForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.projection.ForecastSupport;
@@ -66,7 +65,7 @@ public final class LognormalApproximationPriceForecastIndicator extends CachedIn
     }
 
     private LognormalApproximationPriceForecastIndicator(Builder builder) {
-        super(IndicatorUtils.requireSameSeries(builder.priceIndicator, builder.logReturnForecastProjection));
+        super(builder.priceIndicator, builder.logReturnForecastProjection);
         this.priceIndicator = builder.priceIndicator;
         this.logReturnForecastProjection = builder.logReturnForecastProjection;
         this.quantileProbabilities = builder.quantileProbabilities;

@@ -48,6 +48,18 @@ public class UltimateOscillatorIndicatorTest extends AbstractIndicatorTest<BarSe
     }
 
     @Test
+    public void registersRunningTotalDelegatesAndTheirInputs() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        UltimateOscillatorIndicator indicator = new UltimateOscillatorIndicator(series, 1, 2, 3);
+
+        assertThat(indicator.getDependencies()).hasSize(6);
+        for (Indicator<?> runningTotal : indicator.getDependencies()) {
+            assertThat(runningTotal.getDependencies()).hasSize(1);
+            assertThat(runningTotal.getDependencies().get(0).getDependencies()).isNotEmpty();
+        }
+    }
+
+    @Test
     public void supportsConfigurablePeriods() {
         BarSeries series = publishedReferenceSeries();
         UltimateOscillatorIndicator indicator = new UltimateOscillatorIndicator(series, 4, 8, 16);

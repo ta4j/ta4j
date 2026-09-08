@@ -8,6 +8,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.num.Num;
 
+import java.util.List;
 import java.util.function.BinaryOperator;
 
 /**
@@ -240,6 +241,11 @@ public class BinaryOperationIndicator implements Indicator<Num> {
         final var n1 = left.getValue(index);
         final var n2 = right.getValue(index);
         return operator.apply(n1, n2);
+    }
+
+    @Override
+    public List<Indicator<?>> getDependencies() {
+        return List.of(left, right);
     }
 
     @Override

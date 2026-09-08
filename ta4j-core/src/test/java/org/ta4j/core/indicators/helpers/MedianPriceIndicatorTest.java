@@ -27,16 +27,16 @@ public class MedianPriceIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     public void setUp() {
         this.barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
-        barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(16).lowPrice(8).add();
-        barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(6).add();
-        barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(18).lowPrice(14).add();
-        barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(10).lowPrice(6).add();
-        barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(32).lowPrice(6).add();
-        barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(2).lowPrice(2).add();
+        barSeries.barBuilder().openPrice(8).closePrice(16).highPrice(16).lowPrice(8).add();
+        barSeries.barBuilder().openPrice(6).closePrice(12).highPrice(12).lowPrice(6).add();
+        barSeries.barBuilder().openPrice(14).closePrice(18).highPrice(18).lowPrice(14).add();
+        barSeries.barBuilder().openPrice(6).closePrice(10).highPrice(10).lowPrice(6).add();
+        barSeries.barBuilder().openPrice(6).closePrice(32).highPrice(32).lowPrice(6).add();
+        barSeries.barBuilder().openPrice(2).closePrice(2).highPrice(2).lowPrice(2).add();
         barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(0).lowPrice(0).add();
-        barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(8).lowPrice(1).add();
-        barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(83).lowPrice(32).add();
-        barSeries.barBuilder().openPrice(0).closePrice(0).highPrice(9).lowPrice(3).add();
+        barSeries.barBuilder().openPrice(1).closePrice(8).highPrice(8).lowPrice(1).add();
+        barSeries.barBuilder().openPrice(32).closePrice(83).highPrice(83).lowPrice(32).add();
+        barSeries.barBuilder().openPrice(3).closePrice(9).highPrice(9).lowPrice(3).add();
 
         average = new MedianPriceIndicator(barSeries);
     }

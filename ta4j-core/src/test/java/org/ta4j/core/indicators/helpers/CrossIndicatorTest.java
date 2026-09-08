@@ -42,4 +42,20 @@ public class CrossIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>
         assertFalse(indicator.getValue(5));
         assertTrue(indicator.getValue(6));
     }
+
+    @Test
+    public void supportsCrossSeriesIndicators() {
+        BarSeries series1 = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1, 1).build();
+        BarSeries series2 = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(2, 2, 2, 2).build();
+
+        MockIndicator up = new MockIndicator(series1, 0, List.of(numOf(10), numOf(10), numOf(8), numOf(7)));
+        MockIndicator low = new MockIndicator(series2, 0, List.of(numOf(9), numOf(9), numOf(9), numOf(9)));
+
+        CrossIndicator indicator = new CrossIndicator(up, low);
+
+        assertEquals(List.of(up, low), indicator.getDependencies());
+        assertFalse(indicator.getValue(0));
+        assertFalse(indicator.getValue(1));
+        assertTrue(indicator.getValue(2));
+    }
 }

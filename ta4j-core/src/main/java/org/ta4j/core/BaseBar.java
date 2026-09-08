@@ -4,6 +4,7 @@
 package org.ta4j.core;
 
 import java.io.IOException;
+import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.io.Serial;
 import java.time.Duration;
@@ -104,12 +105,14 @@ public class BaseBar implements Bar {
      * @throws NullPointerException     if given or calculated {@link #timePeriod},
      *                                  {@link #beginTime} or {@link #endTime}
      *                                  values are {@code null}
-     * @throws IllegalArgumentException If the calculated timePeriod between the
+     * @throws IllegalArgumentException if the calculated timePeriod between the
      *                                  provided beginTime and endTime does not
      *                                  match the provided timePeriod, if the high
-     *                                  price is below the low price, if volume or
-     *                                  amount is negative, or if the number of
-     *                                  trades is negative
+     *                                  price is below the low price, the open
+     *                                  price, or the close price, if the low price
+     *                                  is above the open price or the close price,
+     *                                  if volume or amount is negative, or if the
+     *                                  number of trades is negative
      */
     @SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Fail-fast validation of bar data is a documented constructor contract: invalid bars "
             + "are rejected before any partially initialized instance can escape")
@@ -124,10 +127,7 @@ public class BaseBar implements Bar {
             + "are rejected before any partially initialized instance can escape")
     private BaseBar(ResolvedTimes times, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume,
             Num amount, long trades) {
-        if (highPrice != null && lowPrice != null && highPrice.isLessThan(lowPrice)) {
-            throw new IllegalArgumentException(
-                    "High price must be greater than or equal to low price, but was " + highPrice + " < " + lowPrice);
-        }
+        validatePrices(openPrice, highPrice, lowPrice, closePrice);
         if (volume != null && volume.isNegative()) {
             throw new IllegalArgumentException("Volume cannot be negative, but was " + volume);
         }
@@ -147,6 +147,40 @@ public class BaseBar implements Bar {
         this.volume = volume;
         this.amount = amount;
         this.trades = trades;
+    }
+
+    /**
+     * Validates the OHLC invariant: for every non-null price pair, the high price
+     * must be greater than or equal to both the open and the close price, and the
+     * low price must be less than or equal to both the open and the close price.
+     *
+     * @param openPrice  the open price, may be {@code null}
+     * @param highPrice  the high price, may be {@code null}
+     * @param lowPrice   the low price, may be {@code null}
+     * @param closePrice the close price, may be {@code null}
+     * @throws IllegalArgumentException if the OHLC invariant is violated
+     */
+    private static void validatePrices(Num openPrice, Num highPrice, Num lowPrice, Num closePrice) {
+        if (highPrice != null && lowPrice != null && highPrice.isLessThan(lowPrice)) {
+            throw new IllegalArgumentException(
+                    "High price must be greater than or equal to low price, but was " + highPrice + " < " + lowPrice);
+        }
+        if (highPrice != null && openPrice != null && highPrice.isLessThan(openPrice)) {
+            throw new IllegalArgumentException(
+                    "High price must be greater than or equal to open price, but was " + highPrice + " < " + openPrice);
+        }
+        if (highPrice != null && closePrice != null && highPrice.isLessThan(closePrice)) {
+            throw new IllegalArgumentException("High price must be greater than or equal to close price, but was "
+                    + highPrice + " < " + closePrice);
+        }
+        if (lowPrice != null && openPrice != null && lowPrice.isGreaterThan(openPrice)) {
+            throw new IllegalArgumentException(
+                    "Low price must be less than or equal to open price, but was " + lowPrice + " > " + openPrice);
+        }
+        if (lowPrice != null && closePrice != null && lowPrice.isGreaterThan(closePrice)) {
+            throw new IllegalArgumentException(
+                    "Low price must be less than or equal to close price, but was " + lowPrice + " > " + closePrice);
+        }
     }
 
     private static ResolvedTimes resolvedTimes(Duration timePeriod, Instant beginTime, Instant endTime) {
@@ -277,6 +311,11 @@ public class BaseBar implements Bar {
         publishRetainedBarMutation();
     }
 
+    /**
+     * Adds a price to the bar, folding the existing open and close prices into
+     * freshly initialized extrema so the OHLC invariant survives every mutation
+     * path.
+     */
     @Override
     public void addPrice(Num price) {
         applyTradePrice(price);
@@ -287,12 +326,49 @@ public class BaseBar implements Bar {
         if (openPrice == null) {
             openPrice = price;
         }
+        final Num priorClose = closePrice;
         closePrice = price;
-        if (highPrice == null || highPrice.isLessThan(price)) {
+        if (highPrice == null) {
+            highPrice = price;
+            if (openPrice.isGreaterThan(highPrice)) {
+                highPrice = openPrice;
+            }
+            if (priorClose != null && priorClose.isGreaterThan(highPrice)) {
+                highPrice = priorClose;
+            }
+        } else if (highPrice.isLessThan(price)) {
             highPrice = price;
         }
-        if (lowPrice == null || lowPrice.isGreaterThan(price)) {
+        if (lowPrice == null) {
             lowPrice = price;
+            if (openPrice.isLessThan(lowPrice)) {
+                lowPrice = openPrice;
+            }
+            if (priorClose != null && priorClose.isLessThan(lowPrice)) {
+                lowPrice = priorClose;
+            }
+        } else if (lowPrice.isGreaterThan(price)) {
+            lowPrice = price;
+        }
+    }
+
+    /**
+     * Validates the deserialized state so serialized bars written by older ta4j
+     * versions that predate the OHLC invariant are rejected instead of silently
+     * loading inconsistent prices.
+     *
+     * @param stream the object stream
+     * @throws IOException            if deserialization fails
+     * @throws ClassNotFoundException if a serialized class is unavailable
+     * @throws InvalidObjectException if the serialized prices violate the OHLC
+     *                                invariant
+     */
+    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        stream.defaultReadObject();
+        try {
+            validatePrices(openPrice, highPrice, lowPrice, closePrice);
+        } catch (IllegalArgumentException e) {
+            throw new InvalidObjectException("Serialized bar violates the OHLC invariant: " + e.getMessage());
         }
     }
 

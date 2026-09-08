@@ -19,7 +19,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.analysis.AnalysisContext;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.statistics.FloatNumFactory;
+import org.ta4j.core.indicators.statistics.SinglePrecisionNumFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.NaN;
@@ -647,8 +647,8 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         // whose first half carries the event); the result constructor
         // previously compared it against a double-sized 1e-12 bound and
         // rejected the evaluation. The bounds must scale with the metric's
-        // own precision (FloatNumFactory epsilon is 1e-5).
-        NumFactory floatFactory = FloatNumFactory.getInstance();
+        // own precision (SinglePrecisionNumFactory epsilon is 1e-5).
+        NumFactory floatFactory = SinglePrecisionNumFactory.getInstance();
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory)
                 .withData(new double[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 })
                 .build();
@@ -681,7 +681,7 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         // entropy, so the evaluator clamps the computed excess to H(Y);
         // without the clamp the result constructor rejects the valid
         // high-cardinality evaluation.
-        NumFactory floatFactory = FloatNumFactory.getInstance();
+        NumFactory floatFactory = SinglePrecisionNumFactory.getInstance();
         int sampleCount = 10_000;
         double[] data = new double[sampleCount];
         for (int i = 0; i < sampleCount; i++) {
@@ -712,7 +712,7 @@ public class EventMutualInformationEvaluatorTest extends AbstractIndicatorTest<I
         // definition, so the evaluator must clamp accumulation-scale negative
         // drift to exactly zero instead of publishing a spurious tiny
         // negative value.
-        NumFactory floatFactory = FloatNumFactory.getInstance();
+        NumFactory floatFactory = SinglePrecisionNumFactory.getInstance();
         int sampleCount = 10_000;
         int binCount = 1_000;
         double[] data = new double[sampleCount];

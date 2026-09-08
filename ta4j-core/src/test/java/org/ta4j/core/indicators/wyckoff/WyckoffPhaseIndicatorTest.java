@@ -53,7 +53,7 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
         addBar(distributionSeries, 81, 83, 80, 81, 850);
         addBar(distributionSeries, 86, 88, 85, 87, 1100);
         addBar(distributionSeries, 93, 96, 92, 95, 3200);
-        addBar(distributionSeries, 94, 95, 93, 95.5, 1200);
+        addBar(distributionSeries, 94, 95.5, 93, 95.5, 1200);
         addBar(distributionSeries, 94, 95, 93, 94.8, 500);
         addBar(distributionSeries, 89, 90, 78, 79, 2800);
         addBar(distributionSeries, 82, 83, 80, 81, 1500);

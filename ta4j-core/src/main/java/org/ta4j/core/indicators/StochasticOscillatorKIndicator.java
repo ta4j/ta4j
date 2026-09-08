@@ -45,7 +45,7 @@ public class StochasticOscillatorKIndicator extends CachedIndicator<Num> {
      */
     public StochasticOscillatorKIndicator(Indicator<Num> indicator, int barCount, Indicator<Num> highPriceIndicator,
             Indicator<Num> lowPriceIndicator) {
-        super(indicator);
+        super(indicator, highPriceIndicator, lowPriceIndicator);
         this.indicator = indicator;
         this.barCount = barCount;
         this.highPriceIndicator = highPriceIndicator;

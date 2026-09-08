@@ -29,6 +29,26 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
     }
 
     @Test
+    public void shouldRetainLegacyTwoArgumentConstructor() throws NoSuchMethodException {
+        assertThat(AbstractRecentSwingIndicator.class.getDeclaredConstructor(Indicator.class, int.class)).isNotNull();
+    }
+
+    @Test
+    public void shouldInvalidateCacheAfterReleasingSwingTrackerOnHistoryReset() {
+        final BarSeries series = seriesFromCloses(1, 2, 3, 4, 5);
+        final int[] latestSwingIndexes = { -1, -1, 2, 2, 2 };
+        final LockCheckingSwingIndicator indicator = new LockCheckingSwingIndicator(new ClosePriceIndicator(series),
+                latestSwingIndexes);
+        indicator.getSwingPointIndexesUpTo(series.getEndIndex());
+
+        series.setMaximumBarCount(3);
+
+        indicator.getSwingPointIndexesUpTo(series.getEndIndex());
+
+        assertThat(indicator.wasInvalidatedOutsideTrackerMonitor()).isTrue();
+    }
+
+    @Test
     public void shouldExposeSwingIndexesAndValuesMonotonically() {
         final var series = seriesFromCloses(1, 2, 3, 4, 5, 6, 7);
         final int[] latestSwingIndexes = { -1, -1, 2, 2, 2, 5, 5 };
@@ -291,6 +311,25 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
                 return latestSwingIndexes.get(latestSwingIndexes.size() - 1);
             }
             return latestSwingIndexes.get(index);
+        }
+    }
+
+    private static final class LockCheckingSwingIndicator extends FixedSwingIndicator {
+
+        private boolean invalidatedOutsideTrackerMonitor;
+
+        private LockCheckingSwingIndicator(Indicator<Num> priceIndicator, int[] latestSwingIndexes) {
+            super(priceIndicator, latestSwingIndexes);
+        }
+
+        @Override
+        protected void invalidateCache() {
+            invalidatedOutsideTrackerMonitor = !holdsSwingPointTrackerMonitor();
+            super.invalidateCache();
+        }
+
+        private boolean wasInvalidatedOutsideTrackerMonitor() {
+            return invalidatedOutsideTrackerMonitor;
         }
     }
 

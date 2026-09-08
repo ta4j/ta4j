@@ -167,9 +167,9 @@ usage() {
 Usage: scripts/run-full-build-quiet.sh [--validate-only] [--preflight-only] [--goals "goal..."] [--] [maven-args...]
 
 The default local invocation repairs license headers and formatting before it
-runs the repository-owned checks and Maven verify gate. Hosted PR CI uses
---validate-only to reject those defects without modifying its checkout. Maven
-output is filtered and the complete log is written to .agents/logs/full-build-*.log.
+runs the repository-owned checks and Maven verify gate. Hosted CI uses
+--validate-only to validate the same gate without modifying its checkout.
+Maven output is filtered and the complete log is written to .agents/logs/full-build-*.log.
 Explicit --goals invocations remain focused and skip repository preflight checks.
 The Bash watchdog keeps the default 180-second timeout as the earliest timeout
 point, then allows a build that keeps emitting Maven output to continue until no
@@ -372,7 +372,6 @@ while (($# > 0)); do
             ;;
     esac
 done
-
 if [[ "$VALIDATE_ONLY" == "true" && "$DEFAULT_GATE" != "true" ]]; then
     echo "--validate-only cannot be combined with --goals" >&2
     exit 2
@@ -381,7 +380,6 @@ fi
 if [[ "$VALIDATE_ONLY" == "true" ]]; then
     GOALS=(clean license:check spotless:check verify)
 fi
-
 if [[ "$DEFAULT_GATE" == "true" || "$PREFLIGHT_ONLY" == "true" ]]; then
     if ! run_repository_preflight; then
         echo "Build: failed in $(format_elapsed "$(($(date +%s) - SCRIPT_START_TIME))")"
@@ -428,6 +426,15 @@ MVN_CMD+=("${GOALS[@]}")
     printf '\n'
 } >>"$LOG_FILE"
 
+watchdog_epoch() {
+    local test_clock_file="$1"
+    if [[ -n "$test_clock_file" ]]; then
+        cat "$test_clock_file"
+    else
+        date +%s
+    fi
+}
+
 run_with_timeout() {
     local timeout_marker_file="$1"
     local timeout_seconds="$2"
@@ -435,7 +442,19 @@ run_with_timeout() {
     local stall_seconds="$4"
     local heartbeat_seconds="$5"
     shift 5
+    local test_clock_file="${QUIET_BUILD_TEST_CLOCK_FILE:-}"
+    local watchdog_poll_seconds=1
+    if [[ -n "$test_clock_file" ]]; then
+        watchdog_poll_seconds="${QUIET_BUILD_TEST_WATCHDOG_POLL_SECONDS:-1}"
+    fi
     : >"$timeout_marker_file"
+
+    # Capture the initial clock before launching so the timeout counts from build
+    # start rather than the watcher's first poll. A fast fake Maven that advances
+    # the test clock to completion before the watcher first polls would otherwise
+    # freeze elapsed at zero and never exercise the timeout boundary.
+    local start_epoch
+    start_epoch="$(watchdog_epoch "$test_clock_file")"
 
     "$@" &
     local command_pid=$!
@@ -443,12 +462,10 @@ run_with_timeout() {
     (
         local elapsed=0
         local sleep_pid=""
-        local start_epoch
         local now_epoch
         local last_progress_epoch
         local last_heartbeat_epoch
         local last_progress_size=0
-        start_epoch="$(date +%s)"
         last_progress_epoch="$start_epoch"
         last_heartbeat_epoch="$start_epoch"
         if [[ -f "$progress_file" ]]; then
@@ -456,17 +473,20 @@ run_with_timeout() {
             if ! [[ "$last_progress_size" =~ ^[0-9]+$ ]]; then
                 last_progress_size=0
             fi
+            if ((last_progress_size > 0)); then
+                last_progress_epoch="$(watchdog_epoch "$test_clock_file")"
+            fi
         fi
         trap 'if [[ -n "${sleep_pid:-}" ]]; then kill "$sleep_pid" >/dev/null 2>&1 || true; fi; exit 0' TERM INT
         while true; do
-            sleep 1 &
+            sleep "$watchdog_poll_seconds" &
             sleep_pid="$!"
             wait "$sleep_pid" >/dev/null 2>&1 || exit 0
             sleep_pid=""
             if ! kill -0 "$command_pid" >/dev/null 2>&1; then
                 exit 0
             fi
-            now_epoch="$(date +%s)"
+            now_epoch="$(watchdog_epoch "$test_clock_file")"
             elapsed=$((now_epoch - start_epoch))
 
             if [[ -f "$progress_file" ]]; then

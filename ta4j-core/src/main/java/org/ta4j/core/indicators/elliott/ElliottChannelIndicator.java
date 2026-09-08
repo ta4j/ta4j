@@ -46,7 +46,7 @@ public class ElliottChannelIndicator extends CachedIndicator<ElliottChannel> {
     }
 
     private ElliottChannelIndicator(final Config config) {
-        super(config.series());
+        super(config.swingIndicator());
         this.swingIndicator = config.swingIndicator();
     }
 
