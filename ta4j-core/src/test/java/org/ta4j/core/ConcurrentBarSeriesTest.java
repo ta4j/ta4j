@@ -11,6 +11,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.io.ByteArrayOutputStream;
 import java.io.ByteArrayInputStream;
@@ -23,6 +24,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -724,6 +726,96 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         startLatch.countDown();
         assertTrue("Operations should complete without deadlock", endLatch.await(5, TimeUnit.SECONDS));
         assertTrue("All operations should succeed", success.get());
+    }
+
+    @Test
+    public void sharedTerminalBarMutationsDoNotInvertSeriesWriteLocks() throws Exception {
+        final Duration period = Duration.ofMinutes(1);
+        final Instant start = Instant.parse("2024-05-01T00:00:00Z");
+        final BaseBar sharedBar = new BaseBar(period, start, start.plus(period), numOf(10), numOf(10), numOf(10),
+                numOf(10), numFactory.zero(), numFactory.zero(), 0);
+        final CoordinatedMutationLockPhases phases = new CoordinatedMutationLockPhases();
+        final ConcurrentBarSeries first = new ConcurrentBarSeries("first-shared-bar", List.of(sharedBar), 0, 0, false,
+                numFactory, barBuilderFactory, new CoordinatedMutationReadWriteLock(phases));
+        final ConcurrentBarSeries second = new ConcurrentBarSeries("second-shared-bar", List.of(sharedBar), 0, 0, false,
+                numFactory, barBuilderFactory, new CoordinatedMutationReadWriteLock(phases));
+
+        final Future<?> priceMutation = executorService.submit(() -> first.addPrice(numOf(20)));
+        final Future<?> tradeMutation = executorService.submit(() -> second.addTrade(numOf(1), numOf(30)));
+        try {
+            priceMutation.get(5, TimeUnit.SECONDS);
+            tradeMutation.get(5, TimeUnit.SECONDS);
+        } finally {
+            priceMutation.cancel(true);
+            tradeMutation.cancel(true);
+        }
+
+        assertEquals(1, sharedBar.getTrades());
+        assertNumEquals(30, sharedBar.getHighPrice());
+        assertNumEquals(1, sharedBar.getVolume());
+        assertEquals(2L, first.getBarHistoryRevision());
+        assertEquals(2L, second.getBarHistoryRevision());
+        assertEquals(0, first.getBarSeriesChangeSnapshot(0).earliestChangedIndex());
+        assertEquals(0, second.getBarSeriesChangeSnapshot(0).earliestChangedIndex());
+    }
+
+    @Test
+    public void mutationFailureStillInvalidatesEveryRetainingSeries() {
+        final Duration period = Duration.ofMinutes(1);
+        final Instant start = Instant.parse("2024-05-01T00:00:00Z");
+        final BaseBar bar = new BaseBar(period, start, start.plus(period), numOf(10), numOf(10), numOf(10), numOf(10),
+                numFactory.zero(), numFactory.zero(), 0) {
+            @Override
+            public void addPrice(Num price) {
+                super.addPrice(price);
+                throw new IllegalStateException("Custom mutation failed after updating the bar");
+            }
+        };
+        final ConcurrentBarSeries first = new ConcurrentBarSeries("first-failed-mutation", List.of(bar), 0, 0, false,
+                numFactory, barBuilderFactory);
+        final ConcurrentBarSeries second = new ConcurrentBarSeries("second-failed-mutation", List.of(bar), 0, 0, false,
+                numFactory, barBuilderFactory);
+
+        assertThrows(IllegalStateException.class, () -> first.addPrice(numOf(20)));
+
+        assertNumEquals(20, bar.getClosePrice());
+        assertEquals(1L, first.getBarHistoryRevision());
+        assertEquals(1L, second.getBarHistoryRevision());
+    }
+
+    @Test
+    public void originRevisionIsVisibleBeforeMutationUnlock() {
+        final AtomicReference<ConcurrentBarSeries> origin = new AtomicReference<>();
+        final AtomicBoolean checking = new AtomicBoolean();
+        final ReentrantReadWriteLock lock = new ReentrantReadWriteLock() {
+            private final WriteLock observingWriteLock = new WriteLock(this) {
+                @Override
+                public void unlock() {
+                    try {
+                        if (checking.get() && getWriteHoldCount() == 1) {
+                            assertEquals(1L, origin.get().getBarHistoryRevision());
+                            assertNumEquals(20, origin.get().getLastBar().getClosePrice());
+                        }
+                    } finally {
+                        super.unlock();
+                    }
+                }
+            };
+
+            @Override
+            public WriteLock writeLock() {
+                return observingWriteLock;
+            }
+        };
+        final Duration period = Duration.ofMinutes(1);
+        final Instant start = Instant.parse("2024-05-01T00:00:00Z");
+        final BaseBar bar = new BaseBar(period, start, start.plus(period), numOf(10), numOf(10), numOf(10), numOf(10),
+                numFactory.zero(), numFactory.zero(), 0);
+        origin.set(new ConcurrentBarSeries("origin-revision", List.of(bar), 0, 0, false, numFactory, barBuilderFactory,
+                lock));
+        checking.set(true);
+
+        origin.get().addPrice(numOf(20));
     }
 
     @Test
@@ -2659,6 +2751,101 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         public void addTrade(final Num tradeVolume, final Num tradePrice) {
             companionBar.addPrice(tradePrice);
             super.addTrade(tradeVolume, tradePrice);
+        }
+    }
+
+    private static final class CoordinatedMutationLockPhases {
+
+        private final CyclicBarrier originLocks = new CyclicBarrier(2);
+        private final CyclicBarrier mutationCallbacks = new CyclicBarrier(2);
+        private final AtomicInteger nonReentrantAcquisitions = new AtomicInteger();
+
+        private int beforeWriteLock(final boolean reentrant) {
+            if (reentrant) {
+                return 0;
+            }
+            final int acquisition = nonReentrantAcquisitions.incrementAndGet();
+            if (acquisition <= 2) {
+                await(originLocks);
+            } else if (acquisition <= 4) {
+                await(mutationCallbacks);
+            }
+            return acquisition;
+        }
+
+        private static void await(final CyclicBarrier barrier) {
+            try {
+                barrier.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError("Mutation lock coordination was interrupted", e);
+            } catch (Exception e) {
+                throw new AssertionError("Mutation lock coordination did not complete", e);
+            }
+        }
+    }
+
+    private static final class CoordinatedMutationReadWriteLock implements ReadWriteLock {
+
+        private final CoordinatedMutationLockPhases phases;
+        private final ReentrantReadWriteLock delegate = new ReentrantReadWriteLock();
+        private final Lock writeLock = new Lock() {
+
+            @Override
+            public void lock() {
+                final int acquisition = phases.beforeWriteLock(delegate.isWriteLockedByCurrentThread());
+                if (acquisition > 2 && acquisition <= 4) {
+                    try {
+                        if (!delegate.writeLock().tryLock(5, TimeUnit.SECONDS)) {
+                            throw new AssertionError("Mutation callback could not acquire the target series lock");
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new AssertionError("Mutation callback lock acquisition was interrupted", e);
+                    }
+                } else {
+                    delegate.writeLock().lock();
+                }
+            }
+
+            @Override
+            public void lockInterruptibly() throws InterruptedException {
+                delegate.writeLock().lockInterruptibly();
+            }
+
+            @Override
+            public boolean tryLock() {
+                return delegate.writeLock().tryLock();
+            }
+
+            @Override
+            public boolean tryLock(final long time, final TimeUnit unit) throws InterruptedException {
+                return delegate.writeLock().tryLock(time, unit);
+            }
+
+            @Override
+            public void unlock() {
+                delegate.writeLock().unlock();
+            }
+
+            @Override
+            public Condition newCondition() {
+                return delegate.writeLock().newCondition();
+            }
+        };
+
+        private CoordinatedMutationReadWriteLock(final CoordinatedMutationLockPhases phases) {
+            this.phases = phases;
+        }
+
+        @Override
+        public Lock readLock() {
+            return delegate.readLock();
+        }
+
+        @Override
+        public Lock writeLock() {
+            return writeLock;
         }
     }
 

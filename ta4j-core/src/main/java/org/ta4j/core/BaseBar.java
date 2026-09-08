@@ -27,6 +27,8 @@ import org.ta4j.core.num.Num;
 public class BaseBar implements Bar {
     private static final long serialVersionUID = 8038383777467488147L;
 
+    private static final ThreadLocal<MutationState> MUTATION_STATE = new ThreadLocal<>();
+
     /**
      * Weak retaining-series registrations. The weak keys avoid retaining
      * short-lived subseries through bars that they shallow-copy.
@@ -35,6 +37,47 @@ public class BaseBar implements Bar {
     private transient ReferenceQueue<BaseBarSeries> retainingSeriesQueue = new ReferenceQueue<>();
 
     private record RetainedSeriesMutation(BaseBarSeries series, int index) {
+    }
+
+    static final class RetainedBarMutationPublication {
+
+        private final BaseBar bar;
+        private final List<RetainedSeriesMutation> mutations;
+        private final int publicationCount;
+        private final Throwable failure;
+
+        private RetainedBarMutationPublication(final BaseBar bar, final List<RetainedSeriesMutation> mutations,
+                final int publicationCount, final Throwable failure) {
+            this.bar = bar;
+            this.mutations = mutations;
+            this.publicationCount = publicationCount;
+            this.failure = failure;
+        }
+
+        void publish() {
+            for (int publication = 0; publication < publicationCount; publication++) {
+                for (RetainedSeriesMutation mutation : mutations) {
+                    mutation.series().retainedBarMutated(bar, mutation.index());
+                }
+            }
+            if (failure instanceof RuntimeException exception) {
+                throw exception;
+            }
+            if (failure instanceof Error error) {
+                throw error;
+            }
+        }
+    }
+
+    private static final class MutationState {
+
+        private final BaseBar bar;
+        private int suppressionDepth;
+        private int publicationCount;
+
+        private MutationState(final BaseBar bar) {
+            this.bar = bar;
+        }
     }
 
     /**
@@ -141,7 +184,6 @@ public class BaseBar implements Bar {
 
     /** The number of trades of the bar period. */
     private long trades;
-    private transient volatile boolean suppressRetainedBarMutationPublication;
 
     /**
      * Constructor.
@@ -376,6 +418,54 @@ public class BaseBar implements Bar {
         publishRetainedBarMutation();
     }
 
+    final synchronized RetainedBarMutationPublication deferAddTrade(final BaseBarSeries origin, final Num tradeVolume,
+            final Num tradePrice) {
+        final MutationState previousState = MUTATION_STATE.get();
+        final MutationState deferredState = new MutationState(this);
+        Throwable failure = null;
+        MUTATION_STATE.set(deferredState);
+        try {
+            addTrade(tradeVolume, tradePrice);
+        } catch (RuntimeException | Error cause) {
+            failure = cause;
+        } finally {
+            if (previousState == null) {
+                MUTATION_STATE.remove();
+            } else {
+                MUTATION_STATE.set(previousState);
+            }
+        }
+        return deferredState.publicationCount > 0 || failure != null
+                ? captureRetainedBarMutation(deferredState.publicationCount, origin, failure)
+                : null;
+    }
+
+    final synchronized RetainedBarMutationPublication deferAddPrice(final BaseBarSeries origin, final Num price) {
+        final MutationState previousState = MUTATION_STATE.get();
+        final MutationState deferredState = new MutationState(this);
+        Throwable failure = null;
+        MUTATION_STATE.set(deferredState);
+        try {
+            addPrice(price);
+        } catch (RuntimeException | Error cause) {
+            failure = cause;
+        } finally {
+            if (previousState == null) {
+                MUTATION_STATE.remove();
+            } else {
+                MUTATION_STATE.set(previousState);
+            }
+        }
+        return deferredState.publicationCount > 0 || failure != null
+                ? captureRetainedBarMutation(deferredState.publicationCount, origin, failure)
+                : null;
+    }
+
+    private MutationState currentMutationState() {
+        final MutationState state = MUTATION_STATE.get();
+        return state != null && state.bar == this ? state : null;
+    }
+
     /**
      * Applies the common OHLCV update for a trade without publishing its retained
      * bar mutation. Subclasses that add trade fields call this before publishing
@@ -383,12 +473,25 @@ public class BaseBar implements Bar {
      */
     @SuppressFBWarnings(value = "AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE", justification = "BaseBar mutators are intentionally mutable; concurrent callers must synchronize at the series boundary.")
     final void applyTrade(Num tradeVolume, Num tradePrice) {
-        final boolean wasSuppressed = suppressRetainedBarMutationPublication;
-        suppressRetainedBarMutationPublication = true;
+        final MutationState previousState = MUTATION_STATE.get();
+        MutationState state = currentMutationState();
+        final boolean temporaryState = state == null;
+        if (temporaryState) {
+            state = new MutationState(this);
+            MUTATION_STATE.set(state);
+        }
+        state.suppressionDepth++;
         try {
             addPrice(tradePrice);
         } finally {
-            suppressRetainedBarMutationPublication = wasSuppressed;
+            state.suppressionDepth--;
+            if (temporaryState) {
+                if (previousState == null) {
+                    MUTATION_STATE.remove();
+                } else {
+                    MUTATION_STATE.set(previousState);
+                }
+            }
         }
         volume = volume.plus(tradeVolume);
         amount = amount.plus(tradeVolume.multipliedBy(tradePrice));
@@ -403,7 +506,8 @@ public class BaseBar implements Bar {
     @Override
     public void addPrice(Num price) {
         applyTradePrice(price);
-        if (!suppressRetainedBarMutationPublication) {
+        final MutationState state = currentMutationState();
+        if (state == null || state.suppressionDepth == 0) {
             publishRetainedBarMutation();
         }
     }
@@ -453,7 +557,6 @@ public class BaseBar implements Bar {
         stream.defaultReadObject();
         retainingSeries = new HashMap<>();
         retainingSeriesQueue = new ReferenceQueue<>();
-        suppressRetainedBarMutationPublication = false;
         try {
             validatePrices(openPrice, highPrice, lowPrice, closePrice);
         } catch (IllegalArgumentException e) {
@@ -462,6 +565,16 @@ public class BaseBar implements Bar {
     }
 
     final void publishRetainedBarMutation() {
+        final MutationState state = currentMutationState();
+        if (state != null) {
+            state.publicationCount++;
+            return;
+        }
+        captureRetainedBarMutation(1, null, null).publish();
+    }
+
+    private RetainedBarMutationPublication captureRetainedBarMutation(final int publicationCount,
+            final BaseBarSeries origin, final Throwable failure) {
         final List<RetainedSeriesMutation> mutations;
         synchronized (retainingSeries) {
             purgeClearedRetainingSeries();
@@ -473,9 +586,19 @@ public class BaseBar implements Bar {
                 }
             });
         }
-        for (RetainedSeriesMutation mutation : mutations) {
-            mutation.series().retainedBarMutated(this, mutation.index());
+        // The originating series still holds its write lock. Publish its revision
+        // before unlock so readers never see a changed bar with an old cache key.
+        for (int index = mutations.size() - 1; index >= 0; index--) {
+            final RetainedSeriesMutation mutation = mutations.get(index);
+            if (mutation.series() == origin) {
+                for (int publication = 0; publication < publicationCount; publication++) {
+                    origin.retainedBarMutated(this, mutation.index());
+                }
+                mutations.remove(index);
+                break;
+            }
         }
+        return new RetainedBarMutationPublication(this, mutations, publicationCount, failure);
     }
 
     /**

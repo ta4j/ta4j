@@ -465,6 +465,38 @@ public class BaseBarSeries implements BarSeries {
         recordBarHistoryChange(index);
     }
 
+    final BaseBar.RetainedBarMutationPublication mutateLastBarTrade(final Num tradeVolume, final Num tradePrice) {
+        final Bar lastBar = getLastBar();
+        final long revisionBeforeMutation = getBarHistoryRevision();
+        final BaseBar.RetainedBarMutationPublication publication;
+        if (lastBar instanceof BaseBar baseBar) {
+            publication = baseBar.deferAddTrade(this, tradeVolume, tradePrice);
+        } else {
+            lastBar.addTrade(tradeVolume, tradePrice);
+            publication = null;
+        }
+        if (publication == null && getBarHistoryRevision() == revisionBeforeMutation) {
+            recordBarHistoryChange(this.seriesEndIndex);
+        }
+        return publication;
+    }
+
+    final BaseBar.RetainedBarMutationPublication mutateLastBarPrice(final Num price) {
+        final Bar lastBar = getLastBar();
+        final long revisionBeforeMutation = getBarHistoryRevision();
+        final BaseBar.RetainedBarMutationPublication publication;
+        if (lastBar instanceof BaseBar baseBar) {
+            publication = baseBar.deferAddPrice(this, price);
+        } else {
+            lastBar.addPrice(price);
+            publication = null;
+        }
+        if (publication == null && getBarHistoryRevision() == revisionBeforeMutation) {
+            recordBarHistoryChange(this.seriesEndIndex);
+        }
+        return publication;
+    }
+
     @Override
     public void addTrade(final Number tradeVolume, final Number tradePrice) {
         addTrade(numFactory().numOf(tradeVolume), numFactory().numOf(tradePrice));
@@ -472,21 +504,17 @@ public class BaseBarSeries implements BarSeries {
 
     @Override
     public void addTrade(final Num tradeVolume, final Num tradePrice) {
-        final Bar lastBar = getLastBar();
-        final long revisionBeforeMutation = getBarHistoryRevision();
-        lastBar.addTrade(tradeVolume, tradePrice);
-        if (getBarHistoryRevision() == revisionBeforeMutation) {
-            recordBarHistoryChange(this.seriesEndIndex);
+        final BaseBar.RetainedBarMutationPublication publication = mutateLastBarTrade(tradeVolume, tradePrice);
+        if (publication != null) {
+            publication.publish();
         }
     }
 
     @Override
     public void addPrice(final Num price) {
-        final Bar lastBar = getLastBar();
-        final long revisionBeforeMutation = getBarHistoryRevision();
-        lastBar.addPrice(price);
-        if (getBarHistoryRevision() == revisionBeforeMutation) {
-            recordBarHistoryChange(this.seriesEndIndex);
+        final BaseBar.RetainedBarMutationPublication publication = mutateLastBarPrice(price);
+        if (publication != null) {
+            publication.publish();
         }
     }
 
