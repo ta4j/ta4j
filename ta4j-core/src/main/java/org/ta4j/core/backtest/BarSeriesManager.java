@@ -10,7 +10,6 @@ import java.util.function.IntFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
@@ -259,11 +258,13 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, Num amount) {
-        if (barSeries instanceof ConcurrentBarSeries concurrentBarSeries) {
-            return concurrentBarSeries.withReadLock(
-                    () -> run(strategy, tradeType, amount, barSeries.getBeginIndex(), barSeries.getEndIndex()));
-        }
-        return run(strategy, tradeType, amount, barSeries.getBeginIndex(), barSeries.getEndIndex());
+        Objects.requireNonNull(amount, "amount");
+        return barSeries.withReadLock(() -> {
+            int startIndex = barSeries.getBeginIndex();
+            int finishIndex = barSeries.getEndIndex();
+            TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, startIndex, finishIndex);
+            return runUnlocked(strategy, tradingRecord, startIndex, finishIndex, index -> amount);
+        });
     }
 
     /**
@@ -278,12 +279,11 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, Num amount, int startIndex, int finishIndex) {
-        if (barSeries instanceof ConcurrentBarSeries concurrentBarSeries) {
-            return concurrentBarSeries.withReadLock(() -> run(strategy,
-                    createDefaultTradingRecord(tradeType, startIndex, finishIndex), amount, startIndex, finishIndex));
-        }
-        TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, startIndex, finishIndex);
-        return run(strategy, tradingRecord, amount, startIndex, finishIndex);
+        Objects.requireNonNull(amount, "amount");
+        return barSeries.withReadLock(() -> {
+            TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, startIndex, finishIndex);
+            return runUnlocked(strategy, tradingRecord, startIndex, finishIndex, index -> amount);
+        });
     }
 
     /**
@@ -297,11 +297,13 @@ public class BarSeriesManager {
      * @since 0.22.9
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, PositionSizer positionSizer) {
-        if (barSeries instanceof ConcurrentBarSeries concurrentBarSeries) {
-            return concurrentBarSeries.withReadLock(
-                    () -> run(strategy, tradeType, positionSizer, barSeries.getBeginIndex(), barSeries.getEndIndex()));
-        }
-        return run(strategy, tradeType, positionSizer, barSeries.getBeginIndex(), barSeries.getEndIndex());
+        Objects.requireNonNull(positionSizer, "positionSizer");
+        return barSeries.withReadLock(() -> {
+            int startIndex = barSeries.getBeginIndex();
+            int finishIndex = barSeries.getEndIndex();
+            TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, startIndex, finishIndex);
+            return runWithPositionSizerUnlocked(strategy, tradingRecord, positionSizer, startIndex, finishIndex);
+        });
     }
 
     /**
@@ -349,13 +351,11 @@ public class BarSeriesManager {
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, PositionSizer positionSizer, int startIndex,
             int finishIndex) {
-        if (barSeries instanceof ConcurrentBarSeries concurrentBarSeries) {
-            return concurrentBarSeries
-                    .withReadLock(() -> run(strategy, createDefaultTradingRecord(tradeType, startIndex, finishIndex),
-                            positionSizer, startIndex, finishIndex));
-        }
-        TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, startIndex, finishIndex);
-        return run(strategy, tradingRecord, positionSizer, startIndex, finishIndex);
+        Objects.requireNonNull(positionSizer, "positionSizer");
+        return barSeries.withReadLock(() -> {
+            TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, startIndex, finishIndex);
+            return runWithPositionSizerUnlocked(strategy, tradingRecord, positionSizer, startIndex, finishIndex);
+        });
     }
 
     /**
@@ -388,11 +388,12 @@ public class BarSeriesManager {
      * @since 0.22.4
      */
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, Num amount) {
-        if (barSeries instanceof ConcurrentBarSeries concurrentBarSeries) {
-            return concurrentBarSeries.withReadLock(
-                    () -> run(strategy, tradingRecord, amount, barSeries.getBeginIndex(), barSeries.getEndIndex()));
-        }
-        return run(strategy, tradingRecord, amount, barSeries.getBeginIndex(), barSeries.getEndIndex());
+        Objects.requireNonNull(amount, "amount");
+        return barSeries.withReadLock(() -> {
+            int startIndex = barSeries.getBeginIndex();
+            int finishIndex = barSeries.getEndIndex();
+            return runUnlocked(strategy, tradingRecord, startIndex, finishIndex, index -> amount);
+        });
     }
 
     /**
@@ -418,7 +419,8 @@ public class BarSeriesManager {
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, Num amount, int startIndex,
             int finishIndex) {
         Objects.requireNonNull(amount, "amount");
-        return run(strategy, tradingRecord, startIndex, finishIndex, index -> amount);
+        return barSeries
+                .withReadLock(() -> runUnlocked(strategy, tradingRecord, startIndex, finishIndex, index -> amount));
     }
 
     /**
@@ -432,11 +434,12 @@ public class BarSeriesManager {
      * @since 0.22.9
      */
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, PositionSizer positionSizer) {
-        if (barSeries instanceof ConcurrentBarSeries concurrentBarSeries) {
-            return concurrentBarSeries.withReadLock(() -> run(strategy, tradingRecord, positionSizer,
-                    barSeries.getBeginIndex(), barSeries.getEndIndex()));
-        }
-        return run(strategy, tradingRecord, positionSizer, barSeries.getBeginIndex(), barSeries.getEndIndex());
+        Objects.requireNonNull(positionSizer, "positionSizer");
+        return barSeries.withReadLock(() -> {
+            int startIndex = barSeries.getBeginIndex();
+            int finishIndex = barSeries.getEndIndex();
+            return runWithPositionSizerUnlocked(strategy, tradingRecord, positionSizer, startIndex, finishIndex);
+        });
     }
 
     /**
@@ -454,7 +457,9 @@ public class BarSeriesManager {
      */
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, PositionSizer positionSizer,
             int startIndex, int finishIndex) {
-        return runWithPositionSizer(strategy, tradingRecord, positionSizer, startIndex, finishIndex);
+        Objects.requireNonNull(positionSizer, "positionSizer");
+        return barSeries.withReadLock(
+                () -> runWithPositionSizerUnlocked(strategy, tradingRecord, positionSizer, startIndex, finishIndex));
     }
 
     private TradingRecord createDefaultTradingRecord(TradeType tradeType, int startIndex, int finishIndex) {
@@ -584,22 +589,13 @@ public class BarSeriesManager {
         return executor.execute(strategy, tradeType, positionSizer, config, progressCallback);
     }
 
-    private TradingRecord runWithPositionSizer(Strategy strategy, TradingRecord tradingRecord,
+    private TradingRecord runWithPositionSizerUnlocked(Strategy strategy, TradingRecord tradingRecord,
             PositionSizer positionSizer, int startIndex, int finishIndex) {
         Objects.requireNonNull(tradingRecord, "tradingRecord");
         Objects.requireNonNull(positionSizer, "positionSizer");
         TradeType runTradeType = tradingRecord.getStartingType();
-        return run(strategy, tradingRecord, startIndex, finishIndex,
+        return runUnlocked(strategy, tradingRecord, startIndex, finishIndex,
                 index -> amountForNextOperation(positionSizer, index, strategy, tradingRecord, runTradeType));
-    }
-
-    private TradingRecord run(Strategy strategy, TradingRecord tradingRecord, int startIndex, int finishIndex,
-            IntFunction<Num> amountResolver) {
-        if (barSeries instanceof ConcurrentBarSeries concurrentBarSeries) {
-            return concurrentBarSeries
-                    .withReadLock(() -> runUnlocked(strategy, tradingRecord, startIndex, finishIndex, amountResolver));
-        }
-        return runUnlocked(strategy, tradingRecord, startIndex, finishIndex, amountResolver);
     }
 
     private TradingRecord runUnlocked(Strategy strategy, TradingRecord tradingRecord, int startIndex, int finishIndex,

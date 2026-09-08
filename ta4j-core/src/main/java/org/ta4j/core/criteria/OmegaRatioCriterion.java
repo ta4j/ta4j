@@ -6,7 +6,6 @@ package org.ta4j.core.criteria;
 import java.util.List;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.EquityCurveMode;
@@ -202,10 +201,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         if (tradingRecord == null) {
             return zero;
         }
-        if (series instanceof ConcurrentBarSeries concurrent) {
-            return concurrent.withReadLock(() -> calculateTradingRecord(series, tradingRecord, zero));
-        }
-        return calculateTradingRecord(series, tradingRecord, zero);
+        return series.withReadLock(() -> calculateTradingRecord(series, tradingRecord, zero));
     }
 
     private Num calculateTradingRecord(BarSeries series, TradingRecord tradingRecord, Num zero) {

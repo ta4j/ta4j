@@ -8,7 +8,6 @@ import java.util.Objects;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.CachedIndicator;
@@ -65,11 +64,7 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
             beginIndex[0] = getBarSeries().getBeginIndex();
             intervals[0] = buildInvestedIntervals(tradingRecord, openPositionHandling, beginIndex[0]);
         };
-        if (series instanceof ConcurrentBarSeries concurrent) {
-            concurrent.withReadLock(action);
-        } else {
-            action.run();
-        }
+        series.withReadLock(action);
         materializedBeginIndex = beginIndex[0];
         investedIntervals = intervals[0];
     }
@@ -97,7 +92,13 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
             int beginIndex) {
         BarSeries series = getBarSeries();
         int analysisEndIndex = Math.max(series.getEndIndex(), tradingRecord.getEndIndex(series));
-        long span = series.getBarCount() == 0 ? 0L : (long) analysisEndIndex - beginIndex + 1L;
+        if (beginIndex < 0) {
+            return new boolean[0];
+        }
+        long span = (long) analysisEndIndex - beginIndex + 1L;
+        if (span <= 0L) {
+            return new boolean[0];
+        }
         if (span >= Integer.MAX_VALUE) {
             throw new IllegalArgumentException("Invested interval range is too large to materialize: [" + beginIndex
                     + ", " + analysisEndIndex + "]");
@@ -116,16 +117,15 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
         if (position == null || position.getEntry() == null) {
             return;
         }
-        int investedEndIndex = beginIndex + invested.length - 1;
+        long investedEndIndex = (long) beginIndex + invested.length - 1L;
         long startLong = Math.max((long) position.getEntry().getIndex() + 1, (long) beginIndex + 1);
         if (startLong > investedEndIndex) {
             return;
         }
-        int exitIndex = position.isClosed() ? position.getExit().getIndex() : investedEndIndex;
-        int start = (int) startLong;
-        int end = Math.min(exitIndex, investedEndIndex);
-        for (long i = start; i <= end; i++) {
-            invested[(int) i - beginIndex] = true;
+        long exitIndex = position.isClosed() ? position.getExit().getIndex() : investedEndIndex;
+        long endIndex = Math.min(exitIndex, investedEndIndex);
+        for (long i = startLong; i <= endIndex; i++) {
+            invested[(int) (i - beginIndex)] = true;
         }
     }
 

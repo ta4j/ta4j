@@ -15,7 +15,6 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -61,11 +60,8 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
         if (!(baseline instanceof FrozenBarSeries frozenBaseline)) {
             throw new IllegalArgumentException("baseline must be a frozen result series");
         }
-        if (source instanceof ConcurrentBarSeries concurrent) {
-            return concurrent.withReadLock(
-                    () -> captureStable(source, tradingStatements, runtimeReport, strategyFailures, frozenBaseline));
-        }
-        return captureStable(source, tradingStatements, runtimeReport, strategyFailures, frozenBaseline);
+        return source.withReadLock(
+                () -> captureStable(source, tradingStatements, runtimeReport, strategyFailures, frozenBaseline));
     }
 
     private static BacktestExecutionResult captureStable(BarSeries source, List<TradingStatement> tradingStatements,
@@ -80,10 +76,7 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
         if (source instanceof FrozenBarSeries) {
             return source;
         }
-        if (source instanceof ConcurrentBarSeries concurrent) {
-            return concurrent.withReadLock(() -> snapshotSeriesUnlocked(source));
-        }
-        return snapshotSeriesUnlocked(source);
+        return source.withReadLock(() -> snapshotSeriesUnlocked(source));
     }
 
     private static BarSeries snapshotSeriesUnlocked(BarSeries source) {

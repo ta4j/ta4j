@@ -6,6 +6,7 @@ package org.ta4j.core.indicators;
 import java.io.Serial;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,6 +119,21 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
         @Override
         public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long sinceRevision) {
             return delegate.getBarSeriesChangeSnapshot(sinceRevision);
+        }
+
+        @Override
+        public boolean isConcurrent() {
+            return delegate.isConcurrent();
+        }
+
+        @Override
+        public void withReadLock(Runnable action) {
+            delegate.withReadLock(action);
+        }
+
+        @Override
+        public <R> R withReadLock(Supplier<R> action) {
+            return delegate.withReadLock(action);
         }
 
         @Override

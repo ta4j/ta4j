@@ -417,12 +417,8 @@ public class BacktestExecutor {
         Objects.requireNonNull(tradeType, "tradeType must not be null");
         Objects.requireNonNull(tradingRecordRunner, "tradingRecordRunner must not be null");
         BarSeries managedSeries = seriesManager.getBarSeries();
-        if (managedSeries instanceof ConcurrentBarSeries concurrentSeries) {
-            return concurrentSeries.withReadLock(() -> executeWithRuntimeReportLocked(strategies, progressCallback,
-                    batchSize, tradingRecordRunner, managedSeries));
-        }
-        return executeWithRuntimeReportLocked(strategies, progressCallback, batchSize, tradingRecordRunner,
-                managedSeries);
+        return managedSeries.withReadLock(() -> executeWithRuntimeReportLocked(strategies, progressCallback, batchSize,
+                tradingRecordRunner, managedSeries));
     }
 
     private BacktestExecutionResult executeWithRuntimeReportLocked(List<Strategy> strategies,
@@ -455,7 +451,7 @@ public class BacktestExecutor {
         // A concurrent series is kept under the lease acquired by the caller.
         // Running its strategy tasks sequentially avoids worker threads waiting
         // for a read lock while this thread waits for those workers.
-        if (managedSeries instanceof ConcurrentBarSeries) {
+        if (managedSeries.isConcurrent()) {
             executeSequential(strategyArray, statements, durations, tradingRecordRunner, effectiveCallback,
                     executionFailures);
         } else if (usesBatchedExecution(strategyCount)) {
@@ -876,12 +872,8 @@ public class BacktestExecutor {
         Objects.requireNonNull(criterion, "criterion must not be null");
         Objects.requireNonNull(tradingRecordRunner, "tradingRecordRunner must not be null");
         BarSeries managedSeries = seriesManager.getBarSeries();
-        if (managedSeries instanceof ConcurrentBarSeries concurrentSeries) {
-            return concurrentSeries.withReadLock(() -> executeAndKeepTopKLocked(strategies, criterion, topK,
-                    progressCallback, tradingRecordRunner, managedSeries));
-        }
-        return executeAndKeepTopKLocked(strategies, criterion, topK, progressCallback, tradingRecordRunner,
-                managedSeries);
+        return managedSeries.withReadLock(() -> executeAndKeepTopKLocked(strategies, criterion, topK, progressCallback,
+                tradingRecordRunner, managedSeries));
     }
 
     private BacktestExecutionResult executeAndKeepTopKLocked(List<Strategy> strategies, AnalysisCriterion criterion,
@@ -931,7 +923,7 @@ public class BacktestExecutor {
             // tasks cannot deadlock acquiring nested read locks. Ordinary
             // series retain the existing parallel batch scheduling.
             IntStream strategyIndexes = IntStream.range(0, batchEnd - batchStart);
-            if (!(managedSeries instanceof ConcurrentBarSeries)) {
+            if (!managedSeries.isConcurrent()) {
                 strategyIndexes = strategyIndexes.parallel();
             }
             strategyIndexes.forEach(localIndex -> {

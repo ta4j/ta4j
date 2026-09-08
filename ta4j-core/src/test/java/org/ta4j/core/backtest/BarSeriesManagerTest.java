@@ -13,11 +13,16 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.ConcurrentBarSeriesBuilder;
 import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTrade;
@@ -26,6 +31,7 @@ import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.Position;
+import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
@@ -35,7 +41,9 @@ import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.bars.TimeBarBuilder;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.DoubleNum;
@@ -807,6 +815,67 @@ public class BarSeriesManagerTest {
                 assertEquals(firstPosition.getEntry().getAmount(), firstPosition.getExit().getAmount());
             }
         }
+    }
+
+    @Test
+    public void runThroughReadOnlyIndicatorSeriesHoldsRetentionWindow() throws Exception {
+        BarSeries initialSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 11d, 12d).build();
+        ConcurrentBarSeries concurrentSeries = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new MockBarBuilderFactory())
+                .withBars(initialSeries.getBarData())
+                .withMaxBarCount(3)
+                .build();
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(concurrentSeries);
+        Bar appendedBar = concurrentSeries.barBuilder().timePeriod(Duration.ofMinutes(1)).closePrice(13d).build();
+        CountDownLatch writerAttempted = new CountDownLatch(1);
+        AtomicBoolean writerAcquired = new AtomicBoolean();
+        Thread writer = new Thread(() -> {
+            writerAttempted.countDown();
+            concurrentSeries.withWriteLock(() -> {
+                writerAcquired.set(true);
+                concurrentSeries.addBar(appendedBar);
+            });
+        }, "bar-series-manager-read-only-view-writer");
+        writer.setDaemon(true);
+
+        AtomicBoolean strategyStarted = new AtomicBoolean();
+        Rule queueAppend = (index, tradingRecord) -> {
+            if (strategyStarted.compareAndSet(false, true)) {
+                writer.start();
+                try {
+                    assertTrue("retention writer did not attempt to acquire the lease",
+                            writerAttempted.await(5, TimeUnit.SECONDS));
+                } catch (InterruptedException interruption) {
+                    Thread.currentThread().interrupt();
+                    throw new AssertionError(interruption);
+                }
+                long deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
+                while (writer.isAlive() && writer.getState() != Thread.State.WAITING && System.nanoTime() < deadline) {
+                    Thread.onSpinWait();
+                }
+                assertEquals("retention writer must queue behind the manager lease", Thread.State.WAITING,
+                        writer.getState());
+                assertTrue("retention writer acquired the lease before run completion", !writerAcquired.get());
+            }
+            assertEquals("retention must not advance during the run", 0, concurrentSeries.getBeginIndex());
+            return false;
+        };
+        Strategy noSignalStrategy = new BaseStrategy(queueAppend, new FixedRule());
+        BarSeriesManager localManager = new BarSeriesManager(closePrice.getBarSeries(), new TradeOnCurrentCloseModel());
+
+        TradingRecord tradingRecord;
+        try {
+            tradingRecord = localManager.run(noSignalStrategy);
+        } finally {
+            writer.join(5_000);
+        }
+
+        assertTrue("retention writer did not finish", !writer.isAlive());
+        assertTrue("retention writer did not acquire the write lease", writerAcquired.get());
+        assertEquals(0, tradingRecord.getStartIndex().intValue());
+        assertEquals(2, tradingRecord.getEndIndex().intValue());
+        assertEquals(1, concurrentSeries.getBeginIndex());
+        assertEquals(3, concurrentSeries.getEndIndex());
     }
 
     @Test

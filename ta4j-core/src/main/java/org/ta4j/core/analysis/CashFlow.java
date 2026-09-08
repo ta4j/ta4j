@@ -8,7 +8,6 @@ import java.util.Objects;
 import java.util.stream.Stream;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
@@ -214,11 +213,7 @@ public class CashFlow implements PerformanceIndicator {
             }
             calculate(record, finalIndex, handling);
         };
-        if (barSeries instanceof ConcurrentBarSeries concurrent) {
-            concurrent.withReadLock(action);
-        } else {
-            action.run();
-        }
+        barSeries.withReadLock(action);
     }
 
     /**

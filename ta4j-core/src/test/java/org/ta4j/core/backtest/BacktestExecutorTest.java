@@ -53,6 +53,7 @@ import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.FixedRule;
@@ -239,11 +240,15 @@ public class BacktestExecutorTest {
         writer.setDaemon(true);
         Strategy queuedAppendStrategy = strategyThatQueuesAppend(writer, writerAttempted, writerAcquired);
         Strategy secondStrategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        CountDownLatch firstCompleted = new CountDownLatch(1);
+        BarSeriesManager manager = managerWaitingForFirstCompletion(new ClosePriceIndicator(series).getBarSeries(),
+                secondStrategy, firstCompleted);
         BacktestExecutionResult result;
         ExecutorService executionPool = daemonExecutor("backtest-runtime-report-execution");
         try {
-            Future<BacktestExecutionResult> execution = executionPool.submit(() -> new BacktestExecutor(series)
-                    .executeWithRuntimeReport(List.of(queuedAppendStrategy, secondStrategy), numFactory.one()));
+            Future<BacktestExecutionResult> execution = executionPool.submit(() -> new BacktestExecutor(manager)
+                    .executeWithRuntimeReport(List.of(queuedAppendStrategy, secondStrategy), numFactory.one(),
+                            Trade.TradeType.BUY, completed -> firstCompleted.countDown()));
             result = execution.get(5, TimeUnit.SECONDS);
         } finally {
             executionPool.shutdownNow();
@@ -281,12 +286,16 @@ public class BacktestExecutorTest {
         writer.setDaemon(true);
         Strategy queuedAppendStrategy = strategyThatQueuesAppend(writer, writerAttempted, writerAcquired);
         Strategy secondStrategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        CountDownLatch firstCompleted = new CountDownLatch(1);
+        BarSeriesManager manager = managerWaitingForFirstCompletion(new ClosePriceIndicator(series).getBarSeries(),
+                secondStrategy, firstCompleted);
         BacktestExecutionResult result;
         ExecutorService executionPool = daemonExecutor("backtest-top-k-execution");
         try {
-            Future<BacktestExecutionResult> execution = executionPool.submit(
-                    () -> new BacktestExecutor(series).executeAndKeepTopK(List.of(queuedAppendStrategy, secondStrategy),
-                            numFactory.one(), Trade.TradeType.BUY, new NumberOfBarsCriterion(), 2, null));
+            Future<BacktestExecutionResult> execution = executionPool
+                    .submit(() -> new BacktestExecutor(manager).executeAndKeepTopK(
+                            List.of(queuedAppendStrategy, secondStrategy), numFactory.one(), Trade.TradeType.BUY,
+                            new NumberOfBarsCriterion(), 2, completed -> firstCompleted.countDown()));
             result = execution.get(5, TimeUnit.SECONDS);
         } finally {
             executionPool.shutdownNow();
@@ -874,6 +883,24 @@ public class BacktestExecutorTest {
             thread.setDaemon(true);
             return thread;
         });
+    }
+
+    private BarSeriesManager managerWaitingForFirstCompletion(BarSeries series, Strategy second,
+            CountDownLatch firstCompleted) {
+        return new BarSeriesManager(series) {
+            @Override
+            public TradingRecord run(Strategy strategy, Trade.TradeType tradeType, Num amount) {
+                if (strategy == second) {
+                    try {
+                        assertTrue("first strategy did not complete", firstCompleted.await(5, TimeUnit.SECONDS));
+                    } catch (InterruptedException interruption) {
+                        Thread.currentThread().interrupt();
+                        throw new AssertionError(interruption);
+                    }
+                }
+                return super.run(strategy, tradeType, amount);
+            }
+        };
     }
 
     private ConcurrentBarSeries buildConcurrentSeries() {

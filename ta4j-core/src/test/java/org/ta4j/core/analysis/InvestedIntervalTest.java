@@ -104,6 +104,20 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
     }
 
     @Test
+    public void marksRawExitIntervalWhenLogicalWindowIsEmpty() {
+        BarSeries series = ConstrainedSeriesSupport.emptyLogicalSeries("empty-window", numFactory, 100d, 50d);
+        Num one = numFactory.one();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, numFactory.numOf(100d), one),
+                Trade.sellAt(1, numFactory.numOf(50d), one));
+
+        InvestedInterval indicator = new InvestedInterval(series, tradingRecord);
+
+        assertThat(series.isEmpty()).isTrue();
+        assertThat(indicator.getValue(1)).as("raw exit interval").isTrue();
+        assertThat(indicator.stream().toList()).containsExactly(false, true);
+    }
+
+    @Test
     public void respectsNonZeroBeginIndexWhenMarkingIntervals() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1, 1, 1, 1, 1)

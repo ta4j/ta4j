@@ -234,11 +234,7 @@ public class StrategyWalkForwardExecutor {
         Objects.requireNonNull(foldRecordRunner, "foldRecordRunner");
 
         BarSeries series = seriesManager.getBarSeries();
-        if (series instanceof ConcurrentBarSeries concurrentSeries) {
-            return concurrentSeries
-                    .withReadLock(() -> executeFolds(series, strategy, config, progressCallback, foldRecordRunner));
-        }
-        return executeFolds(series, strategy, config, progressCallback, foldRecordRunner);
+        return series.withReadLock(() -> executeFolds(series, strategy, config, progressCallback, foldRecordRunner));
     }
 
     private StrategyWalkForwardExecutionResult executeFolds(BarSeries series, Strategy strategy,

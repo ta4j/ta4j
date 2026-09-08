@@ -68,11 +68,7 @@ public final class CumulativePnL implements PerformanceIndicator {
                     : new OffsetNumBuffer(this.barSeries.getBeginIndex(), endIndex, zero, zero);
             calculate(record, finalIndex, handling);
         };
-        if (barSeries instanceof ConcurrentBarSeries concurrent) {
-            concurrent.withReadLock(action);
-        } else {
-            action.run();
-        }
+        barSeries.withReadLock(action);
     }
 
     /**
