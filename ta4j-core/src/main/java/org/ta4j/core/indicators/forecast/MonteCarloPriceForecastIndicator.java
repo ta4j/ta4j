@@ -47,7 +47,7 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
     private final MonteCarloReturnProjectionIndicator.ShockModel shockModel;
     private final MonteCarloReturnProjectionIndicator.VolatilityUpdateMode volatilityUpdateMode;
     private final double volatilityDecayFactor;
-    private final boolean kernelUsesStockShockPaths;
+    private final boolean defaultShockPathMethod;
 
     /**
      * Creates a one-bar forecast and infers price from {@link LogReturnIndicator}.
@@ -104,7 +104,7 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
         this.shockModel = builder.shockModel;
         this.volatilityUpdateMode = builder.volatilityUpdateMode;
         this.volatilityDecayFactor = builder.volatilityDecayFactor;
-        this.kernelUsesStockShockPaths = builder.monteCarloMethod == null;
+        this.defaultShockPathMethod = builder.monteCarloMethod == null;
         this.simulation = new MonteCarloSimulation(builder.stateIndicator, builder.settings(),
                 builder.methodOrDefault());
     }
@@ -264,18 +264,8 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
         return volatilityDecayFactor;
     }
 
-    /**
-     * Reports whether the resolved Monte Carlo technique is the stock shock-path
-     * method the kernel replicates. A custom technique installed through
-     * {@link Builder#monteCarloMethod(MonteCarloMethod)} replaces the shock model,
-     * volatility update mode, and decay factor, so the kernel lane must decline and
-     * defer to scalar evaluation.
-     *
-     * @return true when the kernel can reproduce the scalar method exactly
-     * @since 0.24.2
-     */
-    boolean kernelUsesStockShockPaths() {
-        return kernelUsesStockShockPaths;
+    boolean usesDefaultShockPathMethod() {
+        return defaultShockPathMethod;
     }
 
     private static Indicator<Num> sourceIndicator(

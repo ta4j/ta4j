@@ -37,7 +37,7 @@ import org.ta4j.core.num.NumFactory;
  * scalar lane — which can mix unstable and stable forecasts — stays
  * authoritative outside the steady state.
  *
- * @since 0.24.2
+ * @since 0.25.1
  */
 final class MonteCarloShockPathPlanner implements OperationPlanner {
 
@@ -56,10 +56,10 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         if (!(indicator instanceof MonteCarloPriceForecastIndicator forecast)) {
             return null;
         }
-        if (!forecast.kernelUsesStockShockPaths()) {
+        if (!(factory instanceof DoubleNumFactory)) {
             return null;
         }
-        if (!(factory instanceof DoubleNumFactory)) {
+        if (!forecast.usesDefaultShockPathMethod()) {
             return null;
         }
         if (!MonteCarloSimulation.isPerPathRngSelected()) {
@@ -116,8 +116,8 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
                 return null;
             }
         }
-        double[] params = { (double) forecast.kernelShockModel().ordinal(),
-                (double) forecast.kernelVolatilityUpdateMode().ordinal(), (double) settings.horizon(),
+        double[] params = { shockModelCode(forecast.kernelShockModel()),
+                volatilityUpdateModeCode(forecast.kernelVolatilityUpdateMode()), (double) settings.horizon(),
                 (double) iterations, (double) lookback, forecast.kernelVolatilityDecayFactor() };
         List<double[]> inputs = List.of(prices, means, drifts, variances, windows);
         double tolerance = AccelerationRuntime.approximateTolerance();
@@ -169,6 +169,9 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         if (startIndex < returnIndicator.getBarSeries().getBeginIndex()) {
             return false;
         }
+        if (!Num.isFinite(mean) || !Num.isFinite(drift) || !Num.isFinite(variance)) {
+            return false;
+        }
         means[row] = mean.doubleValue();
         drifts[row] = drift.doubleValue();
         variances[row] = variance.doubleValue();
@@ -192,5 +195,21 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         }
         Num normalized = factory.numOf(value.bigDecimalValue());
         return Num.isFinite(normalized) && (!normalized.isZero() || value.isZero()) ? normalized : null;
+    }
+
+    private static double shockModelCode(MonteCarloReturnProjectionIndicator.ShockModel model) {
+        return switch (model) {
+        case HISTORICAL_BOOTSTRAP -> 0d;
+        case STANDARDIZED_EMPIRICAL -> 1d;
+        case SMOOTHED_EMPIRICAL -> 2d;
+        case NORMAL -> 3d;
+        };
+    }
+
+    private static double volatilityUpdateModeCode(MonteCarloReturnProjectionIndicator.VolatilityUpdateMode mode) {
+        return switch (mode) {
+        case CONSTANT -> 0d;
+        case EWMA -> 1d;
+        };
     }
 }

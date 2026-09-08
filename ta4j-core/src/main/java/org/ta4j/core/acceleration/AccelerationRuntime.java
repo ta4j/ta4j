@@ -446,6 +446,15 @@ public final class AccelerationRuntime {
             inputs = List.copyOf(copies);
         }
 
+        @Override
+        public List<double[]> inputs() {
+            List<double[]> copies = new ArrayList<>(inputs.size());
+            for (double[] buffer : inputs) {
+                copies.add(buffer.clone());
+            }
+            return List.copyOf(copies);
+        }
+
         /**
          * Returns the number of decision indexes in the batch.
          *
