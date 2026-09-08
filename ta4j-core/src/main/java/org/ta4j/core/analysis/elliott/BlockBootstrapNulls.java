@@ -152,18 +152,34 @@ final class BlockBootstrapNulls {
 
     /**
      * Natural logarithm of a positive Num whose magnitude may exceed double range:
-     * decompose the value into a representable significand plus powers of 1e300
-     * before narrowing, so Infinity and zero never reach Math.log. Callers must
-     * pass values that are finite and positive inside their own Num domain
+     * narrow directly when possible, then decompose with a representable factory
+     * scale before narrowing. The scale is created only for values whose primitive
+     * representation underflows or overflows, so bounded factories are not asked to
+     * construct an arbitrary {@code 1e300} value for ordinary inputs.
+     *
+     * <p>
+     * The decomposition uses the factory's {@link NumFactory#two()} value. Callers
+     * must pass values that are finite and positive inside their own Num domain
      * (guaranteed by the positivity check above); each decomposition step then
-     * strictly shrinks or grows the magnitude, so the loops terminate.
+     * strictly shrinks or grows the magnitude, and the loops terminate.
      */
     private static double logNum(final NumFactory numFactory, final Num value) {
-        final Num scale = numFactory.numOf("1e300");
-        final double logScale = Math.log(1e300);
+        double narrowed = value.doubleValue();
+        if (Double.isFinite(narrowed) && narrowed > 0d) {
+            return Math.log(narrowed);
+        }
+        if (!Num.isFinite(value) || !value.isPositive()) {
+            throw new IllegalArgumentException("logarithm requires a finite positive Num: " + value);
+        }
+
+        final Num scale = numFactory.two();
+        final double scaleValue = scale.doubleValue();
+        if (!Double.isFinite(scaleValue) || scaleValue <= 1d) {
+            throw new IllegalStateException("NumFactory.two() must be finite and greater than one");
+        }
+        final double logScale = Math.log(scaleValue);
         Num scaled = value;
-        double narrowed = scaled.doubleValue();
-        int applications = 0;
+        long applications = 0L;
         while (Double.isInfinite(narrowed)) {
             scaled = scaled.dividedBy(scale);
             narrowed = scaled.doubleValue();
@@ -173,6 +189,9 @@ final class BlockBootstrapNulls {
             scaled = scaled.multipliedBy(scale);
             narrowed = scaled.doubleValue();
             applications--;
+        }
+        if (!Double.isFinite(narrowed) || narrowed <= 0d) {
+            throw new IllegalStateException("unable to decompose finite positive Num into double range: " + value);
         }
         return Math.log(narrowed) + applications * logScale;
     }

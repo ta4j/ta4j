@@ -234,10 +234,40 @@ class BlockBootstrapNullsTest {
     @Test
     void logReturnsRejectsNonFiniteDoubleNumClose() {
         // DoubleNumFactory accepts POSITIVE_INFINITY and isPositive() is true;
-        // feeding an infinite close into the decomposed logarithm would scale
-        // it by 1e300 forever instead of failing loud.
+        // reject it before either primitive or decomposed logarithms can run.
         final BarSeries source = doubleSeries("infinite-close", Double.POSITIVE_INFINITY);
         assertThrows(IllegalArgumentException.class, () -> BlockBootstrapNulls.logReturns(source));
+    }
+
+    @Test
+    void bootstrapAcceptsOrdinaryPricesFromBoundedFactory() {
+        final NumFactory numFactory = new BoundedDoubleNumFactory();
+        final BarSeries source = new BaseBarSeriesBuilder().withName("bounded-factory")
+                .withNumFactory(numFactory)
+                .build();
+        final Instant start = Instant.parse("2018-01-01T00:00:00Z");
+        for (int index = 0; index < 2; index++) {
+            final Num close = numFactory.numOf(100 + index);
+            source.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(start.plus(Duration.ofDays(index + 1)))
+                    .openPrice(close)
+                    .highPrice(close)
+                    .lowPrice(close)
+                    .closePrice(close)
+                    .volume(1)
+                    .amount(close)
+                    .trades(1)
+                    .add();
+        }
+
+        final List<BarSeries> members = BlockBootstrapNulls.generate(source, 1, 2, 31L);
+
+        assertEquals(2, members.size());
+        for (final BarSeries member : members) {
+            assertEquals(source.getBarCount(), member.getBarCount());
+            assertTrue(member.getLastBar().getClosePrice().isPositive());
+        }
     }
 
     private static BarSeries doubleSeries(final String name, final double close) {
@@ -536,6 +566,62 @@ class BlockBootstrapNullsTest {
                     .dividedBy(member.getBar(offset - 1).getClosePrice())
                     .doubleValue();
             assertTrue(ratio == 2.0d || ratio == 0.5d, "unexpected member ratio " + ratio);
+        }
+    }
+
+    private static final class BoundedDoubleNumFactory implements NumFactory {
+
+        private static final long serialVersionUID = 1L;
+        private static final double MAXIMUM_INPUT = 1_000_000d;
+        private static final DoubleNumFactory DELEGATE = DoubleNumFactory.getInstance();
+
+        @Override
+        public Num minusOne() {
+            return DELEGATE.minusOne();
+        }
+
+        @Override
+        public Num zero() {
+            return DELEGATE.zero();
+        }
+
+        @Override
+        public Num one() {
+            return DELEGATE.one();
+        }
+
+        @Override
+        public Num two() {
+            return DELEGATE.two();
+        }
+
+        @Override
+        public Num three() {
+            return DELEGATE.three();
+        }
+
+        @Override
+        public Num hundred() {
+            return DELEGATE.hundred();
+        }
+
+        @Override
+        public Num thousand() {
+            return DELEGATE.thousand();
+        }
+
+        @Override
+        public Num numOf(final Number number) {
+            return numOf(number.toString());
+        }
+
+        @Override
+        public Num numOf(final String number) {
+            final double value = Double.parseDouble(number);
+            if (!Double.isFinite(value) || Math.abs(value) > MAXIMUM_INPUT) {
+                throw new IllegalArgumentException("value outside bounded test domain: " + number);
+            }
+            return DELEGATE.numOf(number);
         }
     }
 

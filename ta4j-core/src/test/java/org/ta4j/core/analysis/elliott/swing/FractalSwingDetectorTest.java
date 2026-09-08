@@ -346,6 +346,22 @@ class FractalSwingDetectorTest {
     }
 
     @Test
+    void ascendingReplayStaysLinearForUnchangedNonpublishingBaseBarSubclass() {
+        final CountedZigZagSeries small = new CountedZigZagSeries(1_200, UntrackedBaseBar::new);
+        final FractalSwingDetector smallDetector = new FractalSwingDetector(2);
+        final long smallReads = replayAscending(smallDetector, small);
+        assertThat(smallReads).isPositive();
+        assertThat(smallDetector.detectPivots(small.series(), small.seriesEnd()))
+                .isEqualTo(new FractalSwingDetector(2).detectPivots(small.series(), small.seriesEnd()));
+
+        final CountedZigZagSeries large = new CountedZigZagSeries(2_400, UntrackedBaseBar::new);
+        final FractalSwingDetector largeDetector = new FractalSwingDetector(2);
+        final long largeReads = replayAscending(largeDetector, large);
+
+        assertThat(largeReads).isLessThan(3 * smallReads);
+    }
+
+    @Test
     void staggeredSameIndexSidesReconcileInsteadOfAppendingZeroLengthSwings() {
         // With window 1 the LOW@1 (price 0) confirms at bar 2 while the HIGH
         // plateau [1..2] only completes at bar 3, so the opposite-type side
@@ -533,7 +549,7 @@ class FractalSwingDetectorTest {
         return fixture.barReads.sum() - readsBefore;
     }
 
-    /** Zigzag fixture counting series reads without subclassing trusted bars. */
+    /** Zigzag fixture counting series reads with an optional untrackable bar. */
     private static final class CountedZigZagSeries {
 
         private final LongAdder barReads = new LongAdder();
@@ -548,6 +564,10 @@ class FractalSwingDetectorTest {
         };
 
         private CountedZigZagSeries(final int barCount) {
+            this(barCount, null);
+        }
+
+        private CountedZigZagSeries(final int barCount, final Function<BaseBar, Bar> customBar) {
             final NumFactory factory = series.numFactory();
             double price = 100;
             int direction = 1;
@@ -558,8 +578,10 @@ class FractalSwingDetectorTest {
                 }
                 final Instant beginTime = Instant.EPOCH.plus(Duration.ofMinutes(index));
                 final Num value = factory.numOf(price);
-                series.addBar(new BaseBar(Duration.ofMinutes(1), beginTime, beginTime.plus(Duration.ofMinutes(1)),
-                        value, value, value, value, factory.one(), factory.zero(), 0L));
+                final BaseBar baseBar = new BaseBar(Duration.ofMinutes(1), beginTime,
+                        beginTime.plus(Duration.ofMinutes(1)), value, value, value, value, factory.one(),
+                        factory.zero(), 0L);
+                series.addBar(index == 1 && customBar != null ? customBar.apply(baseBar) : baseBar);
             }
         }
 

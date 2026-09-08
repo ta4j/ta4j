@@ -576,11 +576,15 @@ public final class FractalSwingDetector implements SwingDetector {
                     continue;
                 }
                 final Bar bar = series.getBar(index);
-                if (bar instanceof BaseBar || !entry.getValue().sameAs(BarState.of(bar))) {
+                if (!isUntrackableBar(bar) || !entry.getValue().sameAs(BarState.of(bar))) {
                     return true;
                 }
             }
             return false;
+        }
+
+        private static boolean isUntrackableBar(final Bar bar) {
+            return bar.getClass() != BaseBar.class && bar.getClass() != BaseRealtimeBar.class;
         }
 
         /**
@@ -650,7 +654,7 @@ public final class FractalSwingDetector implements SwingDetector {
         private void captureUntrackableBars(final long fromIndex, final int toIndex) {
             for (long index = fromIndex; index <= (long) toIndex; index++) {
                 final Bar bar = series.getBar((int) index);
-                if (bar.getClass() != BaseBar.class && bar.getClass() != BaseRealtimeBar.class) {
+                if (isUntrackableBar(bar)) {
                     observedUntrackableBars.put((int) index, BarState.of(bar));
                 }
             }

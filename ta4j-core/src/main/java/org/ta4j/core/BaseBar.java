@@ -590,14 +590,18 @@ public class BaseBar implements Bar {
         } catch (RuntimeException | Error failure) {
             // A price hook can change OHLC before throwing. Restore the enclosing
             // scope first so direct and nested calls publish through its sink.
-            try {
-                publishRetainedBarMutation();
-            } catch (RuntimeException | Error notificationFailure) {
-                if (notificationFailure != failure) {
-                    failure.addSuppressed(notificationFailure);
-                }
-            }
+            publishRetainedBarMutationAfterFailure(failure);
             throw failure;
+        }
+    }
+
+    final void publishRetainedBarMutationAfterFailure(final Throwable failure) {
+        try {
+            publishRetainedBarMutation();
+        } catch (RuntimeException | Error notificationFailure) {
+            if (notificationFailure != failure) {
+                failure.addSuppressed(notificationFailure);
+            }
         }
     }
 
