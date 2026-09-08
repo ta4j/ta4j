@@ -73,11 +73,19 @@ class CudaBenchmarkTest {
         for (int i = 0; i < prices.length; i++) {
             prices[i] = 100d + i * 0.04d + Math.sin(i * 0.09d) * 1.25d;
         }
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(prices).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(prices)
+                .build();
         ClosePriceIndicator close = new ClosePriceIndicator(series);
-        EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(new LogReturnIndicator(close), 32, 0.94d);
-        return MonteCarloPriceForecastIndicator.builder(close, state).horizon(horizon).iterationCount(paths)
-                .lookbackBarCount(128).seed(0x5090C0DEL).shockModel(ShockModel.STANDARDIZED_EMPIRICAL)
-                .volatilityUpdateMode(VolatilityUpdateMode.CONSTANT).build();
+        EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(new LogReturnIndicator(close), 32,
+                0.94d);
+        return MonteCarloPriceForecastIndicator.builder(close, state)
+                .horizon(horizon)
+                .iterationCount(paths)
+                .lookbackBarCount(128)
+                .seed(0x5090C0DEL)
+                .shockModel(ShockModel.STANDARDIZED_EMPIRICAL)
+                .volatilityUpdateMode(VolatilityUpdateMode.CONSTANT)
+                .build();
     }
 }

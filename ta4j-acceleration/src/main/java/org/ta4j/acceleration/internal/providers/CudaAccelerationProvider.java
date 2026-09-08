@@ -11,7 +11,8 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
 /**
  * NVIDIA CUDA provider for {@code MONTE_CARLO_SHOCK_PATHS_V1}.
  *
- * <p>The native lane returns row-major per-sample terminal prices. Assessment
+ * <p>
+ * The native lane returns row-major per-sample terminal prices. Assessment
  * remains lazy; loading and probing happen only when the provider is selected.
  *
  * @since 0.25.1
@@ -30,7 +31,8 @@ public final class CudaAccelerationProvider extends ShockPathKernelProvider {
     @Override
     boolean libraryPresent() {
         String configured = System.getProperty(CudaNativeLibrary.LIBRARY_PROPERTY, "").trim();
-        return (!configured.isEmpty() && Files.exists(Path.of(configured))) || CudaNativeLibrary.packagedResourcePresent();
+        return (!configured.isEmpty() && Files.exists(Path.of(configured)))
+                || CudaNativeLibrary.packagedResourcePresent();
     }
 
     @Override

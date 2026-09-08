@@ -17,9 +17,9 @@ import org.ta4j.core.acceleration.AccelerationRuntime.NumericEncoding;
 import org.ta4j.core.acceleration.AccelerationRuntime.Operation;
 
 /**
- * Exercises CUDA device qualification and real provider sample dispatch. Distinct
- * operation shock codes must retain their standardized, historical, and normal
- * semantics when translated to the native kernel.
+ * Exercises CUDA device qualification and real provider sample dispatch.
+ * Distinct operation shock codes must retain their standardized, historical,
+ * and normal semantics when translated to the native kernel.
  *
  * <p>
  * The native library cannot be built on macOS, so this test is excluded from

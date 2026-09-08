@@ -11,7 +11,8 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
 /**
  * Khronos OpenCL provider for {@code MONTE_CARLO_SHOCK_PATHS_V1}.
  *
- * <p>The native lane returns row-major per-sample terminal prices and is loaded
+ * <p>
+ * The native lane returns row-major per-sample terminal prices and is loaded
  * lazily after assessment selects this provider.
  *
  * @since 0.25.1
@@ -31,7 +32,8 @@ public final class OpenClAccelerationProvider extends ShockPathKernelProvider {
     @Override
     boolean libraryPresent() {
         String configured = System.getProperty(OpenClNativeLibrary.LIBRARY_PROPERTY, "").trim();
-        return (!configured.isEmpty() && Files.exists(Path.of(configured))) || OpenClNativeLibrary.packagedResourcePresent();
+        return (!configured.isEmpty() && Files.exists(Path.of(configured)))
+                || OpenClNativeLibrary.packagedResourcePresent();
     }
 
     @Override

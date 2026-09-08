@@ -23,10 +23,10 @@ import org.junit.jupiter.api.Test;
  *
  * <p>
  * The native library cannot be built in this environment, so this test compiles
- * a tiny JNI stub (see {@code ta4j-acceleration/src/test/resources/native-stubs}) that
- * serves configurable payloads through the real {@link JniMetalNativeBridge}
- * parsing code. The stub is only used to exercise the Java-side payload
- * contract.
+ * a tiny JNI stub (see
+ * {@code ta4j-acceleration/src/test/resources/native-stubs}) that serves
+ * configurable payloads through the real {@link JniMetalNativeBridge} parsing
+ * code. The stub is only used to exercise the Java-side payload contract.
  */
 class MetalProbePayloadTest {
 

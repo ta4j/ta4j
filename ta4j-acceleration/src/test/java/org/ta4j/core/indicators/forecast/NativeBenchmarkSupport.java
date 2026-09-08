@@ -15,7 +15,10 @@ import org.ta4j.core.acceleration.PlannedOperation;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.num.NumFactory;
 
-/** Measures native execution before a device has automatic-selection qualification. */
+/**
+ * Measures native execution before a device has automatic-selection
+ * qualification.
+ */
 final class NativeBenchmarkSupport {
     private NativeBenchmarkSupport() {
     }

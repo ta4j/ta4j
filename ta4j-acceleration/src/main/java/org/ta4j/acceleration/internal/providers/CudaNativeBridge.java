@@ -78,6 +78,7 @@ final class JniCudaNativeBridge implements CudaNativeBridge {
         return new CudaEvaluationResult(payload[0], payload[1], payload[2], payload[3],
                 Arrays.copyOfRange(payload, HEADER_LENGTH, payload.length));
     }
+
     private static native String nativeProbe(int abiVersion);
 
     private static native double[] nativeEvaluate(int abiVersion, int fromInclusive, int decisionCount, int horizon,

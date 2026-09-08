@@ -17,9 +17,9 @@ import org.ta4j.core.acceleration.AccelerationRuntime.NumericEncoding;
 import org.ta4j.core.acceleration.AccelerationRuntime.Operation;
 
 /**
- * Exercises OpenCL device qualification and real provider sample dispatch through
- * the operation-level ABI. The result must contain terminal samples, not reduced
- * forecast rows.
+ * Exercises OpenCL device qualification and real provider sample dispatch
+ * through the operation-level ABI. The result must contain terminal samples,
+ * not reduced forecast rows.
  *
  * <p>
  * The native library cannot be built on macOS, so this test is excluded from
@@ -46,9 +46,8 @@ class OpenClNativeIntegrationTest {
         assertThat(probe.deviceName()).isNotBlank();
         KernelRequest request = new KernelRequest(Operation.MONTE_CARLO_SHOCK_PATHS_V1, 1, 1, 2,
                 NumericEncoding.FLOAT64, Determinism.APPROXIMATE, 42L, 0.01d,
-                new double[] { 3d, 0d, 2d, 2d, 1d, 0.94d },
-                List.of(new double[] { 100d }, new double[] { 0d }, new double[] { 0d }, new double[] { 0d },
-                        new double[] { 0d }),
+                new double[] { 3d, 0d, 2d, 2d, 1d, 0.94d }, List.of(new double[] { 100d }, new double[] { 0d },
+                        new double[] { 0d }, new double[] { 0d }, new double[] { 0d }),
                 1_000_000L, 1_000_000L);
 
         assertThat(new OpenClAccelerationProvider().execute(request).outputs()).containsExactly(100d, 100d);

@@ -40,7 +40,6 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Provider;
  */
 abstract class ShockPathKernelProvider implements Provider {
 
-
     /**
      * Certified relative-tolerance floor of the fp32 approximate lane, per horizon
      * step. Each terminal price compounds {@code horizon} fp32 multiply-adds whose
@@ -310,8 +309,8 @@ abstract class ShockPathKernelProvider implements Provider {
         default -> throw new IllegalArgumentException("Unsupported native shock model: " + params[0]);
         };
         return new NativeForecastRequest(from, count, dimensions.horizon(), dimensions.iterations(),
-                dimensions.lookback(), request.seed(), nativeShockModel, (int) params[1], params[5], stable, chunkPrices,
-                chunkMeans, chunkDrifts, chunkVariances, chunkWindows);
+                dimensions.lookback(), request.seed(), nativeShockModel, (int) params[1], params[5], stable,
+                chunkPrices, chunkMeans, chunkDrifts, chunkVariances, chunkWindows);
     }
 
     private record Dimensions(int decisions, int horizon, int iterations, int lookback, long steps, long stagedBytes,

@@ -44,8 +44,8 @@ class OpenClBacktestBenchmarkTest {
         Files.createDirectories(output.toAbsolutePath().normalize().getParent());
         String report = "{\n  \"schemaVersion\": 1,\n  \"backend\": \"opencl\",\n"
                 + "  \"dispatchMode\": \"explicit-native\",\n  \"scalarNanos\": " + scalarNanos + ",\n"
-                + "  \"decisions\": " + decisions + ",\n  \"paths\": " + paths + ",\n"
-                + "  \"horizon\": " + horizon + ",\n  \"elapsedNanos\": " + elapsed + "\n}\n";
+                + "  \"decisions\": " + decisions + ",\n  \"paths\": " + paths + ",\n" + "  \"horizon\": " + horizon
+                + ",\n  \"elapsedNanos\": " + elapsed + "\n}\n";
         Files.writeString(output, report, StandardCharsets.UTF_8);
     }
 
@@ -54,15 +54,22 @@ class OpenClBacktestBenchmarkTest {
         double[] prices = new double[barCount];
         prices[0] = 100d;
         for (int i = 1; i < prices.length; i++) {
-            prices[i] = prices[i - 1] * Math.exp(0.0002d + 0.006d * Math.sin(i * 0.031d)
-                    + 0.003d * Math.cos(i * 0.071d));
+            prices[i] = prices[i - 1]
+                    * Math.exp(0.0002d + 0.006d * Math.sin(i * 0.031d) + 0.003d * Math.cos(i * 0.071d));
         }
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(prices).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(prices)
+                .build();
         ClosePriceIndicator close = new ClosePriceIndicator(series);
-        EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(new LogReturnIndicator(close), 256,
-                0.94d);
-        return MonteCarloPriceForecastIndicator.builder(close, state).horizon(horizon).iterationCount(paths)
-                .lookbackBarCount(256).seed(42L).shockModel(ShockModel.STANDARDIZED_EMPIRICAL)
-                .volatilityUpdateMode(VolatilityUpdateMode.CONSTANT).build();
+        EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(new LogReturnIndicator(close),
+                256, 0.94d);
+        return MonteCarloPriceForecastIndicator.builder(close, state)
+                .horizon(horizon)
+                .iterationCount(paths)
+                .lookbackBarCount(256)
+                .seed(42L)
+                .shockModel(ShockModel.STANDARDIZED_EMPIRICAL)
+                .volatilityUpdateMode(VolatilityUpdateMode.CONSTANT)
+                .build();
     }
 }
