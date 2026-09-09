@@ -1,6 +1,6 @@
 # Java and test review requirements
 
-Load before Java implementation, API design, test changes, test-runtime optimization, or reviews of those surfaces. Apply these requirements alongside the target's ancestor-scoped guides; this file does not replace them or the root completion gate.
+Load before Java implementation, API design, test changes, test-runtime optimization, or reviews of those surfaces. These are repository-wide defaults with the same scope and precedence as the root `AGENTS.md`. Apply them with the target's ancestor-scoped guides; when requirements conflict, the target's closest applicable scoped `AGENTS.md` takes precedence over this file. All non-conflicting requirements and the root completion gate still apply.
 
 ## 6) Reuse-first policy (MUST)
 

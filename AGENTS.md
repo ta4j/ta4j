@@ -39,4 +39,4 @@ Load `scripts/AGENTS.md` for worktree lifecycle or PRD/checklist operations, and
 
 ## Task-specific engineering requirements
 
-Before Java implementation, API design, test changes, test-runtime optimization, or reviews of those surfaces, read [JAVA_REVIEW.md](JAVA_REVIEW.md). It owns the reuse audit, consolidation/public-surface rules, local typing style, and test-runtime discipline. Documentation-only work need not load those details.
+Before Java implementation, API design (including documentation-only PRDs and checklists), test changes, test-runtime optimization, or reviews of those surfaces, read [JAVA_REVIEW.md](JAVA_REVIEW.md). It owns the reuse audit, consolidation/public-surface rules, local typing style, and test-runtime discipline. Documentation-only work may omit it only when it does not design, specify, or review Java/API/test behavior. The documentation-only completion-gate exception above does not waive these engineering requirements.
