@@ -184,6 +184,11 @@ public class BacktestExecutorTest {
         BacktestExecutor executor = new BacktestExecutor(series);
         Strategy first = new BaseStrategy(new FixedRule(0), new FixedRule(1));
         Strategy second = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        Strategy failing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1),
+                new IllegalStateException("previous execution"));
+        assertThrows(IllegalStateException.class,
+                () -> executor.executeWithRuntimeReport(List.of(failing), numFactory.one(), Trade.TradeType.BUY, 1));
+        assertSame(failing, executor.getStrategyFailures().getFirst().strategy());
         PositionSizer interruptingSizer = context -> {
             Thread.currentThread().interrupt();
             return numFactory.one();
@@ -191,6 +196,7 @@ public class BacktestExecutorTest {
 
         assertThrows(IllegalStateException.class, () -> executor.executeWithRuntimeReport(List.of(first, second),
                 interruptingSizer, Trade.TradeType.BUY, 1));
+        assertTrue(executor.getStrategyFailures().isEmpty());
     }
 
     @Test

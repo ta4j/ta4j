@@ -55,7 +55,7 @@ public class BacktestExecutor {
      * by
      * {@link #executeAndKeepTopK(List, AnalysisCriterion, int, Consumer, Function)}
      * and
-     * {@link #executeWithRuntimeReport(List, Trade.TradeType, Consumer, int, Function)}
+     * {@link #executeWithRuntimeReport(List, Trade.TradeType, Consumer, int, int, Function)}
      * so callers can distinguish healthy results from skipped strategies.
      */
     private volatile List<BacktestExecutionResult.StrategyFailure> latestFailures = List.of();
@@ -493,8 +493,13 @@ public class BacktestExecutor {
         // For large strategy counts, use batched processing to prevent memory
         // exhaustion. Use smaller batches for very large counts.
         if (parallelism > 0) {
-            executeBounded(strategyArray, statements, durations, tradingRecordRunner, effectiveCallback, parallelism,
-                    executionFailures);
+            try {
+                executeBounded(strategyArray, statements, durations, tradingRecordRunner, effectiveCallback,
+                        parallelism, executionFailures);
+            } catch (RuntimeException | Error failure) {
+                publishStrategyFailures(executionFailures);
+                throw failure;
+            }
         } else if (usesBatchedExecution(strategyCount)) {
             int effectiveBatchSize = effectiveBatchSize(strategyCount, batchSize);
             executeBatched(strategyArray, statements, durations, tradingRecordRunner, effectiveCallback,
