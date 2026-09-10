@@ -21,9 +21,9 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -1140,11 +1140,11 @@ public class BacktestExecutor {
         ExecutorService workerExecutor = Executors.newFixedThreadPool(workerCount);
         AtomicInteger nextStrategyIndex = new AtomicInteger();
         ProgressTracker progressTracker = ProgressTracker.create(progressCallback);
-        List<Future<?>> workerFutures = new ArrayList<>(workerCount);
+        ExecutorCompletionService<Void> completedWorkers = new ExecutorCompletionService<>(workerExecutor);
 
         try {
             for (int worker = 0; worker < workerCount; worker++) {
-                workerFutures.add(workerExecutor.submit(() -> {
+                completedWorkers.submit(() -> {
                     int index;
                     while (!Thread.currentThread().isInterrupted()
                             && (index = nextStrategyIndex.getAndIncrement()) < strategyArray.length) {
@@ -1154,10 +1154,10 @@ public class BacktestExecutor {
                     if (Thread.currentThread().isInterrupted()) {
                         throw new IllegalStateException("Bounded backtest worker interrupted");
                     }
-                }));
+                }, null);
             }
-            for (Future<?> workerFuture : workerFutures) {
-                workerFuture.get();
+            for (int workerIndex = 0; workerIndex < workerCount; workerIndex++) {
+                completedWorkers.take().get();
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

@@ -200,6 +200,46 @@ public class BacktestExecutorTest {
     }
 
     @Test
+    public void boundedWorkerFailureInterruptsBlockedPeer() throws Exception {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(5, 6, 7, 8).build();
+        BacktestExecutor executor = new BacktestExecutor(series);
+        CountDownLatch blocked = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        AtomicBoolean interrupted = new AtomicBoolean();
+        AssertionError failure = new AssertionError("worker failure");
+        PositionSizer sizer = context -> {
+            try {
+                if (context.signalIndex() == 0) {
+                    blocked.countDown();
+                    release.await();
+                    return numFactory.one();
+                }
+                if (!blocked.await(5, TimeUnit.SECONDS)) {
+                    throw new AssertionError("peer did not start");
+                }
+                throw failure;
+            } catch (InterruptedException e) {
+                interrupted.set(true);
+                Thread.currentThread().interrupt();
+                return numFactory.one();
+            }
+        };
+        Strategy first = new BaseStrategy(new FixedRule(0), new FixedRule(2));
+        Strategy second = new BaseStrategy(new FixedRule(1), new FixedRule(2));
+        ExecutorService caller = Executors.newSingleThreadExecutor();
+        try {
+            Future<AssertionError> execution = caller.submit(() -> assertThrows(AssertionError.class,
+                    () -> executor.executeWithRuntimeReport(List.of(first, second), sizer, Trade.TradeType.BUY, 2)));
+            assertSame(failure, execution.get(5, TimeUnit.SECONDS));
+            assertTrue(interrupted.get());
+        } finally {
+            release.countDown();
+            caller.shutdownNow();
+            caller.close();
+        }
+    }
+
+    @Test
     public void executeWithProgressCallback() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14).build();
 
