@@ -101,7 +101,8 @@ public class BacktestExecutorTest {
         List<Strategy> strategies = List.of(strategyOne, strategyTwo, strategyThree);
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1));
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1), Trade.TradeType.BUY,
+                2);
 
         assertEquals(strategies.size(), result.tradingStatements().size());
         assertEquals(strategies.size(), result.runtimeReport().strategyCount());
@@ -134,7 +135,7 @@ public class BacktestExecutorTest {
         PositionSizer positionSizer = context -> numFactory.numOf(context.signalIndex() + 1);
 
         BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), positionSizer,
-                Trade.TradeType.BUY);
+                Trade.TradeType.BUY, 1);
         TradingRecord tradingRecord = result.tradingStatements().getFirst().getTradingRecord();
         Position position = tradingRecord.getPositions().getFirst();
 
@@ -162,6 +163,34 @@ public class BacktestExecutorTest {
         assertEquals(result.runtimeReport().overallRuntime(), result.runtimeReport().maxStrategyRuntime());
         assertEquals(result.runtimeReport().overallRuntime(), result.runtimeReport().averageStrategyRuntime());
         assertEquals(result.runtimeReport().overallRuntime(), result.runtimeReport().medianStrategyRuntime());
+    }
+
+    @Test
+    public void executeWithRuntimeReportBoundedRejectsNonPositiveParallelism() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(5, 6, 7).build();
+        BacktestExecutor executor = new BacktestExecutor(series);
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        PositionSizer positionSizer = context -> numFactory.one();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> executor.executeWithRuntimeReport(List.of(strategy), numOf(1), Trade.TradeType.BUY, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> executor.executeWithRuntimeReport(List.of(strategy), positionSizer, Trade.TradeType.BUY, -1));
+    }
+
+    @Test
+    public void boundedWorkerInterruptionRejectsIncompleteResults() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(5, 6, 7).build();
+        BacktestExecutor executor = new BacktestExecutor(series);
+        Strategy first = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        Strategy second = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        PositionSizer interruptingSizer = context -> {
+            Thread.currentThread().interrupt();
+            return numFactory.one();
+        };
+
+        assertThrows(IllegalStateException.class, () -> executor.executeWithRuntimeReport(List.of(first, second),
+                interruptingSizer, Trade.TradeType.BUY, 1));
     }
 
     @Test
@@ -610,8 +639,8 @@ public class BacktestExecutorTest {
         Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1), new IllegalStateException("boom"));
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor
-                .executeWithRuntimeReport(List.of(oneTrade, throwing, threeTrades, twoTrades), numOf(1));
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(
+                List.of(oneTrade, throwing, threeTrades, twoTrades), numOf(1), Trade.TradeType.BUY, 2);
 
         assertEquals(3, result.tradingStatements().size());
         assertEquals(3, result.runtimeReport().strategyCount());
@@ -692,8 +721,8 @@ public class BacktestExecutorTest {
                 new IllegalStateException("boom-two"));
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> executor.executeWithRuntimeReport(List.of(throwingOne, throwingTwo), numOf(1)));
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> executor
+                .executeWithRuntimeReport(List.of(throwingOne, throwingTwo), numOf(1), Trade.TradeType.BUY, 2));
 
         assertTrue(exception.getMessage().contains("All 2 strategies failed"));
         assertEquals(2, executor.getStrategyFailures().size());
