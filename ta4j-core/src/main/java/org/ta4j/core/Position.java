@@ -54,7 +54,7 @@ public class Position implements Serializable {
     private final transient CostModel holdingCostModel;
 
     /** The futures contract of the position, or null for spot positions */
-    private final FuturesContract futuresContract;
+    private FuturesContract futuresContract;
 
     /** Cash flows allocated to the position, empty for spot positions */
     private final List<FuturesCashFlow> cashFlows;
@@ -302,10 +302,12 @@ public class Position implements Serializable {
             if (trade.getType() != startingType) {
                 throw new IllegalArgumentException("The first trade type must match the starting type");
             }
+            futuresContract = trade.getFuturesContract();
             entry = trade;
             return trade;
         }
         if (isOpened()) {
+            validateContract(trade.getFuturesContract());
             if (trade.getType() != startingType.complementType()) {
                 throw new IllegalArgumentException("The exit trade type must complement the entry trade type");
             }
@@ -780,6 +782,12 @@ public class Position implements Serializable {
      * @throws IllegalArgumentException when the trades mix spot and futures or name
      *                                  different contracts
      */
+    private void validateContract(FuturesContract tradeContract) {
+        if (!Objects.equals(futuresContract, tradeContract)) {
+            throw new IllegalArgumentException("Trade futures contract must match the position contract");
+        }
+    }
+
     private static FuturesContract resolveContract(Trade entry, Trade exit) {
         FuturesContract contract = entry.getFuturesContract();
         if (exit == null) {

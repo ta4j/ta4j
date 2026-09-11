@@ -108,6 +108,16 @@ final class FuturesValidation {
         }
     }
 
+    static int numHash(Num value) {
+        if (value == null) {
+            return 0;
+        }
+        if (value.isNaN()) {
+            return 31;
+        }
+        return value.bigDecimalValue().stripTrailingZeros().hashCode();
+    }
+
     static boolean numEqualsNullable(Num left, Num right) {
         if (left == null || right == null) {
             return left == right;

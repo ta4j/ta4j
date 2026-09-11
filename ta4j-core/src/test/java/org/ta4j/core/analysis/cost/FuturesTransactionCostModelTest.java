@@ -43,8 +43,8 @@ class FuturesTransactionCostModelTest {
                 .build();
     }
 
-    private static TradeFill fill(FuturesContract contract, ExecutionSide side, Num price,
-            Num contracts, RealtimeBar.Liquidity liquidity, List<TradeFee> fees) {
+    private static TradeFill fill(FuturesContract contract, ExecutionSide side, Num price, Num contracts,
+            RealtimeBar.Liquidity liquidity, List<TradeFee> fees) {
         TradeFill.Builder builder = TradeFill.builder()
                 .index(0)
                 .time(T0)
@@ -65,8 +65,8 @@ class FuturesTransactionCostModelTest {
     void modelsLinearCommissionFromSettlementNotionalWithPerContractFloor() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = btcPerpetual(numFactory);
-            TradeFill takerFill = fill(contract, ExecutionSide.BUY, numFactory.numOf(50000),
-                    numFactory.numOf(3), null, null);
+            TradeFill takerFill = fill(contract, ExecutionSide.BUY, numFactory.numOf(50000), numFactory.numOf(3), null,
+                    null);
 
             FuturesTransactionCostModel unfloored = FuturesTransactionCostModel.builder()
                     .makerRate(numFactory.numOf(0.00002))
@@ -104,10 +104,8 @@ class FuturesTransactionCostModelTest {
             Num price = numFactory.numOf(50000);
             Num contracts = numFactory.numOf(3);
             TradeFill unknown = fill(contract, ExecutionSide.BUY, price, contracts, null, null);
-            TradeFill maker = fill(contract, ExecutionSide.BUY, price, contracts,
-                    RealtimeBar.Liquidity.MAKER, null);
-            TradeFill taker = fill(contract, ExecutionSide.BUY, price, contracts,
-                    RealtimeBar.Liquidity.TAKER, null);
+            TradeFill maker = fill(contract, ExecutionSide.BUY, price, contracts, RealtimeBar.Liquidity.MAKER, null);
+            TradeFill taker = fill(contract, ExecutionSide.BUY, price, contracts, RealtimeBar.Liquidity.TAKER, null);
 
             // Unknown liquidity is never guessed as maker.
             assertNumEquals(0.75, model.calculate(unknown));
@@ -121,8 +119,8 @@ class FuturesTransactionCostModelTest {
     void keepsRebatesSignedAndAddsPerContractChargesAboveCommissionFloor() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = btcPerpetual(numFactory);
-            TradeFill makerFill = fill(contract, ExecutionSide.BUY, numFactory.numOf(50000),
-                    numFactory.numOf(3), RealtimeBar.Liquidity.MAKER, null);
+            TradeFill makerFill = fill(contract, ExecutionSide.BUY, numFactory.numOf(50000), numFactory.numOf(3),
+                    RealtimeBar.Liquidity.MAKER, null);
 
             FuturesTransactionCostModel rebate = FuturesTransactionCostModel.builder()
                     .makerRate(numFactory.numOf(-0.00001))
@@ -209,8 +207,8 @@ class FuturesTransactionCostModelTest {
                     .takerRate(numFactory.numOf(0.00001))
                     .minimumPerContract(numFactory.numOf(0.05))
                     .build();
-            TradeFill unpriced = fill(contract, ExecutionSide.BUY, numFactory.numOf(50000),
-                    numFactory.numOf(3), null, null);
+            TradeFill unpriced = fill(contract, ExecutionSide.BUY, numFactory.numOf(50000), numFactory.numOf(3), null,
+                    null);
 
             Trade trade = Trade.fromFill(unpriced, model);
             TradeFill normalized = trade.getFills().getFirst();

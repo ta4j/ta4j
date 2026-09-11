@@ -137,7 +137,8 @@ public final class FuturesFunding implements Serializable {
 
     @Override
     public int hashCode() {
-        return Objects.hash(contract, eventId, index, time, rate, referencePrice, source);
+        return Objects.hash(contract, eventId, index, time, FuturesValidation.numHash(rate),
+                FuturesValidation.numHash(referencePrice), source);
     }
 
     @Override

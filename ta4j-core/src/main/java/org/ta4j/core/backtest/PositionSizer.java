@@ -414,8 +414,9 @@ public interface PositionSizer {
             if (contract == null) {
                 upperBound = budget.dividedBy(entryPrice);
             } else {
-                Num requirementPerContract = entryCost(numFactory().one());
-                upperBound = requirementPerContract.isPositive() ? budget.dividedBy(requirementPerContract) : zero;
+                Num marginPerContract = contract.marginRequirement(numFactory().one(), entryPrice,
+                        requireInitialMarginRate());
+                upperBound = marginPerContract.isPositive() ? budget.dividedBy(marginPerContract) : zero;
             }
             if (!upperBound.isPositive()) {
                 return zero;

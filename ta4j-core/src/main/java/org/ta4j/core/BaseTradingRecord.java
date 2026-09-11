@@ -75,7 +75,7 @@ public class BaseTradingRecord implements TradingRecord {
     private final FuturesContract futuresContract;
     private final Num initialCapital;
     private final Num initialMarginRate;
-    private final List<FuturesFunding> fundingSchedule;
+    private List<FuturesFunding> fundingSchedule;
     private String name;
     private int nextTradeIndex;
     private transient List<Trade> tradesCache;
@@ -929,6 +929,7 @@ public class BaseTradingRecord implements TradingRecord {
         try {
             List<TradeFill> fills = Trade.executionFillsOf(trade);
             List<PlannedTradeFill> plannedTradeFills = planTradeFills(trade, fills);
+            validatePlannedFillTimes(plannedTradeFills);
             for (PlannedTradeFill plannedTradeFill : plannedTradeFills) {
                 applyTradeInternal(plannedTradeFill.index(), plannedTradeFill.trade(), -1L);
             }
@@ -1161,6 +1162,25 @@ public class BaseTradingRecord implements TradingRecord {
      *
      * @param trade native fill about to be applied
      */
+    private void validatePlannedFillTimes(List<PlannedTradeFill> plannedTradeFills) {
+        Instant previousTime = null;
+        for (PlannedTradeFill plannedTradeFill : plannedTradeFills) {
+            Trade plannedTrade = plannedTradeFill.trade();
+            if (plannedTrade.getFuturesContract() == null) {
+                continue;
+            }
+            Instant fillTime = plannedTrade.getTime();
+            if (eventHorizon != null && fillTime.isBefore(eventHorizon)) {
+                throw new IllegalArgumentException(
+                        "Fill at " + fillTime + " precedes the processed event horizon " + eventHorizon);
+            }
+            if (previousTime != null && fillTime.isBefore(previousTime)) {
+                throw new IllegalArgumentException("Futures fills must be chronological");
+            }
+            previousTime = fillTime;
+        }
+    }
+
     private void advanceForFill(Trade trade) {
         if (futuresContract == null) {
             return;
@@ -1530,6 +1550,9 @@ public class BaseTradingRecord implements TradingRecord {
         if (marketSnapshots == null) {
             marketSnapshots = new ArrayList<>();
         }
+        if (fundingSchedule == null) {
+            fundingSchedule = List.of();
+        }
         if (positionSnapshots == null) {
             positionSnapshots = new ArrayList<>();
         }
@@ -1814,6 +1837,8 @@ public class BaseTradingRecord implements TradingRecord {
             }
             Num remaining = trade.getAmount();
             Num remainingFee = feeOf(trade);
+            List<TradeFee> remainingExitComponents = trade.getFuturesContract() == null ? null
+                    : List.copyOf(trade.getFees());
             List<Position> closed = new ArrayList<>();
             while (remaining.isPositive()) {
                 PositionLot lot = nextLot(trade);
@@ -1827,7 +1852,11 @@ public class BaseTradingRecord implements TradingRecord {
                 Num closeAmount = remaining.isGreaterThan(lotAmount) ? lotAmount : remaining;
                 Num exitFeePortion = remainingFee.isZero() ? remainingFee
                         : remainingFee.multipliedBy(closeAmount).dividedBy(remaining);
-                ClosedPosition closedPosition = closeLot(lot, trade, index, closeAmount, exitFeePortion, sequence);
+                FeeAllocation exitFeeComponents = allocateFeeComponents(remainingExitComponents, closeAmount,
+                        remaining);
+                ClosedPosition closedPosition = closeLot(lot, trade, index, closeAmount, exitFeePortion,
+                        exitFeeComponents.allocated(), sequence);
+                remainingExitComponents = exitFeeComponents.remaining();
                 closed.add(closedPosition.position());
                 closedPositions.add(closedPosition);
                 remaining = remaining.minus(closeAmount);
@@ -2040,7 +2069,8 @@ public class BaseTradingRecord implements TradingRecord {
                 if (!(futuresContract.settlementType() == FuturesContract.SettlementType.INVERSE)) {
                     return totalAmount == null || totalAmount.isZero() ? totalCost : totalCost.dividedBy(totalAmount);
                 }
-                return inverseNotional.isZero() || totalAmount == null || totalAmount.isZero() ? totalCost : totalAmount.dividedBy(inverseNotional);
+                return inverseNotional.isZero() || totalAmount == null || totalAmount.isZero() ? totalCost
+                        : totalAmount.dividedBy(inverseNotional);
             }
             return totalAmount == null || totalAmount.isZero() ? totalCost : totalCost.dividedBy(totalAmount);
         }
@@ -2087,7 +2117,7 @@ public class BaseTradingRecord implements TradingRecord {
         }
 
         private ClosedPosition closeLot(PositionLot lot, Trade trade, int index, Num closeAmount, Num exitFeePortion,
-                long exitSequence) {
+                List<TradeFee> exitComponents, long exitSequence) {
             Num lotAmount = lot.amount();
             Num entryFeePortion = lot.fee().isZero() ? lot.fee()
                     : lot.fee().multipliedBy(closeAmount).dividedBy(lotAmount);
@@ -2101,8 +2131,6 @@ public class BaseTradingRecord implements TradingRecord {
             Trade entry = recordedTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), closeAmount,
                     entryFeePortion, lot.side(), lot.orderId(), lot.correlationId(), lot.futuresContract(),
                     entryComponents);
-            List<TradeFee> exitComponents = allocateFeeComponents(trade.getFuturesContract(), trade.getFees(),
-                    closeAmount, trade.getAmount());
             Trade exit = recordedTrade(index, timeOf(trade), trade.getPricePerAsset(), closeAmount, exitFeePortion,
                     sideOf(trade.getType()), trade.getOrderId(), trade.getCorrelationId(), trade.getFuturesContract(),
                     exitComponents);
@@ -2111,12 +2139,27 @@ public class BaseTradingRecord implements TradingRecord {
                     lot.entrySequence(), exitSequence);
         }
 
-        private static List<TradeFee> allocateFeeComponents(FuturesContract contract, List<TradeFee> components,
-                Num portion, Num total) {
-            if (contract == null) {
-                return null;
+        private static FeeAllocation allocateFeeComponents(List<TradeFee> components, Num portion, Num total) {
+            if (components == null) {
+                return new FeeAllocation(null, null);
             }
-            return scaleFeeComponents(components, portion, total);
+            if (portion.isEqual(total)) {
+                return new FeeAllocation(List.copyOf(components), List.of());
+            }
+            List<TradeFee> allocated = scaleFeeComponents(components, portion, total);
+            List<TradeFee> remaining = new ArrayList<>(components.size());
+            for (int i = 0; i < components.size(); i++) {
+                TradeFee component = components.get(i);
+                TradeFee allocatedComponent = allocated.get(i);
+                Num settlement = component.settlementAmount();
+                Num allocatedSettlement = allocatedComponent.settlementAmount();
+                remaining.add(component.toBuilder()
+                        .amount(component.amount().minus(allocatedComponent.amount()))
+                        .settlementAmount(settlement == null || allocatedSettlement == null ? null
+                                : settlement.minus(allocatedSettlement))
+                        .build());
+            }
+            return new FeeAllocation(allocated, List.copyOf(remaining));
         }
 
         private static List<TradeFee> scaleFeeComponents(List<TradeFee> components, Num portion, Num total) {
@@ -2160,6 +2203,9 @@ public class BaseTradingRecord implements TradingRecord {
                     .amount(proportional(cashFlow.amount(), portion, total))
                     .settlementAmount(proportional(cashFlow.settlementAmount(), portion, total))
                     .build();
+        }
+
+        private record FeeAllocation(List<TradeFee> allocated, List<TradeFee> remaining) {
         }
 
         private static Num proportional(Num value, Num portion, Num total) {

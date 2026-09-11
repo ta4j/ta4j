@@ -647,146 +647,348 @@ public final class FuturesContract implements Serializable {
             this.attributes = source.attributes;
         }
 
+        /**
+         * Sets {@code venue}.
+         *
+         * @param venue builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder venue(String venue) {
             this.venue = venue;
             return this;
         }
 
+        /**
+         * Sets {@code symbol}.
+         *
+         * @param symbol builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder symbol(String symbol) {
             this.symbol = symbol;
             return this;
         }
 
+        /**
+         * Sets {@code productType}.
+         *
+         * @param productType builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder productType(ProductType productType) {
             this.productType = productType;
             return this;
         }
 
+        /**
+         * Sets {@code settlementType}.
+         *
+         * @param settlementType builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder settlementType(SettlementType settlementType) {
             this.settlementType = settlementType;
             return this;
         }
 
+        /**
+         * Sets {@code baseCurrency}.
+         *
+         * @param baseCurrency builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder baseCurrency(String baseCurrency) {
             this.baseCurrency = baseCurrency;
             return this;
         }
 
+        /**
+         * Sets {@code quoteCurrency}.
+         *
+         * @param quoteCurrency builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder quoteCurrency(String quoteCurrency) {
             this.quoteCurrency = quoteCurrency;
             return this;
         }
 
+        /**
+         * Sets {@code settlementCurrency}.
+         *
+         * @param settlementCurrency builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder settlementCurrency(String settlementCurrency) {
             this.settlementCurrency = settlementCurrency;
             return this;
         }
 
+        /**
+         * Sets {@code contractSize}.
+         *
+         * @param contractSize builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder contractSize(Num contractSize) {
             this.contractSize = contractSize;
             return this;
         }
 
+        /**
+         * Sets {@code productId}.
+         *
+         * @param productId builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder productId(String productId) {
             this.productId = productId;
             return this;
         }
 
+        /**
+         * Sets {@code contractCode}.
+         *
+         * @param contractCode builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder contractCode(String contractCode) {
             this.contractCode = contractCode;
             return this;
         }
 
+        /**
+         * Sets {@code contractRoot}.
+         *
+         * @param contractRoot builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder contractRoot(String contractRoot) {
             this.contractRoot = contractRoot;
             return this;
         }
 
+        /**
+         * Sets {@code displayName}.
+         *
+         * @param displayName builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder displayName(String displayName) {
             this.displayName = displayName;
             return this;
         }
 
+        /**
+         * Sets {@code contractExpiryType}.
+         *
+         * @param contractExpiryType builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder contractExpiryType(String contractExpiryType) {
             this.contractExpiryType = contractExpiryType;
             return this;
         }
 
+        /**
+         * Sets {@code contractRootUnit}.
+         *
+         * @param contractRootUnit builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder contractRootUnit(String contractRootUnit) {
             this.contractRootUnit = contractRootUnit;
             return this;
         }
 
+        /**
+         * Sets {@code expiry}.
+         *
+         * @param expiry builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder expiry(Instant expiry) {
             this.expiry = expiry;
             return this;
         }
 
+        /**
+         * Sets {@code expiryTimeZone}.
+         *
+         * @param expiryTimeZone builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder expiryTimeZone(ZoneId expiryTimeZone) {
             this.expiryTimeZone = expiryTimeZone;
             return this;
         }
 
+        /**
+         * Sets {@code tradingDisabledAt}.
+         *
+         * @param tradingDisabledAt builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder tradingDisabledAt(Instant tradingDisabledAt) {
             this.tradingDisabledAt = tradingDisabledAt;
             return this;
         }
 
+        /**
+         * Sets {@code priceIncrement}.
+         *
+         * @param priceIncrement builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder priceIncrement(Num priceIncrement) {
             this.priceIncrement = priceIncrement;
             return this;
         }
 
+        /**
+         * Sets {@code quantityIncrement}.
+         *
+         * @param quantityIncrement builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder quantityIncrement(Num quantityIncrement) {
             this.quantityIncrement = quantityIncrement;
             return this;
         }
 
+        /**
+         * Sets {@code minimumQuantity}.
+         *
+         * @param minimumQuantity builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder minimumQuantity(Num minimumQuantity) {
             this.minimumQuantity = minimumQuantity;
             return this;
         }
 
+        /**
+         * Sets {@code maximumQuantity}.
+         *
+         * @param maximumQuantity builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder maximumQuantity(Num maximumQuantity) {
             this.maximumQuantity = maximumQuantity;
             return this;
         }
 
+        /**
+         * Sets {@code minimumNotional}.
+         *
+         * @param minimumNotional builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder minimumNotional(Num minimumNotional) {
             this.minimumNotional = minimumNotional;
             return this;
         }
 
+        /**
+         * Sets {@code maximumNotional}.
+         *
+         * @param maximumNotional builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder maximumNotional(Num maximumNotional) {
             this.maximumNotional = maximumNotional;
             return this;
         }
 
+        /**
+         * Sets {@code perpetualStyle}.
+         *
+         * @param perpetualStyle builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder perpetualStyle(Boolean perpetualStyle) {
             this.perpetualStyle = perpetualStyle;
             return this;
         }
 
+        /**
+         * Sets {@code trading24x7}.
+         *
+         * @param trading24x7 builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder trading24x7(Boolean trading24x7) {
             this.trading24x7 = trading24x7;
             return this;
         }
 
+        /**
+         * Sets {@code nonCrypto}.
+         *
+         * @param nonCrypto builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder nonCrypto(Boolean nonCrypto) {
             this.nonCrypto = nonCrypto;
             return this;
         }
 
+        /**
+         * Sets {@code riskManagedBy}.
+         *
+         * @param riskManagedBy builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder riskManagedBy(String riskManagedBy) {
             this.riskManagedBy = riskManagedBy;
             return this;
         }
 
+        /**
+         * Sets {@code attributes}.
+         *
+         * @param attributes builder value
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder attributes(Map<String, String> attributes) {
             this.attributes = attributes == null ? Map.of() : attributes;
             return this;
         }
 
+        /**
+         * Builds a futures contract from the configured values.
+         *
+         * @return immutable futures contract
+         * @since 0.25.1
+         */
         public FuturesContract build() {
             return new FuturesContract(this);
         }

@@ -3,6 +3,7 @@
  */
 package org.ta4j.core;
 
+import java.util.ArrayDeque;
 import java.util.List;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.num.Num;
@@ -63,12 +64,32 @@ final class FuturesPositionAccounting {
     static Num payoff(Position position, Num finalPrice, int finalIndex) {
         FuturesContract contract = requireContract(position);
         Trade entry = position.getEntry();
-        Trade exit = executedExit(position, finalIndex);
+        List<TradeFill> entryFills = executedFills(entry, finalIndex);
+        ArrayDeque<FillSlice> exits = new ArrayDeque<>();
+        Trade exit = position.getExit();
         if (exit != null) {
-            return contract.profit(entry.getType(), exit.getAmount(), entry.getPricePerAsset(),
-                    exit.getPricePerAsset());
+            for (TradeFill fill : executedFills(exit, finalIndex)) {
+                exits.addLast(new FillSlice(fill.price(), fill.amount()));
+            }
         }
-        return contract.profit(entry.getType(), entry.getAmount(), entry.getPricePerAsset(), finalPrice);
+        Num total = entry.getPricePerAsset().getNumFactory().zero();
+        for (TradeFill entryFill : entryFills) {
+            Num remainingEntry = entryFill.amount();
+            while (remainingEntry.isPositive() && !exits.isEmpty()) {
+                FillSlice exitFill = exits.removeFirst();
+                Num matched = remainingEntry.isLessThan(exitFill.amount()) ? remainingEntry : exitFill.amount();
+                total = total.plus(contract.profit(entry.getType(), matched, entryFill.price(), exitFill.price()));
+                remainingEntry = remainingEntry.minus(matched);
+                Num remainingExit = exitFill.amount().minus(matched);
+                if (remainingExit.isPositive()) {
+                    exits.addFirst(new FillSlice(exitFill.price(), remainingExit));
+                }
+            }
+            if (remainingEntry.isPositive()) {
+                total = total.plus(contract.profit(entry.getType(), remainingEntry, entryFill.price(), finalPrice));
+            }
+        }
+        return total;
     }
 
     /**
@@ -143,11 +164,10 @@ final class FuturesPositionAccounting {
      */
     static Num executedFees(Position position, int finalIndex) {
         Trade entry = position.getEntry();
-        Num zero = entry.getPricePerAsset().getNumFactory().zero();
-        Num total = entry.getIndex() <= finalIndex ? feeOf(entry, zero) : zero;
-        Trade exit = executedExit(position, finalIndex);
+        Num total = sumFillFees(entry, finalIndex);
+        Trade exit = position.getExit();
         if (exit != null) {
-            total = total.plus(feeOf(exit, zero));
+            total = total.plus(sumFillFees(exit, finalIndex));
         }
         return total;
     }
@@ -258,18 +278,22 @@ final class FuturesPositionAccounting {
 
     private static Trade executedExit(Position position, int finalIndex) {
         Trade exit = position.getExit();
-        if (exit == null || exit.getIndex() > finalIndex) {
-            return null;
-        }
-        return exit;
+        return exit != null && !executedFills(exit, finalIndex).isEmpty() ? exit : null;
     }
 
-    private static Num feeOf(Trade trade, Num zero) {
-        Num fee = trade.getCost();
-        if (fee == null || fee.isNaN()) {
-            return zero;
+    private static List<TradeFill> executedFills(Trade trade, int finalIndex) {
+        return Trade.executionFillsOf(trade).stream().filter(fill -> fill.index() <= finalIndex).toList();
+    }
+
+    private static Num sumFillFees(Trade trade, int finalIndex) {
+        Num total = trade.getPricePerAsset().getNumFactory().zero();
+        for (TradeFill fill : executedFills(trade, finalIndex)) {
+            total = total.plus(fill.fee());
         }
-        return zero.getNumFactory().numOf(fee.getDelegate());
+        return total;
+    }
+
+    private record FillSlice(Num price, Num amount) {
     }
 
     private static Num sum(Position position, FuturesCashFlow.Type type, int finalIndex) {

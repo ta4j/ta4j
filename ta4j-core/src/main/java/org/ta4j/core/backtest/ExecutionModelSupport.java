@@ -95,6 +95,7 @@ final class ExecutionModelSupport {
             tradingRecord.operate(target.index(), target.price(), amount);
             return;
         }
+        FuturesOrderQuantitySupport.requireTradable(futuresContract, amount, target.price());
         TradeType tradeType = nextTradeType(tradingRecord);
         tradingRecord.operate(TradeFill.builder()
                 .futuresContract(futuresContract)

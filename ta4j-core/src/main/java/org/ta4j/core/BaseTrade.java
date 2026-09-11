@@ -430,7 +430,7 @@ public class BaseTrade implements Trade {
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Resolved fee components are copied into an immutable list once at construction, so the accessor returns the shared instance without a per-call copy")
     @Override
     public List<TradeFee> getFees() {
-        return feeComponents;
+        return feeComponents == null ? List.of() : feeComponents;
     }
 
     /**

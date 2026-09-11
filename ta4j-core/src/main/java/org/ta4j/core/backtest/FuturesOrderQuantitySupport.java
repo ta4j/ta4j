@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.backtest;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Objects;
 import org.ta4j.core.FuturesContract;
 import org.ta4j.core.num.Num;
@@ -32,7 +34,7 @@ final class FuturesOrderQuantitySupport {
      * multiple: binary floating point quantities represent an exact multiple, such
      * as {@code 0.3 = 3 * 0.1}, as a neighbouring value.
      */
-    private static final double MULTIPLE_TOLERANCE = 1E-9;
+    private static final BigDecimal MULTIPLE_TOLERANCE = BigDecimal.valueOf(1E-9);
 
     private FuturesOrderQuantitySupport() {
     }
@@ -53,17 +55,8 @@ final class FuturesOrderQuantitySupport {
         if (increment == null) {
             return quantity;
         }
-        double ratio = ratioOf(quantity, increment);
-        double steps = Math.floor(ratio + tolerance(ratio));
-        Num rounded = increment.multipliedBy(quantity.getNumFactory().numOf(steps));
-        if (rounded.isLessThanOrEqual(quantity)) {
-            return rounded;
-        }
-        if (rounded.minus(quantity)
-                .isLessThanOrEqual(increment.multipliedBy(quantity.getNumFactory().numOf(MULTIPLE_TOLERANCE)))) {
-            return rounded;
-        }
-        return increment.multipliedBy(quantity.getNumFactory().numOf(steps - 1));
+        BigDecimal steps = quantity.bigDecimalValue().divide(increment.bigDecimalValue(), 0, RoundingMode.FLOOR);
+        return increment.multipliedBy(quantity.getNumFactory().numOf(steps));
     }
 
     /**
@@ -186,25 +179,15 @@ final class FuturesOrderQuantitySupport {
     }
 
     private static boolean isMultipleOf(Num quantity, Num increment) {
-        double ratio = ratioOf(quantity, increment);
-        if (!Double.isFinite(ratio)) {
-            return false;
-        }
-        double nearest = Math.rint(ratio);
-        return nearest >= 0 && Math.abs(ratio - nearest) <= tolerance(ratio);
-    }
-
-    private static double ratioOf(Num quantity, Num increment) {
         requirePositiveFinite(increment, "quantityIncrement");
-        return quantity.dividedBy(increment).doubleValue();
-    }
-
-    private static double tolerance(double ratio) {
-        return MULTIPLE_TOLERANCE * Math.max(1.0, Math.abs(ratio));
+        BigDecimal divisor = increment.bigDecimalValue();
+        BigDecimal remainder = quantity.bigDecimalValue().remainder(divisor).abs();
+        BigDecimal tolerance = divisor.abs().multiply(MULTIPLE_TOLERANCE);
+        return remainder.compareTo(tolerance) <= 0 || divisor.subtract(remainder).compareTo(tolerance) <= 0;
     }
 
     private static boolean isFinite(Num value) {
-        return !value.isNaN() && Double.isFinite(value.doubleValue());
+        return value != null && !value.isNaN() && value.bigDecimalValue() != null;
     }
 
     private static void requirePositiveFinite(Num value, String name) {
