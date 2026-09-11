@@ -438,7 +438,7 @@ public interface AnalysisCriterion {
             PositionInclusionPolicy inclusionPolicy = context.positionInclusionPolicy();
             for (Position position : source.getPositions()) {
                 if (includeClosedPosition(position, start, end, inclusionPolicy)) {
-                    includedPositions.add(position);
+                    includedPositions.add(trimFuturesPositionToWindow(position, end));
                 }
             }
             if (context.openPositionHandling() == OpenPositionHandling.MARK_TO_MARKET) {
@@ -534,6 +534,30 @@ public interface AnalysisCriterion {
             positions.add(openPosition);
         }
         return positions;
+    }
+
+    private static Position trimFuturesPositionToWindow(Position position, int end) {
+        Trade entry = position.getEntry();
+        List<TradeFill> retainedEntryFills = Trade.executionFillsOf(entry)
+                .stream()
+                .filter(fill -> fill.index() <= end)
+                .toList();
+        Trade exit = position.getExit();
+        List<TradeFill> retainedExitFills = exit == null ? List.of()
+                : Trade.executionFillsOf(exit).stream().filter(fill -> fill.index() <= end).toList();
+        if (retainedEntryFills.size() == Trade.executionFillsOf(entry).size()
+                && (exit == null || retainedExitFills.size() == Trade.executionFillsOf(exit).size())) {
+            return position;
+        }
+        CostModel transactionCostModel = position.getTransactionCostModel();
+        CostModel holdingCostModel = position.getHoldingCostModel();
+        Trade retainedEntry = Trade.fromFills(entry.getType(), retainedEntryFills, entry.getCostModel());
+        if (exit == null || retainedExitFills.isEmpty()) {
+            return new Position(retainedEntry, transactionCostModel, holdingCostModel, position.getCashFlows());
+        }
+        Trade retainedExit = Trade.fromFills(exit.getType(), retainedExitFills, exit.getCostModel());
+        return new Position(retainedEntry, retainedExit, transactionCostModel, holdingCostModel,
+                position.getCashFlows());
     }
 
     private static boolean includeClosedPosition(Position position, int start, int end,
