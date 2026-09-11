@@ -1157,10 +1157,9 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     /**
-     * Advances the accounting horizon through a native fill, so scheduled funding
-     * at the fill timestamp is applied before the fill is.
+     * Validates the timestamps of a planned native fill batch before mutation.
      *
-     * @param trade native fill about to be applied
+     * @param plannedTradeFills planned fills to validate
      */
     private void validatePlannedFillTimes(List<PlannedTradeFill> plannedTradeFills) {
         Instant previousTime = null;

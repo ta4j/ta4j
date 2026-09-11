@@ -773,15 +773,6 @@ public class Position implements Serializable {
                 resolveContract(validatedEntry, null));
     }
 
-    /**
-     * Resolves the futures contract shared by the entry and exit of a position.
-     *
-     * @param entry entry trade
-     * @param exit  exit trade, or {@code null} for an open position
-     * @return the shared contract, or {@code null} for a spot position
-     * @throws IllegalArgumentException when the trades mix spot and futures or name
-     *                                  different contracts
-     */
     private void validateContract(FuturesContract tradeContract) {
         if (!Objects.equals(futuresContract, tradeContract)) {
             throw new IllegalArgumentException("Trade futures contract must match the position contract");
