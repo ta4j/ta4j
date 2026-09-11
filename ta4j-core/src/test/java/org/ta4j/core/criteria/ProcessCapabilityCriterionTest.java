@@ -11,12 +11,19 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.time.Instant;
+import java.util.List;
 
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Trade;
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.TradeFee;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.statistics.SinglePrecisionNumFactory;
@@ -675,5 +682,138 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
         assertTrue(capability.isPositive());
         assertTrue(capability.isLessThan(large.numOf(1e-10)));
         assertTrue(capability.isGreaterThan(large.numOf(1e-30)));
+    }
+
+    @Test
+    public void inverseFuturesGainsWithTheContractRatioLikeTheEquivalentLinearFutures() {
+        // Bars 100 -> 120 and 100 -> 110 are linear long-ratio gross returns of
+        // 1.2 and 1.1. An inverse contract settles in the base asset, so its
+        // ratio is the entry-over-exit quotient: the mirrored 120 -> 100 and
+        // 110 -> 100 pairs produce the same 1.2 and 1.1.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 120, 100, 110, 120, 100, 110, 100)
+                .build();
+        FuturesContract linear = linearBtcPerpetual();
+        FuturesContract inverse = inverseBtcPerpetual();
+
+        BaseTradingRecord linearRecord = futuresRecord(linear, TradeType.BUY);
+        linearRecord.operate(futuresFill(linear, 0, ExecutionSide.BUY, 100));
+        linearRecord.operate(futuresFill(linear, 1, ExecutionSide.SELL, 120));
+        linearRecord.operate(futuresFill(linear, 2, ExecutionSide.BUY, 100));
+        linearRecord.operate(futuresFill(linear, 3, ExecutionSide.SELL, 110));
+
+        BaseTradingRecord inverseRecord = futuresRecord(inverse, TradeType.SELL);
+        inverseRecord.operate(futuresFill(inverse, 4, ExecutionSide.SELL, 120));
+        inverseRecord.operate(futuresFill(inverse, 5, ExecutionSide.BUY, 100));
+        inverseRecord.operate(futuresFill(inverse, 6, ExecutionSide.SELL, 110));
+        inverseRecord.operate(futuresFill(inverse, 7, ExecutionSide.BUY, 100));
+
+        // Both records carry mean 1.15 and sigma 0.05, so the distance to
+        // either specification limit is three sigma and Cpk is 1.
+        AnalysisCriterion oneSided = getCriterion(1);
+        AnalysisCriterion twoSided = getCriterion(1, 1.3);
+        assertNumEquals(numFactory.numOf(1), oneSided.calculate(series, linearRecord), 1e-12);
+        assertNumEquals(numFactory.numOf(1), twoSided.calculate(series, linearRecord), 1e-12);
+        assertNumEquals(numFactory.numOf(1), oneSided.calculate(series, inverseRecord), 1e-12);
+        assertNumEquals(numFactory.numOf(1), twoSided.calculate(series, inverseRecord), 1e-12);
+    }
+
+    @Test
+    public void inverseFuturesLosesAgainstTheContractRatioLikeTheEquivalentLinearFutures() {
+        // The same price pairs taken against the ratio return 2 - ratio: linear
+        // sells and inverse buys both score 2 - 1.2 and 2 - 1.1, so the mirrored
+        // contract types agree on 0.8 and 0.9 as well.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 120, 100, 110, 120, 100, 110, 100)
+                .build();
+        FuturesContract linear = linearBtcPerpetual();
+        FuturesContract inverse = inverseBtcPerpetual();
+
+        BaseTradingRecord linearRecord = futuresRecord(linear, TradeType.SELL);
+        linearRecord.operate(futuresFill(linear, 0, ExecutionSide.SELL, 100));
+        linearRecord.operate(futuresFill(linear, 1, ExecutionSide.BUY, 120));
+        linearRecord.operate(futuresFill(linear, 2, ExecutionSide.SELL, 100));
+        linearRecord.operate(futuresFill(linear, 3, ExecutionSide.BUY, 110));
+
+        BaseTradingRecord inverseRecord = futuresRecord(inverse, TradeType.BUY);
+        inverseRecord.operate(futuresFill(inverse, 4, ExecutionSide.BUY, 120));
+        inverseRecord.operate(futuresFill(inverse, 5, ExecutionSide.SELL, 100));
+        inverseRecord.operate(futuresFill(inverse, 6, ExecutionSide.BUY, 110));
+        inverseRecord.operate(futuresFill(inverse, 7, ExecutionSide.SELL, 100));
+
+        // Mean 0.85 and sigma 0.05 put both limits three sigma away.
+        AnalysisCriterion cpk = getCriterion(0.7, 1.0);
+        assertNumEquals(numFactory.numOf(1), cpk.calculate(series, linearRecord), 1e-12);
+        assertNumEquals(numFactory.numOf(1), cpk.calculate(series, inverseRecord), 1e-12);
+    }
+
+    @Test
+    public void inverseFuturesRatioUnderflowKeepsRepresentableCapability() {
+        // Inverse buys entered at 1e-308 and covered at 1e300 / 2e300 produce
+        // 2 - entry/exit returns of 2 - 1e-608 and 2 - 2e-608. DoubleNum rounds
+        // both gross returns to 2 and DecimalNum retains ratios below its double
+        // range, while the one-sided Cpk against USL 2 stays 1: the orientation
+        // aware boundary check must recognize the rounded short side of an
+        // inverse contract and recover the score instead of reporting no
+        // dispersion.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1e-308, 1e300, 1e-308, 2e300)
+                .build();
+        FuturesContract inverse = inverseBtcPerpetual();
+        BaseTradingRecord record = futuresRecord(inverse, TradeType.BUY);
+        record.operate(futuresFill(inverse, 0, ExecutionSide.BUY, 1e-308));
+        record.operate(futuresFill(inverse, 1, ExecutionSide.SELL, 1e300));
+        record.operate(futuresFill(inverse, 2, ExecutionSide.BUY, 1e-308));
+        record.operate(futuresFill(inverse, 3, ExecutionSide.SELL, 2e300));
+
+        AnalysisCriterion cpk = getCriterion(0, 2);
+        assertNumEquals(numFactory.numOf(1), cpk.calculate(series, record), 1e-12);
+    }
+
+    private FuturesContract linearBtcPerpetual() {
+        return FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01))
+                .build();
+    }
+
+    private FuturesContract inverseBtcPerpetual() {
+        return FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP-INVERSE")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.INVERSE)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("BTC")
+                .contractSize(numFactory.numOf(100))
+                .build();
+    }
+
+    private BaseTradingRecord futuresRecord(FuturesContract contract, TradeType startingType) {
+        return BaseTradingRecord.builder()
+                .startingType(startingType)
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(1_000))
+                .build();
+    }
+
+    private TradeFill futuresFill(FuturesContract contract, int index, ExecutionSide side, double price) {
+        return TradeFill.builder()
+                .index(index)
+                .time(Instant.parse("2025-01-01T00:00:00Z").plusSeconds(index))
+                .price(numFactory.numOf(price))
+                .amount(numFactory.numOf(1))
+                .side(side)
+                .orderId("order-" + index)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
     }
 }

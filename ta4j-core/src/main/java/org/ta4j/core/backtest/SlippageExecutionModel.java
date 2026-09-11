@@ -87,7 +87,7 @@ public class SlippageExecutionModel implements TradeExecutionModel {
         if (executionTarget == null) {
             return;
         }
-        tradingRecord.operate(executionTarget.index(), executionTarget.price(), amount);
+        ExecutionModelSupport.execute(tradingRecord, barSeries, executionTarget, amount, priceSource);
     }
 
     @Override

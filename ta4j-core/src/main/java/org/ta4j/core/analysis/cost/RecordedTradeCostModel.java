@@ -3,8 +3,12 @@
  */
 package org.ta4j.core.analysis.cost;
 
+import java.util.List;
+import java.util.Objects;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFee;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
@@ -53,6 +57,32 @@ public final class RecordedTradeCostModel implements CostModel {
     @Override
     public Num calculate(Num price, Num amount) {
         return price == null ? DoubleNumFactory.getInstance().zero() : price.getNumFactory().zero();
+    }
+
+    @Override
+    public Num calculate(TradeFill fill) {
+        Objects.requireNonNull(fill, "fill");
+        if (fill.futuresContract() == null) {
+            return calculate(fill.price(), fill.amount());
+        }
+        if (!fill.hasRecordedFees()) {
+            throw new IllegalArgumentException(
+                    "native fill has no recorded fees; configure a modeled transaction cost or supply fees");
+        }
+        return fill.fee();
+    }
+
+    @Override
+    public List<TradeFee> calculateFees(TradeFill fill) {
+        Objects.requireNonNull(fill, "fill");
+        if (fill.futuresContract() == null) {
+            throw new IllegalArgumentException("fee components are only defined for futures fills");
+        }
+        if (!fill.hasRecordedFees()) {
+            throw new IllegalArgumentException(
+                    "native fill has no recorded fees; configure a modeled transaction cost or supply fees");
+        }
+        return fill.fees();
     }
 
     @Override

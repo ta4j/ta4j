@@ -3,15 +3,22 @@
  */
 package org.ta4j.core.backtest;
 
+import java.time.Instant;
 import java.util.Objects;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.TradeFee;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -52,11 +59,20 @@ public interface PositionSizer {
     /**
      * Returns a position sizer that opens one unit.
      *
+     * <p>
+     * On a native futures record the unit is one contract and must satisfy the
+     * contract quantity constraints.
+     * </p>
+     *
      * @return fixed unit position sizer
      * @since 0.22.9
      */
     static PositionSizer fixed() {
-        return context -> context.numFactory().one();
+        return context -> {
+            Num amount = context.numFactory().one();
+            FuturesOrderQuantitySupport.requireTradable(context.futuresContract(), amount, context.entryPrice());
+            return amount;
+        };
     }
 
     /**
@@ -68,11 +84,21 @@ public interface PositionSizer {
      */
     static PositionSizer fixed(Number amount) {
         Number fixedAmount = snapshotNumber(amount, "amount");
-        return context -> context.numOf(fixedAmount);
+        return context -> {
+            Num resolved = context.numOf(fixedAmount);
+            FuturesOrderQuantitySupport.requireTradable(context.futuresContract(), resolved, context.entryPrice());
+            return resolved;
+        };
     }
 
     /**
      * Returns a position sizer that opens a fixed {@link Num} amount.
+     *
+     * <p>
+     * On a native futures record the amount is a contract count and must be a
+     * multiple of the contract quantity increment within the contract quantity and
+     * notional bounds.
+     * </p>
      *
      * @param amount fixed amount
      * @return fixed amount position sizer
@@ -80,7 +106,10 @@ public interface PositionSizer {
      */
     static PositionSizer fixed(Num amount) {
         validatePositiveNum(amount, "amount");
-        return context -> amount;
+        return context -> {
+            FuturesOrderQuantitySupport.requireTradable(context.futuresContract(), amount, context.entryPrice());
+            return amount;
+        };
     }
 
     /**
@@ -310,6 +339,7 @@ public interface PositionSizer {
          */
         public Num currentBalance(Num principal) {
             validatePositiveNum(principal, "principal");
+            requireMatchingInitialCapital(principal);
             Num balance = principal;
             for (Position position : tradingRecord.getPositions()) {
                 balance = balance.plus(position.getProfit());
@@ -318,11 +348,30 @@ public interface PositionSizer {
         }
 
         /**
+         * Returns the futures contract of the trading record, or {@code null} for spot
+         * records.
+         *
+         * @return traded contract, or {@code null} for spot records
+         * @since 0.25.1
+         */
+        public FuturesContract futuresContract() {
+            return tradingRecord.getFuturesContract();
+        }
+
+        /**
          * Returns estimated entry cash required for an amount, including entry
          * transaction costs.
          *
+         * <p>
+         * Spot records require the entry price times the amount. Native futures records
+         * require the initial margin of the settlement notional plus the modeled entry
+         * fee, so the amount is a contract count.
+         * </p>
+         *
          * @param amount candidate entry amount
          * @return estimated entry cost
+         * @throws IllegalStateException when the record is a futures record without a
+         *                               configured initial margin rate
          * @since 0.22.9
          */
         public Num entryCost(Num amount) {
@@ -330,11 +379,22 @@ public interface PositionSizer {
             if (amount.isNegative()) {
                 throw new IllegalArgumentException("amount must not be negative");
             }
-            return entryPrice.multipliedBy(amount).plus(transactionCostModel.calculate(entryPrice, amount));
+            FuturesContract contract = futuresContract();
+            if (contract == null) {
+                return entryPrice.multipliedBy(amount).plus(transactionCostModel.calculate(entryPrice, amount));
+            }
+            return contract.marginRequirement(amount, entryPrice, requireInitialMarginRate())
+                    .plus(modeledEntryFee(contract, amount));
         }
 
         /**
          * Returns the largest affordable amount for the provided budget.
+         *
+         * <p>
+         * Native futures records size contracts against the initial margin requirement
+         * per contract and then honor the contract quantity and notional constraints,
+         * so the result is either zero or a tradable contract count.
+         * </p>
          *
          * @param budget cash available for entry price and transaction costs
          * @return largest amount affordable by the budget, or zero when none is
@@ -349,15 +409,28 @@ public interface PositionSizer {
                 return zero;
             }
 
-            Num high = budget.dividedBy(entryPrice);
-            if (!high.isPositive()) {
+            FuturesContract contract = futuresContract();
+            Num upperBound;
+            if (contract == null) {
+                upperBound = budget.dividedBy(entryPrice);
+            } else {
+                Num requirementPerContract = entryCost(numFactory().one());
+                upperBound = requirementPerContract.isPositive() ? budget.dividedBy(requirementPerContract) : zero;
+            }
+            if (!upperBound.isPositive()) {
                 return zero;
             }
-            if (entryCost(high).isLessThanOrEqual(budget)) {
-                return high;
-            }
 
-            Num low = zero;
+            Num affordable = entryCost(upperBound).isLessThanOrEqual(budget) ? upperBound
+                    : searchLargestAffordable(budget, upperBound);
+            if (contract == null) {
+                return affordable;
+            }
+            return FuturesOrderQuantitySupport.largestTradable(contract, affordable, entryPrice);
+        }
+
+        private Num searchLargestAffordable(Num budget, Num high) {
+            Num low = numFactory().zero();
             Num two = numFactory().two();
             for (int i = 0; i < MAX_AFFORDABLE_SEARCH_ITERATIONS; i++) {
                 Num mid = low.plus(high).dividedBy(two);
@@ -371,6 +444,75 @@ public interface PositionSizer {
                 }
             }
             return low;
+        }
+
+        private Num requireInitialMarginRate() {
+            Num marginRate = tradingRecord.getInitialMarginRate();
+            if (marginRate == null) {
+                throw new IllegalStateException(
+                        "native futures entry sizing requires the record initial margin rate; configure the trading"
+                                + " record with an initial margin rate or size entries with fixed contract quantities");
+            }
+            return marginRate;
+        }
+
+        private void requireMatchingInitialCapital(Num principal) {
+            Num initialCapital = tradingRecord.getInitialCapital();
+            if (initialCapital == null) {
+                return;
+            }
+            Num expected = numFactory().numOf(initialCapital.getDelegate());
+            if (!expected.isEqual(numFactory().numOf(principal.getDelegate()))) {
+                throw new IllegalArgumentException(
+                        "principal " + principal + " must equal the record initial capital " + initialCapital);
+            }
+        }
+
+        private Num modeledEntryFee(FuturesContract contract, Num amount) {
+            Num zero = numFactory().zero();
+            if (!amount.isPositive() || transactionCostModel instanceof RecordedTradeCostModel) {
+                return zero;
+            }
+            int index = clampedEntryIndex();
+            TradeFill fill = TradeFill.builder()
+                    .index(index)
+                    .time(entryTime(index))
+                    .price(entryPrice)
+                    .amount(amount)
+                    .side(entrySide())
+                    .futuresContract(contract)
+                    .build();
+            Num fee = zero;
+            for (TradeFee component : transactionCostModel.calculateFees(fill)) {
+                if (!contract.settlementCurrency().equals(component.currency())) {
+                    throw new IllegalArgumentException("cannot size a futures entry with a " + component.currency()
+                            + " fee component; express modeled fees in " + contract.settlementCurrency());
+                }
+                fee = fee.plus(numFactory().numOf(component.amount().getDelegate()));
+            }
+            return fee;
+        }
+
+        private int clampedEntryIndex() {
+            if (barSeries.getBarCount() == 0) {
+                throw new IllegalStateException(
+                        "native futures entry sizing requires at least one bar to price the entry");
+            }
+            return Math.max(barSeries.getBeginIndex(), Math.min(entryIndex, barSeries.getEndIndex()));
+        }
+
+        private Instant entryTime(int index) {
+            Bar bar = barSeries.getBar(index);
+            Instant time = bar.getEndTime() != null ? bar.getEndTime() : bar.getBeginTime();
+            if (time == null) {
+                throw new IllegalStateException("native futures sizing requires bar timestamps but bar " + index
+                        + " has none; use a timestamped bar series or a spot trading record");
+            }
+            return time;
+        }
+
+        private ExecutionSide entrySide() {
+            return tradeType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
         }
 
         private static BarSeries snapshotSeries(BarSeries barSeries) {

@@ -5,6 +5,7 @@ package org.ta4j.core.criteria.pnl;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.num.Num;
 
@@ -30,6 +31,13 @@ import org.ta4j.core.num.Num;
  * The return of the provided {@link Position position(s)} over the provided
  * {@link BarSeries series}.
  *
+ * <p>
+ * A native futures {@link TradingRecord} is one financed account, so its return
+ * is {@code 1 + sum(realized net profit) / initialCapital} expressed in the
+ * configured {@link ReturnRepresentation} rather than the product of the
+ * matched position returns. Single futures {@link Position positions} keep
+ * their unlevered normalization by the original entry settlement notional.
+ *
  * @see ReturnRepresentation
  * @see org.ta4j.core.criteria.ReturnRepresentationPolicy
  */
@@ -49,12 +57,31 @@ public class NetReturnCriterion extends AbstractReturnCriterion {
     }
 
     @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        if (FuturesRecordReturnSupport.isFuturesRecord(tradingRecord)) {
+            Num totalReturn = FuturesRecordReturnSupport.totalReturn(series, tradingRecord, false);
+            return returnRepresentation.toRepresentationFromTotalReturn(totalReturn);
+        }
+        return super.calculate(series, tradingRecord);
+    }
+
+    @Override
     protected Num calculateReturn(BarSeries series, Position position) {
         var entry = position.getEntry();
         var amount = entry.getAmount();
+        var one = series.numFactory().one();
+        var contract = position.getFuturesContract();
+        if (contract != null) {
+            var exit = position.getExit();
+            var quantity = exit == null ? amount : exit.getAmount();
+            var entryNotional = contract.settlementNotional(quantity, entry.getPricePerAsset());
+            if (entryNotional.isZero()) {
+                return one;
+            }
+            return position.getProfit().dividedBy(entryNotional).plus(one);
+        }
         var netPrice = entry.getNetPrice();
         var entryValue = netPrice.multipliedBy(amount);
-        var one = series.numFactory().one();
         if (entryValue.isZero()) {
             return one;
         }

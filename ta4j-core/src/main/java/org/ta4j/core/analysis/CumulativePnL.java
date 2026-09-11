@@ -12,6 +12,8 @@ import org.ta4j.core.*;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+
 /**
  * A {@link PerformanceIndicator} implementation that computes the cumulative
  * profit and loss (PnL) series of one or more trading positions over a given
@@ -44,12 +46,69 @@ public final class CumulativePnL implements PerformanceIndicator {
      */
     public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+        this(barSeries, tradingRecord, new ClosePriceIndicator(barSeries), finalIndex, equityCurveMode,
+                openPositionHandling);
+    }
+
+    /**
+     * Constructor for a futures trading record valuing open exposure at an explicit
+     * mark price.
+     *
+     * <p>
+     * The mark price indicator is validated against the analysed series and is
+     * consumed by native futures records only; closing prices remain the documented
+     * backtest mark proxy otherwise.
+     * </p>
+     *
+     * @param barSeries            the bar series
+     * @param tradingRecord        the trading record
+     * @param markPriceIndicator   mark price indicator on the same series
+     * @param finalIndex           the final index to calculate up to
+     * @param equityCurveMode      the calculation mode
+     * @param openPositionHandling how to handle open positions
+     * @since 0.25.1
+     */
+    public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, Indicator<Num> markPriceIndicator,
+            int finalIndex, EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+        TradingRecord record = Objects.requireNonNull(tradingRecord);
+        OpenPositionHandling handling = Objects.requireNonNull(openPositionHandling);
+        FuturesPerformanceSupport.requireMarkSeries(Objects.requireNonNull(barSeries),
+                Objects.requireNonNull(markPriceIndicator));
         this.barSeries = snapshotSeries(barSeries);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
         int seriesEnd = this.barSeries.getEndIndex();
-        int size = Math.max(seriesEnd + 1, 0);
-        this.values = new ArrayList<>(Collections.nCopies(size, this.barSeries.numFactory().zero()));
-        calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
+        this.values = new ArrayList<>(
+                Collections.nCopies(Math.max(seriesEnd + 1, 0), this.barSeries.numFactory().zero()));
+        if (FuturesPerformanceSupport.isFutures(record)) {
+            fillFuturesValues(record, markPriceIndicator, finalIndex, handling);
+            return;
+        }
+        calculate(record, finalIndex, handling);
+    }
+
+    /**
+     * Fills the curve with the absolute settlement P&amp;L of a native futures
+     * record. Futures P&amp;L is already an account-level amount, so no
+     * normalization by account capital is applied.
+     *
+     * @param tradingRecord      the futures trading record
+     * @param markPriceIndicator mark price indicator on the analysed series
+     * @param finalIndex         index up until open position P&amp;L is considered
+     * @param handling           how to handle open positions
+     */
+    private void fillFuturesValues(TradingRecord tradingRecord, Indicator<Num> markPriceIndicator, int finalIndex,
+            OpenPositionHandling handling) {
+        int seriesEnd = barSeries.getEndIndex();
+        if (seriesEnd < 0) {
+            return;
+        }
+        boolean markExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
+        int effectiveFinalIndex = Math.min(tradingRecord.getEndIndex(barSeries), finalIndex);
+        FuturesPerformanceSupport.Cursor cursor = FuturesPerformanceSupport.cursor(barSeries, tradingRecord,
+                Math.min(effectiveFinalIndex, seriesEnd), markExposure, markPriceIndicator);
+        for (int barIndex = 0; barIndex <= seriesEnd; barIndex++) {
+            values.set(barIndex, cursor.pnlAt(barIndex));
+        }
     }
 
     /**
@@ -61,7 +120,7 @@ public final class CumulativePnL implements PerformanceIndicator {
      * @since 0.22.2
      */
     public CumulativePnL(BarSeries barSeries, Position position, EquityCurveMode equityCurveMode) {
-        this(barSeries, new BaseTradingRecord(position), barSeries.getEndIndex(), equityCurveMode);
+        this(barSeries, FuturesPerformanceSupport.analysisRecord(position), barSeries.getEndIndex(), equityCurveMode);
     }
 
     /**

@@ -3,8 +3,11 @@
  */
 package org.ta4j.core.criteria.commissions;
 
+import java.util.List;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.NaN;
@@ -29,6 +32,13 @@ import org.ta4j.core.num.NumFactory;
  * semantics).
  * </p>
  *
+ * <p>
+ * A native futures position or record returns its actual recorded settlement
+ * fees, i.e. the allocated cost of every executed fill, and never the
+ * configured cost model. Funding and variation-margin cash flows are account
+ * settlements rather than execution fees and stay outside this total.
+ * </p>
+ *
  * @since 0.22.2
  */
 public class TotalFeesCriterion extends AbstractAnalysisCriterion {
@@ -36,6 +46,10 @@ public class TotalFeesCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, Position position) {
         NumFactory factory = series.numFactory();
+        if (position.getFuturesContract() != null) {
+            int endIndex = position.isClosed() ? Integer.MAX_VALUE : series.getEndIndex();
+            return toSeriesNum(factory, executedFees(factory, position, endIndex));
+        }
         if (position.isClosed()) {
             Num cost = position.getEntry().getCostModel().calculate(position);
             return toSeriesNum(factory, cost);
@@ -51,6 +65,9 @@ public class TotalFeesCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         NumFactory factory = series.numFactory();
+        if (tradingRecord.getFuturesContract() != null) {
+            return toSeriesNum(factory, executedFees(factory, tradingRecord, tradingRecord.getEndIndex(series)));
+        }
         Num recordedFees = tradingRecord.getRecordedTotalFees();
         if (recordedFees != null) {
             return toSeriesNum(factory, recordedFees);
@@ -71,6 +88,46 @@ public class TotalFeesCriterion extends AbstractAnalysisCriterion {
     @Override
     public boolean betterThan(Num v1, Num v2) {
         return v1.isLessThan(v2);
+    }
+
+    private Num executedFees(NumFactory factory, TradingRecord tradingRecord, int finalIndex) {
+        Num total = factory.zero();
+        for (Position position : tradingRecord.getPositions()) {
+            total = total.plus(executedFees(factory, position, finalIndex));
+        }
+        List<Position> openPositions = tradingRecord.getOpenPositions();
+        if (openPositions.isEmpty()) {
+            Position current = tradingRecord.getCurrentPosition();
+            if (current != null && current.isOpened()) {
+                return total.plus(executedFees(factory, current, finalIndex));
+            }
+            return total;
+        }
+        for (Position position : openPositions) {
+            total = total.plus(executedFees(factory, position, finalIndex));
+        }
+        return total;
+    }
+
+    private Num executedFees(NumFactory factory, Position position, int finalIndex) {
+        Num total = factory.zero();
+        Trade entry = position.getEntry();
+        if (entry != null && entry.getIndex() <= finalIndex) {
+            total = total.plus(fee(factory, entry));
+        }
+        Trade exit = position.getExit();
+        if (exit != null && exit.getIndex() <= finalIndex) {
+            total = total.plus(fee(factory, exit));
+        }
+        return total;
+    }
+
+    private Num fee(NumFactory factory, Trade trade) {
+        Num cost = trade.getCost();
+        if (cost == null || cost.isNaN()) {
+            return factory.zero();
+        }
+        return factory.numOf(cost.getDelegate());
     }
 
     private Num toSeriesNum(NumFactory factory, Num value) {

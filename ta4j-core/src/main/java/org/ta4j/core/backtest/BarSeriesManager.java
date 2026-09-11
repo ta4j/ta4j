@@ -3,11 +3,13 @@
  */
 package org.ta4j.core.backtest;
 
+import java.time.Instant;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
@@ -571,11 +573,13 @@ public class BarSeriesManager {
         if (runBeginIndex <= runEndIndex) {
             for (int i = runBeginIndex;; i++) {
                 lastProcessedIndex = i;
+                advanceToBarBegin(tradingRecord, i);
                 tradeExecutionModel.onBar(i, tradingRecord, barSeries);
                 // For each bar between both indexes...
                 if (strategy.shouldOperate(i, tradingRecord)) {
                     tradeExecutionModel.execute(i, tradingRecord, barSeries, amountResolver.apply(i));
                 }
+                advanceToBarEnd(tradingRecord, i);
                 if (i == runEndIndex) {
                     break;
                 }
@@ -589,11 +593,17 @@ public class BarSeriesManager {
             int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
             for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
                 lastProcessedIndex = i;
+                advanceToBarBegin(tradingRecord, i);
                 tradeExecutionModel.onBar(i, tradingRecord, barSeries);
+                boolean operated = false;
                 // For each bar after the end index of this run...
                 // --> Trying to close the last position
                 if (strategy.shouldOperate(i, tradingRecord)) {
                     tradeExecutionModel.execute(i, tradingRecord, barSeries, amountResolver.apply(i));
+                    operated = true;
+                }
+                advanceToBarEnd(tradingRecord, i);
+                if (operated) {
                     break;
                 }
             }
@@ -601,6 +611,52 @@ public class BarSeriesManager {
 
         tradeExecutionModel.onRunEnd(lastProcessedIndex, tradingRecord);
         return tradingRecord;
+    }
+
+    /**
+     * Advances the record's event horizon to the begin of a processed bar.
+     *
+     * @param tradingRecord record being run
+     * @param index         processed bar index
+     */
+    private void advanceToBarBegin(TradingRecord tradingRecord, int index) {
+        advanceToBarBoundary(tradingRecord, index, false);
+    }
+
+    /**
+     * Advances the record's event horizon to the end of a processed bar.
+     *
+     * @param tradingRecord record being run
+     * @param index         processed bar index
+     */
+    private void advanceToBarEnd(TradingRecord tradingRecord, int index) {
+        advanceToBarBoundary(tradingRecord, index, true);
+    }
+
+    /**
+     * Advances the record's event horizon to a bar boundary.
+     *
+     * <p>
+     * Bars outside the series range and bars without timestamps are skipped, so a
+     * run over a partially timestamped series stays runnable. The advance is a
+     * no-op for spot records and whenever the boundary is already behind the
+     * horizon, which keeps next-open fills from moving the horizon backwards.
+     * </p>
+     *
+     * @param tradingRecord record being run
+     * @param index         processed bar index
+     * @param barEnd        {@code true} for the bar end, {@code false} for its
+     *                      begin
+     */
+    private void advanceToBarBoundary(TradingRecord tradingRecord, int index, boolean barEnd) {
+        if (index < barSeries.getBeginIndex() || index > barSeries.getEndIndex()) {
+            return;
+        }
+        Bar bar = barSeries.getBar(index);
+        Instant time = barEnd ? bar.getEndTime() : bar.getBeginTime();
+        if (time != null) {
+            tradingRecord.advanceTo(time);
+        }
     }
 
     private Num amountForIndex(PositionSizer positionSizer, int index, Strategy strategy, TradingRecord tradingRecord,

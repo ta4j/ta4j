@@ -353,6 +353,9 @@ public interface AnalysisCriterion {
 
     private static TradingRecord projectTradingRecord(BarSeries series, TradingRecord source, int start, int end,
             boolean hasBars, AnalysisContext context) {
+        if (source.getFuturesContract() != null) {
+            return projectFuturesTradingRecord(series, source, start, end, hasBars, context);
+        }
         CostModel transactionCostModel = Objects.requireNonNullElseGet(source.getTransactionCostModel(),
                 ZeroCostModel::new);
         CostModel holdingCostModel = Objects.requireNonNullElseGet(source.getHoldingCostModel(), ZeroCostModel::new);
@@ -410,6 +413,89 @@ public interface AnalysisCriterion {
                 ? Trade.sellAt(windowEndIndex, closePrice, amount, transactionCostModel)
                 : Trade.buyAt(windowEndIndex, closePrice, amount, transactionCostModel);
         return new Position(entryTrade, syntheticExit, transactionCostModel, holdingCostModel);
+    }
+
+    /**
+     * Projects a native futures trading record onto a window by copying the
+     * already-matched positions selected by the inclusion policy.
+     *
+     * <p>
+     * Closed positions keep their recorded entry and exit, and their cash-flow
+     * allocations are trimmed to the window end. Open positions selected for
+     * {@link OpenPositionHandling#MARK_TO_MARKET} are closed with a synthetic
+     * contract-carrying exit at the window end, which turns their prior variation
+     * margin into the marked payoff without charging any fee. Their entries and
+     * exits are never replayed, so the projection cannot rematch overlapping lots.
+     * </p>
+     */
+    private static TradingRecord projectFuturesTradingRecord(BarSeries series, TradingRecord source, int start, int end,
+            boolean hasBars, AnalysisContext context) {
+        CostModel transactionCostModel = Objects.requireNonNullElseGet(source.getTransactionCostModel(),
+                ZeroCostModel::new);
+        CostModel holdingCostModel = Objects.requireNonNullElseGet(source.getHoldingCostModel(), ZeroCostModel::new);
+        List<Position> includedPositions = new ArrayList<>();
+        if (hasBars) {
+            PositionInclusionPolicy inclusionPolicy = context.positionInclusionPolicy();
+            for (Position position : source.getPositions()) {
+                if (includeClosedPosition(position, start, end, inclusionPolicy)) {
+                    includedPositions.add(position);
+                }
+            }
+            if (context.openPositionHandling() == OpenPositionHandling.MARK_TO_MARKET) {
+                List<Position> openPositions = openPositionsForMarkToMarket(source, end, transactionCostModel,
+                        holdingCostModel);
+                for (Position openPosition : openPositions) {
+                    Position syntheticPosition = createMarkToMarketFuturesPosition(series, openPosition, end,
+                            holdingCostModel);
+                    if (syntheticPosition != null
+                            && includeClosedPosition(syntheticPosition, start, end, inclusionPolicy)) {
+                        includedPositions.add(syntheticPosition);
+                    }
+                }
+            }
+        }
+        return BaseTradingRecord.projectedFutures(source, includedPositions, start, end);
+    }
+
+    /**
+     * Closes an open futures position at the mark of the window end with a
+     * synthetic exit that carries the same contract.
+     *
+     * <p>
+     * {@link Position} rejects an entry that references a futures contract next to
+     * an exit that does not, so the synthetic exit is built from a contract-aware
+     * fill with no fees: the recorded fee total of the projected record must stay
+     * limited to the fees the run actually charged.
+     * </p>
+     */
+    private static Position createMarkToMarketFuturesPosition(BarSeries series, Position currentPosition,
+            int windowEndIndex, CostModel holdingCostModel) {
+        if (currentPosition == null || !currentPosition.isOpened()) {
+            return null;
+        }
+        Trade entryTrade = currentPosition.getEntry();
+        if (entryTrade == null || entryTrade.getIndex() > windowEndIndex) {
+            return null;
+        }
+        FuturesContract contract = currentPosition.getFuturesContract();
+        if (contract == null) {
+            return null;
+        }
+        Bar windowEndBar = series.getBar(windowEndIndex);
+        Num closePrice = windowEndBar.getClosePrice();
+        CostModel transactionCostModel = entryTrade.getCostModel();
+        TradeFill fill = TradeFill.builder()
+                .index(windowEndIndex)
+                .time(windowEndBar.getEndTime())
+                .price(closePrice)
+                .amount(entryTrade.getAmount())
+                .side(entryTrade.isBuy() ? ExecutionSide.SELL : ExecutionSide.BUY)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+        Trade syntheticExit = Trade.fromFill(fill, transactionCostModel);
+        return new Position(entryTrade, syntheticExit, transactionCostModel, holdingCostModel,
+                currentPosition.getCashFlows());
     }
 
     private static List<Position> openPositionsForMarkToMarket(TradingRecord source, int windowEndIndex,

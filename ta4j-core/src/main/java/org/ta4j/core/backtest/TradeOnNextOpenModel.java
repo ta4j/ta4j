@@ -24,7 +24,8 @@ public class TradeOnNextOpenModel implements TradeExecutionModel {
         ExecutionTarget executionTarget = ExecutionModelSupport.resolveExecutionTarget(index, barSeries,
                 TradeExecutionModel.PriceSource.NEXT_OPEN);
         if (executionTarget != null) {
-            tradingRecord.operate(executionTarget.index(), executionTarget.price(), amount);
+            ExecutionModelSupport.execute(tradingRecord, barSeries, executionTarget, amount,
+                    TradeExecutionModel.PriceSource.NEXT_OPEN);
         }
     }
 

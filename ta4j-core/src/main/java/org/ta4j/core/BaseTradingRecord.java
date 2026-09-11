@@ -17,10 +17,14 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Stream;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
@@ -52,6 +56,7 @@ import org.ta4j.core.num.NumFactory;
  *
  * @since 0.22.2
  */
+@SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Every constructor validates the trading record configuration - match policy, futures contract and initial capital - before an instance is published, so invalid records are rejected fail-fast instead of escaping partially initialized")
 public class BaseTradingRecord implements TradingRecord {
 
     @Serial
@@ -67,6 +72,10 @@ public class BaseTradingRecord implements TradingRecord {
     private final PositionBook positionBook;
     private final Integer startIndex;
     private final Integer endIndex;
+    private final FuturesContract futuresContract;
+    private final Num initialCapital;
+    private final Num initialMarginRate;
+    private final List<FuturesFunding> fundingSchedule;
     private String name;
     private int nextTradeIndex;
     private transient List<Trade> tradesCache;
@@ -75,6 +84,13 @@ public class BaseTradingRecord implements TradingRecord {
     private Num totalFees;
     private transient NumFactory numFactory;
     private long nextSequence;
+    private List<FuturesCashFlow> cashFlows = new ArrayList<>();
+    private Map<String, FuturesCashFlow> processedEvents = new LinkedHashMap<>();
+    private List<FuturesMarketSnapshot> marketSnapshots = new ArrayList<>();
+    private List<FuturesPositionSnapshot> positionSnapshots = new ArrayList<>();
+    private int fundingCursor;
+    private Instant eventHorizon;
+    private boolean readOnly;
 
     /** Constructor with {@link #startingType} = BUY and FIFO matching. */
     public BaseTradingRecord() {
@@ -159,6 +175,10 @@ public class BaseTradingRecord implements TradingRecord {
         this.positionBook = config.positionBook();
         this.startIndex = config.startIndex();
         this.endIndex = config.endIndex();
+        this.futuresContract = config.futuresContract();
+        this.initialCapital = config.initialCapital();
+        this.initialMarginRate = config.initialMarginRate();
+        this.fundingSchedule = config.fundingSchedule() == null ? List.of() : config.fundingSchedule();
         this.nextTradeIndex = config.nextTradeIndex();
         this.modificationCount = config.modificationCount();
         this.totalFees = config.totalFees();
@@ -168,19 +188,231 @@ public class BaseTradingRecord implements TradingRecord {
 
     private static RecordConfig recordConfig(TradeType startingType, ExecutionMatchPolicy matchPolicy,
             CostModel transactionCostModel, CostModel holdingCostModel, Integer startIndex, Integer endIndex) {
+        return recordConfig(startingType, matchPolicy, transactionCostModel, holdingCostModel, startIndex, endIndex,
+                null, null, null, List.of());
+    }
+
+    private static RecordConfig recordConfig(TradeType startingType, ExecutionMatchPolicy matchPolicy,
+            CostModel transactionCostModel, CostModel holdingCostModel, Integer startIndex, Integer endIndex,
+            FuturesContract futuresContract, Num initialCapital, Num initialMarginRate,
+            List<FuturesFunding> fundingSchedule) {
         Objects.requireNonNull(startingType, "startingType");
         Objects.requireNonNull(matchPolicy, "matchPolicy");
-        CostModel resolvedTransactionCostModel = defaultCostModel(transactionCostModel);
+        validateFuturesConfig(futuresContract, initialCapital, initialMarginRate, fundingSchedule);
+        CostModel resolvedTransactionCostModel = resolveTransactionCostModel(transactionCostModel, futuresContract);
         CostModel resolvedHoldingCostModel = defaultCostModel(holdingCostModel);
         PositionBook positionBook = new PositionBook(startingType, matchPolicy, resolvedTransactionCostModel,
-                resolvedHoldingCostModel);
+                resolvedHoldingCostModel, futuresContract);
         return new RecordConfig(startingType, matchPolicy, resolvedTransactionCostModel, resolvedHoldingCostModel,
-                positionBook, startIndex, endIndex, 0, 0L, null, null, 0L);
+                positionBook, startIndex, endIndex, 0, 0L, null, null, 0L, futuresContract, initialCapital,
+                initialMarginRate, sortedFundingSchedule(fundingSchedule));
+    }
+
+    private static List<FuturesFunding> sortedFundingSchedule(List<FuturesFunding> fundingSchedule) {
+        if (fundingSchedule == null || fundingSchedule.isEmpty()) {
+            return List.of();
+        }
+        List<FuturesFunding> sorted = new ArrayList<>(fundingSchedule);
+        sorted.sort(Comparator.comparing(FuturesFunding::time).thenComparing(FuturesFunding::eventId));
+        return List.copyOf(sorted);
+    }
+
+    private static void validateFuturesConfig(FuturesContract futuresContract, Num initialCapital,
+            Num initialMarginRate, List<FuturesFunding> fundingSchedule) {
+        if (futuresContract == null) {
+            if (initialCapital != null || initialMarginRate != null) {
+                throw new IllegalArgumentException("initialCapital and initialMarginRate require a futures contract");
+            }
+            if (fundingSchedule != null && !fundingSchedule.isEmpty()) {
+                throw new IllegalArgumentException("A funding schedule requires a futures contract");
+            }
+            return;
+        }
+        if (initialCapital != null) {
+            FuturesValidation.requirePositiveFinite(initialCapital, "initialCapital");
+            requireSettlementCurrency(futuresContract, "initialCapital");
+        }
+        if (initialMarginRate != null) {
+            FuturesValidation.requirePositiveFinite(initialMarginRate, "initialMarginRate");
+        }
+        if (fundingSchedule != null) {
+            for (FuturesFunding funding : fundingSchedule) {
+                Objects.requireNonNull(funding, "fundingSchedule entry");
+                if (!futuresContract.equals(funding.contract())) {
+                    throw new IllegalArgumentException("Funding schedule contract must match the record contract");
+                }
+            }
+        }
+    }
+
+    private static void requireSettlementCurrency(FuturesContract futuresContract, String field) {
+        String currency = futuresContract.settlementCurrency();
+        if (currency == null || currency.isBlank()) {
+            throw new IllegalArgumentException(field + " requires a settlement currency on the futures contract");
+        }
+    }
+
+    private static CostModel resolveTransactionCostModel(CostModel transactionCostModel,
+            FuturesContract futuresContract) {
+        if (transactionCostModel != null) {
+            return transactionCostModel;
+        }
+        return futuresContract == null ? new ZeroCostModel() : RecordedTradeCostModel.INSTANCE;
     }
 
     private static RecordConfig defaultRecordConfig(TradeType startingType) {
         return recordConfig(startingType, ExecutionMatchPolicy.FIFO, new ZeroCostModel(), new ZeroCostModel(), null,
                 null);
+    }
+
+    /**
+     * Creates a builder for a fully configured record.
+     *
+     * @return new builder
+     * @since 0.25.1
+     */
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    /**
+     * Builder for trading records, including native futures configuration.
+     *
+     * <p>
+     * A futures record fixes exactly one {@link FuturesContract}. Fees are read
+     * from the recorded fill components, so the transaction cost model defaults to
+     * {@link RecordedTradeCostModel} unless a modelled cost is supplied explicitly.
+     * </p>
+     *
+     * @since 0.25.1
+     */
+    public static final class Builder {
+
+        private TradeType startingType = TradeType.BUY;
+        private ExecutionMatchPolicy matchPolicy = ExecutionMatchPolicy.FIFO;
+        private CostModel transactionCostModel;
+        private CostModel holdingCostModel;
+        private Integer startIndex;
+        private Integer endIndex;
+        private String name;
+        private FuturesContract futuresContract;
+        private Num initialCapital;
+        private Num initialMarginRate;
+        private List<FuturesFunding> fundingSchedule = List.of();
+
+        private Builder() {
+        }
+
+        /**
+         * @param startingType entry trade type
+         * @return this builder
+         */
+        public Builder startingType(TradeType startingType) {
+            this.startingType = Objects.requireNonNull(startingType, "startingType");
+            return this;
+        }
+
+        /**
+         * @param matchPolicy lot matching policy
+         * @return this builder
+         */
+        public Builder matchPolicy(ExecutionMatchPolicy matchPolicy) {
+            this.matchPolicy = Objects.requireNonNull(matchPolicy, "matchPolicy");
+            return this;
+        }
+
+        /**
+         * @param transactionCostModel transaction cost model
+         * @return this builder
+         */
+        public Builder transactionCostModel(CostModel transactionCostModel) {
+            this.transactionCostModel = transactionCostModel;
+            return this;
+        }
+
+        /**
+         * @param holdingCostModel holding cost model
+         * @return this builder
+         */
+        public Builder holdingCostModel(CostModel holdingCostModel) {
+            this.holdingCostModel = holdingCostModel;
+            return this;
+        }
+
+        /**
+         * @param startIndex optional start index
+         * @return this builder
+         */
+        public Builder startIndex(Integer startIndex) {
+            this.startIndex = startIndex;
+            return this;
+        }
+
+        /**
+         * @param endIndex optional end index
+         * @return this builder
+         */
+        public Builder endIndex(Integer endIndex) {
+            this.endIndex = endIndex;
+            return this;
+        }
+
+        /**
+         * @param name record name
+         * @return this builder
+         */
+        public Builder name(String name) {
+            this.name = name;
+            return this;
+        }
+
+        /**
+         * @param futuresContract traded contract, {@code null} for a spot record
+         * @return this builder
+         */
+        @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The builder stores the immutable FuturesContract by reference; the contract is never mutated after the value is built")
+        public Builder futuresContract(FuturesContract futuresContract) {
+            this.futuresContract = futuresContract;
+            return this;
+        }
+
+        /**
+         * @param initialCapital account capital in the settlement currency
+         * @return this builder
+         */
+        public Builder initialCapital(Num initialCapital) {
+            this.initialCapital = initialCapital;
+            return this;
+        }
+
+        /**
+         * @param initialMarginRate initial margin rate applied to the position notional
+         * @return this builder
+         */
+        public Builder initialMarginRate(Num initialMarginRate) {
+            this.initialMarginRate = initialMarginRate;
+            return this;
+        }
+
+        /**
+         * @param fundingSchedule funding events applied to open positions
+         * @return this builder
+         */
+        public Builder fundingSchedule(List<FuturesFunding> fundingSchedule) {
+            this.fundingSchedule = fundingSchedule == null ? List.of() : List.copyOf(fundingSchedule);
+            return this;
+        }
+
+        /**
+         * @return configured record
+         */
+        public BaseTradingRecord build() {
+            RecordConfig config = recordConfig(startingType, matchPolicy, transactionCostModel, holdingCostModel,
+                    startIndex, endIndex, futuresContract, initialCapital, initialMarginRate, fundingSchedule);
+            BaseTradingRecord record = new BaseTradingRecord(config);
+            record.setName(name);
+            return record;
+        }
     }
 
     /**
@@ -230,7 +462,193 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     private static RecordConfig positionsConfig(List<Position> positions) {
-        return tradesConfig(new ZeroCostModel(), new ZeroCostModel(), positionsToTrades(positions));
+        Objects.requireNonNull(positions, "positions must not be null");
+        FuturesContract contract = contractOfPositions(positions);
+        if (contract == null) {
+            return tradesConfig(new ZeroCostModel(), new ZeroCostModel(), positionsToTrades(positions));
+        }
+        return futuresPositionsConfig(contract, positions);
+    }
+
+    private static FuturesContract contractOfPositions(List<Position> positions) {
+        FuturesContract contract = null;
+        for (Position position : positions) {
+            Objects.requireNonNull(position, "position must not be null");
+            FuturesContract positionContract = position.getFuturesContract();
+            if (positionContract == null) {
+                if (contract != null) {
+                    throw new IllegalArgumentException("Cannot mix spot and futures positions in one record");
+                }
+                continue;
+            }
+            if (contract == null) {
+                contract = positionContract;
+            } else if (!contract.equals(positionContract)) {
+                throw new IllegalArgumentException("All positions must reference the same futures contract");
+            }
+        }
+        return contract;
+    }
+
+    private static RecordConfig futuresPositionsConfig(FuturesContract contract, List<Position> positions) {
+        Trade entry = positions.getFirst().getEntry();
+        if (entry == null) {
+            throw new IllegalArgumentException("Position entry must not be null");
+        }
+        BaseTradingRecord initialized = new BaseTradingRecord(recordConfig(entry.getType(), ExecutionMatchPolicy.FIFO,
+                RecordedTradeCostModel.INSTANCE, new ZeroCostModel(), null, null, contract, null, null, List.of()));
+        Num totalFees = null;
+        for (Position position : positions) {
+            initialized.adoptPosition(position);
+            totalFees = accumulateRecordedFees(totalFees, position);
+        }
+        initialized.totalFees = totalFees == null ? initialized.defaultNumFactory().zero() : totalFees;
+        return initialized.toRecordConfig();
+    }
+
+    /**
+     * Copies already-matched futures positions into a read-only projection.
+     *
+     * <p>
+     * The selected {@link Position} snapshots are adopted unchanged: their entries
+     * and exits are never replayed, so a projection cannot rematch overlapping lots
+     * or reorder executed timestamps. Contract, match policy, cost models and the
+     * explicit initial capital of the source record are preserved, while the live
+     * funding schedule is deliberately not copied: the projected event totals are
+     * rebuilt from the cash flows allocated to exactly the selected positions. An
+     * allocation held by more than one selected position is summed under its event
+     * id, so a single event is never charged twice.
+     * </p>
+     *
+     * <p>
+     * Every mutation path of the projection throws
+     * {@link UnsupportedOperationException}; the recorded fee total covers the
+     * executed fees of the selected positions.
+     * </p>
+     *
+     * @param source    futures trading record the projection is derived from
+     * @param positions already-matched positions to include, each carrying the
+     *                  source contract
+     * @param start     first index of the projected window
+     * @param end       last index of the projected window
+     * @return read-only futures trading record containing only the selected
+     *         positions and their allocations
+     * @since 0.25.1
+     */
+    static BaseTradingRecord projectedFutures(TradingRecord source, List<Position> positions, int start, int end) {
+        Objects.requireNonNull(source, "source");
+        Objects.requireNonNull(positions, "positions");
+        FuturesContract contract = source.getFuturesContract();
+        if (contract == null) {
+            throw new IllegalArgumentException("A futures projection requires a futures trading record");
+        }
+        ExecutionMatchPolicy matchPolicy = source instanceof BaseTradingRecord baseRecord ? baseRecord.matchPolicy
+                : ExecutionMatchPolicy.FIFO;
+        BaseTradingRecord projected = new BaseTradingRecord(recordConfig(source.getStartingType(), matchPolicy,
+                source.getTransactionCostModel(), source.getHoldingCostModel(), start, end, contract,
+                source.getInitialCapital(), source.getInitialMarginRate(), List.of()));
+        Num totalFees = null;
+        for (Position position : positions) {
+            projected.adoptPosition(trimmedToWindow(position, end));
+            totalFees = accumulateRecordedFees(totalFees, position);
+        }
+        projected.totalFees = totalFees == null ? projected.defaultNumFactory().zero() : totalFees;
+        projected.aggregateProjectedCashFlows(positions, end);
+        projected.readOnly = true;
+        return projected;
+    }
+
+    /**
+     * Trims the cash flows allocated to a position to a window, keeping the
+     * position itself whenever all of its allocations already fall inside.
+     *
+     * @param position already-matched position
+     * @param end      last index of the projected window
+     * @return the position, or a copy holding only the allocations up to
+     *         {@code end}
+     */
+    private static Position trimmedToWindow(Position position, int end) {
+        List<FuturesCashFlow> cashFlows = position.getCashFlows();
+        List<FuturesCashFlow> retained = new ArrayList<>(cashFlows.size());
+        boolean trimmed = false;
+        for (FuturesCashFlow cashFlow : cashFlows) {
+            if (cashFlow.index() <= end) {
+                retained.add(cashFlow);
+            } else {
+                trimmed = true;
+            }
+        }
+        if (!trimmed) {
+            return position;
+        }
+        CostModel transactionCostModel = position.getTransactionCostModel();
+        CostModel holdingCostModel = position.getHoldingCostModel();
+        if (position.isClosed()) {
+            return new Position(position.getEntry(), position.getExit(), transactionCostModel, holdingCostModel,
+                    retained);
+        }
+        return new Position(position.getEntry(), transactionCostModel, holdingCostModel, retained);
+    }
+
+    /**
+     * Rebuilds the projected event log from the allocations held by the selected
+     * positions.
+     *
+     * @param positions selected positions
+     * @param end       last index of the projected window
+     */
+    private void aggregateProjectedCashFlows(List<Position> positions, int end) {
+        Map<String, Num> amounts = new LinkedHashMap<>();
+        Map<String, Num> settlements = new LinkedHashMap<>();
+        Map<String, FuturesCashFlow> templates = new LinkedHashMap<>();
+        for (Position position : positions) {
+            for (FuturesCashFlow cashFlow : position.getCashFlows()) {
+                if (cashFlow.index() > end) {
+                    continue;
+                }
+                String eventId = cashFlow.eventId();
+                templates.putIfAbsent(eventId, cashFlow);
+                amounts.merge(eventId, cashFlow.amount(), Num::plus);
+                settlements.merge(eventId, cashFlow.settlementAmount(), Num::plus);
+            }
+        }
+        List<FuturesCashFlow> aggregated = new ArrayList<>(templates.size());
+        for (Map.Entry<String, FuturesCashFlow> entry : templates.entrySet()) {
+            String eventId = entry.getKey();
+            FuturesCashFlow template = entry.getValue();
+            Num amount = amounts.get(eventId);
+            Num settlement = settlements.get(eventId);
+            FuturesCashFlow recorded = template.amount().isEqual(amount)
+                    && template.settlementAmount().isEqual(settlement) ? template
+                            : template.toBuilder().amount(amount).settlementAmount(settlement).build();
+            processedEvents.put(eventId, recorded);
+            aggregated.add(recorded);
+        }
+        aggregated.sort(Comparator.comparing(FuturesCashFlow::time));
+        cashFlows.addAll(aggregated);
+    }
+
+    private static Num accumulateRecordedFees(Num totalFees, Position position) {
+        Num accumulated = plusFee(totalFees, position.getEntry());
+        return plusFee(accumulated, position.getExit());
+    }
+
+    private static Num plusFee(Num totalFees, Trade trade) {
+        if (trade == null) {
+            return totalFees;
+        }
+        Num fee = feeOf(trade);
+        return totalFees == null ? fee : totalFees.plus(fee);
+    }
+
+    private void adoptPosition(Position position) {
+        long entrySequence = nextSequence++;
+        long exitSequence = nextSequence++;
+        positionBook.adopt(position, entrySequence, exitSequence);
+        Num price = position.getEntry().getPricePerAsset();
+        if ((numFactory == null || numFactory.one().isNaN()) && price != null && !price.isNaN()) {
+            numFactory = price.getNumFactory();
+        }
     }
 
     private static RecordConfig tradesConfig(Trade... trades) {
@@ -240,8 +658,9 @@ public class BaseTradingRecord implements TradingRecord {
     private static RecordConfig tradesConfig(CostModel transactionCostModel, CostModel holdingCostModel,
             Trade... trades) {
         TradeType startingType = validateTrades(trades);
+        FuturesContract contract = contractOf(trades);
         BaseTradingRecord initialized = new BaseTradingRecord(recordConfig(startingType, ExecutionMatchPolicy.FIFO,
-                transactionCostModel, holdingCostModel, null, null));
+                transactionCostModel, holdingCostModel, null, null, contract, null, null, List.of()));
         for (Trade trade : trades) {
             initialized.operate(trade);
         }
@@ -250,7 +669,28 @@ public class BaseTradingRecord implements TradingRecord {
 
     private RecordConfig toRecordConfig() {
         return new RecordConfig(startingType, matchPolicy, transactionCostModel, holdingCostModel, positionBook,
-                startIndex, endIndex, nextTradeIndex, modificationCount, totalFees, numFactory, nextSequence);
+                startIndex, endIndex, nextTradeIndex, modificationCount, totalFees, numFactory, nextSequence,
+                futuresContract, initialCapital, initialMarginRate, fundingSchedule);
+    }
+
+    private static FuturesContract contractOf(Trade... trades) {
+        FuturesContract contract = null;
+        for (Trade trade : trades) {
+            Objects.requireNonNull(trade, "trade");
+            FuturesContract tradeContract = trade.getFuturesContract();
+            if (tradeContract == null) {
+                if (contract != null) {
+                    throw new IllegalArgumentException("Cannot mix spot and futures trades in one record");
+                }
+                continue;
+            }
+            if (contract == null) {
+                contract = tradeContract;
+            } else if (!contract.equals(tradeContract)) {
+                throw new IllegalArgumentException("All trades must reference the same futures contract");
+            }
+        }
+        return contract;
     }
 
     @Override
@@ -266,6 +706,148 @@ public class BaseTradingRecord implements TradingRecord {
         return matchPolicy;
     }
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "FuturesContract is a final value type whose instances are shared by reference; copying the immutable contract per accessor would allocate on every read")
+    @Override
+    public FuturesContract getFuturesContract() {
+        return futuresContract;
+    }
+
+    @Override
+    public Num getInitialCapital() {
+        return initialCapital;
+    }
+
+    @Override
+    public Num getInitialMarginRate() {
+        return initialMarginRate;
+    }
+
+    @Override
+    public List<FuturesFunding> getFundingSchedule() {
+        return fundingSchedule;
+    }
+
+    @Override
+    public void recordFunding(FuturesFunding funding) {
+        Objects.requireNonNull(funding, "funding");
+        requireMutable("recordFunding(FuturesFunding)");
+        requireFuturesRecord("recordFunding(FuturesFunding)");
+        requireEventContract(funding.contract(), "Funding event");
+        lock.writeLock().lock();
+        try {
+            applyScheduledFunding(funding.time());
+            applyFundingInternal(funding);
+            advanceHorizonThrough(funding.time());
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    @Override
+    public void recordCashFlow(FuturesCashFlow cashFlow) {
+        Objects.requireNonNull(cashFlow, "cashFlow");
+        requireMutable("recordCashFlow(FuturesCashFlow)");
+        requireFuturesRecord("recordCashFlow(FuturesCashFlow)");
+        requireEventContract(cashFlow.contract(), "Cash flow");
+        lock.writeLock().lock();
+        try {
+            FuturesCashFlow recorded = processedEvents.get(cashFlow.eventId());
+            if (recorded != null) {
+                if (recorded.equals(cashFlow)) {
+                    return;
+                }
+                throw new IllegalArgumentException(
+                        "Cash flow " + cashFlow.eventId() + " is already recorded with different values");
+            }
+            if (eventHorizon == null || cashFlow.time().isAfter(eventHorizon)) {
+                applyScheduledFunding(cashFlow.time());
+            }
+            positionBook.allocateCashFlow(cashFlow);
+            processedEvents.put(cashFlow.eventId(), cashFlow);
+            cashFlows.add(cashFlow);
+            advanceHorizonThrough(cashFlow.time());
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    @Override
+    public List<FuturesCashFlow> getCashFlows() {
+        lock.readLock().lock();
+        try {
+            return List.copyOf(cashFlows);
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    @Override
+    public void advanceTo(Instant time) {
+        Objects.requireNonNull(time, "time");
+        requireMutable("advanceTo(Instant)");
+        if (futuresContract == null) {
+            return;
+        }
+        lock.writeLock().lock();
+        try {
+            if (eventHorizon != null && !time.isAfter(eventHorizon)) {
+                return;
+            }
+            applyScheduledFunding(time);
+            advanceHorizonThrough(time);
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    @Override
+    public void recordMarketSnapshot(FuturesMarketSnapshot snapshot) {
+        requireMutable("recordMarketSnapshot(FuturesMarketSnapshot)");
+        Objects.requireNonNull(snapshot, "snapshot");
+        requireFuturesRecord("recordMarketSnapshot(FuturesMarketSnapshot)");
+        requireEventContract(snapshot.contract(), "Market snapshot");
+        lock.writeLock().lock();
+        try {
+            marketSnapshots.add(snapshot);
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    @Override
+    public List<FuturesMarketSnapshot> getMarketSnapshots() {
+        lock.readLock().lock();
+        try {
+            return List.copyOf(marketSnapshots);
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    @Override
+    public void recordPositionSnapshot(FuturesPositionSnapshot snapshot) {
+        requireMutable("recordPositionSnapshot(FuturesPositionSnapshot)");
+        Objects.requireNonNull(snapshot, "snapshot");
+        requireFuturesRecord("recordPositionSnapshot(FuturesPositionSnapshot)");
+        requireEventContract(snapshot.contract(), "Position snapshot");
+        lock.writeLock().lock();
+        try {
+            positionSnapshots.add(snapshot);
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    @Override
+    public List<FuturesPositionSnapshot> getPositionSnapshots() {
+        lock.readLock().lock();
+        try {
+            return List.copyOf(positionSnapshots);
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
     @Override
     public String getName() {
         return name;
@@ -278,6 +860,7 @@ public class BaseTradingRecord implements TradingRecord {
      * @since 0.22.4
      */
     public void setName(String name) {
+        requireMutable("setName(String)");
         this.name = name;
     }
 
@@ -328,8 +911,19 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     @Override
+    public void operate(TradeFill fill) {
+        Objects.requireNonNull(fill, "fill");
+        if (fill.futuresContract() == null) {
+            operate(Trade.fromFill(fill));
+            return;
+        }
+        operate(Trade.fromFill(fill, getTransactionCostModel()));
+    }
+
+    @Override
     public void operate(Trade trade) {
         Objects.requireNonNull(trade, "trade");
+        requireMutable("operate(Trade)");
         Objects.requireNonNull(trade.getType(), "trade.type");
         lock.writeLock().lock();
         try {
@@ -345,6 +939,8 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public void operate(int index, Num price, Num amount) {
+        requireMutable("operate(int, Num, Num)");
+        requireSpotRecord("operate(int, Num, Num)");
         lock.writeLock().lock();
         try {
             TradeType tradeType = positionBook.hasOpenLots() ? startingType.complementType() : startingType;
@@ -356,6 +952,8 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public boolean enter(int index, Num price, Num amount) {
+        requireMutable("enter(int, Num, Num)");
+        requireSpotRecord("enter(int, Num, Num)");
         lock.writeLock().lock();
         try {
             if (positionBook.hasOpenLots()) {
@@ -370,6 +968,8 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public boolean exit(int index, Num price, Num amount) {
+        requireMutable("exit(int, Num, Num)");
+        requireSpotRecord("exit(int, Num, Num)");
         lock.writeLock().lock();
         try {
             if (!positionBook.hasOpenLots()) {
@@ -468,6 +1068,115 @@ public class BaseTradingRecord implements TradingRecord {
                 openPositionsSnapshot(), netOpenPositionSnapshot(), totalFeesSnapshot());
     }
 
+    private void requireSpotRecord(String operation) {
+        if (futuresContract != null) {
+            throw new IllegalStateException(operation
+                    + " cannot be used with a futures record; record fills that carry the futures contract and fees");
+        }
+    }
+
+    private void requireFuturesRecord(String operation) {
+        if (futuresContract == null) {
+            throw new UnsupportedOperationException(operation + " requires a native futures record");
+        }
+    }
+
+    private void requireMutable(String operation) {
+        if (readOnly) {
+            throw new UnsupportedOperationException(operation + " is not supported by a projected trading record");
+        }
+    }
+
+    private void requireEventContract(FuturesContract contract, String label) {
+        Objects.requireNonNull(contract, label + " contract");
+        if (!futuresContract.equals(contract)) {
+            throw new IllegalArgumentException(label + " contract " + contract.symbol()
+                    + " does not match the record contract " + futuresContract.symbol());
+        }
+    }
+
+    /**
+     * Applies every scheduled funding event due up to and including the supplied
+     * time, in schedule order.
+     *
+     * @param through inclusive upper bound of the accounting horizon
+     */
+    private void applyScheduledFunding(Instant through) {
+        while (fundingCursor < fundingSchedule.size()) {
+            FuturesFunding funding = fundingSchedule.get(fundingCursor);
+            if (funding.time().isAfter(through)) {
+                return;
+            }
+            fundingCursor++;
+            applyFundingInternal(funding);
+        }
+    }
+
+    private void applyFundingInternal(FuturesFunding funding) {
+        Num signedContracts = positionBook.signedContractsAt(funding.time());
+        Num amount = futuresContract.fundingCashFlow(signedContracts, funding.referencePrice(), funding.rate());
+        recordProcessedCashFlow(FuturesCashFlow.builder()
+                .contract(futuresContract)
+                .type(FuturesCashFlow.Type.FUNDING)
+                .eventId(funding.eventId())
+                .index(funding.index())
+                .time(funding.time())
+                .amount(amount)
+                .currency(futuresContract.settlementCurrency())
+                .rate(funding.rate())
+                .referencePrice(funding.referencePrice())
+                .source(funding.source())
+                .build());
+    }
+
+    /**
+     * Allocates and journals one already-resolved cash flow. The accounting horizon
+     * is owned by the caller.
+     *
+     * @param cashFlow resolved cash flow
+     */
+    private void recordProcessedCashFlow(FuturesCashFlow cashFlow) {
+        FuturesCashFlow recorded = processedEvents.get(cashFlow.eventId());
+        if (recorded != null) {
+            if (recorded.equals(cashFlow)) {
+                return;
+            }
+            throw new IllegalArgumentException(
+                    "Cash flow " + cashFlow.eventId() + " is already recorded with different values");
+        }
+        positionBook.allocateCashFlow(cashFlow);
+        processedEvents.put(cashFlow.eventId(), cashFlow);
+        cashFlows.add(cashFlow);
+    }
+
+    private void advanceHorizonThrough(Instant time) {
+        if (eventHorizon == null || time.isAfter(eventHorizon)) {
+            eventHorizon = time;
+        }
+    }
+
+    /**
+     * Advances the accounting horizon through a native fill, so scheduled funding
+     * at the fill timestamp is applied before the fill is.
+     *
+     * @param trade native fill about to be applied
+     */
+    private void advanceForFill(Trade trade) {
+        if (futuresContract == null) {
+            return;
+        }
+        Instant fillTime = trade.getTime();
+        if (fillTime == null) {
+            return;
+        }
+        if (eventHorizon != null && fillTime.isBefore(eventHorizon)) {
+            throw new IllegalArgumentException(
+                    "Fill at " + fillTime + " precedes the processed event horizon " + eventHorizon);
+        }
+        applyScheduledFunding(fillTime);
+        advanceHorizonThrough(fillTime);
+    }
+
     private int nextIndex() {
         lock.writeLock().lock();
         try {
@@ -508,6 +1217,7 @@ public class BaseTradingRecord implements TradingRecord {
         if (fill.side() != null && fill.side() != tradeSide) {
             throw new IllegalArgumentException("Fill side " + fill.side() + " does not match trade type " + tradeType);
         }
+        requireFillContract(fill);
         if (fill.price() == null || fill.price().isNaN()) {
             throw new IllegalArgumentException("Fill price must be set");
         }
@@ -517,10 +1227,41 @@ public class BaseTradingRecord implements TradingRecord {
         String correlationId = chooseValue(fill.correlationId(), tradeCorrelationId);
         Num normalizedAmount = normalizeRecordedAmount(fill.amount(), fill.price());
         Num normalizedFee = normalizeFee(fill.fee(), fill.price());
-        Trade plannedTrade = recordedTrade(resolvedIndex, executionTime, fill.price(), normalizedAmount, normalizedFee,
-                tradeSide, orderId, correlationId);
+        Trade plannedTrade;
+        if (fill.futuresContract() != null) {
+            TradeFill normalizedFill = fill.toBuilder()
+                    .index(resolvedIndex)
+                    .time(executionTime)
+                    .amount(normalizedAmount)
+                    .side(tradeSide)
+                    .orderId(orderId)
+                    .correlationId(correlationId)
+                    .build();
+            plannedTrade = Trade.fromFill(normalizedFill, getTransactionCostModel());
+        } else {
+            plannedTrade = recordedTrade(resolvedIndex, executionTime, fill.price(), normalizedAmount, normalizedFee,
+                    tradeSide, orderId, correlationId);
+        }
         validateFill(plannedTrade);
         return new PlannedTradeFill(resolvedIndex, plannedTrade);
+    }
+
+    private void requireFillContract(TradeFill fill) {
+        if (futuresContract == null) {
+            if (fill.futuresContract() != null) {
+                throw new IllegalArgumentException(
+                        "A spot record cannot record fills of futures contract " + fill.futuresContract().symbol());
+            }
+            return;
+        }
+        if (fill.futuresContract() == null) {
+            throw new IllegalArgumentException(
+                    "A futures record requires fills that reference the futures contract " + futuresContract.symbol());
+        }
+        if (!futuresContract.equals(fill.futuresContract())) {
+            throw new IllegalArgumentException("Fill contract " + fill.futuresContract().symbol()
+                    + " does not match the record contract " + futuresContract.symbol());
+        }
     }
 
     private Trade tradeWithAssignedIndex(Trade trade, int index) {
@@ -534,14 +1275,21 @@ public class BaseTradingRecord implements TradingRecord {
         for (int i = 0; i < fills.size(); i++) {
             TradeFill fill = fills.get(i);
             int assignedIndex = fill.index() >= 0 ? index + (fill.index() - firstIndex) : index + i;
-            indexedFills.add(new TradeFill(assignedIndex, fill.time(), fill.price(), fill.amount(), fill.fee(),
-                    fill.side(), chooseValue(fill.orderId(), trade.getOrderId()),
-                    chooseValue(fill.correlationId(), trade.getCorrelationId())));
+            indexedFills.add(fill.toBuilder()
+                    .index(assignedIndex)
+                    .orderId(chooseValue(fill.orderId(), trade.getOrderId()))
+                    .correlationId(chooseValue(fill.correlationId(), trade.getCorrelationId()))
+                    .build());
         }
         if (indexedFills.size() == 1) {
             TradeFill fill = indexedFills.getFirst();
             if (fill.price() == null || fill.price().isNaN()) {
                 throw new IllegalArgumentException("Fill price must be set");
+            }
+            if (fill.futuresContract() != null) {
+                // A futures trade carries contract and fee metadata that the scalar
+                // recorded-trade path cannot represent.
+                return Trade.fromFills(trade.getType(), indexedFills, trade.getCostModel());
             }
             return recordedTrade(fill.index(), resolveExecutionTime(fill.time(), trade.getTime()), fill.price(),
                     fill.amount(), normalizeFee(fill.fee(), fill.price()),
@@ -560,6 +1308,7 @@ public class BaseTradingRecord implements TradingRecord {
         Num price = trade.getPricePerAsset();
         lock.writeLock().lock();
         try {
+            advanceForFill(trade);
             nextTradeIndex = Math.max(nextTradeIndex, index + 1);
             long appliedSequence = sequence >= 0 ? sequence : nextSequence++;
             if (appliedSequence >= nextSequence) {
@@ -765,13 +1514,28 @@ public class BaseTradingRecord implements TradingRecord {
     private void readObject(ObjectInputStream inputStream) throws IOException, ClassNotFoundException {
         inputStream.defaultReadObject();
         lock = new ReentrantReadWriteLock();
-        transactionCostModel = defaultCostModel(transactionCostModel);
+        transactionCostModel = resolveTransactionCostModel(transactionCostModel, futuresContract);
         holdingCostModel = defaultCostModel(holdingCostModel);
         positionBook.rehydrateCostModels(transactionCostModel, holdingCostModel);
         tradesCache = null;
         tradesCacheVersion = -1L;
         modificationCount = 0L;
         numFactory = null;
+        if (cashFlows == null) {
+            cashFlows = new ArrayList<>();
+        }
+        if (processedEvents == null) {
+            processedEvents = new LinkedHashMap<>();
+        }
+        if (marketSnapshots == null) {
+            marketSnapshots = new ArrayList<>();
+        }
+        if (positionSnapshots == null) {
+            positionSnapshots = new ArrayList<>();
+        }
+        if (fundingCursor < 0 || fundingCursor > fundingSchedule.size()) {
+            fundingCursor = fundingSchedule.size();
+        }
     }
 
     /**
@@ -795,6 +1559,7 @@ public class BaseTradingRecord implements TradingRecord {
      * @since 0.22.4
      */
     public void rehydrate(CostModel transactionCostModel, CostModel holdingCostModel) {
+        requireMutable("rehydrate(CostModel, CostModel)");
         CostModel resolvedTransaction = defaultCostModel(transactionCostModel);
         CostModel resolvedHolding = defaultCostModel(holdingCostModel);
         this.transactionCostModel = resolvedTransaction;
@@ -811,6 +1576,26 @@ public class BaseTradingRecord implements TradingRecord {
 
     private static Trade recordedTrade(int index, Instant time, Num pricePerAsset, Num amount, Num fee,
             ExecutionSide side, String orderId, String correlationId) {
+        return recordedTrade(index, time, pricePerAsset, amount, fee, side, orderId, correlationId, null, null);
+    }
+
+    private static Trade recordedTrade(int index, Instant time, Num pricePerAsset, Num amount, Num fee,
+            ExecutionSide side, String orderId, String correlationId, FuturesContract futuresContract,
+            List<TradeFee> feeComponents) {
+        if (futuresContract != null) {
+            TradeFill fill = TradeFill.builder()
+                    .index(index)
+                    .time(time)
+                    .price(pricePerAsset)
+                    .amount(amount)
+                    .side(side)
+                    .orderId(orderId)
+                    .correlationId(correlationId)
+                    .futuresContract(futuresContract)
+                    .fees(feeComponents == null ? List.of() : feeComponents)
+                    .build();
+            return Trade.fromFill(fill, RecordedTradeCostModel.INSTANCE);
+        }
         Num normalizedFee = fee == null ? pricePerAsset.getNumFactory().zero() : fee;
         if (time != null) {
             return new BaseTrade(index, time, pricePerAsset, amount, normalizedFee, side, orderId, correlationId);
@@ -932,7 +1717,8 @@ public class BaseTradingRecord implements TradingRecord {
     private record RecordConfig(TradeType startingType, ExecutionMatchPolicy matchPolicy,
             CostModel transactionCostModel, CostModel holdingCostModel, PositionBook positionBook, Integer startIndex,
             Integer endIndex, int nextTradeIndex, long modificationCount, Num totalFees, NumFactory numFactory,
-            long nextSequence) {
+            long nextSequence, FuturesContract futuresContract, Num initialCapital, Num initialMarginRate,
+            List<FuturesFunding> fundingSchedule) {
     }
 
     /**
@@ -947,11 +1733,12 @@ public class BaseTradingRecord implements TradingRecord {
         private final ExecutionMatchPolicy matchPolicy;
         private transient CostModel transactionCostModel;
         private transient CostModel holdingCostModel;
+        private final FuturesContract futuresContract;
         private final Deque<PositionLot> openLots;
         private final List<ClosedPosition> closedPositions;
 
         private PositionBook(TradeType startingType, ExecutionMatchPolicy matchPolicy, CostModel transactionCostModel,
-                CostModel holdingCostModel) {
+                CostModel holdingCostModel, FuturesContract futuresContract) {
             Objects.requireNonNull(startingType, "startingType");
             Objects.requireNonNull(matchPolicy, "matchPolicy");
             Objects.requireNonNull(transactionCostModel, "transactionCostModel");
@@ -960,8 +1747,26 @@ public class BaseTradingRecord implements TradingRecord {
             this.matchPolicy = matchPolicy;
             this.transactionCostModel = transactionCostModel;
             this.holdingCostModel = holdingCostModel;
+            this.futuresContract = futuresContract;
             this.openLots = new ArrayDeque<>();
             this.closedPositions = new ArrayList<>();
+        }
+
+        private void adopt(Position position, long entrySequence, long exitSequence) {
+            Objects.requireNonNull(position, "position must not be null");
+            FuturesContract positionContract = position.getFuturesContract();
+            if (positionContract == null) {
+                throw new IllegalArgumentException("A futures record only accepts futures positions");
+            }
+            if (!positionContract.equals(futuresContract)) {
+                throw new IllegalArgumentException("Position contract " + positionContract.symbol()
+                        + " does not match the record contract " + futuresContract.symbol());
+            }
+            if (position.isClosed()) {
+                closedPositions.add(new ClosedPosition(position, entrySequence, exitSequence));
+                return;
+            }
+            openLots.addLast(PositionLot.of(position, entrySequence));
         }
 
         private void recordEntry(int index, Trade trade, long sequence) {
@@ -980,8 +1785,9 @@ public class BaseTradingRecord implements TradingRecord {
             if (matchPolicy == ExecutionMatchPolicy.AVG_COST) {
                 normalizeAvgCostLots();
             }
-            PositionLot lot = new PositionLot(index, timeOf(trade), trade.getPricePerAsset(), sideOf(trade.getType()),
-                    trade.getAmount(), feeOf(trade), trade.getOrderId(), trade.getCorrelationId(), sequence);
+            PositionLot lot = PositionLot.of(index, timeOf(trade), trade.getPricePerAsset(), sideOf(trade.getType()),
+                    trade.getAmount(), feeOf(trade), trade.getOrderId(), trade.getCorrelationId(), sequence,
+                    futuresContract, feesOf(trade));
             if (matchPolicy == ExecutionMatchPolicy.AVG_COST && !openLots.isEmpty()) {
                 PositionLot merged = openLots.removeFirst().merge(lot);
                 openLots.addFirst(merged);
@@ -1038,7 +1844,8 @@ public class BaseTradingRecord implements TradingRecord {
             List<SequencedTrade> trades = new ArrayList<>(openLots.size());
             for (PositionLot lot : openLots) {
                 Trade entry = recordedTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
-                        lot.fee(), lot.side(), lot.orderId(), lot.correlationId());
+                        lot.fee(), lot.side(), lot.orderId(), lot.correlationId(), lot.futuresContract(),
+                        lot.feeComponents());
                 trades.add(new SequencedTrade(entry, lot.entrySequence()));
             }
             return List.copyOf(trades);
@@ -1052,10 +1859,131 @@ public class BaseTradingRecord implements TradingRecord {
             List<Position> positions = new ArrayList<>();
             for (PositionLot lot : openLots) {
                 Trade entry = recordedTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
-                        lot.fee(), lot.side(), lot.orderId(), lot.correlationId());
-                positions.add(new Position(entry, RecordedTradeCostModel.INSTANCE, holdingCostModel));
+                        lot.fee(), lot.side(), lot.orderId(), lot.correlationId(), lot.futuresContract(),
+                        lot.feeComponents());
+                positions.add(new Position(entry, RecordedTradeCostModel.INSTANCE, holdingCostModel, lot.cashFlows()));
             }
             return positions;
+        }
+
+        /**
+         * Nets the signed contracts held immediately before the supplied time.
+         *
+         * <p>
+         * A slice entered at the boundary does not pay; a slice exited at the boundary
+         * still pays, because it was still held immediately before the event timestamp.
+         * </p>
+         *
+         * @param eventTime cash-flow event time
+         * @return signed contracts held immediately before {@code eventTime}
+         */
+        private Num signedContractsAt(Instant eventTime) {
+            NumFactory factory = futuresContract.contractSize().getNumFactory();
+            Num total = factory.zero();
+            for (CashFlowSlice slice : eligibleSlices(eventTime)) {
+                Num quantity = factory.numOf(slice.quantity().getDelegate());
+                total = slice.buy() ? total.plus(quantity) : total.minus(quantity);
+            }
+            return total;
+        }
+
+        /**
+         * Allocates one observed cash flow across the slices held immediately before
+         * its own timestamp, proportionally by contract quantity and assigning the
+         * final residue exactly.
+         *
+         * @param cashFlow resolved cash flow to allocate
+         */
+        private void allocateCashFlow(FuturesCashFlow cashFlow) {
+            List<CashFlowSlice> slices = eligibleSlices(cashFlow.time());
+            Num amount = cashFlow.amount();
+            Num settlement = cashFlow.settlementAmount();
+            boolean zeroFlow = amount.isZero() && settlement.isZero();
+            NumFactory factory = amount.getNumFactory();
+            Num totalQuantity = factory.zero();
+            for (CashFlowSlice slice : slices) {
+                totalQuantity = totalQuantity.plus(factory.numOf(slice.quantity().getDelegate()));
+            }
+            if (totalQuantity.isZero()) {
+                if (zeroFlow) {
+                    return;
+                }
+                throw new IllegalArgumentException(
+                        "No eligible futures exposure at " + cashFlow.time() + " for cash flow " + cashFlow.eventId());
+            }
+            if (zeroFlow) {
+                return;
+            }
+            Num eventAmount = factory.numOf(amount.getDelegate());
+            Num eventSettlement = factory.numOf(settlement.getDelegate());
+            Num allocatedAmount = factory.zero();
+            Num allocatedSettlement = factory.zero();
+            for (int i = 0; i < slices.size(); i++) {
+                CashFlowSlice slice = slices.get(i);
+                Num quantity = factory.numOf(slice.quantity().getDelegate());
+                boolean last = i == slices.size() - 1;
+                Num portionAmount = last ? eventAmount.minus(allocatedAmount)
+                        : proportional(eventAmount, quantity, totalQuantity);
+                Num portionSettlement = last ? eventSettlement.minus(allocatedSettlement)
+                        : proportional(eventSettlement, quantity, totalQuantity);
+                allocatedAmount = allocatedAmount.plus(portionAmount);
+                allocatedSettlement = allocatedSettlement.plus(portionSettlement);
+                FuturesCashFlow portion = cashFlow.toBuilder()
+                        .amount(portionAmount)
+                        .settlementAmount(portionSettlement)
+                        .build();
+                if (slice.lot() != null) {
+                    slice.lot().addCashFlow(portion);
+                } else {
+                    appendCashFlowToClosedPosition(slice.closedIndex(), portion);
+                }
+            }
+        }
+
+        private List<CashFlowSlice> eligibleSlices(Instant eventTime) {
+            List<CashFlowSlice> slices = new ArrayList<>();
+            for (PositionLot lot : openLots) {
+                Instant entryTime = lot.entryTime();
+                if (entryTime == null) {
+                    throw new IllegalStateException("Futures cash flows require entry timestamps");
+                }
+                if (entryTime.isBefore(eventTime)) {
+                    slices.add(new CashFlowSlice(lot.entrySequence(), lot.amount(), lot.side() == ExecutionSide.BUY,
+                            lot, -1));
+                }
+            }
+            for (int i = 0; i < closedPositions.size(); i++) {
+                ClosedPosition closed = closedPositions.get(i);
+                Position position = closed.position();
+                Trade entry = position.getEntry();
+                Trade exit = position.getExit();
+                Instant entryTime = entry == null ? null : entry.getTime();
+                if (entryTime == null) {
+                    throw new IllegalStateException("Futures cash flows require entry timestamps");
+                }
+                Instant exitTime = exit == null ? null : exit.getTime();
+                if (!entryTime.isBefore(eventTime) || (exitTime != null && exitTime.isBefore(eventTime))) {
+                    continue;
+                }
+                slices.add(new CashFlowSlice(closed.entrySequence(), entry.getAmount(),
+                        entry.getType() == TradeType.BUY, null, i));
+            }
+            slices.sort(Comparator.comparingLong(CashFlowSlice::entrySequence));
+            return slices;
+        }
+
+        private void appendCashFlowToClosedPosition(int closedIndex, FuturesCashFlow cashFlow) {
+            ClosedPosition closed = closedPositions.get(closedIndex);
+            Position position = closed.position();
+            List<FuturesCashFlow> updated = new ArrayList<>(position.getCashFlows());
+            updated.add(cashFlow);
+            Position rebuilt = new Position(position.getEntry(), position.getExit(), position.getTransactionCostModel(),
+                    position.getHoldingCostModel(), List.copyOf(updated));
+            closedPositions.set(closedIndex,
+                    new ClosedPosition(rebuilt, closed.entrySequence(), closed.exitSequence()));
+        }
+
+        private record CashFlowSlice(long entrySequence, Num quantity, boolean buy, PositionLot lot, int closedIndex) {
         }
 
         private Position netOpenPosition() {
@@ -1065,6 +1993,9 @@ public class BaseTradingRecord implements TradingRecord {
             Num totalAmount = null;
             Num totalCost = null;
             Num totalFees = null;
+            Num inverseNotional = null;
+            List<TradeFee> mergedComponents = new ArrayList<>();
+            List<FuturesCashFlow> mergedCashFlows = new ArrayList<>();
             Instant earliest = null;
             boolean hasUnknownEntryTime = false;
             ExecutionSide side = null;
@@ -1074,6 +2005,13 @@ public class BaseTradingRecord implements TradingRecord {
                 totalAmount = totalAmount == null ? lot.amount() : totalAmount.plus(lot.amount());
                 totalCost = totalCost == null ? lotCost : totalCost.plus(lotCost);
                 totalFees = totalFees == null ? lot.fee() : totalFees.plus(lot.fee());
+                if (lot.futuresContract() != null) {
+                    Num lotInverseNotional = lot.amount().dividedBy(lot.entryPrice());
+                    inverseNotional = inverseNotional == null ? lotInverseNotional
+                            : inverseNotional.plus(lotInverseNotional);
+                    mergedComponents.addAll(lot.feeComponents());
+                    mergedCashFlows.addAll(lot.cashFlows());
+                }
                 if (lot.entryTime() == null) {
                     hasUnknownEntryTime = true;
                 } else if (!hasUnknownEntryTime && (earliest == null || lot.entryTime().isBefore(earliest))) {
@@ -1086,11 +2024,25 @@ public class BaseTradingRecord implements TradingRecord {
                     throw new IllegalStateException("Open lots contain mixed entry sides");
                 }
             }
-            Num average = totalAmount == null || totalAmount.isZero() ? totalCost : totalCost.dividedBy(totalAmount);
+            if (inverseNotional != null && hasUnknownEntryTime) {
+                throw new IllegalStateException("Futures positions require an entry time");
+            }
             Num fee = totalFees == null ? totalCost.getNumFactory().zero() : totalFees;
+            Num average = aggregateEntryPrice(totalAmount, totalCost, inverseNotional);
             Trade entry = recordedTrade(entryIndex == Integer.MAX_VALUE ? 0 : entryIndex,
-                    hasUnknownEntryTime ? null : earliest, average, totalAmount, fee, side, null, null);
-            return new Position(entry, RecordedTradeCostModel.INSTANCE, holdingCostModel);
+                    hasUnknownEntryTime ? null : earliest, average, totalAmount, fee, side, null, null,
+                    inverseNotional == null ? null : futuresContract, mergedComponents);
+            return new Position(entry, RecordedTradeCostModel.INSTANCE, holdingCostModel, mergedCashFlows);
+        }
+
+        private Num aggregateEntryPrice(Num totalAmount, Num totalCost, Num inverseNotional) {
+            if (inverseNotional != null) {
+                if (!(futuresContract.settlementType() == FuturesContract.SettlementType.INVERSE)) {
+                    return totalAmount == null || totalAmount.isZero() ? totalCost : totalCost.dividedBy(totalAmount);
+                }
+                return inverseNotional.isZero() ? totalCost : totalAmount.dividedBy(inverseNotional);
+            }
+            return totalAmount == null || totalAmount.isZero() ? totalCost : totalCost.dividedBy(totalAmount);
         }
 
         private PositionLot nextLot(Trade trade) {
@@ -1139,17 +2091,86 @@ public class BaseTradingRecord implements TradingRecord {
             Num lotAmount = lot.amount();
             Num entryFeePortion = lot.fee().isZero() ? lot.fee()
                     : lot.fee().multipliedBy(closeAmount).dividedBy(lotAmount);
+            List<TradeFee> entryComponents = lot.allocateFeeComponents(closeAmount);
+            List<FuturesCashFlow> sliceCashFlows = lot.allocateCashFlows(closeAmount);
             if (closeAmount.isEqual(lotAmount)) {
                 openLots.remove(lot);
             } else {
                 lot.reduce(closeAmount, entryFeePortion);
             }
             Trade entry = recordedTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), closeAmount,
-                    entryFeePortion, lot.side(), lot.orderId(), lot.correlationId());
+                    entryFeePortion, lot.side(), lot.orderId(), lot.correlationId(), lot.futuresContract(),
+                    entryComponents);
+            List<TradeFee> exitComponents = allocateFeeComponents(trade.getFuturesContract(), trade.getFees(),
+                    closeAmount, trade.getAmount());
             Trade exit = recordedTrade(index, timeOf(trade), trade.getPricePerAsset(), closeAmount, exitFeePortion,
-                    sideOf(trade.getType()), trade.getOrderId(), trade.getCorrelationId());
-            return new ClosedPosition(new Position(entry, exit, RecordedTradeCostModel.INSTANCE, holdingCostModel),
+                    sideOf(trade.getType()), trade.getOrderId(), trade.getCorrelationId(), trade.getFuturesContract(),
+                    exitComponents);
+            return new ClosedPosition(
+                    new Position(entry, exit, RecordedTradeCostModel.INSTANCE, holdingCostModel, sliceCashFlows),
                     lot.entrySequence(), exitSequence);
+        }
+
+        private static List<TradeFee> allocateFeeComponents(FuturesContract contract, List<TradeFee> components,
+                Num portion, Num total) {
+            if (contract == null) {
+                return null;
+            }
+            return scaleFeeComponents(components, portion, total);
+        }
+
+        private static List<TradeFee> scaleFeeComponents(List<TradeFee> components, Num portion, Num total) {
+            if (components == null || components.isEmpty()) {
+                return List.of();
+            }
+            if (portion.isEqual(total)) {
+                return List.copyOf(components);
+            }
+            List<TradeFee> scaled = new ArrayList<>(components.size());
+            for (TradeFee component : components) {
+                scaled.add(scale(component, portion, total));
+            }
+            return List.copyOf(scaled);
+        }
+
+        private static List<FuturesCashFlow> scaleCashFlows(List<FuturesCashFlow> cashFlows, Num portion, Num total) {
+            if (cashFlows == null || cashFlows.isEmpty()) {
+                return List.of();
+            }
+            if (portion.isEqual(total)) {
+                return List.copyOf(cashFlows);
+            }
+            List<FuturesCashFlow> scaled = new ArrayList<>(cashFlows.size());
+            for (FuturesCashFlow cashFlow : cashFlows) {
+                scaled.add(scale(cashFlow, portion, total));
+            }
+            return List.copyOf(scaled);
+        }
+
+        private static TradeFee scale(TradeFee component, Num portion, Num total) {
+            Num settlement = component.settlementAmount() == null ? component.amount() : component.settlementAmount();
+            return component.toBuilder()
+                    .amount(proportional(component.amount(), portion, total))
+                    .settlementAmount(proportional(settlement, portion, total))
+                    .build();
+        }
+
+        private static FuturesCashFlow scale(FuturesCashFlow cashFlow, Num portion, Num total) {
+            return cashFlow.toBuilder()
+                    .amount(proportional(cashFlow.amount(), portion, total))
+                    .settlementAmount(proportional(cashFlow.settlementAmount(), portion, total))
+                    .build();
+        }
+
+        private static Num proportional(Num value, Num portion, Num total) {
+            return value.multipliedBy(portion).dividedBy(total);
+        }
+
+        private static List<TradeFee> feesOf(Trade trade) {
+            if (trade.getFuturesContract() == null) {
+                return null;
+            }
+            return List.copyOf(trade.getFees());
         }
 
         private static Num feeOf(Trade trade) {
@@ -1213,13 +2234,17 @@ public class BaseTradingRecord implements TradingRecord {
             private final Instant entryTime;
             private final Num entryPrice;
             private final ExecutionSide side;
+            private final FuturesContract futuresContract;
             private Num amount;
             private Num fee;
             private final String orderId;
             private final String correlationId;
+            private List<TradeFee> feeComponents;
+            private List<FuturesCashFlow> cashFlows;
 
             private PositionLot(int entryIndex, Instant entryTime, Num entryPrice, ExecutionSide side, Num amount,
-                    Num fee, String orderId, String correlationId, long entrySequence) {
+                    Num fee, String orderId, String correlationId, long entrySequence, FuturesContract futuresContract,
+                    List<TradeFee> feeComponents, List<FuturesCashFlow> cashFlows) {
                 Objects.requireNonNull(entryPrice, "entryPrice");
                 Objects.requireNonNull(side, "side");
                 Objects.requireNonNull(amount, "amount");
@@ -1233,6 +2258,28 @@ public class BaseTradingRecord implements TradingRecord {
                 this.fee = fee;
                 this.orderId = orderId;
                 this.correlationId = correlationId;
+                this.futuresContract = futuresContract;
+                this.feeComponents = feeComponents;
+                this.cashFlows = cashFlows == null ? List.of() : cashFlows;
+            }
+
+            private static PositionLot of(int entryIndex, Instant entryTime, Num entryPrice, ExecutionSide side,
+                    Num amount, Num fee, String orderId, String correlationId, long entrySequence,
+                    FuturesContract futuresContract, List<TradeFee> feeComponents) {
+                if (futuresContract != null && feeComponents == null) {
+                    throw new IllegalStateException(
+                            "A futures position lot requires the recorded fee components of its entry fill");
+                }
+                return new PositionLot(entryIndex, entryTime, entryPrice, side, amount, fee, orderId, correlationId,
+                        entrySequence, futuresContract, feeComponents, List.of());
+            }
+
+            private static PositionLot of(Position position, long entrySequence) {
+                Trade entry = Objects.requireNonNull(position.getEntry(), "position.entry");
+                return new PositionLot(entry.getIndex(), entry.getTime(), entry.getPricePerAsset(),
+                        sideOf(entry.getType()), entry.getAmount(), feeOf(entry), entry.getOrderId(),
+                        entry.getCorrelationId(), entrySequence, position.getFuturesContract(),
+                        List.copyOf(entry.getFees()), position.getCashFlows());
             }
 
             private int entryIndex() {
@@ -1263,12 +2310,63 @@ public class BaseTradingRecord implements TradingRecord {
                 return fee;
             }
 
+            private FuturesContract futuresContract() {
+                return futuresContract;
+            }
+
+            private List<TradeFee> feeComponents() {
+                return feeComponents == null ? List.of() : feeComponents;
+            }
+
+            private List<FuturesCashFlow> cashFlows() {
+                return cashFlows;
+            }
+
+            private void addCashFlow(FuturesCashFlow cashFlow) {
+                List<FuturesCashFlow> updated = new ArrayList<>(cashFlows);
+                updated.add(cashFlow);
+                cashFlows = List.copyOf(updated);
+            }
+
             private String orderId() {
                 return orderId;
             }
 
             private String correlationId() {
                 return correlationId;
+            }
+
+            /**
+             * Allocates the closed portion of the recorded fee components and retains the
+             * remainder on the open lot.
+             *
+             * @param portion closed amount
+             * @return fee components allocated to the closed portion
+             */
+            private List<TradeFee> allocateFeeComponents(Num portion) {
+                if (futuresContract == null) {
+                    return null;
+                }
+                List<TradeFee> allocated = scaleFeeComponents(feeComponents, portion, amount);
+                if (!portion.isEqual(amount)) {
+                    feeComponents = scaleFeeComponents(feeComponents, amount.minus(portion), amount);
+                }
+                return allocated;
+            }
+
+            /**
+             * Allocates the closed portion of the recorded cash flows and retains the
+             * remainder on the open lot.
+             *
+             * @param portion closed amount
+             * @return cash flows allocated to the closed portion
+             */
+            private List<FuturesCashFlow> allocateCashFlows(Num portion) {
+                List<FuturesCashFlow> allocated = scaleCashFlows(cashFlows, portion, amount);
+                if (!portion.isEqual(amount)) {
+                    cashFlows = scaleCashFlows(cashFlows, amount.minus(portion), amount);
+                }
+                return allocated;
             }
 
             private PositionLot reduce(Num reduceAmount, Num reduceFee) {
@@ -1281,9 +2379,11 @@ public class BaseTradingRecord implements TradingRecord {
                 if (side != other.side) {
                     throw new IllegalArgumentException("cannot merge lots with different sides");
                 }
+                if (!Objects.equals(futuresContract, other.futuresContract)) {
+                    throw new IllegalArgumentException("cannot merge lots with different futures contracts");
+                }
                 Num totalAmount = amount.plus(other.amount);
-                Num totalCost = entryPrice.multipliedBy(amount).plus(other.entryPrice.multipliedBy(other.amount));
-                Num mergedPrice = totalCost.dividedBy(totalAmount);
+                Num mergedPrice = mergedEntryPrice(totalAmount, other);
                 Num mergedFee = fee.plus(other.fee);
                 int mergedIndex = Math.min(entryIndex, other.entryIndex);
                 Instant mergedTime;
@@ -1293,8 +2393,36 @@ public class BaseTradingRecord implements TradingRecord {
                     mergedTime = entryTime.isBefore(other.entryTime) ? entryTime : other.entryTime;
                 }
                 long mergedSequence = Math.min(entrySequence, other.entrySequence);
+                List<TradeFee> mergedComponents = feeComponents == null ? null : mergeComponents(other);
                 return new PositionLot(mergedIndex, mergedTime, mergedPrice, side, totalAmount, mergedFee, null, null,
-                        mergedSequence);
+                        mergedSequence, futuresContract, mergedComponents, mergeCashFlows(other));
+            }
+
+            private Num mergedEntryPrice(Num totalAmount, PositionLot other) {
+                if (futuresContract != null
+                        && futuresContract.settlementType() == FuturesContract.SettlementType.INVERSE) {
+                    Num inverseNotional = amount.dividedBy(entryPrice).plus(other.amount.dividedBy(other.entryPrice));
+                    return inverseNotional.isZero() ? totalAmount.getNumFactory().zero()
+                            : totalAmount.dividedBy(inverseNotional);
+                }
+                return entryPrice.multipliedBy(amount)
+                        .plus(other.entryPrice.multipliedBy(other.amount))
+                        .dividedBy(totalAmount);
+            }
+
+            private List<TradeFee> mergeComponents(PositionLot other) {
+                List<TradeFee> merged = new ArrayList<>(feeComponents);
+                merged.addAll(other.feeComponents());
+                return List.copyOf(merged);
+            }
+
+            private List<FuturesCashFlow> mergeCashFlows(PositionLot other) {
+                if (cashFlows.isEmpty() && other.cashFlows().isEmpty()) {
+                    return List.of();
+                }
+                List<FuturesCashFlow> merged = new ArrayList<>(cashFlows);
+                merged.addAll(other.cashFlows());
+                return List.copyOf(merged);
             }
 
             @Serial
@@ -1310,6 +2438,14 @@ public class BaseTradingRecord implements TradingRecord {
                 }
                 if (fee == null) {
                     throw new InvalidObjectException("PositionLot.fee is required");
+                }
+                if (futuresContract == null) {
+                    feeComponents = null;
+                } else if (feeComponents == null) {
+                    throw new InvalidObjectException("PositionLot.feeComponents is required for futures lots");
+                }
+                if (cashFlows == null) {
+                    cashFlows = List.of();
                 }
                 return this;
             }
@@ -1363,9 +2499,11 @@ public class BaseTradingRecord implements TradingRecord {
                 return position;
             }
             if (position.getExit() == null) {
-                return new Position(position.getEntry(), transactionCostModel, holdingCostModel);
+                return new Position(position.getEntry(), transactionCostModel, holdingCostModel,
+                        position.getCashFlows());
             }
-            return new Position(position.getEntry(), position.getExit(), transactionCostModel, holdingCostModel);
+            return new Position(position.getEntry(), position.getExit(), transactionCostModel, holdingCostModel,
+                    position.getCashFlows());
         }
     }
 

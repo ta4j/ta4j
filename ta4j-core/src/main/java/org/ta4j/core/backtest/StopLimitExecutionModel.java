@@ -12,6 +12,7 @@ import java.util.WeakHashMap;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
@@ -186,7 +187,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         }
         Num requestedAmount = resolveRequestedAmount(tradingRecord, amount);
         PendingOrder pendingOrder = pendingOrderOf(tradingRecord);
-        if (pendingOrder != null) {
+        if (pendingOrder != null && !cancelUnfilledFuturesRemainder(index, tradingRecord, pendingOrder)) {
             addRejectedOrder(tradingRecord,
                     new RejectedOrder(index, index, pendingOrder.tradeType, requestedAmount,
                             requestedAmount.getNumFactory().zero(),
@@ -211,6 +212,8 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
                     requestedAmount.getNumFactory().zero(), "Unable to resolve activation bar for stop-limit order"));
             return;
         }
+        FuturesOrderQuantitySupport.requireTradable(tradingRecord.getFuturesContract(), requestedAmount,
+                activation.price());
         putPendingOrder(tradingRecord, new PendingOrder(index, activation.index(), tradeType, requestedAmount,
                 stopPrice, limitPrice, expiryIndex(activation.index(), maxBarsToFill)));
     }
@@ -227,15 +230,21 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             order.triggered = triggerReached(order.tradeType, bar, order.stopPrice);
         }
 
+        FuturesContract futuresContract = tradingRecord.getFuturesContract();
         if (order.triggered && limitReachable(order.tradeType, bar, order.limitPrice)) {
             Num fillAmount = fillAmount(order.remainingAmount(), bar.getVolume());
             if (fillAmount.isPositive()) {
-                order.recordFill(index, bar, order.limitPrice, fillAmount);
+                TradeFill fill = order.recordFill(index, bar, order.limitPrice, fillAmount, futuresContract);
+                if (futuresContract != null) {
+                    tradingRecord.operate(fill);
+                }
             }
         }
 
         if (order.isCompletelyFilled()) {
-            tradingRecord.operate(order.toTrade(tradingRecord));
+            if (futuresContract == null) {
+                tradingRecord.operate(order.toTrade(tradingRecord));
+            }
             removePendingOrder(tradingRecord);
             return;
         }
@@ -271,13 +280,45 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
     }
 
     private static boolean shouldCommitPartial(PendingOrder order, TradingRecord tradingRecord) {
-        if (!order.hasAnyFill()) {
+        if (!order.hasUnbookedFills()) {
             return false;
         }
         if (order.tradeType == tradingRecord.getStartingType()) {
             return true;
         }
         return !tradingRecord.getOpenPositions().isEmpty();
+    }
+
+    /**
+     * Cancels the unfilled remainder of a pending futures entry when an opposing
+     * signal arrives.
+     *
+     * <p>
+     * Fills of a futures order are committed as they execute, so a pending entry
+     * remainder would otherwise reopen exposure after the exit that the opposing
+     * signal requests. Spot records keep their existing single-pending-order
+     * rejection behavior.
+     * </p>
+     *
+     * @param index         bar index of the opposing signal
+     * @param tradingRecord record owning the pending order
+     * @param order         pending order
+     * @return {@code true} when the remainder was cancelled and the new signal may
+     *         be processed
+     */
+    private boolean cancelUnfilledFuturesRemainder(int index, TradingRecord tradingRecord, PendingOrder order) {
+        if (tradingRecord.getFuturesContract() == null) {
+            return false;
+        }
+        if (order.tradeType == ExecutionModelSupport.nextTradeType(tradingRecord)) {
+            return false;
+        }
+        if (order.remainingAmount().isPositive()) {
+            addRejectedOrder(tradingRecord, new RejectedOrder(index, index, order.tradeType, order.remainingAmount(),
+                    order.filledAmount, "Unfilled futures remainder cancelled by an opposing signal"));
+        }
+        removePendingOrder(tradingRecord);
+        return true;
     }
 
     private static Num validateRatio(Num ratio, String name) {
@@ -486,6 +527,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         private final int expiryIndex;
         private boolean triggered;
         private Num filledAmount;
+        private Num bookedAmount;
         private final List<TradeFill> fills;
 
         private PendingOrder(int signalIndex, int activationIndex, TradeType tradeType, Num requestedAmount,
@@ -499,6 +541,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             this.expiryIndex = expiryIndex;
             this.triggered = false;
             this.filledAmount = requestedAmount.getNumFactory().zero();
+            this.bookedAmount = requestedAmount.getNumFactory().zero();
             this.fills = new ArrayList<>();
         }
 
@@ -506,17 +549,40 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             return requestedAmount.minus(filledAmount);
         }
 
-        private void recordFill(int index, Bar bar, Num price, Num amount) {
-            fills.add(new TradeFill(index, bar.getEndTime(), price, amount, sideOf(tradeType)));
+        private TradeFill recordFill(int index, Bar bar, Num price, Num amount, FuturesContract futuresContract) {
+            TradeFill fill = toFill(index, bar, price, amount, futuresContract);
+            fills.add(fill);
             filledAmount = filledAmount.plus(amount);
+            if (futuresContract != null) {
+                bookedAmount = filledAmount;
+            }
+            return fill;
+        }
+
+        private TradeFill toFill(int index, Bar bar, Num price, Num amount, FuturesContract futuresContract) {
+            if (futuresContract == null) {
+                return new TradeFill(index, bar.getEndTime(), price, amount, sideOf(tradeType));
+            }
+            if (bar.getEndTime() == null) {
+                throw new IllegalStateException("native futures execution requires bar timestamps but bar " + index
+                        + " has none; use a timestamped bar series or a spot trading record");
+            }
+            return TradeFill.builder()
+                    .index(index)
+                    .time(bar.getEndTime())
+                    .price(price)
+                    .amount(amount)
+                    .side(sideOf(tradeType))
+                    .futuresContract(futuresContract)
+                    .build();
         }
 
         private boolean isCompletelyFilled() {
             return !requestedAmount.minus(filledAmount).isPositive();
         }
 
-        private boolean hasAnyFill() {
-            return filledAmount.isPositive();
+        private boolean hasUnbookedFills() {
+            return filledAmount.minus(bookedAmount).isPositive();
         }
 
         private Trade toTrade(TradingRecord tradingRecord) {

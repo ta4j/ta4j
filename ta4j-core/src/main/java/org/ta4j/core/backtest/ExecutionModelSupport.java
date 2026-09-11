@@ -3,9 +3,13 @@
  */
 package org.ta4j.core.backtest;
 
+import java.time.Instant;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
@@ -64,5 +68,52 @@ final class ExecutionModelSupport {
 
     private static TradeExecutionModel.ExecutionTarget createExecutionTarget(int index, Num price) {
         return new TradeExecutionModel.ExecutionTarget(index, price);
+    }
+
+    /**
+     * Routes one execution to the trading record.
+     *
+     * <p>
+     * Spot records keep the scalar operate path. Native futures records require a
+     * complete fill because the scalar path is spot-only: the record contract, the
+     * executed index and price, the next trade type and the timestamp of the
+     * executed price source. Fees are deliberately left unrecorded so that the
+     * record's configured contextual cost model prices the fill.
+     * </p>
+     *
+     * @param tradingRecord target record
+     * @param barSeries     executed series
+     * @param target        executed index/price pair
+     * @param amount        executed amount, in contracts for futures records
+     * @param priceSource   source of the executed price
+     * @throws IllegalStateException when a futures fill has no bar timestamp
+     */
+    static void execute(TradingRecord tradingRecord, BarSeries barSeries, TradeExecutionModel.ExecutionTarget target,
+            Num amount, TradeExecutionModel.PriceSource priceSource) {
+        FuturesContract futuresContract = tradingRecord.getFuturesContract();
+        if (futuresContract == null) {
+            tradingRecord.operate(target.index(), target.price(), amount);
+            return;
+        }
+        TradeType tradeType = nextTradeType(tradingRecord);
+        tradingRecord.operate(TradeFill.builder()
+                .futuresContract(futuresContract)
+                .index(target.index())
+                .time(fillTime(barSeries, target.index(), priceSource))
+                .price(target.price())
+                .amount(amount)
+                .side(tradeType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL)
+                .build());
+    }
+
+    private static Instant fillTime(BarSeries barSeries, int index, TradeExecutionModel.PriceSource priceSource) {
+        Instant time = priceSource == TradeExecutionModel.PriceSource.CURRENT_CLOSE
+                ? barSeries.getBar(index).getEndTime()
+                : barSeries.getBar(index).getBeginTime();
+        if (time == null) {
+            throw new IllegalStateException("native futures execution requires bar timestamps but bar " + index
+                    + " has none; use a timestamped bar series or a spot trading record");
+        }
+        return time;
     }
 }

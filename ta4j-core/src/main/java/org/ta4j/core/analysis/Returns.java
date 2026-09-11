@@ -11,11 +11,13 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.ReturnRepresentationPolicy;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -80,6 +82,62 @@ public class Returns implements PerformanceIndicator {
     public Returns(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
             ReturnRepresentation representation, EquityCurveMode equityCurveMode,
             OpenPositionHandling openPositionHandling) {
+        this(barSeries, tradingRecord, new ClosePriceIndicator(barSeries), finalIndex, representation, equityCurveMode,
+                openPositionHandling, null);
+    }
+
+    /**
+     * Constructor for a futures trading record valuing open exposure at an explicit
+     * mark price.
+     *
+     * <p>
+     * The mark price indicator is validated against the analysed series and is
+     * consumed by native futures records only; closing prices remain the documented
+     * backtest mark proxy otherwise.
+     * </p>
+     *
+     * @param barSeries            the bar series
+     * @param tradingRecord        the trading record
+     * @param markPriceIndicator   mark price indicator on the same series
+     * @param finalIndex           the index up to which the returns of open
+     *                             positions are considered
+     * @param representation       the return representation (determines both
+     *                             calculation method and output format)
+     * @param equityCurveMode      the calculation mode
+     * @param openPositionHandling how to handle open positions
+     * @since 0.25.1
+     */
+    public Returns(BarSeries barSeries, TradingRecord tradingRecord, Indicator<Num> markPriceIndicator, int finalIndex,
+            ReturnRepresentation representation, EquityCurveMode equityCurveMode,
+            OpenPositionHandling openPositionHandling) {
+        this(barSeries, tradingRecord, markPriceIndicator, finalIndex, representation, equityCurveMode,
+                openPositionHandling, null);
+    }
+
+    /**
+     * Canonical constructor. Derives the return factors of a native futures record
+     * from consecutive equity ratios and keeps the incremental position-combination
+     * path for every other record.
+     *
+     * @param barSeries            the bar series
+     * @param tradingRecord        the trading record
+     * @param markPriceIndicator   mark price indicator on the same series
+     * @param finalIndex           the index up to which the returns of open
+     *                             positions are considered
+     * @param representation       the return representation (determines both
+     *                             calculation method and output format)
+     * @param equityCurveMode      the calculation mode
+     * @param openPositionHandling how to handle open positions
+     * @param fallbackCapital      unlevered capital of a single position analysis,
+     *                             may be {@code null}
+     */
+    private Returns(BarSeries barSeries, TradingRecord tradingRecord, Indicator<Num> markPriceIndicator, int finalIndex,
+            ReturnRepresentation representation, EquityCurveMode equityCurveMode,
+            OpenPositionHandling openPositionHandling, Num fallbackCapital) {
+        TradingRecord record = Objects.requireNonNull(tradingRecord);
+        OpenPositionHandling handling = Objects.requireNonNull(openPositionHandling);
+        FuturesPerformanceSupport.requireMarkSeries(Objects.requireNonNull(barSeries),
+                Objects.requireNonNull(markPriceIndicator));
         this.barSeries = snapshotSeries(barSeries);
         this.representation = Objects.requireNonNull(representation);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
@@ -91,8 +149,75 @@ public class Returns implements PerformanceIndicator {
         returnFactors = new ArrayList<>(Collections.nCopies(size, initial));
         rawValues = new ArrayList<>(Collections.nCopies(size, zero));
         values = new ArrayList<>(Collections.nCopies(size, zero));
-        calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
+        if (FuturesPerformanceSupport.isFutures(record)) {
+            fillFuturesReturnFactors(record, markPriceIndicator, finalIndex, handling, fallbackCapital);
+        } else {
+            calculate(record, finalIndex, handling);
+        }
         buildReturns();
+    }
+
+    /**
+     * Fills the return factors with the ratio of consecutive futures equity values,
+     * normalized by the record account capital.
+     *
+     * <p>
+     * Bar {@code 0} has no reported return; the first reported return is measured
+     * from the account capital, so the cumulative product of the reported returns
+     * equals the account growth from the initial capital.
+     * </p>
+     *
+     * <p>
+     * A previous equity of zero or less makes the subsequent return undefined and
+     * is reported as {@link NaN#NaN}; a positive previous equity still reports the
+     * actual arithmetic loss when the current equity falls to zero or below.
+     * </p>
+     *
+     * @param tradingRecord   the futures trading record
+     * @param markPrice       mark price indicator on the analysed series
+     * @param finalIndex      index up until open position P&amp;L is considered
+     * @param handling        how to handle open positions
+     * @param fallbackCapital unlevered capital of a single position analysis, may
+     *                        be {@code null}
+     */
+    private void fillFuturesReturnFactors(TradingRecord tradingRecord, Indicator<Num> markPrice, int finalIndex,
+            OpenPositionHandling handling, Num fallbackCapital) {
+        int seriesEnd = barSeries.getEndIndex();
+        if (seriesEnd < 1) {
+            return;
+        }
+        NumFactory numFactory = barSeries.numFactory();
+        Num capital = FuturesPerformanceSupport.accountCapital(numFactory, tradingRecord, fallbackCapital);
+        boolean markExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
+        int effectiveFinalIndex = Math.min(tradingRecord.getEndIndex(barSeries), finalIndex);
+        FuturesPerformanceSupport.Cursor cursor = FuturesPerformanceSupport.cursor(barSeries, tradingRecord,
+                Math.min(effectiveFinalIndex, seriesEnd), markExposure, markPrice);
+        Num previousEquity = capital;
+        for (int barIndex = 1; barIndex <= seriesEnd; barIndex++) {
+            Num equity = capital.plus(cursor.pnlAt(barIndex));
+            returnFactors.set(barIndex, returnFactor(previousEquity, equity));
+            previousEquity = equity;
+        }
+    }
+
+    /**
+     * Converts consecutive equity values into the factor expected by
+     * {@link #buildReturns()}.
+     *
+     * @param previousEquity equity at the previous bar
+     * @param equity         equity at the current bar
+     * @return log return when the representation is
+     *         {@link ReturnRepresentation#LOG}, the equity ratio otherwise
+     */
+    private Num returnFactor(Num previousEquity, Num equity) {
+        if (!previousEquity.isPositive() || !Num.isFinite(previousEquity) || !Num.isFinite(equity)) {
+            return NaN.NaN;
+        }
+        Num ratio = equity.dividedBy(previousEquity);
+        if (representation == ReturnRepresentation.LOG) {
+            return ratio.isPositive() ? ratio.log() : NaN.NaN;
+        }
+        return ratio;
     }
 
     /**
@@ -144,7 +269,9 @@ public class Returns implements PerformanceIndicator {
      */
     public Returns(BarSeries barSeries, Position position, ReturnRepresentation representation,
             EquityCurveMode equityCurveMode) {
-        this(barSeries, new BaseTradingRecord(position), representation, equityCurveMode);
+        this(barSeries, FuturesPerformanceSupport.analysisRecord(position), new ClosePriceIndicator(barSeries),
+                barSeries.getEndIndex(), representation, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET,
+                FuturesPerformanceSupport.fallbackCapital(position));
     }
 
     /**

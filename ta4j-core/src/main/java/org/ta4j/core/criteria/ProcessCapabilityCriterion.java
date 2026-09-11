@@ -11,6 +11,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
@@ -51,7 +52,13 @@ import org.ta4j.core.num.NumFactory;
  * applying its finite {@link MathContext}, preserving small means produced by
  * cancellation between very large long and short returns. The regular path uses
  * compensated (Neumaier) summation and remains order-stable across the record.
- * Gross returns with non-finite magnitude are treated as decimals. When a limit
+ * Gross returns with non-finite magnitude are treated as decimals. A native
+ * futures position uses the contract-aware gross return, so its orientation
+ * follows the contract: a linear {@code BUY} and an inverse {@code SELL} gain
+ * with the exit-over-entry ratio, while a linear {@code SELL} and an inverse
+ * {@code BUY} gain with its inverse. The underflow boundaries, the mixed-return
+ * centering, and the decimal recovery all apply that same orientation, so an
+ * inverse series scores exactly like the equivalent linear series. When a limit
  * overflows the active representation (for example an LSL of -1e400 on a
  * {@code DoubleNum} series) or factory narrowing alters the retained limit (for
  * example a precision-2 LSL of 0.944 becoming 0.94), the mean-to-limit distance
@@ -127,7 +134,7 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
      * @return {@code true} when decimal recovery is required
      */
     private static boolean isUnderflowedGrossReturn(BarSeries series, Position position, Num grossReturn) {
-        boolean roundedBoundary = position.getEntry().isBuy() ? grossReturn.isZero()
+        boolean roundedBoundary = gainsWithRisingRatio(position) ? grossReturn.isZero()
                 : grossReturn.isEqual(series.numFactory().two());
         if (!roundedBoundary) {
             return false;
@@ -135,6 +142,48 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         Num entryPrice = position.getEntry().getPricePerAsset(series);
         Num exitPrice = position.getExit().getPricePerAsset(series);
         return Num.isFinite(entryPrice) && Num.isFinite(exitPrice) && !entryPrice.isZero() && !exitPrice.isZero();
+    }
+
+    /**
+     * Tests whether a closed position gains as its price ratio rises.
+     *
+     * <p>
+     * A linear {@code BUY} and an inverse {@code SELL} gain with the ratio; a
+     * linear {@code SELL} and an inverse {@code BUY} gain against it. Spot
+     * positions follow their entry side.
+     * </p>
+     *
+     * @param position the closed position
+     * @return {@code true} when a rising ratio is a gain
+     */
+    private static boolean gainsWithRisingRatio(Position position) {
+        boolean buy = position.getEntry().isBuy();
+        return isInverse(position) ? !buy : buy;
+    }
+
+    /**
+     * @param position the closed position
+     * @return {@code true} for an inverse (coin-settled) contract
+     */
+    private static boolean isInverse(Position position) {
+        FuturesContract contract = position.getFuturesContract();
+        return contract != null && contract.settlementType() == FuturesContract.SettlementType.INVERSE;
+    }
+
+    /**
+     * Returns the price ratio that drives the gross return of a closed position:
+     * exit over entry for a linear contract, entry over exit for an inverse one.
+     *
+     * @param position   the closed position
+     * @param entryPrice the entry price
+     * @param exitPrice  the exit price
+     * @param context    the decimal context for the quotient
+     * @return the contract-aware price ratio
+     */
+    private static BigDecimal priceRatio(Position position, Num entryPrice, Num exitPrice, MathContext context) {
+        BigDecimal entry = entryPrice.bigDecimalValue();
+        BigDecimal exit = exitPrice.bigDecimalValue();
+        return isInverse(position) ? entry.divide(exit, context) : exit.divide(entry, context);
     }
 
     @Override
@@ -309,8 +358,11 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
      * preserves separation between finite returns when only their sum overflows.
      * Mixed long/short returns share a center of one, so their large ratio terms
      * cancel exactly before bounded-precision mean and capability arithmetic;
-     * all-short returns retain their center of two. Raw zero or non-finite prices
-     * are genuinely degenerate, so the criterion keeps its zero-score behavior.
+     * all-short returns retain their center of two. A futures position joins the
+     * side of its contract-aware ratio, and an inverse ratio is the entry-over-exit
+     * quotient, so the recovery stays sign-symmetric across contract types. Raw
+     * zero or non-finite prices are genuinely degenerate, so the criterion keeps
+     * its zero-score behavior.
      *
      * @param series        the bar series (source of the price numerics)
      * @param tradingRecord the record whose closed positions supply the prices
@@ -324,8 +376,9 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         boolean hasShortReturns = false;
         for (Position position : tradingRecord.getPositions()) {
             if (position.isClosed()) {
-                hasLongReturns |= position.getEntry().isBuy();
-                hasShortReturns |= !position.getEntry().isBuy();
+                boolean risingRatio = gainsWithRisingRatio(position);
+                hasLongReturns |= risingRatio;
+                hasShortReturns |= !risingRatio;
             }
         }
         boolean mixedDirections = hasLongReturns && hasShortReturns;
@@ -339,13 +392,14 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             }
             Num entryPrice = position.getEntry().getPricePerAsset(series);
             Num exitPrice = position.getExit().getPricePerAsset(series);
-            if (!Num.isFinite(entryPrice) || !Num.isFinite(exitPrice) || entryPrice.isZero()) {
-                // A zero entry or non-finite price makes the gross return
+            if (!Num.isFinite(entryPrice) || !Num.isFinite(exitPrice) || entryPrice.isZero()
+                    || (isInverse(position) && exitPrice.isZero())) {
+                // A zero divisor or non-finite price makes the gross return
                 // genuinely undefined, not merely unrepresentable.
                 return factory.zero();
             }
-            BigDecimal ratio = exitPrice.bigDecimalValue().divide(entryPrice.bigDecimalValue(), context);
-            if (position.getEntry().isBuy()) {
+            BigDecimal ratio = priceRatio(position, entryPrice, exitPrice, context);
+            if (gainsWithRisingRatio(position)) {
                 // Mixed-direction returns share a center of one:
                 // ratio - 1 and (2 - ratio) - 1 are exact opposites when
                 // their ratios match, so cancellation retains the base.
