@@ -43,7 +43,7 @@ class FuturesTransactionCostModelTest {
                 .build();
     }
 
-    private static TradeFill fill(NumFactory numFactory, FuturesContract contract, ExecutionSide side, Num price,
+    private static TradeFill fill(FuturesContract contract, ExecutionSide side, Num price,
             Num contracts, RealtimeBar.Liquidity liquidity, List<TradeFee> fees) {
         TradeFill.Builder builder = TradeFill.builder()
                 .index(0)
@@ -65,7 +65,7 @@ class FuturesTransactionCostModelTest {
     void modelsLinearCommissionFromSettlementNotionalWithPerContractFloor() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = btcPerpetual(numFactory);
-            TradeFill takerFill = fill(numFactory, contract, ExecutionSide.BUY, numFactory.numOf(50000),
+            TradeFill takerFill = fill(contract, ExecutionSide.BUY, numFactory.numOf(50000),
                     numFactory.numOf(3), null, null);
 
             FuturesTransactionCostModel unfloored = FuturesTransactionCostModel.builder()
@@ -103,10 +103,10 @@ class FuturesTransactionCostModelTest {
 
             Num price = numFactory.numOf(50000);
             Num contracts = numFactory.numOf(3);
-            TradeFill unknown = fill(numFactory, contract, ExecutionSide.BUY, price, contracts, null, null);
-            TradeFill maker = fill(numFactory, contract, ExecutionSide.BUY, price, contracts,
+            TradeFill unknown = fill(contract, ExecutionSide.BUY, price, contracts, null, null);
+            TradeFill maker = fill(contract, ExecutionSide.BUY, price, contracts,
                     RealtimeBar.Liquidity.MAKER, null);
-            TradeFill taker = fill(numFactory, contract, ExecutionSide.BUY, price, contracts,
+            TradeFill taker = fill(contract, ExecutionSide.BUY, price, contracts,
                     RealtimeBar.Liquidity.TAKER, null);
 
             // Unknown liquidity is never guessed as maker.
@@ -121,7 +121,7 @@ class FuturesTransactionCostModelTest {
     void keepsRebatesSignedAndAddsPerContractChargesAboveCommissionFloor() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = btcPerpetual(numFactory);
-            TradeFill makerFill = fill(numFactory, contract, ExecutionSide.BUY, numFactory.numOf(50000),
+            TradeFill makerFill = fill(contract, ExecutionSide.BUY, numFactory.numOf(50000),
                     numFactory.numOf(3), RealtimeBar.Liquidity.MAKER, null);
 
             FuturesTransactionCostModel rebate = FuturesTransactionCostModel.builder()
@@ -173,7 +173,7 @@ class FuturesTransactionCostModelTest {
             Num contracts = numFactory.numOf(3);
             Num price = numFactory.numOf(50000);
 
-            TradeFill recorded = fill(numFactory, contract, ExecutionSide.BUY, price, contracts, null,
+            TradeFill recorded = fill(contract, ExecutionSide.BUY, price, contracts, null,
                     List.of(TradeFee.builder()
                             .type(TradeFee.Type.COMMISSION)
                             .amount(numFactory.numOf(0.15))
@@ -186,13 +186,13 @@ class FuturesTransactionCostModelTest {
             // Fee-adjusted quote view: 50,000 + 0.15 / (3 * 0.01) = 50,005.
             assertNumEquals(50005, observed.getNetPrice());
 
-            TradeFill unpricedSell = fill(numFactory, contract, ExecutionSide.SELL, price, contracts, null, null);
+            TradeFill unpricedSell = fill(contract, ExecutionSide.SELL, price, contracts, null, null);
             Trade modeled = Trade.fromFill(unpricedSell, expensive);
             assertNumEquals(15, modeled.getCost());
             // 50,000 - 15 / (3 * 0.01) = 49,500.
             assertNumEquals(49500, modeled.getNetPrice());
 
-            TradeFill explicitZero = fill(numFactory, contract, ExecutionSide.BUY, price, contracts, null, List.of());
+            TradeFill explicitZero = fill(contract, ExecutionSide.BUY, price, contracts, null, List.of());
             assertNumEquals(numFactory.zero(), Trade.fromFill(explicitZero, expensive).getCost());
 
             // The recorded-only default still refuses to invent fees for a native fill.
@@ -209,7 +209,7 @@ class FuturesTransactionCostModelTest {
                     .takerRate(numFactory.numOf(0.00001))
                     .minimumPerContract(numFactory.numOf(0.05))
                     .build();
-            TradeFill unpriced = fill(numFactory, contract, ExecutionSide.BUY, numFactory.numOf(50000),
+            TradeFill unpriced = fill(contract, ExecutionSide.BUY, numFactory.numOf(50000),
                     numFactory.numOf(3), null, null);
 
             Trade trade = Trade.fromFill(unpriced, model);

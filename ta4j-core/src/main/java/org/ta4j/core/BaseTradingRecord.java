@@ -2040,7 +2040,7 @@ public class BaseTradingRecord implements TradingRecord {
                 if (!(futuresContract.settlementType() == FuturesContract.SettlementType.INVERSE)) {
                     return totalAmount == null || totalAmount.isZero() ? totalCost : totalCost.dividedBy(totalAmount);
                 }
-                return inverseNotional.isZero() ? totalCost : totalAmount.dividedBy(inverseNotional);
+                return inverseNotional.isZero() || totalAmount == null || totalAmount.isZero() ? totalCost : totalAmount.dividedBy(inverseNotional);
             }
             return totalAmount == null || totalAmount.isZero() ? totalCost : totalCost.dividedBy(totalAmount);
         }
