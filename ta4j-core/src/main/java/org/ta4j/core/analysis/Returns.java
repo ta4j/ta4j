@@ -46,6 +46,9 @@ public class Returns implements PerformanceIndicator {
     /** The bar series. */
     private final BarSeries barSeries;
 
+    /** The first logical bar index stored in the internal buffers. */
+    private final int seriesBegin;
+
     /**
      * The raw return rates (before formatting).
      * <p>
@@ -139,16 +142,16 @@ public class Returns implements PerformanceIndicator {
         FuturesPerformanceSupport.requireMarkSeries(Objects.requireNonNull(barSeries),
                 Objects.requireNonNull(markPriceIndicator));
         this.barSeries = snapshotSeries(barSeries);
+        this.seriesBegin = this.barSeries.getBeginIndex();
         this.representation = Objects.requireNonNull(representation);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        int seriesEnd = this.barSeries.getEndIndex();
-        int size = Math.max(seriesEnd + 1, 0);
+        int size = this.barSeries.getBarCount();
         Num one = this.barSeries.numFactory().one();
         Num zero = this.barSeries.numFactory().zero();
         Num initial = representation == ReturnRepresentation.LOG ? zero : one;
-        returnFactors = new ArrayList<>(Collections.nCopies(size, initial));
-        rawValues = new ArrayList<>(Collections.nCopies(size, zero));
-        values = new ArrayList<>(Collections.nCopies(size, zero));
+        returnFactors = new ArrayList<>(Collections.nCopies(Math.max(size, 0), initial));
+        rawValues = new ArrayList<>(Collections.nCopies(Math.max(size, 0), zero));
+        values = new ArrayList<>(Collections.nCopies(Math.max(size, 0), zero));
         if (FuturesPerformanceSupport.isFutures(record)) {
             fillFuturesReturnFactors(record, markPriceIndicator, finalIndex, handling, fallbackCapital);
         } else {
@@ -192,10 +195,14 @@ public class Returns implements PerformanceIndicator {
         int effectiveFinalIndex = Math.min(tradingRecord.getEndIndex(barSeries), finalIndex);
         FuturesPerformanceSupport.Cursor cursor = FuturesPerformanceSupport.cursor(barSeries, tradingRecord,
                 Math.min(effectiveFinalIndex, seriesEnd), markExposure, markPrice);
-        Num previousEquity = capital;
-        for (int barIndex = 1; barIndex <= seriesEnd; barIndex++) {
+        int firstBar = Math.max(1, seriesBegin);
+        if (firstBar > seriesEnd) {
+            return;
+        }
+        Num previousEquity = firstBar == 1 ? capital : capital.plus(cursor.pnlAt(firstBar - 1));
+        for (int barIndex = firstBar; barIndex <= seriesEnd; barIndex++) {
             Num equity = capital.plus(cursor.pnlAt(barIndex));
-            returnFactors.set(barIndex, returnFactor(previousEquity, equity));
+            returnFactors.set(barIndex - seriesBegin, returnFactor(previousEquity, equity));
             previousEquity = equity;
         }
     }
@@ -365,7 +372,7 @@ public class Returns implements PerformanceIndicator {
      *         representation)
      */
     public List<Num> getValues() {
-        return List.copyOf(values);
+        return absoluteValues(values);
     }
 
     /**
@@ -375,14 +382,24 @@ public class Returns implements PerformanceIndicator {
      */
     @Override
     public Num getValue(int index) {
-        return values.get(index);
+        if (index < 0) {
+            throw new IndexOutOfBoundsException("index must not be negative: " + index);
+        }
+        if (index < seriesBegin) {
+            return index == 0 ? NaN.NaN : barSeries.numFactory().zero();
+        }
+        int offset = index - seriesBegin;
+        if (offset >= values.size()) {
+            throw new IndexOutOfBoundsException("index is outside the series window: " + index);
+        }
+        return values.get(offset);
     }
 
     /**
      * @return the raw return rates (before formatting)
      */
     public List<Num> getRawValues() {
-        return List.copyOf(rawValues);
+        return absoluteValues(rawValues);
     }
 
     @Override
@@ -493,13 +510,14 @@ public class Returns implements PerformanceIndicator {
     }
 
     private void combineReturnAtIndex(int index, Num strategyReturn) {
-        if (index < 0 || index >= returnFactors.size()) {
+        int offset = index - seriesBegin;
+        if (offset < 0 || offset >= returnFactors.size()) {
             return;
         }
         if (representation == ReturnRepresentation.LOG) {
-            returnFactors.set(index, returnFactors.get(index).plus(strategyReturn));
+            returnFactors.set(offset, returnFactors.get(offset).plus(strategyReturn));
         } else {
-            returnFactors.set(index, returnFactors.get(index).multipliedBy(toFactor(strategyReturn)));
+            returnFactors.set(offset, returnFactors.get(offset).multipliedBy(toFactor(strategyReturn)));
         }
     }
 
@@ -507,10 +525,13 @@ public class Returns implements PerformanceIndicator {
         if (rawValues.isEmpty()) {
             return;
         }
-        rawValues.set(0, NaN.NaN);
-        values.set(0, NaN.NaN);
         Num one = barSeries.numFactory().one();
-        for (int i = 1; i < rawValues.size(); i++) {
+        int start = seriesBegin == 0 ? 1 : 0;
+        if (seriesBegin == 0) {
+            rawValues.set(0, NaN.NaN);
+            values.set(0, NaN.NaN);
+        }
+        for (int i = start; i < rawValues.size(); i++) {
             if (representation == ReturnRepresentation.LOG) {
                 Num logReturn = returnFactors.get(i);
                 rawValues.set(i, logReturn);
@@ -522,6 +543,21 @@ public class Returns implements PerformanceIndicator {
                 values.set(i, representation.toRepresentationFromRateOfReturn(rawReturn));
             }
         }
+    }
+
+    private List<Num> absoluteValues(List<Num> stored) {
+        int size = barSeries.getBarCount();
+        if (seriesBegin > Integer.MAX_VALUE - size) {
+            throw new IllegalStateException(
+                    "series window is too large to materialize absolute indices: " + seriesBegin);
+        }
+        int absoluteSize = seriesBegin + size;
+        List<Num> absolute = new ArrayList<>(absoluteSize);
+        for (int i = 0; i < seriesBegin; i++) {
+            absolute.add(i == 0 ? NaN.NaN : barSeries.numFactory().zero());
+        }
+        absolute.addAll(stored);
+        return List.copyOf(absolute);
     }
 
     private static BarSeries snapshotSeries(final BarSeries barSeries) {

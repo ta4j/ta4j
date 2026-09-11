@@ -274,6 +274,7 @@ public interface PositionSizer {
             CostModel holdingCostModel) {
 
         private static final int MAX_AFFORDABLE_SEARCH_ITERATIONS = 80;
+        private static final int MAX_AFFORDABLE_PROBE_ITERATIONS = 256;
 
         /**
          * Creates an entry sizing context.
@@ -427,7 +428,35 @@ public interface PositionSizer {
             if (contract == null) {
                 return affordable;
             }
-            return FuturesOrderQuantitySupport.largestTradable(contract, affordable, entryPrice);
+            return largestAffordableTradable(contract, affordable, budget);
+        }
+
+        /**
+         * Floors the continuous affordable quantity to a tradable quantity, then probes
+         * the next increment boundary upward. The affordability search converges from
+         * below, so a boundary that is exactly affordable can floor one increment short
+         * of its true value.
+         *
+         * @param contract   contract declaring the quantity constraints
+         * @param affordable continuous affordable quantity
+         * @param budget     cash available for entry
+         * @return the largest tradable quantity the budget affords
+         */
+        private Num largestAffordableTradable(FuturesContract contract, Num affordable, Num budget) {
+            Num candidate = FuturesOrderQuantitySupport.largestTradable(contract, affordable, entryPrice);
+            Num increment = FuturesOrderQuantitySupport.toNum(contract.quantityIncrement(), numFactory());
+            if (increment == null) {
+                return candidate;
+            }
+            for (int i = 0; i < MAX_AFFORDABLE_PROBE_ITERATIONS; i++) {
+                Num stepped = FuturesOrderQuantitySupport.largestTradable(contract, candidate.plus(increment),
+                        entryPrice);
+                if (!stepped.isGreaterThan(candidate) || !entryCost(stepped).isLessThanOrEqual(budget)) {
+                    return candidate;
+                }
+                candidate = stepped;
+            }
+            return candidate;
         }
 
         private Num searchLargestAffordable(Num budget, Num high) {

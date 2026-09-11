@@ -459,11 +459,12 @@ public final class FuturesContract implements Serializable {
      */
     public Num profit(Trade.TradeType entryType, Num contracts, Num entryPrice, Num exitPrice) {
         Objects.requireNonNull(entryType, "entryType");
-        Num sized = contractsPerSize(contracts, entryPrice);
         FuturesValidation.requirePositiveFinite(exitPrice, "exitPrice");
         NumFactory numFactory = entryPrice.getNumFactory();
-        Num payoff = settlementType == SettlementType.LINEAR ? exitPrice.minus(entryPrice)
-                : numFactory.one().dividedBy(entryPrice).minus(numFactory.one().dividedBy(exitPrice));
+        Num exit = numFactory.numOf(exitPrice.getDelegate());
+        Num sized = contractsPerSize(contracts, entryPrice);
+        Num payoff = settlementType == SettlementType.LINEAR ? exit.minus(entryPrice)
+                : numFactory.one().dividedBy(entryPrice).minus(numFactory.one().dividedBy(exit));
         Num profit = sized.multipliedBy(payoff);
         return entryType == Trade.TradeType.BUY ? profit : profit.negate();
     }
@@ -524,7 +525,8 @@ public final class FuturesContract implements Serializable {
      */
     public Num effectiveLeverage(Num contracts, Num referencePrice, Num collateral) {
         FuturesValidation.requirePositiveFinite(collateral, "collateral");
-        return settlementNotional(contracts, referencePrice).dividedBy(collateral);
+        Num normalizedCollateral = referencePrice.getNumFactory().numOf(collateral.getDelegate());
+        return settlementNotional(contracts, referencePrice).dividedBy(normalizedCollateral);
     }
 
     private Num contractsPerSize(Num contracts, Num price) {

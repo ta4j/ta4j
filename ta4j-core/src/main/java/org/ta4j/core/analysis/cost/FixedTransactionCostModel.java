@@ -53,25 +53,31 @@ public class FixedTransactionCostModel implements CostModel {
     }
 
     /**
-     * Charges the fixed fee once per executed native fill, matching the fee the
-     * venue charges per contract execution rather than per entry/exit trade.
+     * <b>Note:</b> A partially executed native trade charges only the fills already
+     * executed no later than {@code currentIndex}.
+     *
+     * <p>
+     * The fixed fee is applied once per executed fill, because the venue charges
+     * per contract execution rather than per entry/exit trade.
+     * </p>
      */
     private Num sumExecutedFillCosts(Position position, int currentIndex) {
         Trade entry = position.getEntry();
         Num total = entry.getPricePerAsset().getNumFactory().zero();
-        if (entry.getIndex() <= currentIndex) {
-            total = total.plus(sumFillCosts(entry));
-        }
+        total = total.plus(sumFillCosts(entry, currentIndex));
         Trade exit = position.getExit();
-        if (exit != null && exit.getIndex() <= currentIndex) {
-            total = total.plus(sumFillCosts(exit));
+        if (exit != null) {
+            total = total.plus(sumFillCosts(exit, currentIndex));
         }
         return total;
     }
 
-    private Num sumFillCosts(Trade trade) {
+    private Num sumFillCosts(Trade trade, int currentIndex) {
         Num total = trade.getPricePerAsset().getNumFactory().zero();
         for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() > currentIndex) {
+                continue;
+            }
             total = total.plus(calculate(fill));
         }
         return total;

@@ -187,9 +187,9 @@ final class FuturesPositionAccounting {
      * Returns the realized profit of the position as of {@code finalIndex}.
      *
      * <p>
-     * A closed slice realizes its payoff net of fees and funding. An open slice
-     * realizes executed fees, funding and paid variation margin; the mark-to-entry
-     * part of its exposure stays unrealized.
+     * A closed slice realizes its payoff net of fees, funding and holding cost. An
+     * open slice realizes executed fees, funding, holding cost and paid variation
+     * margin; the mark-to-entry part of its exposure stays unrealized.
      * </p>
      *
      * @param position   futures position
@@ -200,13 +200,14 @@ final class FuturesPositionAccounting {
     static Num realizedProfit(Position position, int finalIndex) {
         Num fees = executedFees(position, finalIndex);
         Num funding = funding(position, finalIndex);
+        Num holdingCost = position.getHoldingCost(finalIndex);
         Num realizedPayoff = executedPayoff(position, finalIndex);
         if (isFullyExecutedExit(position, finalIndex)) {
-            return realizedPayoff.minus(fees).plus(funding);
+            return realizedPayoff.minus(fees).plus(funding).minus(holdingCost);
         }
         // Variation margin paid on the still-open exposure is realized cash that
         // the unrealized mark-to-entry value must give back.
-        return realizedPayoff.minus(fees).plus(funding).plus(variationMargin(position, finalIndex));
+        return realizedPayoff.minus(fees).plus(funding).minus(holdingCost).plus(variationMargin(position, finalIndex));
     }
 
     /**

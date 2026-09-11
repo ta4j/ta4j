@@ -67,8 +67,8 @@ public class CashFlow implements PerformanceIndicator {
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex, EquityCurveMode equityCurveMode,
             OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, new ClosePriceIndicator(barSeries), 0, barSeries.getEndIndex(), finalIndex,
-                equityCurveMode, openPositionHandling, null);
+        this(barSeries, tradingRecord, new ClosePriceIndicator(barSeries), barSeries.getBeginIndex(),
+                barSeries.getEndIndex(), finalIndex, equityCurveMode, openPositionHandling, null);
     }
 
     /**
@@ -91,8 +91,8 @@ public class CashFlow implements PerformanceIndicator {
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, Indicator<Num> markPriceIndicator, int finalIndex,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, markPriceIndicator, 0, barSeries.getEndIndex(), finalIndex, equityCurveMode,
-                openPositionHandling, null);
+        this(barSeries, tradingRecord, markPriceIndicator, barSeries.getBeginIndex(), barSeries.getEndIndex(),
+                finalIndex, equityCurveMode, openPositionHandling, null);
     }
 
     /**
@@ -143,9 +143,9 @@ public class CashFlow implements PerformanceIndicator {
      * @since 0.22.2
      */
     public CashFlow(BarSeries barSeries, Position position, EquityCurveMode equityCurveMode) {
-        this(barSeries, FuturesPerformanceSupport.analysisRecord(position), new ClosePriceIndicator(barSeries), 0,
-                barSeries.getEndIndex(), barSeries.getEndIndex(), equityCurveMode, OpenPositionHandling.MARK_TO_MARKET,
-                FuturesPerformanceSupport.fallbackCapital(position));
+        this(barSeries, FuturesPerformanceSupport.analysisRecord(position), new ClosePriceIndicator(barSeries),
+                barSeries.getBeginIndex(), barSeries.getEndIndex(), barSeries.getEndIndex(), equityCurveMode,
+                OpenPositionHandling.MARK_TO_MARKET, FuturesPerformanceSupport.fallbackCapital(position));
     }
 
     /**
@@ -432,6 +432,9 @@ public class CashFlow implements PerformanceIndicator {
     }
 
     private Num getStoredValue(int index) {
+        if (!containsIndex(index)) {
+            return barSeries.numFactory().one();
+        }
         return values.get(toValueIndex(index));
     }
 

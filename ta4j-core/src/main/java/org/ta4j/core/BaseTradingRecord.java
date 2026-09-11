@@ -17,10 +17,12 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Stream;
 
@@ -236,10 +238,14 @@ public class BaseTradingRecord implements TradingRecord {
             FuturesValidation.requirePositiveFinite(initialMarginRate, "initialMarginRate");
         }
         if (fundingSchedule != null) {
+            Set<String> eventIds = new HashSet<>();
             for (FuturesFunding funding : fundingSchedule) {
                 Objects.requireNonNull(funding, "fundingSchedule entry");
                 if (!futuresContract.equals(funding.contract())) {
                     throw new IllegalArgumentException("Funding schedule contract must match the record contract");
+                }
+                if (!eventIds.add(funding.eventId())) {
+                    throw new IllegalArgumentException("Funding schedule event id is not unique: " + funding.eventId());
                 }
             }
         }
@@ -606,7 +612,13 @@ public class BaseTradingRecord implements TradingRecord {
                     continue;
                 }
                 String eventId = cashFlow.eventId();
-                templates.putIfAbsent(eventId, cashFlow);
+                FuturesCashFlow template = templates.get(eventId);
+                if (template == null) {
+                    templates.put(eventId, cashFlow);
+                } else if (!sameTemplate(template, cashFlow)) {
+                    throw new IllegalArgumentException(
+                            "Cash flow " + eventId + " is allocated with inconsistent metadata");
+                }
                 amounts.merge(eventId, cashFlow.amount(), Num::plus);
                 settlements.merge(eventId, cashFlow.settlementAmount(), Num::plus);
             }
@@ -625,6 +637,13 @@ public class BaseTradingRecord implements TradingRecord {
         }
         aggregated.sort(Comparator.comparing(FuturesCashFlow::time));
         cashFlows.addAll(aggregated);
+    }
+
+    private static boolean sameTemplate(FuturesCashFlow left, FuturesCashFlow right) {
+        return left.type() == right.type() && left.index() == right.index() && Objects.equals(left.time(), right.time())
+                && FuturesValidation.numEqualsNullable(left.rate(), right.rate())
+                && FuturesValidation.numEqualsNullable(left.referencePrice(), right.referencePrice())
+                && Objects.equals(left.currency(), right.currency()) && Objects.equals(left.source(), right.source());
     }
 
     private static Num accumulateRecordedFees(Num totalFees, Position position) {
@@ -1099,6 +1118,11 @@ public class BaseTradingRecord implements TradingRecord {
      * Applies every scheduled funding event due up to and including the supplied
      * time, in schedule order.
      *
+     * <p>
+     * The cursor advances only after an event records successfully, so a
+     * conflicting duplicate stops the record instead of skipping the event.
+     * </p>
+     *
      * @param through inclusive upper bound of the accounting horizon
      */
     private void applyScheduledFunding(Instant through) {
@@ -1107,8 +1131,8 @@ public class BaseTradingRecord implements TradingRecord {
             if (funding.time().isAfter(through)) {
                 return;
             }
-            fundingCursor++;
             applyFundingInternal(funding);
+            fundingCursor++;
         }
     }
 
@@ -1806,6 +1830,13 @@ public class BaseTradingRecord implements TradingRecord {
             if (position.isClosed()) {
                 closedPositions.add(new ClosedPosition(position, entrySequence, exitSequence));
                 return;
+            }
+            ExecutionSide side = sideOf(position.getEntry().getType());
+            for (PositionLot lot : openLots) {
+                if (lot.side() != side) {
+                    throw new IllegalArgumentException(
+                            "Cannot adopt an open position: an open lot with the opposite side is already present");
+                }
             }
             openLots.addLast(PositionLot.of(position, entrySequence));
         }

@@ -416,12 +416,14 @@ public class PositionTest {
         Num profitOfClosedPositionFinalBefore = closedPosition.getProfit(5, DoubleNum.valueOf(3));
         Num profitOfOpenPositionFinalBefore = openPosition.getProfit(5, DoubleNum.valueOf(3));
 
-        Num expectedHoldingCosts = DoubleNum.valueOf(2.0 * 9.0 * 0.001);
-        Num expectedProfitOfClosedPosition = DoubleNum.valueOf(-0.04).minus(expectedHoldingCosts);
+        Num expectedHoldingCostsAfter = DoubleNum.valueOf(2.0 * 9.0 * 0.001);
+        Num expectedProfitOfClosedPositionAfter = DoubleNum.valueOf(-0.04).minus(expectedHoldingCostsAfter);
+        Num expectedHoldingCostsBefore = DoubleNum.valueOf(2.0 * 4.0 * 0.001);
+        Num expectedProfitOfClosedPositionBefore = DoubleNum.valueOf(-0.04).minus(expectedHoldingCostsBefore);
 
         assertNumEquals(DoubleNum.valueOf(-1.05), profitOfOpenPositionFinalAfter);
         assertNumEquals(DoubleNum.valueOf(-1.02), profitOfOpenPositionFinalBefore);
-        assertNumEquals(expectedProfitOfClosedPosition, profitOfClosedPositionFinalAfter);
-        assertNumEquals(expectedProfitOfClosedPosition, profitOfClosedPositionFinalBefore);
+        assertNumEquals(expectedProfitOfClosedPositionAfter, profitOfClosedPositionFinalAfter);
+        assertNumEquals(expectedProfitOfClosedPositionBefore, profitOfClosedPositionFinalBefore);
     }
 }

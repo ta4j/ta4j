@@ -181,7 +181,7 @@ final class FuturesOrderQuantitySupport {
         return notionalBound;
     }
 
-    private static Num toNum(Num value, NumFactory numFactory) {
+    static Num toNum(Num value, NumFactory numFactory) {
         return value == null ? null : numFactory.numOf(value.getDelegate());
     }
 

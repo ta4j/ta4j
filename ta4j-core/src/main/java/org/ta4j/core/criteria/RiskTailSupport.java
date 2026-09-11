@@ -32,7 +32,10 @@ final class RiskTailSupport {
      * @return the sorted raw return rates
      */
     static List<Num> sortedRates(Returns returns) {
-        List<Num> returnRates = new ArrayList<>(returns.getRawValues().subList(1, returns.getSize() + 1));
+        int beginIndex = Math.max(1, returns.getBarSeries().getBeginIndex());
+        List<Num> rawValues = returns.getRawValues();
+        int endIndex = Math.min(beginIndex + returns.getBarSeries().getBarCount(), rawValues.size());
+        List<Num> returnRates = new ArrayList<>(rawValues.subList(beginIndex, endIndex));
         Collections.sort(returnRates);
         return returnRates;
     }

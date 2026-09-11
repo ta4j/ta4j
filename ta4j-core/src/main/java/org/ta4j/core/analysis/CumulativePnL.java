@@ -31,6 +31,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 public final class CumulativePnL implements PerformanceIndicator {
 
     private final BarSeries barSeries;
+    private final int seriesBegin;
     private final List<Num> values;
     private final EquityCurveMode equityCurveMode;
 
@@ -75,10 +76,10 @@ public final class CumulativePnL implements PerformanceIndicator {
         FuturesPerformanceSupport.requireMarkSeries(Objects.requireNonNull(barSeries),
                 Objects.requireNonNull(markPriceIndicator));
         this.barSeries = snapshotSeries(barSeries);
+        this.seriesBegin = this.barSeries.getBeginIndex();
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        int seriesEnd = this.barSeries.getEndIndex();
-        this.values = new ArrayList<>(
-                Collections.nCopies(Math.max(seriesEnd + 1, 0), this.barSeries.numFactory().zero()));
+        int size = this.barSeries.getBarCount();
+        this.values = new ArrayList<>(Collections.nCopies(Math.max(size, 0), this.barSeries.numFactory().zero()));
         if (FuturesPerformanceSupport.isFutures(record)) {
             fillFuturesValues(record, markPriceIndicator, finalIndex, handling);
             return;
@@ -106,8 +107,8 @@ public final class CumulativePnL implements PerformanceIndicator {
         int effectiveFinalIndex = Math.min(tradingRecord.getEndIndex(barSeries), finalIndex);
         FuturesPerformanceSupport.Cursor cursor = FuturesPerformanceSupport.cursor(barSeries, tradingRecord,
                 Math.min(effectiveFinalIndex, seriesEnd), markExposure, markPriceIndicator);
-        for (int barIndex = 0; barIndex <= seriesEnd; barIndex++) {
-            values.set(barIndex, cursor.pnlAt(barIndex));
+        for (int barIndex = seriesBegin; barIndex <= seriesEnd; barIndex++) {
+            values.set(barIndex - seriesBegin, cursor.pnlAt(barIndex));
         }
     }
 
@@ -272,7 +273,17 @@ public final class CumulativePnL implements PerformanceIndicator {
      */
     @Override
     public Num getValue(int index) {
-        return values.get(index);
+        if (index < 0) {
+            throw new IndexOutOfBoundsException("index must not be negative: " + index);
+        }
+        int offset = index - seriesBegin;
+        if (offset < 0) {
+            return barSeries.numFactory().zero();
+        }
+        if (offset >= values.size()) {
+            throw new IndexOutOfBoundsException("index is outside the series window: " + index);
+        }
+        return values.get(offset);
     }
 
     /**
@@ -315,18 +326,19 @@ public final class CumulativePnL implements PerformanceIndicator {
     }
 
     private void addValue(int index, Num delta) {
-        if (index < 0 || index >= values.size()) {
+        int offset = index - seriesBegin;
+        if (offset < 0 || offset >= values.size()) {
             return;
         }
-        values.set(index, values.get(index).plus(delta));
+        values.set(offset, values.get(offset).plus(delta));
     }
 
     private void addToRange(int startIndex, int endIndex, Num delta) {
         if (values.isEmpty()) {
             return;
         }
-        int start = Math.max(0, startIndex);
-        int end = Math.min(endIndex, values.size() - 1);
+        int start = Math.max(startIndex, seriesBegin) - seriesBegin;
+        int end = Math.min(endIndex, seriesBegin + values.size() - 1) - seriesBegin;
         if (start > end) {
             return;
         }
