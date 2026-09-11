@@ -20,6 +20,11 @@ import org.slf4j.LoggerFactory;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
@@ -50,7 +55,7 @@ public class BacktestExecutor {
      * by
      * {@link #executeAndKeepTopK(List, AnalysisCriterion, int, Consumer, Function)}
      * and
-     * {@link #executeWithRuntimeReport(List, Trade.TradeType, Consumer, int, Function)}
+     * {@link #executeWithRuntimeReport(List, Trade.TradeType, Consumer, int, int, Function)}
      * so callers can distinguish healthy results from skipped strategies.
      */
     private volatile List<BacktestExecutionResult.StrategyFailure> latestFailures = List.of();
@@ -280,6 +285,60 @@ public class BacktestExecutor {
     }
 
     /**
+     * Executes strategies with a strict cap on the platform workers used for this
+     * execution while collecting runtime measurements and trading statements.
+     * <p>
+     * This explicit overload lets integrations that already run in a constrained
+     * {@link java.util.concurrent.ForkJoinPool} preserve their worker cap without
+     * relying on nested parallel streams or ForkJoin compensation threads.
+     * </p>
+     *
+     * @param strategies  the list of strategies to execute (read-only)
+     * @param amount      the amount used to open/close the position
+     * @param tradeType   the {@link Trade.TradeType} used to open the position
+     * @param parallelism maximum number of platform workers this execution may own
+     * @return execution result containing immutable trading statements and a
+     *         runtime report
+     * @throws IllegalArgumentException if {@code parallelism} is not positive
+     * @since 0.25.1
+     */
+    public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, Num amount,
+            Trade.TradeType tradeType, int parallelism) {
+        Objects.requireNonNull(amount, "amount must not be null");
+        validateParallelism(parallelism);
+        return executeWithRuntimeReport(strategies, tradeType, null, DEFAULT_BATCH_SIZE, parallelism,
+                strategy -> seriesManager.run(strategy, tradeType, amount));
+    }
+
+    /**
+     * Executes strategies with a strict cap on the platform workers used for this
+     * execution while collecting runtime measurements and trading statements using
+     * a dynamic entry position sizer.
+     * <p>
+     * This explicit overload lets integrations that already run in a constrained
+     * {@link java.util.concurrent.ForkJoinPool} preserve their worker cap without
+     * relying on nested parallel streams or ForkJoin compensation threads.
+     * </p>
+     *
+     * @param strategies    the list of strategies to execute (read-only)
+     * @param positionSizer dynamic entry position sizer
+     * @param tradeType     the {@link Trade.TradeType} used to open the position
+     * @param parallelism   maximum number of platform workers this execution may
+     *                      own
+     * @return execution result containing immutable trading statements and a
+     *         runtime report
+     * @throws IllegalArgumentException if {@code parallelism} is not positive
+     * @since 0.25.1
+     */
+    public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, PositionSizer positionSizer,
+            Trade.TradeType tradeType, int parallelism) {
+        Objects.requireNonNull(positionSizer, "positionSizer must not be null");
+        validateParallelism(parallelism);
+        return executeWithRuntimeReport(strategies, tradeType, null, DEFAULT_BATCH_SIZE, parallelism,
+                strategy -> seriesManager.run(strategy, tradeType, positionSizer));
+    }
+
+    /**
      * Executes strategies while collecting runtime measurements and trading
      * statements using a dynamic entry position sizer.
      *
@@ -374,7 +433,7 @@ public class BacktestExecutor {
     public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, Num amount,
             Trade.TradeType tradeType, Consumer<Integer> progressCallback, int batchSize) {
         Objects.requireNonNull(amount, "amount must not be null");
-        return executeWithRuntimeReport(strategies, tradeType, progressCallback, batchSize,
+        return executeWithRuntimeReport(strategies, tradeType, progressCallback, batchSize, 0,
                 strategy -> seriesManager.run(strategy, tradeType, amount));
     }
 
@@ -397,12 +456,13 @@ public class BacktestExecutor {
     public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, PositionSizer positionSizer,
             Trade.TradeType tradeType, Consumer<Integer> progressCallback, int batchSize) {
         Objects.requireNonNull(positionSizer, "positionSizer must not be null");
-        return executeWithRuntimeReport(strategies, tradeType, progressCallback, batchSize,
+        return executeWithRuntimeReport(strategies, tradeType, progressCallback, batchSize, 0,
                 strategy -> seriesManager.run(strategy, tradeType, positionSizer));
     }
 
     private BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, Trade.TradeType tradeType,
-            Consumer<Integer> progressCallback, int batchSize, Function<Strategy, TradingRecord> tradingRecordRunner) {
+            Consumer<Integer> progressCallback, int batchSize, int parallelism,
+            Function<Strategy, TradingRecord> tradingRecordRunner) {
         Objects.requireNonNull(strategies, "strategies must not be null");
         Objects.requireNonNull(tradeType, "tradeType must not be null");
         Objects.requireNonNull(tradingRecordRunner, "tradingRecordRunner must not be null");
@@ -432,7 +492,15 @@ public class BacktestExecutor {
 
         // For large strategy counts, use batched processing to prevent memory
         // exhaustion. Use smaller batches for very large counts.
-        if (usesBatchedExecution(strategyCount)) {
+        if (parallelism > 0) {
+            try {
+                executeBounded(strategyArray, statements, durations, tradingRecordRunner, effectiveCallback,
+                        parallelism, executionFailures);
+            } catch (RuntimeException | Error failure) {
+                publishStrategyFailures(executionFailures);
+                throw failure;
+            }
+        } else if (usesBatchedExecution(strategyCount)) {
             int effectiveBatchSize = effectiveBatchSize(strategyCount, batchSize);
             executeBatched(strategyArray, statements, durations, tradingRecordRunner, effectiveCallback,
                     effectiveBatchSize, executionFailures);
@@ -544,6 +612,12 @@ public class BacktestExecutor {
     static int effectiveBatchSize(int strategyCount, int requestedBatchSize) {
         return strategyCount > LARGE_COUNT_THRESHOLD ? Math.min(requestedBatchSize, SMALL_BATCH_SIZE)
                 : requestedBatchSize;
+    }
+
+    private static void validateParallelism(int parallelism) {
+        if (parallelism <= 0) {
+            throw new IllegalArgumentException("parallelism must be positive");
+        }
     }
 
     /**
@@ -1051,6 +1125,55 @@ public class BacktestExecutor {
         public BacktestAndWalkForwardResult {
             backtest = Objects.requireNonNull(backtest, "backtest");
             walkForward = Objects.requireNonNull(walkForward, "walkForward");
+        }
+    }
+
+    /**
+     * Executes strategies through a fixed number of platform workers. Each worker
+     * claims the next strategy index, avoiding per-strategy task allocation and
+     * ForkJoinPool nested-parallelism semantics.
+     */
+    private void executeBounded(Strategy[] strategyArray, TradingStatement[] statements, long[] durations,
+            Function<Strategy, TradingRecord> tradingRecordRunner, Consumer<Integer> progressCallback, int parallelism,
+            ConcurrentLinkedQueue<BacktestExecutionResult.StrategyFailure> failureLedger) {
+        int workerCount = Math.min(parallelism, strategyArray.length);
+        ExecutorService workerExecutor = Executors.newFixedThreadPool(workerCount);
+        AtomicInteger nextStrategyIndex = new AtomicInteger();
+        ProgressTracker progressTracker = ProgressTracker.create(progressCallback);
+        ExecutorCompletionService<Void> completedWorkers = new ExecutorCompletionService<>(workerExecutor);
+
+        try {
+            for (int worker = 0; worker < workerCount; worker++) {
+                completedWorkers.submit(() -> {
+                    int index;
+                    while (!Thread.currentThread().isInterrupted()
+                            && (index = nextStrategyIndex.getAndIncrement()) < strategyArray.length) {
+                        executeSingleStrategy(index, strategyArray, statements, durations, tradingRecordRunner,
+                                progressTracker, failureLedger);
+                    }
+                    if (Thread.currentThread().isInterrupted()) {
+                        throw new IllegalStateException("Bounded backtest worker interrupted");
+                    }
+                }, null);
+            }
+            for (int workerIndex = 0; workerIndex < workerCount; workerIndex++) {
+                completedWorkers.take().get();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while waiting for bounded backtest execution", e);
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            if (cause instanceof Error error) {
+                throw error;
+            }
+            throw new IllegalStateException("Bounded backtest worker failed", cause);
+        } finally {
+            workerExecutor.shutdownNow();
+            workerExecutor.close();
         }
     }
 

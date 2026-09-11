@@ -1,6 +1,6 @@
 ## Unreleased
 
-- _No changes yet._
+- `BacktestExecutor` now has explicit `executeWithRuntimeReport` overloads with a strict platform-worker cap for fixed amounts and `PositionSizer` entries. They avoid nested parallel streams so constrained ForkJoin callers can preserve their hard worker limits without compensation-thread rejection.
 
 ## 0.25.0 (2026-09-07)
 
