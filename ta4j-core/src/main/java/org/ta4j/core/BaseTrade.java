@@ -553,7 +553,8 @@ public class BaseTrade implements Trade {
         if (amount.isZero()) {
             return pricePerAsset;
         }
-        Num feePerContract = cost.dividedBy(amount.multipliedBy(contract.contractSize()));
+        Num feePerContract = cost
+                .dividedBy(amount.multipliedBy(amount.getNumFactory().numOf(contract.contractSize().getDelegate())));
         NumFactory numFactory = pricePerAsset.getNumFactory();
         if (contract.settlementType() == FuturesContract.SettlementType.LINEAR) {
             Num adjusted = type == Trade.TradeType.BUY ? pricePerAsset.plus(feePerContract)

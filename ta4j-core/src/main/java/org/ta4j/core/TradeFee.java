@@ -223,36 +223,84 @@ public final class TradeFee implements Serializable {
             this.scheduleAsOf = source.scheduleAsOf;
         }
 
+        /**
+         * Sets the fee type.
+         *
+         * @param type fee type
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder type(Type type) {
             this.type = type;
             return this;
         }
 
+        /**
+         * Sets the charge-positive amount.
+         *
+         * @param amount charge-positive amount
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder amount(Num amount) {
             this.amount = amount;
             return this;
         }
 
+        /**
+         * Sets the fee currency.
+         *
+         * @param currency fee currency
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder currency(String currency) {
             this.currency = currency;
             return this;
         }
 
+        /**
+         * Sets the settlement-currency amount.
+         *
+         * @param settlementAmount settlement-currency amount
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder settlementAmount(Num settlementAmount) {
             this.settlementAmount = settlementAmount;
             return this;
         }
 
+        /**
+         * Sets the fee source identifier.
+         *
+         * @param source fee source identifier
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder source(String source) {
             this.source = source;
             return this;
         }
 
+        /**
+         * Sets the schedule effective time.
+         *
+         * @param scheduleAsOf schedule effective time
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder scheduleAsOf(Instant scheduleAsOf) {
             this.scheduleAsOf = scheduleAsOf;
             return this;
         }
 
+        /**
+         * Builds the immutable fee.
+         *
+         * @return the configured fee
+         * @since 0.25.1
+         */
         public TradeFee build() {
             return new TradeFee(this);
         }

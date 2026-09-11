@@ -81,12 +81,10 @@ public final class FuturesTransactionCostModel implements CostModel {
             return DoubleNumFactory.getInstance().zero();
         }
         Num total = entry.getPricePerAsset().getNumFactory().zero();
-        if (entry.getIndex() <= currentIndex) {
-            total = total.plus(sumModeledFees(entry));
-        }
+        total = total.plus(sumModeledFees(entry, currentIndex));
         Trade exit = position.getExit();
-        if (exit != null && exit.getIndex() <= currentIndex) {
-            total = total.plus(sumModeledFees(exit));
+        if (exit != null) {
+            total = total.plus(sumModeledFees(exit, currentIndex));
         }
         return total;
     }
@@ -189,10 +187,12 @@ public final class FuturesTransactionCostModel implements CostModel {
                 .build();
     }
 
-    private Num sumModeledFees(Trade trade) {
+    private Num sumModeledFees(Trade trade, int currentIndex) {
         Num total = trade.getPricePerAsset().getNumFactory().zero();
         for (TradeFill fill : Trade.executionFillsOf(trade)) {
-            total = total.plus(calculate(fill));
+            if (fill.index() <= currentIndex) {
+                total = total.plus(calculate(fill));
+            }
         }
         return total;
     }

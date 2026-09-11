@@ -502,6 +502,7 @@ public class BaseTradingRecord implements TradingRecord {
             initialized.adoptPosition(position);
             totalFees = accumulateRecordedFees(totalFees, position);
         }
+        initialized.aggregateProjectedCashFlows(positions, Integer.MAX_VALUE);
         initialized.totalFees = totalFees == null ? initialized.defaultNumFactory().zero() : totalFees;
         return initialized.toRecordConfig();
     }
@@ -2016,24 +2017,56 @@ public class BaseTradingRecord implements TradingRecord {
                 }
             }
             for (int i = 0; i < closedPositions.size(); i++) {
-                ClosedPosition closed = closedPositions.get(i);
-                Position position = closed.position();
-                Trade entry = position.getEntry();
-                Trade exit = position.getExit();
-                Instant exitTime = exit == null ? null : exit.getTime();
-                for (TradeFill fill : Trade.executionFillsOf(entry)) {
-                    Instant entryTime = fill.time();
-                    if (entryTime == null) {
-                        throw new IllegalStateException("Futures cash flows require entry timestamps");
-                    }
-                    if (!entryTime.isBefore(eventTime) || (exitTime != null && exitTime.isBefore(eventTime))) {
-                        continue;
-                    }
-                    slices.add(new CashFlowSlice(closed.entrySequence(), fill.amount(),
-                            entry.getType() == TradeType.BUY, null, i));
-                }
+                slices.addAll(eligibleClosedPositionSlices(closedPositions.get(i), eventTime, i));
             }
             slices.sort(Comparator.comparingLong(CashFlowSlice::entrySequence));
+            return slices;
+        }
+
+        private List<CashFlowSlice> eligibleClosedPositionSlices(ClosedPosition closed, Instant eventTime,
+                int closedIndex) {
+            Position position = closed.position();
+            Trade entry = position.getEntry();
+            if (entry == null) {
+                return List.of();
+            }
+            List<TradeFill> entryFills = Trade.executionFillsOf(entry);
+            NumFactory factory = entry.getAmount().getNumFactory();
+            List<Num> remaining = new ArrayList<>(entryFills.size());
+            for (TradeFill fill : entryFills) {
+                if (fill.time() == null) {
+                    throw new IllegalStateException("Futures cash flows require entry timestamps");
+                }
+                remaining.add(factory.numOf(fill.amount().getDelegate()));
+            }
+            Trade exit = position.getExit();
+            if (exit != null) {
+                for (TradeFill exitFill : Trade.executionFillsOf(exit)) {
+                    Instant exitTime = exitFill.time();
+                    if (exitTime == null) {
+                        throw new IllegalStateException("Futures cash flows require exit timestamps");
+                    }
+                    if (!exitTime.isBefore(eventTime)) {
+                        continue;
+                    }
+                    Num exitAmount = factory.numOf(exitFill.amount().getDelegate());
+                    for (int i = 0; i < entryFills.size() && exitAmount.isPositive(); i++) {
+                        if (!entryFills.get(i).time().isBefore(eventTime) || !remaining.get(i).isPositive()) {
+                            continue;
+                        }
+                        Num matched = remaining.get(i).isLessThanOrEqual(exitAmount) ? remaining.get(i) : exitAmount;
+                        remaining.set(i, remaining.get(i).minus(matched));
+                        exitAmount = exitAmount.minus(matched);
+                    }
+                }
+            }
+            List<CashFlowSlice> slices = new ArrayList<>();
+            for (int i = 0; i < entryFills.size(); i++) {
+                if (entryFills.get(i).time().isBefore(eventTime) && remaining.get(i).isPositive()) {
+                    slices.add(new CashFlowSlice(closed.entrySequence(), remaining.get(i),
+                            entry.getType() == TradeType.BUY, null, closedIndex));
+                }
+            }
             return slices;
         }
 

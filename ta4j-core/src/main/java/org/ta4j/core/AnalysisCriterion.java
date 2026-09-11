@@ -477,6 +477,17 @@ public interface AnalysisCriterion {
         if (entryTrade == null || entryTrade.getIndex() > windowEndIndex) {
             return null;
         }
+        List<TradeFill> retainedEntryFills = new ArrayList<>();
+        for (TradeFill fill : Trade.executionFillsOf(entryTrade)) {
+            if (fill.index() <= windowEndIndex) {
+                retainedEntryFills.add(fill);
+            }
+        }
+        if (retainedEntryFills.isEmpty()) {
+            return null;
+        }
+        Trade projectedEntryTrade = Trade.fromFills(entryTrade.getType(), retainedEntryFills,
+                entryTrade.getCostModel());
         FuturesContract contract = currentPosition.getFuturesContract();
         if (contract == null) {
             return null;
@@ -488,13 +499,13 @@ public interface AnalysisCriterion {
                 .index(windowEndIndex)
                 .time(windowEndBar.getEndTime())
                 .price(closePrice)
-                .amount(entryTrade.getAmount())
-                .side(entryTrade.isBuy() ? ExecutionSide.SELL : ExecutionSide.BUY)
+                .amount(projectedEntryTrade.getAmount())
+                .side(projectedEntryTrade.isBuy() ? ExecutionSide.SELL : ExecutionSide.BUY)
                 .futuresContract(contract)
                 .fees(List.of())
                 .build();
         Trade syntheticExit = Trade.fromFill(fill, transactionCostModel);
-        return new Position(entryTrade, syntheticExit, transactionCostModel, holdingCostModel,
+        return new Position(projectedEntryTrade, syntheticExit, transactionCostModel, holdingCostModel,
                 currentPosition.getCashFlows());
     }
 
