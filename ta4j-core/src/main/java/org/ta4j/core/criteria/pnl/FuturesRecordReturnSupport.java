@@ -111,22 +111,24 @@ final class FuturesRecordReturnSupport {
     private static Num executedFees(NumFactory numFactory, Position position, int finalIndex) {
         Num total = numFactory.zero();
         Trade entry = position.getEntry();
-        if (entry != null && entry.getIndex() <= finalIndex) {
-            total = total.plus(fee(numFactory, entry));
+        if (entry != null) {
+            total = total.plus(fillFees(numFactory, entry, finalIndex));
         }
         Trade exit = position.getExit();
-        if (exit != null && exit.getIndex() <= finalIndex) {
-            total = total.plus(fee(numFactory, exit));
+        if (exit != null) {
+            total = total.plus(fillFees(numFactory, exit, finalIndex));
         }
         return total;
     }
 
-    private static Num fee(NumFactory numFactory, Trade trade) {
-        Num cost = trade.getCost();
-        if (cost == null || cost.isNaN()) {
-            return numFactory.zero();
+    private static Num fillFees(NumFactory numFactory, Trade trade, int finalIndex) {
+        Num total = numFactory.zero();
+        for (org.ta4j.core.TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() <= finalIndex) {
+                total = total.plus(toNum(numFactory, fill.fee()));
+            }
         }
-        return toNum(numFactory, cost);
+        return total;
     }
 
     private static Num funding(NumFactory numFactory, TradingRecord tradingRecord, int finalIndex) {

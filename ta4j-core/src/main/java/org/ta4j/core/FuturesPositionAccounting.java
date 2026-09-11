@@ -200,14 +200,13 @@ final class FuturesPositionAccounting {
     static Num realizedProfit(Position position, int finalIndex) {
         Num fees = executedFees(position, finalIndex);
         Num funding = funding(position, finalIndex);
-        Trade exit = executedExit(position, finalIndex);
-        if (exit != null) {
-            Num payoff = payoff(position, exit.getPricePerAsset(), finalIndex);
-            return payoff.minus(fees).plus(funding);
+        Num realizedPayoff = executedPayoff(position, finalIndex);
+        if (isFullyExecutedExit(position, finalIndex)) {
+            return realizedPayoff.minus(fees).plus(funding);
         }
         // Variation margin paid on the still-open exposure is realized cash that
         // the unrealized mark-to-entry value must give back.
-        return fees.negate().plus(funding).plus(variationMargin(position, finalIndex));
+        return realizedPayoff.minus(fees).plus(funding).plus(variationMargin(position, finalIndex));
     }
 
     /**
@@ -221,10 +220,11 @@ final class FuturesPositionAccounting {
      * @since 0.25.1
      */
     static Num unrealizedProfit(Position position, Num markPrice, int finalIndex) {
-        if (executedExit(position, finalIndex) != null) {
+        if (isFullyExecutedExit(position, finalIndex)) {
             return position.getEntry().getPricePerAsset().getNumFactory().zero();
         }
-        return payoff(position, markPrice, finalIndex).minus(variationMargin(position, finalIndex));
+        return payoff(position, markPrice, finalIndex).minus(executedPayoff(position, finalIndex))
+                .minus(variationMargin(position, finalIndex));
     }
 
     /**
@@ -274,6 +274,45 @@ final class FuturesPositionAccounting {
         Trade entry = position.getEntry();
         Trade exit = position.getExit();
         return exit == null ? entry.getAmount() : exit.getAmount();
+    }
+
+    private static Num executedPayoff(Position position, int finalIndex) {
+        FuturesContract contract = requireContract(position);
+        Trade entry = position.getEntry();
+        ArrayDeque<FillSlice> exits = new ArrayDeque<>();
+        Trade exit = position.getExit();
+        if (exit != null) {
+            for (TradeFill fill : executedFills(exit, finalIndex)) {
+                exits.addLast(new FillSlice(fill.price(), fill.amount()));
+            }
+        }
+        Num total = entry.getPricePerAsset().getNumFactory().zero();
+        for (TradeFill entryFill : executedFills(entry, finalIndex)) {
+            Num remainingEntry = entryFill.amount();
+            while (remainingEntry.isPositive() && !exits.isEmpty()) {
+                FillSlice exitFill = exits.removeFirst();
+                Num matched = remainingEntry.isLessThan(exitFill.amount()) ? remainingEntry : exitFill.amount();
+                total = total.plus(contract.profit(entry.getType(), matched, entryFill.price(), exitFill.price()));
+                remainingEntry = remainingEntry.minus(matched);
+                Num remainingExit = exitFill.amount().minus(matched);
+                if (remainingExit.isPositive()) {
+                    exits.addFirst(new FillSlice(exitFill.price(), remainingExit));
+                }
+            }
+        }
+        return total;
+    }
+
+    private static boolean isFullyExecutedExit(Position position, int finalIndex) {
+        Trade exit = position.getExit();
+        if (exit == null) {
+            return false;
+        }
+        Num executed = exit.getPricePerAsset().getNumFactory().zero();
+        for (TradeFill fill : executedFills(exit, finalIndex)) {
+            executed = executed.plus(fill.amount());
+        }
+        return executed.isGreaterThanOrEqual(exit.getAmount());
     }
 
     private static Trade executedExit(Position position, int finalIndex) {

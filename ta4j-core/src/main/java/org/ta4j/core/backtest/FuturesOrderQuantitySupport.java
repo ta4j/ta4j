@@ -8,6 +8,7 @@ import java.math.RoundingMode;
 import java.util.Objects;
 import org.ta4j.core.FuturesContract;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Validates and rounds simulated futures order quantities against the
@@ -51,7 +52,7 @@ final class FuturesOrderQuantitySupport {
     static Num roundDown(FuturesContract contract, Num quantity) {
         Objects.requireNonNull(contract, "contract");
         requireNonNegativeFinite(quantity, "quantity");
-        Num increment = contract.quantityIncrement();
+        Num increment = toNum(contract.quantityIncrement(), quantity.getNumFactory());
         if (increment == null) {
             return quantity;
         }
@@ -130,24 +131,25 @@ final class FuturesOrderQuantitySupport {
     }
 
     private static String violation(FuturesContract contract, Num quantity, Num price) {
-        Num increment = contract.quantityIncrement();
+        NumFactory numFactory = quantity.getNumFactory();
+        Num increment = toNum(contract.quantityIncrement(), numFactory);
         if (increment != null && !isMultipleOf(quantity, increment)) {
             return "order quantity " + quantity + " must be a multiple of the quantity increment " + increment;
         }
-        Num minimumQuantity = contract.minimumQuantity();
+        Num minimumQuantity = toNum(contract.minimumQuantity(), numFactory);
         if (minimumQuantity != null && quantity.isLessThan(minimumQuantity)) {
             return "order quantity " + quantity + " is below the minimum quantity " + minimumQuantity;
         }
-        Num maximumQuantity = contract.maximumQuantity();
+        Num maximumQuantity = toNum(contract.maximumQuantity(), quantity.getNumFactory());
         if (maximumQuantity != null && quantity.isGreaterThan(maximumQuantity)) {
             return "order quantity " + quantity + " is above the maximum quantity " + maximumQuantity;
         }
-        Num quoteNotional = contract.quoteNotional(quantity, price);
-        Num minimumNotional = contract.minimumNotional();
+        Num quoteNotional = toNum(contract.quoteNotional(quantity, price), quantity.getNumFactory());
+        Num minimumNotional = toNum(contract.minimumNotional(), quantity.getNumFactory());
         if (minimumNotional != null && quoteNotional.isLessThan(minimumNotional)) {
             return "order notional " + quoteNotional + " is below the minimum notional " + minimumNotional;
         }
-        Num maximumNotional = contract.maximumNotional();
+        Num maximumNotional = toNum(contract.maximumNotional(), quantity.getNumFactory());
         if (maximumNotional != null && quoteNotional.isGreaterThan(maximumNotional)) {
             return "order notional " + quoteNotional + " is above the maximum notional " + maximumNotional;
         }
@@ -155,7 +157,7 @@ final class FuturesOrderQuantitySupport {
     }
 
     private static Num capToMaximumQuantity(FuturesContract contract, Num quantity) {
-        Num maximumQuantity = contract.maximumQuantity();
+        Num maximumQuantity = toNum(contract.maximumQuantity(), quantity.getNumFactory());
         if (maximumQuantity == null || quantity.isLessThanOrEqual(maximumQuantity)) {
             return quantity;
         }
@@ -163,19 +165,24 @@ final class FuturesOrderQuantitySupport {
     }
 
     private static Num capToMaximumNotional(FuturesContract contract, Num quantity, Num price) {
-        Num maximumNotional = contract.maximumNotional();
+        Num maximumNotional = toNum(contract.maximumNotional(), quantity.getNumFactory());
         if (maximumNotional == null) {
             return quantity;
         }
-        Num perContract = contract.quoteNotional(quantity.getNumFactory().one(), price);
+        Num perContract = toNum(contract.quoteNotional(quantity.getNumFactory().one(), price),
+                quantity.getNumFactory());
         if (!perContract.isPositive()) {
             return quantity;
         }
-        Num notionalBound = maximumNotional.dividedBy(perContract);
+        Num notionalBound = quantity.getNumFactory().numOf(maximumNotional.getDelegate()).dividedBy(perContract);
         if (notionalBound.isNaN() || notionalBound.isNegativeOrZero() || quantity.isLessThanOrEqual(notionalBound)) {
             return quantity;
         }
         return notionalBound;
+    }
+
+    private static Num toNum(Num value, NumFactory numFactory) {
+        return value == null ? null : numFactory.numOf(value.getDelegate());
     }
 
     private static boolean isMultipleOf(Num quantity, Num increment) {

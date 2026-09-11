@@ -212,10 +212,21 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
                     requestedAmount.getNumFactory().zero(), "Unable to resolve activation bar for stop-limit order"));
             return;
         }
-        FuturesOrderQuantitySupport.requireTradable(tradingRecord.getFuturesContract(), requestedAmount,
-                activation.price());
+        if (!isCompleteClose(tradingRecord, requestedAmount)) {
+            FuturesOrderQuantitySupport.requireTradable(tradingRecord.getFuturesContract(), requestedAmount,
+                    activation.price());
+        }
         putPendingOrder(tradingRecord, new PendingOrder(index, activation.index(), tradeType, requestedAmount,
                 stopPrice, limitPrice, expiryIndex(activation.index(), maxBarsToFill)));
+    }
+
+    private boolean isCompleteClose(TradingRecord tradingRecord, Num requestedAmount) {
+        if (tradingRecord.getFuturesContract() == null || tradingRecord.getCurrentPosition() == null
+                || tradingRecord.getCurrentPosition().isClosed()) {
+            return false;
+        }
+        Num openAmount = tradingRecord.getCurrentPosition().getEntry().getAmount();
+        return requestedAmount.isEqual(openAmount);
     }
 
     @Override

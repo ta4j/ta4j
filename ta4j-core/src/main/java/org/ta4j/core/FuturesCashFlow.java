@@ -251,56 +251,122 @@ public final class FuturesCashFlow implements Serializable {
         }
 
         @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The builder stores the immutable FuturesContract by reference; the contract is never mutated after the value is built")
+        /**
+         * Sets the futures contract for this cash flow.
+         *
+         * @param futures contract for this cash flow
+         * @return this builder
+         */
         public Builder contract(FuturesContract contract) {
             this.contract = contract;
             return this;
         }
 
+        /**
+         * Sets the cash-flow type.
+         *
+         * @param cash-flow type
+         * @return this builder
+         */
         public Builder type(Type type) {
             this.type = type;
             return this;
         }
 
+        /**
+         * Sets the stable event identifier.
+         *
+         * @param stable event identifier
+         * @return this builder
+         */
         public Builder eventId(String eventId) {
             this.eventId = eventId;
             return this;
         }
 
+        /**
+         * Sets the logical bar index.
+         *
+         * @param logical bar index
+         * @return this builder
+         */
         public Builder index(int index) {
             this.index = index;
             return this;
         }
 
+        /**
+         * Sets the effective cash-flow instant.
+         *
+         * @param effective cash-flow instant
+         * @return this builder
+         */
         public Builder time(Instant time) {
             this.time = time;
             return this;
         }
 
+        /**
+         * Sets the credit-positive amount.
+         *
+         * @param credit-positive amount
+         * @return this builder
+         */
         public Builder amount(Num amount) {
             this.amount = amount;
             return this;
         }
 
+        /**
+         * Sets the amount currency.
+         *
+         * @param amount currency
+         * @return this builder
+         */
         public Builder currency(String currency) {
             this.currency = currency;
             return this;
         }
 
+        /**
+         * Sets the credit-positive settlement amount.
+         *
+         * @param credit-positive settlement amount
+         * @return this builder
+         */
         public Builder settlementAmount(Num settlementAmount) {
             this.settlementAmount = settlementAmount;
             return this;
         }
 
+        /**
+         * Sets the funding rate.
+         *
+         * @param funding rate
+         * @return this builder
+         */
         public Builder rate(Num rate) {
             this.rate = rate;
             return this;
         }
 
+        /**
+         * Sets the reference price.
+         *
+         * @param reference price
+         * @return this builder
+         */
         public Builder referencePrice(Num referencePrice) {
             this.referencePrice = referencePrice;
             return this;
         }
 
+        /**
+         * Sets the data source identifier.
+         *
+         * @param data source identifier
+         * @return this builder
+         */
         public Builder source(String source) {
             this.source = source;
             return this;
