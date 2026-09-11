@@ -8,6 +8,7 @@ import java.util.List;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.NaN;
@@ -113,21 +114,23 @@ public class TotalFeesCriterion extends AbstractAnalysisCriterion {
         Num total = factory.zero();
         Trade entry = position.getEntry();
         if (entry != null && entry.getIndex() <= finalIndex) {
-            total = total.plus(fee(factory, entry));
+            total = total.plus(fee(factory, entry, finalIndex));
         }
         Trade exit = position.getExit();
         if (exit != null && exit.getIndex() <= finalIndex) {
-            total = total.plus(fee(factory, exit));
+            total = total.plus(fee(factory, exit, finalIndex));
         }
         return total;
     }
 
-    private Num fee(NumFactory factory, Trade trade) {
-        Num cost = trade.getCost();
-        if (cost == null || cost.isNaN()) {
-            return factory.zero();
+    private Num fee(NumFactory factory, Trade trade, int finalIndex) {
+        Num total = factory.zero();
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() <= finalIndex && fill.fee() != null && !fill.fee().isNaN()) {
+                total = total.plus(factory.numOf(fill.fee().getDelegate()));
+            }
         }
-        return factory.numOf(cost.getDelegate());
+        return total;
     }
 
     private Num toSeriesNum(NumFactory factory, Num value) {

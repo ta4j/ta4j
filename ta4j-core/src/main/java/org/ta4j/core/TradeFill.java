@@ -498,93 +498,218 @@ public final class TradeFill implements Serializable {
             this.positionSnapshot = source.positionSnapshot;
         }
 
+        /**
+         * Sets the logical bar index.
+         *
+         * @param index logical bar index
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder index(int index) {
             this.index = index;
             return this;
         }
 
+        /**
+         * Sets the execution time.
+         *
+         * @param time execution time
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder time(Instant time) {
             this.time = time;
             return this;
         }
 
+        /**
+         * Sets the execution price.
+         *
+         * @param price execution price
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder price(Num price) {
             this.price = price;
             return this;
         }
 
+        /**
+         * Sets the executed amount.
+         *
+         * @param amount executed amount
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder amount(Num amount) {
             this.amount = amount;
             return this;
         }
 
+        /**
+         * Sets the legacy fee amount.
+         *
+         * @param fee legacy fee amount
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder fee(Num fee) {
             this.fee = fee;
             return this;
         }
 
+        /**
+         * Sets the execution side.
+         *
+         * @param side execution side
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder side(ExecutionSide side) {
             this.side = side;
             return this;
         }
 
+        /**
+         * Sets the order identifier.
+         *
+         * @param orderId order identifier
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder orderId(String orderId) {
             this.orderId = orderId;
             return this;
         }
 
+        /**
+         * Sets the correlation identifier.
+         *
+         * @param correlationId correlation identifier
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder correlationId(String correlationId) {
             this.correlationId = correlationId;
             return this;
         }
 
+        /**
+         * Sets the instrument identifier.
+         *
+         * @param instrument instrument identifier
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder instrument(String instrument) {
             this.instrument = instrument;
             return this;
         }
 
+        /**
+         * Sets the futures contract.
+         *
+         * @param futuresContract futures contract
+         * @return this builder
+         * @since 0.25.1
+         */
         @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The builder stores the immutable FuturesContract by reference; the contract is never mutated after the value is built")
         public Builder futuresContract(FuturesContract futuresContract) {
             this.futuresContract = futuresContract;
             return this;
         }
 
+        /**
+         * Sets the execution liquidity.
+         *
+         * @param liquidity execution liquidity
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder liquidity(RealtimeBar.Liquidity liquidity) {
             this.liquidity = liquidity;
             return this;
         }
 
+        /**
+         * Sets the execution identifier.
+         *
+         * @param executionId execution identifier
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder executionId(String executionId) {
             this.executionId = executionId;
             return this;
         }
 
+        /**
+         * Sets the fee components.
+         *
+         * @param fees fee components
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder fees(List<TradeFee> fees) {
             this.fees = fees == null ? null : List.copyOf(fees);
             return this;
         }
 
+        /**
+         * Sets whether the fill liquidates the position.
+         *
+         * @param liquidation whether the fill liquidates the position
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder liquidation(boolean liquidation) {
             this.liquidation = liquidation;
             return this;
         }
 
+        /**
+         * Sets whether the fill is reduce-only.
+         *
+         * @param reduceOnly whether the fill is reduce-only
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder reduceOnly(boolean reduceOnly) {
             this.reduceOnly = reduceOnly;
             return this;
         }
 
+        /**
+         * Sets the market snapshot.
+         *
+         * @param marketSnapshot market snapshot
+         * @return this builder
+         * @since 0.25.1
+         */
         @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The builder stores the immutable market snapshot by reference; the snapshot is never mutated after the fill is built")
         public Builder marketSnapshot(FuturesMarketSnapshot marketSnapshot) {
             this.marketSnapshot = marketSnapshot;
             return this;
         }
 
+        /**
+         * Sets the position snapshot.
+         *
+         * @param positionSnapshot position snapshot
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder positionSnapshot(FuturesPositionSnapshot positionSnapshot) {
             this.positionSnapshot = positionSnapshot;
             return this;
         }
 
+        /**
+         * Builds the immutable fill.
+         *
+         * @return the configured fill
+         * @since 0.25.1
+         */
         public TradeFill build() {
             return new TradeFill(this);
         }

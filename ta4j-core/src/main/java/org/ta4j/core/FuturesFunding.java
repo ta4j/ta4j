@@ -176,41 +176,98 @@ public final class FuturesFunding implements Serializable {
         }
 
         @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The builder stores the immutable FuturesContract by reference; the contract is never mutated after the value is built")
+        /**
+         * Sets the futures contract.
+         *
+         * @param contract futures contract
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder contract(FuturesContract contract) {
             this.contract = contract;
             return this;
         }
 
+        /**
+         * Sets the stable event identifier.
+         *
+         * @param eventId stable event identifier
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder eventId(String eventId) {
             this.eventId = eventId;
             return this;
         }
 
+        /**
+         * Sets the logical bar index.
+         *
+         * @param index logical bar index
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder index(int index) {
             this.index = index;
             return this;
         }
 
+        /**
+         * Sets the funding boundary instant.
+         *
+         * @param time funding boundary instant
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder time(Instant time) {
             this.time = time;
             return this;
         }
 
+        /**
+         * Sets the signed funding rate.
+         *
+         * @param rate signed funding rate
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder rate(Num rate) {
             this.rate = rate;
             return this;
         }
 
+        /**
+         * Sets the positive reference price.
+         *
+         * @param referencePrice positive reference price
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder referencePrice(Num referencePrice) {
             this.referencePrice = referencePrice;
             return this;
         }
 
+        /**
+         * Sets the data source identifier.
+         *
+         * @param source data source identifier
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder source(String source) {
             this.source = source;
             return this;
         }
 
+        /**
+         * Builds the immutable funding event.
+         *
+         * @return this builder
+         * @since 0.25.1
+         * @return the configured funding event
+         * @since 0.25.1
+         */
         public FuturesFunding build() {
             return new FuturesFunding(this);
         }

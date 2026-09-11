@@ -215,43 +215,101 @@ public final class FuturesTransactionCostModel implements CostModel {
         private Builder() {
         }
 
+        /**
+         * Sets the maker fee rate.
+         *
+         * @param makerRate maker fee rate
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder makerRate(Num makerRate) {
             this.makerRate = requireFinite(makerRate, "makerRate");
             return this;
         }
 
+        /**
+         * Sets the taker fee rate.
+         *
+         * @param takerRate taker fee rate
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder takerRate(Num takerRate) {
             this.takerRate = requireFinite(takerRate, "takerRate");
             return this;
         }
 
+        /**
+         * Sets the minimum fee per contract.
+         *
+         * @param minimumPerContract minimum fee per contract
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder minimumPerContract(Num minimumPerContract) {
             this.minimumPerContract = minimumPerContract == null ? null
                     : requireNonNegative(minimumPerContract, "minimumPerContract");
             return this;
         }
 
+        /**
+         * Sets the per-contract fee amount.
+         *
+         * @param type   fee type
+         * @param amount per-contract fee amount
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder perContractCharge(TradeFee.Type type, Num amount) {
             Objects.requireNonNull(type, "type");
             perContractCharges.put(type, requireNonNegative(amount, "perContractCharge"));
             return this;
         }
 
+        /**
+         * Sets the default liquidity.
+         *
+         * @param defaultLiquidity default liquidity
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder defaultLiquidity(RealtimeBar.Liquidity defaultLiquidity) {
             this.defaultLiquidity = Objects.requireNonNull(defaultLiquidity, "defaultLiquidity");
             return this;
         }
 
+        /**
+         * Sets the data source identifier.
+         *
+         * @param source data source identifier
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder source(String source) {
             this.source = source;
             return this;
         }
 
+        /**
+         * Sets the effective instant.
+         *
+         * @param asOf effective instant
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder asOf(Instant asOf) {
             this.asOf = asOf;
             return this;
         }
 
+        /**
+         * Builds the immutable futures transaction cost model.
+         *
+         * @return this builder
+         * @since 0.25.1
+         * @return the configured futures transaction cost model
+         * @since 0.25.1
+         */
         public FuturesTransactionCostModel build() {
             if (makerRate == null || takerRate == null) {
                 throw new IllegalArgumentException("makerRate and takerRate are required");

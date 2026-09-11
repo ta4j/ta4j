@@ -310,86 +310,206 @@ public final class FuturesPositionSnapshot implements Serializable {
         }
 
         @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The builder stores the immutable FuturesContract by reference; the contract is never mutated after the value is built")
+        /**
+         * Sets the futures contract.
+         *
+         * @param contract futures contract
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder contract(FuturesContract contract) {
             this.contract = contract;
             return this;
         }
 
+        /**
+         * Sets the observation instant.
+         *
+         * @param observedAt observation instant
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder observedAt(Instant observedAt) {
             this.observedAt = observedAt;
             return this;
         }
 
+        /**
+         * Sets the signed contract count.
+         *
+         * @param signedContracts signed contract count
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder signedContracts(Num signedContracts) {
             this.signedContracts = signedContracts;
             return this;
         }
 
+        /**
+         * Sets the position identifier.
+         *
+         * @param positionId position identifier
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder positionId(String positionId) {
             this.positionId = positionId;
             return this;
         }
 
+        /**
+         * Sets the margin mode.
+         *
+         * @param marginMode margin mode
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder marginMode(MarginMode marginMode) {
             this.marginMode = marginMode;
             return this;
         }
 
+        /**
+         * Sets the average entry price.
+         *
+         * @param averageEntryPrice average entry price
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder averageEntryPrice(Num averageEntryPrice) {
             this.averageEntryPrice = averageEntryPrice;
             return this;
         }
 
+        /**
+         * Sets the collateral.
+         *
+         * @param collateral collateral
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder collateral(Num collateral) {
             this.collateral = collateral;
             return this;
         }
 
+        /**
+         * Sets the initial margin.
+         *
+         * @param initialMargin initial margin
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder initialMargin(Num initialMargin) {
             this.initialMargin = initialMargin;
             return this;
         }
 
+        /**
+         * Sets the maintenance margin.
+         *
+         * @param maintenanceMargin maintenance margin
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder maintenanceMargin(Num maintenanceMargin) {
             this.maintenanceMargin = maintenanceMargin;
             return this;
         }
 
+        /**
+         * Sets the margin ratio.
+         *
+         * @param marginRatio margin ratio
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder marginRatio(Num marginRatio) {
             this.marginRatio = marginRatio;
             return this;
         }
 
+        /**
+         * Sets the leverage.
+         *
+         * @param leverage leverage
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder leverage(Num leverage) {
             this.leverage = leverage;
             return this;
         }
 
+        /**
+         * Sets the liquidation price.
+         *
+         * @param liquidationPrice liquidation price
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder liquidationPrice(Num liquidationPrice) {
             this.liquidationPrice = liquidationPrice;
             return this;
         }
 
+        /**
+         * Sets the realized profit and loss.
+         *
+         * @param realizedPnl realized profit and loss
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder realizedPnl(Num realizedPnl) {
             this.realizedPnl = realizedPnl;
             return this;
         }
 
+        /**
+         * Sets the unrealized profit and loss.
+         *
+         * @param unrealizedPnl unrealized profit and loss
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder unrealizedPnl(Num unrealizedPnl) {
             this.unrealizedPnl = unrealizedPnl;
             return this;
         }
 
+        /**
+         * Sets the data source identifier.
+         *
+         * @param source data source identifier
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder source(String source) {
             this.source = source;
             return this;
         }
 
+        /**
+         * Sets additional snapshot attributes.
+         *
+         * @param attributes additional snapshot attributes
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder attributes(Map<String, String> attributes) {
             this.attributes = attributes == null ? Map.of() : attributes;
             return this;
         }
 
+        /**
+         * Builds the immutable position snapshot.
+         *
+         * @return this builder
+         * @since 0.25.1
+         * @return the configured position snapshot
+         * @since 0.25.1
+         */
         public FuturesPositionSnapshot build() {
             return new FuturesPositionSnapshot(this);
         }

@@ -319,91 +319,218 @@ public final class FuturesMarketSnapshot implements Serializable {
         }
 
         @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The builder stores the immutable FuturesContract by reference; the contract is never mutated after the value is built")
+        /**
+         * Sets the futures contract.
+         *
+         * @param contract futures contract
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder contract(FuturesContract contract) {
             this.contract = contract;
             return this;
         }
 
+        /**
+         * Sets the observation instant.
+         *
+         * @param observedAt observation instant
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder observedAt(Instant observedAt) {
             this.observedAt = observedAt;
             return this;
         }
 
+        /**
+         * Sets the data source identifier.
+         *
+         * @param source data source identifier
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder source(String source) {
             this.source = source;
             return this;
         }
 
+        /**
+         * Sets the mark price.
+         *
+         * @param markPrice mark price
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder markPrice(Num markPrice) {
             this.markPrice = markPrice;
             return this;
         }
 
+        /**
+         * Sets the index price.
+         *
+         * @param indexPrice index price
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder indexPrice(Num indexPrice) {
             this.indexPrice = indexPrice;
             return this;
         }
 
+        /**
+         * Sets the settlement price.
+         *
+         * @param settlementPrice settlement price
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder settlementPrice(Num settlementPrice) {
             this.settlementPrice = settlementPrice;
             return this;
         }
 
+        /**
+         * Sets the funding rate.
+         *
+         * @param fundingRate funding rate
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder fundingRate(Num fundingRate) {
             this.fundingRate = fundingRate;
             return this;
         }
 
+        /**
+         * Sets the funding boundary instant.
+         *
+         * @param fundingTime funding boundary instant
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder fundingTime(Instant fundingTime) {
             this.fundingTime = fundingTime;
             return this;
         }
 
+        /**
+         * Sets the funding interval.
+         *
+         * @param fundingInterval funding interval
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder fundingInterval(Duration fundingInterval) {
             this.fundingInterval = fundingInterval;
             return this;
         }
 
+        /**
+         * Sets the open interest.
+         *
+         * @param openInterest open interest
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder openInterest(Num openInterest) {
             this.openInterest = openInterest;
             return this;
         }
 
+        /**
+         * Sets the maximum leverage.
+         *
+         * @param maxLeverage maximum leverage
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder maxLeverage(Num maxLeverage) {
             this.maxLeverage = maxLeverage;
             return this;
         }
 
+        /**
+         * Sets the intraday long margin rate.
+         *
+         * @param intradayLongMarginRate intraday long margin rate
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder intradayLongMarginRate(Num intradayLongMarginRate) {
             this.intradayLongMarginRate = intradayLongMarginRate;
             return this;
         }
 
+        /**
+         * Sets the intraday short margin rate.
+         *
+         * @param intradayShortMarginRate intraday short margin rate
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder intradayShortMarginRate(Num intradayShortMarginRate) {
             this.intradayShortMarginRate = intradayShortMarginRate;
             return this;
         }
 
+        /**
+         * Sets the overnight long margin rate.
+         *
+         * @param overnightLongMarginRate overnight long margin rate
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder overnightLongMarginRate(Num overnightLongMarginRate) {
             this.overnightLongMarginRate = overnightLongMarginRate;
             return this;
         }
 
+        /**
+         * Sets the overnight short margin rate.
+         *
+         * @param overnightShortMarginRate overnight short margin rate
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder overnightShortMarginRate(Num overnightShortMarginRate) {
             this.overnightShortMarginRate = overnightShortMarginRate;
             return this;
         }
 
+        /**
+         * Sets the maintenance margin rate.
+         *
+         * @param maintenanceMarginRate maintenance margin rate
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder maintenanceMarginRate(Num maintenanceMarginRate) {
             this.maintenanceMarginRate = maintenanceMarginRate;
             return this;
         }
 
+        /**
+         * Sets additional snapshot attributes.
+         *
+         * @param attributes additional snapshot attributes
+         * @return this builder
+         * @since 0.25.1
+         */
         public Builder attributes(Map<String, String> attributes) {
             this.attributes = attributes == null ? Map.of() : attributes;
             return this;
         }
 
+        /**
+         * Builds the immutable market snapshot.
+         *
+         * @return this builder
+         * @since 0.25.1
+         * @return the configured market snapshot
+         * @since 0.25.1
+         */
         public FuturesMarketSnapshot build() {
             return new FuturesMarketSnapshot(this);
         }

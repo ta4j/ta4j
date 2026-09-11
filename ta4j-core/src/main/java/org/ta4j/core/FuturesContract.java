@@ -485,7 +485,8 @@ public final class FuturesContract implements Serializable {
     public Num fundingCashFlow(Num signedContracts, Num referencePrice, Num fundingRate) {
         FuturesValidation.requireFinite(signedContracts, "signedContracts");
         FuturesValidation.requireFinite(fundingRate, "fundingRate");
-        Num magnitude = settlementNotional(signedContracts.abs(), referencePrice).multipliedBy(fundingRate);
+        Num notional = settlementNotional(signedContracts.abs(), referencePrice);
+        Num magnitude = notional.multipliedBy(notional.getNumFactory().numOf(fundingRate.getDelegate()));
         return signedContracts.isNegative() ? magnitude : magnitude.negate();
     }
 

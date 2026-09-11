@@ -63,7 +63,7 @@ public final class RecordedTradeCostModel implements CostModel {
     public Num calculate(TradeFill fill) {
         Objects.requireNonNull(fill, "fill");
         if (fill.futuresContract() == null) {
-            return calculate(fill.price(), fill.amount());
+            return fill.fee();
         }
         if (!fill.hasRecordedFees()) {
             throw new IllegalArgumentException(
