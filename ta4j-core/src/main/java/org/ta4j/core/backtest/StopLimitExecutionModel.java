@@ -222,6 +222,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
 
     private boolean isCompleteClose(TradingRecord tradingRecord, Num requestedAmount) {
         if (tradingRecord.getFuturesContract() == null || tradingRecord.getCurrentPosition() == null
+                || tradingRecord.getCurrentPosition().getEntry() == null
                 || tradingRecord.getCurrentPosition().isClosed()) {
             return false;
         }
