@@ -254,7 +254,7 @@ public final class FuturesCashFlow implements Serializable {
         /**
          * Sets the futures contract for this cash flow.
          *
-         * @param futures contract for this cash flow
+         * @param contract futures contract for this cash flow
          * @return this builder
          * @since 0.25.1
          */
@@ -266,7 +266,7 @@ public final class FuturesCashFlow implements Serializable {
         /**
          * Sets the cash-flow type.
          *
-         * @param cash-flow type
+         * @param type cash-flow type
          * @return this builder
          * @since 0.25.1
          */
@@ -278,7 +278,7 @@ public final class FuturesCashFlow implements Serializable {
         /**
          * Sets the stable event identifier.
          *
-         * @param stable event identifier
+         * @param eventId stable event identifier
          * @return this builder
          * @since 0.25.1
          */
@@ -290,7 +290,7 @@ public final class FuturesCashFlow implements Serializable {
         /**
          * Sets the logical bar index.
          *
-         * @param logical bar index
+         * @param index logical bar index
          * @return this builder
          * @since 0.25.1
          */
@@ -302,7 +302,7 @@ public final class FuturesCashFlow implements Serializable {
         /**
          * Sets the effective cash-flow instant.
          *
-         * @param effective cash-flow instant
+         * @param time effective cash-flow instant
          * @return this builder
          * @since 0.25.1
          */
@@ -314,7 +314,7 @@ public final class FuturesCashFlow implements Serializable {
         /**
          * Sets the credit-positive amount.
          *
-         * @param credit-positive amount
+         * @param amount credit-positive amount
          * @return this builder
          * @since 0.25.1
          */
@@ -326,7 +326,7 @@ public final class FuturesCashFlow implements Serializable {
         /**
          * Sets the amount currency.
          *
-         * @param amount currency
+         * @param currency amount currency
          * @return this builder
          * @since 0.25.1
          */
@@ -338,7 +338,7 @@ public final class FuturesCashFlow implements Serializable {
         /**
          * Sets the credit-positive settlement amount.
          *
-         * @param credit-positive settlement amount
+         * @param settlementAmount credit-positive settlement amount
          * @return this builder
          * @since 0.25.1
          */
@@ -350,7 +350,7 @@ public final class FuturesCashFlow implements Serializable {
         /**
          * Sets the funding rate.
          *
-         * @param funding rate
+         * @param rate funding rate
          * @return this builder
          * @since 0.25.1
          */
@@ -362,7 +362,7 @@ public final class FuturesCashFlow implements Serializable {
         /**
          * Sets the reference price.
          *
-         * @param reference price
+         * @param referencePrice reference price
          * @return this builder
          * @since 0.25.1
          */
@@ -374,7 +374,7 @@ public final class FuturesCashFlow implements Serializable {
         /**
          * Sets the data source identifier.
          *
-         * @param data source identifier
+         * @param source data source identifier
          * @return this builder
          * @since 0.25.1
          */
