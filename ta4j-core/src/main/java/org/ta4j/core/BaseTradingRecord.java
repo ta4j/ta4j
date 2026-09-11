@@ -1494,8 +1494,14 @@ public class BaseTradingRecord implements TradingRecord {
         lock.readLock().lock();
         try {
             if (totalFees == null) {
-                NumFactory factory = numFactory == null ? DoubleNumFactory.getInstance() : numFactory;
-                return factory.zero();
+                NumFactory factory = numFactory;
+                if (factory == null && initialCapital != null) {
+                    factory = initialCapital.getNumFactory();
+                }
+                if (factory == null && futuresContract != null) {
+                    factory = futuresContract.contractSize().getNumFactory();
+                }
+                return (factory == null ? DoubleNumFactory.getInstance() : factory).zero();
             }
             return totalFees;
         } finally {
