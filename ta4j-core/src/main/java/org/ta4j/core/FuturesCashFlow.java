@@ -203,8 +203,12 @@ public final class FuturesCashFlow implements Serializable {
 
     @Override
     public int hashCode() {
-        return Objects.hash(contract, type, eventId, index, time, amount, currency, settlementAmount, rate,
-                referencePrice, source);
+        return Objects.hash(contract, type, eventId, index, time, numHashCode(amount), currency,
+                numHashCode(settlementAmount), numHashCode(rate), numHashCode(referencePrice), source);
+    }
+
+    private static int numHashCode(Num value) {
+        return value == null ? 0 : value.bigDecimalValue().stripTrailingZeros().hashCode();
     }
 
     @Override

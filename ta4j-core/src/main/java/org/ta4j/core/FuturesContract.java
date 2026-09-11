@@ -506,7 +506,9 @@ public final class FuturesContract implements Serializable {
      */
     public Num marginRequirement(Num contracts, Num referencePrice, Num marginRate) {
         FuturesValidation.requireNonNegativeFinite(marginRate, "marginRate");
-        return settlementNotional(contracts, referencePrice).multipliedBy(marginRate);
+        Num notional = settlementNotional(contracts, referencePrice);
+        Num normalizedMarginRate = notional.getNumFactory().numOf(marginRate.getDelegate());
+        return notional.multipliedBy(normalizedMarginRate);
     }
 
     /**

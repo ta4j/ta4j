@@ -550,8 +550,9 @@ public class BaseTradingRecord implements TradingRecord {
                 source.getInitialCapital(), source.getInitialMarginRate(), List.of()));
         Num totalFees = null;
         for (Position position : positions) {
-            projected.adoptPosition(trimmedToWindow(position, end));
-            totalFees = accumulateRecordedFees(totalFees, position);
+            Position projectedPosition = trimmedToWindow(position, end);
+            projected.adoptPosition(projectedPosition);
+            totalFees = accumulateRecordedFees(totalFees, projectedPosition);
         }
         projected.totalFees = totalFees == null ? projected.defaultNumFactory().zero() : totalFees;
         projected.aggregateProjectedCashFlows(positions, end);
@@ -570,25 +571,36 @@ public class BaseTradingRecord implements TradingRecord {
      */
     private static Position trimmedToWindow(Position position, int end) {
         List<FuturesCashFlow> cashFlows = position.getCashFlows();
-        List<FuturesCashFlow> retained = new ArrayList<>(cashFlows.size());
-        boolean trimmed = false;
+        List<FuturesCashFlow> retainedCashFlows = new ArrayList<>(cashFlows.size());
         for (FuturesCashFlow cashFlow : cashFlows) {
             if (cashFlow.index() <= end) {
-                retained.add(cashFlow);
-            } else {
-                trimmed = true;
+                retainedCashFlows.add(cashFlow);
             }
         }
+
+        Trade originalEntry = position.getEntry();
+        List<TradeFill> retainedEntryFills = Trade.executionFillsOf(originalEntry)
+                .stream()
+                .filter(fill -> fill.index() <= end)
+                .toList();
+        Trade originalExit = position.getExit();
+        List<TradeFill> retainedExitFills = originalExit == null ? List.of()
+                : Trade.executionFillsOf(originalExit).stream().filter(fill -> fill.index() <= end).toList();
+        boolean trimmed = retainedCashFlows.size() != cashFlows.size()
+                || retainedEntryFills.size() != Trade.executionFillsOf(originalEntry).size()
+                || (originalExit != null && retainedExitFills.size() != Trade.executionFillsOf(originalExit).size());
         if (!trimmed) {
             return position;
         }
+
         CostModel transactionCostModel = position.getTransactionCostModel();
         CostModel holdingCostModel = position.getHoldingCostModel();
-        if (position.isClosed()) {
-            return new Position(position.getEntry(), position.getExit(), transactionCostModel, holdingCostModel,
-                    retained);
+        Trade entry = Trade.fromFills(originalEntry.getType(), retainedEntryFills, originalEntry.getCostModel());
+        if (originalExit == null || retainedExitFills.isEmpty()) {
+            return new Position(entry, transactionCostModel, holdingCostModel, retainedCashFlows);
         }
-        return new Position(position.getEntry(), transactionCostModel, holdingCostModel, retained);
+        Trade exit = Trade.fromFills(originalExit.getType(), retainedExitFills, originalExit.getCostModel());
+        return new Position(entry, exit, transactionCostModel, holdingCostModel, retainedCashFlows);
     }
 
     /**

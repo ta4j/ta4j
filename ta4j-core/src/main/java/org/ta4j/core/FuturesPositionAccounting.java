@@ -260,7 +260,8 @@ final class FuturesPositionAccounting {
      */
     static Num profit(Position position, Num finalPrice, int finalIndex) {
         return payoff(position, finalPrice, finalIndex).plus(funding(position, finalIndex))
-                .minus(executedFees(position, finalIndex));
+                .minus(executedFees(position, finalIndex))
+                .minus(position.getHoldingCost(finalIndex));
     }
 
     /**

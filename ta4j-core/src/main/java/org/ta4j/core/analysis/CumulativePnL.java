@@ -336,12 +336,7 @@ public final class CumulativePnL implements PerformanceIndicator {
     }
 
     private static BarSeries snapshotSeries(final BarSeries barSeries) {
-        BarSeries series = Objects.requireNonNull(barSeries);
-        return new BaseBarSeriesBuilder().withName(series.getName())
-                .withNumFactory(series.numFactory())
-                .withBars(series.getBarData())
-                .withMaxBarCount(series.getMaximumBarCount())
-                .build();
+        return Objects.requireNonNull(barSeries).snapshot();
     }
 
 }
