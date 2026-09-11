@@ -416,6 +416,7 @@ public class BaseTrade implements Trade {
      * @return the traded contract, or {@code null} for a spot trade
      * @since 0.25.1
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "FuturesContract is immutable, so returning the shared contract value cannot expose mutable trade state")
     @Override
     public FuturesContract getFuturesContract() {
         return futuresContract;
@@ -426,7 +427,6 @@ public class BaseTrade implements Trade {
      *         empty for a spot trade
      * @since 0.25.1
      */
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Resolved fee components are copied into an immutable list once at construction, so the accessor returns the shared instance without a per-call copy")
     @Override
     public List<TradeFee> getFees() {
         return feeComponents == null ? List.of() : feeComponents;
