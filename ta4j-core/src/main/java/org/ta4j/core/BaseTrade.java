@@ -416,7 +416,6 @@ public class BaseTrade implements Trade {
      * @return the traded contract, or {@code null} for a spot trade
      * @since 0.25.1
      */
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "FuturesContract is a final value type whose instances are shared by reference; copying the immutable contract per accessor would allocate on every read")
     @Override
     public FuturesContract getFuturesContract() {
         return futuresContract;
