@@ -417,9 +417,17 @@ public class Position implements Serializable {
             return FuturesPositionAccounting.realizedProfit(this, finalIndex);
         }
         if (isOpened() || exit.getIndex() > finalIndex) {
-            return getPositionCost(finalIndex).negate();
+            Num realizedSpotCost = getRealizedSpotCost(finalIndex);
+            return realizedSpotCost.isZero() ? zero() : realizedSpotCost.negate();
         }
         return getProfit(finalIndex, exit.getPricePerAsset());
+    }
+
+    private Num getRealizedSpotCost(int finalIndex) {
+        if (entry == null || entry.getIndex() > finalIndex) {
+            return zero();
+        }
+        return entry.getCost().plus(getHoldingCost(finalIndex));
     }
 
     /**

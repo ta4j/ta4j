@@ -4,11 +4,11 @@
 package org.ta4j.core.backtest;
 
 import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -49,7 +49,7 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
     }
 
     @Test
-    public void completeFuturesCloseBypassesBarVolumeCap() {
+    public void completeFuturesCloseRespectsBarVolumeCap() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(100d).add();
         series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(0.1d).add();
@@ -83,8 +83,9 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         model.execute(0, record, series, numFactory.one());
         model.onBar(1, record, series);
 
-        assertTrue(record.isClosed());
-        assertTrue(model.getPendingOrder(record).isEmpty());
+        assertTrue(record.getCurrentPosition().isOpened());
+        assertNumEquals(0.95, record.getCurrentPosition().getEntry().getAmount());
+        assertTrue(model.getPendingOrder(record).isPresent());
     }
 
     @Test
@@ -92,7 +93,7 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(100d).add();
         series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(100d).add();
-        series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(0.1d).add();
+        series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(1d).add();
         FuturesContract contract = FuturesContract.builder()
                 .venue("CDE")
                 .symbol("BTC-PERP")

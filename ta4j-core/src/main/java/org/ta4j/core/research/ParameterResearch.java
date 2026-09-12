@@ -2860,7 +2860,7 @@ public final class ParameterResearch {
             return "decimal:" + name + ":" + canonicalDecimal(d.from()) + ":" + canonicalDecimal(d.to()) + ":"
                     + canonicalDecimal(d.step());
         }
-        if (domain instanceof ParameterDomain.BooleanDomain d) {
+        if (domain instanceof ParameterDomain.BooleanDomain) {
             return "bool:" + name;
         }
         if (domain instanceof ParameterDomain.CategoricalDomain d) {

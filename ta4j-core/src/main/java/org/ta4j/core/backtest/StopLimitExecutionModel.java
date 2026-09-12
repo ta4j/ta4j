@@ -244,8 +244,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
 
         FuturesContract futuresContract = tradingRecord.getFuturesContract();
         if (order.triggered && limitReachable(order.tradeType, bar, order.limitPrice)) {
-            Num fillAmount = fillAmount(order.remainingAmount(), bar.getVolume(), futuresContract,
-                    isCompleteClose(tradingRecord, order.remainingAmount()));
+            Num fillAmount = fillAmount(order.remainingAmount(), bar.getVolume(), futuresContract);
             boolean entryAllowed = futuresContract == null || ExecutionModelSupport.isEntryAllowed(tradingRecord,
                     futuresContract, order.tradeType, bar.getEndTime());
             if (fillAmount.isPositive() && entryAllowed) {
@@ -416,10 +415,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         return reference.multipliedBy(one.minus(limitOffsetRatio));
     }
 
-    private Num fillAmount(Num remainingAmount, Num barVolume, FuturesContract futuresContract, boolean completeClose) {
-        if (completeClose) {
-            return remainingAmount;
-        }
+    private Num fillAmount(Num remainingAmount, Num barVolume, FuturesContract futuresContract) {
         Num availableAmount = remainingAmount;
         if (!Num.isNaNOrNull(barVolume)) {
             if (!barVolume.isPositive()) {

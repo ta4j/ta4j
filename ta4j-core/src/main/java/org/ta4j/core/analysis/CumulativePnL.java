@@ -107,8 +107,11 @@ public final class CumulativePnL implements PerformanceIndicator {
         int effectiveFinalIndex = Math.min(tradingRecord.getEndIndex(barSeries), finalIndex);
         FuturesPerformanceSupport.Cursor cursor = FuturesPerformanceSupport.cursor(barSeries, tradingRecord,
                 Math.min(effectiveFinalIndex, seriesEnd), markExposure, markPriceIndicator);
-        for (int barIndex = seriesBegin; barIndex <= seriesEnd; barIndex++) {
+        for (int barIndex = seriesBegin;; barIndex++) {
             values.set(barIndex - seriesBegin, cursor.pnlAt(barIndex));
+            if (barIndex == seriesEnd) {
+                break;
+            }
         }
     }
 

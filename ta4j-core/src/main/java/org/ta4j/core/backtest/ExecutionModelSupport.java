@@ -59,14 +59,20 @@ final class ExecutionModelSupport {
     }
 
     static TradeType nextTradeType(TradingRecord tradingRecord) {
-        if (tradingRecord.isClosed()) {
-            return tradingRecord.getStartingType();
-        }
         Position currentPosition = tradingRecord.getCurrentPosition();
-        if (currentPosition == null || currentPosition.getEntry() == null) {
-            return tradingRecord.getStartingType();
+        if (currentPosition != null && currentPosition.isOpened() && currentPosition.getEntry() != null) {
+            return currentPosition.getEntry().getType().complementType();
         }
-        return currentPosition.getEntry().getType().complementType();
+        return tradingRecord.getStartingType();
+    }
+
+    private static boolean isCompleteClose(TradingRecord tradingRecord, TradeType tradeType, Num amount) {
+        Position currentPosition = tradingRecord.getCurrentPosition();
+        if (currentPosition == null || !currentPosition.isOpened() || currentPosition.getEntry() == null) {
+            return false;
+        }
+        return tradeType == currentPosition.getEntry().getType().complementType()
+                && amount.isEqual(currentPosition.getEntry().getAmount());
     }
 
     private static TradeExecutionModel.ExecutionTarget createExecutionTarget(int index, Num price, Instant time) {
@@ -110,7 +116,9 @@ final class ExecutionModelSupport {
         if (!isEntryAllowed(tradingRecord, futuresContract, tradeType, fillTime)) {
             return;
         }
-        FuturesOrderQuantitySupport.requireTradable(futuresContract, amount, target.price());
+        if (!isCompleteClose(tradingRecord, tradeType, amount)) {
+            FuturesOrderQuantitySupport.requireTradable(futuresContract, amount, target.price());
+        }
         tradingRecord.operate(TradeFill.builder()
                 .futuresContract(futuresContract)
                 .index(target.index())

@@ -209,10 +209,13 @@ public class Returns implements PerformanceIndicator {
             return;
         }
         Num previousEquity = firstBar == 1 ? capital : capital.plus(cursor.pnlAt(firstBar - 1));
-        for (int barIndex = firstBar; barIndex <= seriesEnd; barIndex++) {
+        for (int barIndex = firstBar;; barIndex++) {
             Num equity = capital.plus(cursor.pnlAt(barIndex));
             returnFactors.set(barIndex - seriesBegin, returnFactor(previousEquity, equity));
             previousEquity = equity;
+            if (barIndex == seriesEnd) {
+                break;
+            }
         }
     }
 

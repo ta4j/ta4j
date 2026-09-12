@@ -19,6 +19,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
@@ -357,6 +358,19 @@ public class PositionTest {
     @Test(expected = IllegalArgumentException.class)
     public void testCostModelExitInconsistent() {
         new Position(enter, exitDifferentType, transactionModel, holdingModel);
+    }
+
+    @Test
+    public void realizedSpotProfitExcludesUnexecutedExitCost() {
+        CostModel fixed = new FixedTransactionCostModel(3);
+        Trade futureEntry = Trade.buyAt(2, DoubleNum.valueOf(100), DoubleNum.valueOf(1), fixed);
+        Trade futureExit = Trade.sellAt(4, DoubleNum.valueOf(110), DoubleNum.valueOf(1), fixed);
+        Position position = new Position(futureEntry, futureExit, fixed, new ZeroCostModel());
+
+        assertNumEquals(0, position.getRealizedProfit(1));
+        assertNumEquals(-3, position.getRealizedProfit(2));
+        assertNumEquals(-3, position.getRealizedProfit(3));
+        assertNumEquals(4, position.getRealizedProfit(4));
     }
 
     @Test
