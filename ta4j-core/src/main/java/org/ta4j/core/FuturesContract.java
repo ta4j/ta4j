@@ -580,10 +580,12 @@ public final class FuturesContract implements Serializable {
     @Override
     public int hashCode() {
         return Objects.hash(venue, symbol, productType, settlementType, baseCurrency, quoteCurrency, settlementCurrency,
-                contractSize, productId, contractCode, contractRoot, displayName, contractExpiryType, contractRootUnit,
-                expiry, expiryTimeZone, tradingDisabledAt, priceIncrement, quantityIncrement, minimumQuantity,
-                maximumQuantity, minimumNotional, maximumNotional, perpetualStyle, trading24x7, nonCrypto,
-                riskManagedBy, attributes);
+                FuturesValidation.numHash(contractSize), productId, contractCode, contractRoot, displayName,
+                contractExpiryType, contractRootUnit, expiry, expiryTimeZone, tradingDisabledAt,
+                FuturesValidation.numHash(priceIncrement), FuturesValidation.numHash(quantityIncrement),
+                FuturesValidation.numHash(minimumQuantity), FuturesValidation.numHash(maximumQuantity),
+                FuturesValidation.numHash(minimumNotional), FuturesValidation.numHash(maximumNotional), perpetualStyle,
+                trading24x7, nonCrypto, riskManagedBy, attributes);
     }
 
     @Override

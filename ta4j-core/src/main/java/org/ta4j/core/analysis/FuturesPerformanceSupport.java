@@ -178,7 +178,7 @@ final class FuturesPerformanceSupport {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(record, "record");
         return new Cursor(series, positions(record, finalIndex), finalIndex, markExposure,
-                Objects.requireNonNull(markPrice, "markPrice"));
+                markPrice == null ? new ClosePriceIndicator(series) : markPrice);
     }
 
     /**

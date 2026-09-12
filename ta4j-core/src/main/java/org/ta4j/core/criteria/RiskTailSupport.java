@@ -40,10 +40,19 @@ final class RiskTailSupport {
     static List<Num> sortedRates(Returns returns) {
         BarSeries series = returns.getBarSeries();
         int seriesBegin = series.getBeginIndex();
-        int beginIndex = seriesBegin > 0 && returns.hasFirstBarReturn() ? seriesBegin : seriesBegin + 1;
-        List<Num> rawValues = returns.getRawValues();
-        int endIndex = Math.min(beginIndex + series.getBarCount(), rawValues.size());
-        List<Num> returnRates = new ArrayList<>(rawValues.subList(beginIndex, endIndex));
+        if (seriesBegin == Integer.MAX_VALUE) {
+            return List.of();
+        }
+        int firstReturnIndex = seriesBegin > 0 && returns.hasFirstBarReturn() ? seriesBegin : seriesBegin + 1;
+        int lastReturnIndex = series.getEndIndex();
+        if (firstReturnIndex > lastReturnIndex) {
+            return List.of();
+        }
+        long returnCount = (long) lastReturnIndex - firstReturnIndex + 1;
+        List<Num> returnRates = new ArrayList<>((int) Math.min(returnCount, series.getBarCount()));
+        for (long index = firstReturnIndex; index <= lastReturnIndex; index++) {
+            returnRates.add(returns.getValue((int) index));
+        }
         Collections.sort(returnRates);
         return returnRates;
     }

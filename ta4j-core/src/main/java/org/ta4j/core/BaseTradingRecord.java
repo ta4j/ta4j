@@ -181,6 +181,7 @@ public class BaseTradingRecord implements TradingRecord {
         this.initialCapital = config.initialCapital();
         this.initialMarginRate = config.initialMarginRate();
         this.fundingSchedule = config.fundingSchedule() == null ? List.of() : config.fundingSchedule();
+        this.eventHorizon = futuresContract == null ? null : positionBook.latestExecutionTime();
         this.nextTradeIndex = config.nextTradeIndex();
         this.modificationCount = config.modificationCount();
         this.totalFees = config.totalFees();
@@ -703,6 +704,9 @@ public class BaseTradingRecord implements TradingRecord {
             for (TradeFill fill : Trade.executionFillsOf(trade)) {
                 if (fill.index() >= nextTradeIndex) {
                     nextTradeIndex = fill.index() == Integer.MAX_VALUE ? Integer.MAX_VALUE : fill.index() + 1;
+                }
+                if (futuresContract != null && fill.index() >= 0 && fill.time() != null) {
+                    advanceHorizonThrough(fill.time());
                 }
             }
         } finally {
@@ -1966,6 +1970,36 @@ public class BaseTradingRecord implements TradingRecord {
                 remainingFee = remainingFee.minus(exitFeePortion);
             }
             return List.copyOf(closed);
+        }
+
+        private Instant latestExecutionTime() {
+            Instant latest = null;
+            for (PositionLot lot : openLots) {
+                latest = latestTime(latest, lot.entryTime);
+                for (TradeFill fill : lot.fills()) {
+                    latest = latestTime(latest, fill.time());
+                }
+            }
+            for (ClosedPosition closedPosition : closedPositions) {
+                latest = latestTradeTime(latest, closedPosition.position().getEntry());
+                latest = latestTradeTime(latest, closedPosition.position().getExit());
+            }
+            return latest;
+        }
+
+        private static Instant latestTradeTime(Instant latest, Trade trade) {
+            if (trade == null) {
+                return latest;
+            }
+            Instant result = latestTime(latest, trade.getTime());
+            for (TradeFill fill : Trade.executionFillsOf(trade)) {
+                result = latestTime(result, fill.time());
+            }
+            return result;
+        }
+
+        private static Instant latestTime(Instant latest, Instant candidate) {
+            return candidate != null && (latest == null || candidate.isAfter(latest)) ? candidate : latest;
         }
 
         private boolean hasOpenLots() {

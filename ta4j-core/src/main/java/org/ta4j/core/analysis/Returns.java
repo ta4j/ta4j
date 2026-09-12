@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -566,17 +567,32 @@ public class Returns implements PerformanceIndicator {
 
     private List<Num> absoluteValues(List<Num> stored) {
         int size = barSeries.getBarCount();
+        if (size == 0) {
+            return List.of();
+        }
         if (seriesBegin > Integer.MAX_VALUE - size) {
             throw new IllegalStateException(
-                    "series window is too large to materialize absolute indices: " + seriesBegin);
+                    "series window is too large to address with absolute indices: " + seriesBegin);
         }
         int absoluteSize = seriesBegin + size;
-        List<Num> absolute = new ArrayList<>(absoluteSize);
-        for (int i = 0; i < seriesBegin; i++) {
-            absolute.add(i == 0 ? NaN.NaN : barSeries.numFactory().zero());
-        }
-        absolute.addAll(stored);
-        return List.copyOf(absolute);
+        Num zero = barSeries.numFactory().zero();
+        return new AbstractList<>() {
+            @Override
+            public Num get(int index) {
+                if (index < 0 || index >= absoluteSize) {
+                    throw new IndexOutOfBoundsException("index: " + index + ", size: " + absoluteSize);
+                }
+                if (index < seriesBegin) {
+                    return index == 0 ? NaN.NaN : zero;
+                }
+                return stored.get(index - seriesBegin);
+            }
+
+            @Override
+            public int size() {
+                return absoluteSize;
+            }
+        };
     }
 
     private static BarSeries snapshotSeries(final BarSeries barSeries) {

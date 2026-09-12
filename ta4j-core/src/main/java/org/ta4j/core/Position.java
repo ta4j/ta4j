@@ -395,10 +395,10 @@ public class Position implements Serializable {
      * Calculates the realized profit of the position as of {@code finalIndex}.
      *
      * <p>
-     * Executed fills realize their payoff net of fees and funding. While exposure
-     * is still open, only executed fees, funding and paid variation margin are
-     * realized; the mark-to-entry part of the exposure stays unrealized. Realized
-     * plus {@link #getUnrealizedProfit(Num, int)} equals
+     * Executed fills realize their payoff net of fees, funding, and holding cost.
+     * While exposure is still open, only executed fees, funding, holding cost and
+     * paid variation margin are realized; the mark-to-entry part of the exposure
+     * stays unrealized. Realized plus {@link #getUnrealizedProfit(Num, int)} equals
      * {@link #getProfit(int, Num)}.
      * </p>
      *

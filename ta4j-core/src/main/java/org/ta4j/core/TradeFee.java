@@ -186,9 +186,9 @@ public final class TradeFee implements Serializable {
                 && Objects.equals(source, fee.source) && Objects.equals(scheduleAsOf, fee.scheduleAsOf);
     }
 
-    @Override
     public int hashCode() {
-        return Objects.hash(type, amount, currency, settlementAmount, source, scheduleAsOf);
+        return Objects.hash(type, FuturesValidation.numHash(amount), currency,
+                FuturesValidation.numHash(settlementAmount), source, scheduleAsOf);
     }
 
     @Override

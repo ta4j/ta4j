@@ -252,9 +252,12 @@ public final class FuturesPositionSnapshot implements Serializable {
 
     @Override
     public int hashCode() {
-        return Objects.hash(contract, observedAt, signedContracts, positionId, marginMode, averageEntryPrice,
-                collateral, initialMargin, maintenanceMargin, marginRatio, leverage, liquidationPrice, realizedPnl,
-                unrealizedPnl, source, attributes);
+        return Objects.hash(contract, observedAt, FuturesValidation.numHash(signedContracts), positionId, marginMode,
+                FuturesValidation.numHash(averageEntryPrice), FuturesValidation.numHash(collateral),
+                FuturesValidation.numHash(initialMargin), FuturesValidation.numHash(maintenanceMargin),
+                FuturesValidation.numHash(marginRatio), FuturesValidation.numHash(leverage),
+                FuturesValidation.numHash(liquidationPrice), FuturesValidation.numHash(realizedPnl),
+                FuturesValidation.numHash(unrealizedPnl), source, attributes);
     }
 
     @Override

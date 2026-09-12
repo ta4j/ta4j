@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis;
 
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -376,4 +377,85 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
     private static final double[] CLOSES = { 100d, 102d, 105d, 103d, 110d };
 
     private static final int BEGIN = 2;
+
+    @Test
+    public void futuresCumulativePnlWithNonpositiveEquityTracksActualLoss() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 100, 95, 96);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 500);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 100_000, 100, List.of()));
+
+            CumulativePnL pnl = new CumulativePnL(barSeries, record, EquityCurveMode.MARK_TO_MARKET,
+                    OpenPositionHandling.MARK_TO_MARKET);
+            assertNumEquals(0.0, pnl.getValue(0));
+            assertNumEquals(-5_000.0, pnl.getValue(1));
+            assertNumEquals(-4_000.0, pnl.getValue(2));
+        }
+    }
+
+    @Test
+    public void futuresCumulativePnlRequiresExplicitAccountCapitalOnlyForAccountRecords() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(contract).build();
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+
+            CumulativePnL pnl = new CumulativePnL(barSeries, record, EquityCurveMode.MARK_TO_MARKET,
+                    OpenPositionHandling.MARK_TO_MARKET);
+            assertNumEquals(0.0, pnl.getValue(0));
+            assertNumEquals(20.0, pnl.getValue(1));
+            assertNumEquals(50.0, pnl.getValue(2));
+            assertNumEquals(30.0, pnl.getValue(3));
+            assertNumEquals(100.0, pnl.getValue(4));
+        }
+    }
+
+    @Test
+    public void singleFuturesPositionCumulativePnlUsesEntrySettlementNotional() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            Position position = FuturesAnalysisTestSupport.openPosition(contract, 0, 1_000, 100);
+            CumulativePnL pnl = new CumulativePnL(barSeries, position);
+
+            assertNumEquals(0.0, pnl.getValue(0));
+            assertNumEquals(20.0, pnl.getValue(1));
+            assertNumEquals(100.0, pnl.getValue(4));
+        }
+    }
+
+    @Test
+    public void futuresCumulativePnlRejectsMarkPriceFromAnotherSeries() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            BarSeries otherSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 500);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 4, ExecutionSide.SELL, 1_000, 110, List.of()));
+
+            assertThrows(IllegalArgumentException.class,
+                    () -> new CumulativePnL(barSeries, record,
+                            new org.ta4j.core.indicators.helpers.ClosePriceIndicator(otherSeries), 4,
+                            EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET));
+        }
+    }
+
+    @Test
+    public void emptyFundedFuturesCumulativePnlIsFlat() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 500);
+            CumulativePnL pnl = new CumulativePnL(barSeries, record, EquityCurveMode.MARK_TO_MARKET,
+                    OpenPositionHandling.MARK_TO_MARKET);
+
+            for (int index = 0; index <= barSeries.getEndIndex(); index++) {
+                assertNumEquals(0.0, pnl.getValue(index));
+            }
+        }
+    }
+
 }

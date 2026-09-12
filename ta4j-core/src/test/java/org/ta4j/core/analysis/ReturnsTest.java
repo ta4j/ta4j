@@ -525,4 +525,135 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private static final double[] CLOSES = { 100d, 102d, 105d, 103d, 110d };
 
     private static final int BEGIN = 2;
+
+    @Test
+    public void futuresReturnsUseConsecutiveEquityRatios() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 500);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 4, ExecutionSide.SELL, 1_000, 110, List.of()));
+
+            Returns decimal = new Returns(barSeries, record, ReturnRepresentation.DECIMAL);
+            Returns percentage = new Returns(barSeries, record, ReturnRepresentation.PERCENTAGE);
+            Returns logarithmic = new Returns(barSeries, record, ReturnRepresentation.LOG);
+
+            assertTrue(decimal.getValue(0).isNaN());
+            assertNumEquals(0.04, decimal.getValue(1));
+            assertNumEquals(0.05769230769230769, decimal.getValue(2));
+            assertNumEquals(-0.03636363636363636, decimal.getValue(3));
+            assertNumEquals(0.1320754716981132, decimal.getValue(4));
+            assertNumEquals(4.0, percentage.getValue(1));
+            assertNumEquals(-3.6363636363636362, percentage.getValue(3));
+            assertNumEquals(0.03922071315328133, logarithmic.getValue(1));
+            assertNumEquals(0.05608946665104358, logarithmic.getValue(2));
+            assertNumEquals(-0.0370412716803491, logarithmic.getValue(3));
+            assertNumEquals(0.12405264866997882, logarithmic.getValue(4));
+
+            Num growth = testFactory.one();
+            for (int index = 1; index <= 4; index++) {
+                growth = growth.multipliedBy(testFactory.one().plus(decimal.getValue(index)));
+            }
+            assertNumEquals(1.2, growth);
+        }
+    }
+
+    @Test
+    public void futuresReturnsWithNonpositiveEquityAreUndefined() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 100, 95, 96);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 500);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 100_000, 100, List.of()));
+
+            Returns decimal = new Returns(barSeries, record, ReturnRepresentation.DECIMAL);
+            Returns logarithmic = new Returns(barSeries, record, ReturnRepresentation.LOG);
+
+            assertTrue(decimal.getValue(0).isNaN());
+            assertNumEquals(-10.0, decimal.getValue(1));
+            assertTrue(decimal.getValue(2).isNaN());
+            assertTrue(logarithmic.getValue(1).isNaN());
+            assertTrue(logarithmic.getValue(2).isNaN());
+        }
+    }
+
+    @Test
+    public void futuresReturnsRequireExplicitAccountCapital() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(contract).build();
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+
+            assertThrows(IllegalStateException.class,
+                    () -> new Returns(barSeries, record, ReturnRepresentation.DECIMAL));
+        }
+    }
+
+    @Test
+    public void singleFuturesPositionReturnsUseEntrySettlementNotional() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            Position position = FuturesAnalysisTestSupport.openPosition(contract, 0, 1_000, 100);
+            Returns returns = new Returns(barSeries, position, ReturnRepresentation.DECIMAL);
+
+            assertTrue(returns.getValue(0).isNaN());
+            assertNumEquals(0.02, returns.getValue(1));
+            assertNumEquals(0.02941176470588236, returns.getValue(2));
+            assertNumEquals(-0.0190476190476191, returns.getValue(3));
+            assertNumEquals(0.06796116504854367, returns.getValue(4));
+        }
+    }
+
+    @Test
+    public void partiallyClosedFuturesReturnsUseEachSliceEntryNotional() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 10_000, 11_000);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 1_000_000);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 4, 10_000,
+                    List.of(FuturesAnalysisTestSupport.commission(testFactory, 4))));
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1, 11_000,
+                    List.of(FuturesAnalysisTestSupport.commission(testFactory, 1))));
+
+            Position closedSlice = record.getPositions().getFirst();
+            Returns closedReturns = new Returns(barSeries, closedSlice, ReturnRepresentation.DECIMAL);
+            assertTrue(closedReturns.getValue(0).isNaN());
+            assertNumEquals(0.08, closedReturns.getValue(1));
+        }
+    }
+
+    @Test
+    public void futuresReturnsRejectMarkPriceFromAnotherSeries() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            BarSeries otherSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 500);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 4, ExecutionSide.SELL, 1_000, 110, List.of()));
+
+            assertThrows(IllegalArgumentException.class, () -> new Returns(barSeries, record,
+                    new org.ta4j.core.indicators.helpers.ClosePriceIndicator(otherSeries), 4,
+                    ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET));
+        }
+    }
+
+    @Test
+    public void emptyFundedFuturesReturnsAreFlat() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 500);
+            Returns returns = new Returns(barSeries, record, ReturnRepresentation.DECIMAL);
+
+            assertTrue(returns.getValue(0).isNaN());
+            for (int index = 1; index <= barSeries.getEndIndex(); index++) {
+                assertNumEquals(0.0, returns.getValue(index));
+            }
+        }
+    }
+
 }
