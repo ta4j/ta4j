@@ -545,7 +545,10 @@ public interface AnalysisCriterion {
         List<TradeFill> allExitFills = exit == null ? List.of() : Trade.executionFillsOf(exit);
         List<TradeFill> retainedExitFills = allExitFills.stream().filter(fill -> fill.index() <= end).toList();
         if (retainedEntryFills.size() == allEntryFills.size()
-                && (exit == null || retainedExitFills.size() == allExitFills.size())) {
+                && (exit == null || retainedExitFills.size() == allExitFills.size())
+                && (exit == null || FuturesValidation.numEquals(
+                        totalFillAmount(retainedEntryFills, entry.getAmount().getNumFactory()),
+                        totalFillAmount(retainedExitFills, exit.getAmount().getNumFactory())))) {
             return List.of(position);
         }
         if (retainedEntryFills.isEmpty()) {
@@ -560,11 +563,11 @@ public interface AnalysisCriterion {
         }
         Trade retainedExit = Trade.fromFills(exit.getType(), retainedExitFills, exit.getCostModel());
         Num retainedEntryAmount = retainedEntry.getAmount();
-        Num retainedExitAmount = retainedExit.getAmount();
+        Num retainedExitAmount = retainedEntryAmount.getNumFactory().numOf(retainedExit.getAmount().getDelegate());
         if (retainedExitAmount.isGreaterThan(retainedEntryAmount)) {
             throw new IllegalArgumentException("retained exit amount cannot exceed retained entry amount");
         }
-        if (retainedExitAmount.isEqual(retainedEntryAmount)) {
+        if (FuturesValidation.numEquals(retainedExitAmount, retainedEntryAmount)) {
             return List.of(new Position(retainedEntry, retainedExit, transactionCostModel, holdingCostModel,
                     position.getCashFlows()));
         }
@@ -600,6 +603,14 @@ public interface AnalysisCriterion {
         Position openPosition = new Position(Trade.fromFills(entry.getType(), openEntryFills, entry.getCostModel()),
                 transactionCostModel, holdingCostModel, openCashFlows);
         return List.of(closedPosition, openPosition);
+    }
+
+    private static Num totalFillAmount(List<TradeFill> fills, NumFactory factory) {
+        Num total = factory.zero();
+        for (TradeFill fill : fills) {
+            total = total.plus(factory.numOf(fill.amount().getDelegate()));
+        }
+        return total;
     }
 
     private static TradeFill resizeFill(TradeFill fill, Num amount, Num originalAmount) {

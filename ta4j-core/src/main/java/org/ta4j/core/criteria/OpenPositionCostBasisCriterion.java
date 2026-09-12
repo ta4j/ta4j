@@ -38,7 +38,7 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
         if (!position.isOpened()) {
             return factory.zero();
         }
-        return toSeriesNum(factory, costBasis(factory, series, position));
+        return toSeriesNum(factory, costBasis(series, position));
     }
 
     @Override
@@ -48,7 +48,7 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
         if (!current.isOpened()) {
             return factory.zero();
         }
-        return toSeriesNum(factory, costBasis(factory, series, current));
+        return toSeriesNum(factory, costBasis(series, current));
     }
 
     @Override
@@ -56,7 +56,7 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
         return v1.isLessThan(v2);
     }
 
-    private Num costBasis(NumFactory factory, BarSeries series, Position position) {
+    private Num costBasis(BarSeries series, Position position) {
         Trade entry = position.getEntry();
         FuturesContract contract = position.getFuturesContract();
         if (contract != null) {

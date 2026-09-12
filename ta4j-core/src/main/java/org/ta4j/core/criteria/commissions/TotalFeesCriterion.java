@@ -92,21 +92,21 @@ public class TotalFeesCriterion extends AbstractAnalysisCriterion {
         return v1.isLessThan(v2);
     }
 
-    private Num executedFees(NumFactory factory, TradingRecord tradingRecord, int finalIndex) {
+    private Num executedFees(NumFactory factory, TradingRecord tradingRecord, int openFinalIndex) {
         Num total = factory.zero();
         for (Position position : tradingRecord.getPositions()) {
-            total = total.plus(executedFees(factory, position, finalIndex));
+            total = total.plus(executedFees(factory, position, Integer.MAX_VALUE));
         }
         List<Position> openPositions = tradingRecord.getOpenPositions();
         if (openPositions.isEmpty()) {
             Position current = tradingRecord.getCurrentPosition();
             if (current != null && current.isOpened()) {
-                return total.plus(executedFees(factory, current, finalIndex));
+                return total.plus(executedFees(factory, current, openFinalIndex));
             }
             return total;
         }
         for (Position position : openPositions) {
-            total = total.plus(executedFees(factory, position, finalIndex));
+            total = total.plus(executedFees(factory, position, openFinalIndex));
         }
         return total;
     }
