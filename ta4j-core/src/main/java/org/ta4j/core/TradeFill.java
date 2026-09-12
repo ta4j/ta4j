@@ -105,8 +105,8 @@ public final class TradeFill implements Serializable {
     }
 
     private void requireFuturesMetadata(Builder builder) {
-        if (index < 0) {
-            throw new IllegalArgumentException("a futures fill requires a recorder-assigned index");
+        if (index < -1) {
+            throw new IllegalArgumentException("index must be >= -1");
         }
         FuturesValidation.requireNonNull(time, "time");
         FuturesValidation.requireNonNull(side, "side");

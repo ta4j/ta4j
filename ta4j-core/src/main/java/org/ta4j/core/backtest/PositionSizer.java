@@ -502,7 +502,11 @@ public interface PositionSizer {
             } else {
                 Num marginPerContract = contract.marginRequirement(numFactory().one(), entryPrice,
                         requireInitialMarginRate());
-                upperBound = marginPerContract.isPositive() ? budget.dividedBy(marginPerContract) : zero;
+                Num entryFeePerContract = modeledEntryFee(contract, numFactory().one());
+                Num netCostPerContract = marginPerContract.plus(entryFeePerContract);
+                upperBound = entryFeePerContract.isNegative() && netCostPerContract.isPositive()
+                        ? budget.dividedBy(netCostPerContract)
+                        : marginPerContract.isPositive() ? budget.dividedBy(marginPerContract) : zero;
             }
             if (!upperBound.isPositive()) {
                 return zero;

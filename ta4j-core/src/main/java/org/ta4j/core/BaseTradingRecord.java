@@ -792,6 +792,14 @@ public class BaseTradingRecord implements TradingRecord {
             if (eventHorizon == null || cashFlow.time().isAfter(eventHorizon)) {
                 applyScheduledFunding(cashFlow.time());
             }
+            recorded = processedEvents.get(cashFlow.eventId());
+            if (recorded != null) {
+                if (recorded.equals(cashFlow)) {
+                    return;
+                }
+                throw new IllegalArgumentException(
+                        "Cash flow " + cashFlow.eventId() + " is already recorded with different values");
+            }
             positionBook.allocateCashFlow(cashFlow);
             processedEvents.put(cashFlow.eventId(), cashFlow);
             cashFlows.add(cashFlow);
