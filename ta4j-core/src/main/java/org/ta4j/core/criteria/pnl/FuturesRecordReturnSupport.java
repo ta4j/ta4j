@@ -91,6 +91,11 @@ final class FuturesRecordReturnSupport {
                 }
             }
         }
+        for (FuturesCashFlow cashFlow : tradingRecord.getCashFlows()) {
+            if (cashFlow.index() >= 0) {
+                lastIndex = Math.max(lastIndex, cashFlow.index());
+            }
+        }
         return lastIndex;
     }
 

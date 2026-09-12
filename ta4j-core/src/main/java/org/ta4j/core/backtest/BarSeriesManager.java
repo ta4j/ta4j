@@ -595,6 +595,9 @@ public class BarSeriesManager {
                 lastProcessedIndex = i;
                 advanceToBarBegin(tradingRecord, i);
                 tradeExecutionModel.onBar(i, tradingRecord, barSeries);
+                if (tradingRecord.isClosed()) {
+                    break;
+                }
                 boolean operated = false;
                 // For each bar after the end index of this run...
                 // --> Trying to close the last position

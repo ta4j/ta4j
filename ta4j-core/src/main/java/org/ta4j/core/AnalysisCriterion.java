@@ -375,8 +375,7 @@ public interface AnalysisCriterion {
         }
 
         if (context.openPositionHandling() == OpenPositionHandling.MARK_TO_MARKET) {
-            List<Position> openPositions = openPositionsForMarkToMarket(source, end, transactionCostModel,
-                    holdingCostModel);
+            List<Position> openPositions = openPositionsForMarkToMarket(source, end);
             for (Position openPosition : openPositions) {
                 Position syntheticPosition = createMarkToMarketPosition(series, openPosition, end, holdingCostModel);
                 if (syntheticPosition != null
@@ -431,8 +430,6 @@ public interface AnalysisCriterion {
      */
     private static TradingRecord projectFuturesTradingRecord(BarSeries series, TradingRecord source, int start, int end,
             boolean hasBars, AnalysisContext context) {
-        CostModel transactionCostModel = Objects.requireNonNullElseGet(source.getTransactionCostModel(),
-                ZeroCostModel::new);
         CostModel holdingCostModel = Objects.requireNonNullElseGet(source.getHoldingCostModel(), ZeroCostModel::new);
         List<Position> includedPositions = new ArrayList<>();
         if (hasBars) {
@@ -443,10 +440,15 @@ public interface AnalysisCriterion {
                 }
             }
             if (context.openPositionHandling() == OpenPositionHandling.MARK_TO_MARKET) {
-                List<Position> openPositions = openPositionsForMarkToMarket(source, end, transactionCostModel,
-                        holdingCostModel);
-                for (Position openPosition : openPositions) {
-                    Position syntheticPosition = createMarkToMarketFuturesPosition(series, openPosition, end,
+                List<Position> positionsToMark = futuresPositionsForMarkToMarket(source, end);
+                for (Position positionToMark : positionsToMark) {
+                    if (positionToMark.isClosed()) {
+                        if (includeClosedPosition(positionToMark, start, end, inclusionPolicy)) {
+                            includedPositions.add(positionToMark);
+                        }
+                        continue;
+                    }
+                    Position syntheticPosition = createMarkToMarketFuturesPosition(series, positionToMark, end,
                             holdingCostModel);
                     if (syntheticPosition != null
                             && includeClosedPosition(syntheticPosition, start, end, inclusionPolicy)) {
@@ -510,8 +512,7 @@ public interface AnalysisCriterion {
                 currentPosition.getCashFlows());
     }
 
-    private static List<Position> openPositionsForMarkToMarket(TradingRecord source, int windowEndIndex,
-            CostModel transactionCostModel, CostModel holdingCostModel) {
+    private static List<Position> openPositionsForMarkToMarket(TradingRecord source, int windowEndIndex) {
         List<Position> openPositions = source.getOpenPositions();
         if (!openPositions.isEmpty()) {
             return openPositionsWithinWindow(openPositions, windowEndIndex);
@@ -521,6 +522,20 @@ public interface AnalysisCriterion {
             return List.of();
         }
         return List.of(currentPosition);
+    }
+
+    private static List<Position> futuresPositionsForMarkToMarket(TradingRecord source, int windowEndIndex) {
+        List<Position> positions = new ArrayList<>(openPositionsForMarkToMarket(source, windowEndIndex));
+        for (Position closedPosition : source.getPositions()) {
+            Trade entry = closedPosition.getEntry();
+            Trade exit = closedPosition.getExit();
+            if (entry == null || exit == null || entry.getIndex() > windowEndIndex
+                    || exit.getIndex() <= windowEndIndex) {
+                continue;
+            }
+            positions.addAll(trimFuturesPositionToWindow(closedPosition, windowEndIndex));
+        }
+        return positions;
     }
 
     private static List<Position> openPositionsWithinWindow(List<Position> openPositions, int windowEndIndex) {

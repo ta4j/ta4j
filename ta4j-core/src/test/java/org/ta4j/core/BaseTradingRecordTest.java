@@ -1474,6 +1474,8 @@ class BaseTradingRecordTest {
             Position rehydratedOpen = rehydrated.getOpenPositions().getFirst();
             assertNumEquals(3, rehydratedOpen.getEntry().getFees().getFirst().settlementAmount());
             assertNotNull(rehydratedClosed.getTransactionCostModel());
+            rehydrated.rehydrate(new FixedTransactionCostModel(1d), new ZeroCostModel());
+            assertSame(RecordedTradeCostModel.INSTANCE, rehydrated.getPositions().getFirst().getEntry().getCostModel());
 
             record.operate(fill(contract, 2, ExecutionSide.SELL, 3, 12_000, List.of(commission(numFactory, 3, "USD"))));
             rehydrated.operate(

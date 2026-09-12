@@ -2505,7 +2505,8 @@ public class BaseTradingRecord implements TradingRecord {
             for (int i = 0; i < closedPositions.size(); i++) {
                 ClosedPosition closed = closedPositions.get(i);
                 Position position = closed.position();
-                Position rehydrated = rehydratePosition(position, this.transactionCostModel, this.holdingCostModel);
+                Position rehydrated = rehydratePosition(position, position.getEntry().getCostModel(),
+                        this.holdingCostModel);
                 closedPositions.set(i, new ClosedPosition(rehydrated, closed.entrySequence(), closed.exitSequence()));
             }
         }
