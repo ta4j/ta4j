@@ -187,6 +187,8 @@ public class BaseTradingRecord implements TradingRecord {
         this.totalFees = config.totalFees();
         this.numFactory = config.numFactory();
         this.nextSequence = config.nextSequence();
+        this.cashFlows = new ArrayList<>(config.cashFlows());
+        this.processedEvents = new LinkedHashMap<>(config.processedEvents());
     }
 
     private static RecordConfig recordConfig(TradeType startingType, ExecutionMatchPolicy matchPolicy,
@@ -208,7 +210,7 @@ public class BaseTradingRecord implements TradingRecord {
                 resolvedHoldingCostModel, futuresContract);
         return new RecordConfig(startingType, matchPolicy, resolvedTransactionCostModel, resolvedHoldingCostModel,
                 positionBook, startIndex, endIndex, 0, 0L, null, null, 0L, futuresContract, initialCapital,
-                initialMarginRate, sortedFundingSchedule(fundingSchedule));
+                initialMarginRate, sortedFundingSchedule(fundingSchedule), List.of(), Map.of());
     }
 
     private static List<FuturesFunding> sortedFundingSchedule(List<FuturesFunding> fundingSchedule) {
@@ -737,7 +739,8 @@ public class BaseTradingRecord implements TradingRecord {
     private RecordConfig toRecordConfig() {
         return new RecordConfig(startingType, matchPolicy, transactionCostModel, holdingCostModel, positionBook,
                 startIndex, endIndex, nextTradeIndex, modificationCount, totalFees, numFactory, nextSequence,
-                futuresContract, initialCapital, initialMarginRate, fundingSchedule);
+                futuresContract, initialCapital, initialMarginRate, fundingSchedule, List.copyOf(cashFlows),
+                new LinkedHashMap<>(processedEvents));
     }
 
     private static FuturesContract contractOf(Trade... trades) {
@@ -1260,6 +1263,8 @@ public class BaseTradingRecord implements TradingRecord {
      */
     private void validatePlannedFillTimes(List<PlannedTradeFill> plannedTradeFills) {
         Instant previousTime = null;
+        int previousIndex = -1;
+        boolean hasPreviousIndex = false;
         for (PlannedTradeFill plannedTradeFill : plannedTradeFills) {
             Trade plannedTrade = plannedTradeFill.trade();
             if (plannedTrade.getFuturesContract() == null) {
@@ -1277,7 +1282,12 @@ public class BaseTradingRecord implements TradingRecord {
             if (previousTime != null && fillTime.isBefore(previousTime)) {
                 throw new IllegalArgumentException("Futures fills must be chronological");
             }
+            if (hasPreviousIndex && plannedTradeFill.index() < previousIndex) {
+                throw new IllegalArgumentException("Futures fills must be in nondecreasing index order");
+            }
             previousTime = fillTime;
+            previousIndex = plannedTradeFill.index();
+            hasPreviousIndex = true;
         }
     }
 
@@ -1857,7 +1867,8 @@ public class BaseTradingRecord implements TradingRecord {
             CostModel transactionCostModel, CostModel holdingCostModel, PositionBook positionBook, Integer startIndex,
             Integer endIndex, int nextTradeIndex, long modificationCount, Num totalFees, NumFactory numFactory,
             long nextSequence, FuturesContract futuresContract, Num initialCapital, Num initialMarginRate,
-            List<FuturesFunding> fundingSchedule) {
+            List<FuturesFunding> fundingSchedule, List<FuturesCashFlow> cashFlows,
+            Map<String, FuturesCashFlow> processedEvents) {
     }
 
     /**
@@ -2830,10 +2841,55 @@ public class BaseTradingRecord implements TradingRecord {
                     return List.of(source);
                 }
                 List<List<FuturesCashFlow>> slices = new ArrayList<>(fills.size());
-                for (TradeFill fill : fills) {
-                    slices.add(scaleCashFlows(source, fill.amount(), amount));
+                for (int i = 0; i < fills.size(); i++) {
+                    slices.add(new ArrayList<>());
                 }
-                return List.copyOf(slices);
+                NumFactory quantityFactory = amount.getNumFactory();
+                for (FuturesCashFlow cashFlow : source) {
+                    List<Integer> eligibleIndices = new ArrayList<>();
+                    Num eligibleAmount = quantityFactory.zero();
+                    for (int i = 0; i < fills.size(); i++) {
+                        TradeFill fill = fills.get(i);
+                        Instant fillTime = fill.time();
+                        if (fillTime == null || !fillTime.isAfter(cashFlow.time())) {
+                            eligibleIndices.add(i);
+                            eligibleAmount = eligibleAmount.plus(quantityFactory.numOf(fill.amount().getDelegate()));
+                        }
+                    }
+                    if (eligibleIndices.isEmpty() || eligibleAmount.isZero()) {
+                        throw new IllegalArgumentException(
+                                "Cash flow has no eligible entry fill at " + cashFlow.time());
+                    }
+                    NumFactory amountFactory = cashFlow.amount().getNumFactory();
+                    NumFactory settlementFactory = cashFlow.settlementAmount().getNumFactory();
+                    Num eventAmount = amountFactory.numOf(cashFlow.amount().getDelegate());
+                    Num eventSettlement = settlementFactory.numOf(cashFlow.settlementAmount().getDelegate());
+                    Num allocatedAmount = amountFactory.zero();
+                    Num allocatedSettlement = settlementFactory.zero();
+                    for (int eligibleIndex = 0; eligibleIndex < eligibleIndices.size(); eligibleIndex++) {
+                        int fillIndex = eligibleIndices.get(eligibleIndex);
+                        Num fillAmount = quantityFactory.numOf(fills.get(fillIndex).amount().getDelegate());
+                        boolean last = eligibleIndex == eligibleIndices.size() - 1;
+                        Num portionAmount = last ? eventAmount.minus(allocatedAmount)
+                                : proportional(eventAmount, amountFactory.numOf(fillAmount.getDelegate()),
+                                        amountFactory.numOf(eligibleAmount.getDelegate()));
+                        Num portionSettlement = last ? eventSettlement.minus(allocatedSettlement)
+                                : proportional(eventSettlement, settlementFactory.numOf(fillAmount.getDelegate()),
+                                        settlementFactory.numOf(eligibleAmount.getDelegate()));
+                        allocatedAmount = allocatedAmount.plus(portionAmount);
+                        allocatedSettlement = allocatedSettlement.plus(portionSettlement);
+                        slices.get(fillIndex)
+                                .add(cashFlow.toBuilder()
+                                        .amount(portionAmount)
+                                        .settlementAmount(portionSettlement)
+                                        .build());
+                    }
+                }
+                List<List<FuturesCashFlow>> immutableSlices = new ArrayList<>(slices.size());
+                for (List<FuturesCashFlow> slice : slices) {
+                    immutableSlices.add(List.copyOf(slice));
+                }
+                return List.copyOf(immutableSlices);
             }
 
             private static List<List<FuturesCashFlow>> copyCashFlowSlices(List<List<FuturesCashFlow>> slices) {
