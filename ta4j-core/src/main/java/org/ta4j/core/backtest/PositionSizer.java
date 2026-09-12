@@ -77,6 +77,11 @@ public interface PositionSizer {
 
     /**
      * Returns a position sizer that opens a fixed numeric amount.
+     * <p>
+     * The amount is preserved exactly and re-wrapped to the record number precision
+     * when sizing, so values beyond {@code 2^53} stay intact for decimal number
+     * factories.
+     * </p>
      *
      * @param amount fixed amount
      * @return fixed amount position sizer
@@ -127,6 +132,11 @@ public interface PositionSizer {
     /**
      * Returns a position sizer that derives an entry amount from the current
      * realized balance.
+     * <p>
+     * The principal is preserved exactly and re-wrapped to the record number
+     * precision when sizing, so values beyond {@code 2^53} stay intact for decimal
+     * number factories.
+     * </p>
      *
      * @param principal starting balance
      * @param rule      custom balance sizing rule
@@ -163,6 +173,12 @@ public interface PositionSizer {
      * and {@code 1.2} is 120% Kelly.
      * </p>
      *
+     * <p>
+     * The principal is preserved exactly and re-wrapped to the record number
+     * precision when sizing, so values beyond {@code 2^53} stay intact for decimal
+     * number factories.
+     * </p>
+     * 
      * @param principal      starting balance
      * @param winProbability probability of a winning position, in {@code (0, 1)}
      * @param payoffRatio    average win divided by average loss, must be positive
@@ -200,9 +216,20 @@ public interface PositionSizer {
         }
     }
 
+    /**
+     * Captures a factory input for later sizing.
+     *
+     * <p>
+     * The value is returned as-is instead of being normalized through
+     * {@code double}: the captured {@link Number} is immutable, and re-wrapping to
+     * the record's number precision happens at sizing time via
+     * {@link Context#numOf(Number)}, which keeps exact values beyond {@code 2^53}
+     * intact for decimal number factories.
+     * </p>
+     */
     private static Number snapshotNumber(Number value, String name) {
         validatePositiveNumber(value, name);
-        return Double.valueOf(value.doubleValue());
+        return value;
     }
 
     private static void validateProbability(Number value, String name) {
@@ -422,11 +449,18 @@ public interface PositionSizer {
          * per contract and then honor the contract quantity and notional constraints,
          * so the result is either zero or a tradable contract count.
          * </p>
+         * <p>
+         * The affordability search converges at the precision limit of the record
+         * number factory, so the {@code Num} implementation must be finite-precision,
+         * e.g. {@code DoubleNum} or {@code DecimalNum} with a bounded
+         * {@code java.math.MathContext}.
+         * </p>
          *
          * @param budget cash available for entry price and transaction costs
          * @return largest amount affordable by the budget, or zero when none is
          *         affordable
-         * @since 0.22.9
+         * @throws IllegalStateException when the search does not converge for a number
+         *                               implementation with unbounded precision
          */
         public Num maxAffordableAmount(Num budget) {
             validateFiniteNum(budget, "budget");
@@ -508,12 +542,26 @@ public interface PositionSizer {
             return low;
         }
 
+        /**
+         * Convergence guard for the continuous affordability bisection. The midpoint
+         * reaches a bound once the interval width falls below the precision of the
+         * number implementation, so any finite-precision implementation converges well
+         * within this bound. The guard only constrains implementations with unbounded
+         * precision, e.g. a {@code DecimalNumFactory} configured with
+         * {@code java.math.MathContext.UNLIMITED}, for which the midpoint can remain
+         * strictly between the bounds indefinitely; the search then fails explicitly
+         * instead of looping.
+         */
+        private static final int AFFORDABILITY_SEARCH_GUARD_ITERATIONS = 4096;
+
         private Num searchLargestAffordable(Num budget, Num high) {
             Num low = numFactory().zero();
             Num two = numFactory().two();
-            while (true) {
+            boolean converged = false;
+            for (int iteration = 0; iteration < AFFORDABILITY_SEARCH_GUARD_ITERATIONS; iteration++) {
                 Num mid = low.plus(high).dividedBy(two);
                 if (mid.isEqual(low) || mid.isEqual(high)) {
+                    converged = true;
                     break;
                 }
                 if (entryCost(mid).isLessThanOrEqual(budget)) {
@@ -521,6 +569,12 @@ public interface PositionSizer {
                 } else {
                     high = mid;
                 }
+            }
+            if (!converged) {
+                throw new IllegalStateException(
+                        "affordability search did not converge within " + AFFORDABILITY_SEARCH_GUARD_ITERATIONS
+                                + " iterations; the search converges for finite-precision Num implementations, e.g."
+                                + " DoubleNum or DecimalNum with a bounded java.math.MathContext");
             }
             return low;
         }
