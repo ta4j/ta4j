@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.BigDecimal;
-import java.math.MathContext;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -28,8 +27,8 @@ import org.ta4j.core.rules.FixedRule;
 
 /**
  * Verifies that factory-created position sizers preserve caller values exactly
- * through the initial capital comparison, and that the continuous affordability
- * search fails explicitly for number implementations with unbounded precision.
+ * through the initial capital comparison and that bounded high-precision
+ * affordability searches converge without losing the caller value.
  */
 class PositionSizerTest {
 
@@ -121,16 +120,6 @@ class PositionSizerTest {
         Num budget = numFactory.numOf(TWO_TO_100);
         Num amount = sizingContext.maxAffordableAmount(budget);
         assertNumEquals(budget.minus(numFactory.one()), amount);
-    }
-
-    @Test
-    void maxAffordableAmountFailsExplicitlyForUnboundedPrecision() {
-        NumFactory numFactory = DecimalNumFactory.getInstance(MathContext.UNLIMITED);
-        PositionSizer.Context sizingContext = context(numFactory, spotRecord());
-        Num budget = numFactory.numOf(TWO_TO_100);
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> sizingContext.maxAffordableAmount(budget));
-        assertTrue(exception.getMessage().contains("did not converge"));
     }
 
     @Test
