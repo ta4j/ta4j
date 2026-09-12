@@ -193,7 +193,7 @@ public final class FuturesTransactionCostModel implements CostModel {
         NumFactory numFactory = trade.getPricePerAsset().getNumFactory();
         Num total = numFactory.zero();
         for (TradeFill fill : Trade.executionFillsOf(trade)) {
-            if (fill.index() <= currentIndex) {
+            if (fill.index() >= 0 && fill.index() <= currentIndex) {
                 Num fee = fill.hasRecordedFees() ? fill.fee() : calculate(fill);
                 total = total.plus(numFactory.numOf(fee.getDelegate()));
             }

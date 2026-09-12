@@ -75,7 +75,7 @@ public class FixedTransactionCostModel implements CostModel {
     private Num sumFillCosts(Trade trade, int currentIndex) {
         Num total = trade.getPricePerAsset().getNumFactory().zero();
         for (TradeFill fill : Trade.executionFillsOf(trade)) {
-            if (fill.index() > currentIndex) {
+            if (fill.index() < 0 || fill.index() > currentIndex) {
                 continue;
             }
             Num fillCost = feePerTrade == 0d || !fill.hasRecordedFees() ? calculate(fill) : fill.fee();
