@@ -194,8 +194,9 @@ public final class FuturesCashFlow implements Serializable {
             return false;
         }
         return contract.equals(cashFlow.contract) && type == cashFlow.type && eventId.equals(cashFlow.eventId)
-                && index == cashFlow.index && time.equals(cashFlow.time) && amount.isEqual(cashFlow.amount)
-                && currency.equals(cashFlow.currency) && settlementAmount.isEqual(cashFlow.settlementAmount)
+                && index == cashFlow.index && time.equals(cashFlow.time)
+                && FuturesValidation.numEquals(amount, cashFlow.amount) && currency.equals(cashFlow.currency)
+                && FuturesValidation.numEquals(settlementAmount, cashFlow.settlementAmount)
                 && FuturesValidation.numEqualsNullable(rate, cashFlow.rate)
                 && FuturesValidation.numEqualsNullable(referencePrice, cashFlow.referencePrice)
                 && Objects.equals(source, cashFlow.source);

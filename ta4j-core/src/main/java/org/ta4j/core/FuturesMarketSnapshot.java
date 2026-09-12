@@ -258,10 +258,13 @@ public final class FuturesMarketSnapshot implements Serializable {
 
     @Override
     public int hashCode() {
-        return Objects.hash(contract, observedAt, source, markPrice, indexPrice, settlementPrice, fundingRate,
-                fundingTime, fundingInterval, openInterest, maxLeverage, intradayLongMarginRate,
-                intradayShortMarginRate, overnightLongMarginRate, overnightShortMarginRate, maintenanceMarginRate,
-                attributes);
+        return Objects.hash(contract, observedAt, source, FuturesValidation.numHash(markPrice),
+                FuturesValidation.numHash(indexPrice), FuturesValidation.numHash(settlementPrice),
+                FuturesValidation.numHash(fundingRate), fundingTime, fundingInterval,
+                FuturesValidation.numHash(openInterest), FuturesValidation.numHash(maxLeverage),
+                FuturesValidation.numHash(intradayLongMarginRate), FuturesValidation.numHash(intradayShortMarginRate),
+                FuturesValidation.numHash(overnightLongMarginRate), FuturesValidation.numHash(overnightShortMarginRate),
+                FuturesValidation.numHash(maintenanceMarginRate), attributes);
     }
 
     @Override

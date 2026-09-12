@@ -2134,4 +2134,64 @@ class BaseTradingRecordTest {
             assertNumEquals(0, position.getRealizedProfit(0));
         }
     }
+
+    @Test
+    void averageCostPartialClosePreservesEntryCashFlowSlices() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            BaseTradingRecord record = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .matchPolicy(ExecutionMatchPolicy.AVG_COST)
+                    .build();
+
+            record.operate(fillAtTime(contract, 0, T0, ExecutionSide.BUY, 1, 10_000, List.of()));
+            record.recordFunding(fundingEvent(contract, 1, 0.001, 10_000));
+            record.operate(fillAtTime(contract, 2, T0.plusSeconds(2), ExecutionSide.BUY, 1, 10_000, List.of()));
+            record.recordFunding(fundingEvent(contract, 3, 0.001, 10_000));
+            record.operate(fillAtTime(contract, 4, T0.plusSeconds(4), ExecutionSide.SELL, 1, 10_000, List.of()));
+
+            assertEquals(1, record.getPositions().size());
+            assertEquals(1, record.getOpenPositions().size());
+            assertEquals(2, record.getPositions().getFirst().getCashFlows().size());
+            assertNumEquals(-0.2,
+                    record.getPositions()
+                            .getFirst()
+                            .getCashFlows()
+                            .stream()
+                            .map(FuturesCashFlow::amount)
+                            .reduce(Num::plus)
+                            .orElseThrow());
+            assertNumEquals(-0.1, record.getOpenPositions().getFirst().getCashFlows().getFirst().amount());
+            assertNumEquals(-0.3,
+                    record.getCashFlows().stream().map(FuturesCashFlow::amount).reduce(Num::plus).orElseThrow());
+        }
+    }
+
+    @Test
+    void numericallyEqualCashFlowsHaveFactoryIndependentHashes() {
+        FuturesCashFlow doubleFlow = cashFlow(linearBtcPerpetual(DoubleNumFactory.getInstance()),
+                FuturesCashFlow.Type.FUNDING, "numeric", 1, 0.1);
+        FuturesCashFlow decimalFlow = cashFlow(linearBtcPerpetual(DecimalNumFactory.getInstance()),
+                FuturesCashFlow.Type.FUNDING, "numeric", 1, 0.1);
+
+        assertEquals(doubleFlow, decimalFlow);
+        assertEquals(doubleFlow.hashCode(), decimalFlow.hashCode());
+    }
+
+    @Test
+    void numericallyEqualMarketSnapshotsHaveFactoryIndependentHashes() {
+        FuturesMarketSnapshot doubleSnapshot = FuturesMarketSnapshot.builder()
+                .contract(linearBtcPerpetual(DoubleNumFactory.getInstance()))
+                .observedAt(T0)
+                .markPrice(DoubleNumFactory.getInstance().numOf(11_000))
+                .build();
+        FuturesMarketSnapshot decimalSnapshot = FuturesMarketSnapshot.builder()
+                .contract(linearBtcPerpetual(DecimalNumFactory.getInstance()))
+                .observedAt(T0)
+                .markPrice(DecimalNumFactory.getInstance().numOf(11_000))
+                .build();
+
+        assertEquals(doubleSnapshot, decimalSnapshot);
+        assertEquals(doubleSnapshot.hashCode(), decimalSnapshot.hashCode());
+    }
 }

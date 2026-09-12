@@ -2085,7 +2085,7 @@ public class BaseTradingRecord implements TradingRecord {
                         .settlementAmount(portionAmount)
                         .build();
                 if (slice.lot() != null) {
-                    slice.lot().addCashFlow(portion);
+                    slice.lot().addCashFlow(slice.lotSliceIndex(), portion);
                 } else {
                     appendCashFlowToClosedPosition(slice.closedIndex(), portion);
                 }
@@ -2138,7 +2138,7 @@ public class BaseTradingRecord implements TradingRecord {
                         .settlementAmount(portionSettlement)
                         .build();
                 if (slice.lot() != null) {
-                    slice.lot().addCashFlow(portion);
+                    slice.lot().addCashFlow(slice.lotSliceIndex(), portion);
                 } else {
                     appendCashFlowToClosedPosition(slice.closedIndex(), portion);
                 }
@@ -2156,18 +2156,19 @@ public class BaseTradingRecord implements TradingRecord {
                     }
                     if (entryTime.isBefore(eventTime)) {
                         slices.add(new CashFlowSlice(lot.entrySequence(), lot.amount(), lot.side() == ExecutionSide.BUY,
-                                lot, -1));
+                                lot, 0, -1));
                     }
                     continue;
                 }
-                for (TradeFill fill : entryFills) {
+                for (int fillIndex = 0; fillIndex < entryFills.size(); fillIndex++) {
+                    TradeFill fill = entryFills.get(fillIndex);
                     Instant entryTime = fill.time();
                     if (entryTime == null) {
                         throw new IllegalStateException("Futures cash flows require entry timestamps");
                     }
                     if (entryTime.isBefore(eventTime)) {
                         slices.add(new CashFlowSlice(lot.entrySequence(), fill.amount(),
-                                lot.side() == ExecutionSide.BUY, lot, -1));
+                                lot.side() == ExecutionSide.BUY, lot, fillIndex, -1));
                     }
                 }
             }
@@ -2219,7 +2220,7 @@ public class BaseTradingRecord implements TradingRecord {
             for (int i = 0; i < entryFills.size(); i++) {
                 if (entryFills.get(i).time().isBefore(eventTime) && remaining.get(i).isPositive()) {
                     slices.add(new CashFlowSlice(closed.entrySequence(), remaining.get(i),
-                            entry.getType() == TradeType.BUY, null, closedIndex));
+                            entry.getType() == TradeType.BUY, null, -1, closedIndex));
                 }
             }
             return slices;
@@ -2236,7 +2237,8 @@ public class BaseTradingRecord implements TradingRecord {
                     new ClosedPosition(rebuilt, closed.entrySequence(), closed.exitSequence()));
         }
 
-        private record CashFlowSlice(long entrySequence, Num quantity, boolean buy, PositionLot lot, int closedIndex) {
+        private record CashFlowSlice(long entrySequence, Num quantity, boolean buy, PositionLot lot, int lotSliceIndex,
+                int closedIndex) {
         }
 
         private Position netOpenPosition() {
@@ -2349,9 +2351,9 @@ public class BaseTradingRecord implements TradingRecord {
             Num lotAmount = lot.amount();
             Num entryFeePortion = lot.fee().isZero() ? lot.fee()
                     : lot.fee().multipliedBy(closeAmount).dividedBy(lotAmount);
+            List<FuturesCashFlow> sliceCashFlows = lot.allocateCashFlows(closeAmount);
             List<TradeFill> entryFills = lot.allocateFills(closeAmount);
             List<TradeFee> entryComponents = lot.allocateFeeComponents(closeAmount);
-            List<FuturesCashFlow> sliceCashFlows = lot.allocateCashFlows(closeAmount);
             if (closeAmount.isEqual(lotAmount)) {
                 openLots.remove(lot);
             } else {
@@ -2528,11 +2530,20 @@ public class BaseTradingRecord implements TradingRecord {
             private final String correlationId;
             private List<TradeFee> feeComponents;
             private List<FuturesCashFlow> cashFlows;
+            private List<List<FuturesCashFlow>> cashFlowSlices;
             private List<TradeFill> fills;
 
             private PositionLot(int entryIndex, Instant entryTime, Num entryPrice, ExecutionSide side, Num amount,
                     Num fee, String orderId, String correlationId, long entrySequence, FuturesContract futuresContract,
                     List<TradeFee> feeComponents, List<FuturesCashFlow> cashFlows, List<TradeFill> fills) {
+                this(entryIndex, entryTime, entryPrice, side, amount, fee, orderId, correlationId, entrySequence,
+                        futuresContract, feeComponents, cashFlows, fills, null);
+            }
+
+            private PositionLot(int entryIndex, Instant entryTime, Num entryPrice, ExecutionSide side, Num amount,
+                    Num fee, String orderId, String correlationId, long entrySequence, FuturesContract futuresContract,
+                    List<TradeFee> feeComponents, List<FuturesCashFlow> cashFlows, List<TradeFill> fills,
+                    List<List<FuturesCashFlow>> cashFlowSlices) {
                 Objects.requireNonNull(entryPrice, "entryPrice");
                 Objects.requireNonNull(side, "side");
                 Objects.requireNonNull(amount, "amount");
@@ -2548,8 +2559,12 @@ public class BaseTradingRecord implements TradingRecord {
                 this.correlationId = correlationId;
                 this.futuresContract = futuresContract;
                 this.feeComponents = feeComponents;
-                this.cashFlows = cashFlows == null ? List.of() : cashFlows;
+                this.cashFlows = cashFlows == null ? List.of() : List.copyOf(cashFlows);
                 this.fills = fills == null ? List.of() : List.copyOf(fills);
+                this.cashFlowSlices = cashFlowSlices == null
+                        ? initializeCashFlowSlices(this.cashFlows, this.fills, amount)
+                        : copyCashFlowSlices(cashFlowSlices);
+                this.cashFlows = flattenCashFlowSlices(this.cashFlowSlices);
             }
 
             private static PositionLot of(int entryIndex, Instant entryTime, Num entryPrice, ExecutionSide side,
@@ -2615,10 +2630,13 @@ public class BaseTradingRecord implements TradingRecord {
                 return fills;
             }
 
-            private void addCashFlow(FuturesCashFlow cashFlow) {
-                List<FuturesCashFlow> updated = new ArrayList<>(cashFlows);
-                updated.add(cashFlow);
-                cashFlows = List.copyOf(updated);
+            private void addCashFlow(int sliceIndex, FuturesCashFlow cashFlow) {
+                List<FuturesCashFlow> updatedSlice = new ArrayList<>(cashFlowSlices.get(sliceIndex));
+                updatedSlice.add(cashFlow);
+                List<List<FuturesCashFlow>> updatedSlices = new ArrayList<>(cashFlowSlices);
+                updatedSlices.set(sliceIndex, List.copyOf(updatedSlice));
+                cashFlowSlices = List.copyOf(updatedSlices);
+                cashFlows = flattenCashFlowSlices(cashFlowSlices);
             }
 
             private String orderId() {
@@ -2691,11 +2709,26 @@ public class BaseTradingRecord implements TradingRecord {
              * @return cash flows allocated to the closed portion
              */
             private List<FuturesCashFlow> allocateCashFlows(Num portion) {
-                List<FuturesCashFlow> allocated = scaleCashFlows(cashFlows, portion, amount);
-                if (!portion.isEqual(amount)) {
-                    cashFlows = scaleCashFlows(cashFlows, amount.minus(portion), amount);
+                Num remaining = portion;
+                List<FuturesCashFlow> allocated = new ArrayList<>();
+                List<List<FuturesCashFlow>> retainedSlices = new ArrayList<>();
+                for (int i = 0; i < cashFlowSlices.size(); i++) {
+                    Num sliceAmount = fills.isEmpty() ? amount : fills.get(i).amount();
+                    if (!remaining.isPositive()) {
+                        retainedSlices.add(cashFlowSlices.get(i));
+                        continue;
+                    }
+                    Num closeAmount = remaining.isLessThan(sliceAmount) ? remaining : sliceAmount;
+                    allocated.addAll(scaleCashFlows(cashFlowSlices.get(i), closeAmount, sliceAmount));
+                    Num retainedAmount = sliceAmount.minus(closeAmount);
+                    if (retainedAmount.isPositive()) {
+                        retainedSlices.add(scaleCashFlows(cashFlowSlices.get(i), retainedAmount, sliceAmount));
+                    }
+                    remaining = remaining.minus(closeAmount);
                 }
-                return allocated;
+                cashFlowSlices = copyCashFlowSlices(retainedSlices);
+                cashFlows = flattenCashFlowSlices(cashFlowSlices);
+                return List.copyOf(allocated);
             }
 
             private PositionLot reduce(Num reduceAmount, Num reduceFee) {
@@ -2724,7 +2757,8 @@ public class BaseTradingRecord implements TradingRecord {
                 long mergedSequence = Math.min(entrySequence, other.entrySequence);
                 List<TradeFee> mergedComponents = feeComponents == null ? null : mergeComponents(other);
                 return new PositionLot(mergedIndex, mergedTime, mergedPrice, side, totalAmount, mergedFee, null, null,
-                        mergedSequence, futuresContract, mergedComponents, mergeCashFlows(other), mergeFills(other));
+                        mergedSequence, futuresContract, mergedComponents, mergeCashFlows(other), mergeFills(other),
+                        mergeCashFlowSlices(other));
             }
 
             private Num mergedEntryPrice(Num totalAmount, PositionLot other) {
@@ -2755,12 +2789,65 @@ public class BaseTradingRecord implements TradingRecord {
             }
 
             private List<FuturesCashFlow> mergeCashFlows(PositionLot other) {
-                if (cashFlows.isEmpty() && other.cashFlows().isEmpty()) {
-                    return List.of();
+                return flattenCashFlowSlices(mergeCashFlowSlices(other));
+            }
+
+            private List<List<FuturesCashFlow>> mergeCashFlowSlices(PositionLot other) {
+                if (fills.isEmpty() && other.fills().isEmpty()) {
+                    List<FuturesCashFlow> merged = new ArrayList<>(cashFlowSlices.getFirst());
+                    merged.addAll(other.cashFlowSlices.getFirst());
+                    return List.of(List.copyOf(merged));
                 }
-                List<FuturesCashFlow> merged = new ArrayList<>(cashFlows);
-                merged.addAll(other.cashFlows());
+                if (fills.isEmpty()) {
+                    List<List<FuturesCashFlow>> merged = new ArrayList<>(other.cashFlowSlices);
+                    merged.set(0, concatenateCashFlows(cashFlowSlices.getFirst(), merged.getFirst()));
+                    return List.copyOf(merged);
+                }
+                if (other.fills().isEmpty()) {
+                    List<List<FuturesCashFlow>> merged = new ArrayList<>(cashFlowSlices);
+                    int lastIndex = merged.size() - 1;
+                    merged.set(lastIndex, concatenateCashFlows(merged.get(lastIndex), other.cashFlowSlices.getFirst()));
+                    return List.copyOf(merged);
+                }
+                List<List<FuturesCashFlow>> merged = new ArrayList<>(cashFlowSlices);
+                merged.addAll(other.cashFlowSlices);
                 return List.copyOf(merged);
+            }
+
+            private static List<FuturesCashFlow> concatenateCashFlows(List<FuturesCashFlow> first,
+                    List<FuturesCashFlow> second) {
+                List<FuturesCashFlow> merged = new ArrayList<>(first);
+                merged.addAll(second);
+                return List.copyOf(merged);
+            }
+
+            private static List<List<FuturesCashFlow>> initializeCashFlowSlices(List<FuturesCashFlow> cashFlows,
+                    List<TradeFill> fills, Num amount) {
+                List<FuturesCashFlow> source = cashFlows == null ? List.of() : List.copyOf(cashFlows);
+                if (fills == null || fills.isEmpty()) {
+                    return List.of(source);
+                }
+                List<List<FuturesCashFlow>> slices = new ArrayList<>(fills.size());
+                for (TradeFill fill : fills) {
+                    slices.add(scaleCashFlows(source, fill.amount(), amount));
+                }
+                return List.copyOf(slices);
+            }
+
+            private static List<List<FuturesCashFlow>> copyCashFlowSlices(List<List<FuturesCashFlow>> slices) {
+                List<List<FuturesCashFlow>> copy = new ArrayList<>(slices.size());
+                for (List<FuturesCashFlow> slice : slices) {
+                    copy.add(List.copyOf(slice));
+                }
+                return List.copyOf(copy);
+            }
+
+            private static List<FuturesCashFlow> flattenCashFlowSlices(List<List<FuturesCashFlow>> slices) {
+                List<FuturesCashFlow> flattened = new ArrayList<>();
+                for (List<FuturesCashFlow> slice : slices) {
+                    flattened.addAll(slice);
+                }
+                return List.copyOf(flattened);
             }
 
             @Serial
@@ -2788,6 +2875,12 @@ public class BaseTradingRecord implements TradingRecord {
                 if (fills == null) {
                     fills = List.of();
                 }
+                if (cashFlowSlices == null) {
+                    cashFlowSlices = initializeCashFlowSlices(cashFlows, fills, amount);
+                } else {
+                    cashFlowSlices = copyCashFlowSlices(cashFlowSlices);
+                }
+                cashFlows = flattenCashFlowSlices(cashFlowSlices);
                 return this;
             }
 
