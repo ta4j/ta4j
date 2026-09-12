@@ -79,11 +79,11 @@ final class ExecutionModelSupport {
         return new TradeExecutionModel.ExecutionTarget(index, price, time);
     }
 
-    static boolean isEntryAllowed(TradingRecord tradingRecord, FuturesContract futuresContract, TradeType tradeType,
-            Instant fillTime) {
+    static boolean isEntryAllowed(TradingRecord tradingRecord, FuturesContract futuresContract, Instant fillTime) {
         Instant tradingDisabledAt = futuresContract.tradingDisabledAt();
-        return tradingDisabledAt == null || tradeType != tradingRecord.getStartingType() || fillTime == null
-                || fillTime.isBefore(tradingDisabledAt);
+        Position currentPosition = tradingRecord.getCurrentPosition();
+        boolean positionOpen = currentPosition != null && currentPosition.isOpened();
+        return tradingDisabledAt == null || positionOpen || fillTime == null || fillTime.isBefore(tradingDisabledAt);
     }
 
     /**
@@ -113,7 +113,7 @@ final class ExecutionModelSupport {
         }
         TradeType tradeType = nextTradeType(tradingRecord);
         Instant fillTime = fillTime(barSeries, target.index(), priceSource);
-        if (!isEntryAllowed(tradingRecord, futuresContract, tradeType, fillTime)) {
+        if (!isEntryAllowed(tradingRecord, futuresContract, fillTime)) {
             return;
         }
         if (!isCompleteClose(tradingRecord, tradeType, amount)) {

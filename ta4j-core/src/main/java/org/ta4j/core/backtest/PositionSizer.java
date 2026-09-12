@@ -501,8 +501,9 @@ public interface PositionSizer {
          * @param budget cash available for entry price and transaction costs
          * @return largest amount affordable by the budget, or zero when none is
          *         affordable
-         * @throws IllegalStateException when the search does not converge for a number
-         *                               implementation with unbounded precision
+         * @throws IllegalStateException when the futures affordability range is
+         *                               unbounded or the search does not converge for a
+         *                               number implementation with unbounded precision
          */
         public Num maxAffordableAmount(Num budget) {
             validateFiniteNum(budget, "budget");
@@ -520,10 +521,9 @@ public interface PositionSizer {
                 Num marginPerContract = contract.marginRequirement(numFactory().one(), entryPrice,
                         requireInitialMarginRate());
                 Num entryFeePerContract = modeledEntryFee(contract, numFactory().one());
-                Num netCostPerContract = marginPerContract.plus(entryFeePerContract);
-                upperBound = entryFeePerContract.isNegative() && netCostPerContract.isPositive()
-                        ? budget.dividedBy(netCostPerContract)
-                        : marginPerContract.isPositive() ? budget.dividedBy(marginPerContract) : zero;
+                upperBound = marginPerContract.isPositive() ? budget.dividedBy(marginPerContract)
+                        : entryFeePerContract.isPositive() ? budget.dividedBy(entryFeePerContract)
+                                : maximumTradableAmount(contract);
             }
             if (!upperBound.isPositive()) {
                 return zero;
@@ -534,6 +534,26 @@ public interface PositionSizer {
                         : searchLargestAffordable(budget, upperBound);
             }
             return largestAffordableTradable(contract, upperBound, budget);
+        }
+
+        private Num maximumTradableAmount(FuturesContract contract) {
+            Num maximum = FuturesOrderQuantitySupport.toNum(contract.maximumQuantity(), numFactory());
+            Num maximumNotional = FuturesOrderQuantitySupport.toNum(contract.maximumNotional(), numFactory());
+            if (maximumNotional != null) {
+                Num perContractNotional = FuturesOrderQuantitySupport
+                        .toNum(contract.quoteNotional(numFactory().one(), entryPrice), numFactory());
+                if (perContractNotional == null || !perContractNotional.isPositive()) {
+                    throw new IllegalStateException(
+                            "native futures affordability has no positive per-contract notional bound");
+                }
+                Num notionalBound = maximumNotional.dividedBy(perContractNotional);
+                maximum = maximum == null || notionalBound.isLessThan(maximum) ? notionalBound : maximum;
+            }
+            if (maximum == null || !maximum.isPositive()) {
+                throw new IllegalStateException(
+                        "native futures affordability is unbounded; configure maximumQuantity or maximumNotional");
+            }
+            return maximum;
         }
 
         /**

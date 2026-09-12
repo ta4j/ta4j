@@ -995,7 +995,14 @@ public class BaseTradingRecord implements TradingRecord {
             operate(Trade.fromFill(fill));
             return;
         }
-        operate(Trade.fromFill(fill, getTransactionCostModel()));
+        requireMutable("operate(TradeFill)");
+        lock.writeLock().lock();
+        try {
+            int resolvedIndex = fill.index() >= 0 ? fill.index() : nextTradeIndex;
+            operate(Trade.fromFill(fill.toBuilder().index(resolvedIndex).build(), getTransactionCostModel()));
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
     @Override
@@ -1324,12 +1331,13 @@ public class BaseTradingRecord implements TradingRecord {
         ExecutionSide tradeSide = sideOf(tradeType);
         ExecutionSide openSide = currentOpenSide();
         Position netOpenPosition = positionBook.netOpenPosition();
+        NumFactory fillFactory = numFactory == null ? fills.getFirst().price().getNumFactory() : numFactory;
         int plannedNextIndex = nextTradeIndex;
-        Num totalAmount = fills.getFirst().price().getNumFactory().zero();
+        Num totalAmount = fillFactory.zero();
         List<PlannedTradeFill> plannedTradeFills = new ArrayList<>(fills.size());
         for (TradeFill fill : fills) {
             PlannedTradeFill plannedTradeFill = planTradeFill(tradeType, tradeSide, fill, trade.getOrderId(),
-                    trade.getCorrelationId(), trade.getTime(), plannedNextIndex);
+                    trade.getCorrelationId(), trade.getTime(), plannedNextIndex, fillFactory);
             plannedTradeFills.add(plannedTradeFill);
             plannedNextIndex = Math.max(plannedNextIndex, plannedTradeFill.index() + 1);
             totalAmount = totalAmount.plus(plannedTradeFill.trade().getAmount());
@@ -1343,7 +1351,8 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     private PlannedTradeFill planTradeFill(TradeType tradeType, ExecutionSide tradeSide, TradeFill fill,
-            String tradeOrderId, String tradeCorrelationId, Instant tradeTime, int plannedNextIndex) {
+            String tradeOrderId, String tradeCorrelationId, Instant tradeTime, int plannedNextIndex,
+            NumFactory fillFactory) {
         if (fill.side() != null && fill.side() != tradeSide) {
             throw new IllegalArgumentException("Fill side " + fill.side() + " does not match trade type " + tradeType);
         }
@@ -1355,21 +1364,25 @@ public class BaseTradingRecord implements TradingRecord {
         Instant executionTime = resolveExecutionTime(fill.time(), tradeTime);
         String orderId = chooseValue(fill.orderId(), tradeOrderId);
         String correlationId = chooseValue(fill.correlationId(), tradeCorrelationId);
-        Num normalizedAmount = normalizeRecordedAmount(fill.amount(), fill.price());
-        Num normalizedFee = normalizeFee(fill.fee(), fill.price());
+        Num normalizedPrice = fillFactory.numOf(fill.price().getDelegate());
+        Num normalizedAmount = normalizeRecordedAmount(fill.amount(), fillFactory);
+        Num normalizedFee = normalizeFee(fill.fee(), fillFactory);
         Trade plannedTrade;
         if (fill.futuresContract() != null) {
-            TradeFill normalizedFill = fill.toBuilder()
+            TradeFill.Builder normalizedFill = fill.toBuilder()
                     .index(resolvedIndex)
                     .time(executionTime)
+                    .price(normalizedPrice)
                     .amount(normalizedAmount)
                     .side(tradeSide)
                     .orderId(orderId)
-                    .correlationId(correlationId)
-                    .build();
-            plannedTrade = Trade.fromFill(normalizedFill, getTransactionCostModel());
+                    .correlationId(correlationId);
+            if (fill.hasRecordedFees()) {
+                normalizedFill.fees(normalizeFees(fill.fees(), fillFactory));
+            }
+            plannedTrade = Trade.fromFill(normalizedFill.build(), getTransactionCostModel());
         } else {
-            plannedTrade = recordedTrade(resolvedIndex, executionTime, fill.price(), normalizedAmount, normalizedFee,
+            plannedTrade = recordedTrade(resolvedIndex, executionTime, normalizedPrice, normalizedAmount, normalizedFee,
                     tradeSide, orderId, correlationId);
         }
         validateFill(plannedTrade);
@@ -1422,7 +1435,7 @@ public class BaseTradingRecord implements TradingRecord {
                 return Trade.fromFills(trade.getType(), indexedFills, trade.getCostModel());
             }
             return recordedTrade(fill.index(), resolveExecutionTime(fill.time(), trade.getTime()), fill.price(),
-                    fill.amount(), normalizeFee(fill.fee(), fill.price()),
+                    fill.amount(), normalizeFee(fill.fee(), fill.price().getNumFactory()),
                     fill.side() == null ? sideOf(trade.getType()) : fill.side(), fill.orderId(), fill.correlationId());
         }
         return Trade.fromFills(trade.getType(), indexedFills, trade.getCostModel());
@@ -1778,14 +1791,14 @@ public class BaseTradingRecord implements TradingRecord {
         }
     }
 
-    private Num normalizeRecordedAmount(Num amount, Num reference) {
+    private Num normalizeRecordedAmount(Num amount, NumFactory factory) {
         if (amount != null && !amount.isNaN()) {
             if (amount.isNegative()) {
                 throw new IllegalArgumentException("amount must be positive");
             }
-            return amount;
+            return factory.numOf(amount.getDelegate());
         }
-        return reference.getNumFactory().one();
+        return factory.one();
     }
 
     private Num normalizeSyntheticAmount(Num amount) {
@@ -1797,11 +1810,21 @@ public class BaseTradingRecord implements TradingRecord {
         return defaultNumFactory().one();
     }
 
-    private Num normalizeFee(Num fee, Num reference) {
+    private Num normalizeFee(Num fee, NumFactory factory) {
         if (fee != null && !fee.isNaN()) {
-            return fee;
+            return factory.numOf(fee.getDelegate());
         }
-        return reference.getNumFactory().zero();
+        return factory.zero();
+    }
+
+    private static List<TradeFee> normalizeFees(List<TradeFee> fees, NumFactory factory) {
+        return fees.stream()
+                .map(fee -> fee.toBuilder()
+                        .amount(factory.numOf(fee.amount().getDelegate()))
+                        .settlementAmount(fee.settlementAmount() == null ? null
+                                : factory.numOf(fee.settlementAmount().getDelegate()))
+                        .build())
+                .toList();
     }
 
     private NumFactory defaultNumFactory() {
@@ -2075,7 +2098,7 @@ public class BaseTradingRecord implements TradingRecord {
          * @return funding cash flow in the settlement currency
          */
         private Num fundingAmountAt(Instant eventTime, Num referencePrice, Num fundingRate) {
-            NumFactory factory = futuresContract.contractSize().getNumFactory();
+            NumFactory factory = referencePrice.getNumFactory();
             Num total = factory.zero();
             for (CashFlowSlice slice : eligibleSlices(eventTime)) {
                 Num quantity = factory.numOf(slice.quantity().getDelegate());
