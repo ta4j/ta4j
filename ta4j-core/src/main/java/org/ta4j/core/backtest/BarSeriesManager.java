@@ -603,7 +603,7 @@ public class BarSeriesManager {
                     operated = true;
                 }
                 advanceToBarEnd(tradingRecord, i);
-                if (operated) {
+                if (operated && tradingRecord.isClosed()) {
                     break;
                 }
             }

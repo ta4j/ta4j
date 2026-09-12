@@ -513,8 +513,9 @@ public class BaseTradingRecord implements TradingRecord {
         if (entry == null) {
             throw new IllegalArgumentException("Position entry must not be null");
         }
+        CostModel holdingCostModel = holdingCostModelOf(positions);
         BaseTradingRecord initialized = new BaseTradingRecord(recordConfig(entry.getType(), ExecutionMatchPolicy.FIFO,
-                RecordedTradeCostModel.INSTANCE, new ZeroCostModel(), null, null, contract, null, null, List.of()));
+                RecordedTradeCostModel.INSTANCE, holdingCostModel, null, null, contract, null, null, List.of()));
         Num totalFees = null;
         for (Position position : positions) {
             initialized.adoptPosition(position);
@@ -523,6 +524,16 @@ public class BaseTradingRecord implements TradingRecord {
         initialized.aggregateProjectedCashFlows(positions, Integer.MAX_VALUE);
         initialized.totalFees = totalFees == null ? initialized.defaultNumFactory().zero() : totalFees;
         return initialized.toRecordConfig();
+    }
+
+    private static CostModel holdingCostModelOf(List<Position> positions) {
+        CostModel holdingCostModel = positions.getFirst().getHoldingCostModel();
+        for (Position position : positions) {
+            if (!holdingCostModel.equals(position.getHoldingCostModel())) {
+                throw new IllegalArgumentException("All positions must use the same holding cost model");
+            }
+        }
+        return holdingCostModel;
     }
 
     /**
@@ -675,9 +686,27 @@ public class BaseTradingRecord implements TradingRecord {
         long entrySequence = nextSequence++;
         long exitSequence = nextSequence++;
         positionBook.adopt(position, entrySequence, exitSequence);
+        advanceNextTradeIndex(position.getEntry());
+        advanceNextTradeIndex(position.getExit());
         Num price = position.getEntry().getPricePerAsset();
         if ((numFactory == null || numFactory.one().isNaN()) && price != null && !price.isNaN()) {
             numFactory = price.getNumFactory();
+        }
+    }
+
+    private void advanceNextTradeIndex(Trade trade) {
+        if (trade == null) {
+            return;
+        }
+        lock.writeLock().lock();
+        try {
+            for (TradeFill fill : Trade.executionFillsOf(trade)) {
+                if (fill.index() >= nextTradeIndex) {
+                    nextTradeIndex = fill.index() == Integer.MAX_VALUE ? Integer.MAX_VALUE : fill.index() + 1;
+                }
+            }
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 

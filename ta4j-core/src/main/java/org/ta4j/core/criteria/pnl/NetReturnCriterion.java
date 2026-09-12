@@ -4,7 +4,9 @@
 package org.ta4j.core.criteria.pnl;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.num.Num;
@@ -67,25 +69,26 @@ public class NetReturnCriterion extends AbstractReturnCriterion {
 
     @Override
     protected Num calculateReturn(BarSeries series, Position position) {
-        var entry = position.getEntry();
-        var amount = entry.getAmount();
-        var one = series.numFactory().one();
-        var contract = position.getFuturesContract();
+        Trade entry = position.getEntry();
+        Num amount = entry.getAmount();
+        Num one = series.numFactory().one();
+        FuturesContract contract = position.getFuturesContract();
         if (contract != null) {
-            var exit = position.getExit();
-            var quantity = exit == null ? amount : exit.getAmount();
-            var entryNotional = contract.settlementNotional(quantity, entry.getPricePerAsset());
+            Trade exit = position.getExit();
+            Num quantity = exit == null ? amount : exit.getAmount();
+            Num entryNotional = contract.settlementNotional(quantity, entry.getPricePerAsset());
             if (entryNotional.isZero()) {
                 return one;
             }
-            return position.getProfit().dividedBy(entryNotional).plus(one);
+            Num profit = position.getProfit();
+            return profit.dividedBy(entryNotional).plus(one);
         }
-        var netPrice = entry.getNetPrice();
-        var entryValue = netPrice.multipliedBy(amount);
+        Num netPrice = entry.getNetPrice();
+        Num entryValue = netPrice.multipliedBy(amount);
         if (entryValue.isZero()) {
             return one;
         }
-        var profit = position.getProfit();
+        Num profit = position.getProfit();
         return profit.dividedBy(entryValue).plus(one);
     }
 

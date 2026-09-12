@@ -10,6 +10,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.FuturesCashFlow;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -71,7 +72,7 @@ final class FuturesRecordReturnSupport {
     static Num totalReturn(BarSeries series, TradingRecord tradingRecord, boolean gross) {
         NumFactory numFactory = series.numFactory();
         Num capital = requireCapital(numFactory, tradingRecord);
-        int finalIndex = tradingRecord.getEndIndex(series);
+        int finalIndex = Math.max(tradingRecord.getEndIndex(series), lastExecutedIndex(tradingRecord));
         Num profit = realizedProfit(numFactory, tradingRecord, finalIndex);
         if (gross) {
             profit = profit.plus(executedFees(numFactory, tradingRecord, finalIndex))
@@ -79,6 +80,18 @@ final class FuturesRecordReturnSupport {
                     .plus(holdingCosts(numFactory, tradingRecord, finalIndex));
         }
         return numFactory.one().plus(profit.dividedBy(capital));
+    }
+
+    private static int lastExecutedIndex(TradingRecord tradingRecord) {
+        int lastIndex = -1;
+        for (Trade trade : tradingRecord.getTrades()) {
+            for (TradeFill fill : Trade.executionFillsOf(trade)) {
+                if (fill.index() >= 0) {
+                    lastIndex = Math.max(lastIndex, fill.index());
+                }
+            }
+        }
+        return lastIndex;
     }
 
     private static Num requireCapital(NumFactory numFactory, TradingRecord tradingRecord) {
@@ -133,8 +146,8 @@ final class FuturesRecordReturnSupport {
 
     private static Num fillFees(NumFactory numFactory, Trade trade, int finalIndex) {
         Num total = numFactory.zero();
-        for (org.ta4j.core.TradeFill fill : Trade.executionFillsOf(trade)) {
-            if (fill.index() <= finalIndex) {
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() >= 0 && fill.index() <= finalIndex) {
                 total = total.plus(toNum(numFactory, fill.fee()));
             }
         }
@@ -171,8 +184,17 @@ final class FuturesRecordReturnSupport {
         return positions;
     }
 
+    private static boolean hasExecutedEntryFill(Position position, int finalIndex) {
+        for (TradeFill fill : Trade.executionFillsOf(position.getEntry())) {
+            if (fill.index() >= 0 && fill.index() <= finalIndex) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static void addPosition(List<Position> positions, Position position, int finalIndex) {
-        if (position == null || position.getEntry() == null || position.getEntry().getIndex() > finalIndex) {
+        if (position == null || position.getEntry() == null || !hasExecutedEntryFill(position, finalIndex)) {
             return;
         }
         positions.add(position);

@@ -16,6 +16,9 @@ import org.ta4j.core.FuturesCashFlow;
 import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradeFee;
+import org.ta4j.core.Trade;
+import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.ReturnRepresentation;
@@ -215,6 +218,37 @@ class FuturesRecordReturnCriterionTest {
             assertNumEquals(1.08,
                     new NetReturnCriterion(ReturnRepresentation.MULTIPLICATIVE).calculate(barSeries, record));
             assertNumEquals(0.08, new NetReturnCriterion(ReturnRepresentation.DECIMAL).calculate(barSeries, record));
+        }
+    }
+
+    @Test
+    void partialEntryHoldingCostOnlyUsesFillsThroughFinalIndex() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            LinearBorrowingCostModel holdingCostModel = new LinearBorrowingCostModel(0.01,
+                    LinearBorrowingCostModel.Applicability.BOTH);
+            Trade entry = Trade.fromFills(Trade.TradeType.BUY,
+                    List.of(fill(contract, 0, ExecutionSide.BUY, 100, 100, List.of()),
+                            fill(contract, 2, ExecutionSide.BUY, 100, 100, List.of())),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, holdingCostModel);
+
+            assertNumEquals(1, position.getHoldingCost(1));
+            assertNumEquals(4, position.getHoldingCost(2));
+        }
+    }
+
+    @Test
+    void futuresRecordReturnIncludesExecutionsBeyondSeriesEnd() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            BarSeries barSeries = series(numFactory, 100);
+            BaseTradingRecord record = fundedRecord(contract, numFactory, 1_000);
+            record.operate(fill(contract, 0, ExecutionSide.BUY, 100, 100, List.of()));
+            record.operate(fill(contract, 1, ExecutionSide.SELL, 100, 101, List.of()));
+
+            assertNumEquals(1.001,
+                    new NetReturnCriterion(ReturnRepresentation.MULTIPLICATIVE).calculate(barSeries, record));
         }
     }
 }

@@ -4,7 +4,6 @@
 package org.ta4j.core;
 
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.List;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.num.Num;
@@ -212,26 +211,7 @@ final class FuturesPositionAccounting {
     }
 
     private static Num holdingCost(Position position, int finalIndex) {
-        Trade entry = position.getEntry();
-        List<TradeFill> entryFills = Trade.executionFillsOf(entry);
-        List<TradeFill> executedEntryFills = new ArrayList<>(entryFills.size());
-        for (TradeFill fill : entryFills) {
-            if (fill.index() >= 0 && fill.index() <= finalIndex) {
-                executedEntryFills.add(fill);
-            }
-        }
-        if (executedEntryFills.isEmpty()) {
-            return entry.getPricePerAsset().getNumFactory().zero();
-        }
-        if (executedEntryFills.size() == entryFills.size()) {
-            return position.getHoldingCost(finalIndex);
-        }
-        Trade executedEntry = Trade.fromFills(entry.getType(), executedEntryFills, position.getTransactionCostModel());
-        Position executedPosition = position.getExit() == null
-                ? new Position(executedEntry, position.getTransactionCostModel(), position.getHoldingCostModel())
-                : new Position(executedEntry, position.getExit(), position.getTransactionCostModel(),
-                        position.getHoldingCostModel());
-        return executedPosition.getHoldingCost(finalIndex);
+        return position.getHoldingCost(finalIndex);
     }
 
     /**
@@ -347,7 +327,10 @@ final class FuturesPositionAccounting {
     }
 
     private static List<TradeFill> executedFills(Trade trade, int finalIndex) {
-        return Trade.executionFillsOf(trade).stream().filter(fill -> fill.index() <= finalIndex).toList();
+        return Trade.executionFillsOf(trade)
+                .stream()
+                .filter(fill -> fill.index() >= 0 && fill.index() <= finalIndex)
+                .toList();
     }
 
     private static Num sumFillFees(Trade trade, int finalIndex) {

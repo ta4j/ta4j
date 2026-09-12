@@ -7,6 +7,7 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -629,14 +630,35 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculates the holding cost of the position.
+     * Calculates the holding cost of the position. For native futures positions,
+     * only entry fills executed at or before {@code finalIndex} are included.
      *
      * @param finalIndex the index of the final bar to be considered (if position is
      *                   open)
      * @return the cost of the position
      */
     public Num getHoldingCost(int finalIndex) {
-        return holdingCostModel.calculate(this, finalIndex);
+        CostModel model = getHoldingCostModel();
+        if (futuresContract == null) {
+            return model.calculate(this, finalIndex);
+        }
+        List<TradeFill> entryFills = Trade.executionFillsOf(entry);
+        List<TradeFill> executedEntryFills = new ArrayList<>(entryFills.size());
+        for (TradeFill fill : entryFills) {
+            if (fill.index() >= 0 && fill.index() <= finalIndex) {
+                executedEntryFills.add(fill);
+            }
+        }
+        if (executedEntryFills.isEmpty()) {
+            return entry.getPricePerAsset().getNumFactory().zero();
+        }
+        if (executedEntryFills.size() == entryFills.size()) {
+            return model.calculate(this, finalIndex);
+        }
+        Trade executedEntry = Trade.fromFills(entry.getType(), executedEntryFills, getTransactionCostModel());
+        Position executedPosition = exit == null ? new Position(executedEntry, getTransactionCostModel(), model)
+                : new Position(executedEntry, exit, getTransactionCostModel(), model);
+        return model.calculate(executedPosition, finalIndex);
     }
 
     /**

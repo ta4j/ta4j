@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -937,5 +938,37 @@ class FuturesTradingRecordTest {
     void projectedFuturesRequiresAFuturesSource() {
         BaseTradingRecord spot = new BaseTradingRecord();
         assertThrows(IllegalArgumentException.class, () -> BaseTradingRecord.projectedFutures(spot, List.of(), 0, 1));
+    }
+
+    @Test
+    void importedFuturesPositionsPreserveHoldingModelAndAdvanceIndex() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            LinearBorrowingCostModel holdingCostModel = new LinearBorrowingCostModel(0.01,
+                    LinearBorrowingCostModel.Applicability.BOTH);
+            Position imported = new Position(Trade.fromFill(fill(contract, 10, ExecutionSide.BUY, 1, 100, List.of()),
+                    RecordedTradeCostModel.INSTANCE), RecordedTradeCostModel.INSTANCE, holdingCostModel);
+
+            BaseTradingRecord record = new BaseTradingRecord(List.of(imported));
+            assertTrue(holdingCostModel.equals(record.getHoldingCostModel()));
+
+            record.operate(fill(contract, -1, ExecutionSide.SELL, 1, 101, List.of()));
+
+            assertEquals(11, record.getLastTrade().getIndex());
+        }
+    }
+
+    @Test
+    void pendingFuturesFillsDoNotContributeProfitOrFees() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            TradeFill pendingFill = fill(contract, -1, ExecutionSide.BUY, 1, 100,
+                    List.of(commission(numFactory, 3, "USD")));
+            Position position = new Position(Trade.fromFill(pendingFill, RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            assertNumEquals(0, position.getProfit(0, numFactory.numOf(100)));
+            assertNumEquals(0, position.getRealizedProfit(0));
+        }
     }
 }
