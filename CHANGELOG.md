@@ -10,6 +10,7 @@
 
 - **Futures test ownership and unit constants**: `PositionTest` now verifies the spot realized/unrealized profit split and `NetReturnCriterionTest` verifies that futures net return uses entry settlement notional, moving both to the classes they exercise; contract tests use `NumFactory.one()` for unit constants.
 - **Futures review round 9**: `PositionSizer.Context` keeps its pre-`fillTime` constructor overload for binary compatibility; `StopLimitExecutionModel` rounds simulated futures partial fills to the contract quantity increment; `Returns` exposes `hasFirstBarReturn()` and `RiskTailSupport` excludes the synthetic placeholder value of windowed spot series from VaR/ES sampling; windowed analysis coverage moves to `CashFlowTest`, `CumulativePnLTest` and `ReturnsTest`, and the futures timestamp guard is covered by `TradeFillTest` and `BaseTradingRecordTest`.
+- **Futures review round 10**: `PositionSizer` futures margin-affordability sizing replaces the iteration-capped continuous search plus 256-step probe with a binary search over the contract quantity increment grid, so the largest affordable count is determined exactly for large budgets instead of being truncated to the probe range; `TradeFillTest` de-parameterizes its value-dependent cases to run against both Num factories, and `ReturnsTest` uses `NumFactory.one()` for unit constants.
 
 ## 0.25.0 (2026-09-07)
 

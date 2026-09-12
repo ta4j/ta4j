@@ -463,7 +463,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     private static Position spotPosition(NumFactory numFactory, int indexOffset) {
-        Num one = numFactory.numOf(1);
+        Num one = numFactory.one();
         Trade entry = Trade.buyAt(1 + indexOffset, numFactory.numOf(CLOSES[1]), one, RecordedTradeCostModel.INSTANCE);
         Trade exit = Trade.sellAt(4 + indexOffset, numFactory.numOf(CLOSES[4]), one, RecordedTradeCostModel.INSTANCE);
         return new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());

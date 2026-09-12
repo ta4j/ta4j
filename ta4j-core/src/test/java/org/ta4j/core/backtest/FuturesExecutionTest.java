@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.math.BigInteger;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -24,6 +25,7 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.FuturesTransactionCostModel;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -276,6 +278,30 @@ class FuturesExecutionTest {
             PositionSizer.Context withoutMargin = sizerContext(series, withoutMarginRate, fees, price);
             assertThrows(IllegalStateException.class, () -> withoutMargin.entryCost(numFactory.numOf(1)));
             assertThrows(IllegalArgumentException.class, () -> context.currentBalance(numFactory.numOf(500)));
+        }
+    }
+
+    @Test
+    void maxAffordableAmountLandsExactlyOnBoundsBeyondTheContinuousSearch() {
+        // At default DoubleNum / 16-digit DecimalNum precision the unit fee is
+        // below the ulp at 2^100, so both paths land on the precision boundary.
+        // At 40-digit precision the fee is resolvable: the boundary sits
+        // 2^20 grid units beyond what the 80-iteration continuous search
+        // reaches, and the increment-grid binary search must recover it exactly.
+        for (NumFactory numFactory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance(),
+                DecimalNumFactory.getInstance(40))) {
+            Num budget = numFactory.numOf(BigInteger.TWO.pow(100));
+            FuturesContract contract = linearContract(numFactory, 1);
+            BarSeries series = flatSeries(numFactory, 1, 1, 1);
+            FixedTransactionCostModel fees = new FixedTransactionCostModel(1.0);
+            BaseTradingRecord tradingRecord = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .initialMarginRate(numFactory.one())
+                    .transactionCostModel(fees)
+                    .build();
+            PositionSizer.Context context = sizerContext(series, tradingRecord, fees, numFactory.one());
+            Num expected = budget.minus(numFactory.one());
+            assertNumEquals(expected, context.maxAffordableAmount(budget));
         }
     }
 

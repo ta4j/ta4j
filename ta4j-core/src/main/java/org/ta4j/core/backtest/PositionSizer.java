@@ -276,7 +276,6 @@ public interface PositionSizer {
             CostModel holdingCostModel) {
 
         private static final int MAX_AFFORDABLE_SEARCH_ITERATIONS = 80;
-        private static final int MAX_AFFORDABLE_PROBE_ITERATIONS = 256;
 
         /**
          * Creates an entry sizing context.
@@ -452,40 +451,63 @@ public interface PositionSizer {
                 return zero;
             }
 
-            Num affordable = entryCost(upperBound).isLessThanOrEqual(budget) ? upperBound
-                    : searchLargestAffordable(budget, upperBound);
             if (contract == null) {
-                return affordable;
+                return entryCost(upperBound).isLessThanOrEqual(budget) ? upperBound
+                        : searchLargestAffordable(budget, upperBound);
             }
-            return largestAffordableTradable(contract, affordable, budget);
+            return largestAffordableTradable(contract, upperBound, budget);
         }
 
         /**
-         * Floors the continuous affordable quantity to a tradable quantity, then probes
-         * the next increment boundary upward. The affordability search converges from
-         * below, so a boundary that is exactly affordable can floor one increment short
-         * of its true value.
+         * Finds the largest tradable contract count that the budget can afford.
+         *
+         * <p>
+         * The count is bounded above by the margin-only upper bound, as any count above
+         * it demands more margin than the budget. The search therefore runs as a binary
+         * search over the quantity increment grid between zero and that bound,
+         * converging in {@code log2} of the bound instead of stepping one increment at
+         * a time. The result is zero when no tradable count is affordable, e.g. when
+         * the affordable range lies below the minimum quantity or notional.
+         * </p>
          *
          * @param contract   contract declaring the quantity constraints
-         * @param affordable continuous affordable quantity
+         * @param upperBound margin-only upper bound on the affordable count
          * @param budget     cash available for entry
-         * @return the largest tradable quantity the budget affords
+         * @return the largest tradable contract count the budget can afford, or zero
          */
-        private Num largestAffordableTradable(FuturesContract contract, Num affordable, Num budget) {
-            Num candidate = FuturesOrderQuantitySupport.largestTradable(contract, affordable, entryPrice);
+        private Num largestAffordableTradable(FuturesContract contract, Num upperBound, Num budget) {
+            Num zero = numFactory().zero();
             Num increment = FuturesOrderQuantitySupport.toNum(contract.quantityIncrement(), numFactory());
             if (increment == null) {
-                return candidate;
+                Num affordable = entryCost(upperBound).isLessThanOrEqual(budget) ? upperBound
+                        : searchLargestAffordable(budget, upperBound);
+                return FuturesOrderQuantitySupport.largestTradable(contract, affordable, entryPrice);
             }
-            for (int i = 0; i < MAX_AFFORDABLE_PROBE_ITERATIONS; i++) {
-                Num stepped = FuturesOrderQuantitySupport.largestTradable(contract, candidate.plus(increment),
-                        entryPrice);
-                if (!stepped.isGreaterThan(candidate) || !entryCost(stepped).isLessThanOrEqual(budget)) {
-                    return candidate;
+            Num maximum = FuturesOrderQuantitySupport.largestTradable(contract, upperBound, entryPrice);
+            if (!maximum.isPositive()) {
+                return zero;
+            }
+            if (entryCost(maximum).isLessThanOrEqual(budget)) {
+                return maximum;
+            }
+            Num two = numFactory().two();
+            Num low = zero;
+            Num high = maximum;
+            while (true) {
+                Num mid = FuturesOrderQuantitySupport.roundDown(contract, low.plus(high.minus(low).dividedBy(two)));
+                if (mid.isEqual(low) || mid.isEqual(high)) {
+                    break;
                 }
-                candidate = stepped;
+                if (entryCost(mid).isLessThanOrEqual(budget)) {
+                    low = mid;
+                } else {
+                    high = mid;
+                }
             }
-            return candidate;
+            if (!FuturesOrderQuantitySupport.isTradable(contract, low, entryPrice)) {
+                return zero;
+            }
+            return low;
         }
 
         private Num searchLargestAffordable(Num budget, Num high) {
