@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.backtest;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.Instant;
 import java.util.Objects;
 
@@ -210,9 +212,23 @@ public interface PositionSizer {
 
     private static void validatePositiveNumber(Number value, String name) {
         Objects.requireNonNull(value, name);
+        if (value instanceof BigDecimal decimalValue) {
+            requirePositiveSignum(decimalValue.signum(), name);
+            return;
+        }
+        if (value instanceof BigInteger bigIntegerValue) {
+            requirePositiveSignum(bigIntegerValue.signum(), name);
+            return;
+        }
         double doubleValue = value.doubleValue();
         if (!Double.isFinite(doubleValue) || doubleValue <= 0) {
             throw new IllegalArgumentException(name + " must be positive and finite");
+        }
+    }
+
+    private static void requirePositiveSignum(int signum, String name) {
+        if (signum <= 0) {
+            throw new IllegalArgumentException(name + " must be positive");
         }
     }
 
@@ -220,16 +236,24 @@ public interface PositionSizer {
      * Captures a factory input for later sizing.
      *
      * <p>
-     * The value is returned as-is instead of being normalized through
-     * {@code double}: the captured {@link Number} is immutable, and re-wrapping to
-     * the record's number precision happens at sizing time via
+     * The value is captured at creation time without normalizing through
+     * {@code double}: the JDK's immutable numeric types are kept as-is, and any
+     * other {@link Number} implementation is copied into an immutable
+     * {@code java.math.BigDecimal} through {@code toString()}, so later sizing
+     * calls use the creation-time value even when the caller mutates the input.
+     * Re-wrapping to the record's number precision happens at sizing time via
      * {@link Context#numOf(Number)}, which keeps exact values beyond {@code 2^53}
      * intact for decimal number factories.
      * </p>
      */
     private static Number snapshotNumber(Number value, String name) {
         validatePositiveNumber(value, name);
-        return value;
+        if (value instanceof BigInteger || value instanceof BigDecimal || value instanceof Byte
+                || value instanceof Short || value instanceof Integer || value instanceof Long || value instanceof Float
+                || value instanceof Double) {
+            return value;
+        }
+        return new BigDecimal(value.toString());
     }
 
     private static void validateProbability(Number value, String name) {
@@ -259,7 +283,7 @@ public interface PositionSizer {
 
     private static void validateFiniteNum(Num value, String name) {
         Objects.requireNonNull(value, name);
-        if (value.isNaN() || !Double.isFinite(value.doubleValue())) {
+        if (!Num.isFinite(value)) {
             throw new IllegalArgumentException(name + " must be finite");
         }
     }
@@ -451,9 +475,10 @@ public interface PositionSizer {
          * </p>
          * <p>
          * The affordability search converges at the precision limit of the record
-         * number factory, so the {@code Num} implementation must be finite-precision,
-         * e.g. {@code DoubleNum} or {@code DecimalNum} with a bounded
-         * {@code java.math.MathContext}.
+         * number factory after about {@code 3.32 * p} iterations, where {@code p} is
+         * the number of significant digits, so the {@code Num} implementation must be
+         * finite-precision, e.g. {@code DoubleNum} or {@code DecimalNum} with a bounded
+         * {@code java.math.MathContext}, up to about 9800 significant digits.
          * </p>
          *
          * @param budget cash available for entry price and transaction costs
@@ -543,16 +568,17 @@ public interface PositionSizer {
         }
 
         /**
-         * Convergence guard for the continuous affordability bisection. The midpoint
-         * reaches a bound once the interval width falls below the precision of the
-         * number implementation, so any finite-precision implementation converges well
-         * within this bound. The guard only constrains implementations with unbounded
+         * Convergence guard for the continuous affordability bisection. Each iteration
+         * halves the interval width, so the midpoint degenerates to a bound after about
+         * {@code 3.32 * p} iterations, where {@code p} is the number of significant
+         * digits of the record number implementation; {@code DoubleNum} needs about 53
+         * and a 5000-digit {@code DecimalNum} about 16610. The guard covers up to about
+         * 9800 significant digits; beyond that, and for implementations with unbounded
          * precision, e.g. a {@code DecimalNumFactory} configured with
-         * {@code java.math.MathContext.UNLIMITED}, for which the midpoint can remain
-         * strictly between the bounds indefinitely; the search then fails explicitly
-         * instead of looping.
+         * {@code java.math.MathContext.UNLIMITED}, the midpoint can remain strictly
+         * between the bounds; the search then fails explicitly instead of looping.
          */
-        private static final int AFFORDABILITY_SEARCH_GUARD_ITERATIONS = 4096;
+        private static final int AFFORDABILITY_SEARCH_GUARD_ITERATIONS = 32768;
 
         private Num searchLargestAffordable(Num budget, Num high) {
             Num low = numFactory().zero();

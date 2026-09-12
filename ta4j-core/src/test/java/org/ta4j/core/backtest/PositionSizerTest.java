@@ -7,7 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.math.BigDecimal;
 import java.math.MathContext;
+import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
@@ -60,7 +62,7 @@ class PositionSizerTest {
                 .build();
     }
 
-    private static TradingRecord spotRecord(NumFactory numFactory) {
+    private static TradingRecord spotRecord() {
         return BaseTradingRecord.builder().transactionCostModel(new FixedTransactionCostModel(1.0)).build();
     }
 
@@ -82,7 +84,7 @@ class PositionSizerTest {
     void fixedPreservesExactAmountBeyondDoublePrecision() {
         NumFactory numFactory = DecimalNumFactory.getInstance();
         PositionSizer sizer = PositionSizer.fixed(BEYOND_DOUBLE_PRECISION);
-        Num amount = sizer.amount(context(numFactory, spotRecord(numFactory)));
+        Num amount = sizer.amount(context(numFactory, spotRecord()));
         assertNumEquals(numFactory.numOf(BEYOND_DOUBLE_PRECISION), amount);
     }
 
@@ -115,7 +117,7 @@ class PositionSizerTest {
     @Test
     void maxAffordableAmountConvergesExactlyForHighPrecisionFactory() {
         NumFactory numFactory = DecimalNumFactory.getInstance(40);
-        PositionSizer.Context sizingContext = context(numFactory, spotRecord(numFactory));
+        PositionSizer.Context sizingContext = context(numFactory, spotRecord());
         Num budget = numFactory.numOf(TWO_TO_100);
         Num amount = sizingContext.maxAffordableAmount(budget);
         assertNumEquals(budget.minus(numFactory.one()), amount);
@@ -124,10 +126,37 @@ class PositionSizerTest {
     @Test
     void maxAffordableAmountFailsExplicitlyForUnboundedPrecision() {
         NumFactory numFactory = DecimalNumFactory.getInstance(MathContext.UNLIMITED);
-        PositionSizer.Context sizingContext = context(numFactory, spotRecord(numFactory));
+        PositionSizer.Context sizingContext = context(numFactory, spotRecord());
         Num budget = numFactory.numOf(TWO_TO_100);
         IllegalStateException exception = assertThrows(IllegalStateException.class,
                 () -> sizingContext.maxAffordableAmount(budget));
         assertTrue(exception.getMessage().contains("did not converge"));
+    }
+
+    @Test
+    void fixedAcceptsExactDecimalBeyondDoubleRange() {
+        NumFactory numFactory = DecimalNumFactory.getInstance();
+        PositionSizer sizer = PositionSizer.fixed(new BigDecimal("1E400"));
+        Num amount = sizer.amount(context(numFactory, spotRecord()));
+        assertNumEquals(numFactory.numOf("1E400"), amount);
+    }
+
+    @Test
+    void fixedSnapshotsMutableInputAtCreationTime() {
+        NumFactory numFactory = DecimalNumFactory.getInstance();
+        AtomicLong input = new AtomicLong(BEYOND_DOUBLE_PRECISION);
+        PositionSizer sizer = PositionSizer.fixed(input);
+        input.set(0);
+        Num amount = sizer.amount(context(numFactory, spotRecord()));
+        assertNumEquals(numFactory.numOf(BEYOND_DOUBLE_PRECISION), amount);
+    }
+
+    @Test
+    void maxAffordableAmountConvergesForFiveThousandDigitPrecision() {
+        NumFactory numFactory = DecimalNumFactory.getInstance(5000);
+        PositionSizer.Context sizingContext = context(numFactory, spotRecord());
+        Num budget = numFactory.numOf("1E2000");
+        Num amount = sizingContext.maxAffordableAmount(budget);
+        assertNumEquals(budget.minus(numFactory.one()), amount);
     }
 }
