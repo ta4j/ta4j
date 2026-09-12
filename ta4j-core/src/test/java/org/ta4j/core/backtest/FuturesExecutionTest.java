@@ -452,11 +452,29 @@ class FuturesExecutionTest {
             assertThrows(IllegalStateException.class, () -> new BarSeriesManager(series, model).run(entryOnFirstBar(),
                     tradingRecord, numFactory.numOf(10)));
 
-            model.getPendingOrder(tradingRecord).ifPresent(pending -> {
-                assertNumEquals(3, pending.filledAmount());
-                assertEquals(1, pending.fills().size());
-            });
+            StopLimitExecutionModel.PendingOrderSnapshot pending = model.getPendingOrder(tradingRecord).orElseThrow();
+            assertNumEquals(3, pending.filledAmount());
+            assertEquals(1, pending.fills().size());
             assertEquals(1, tradingRecord.getTrades().size());
+        }
+    }
+
+    @Test
+    void simulatedFuturesPartialFillsAreRoundedToTheContractIncrement() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearContract(numFactory, 0.01);
+            BarSeries series = flatSeries(numFactory, 50_000d, 5d, 5d, 5d, 5d);
+            StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(),
+                    numFactory.numOf(0.5), 4);
+            BaseTradingRecord tradingRecord = futuresRecord(contract, new ZeroCostModel());
+
+            new BarSeriesManager(series, model).run(entryOnFirstBar(), tradingRecord, numFactory.numOf(10));
+
+            assertAmounts(tradingRecord.getTrades(), 2, 2, 2);
+            List<StopLimitExecutionModel.RejectedOrder> rejected = model.getRejectedOrders(tradingRecord);
+            assertEquals(1, rejected.size());
+            assertNumEquals(10, rejected.get(0).requestedAmount());
+            assertNumEquals(6, rejected.get(0).filledAmount());
         }
     }
 

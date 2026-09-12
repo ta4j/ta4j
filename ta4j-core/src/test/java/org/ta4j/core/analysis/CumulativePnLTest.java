@@ -24,6 +24,14 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import java.util.ArrayList;
+import org.ta4j.core.FuturesContract;
+import org.ta4j.core.TradeFill;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
+import java.util.List;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeriesBuilder;
 
 public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indicator<Num>, Num> {
 
@@ -289,4 +297,83 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
                 .volume(1)
                 .add();
     }
+
+    @Test
+    public void cumulativePnLWindowedSeriesMatchesUnwindowedInsideWindow() {
+        FuturesContract contract = linearPerpetual(numFactory);
+        BarSeries full = series(numFactory, 0);
+        BarSeries windowed = series(numFactory, BEGIN);
+        BaseTradingRecord fullRecord = futuresRecord(contract, 0);
+        BaseTradingRecord windowedRecord = futuresRecord(contract, BEGIN);
+
+        CumulativePnL fullPnL = new CumulativePnL(full, fullRecord, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        CumulativePnL windowedPnL = new CumulativePnL(windowed, windowedRecord, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        assertEquals(5, fullPnL.getSize());
+        assertEquals(5, windowedPnL.getSize());
+        assertNumEquals(numFactory.zero(), windowedPnL.getValue(0));
+        assertNumEquals(numFactory.zero(), windowedPnL.getValue(BEGIN - 1));
+        for (int index = 0; index < CLOSES.length; index++) {
+            assertNumEquals(fullPnL.getValue(index), windowedPnL.getValue(BEGIN + index));
+        }
+    }
+
+    private static BaseTradingRecord futuresRecord(FuturesContract contract, int indexOffset) {
+        NumFactory numFactory = contract.contractSize().getNumFactory();
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(500))
+                .build();
+        record.operate(fill(contract, indexOffset, ExecutionSide.BUY, 1_000, 100));
+        record.operate(fill(contract, indexOffset + 4, ExecutionSide.SELL, 1_000, 110));
+        return record;
+    }
+
+    private static TradeFill fill(FuturesContract contract, int index, ExecutionSide side, double amount,
+            double price) {
+        NumFactory numFactory = contract.contractSize().getNumFactory();
+        return TradeFill.builder()
+                .index(index)
+                .time(T0.plusSeconds(index))
+                .price(numFactory.numOf(price))
+                .amount(numFactory.numOf(amount))
+                .side(side)
+                .orderId("order-" + index)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+    }
+
+    private static BarSeries series(NumFactory numFactory, int beginIndex) {
+        List<Bar> bars = new ArrayList<>();
+        Instant endTime = T0;
+        for (double close : CLOSES) {
+            Num price = numFactory.numOf(close);
+            bars.add(new BaseBar(Duration.ofMinutes(1), endTime.minus(Duration.ofMinutes(1)), endTime, price, price,
+                    price, price, numFactory.zero(), numFactory.zero(), 0));
+            endTime = endTime.plus(Duration.ofMinutes(1));
+        }
+        return new BaseBarSeriesBuilder().withNumFactory(numFactory).withBeginIndex(beginIndex).withBars(bars).build();
+    }
+
+    private static FuturesContract linearPerpetual(NumFactory numFactory) {
+        return FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01))
+                .build();
+    }
+
+    private static final Instant T0 = Instant.parse("2025-01-01T00:00:00Z");
+
+    private static final double[] CLOSES = { 100d, 102d, 105d, 103d, 110d };
+
+    private static final int BEGIN = 2;
 }

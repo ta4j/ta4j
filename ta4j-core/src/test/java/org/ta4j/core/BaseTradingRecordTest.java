@@ -1059,4 +1059,70 @@ class BaseTradingRecordTest {
         assertEquals(criterion.calculate(series, baseRecord), criterion.calculate(series, liveRecord),
                 criterion.getClass().getSimpleName());
     }
+
+    @Test
+    void futuresTradeWithoutAnExecutionTimestampIsRejected() {
+        CostModel costModel = new ZeroCostModel();
+        Trade futuresTrade = new Trade() {
+            @Override
+            public TradeType getType() {
+                return TradeType.BUY;
+            }
+
+            @Override
+            public int getIndex() {
+                return 3;
+            }
+
+            @Override
+            public Num getPricePerAsset() {
+                return numFactory.numOf(50_000);
+            }
+
+            @Override
+            public Num getNetPrice() {
+                return numFactory.numOf(50_000);
+            }
+
+            @Override
+            public Num getAmount() {
+                return numFactory.numOf(2);
+            }
+
+            @Override
+            public Num getCost() {
+                return numFactory.zero();
+            }
+
+            @Override
+            public CostModel getCostModel() {
+                return costModel;
+            }
+
+            @Override
+            public FuturesContract getFuturesContract() {
+                return FuturesContract.builder()
+                        .venue("CDE")
+                        .symbol("BTC-PERP")
+                        .productType(FuturesContract.ProductType.PERPETUAL)
+                        .settlementType(FuturesContract.SettlementType.LINEAR)
+                        .baseCurrency("BTC")
+                        .quoteCurrency("USD")
+                        .settlementCurrency("USD")
+                        .contractSize(numFactory.numOf(0.01))
+                        .quantityIncrement(numFactory.one())
+                        .minimumQuantity(numFactory.one())
+                        .build();
+            }
+        };
+
+        BaseTradingRecord record = BaseTradingRecord.builder().build();
+        record.operate(Trade.buyAt(1, numFactory.numOf(100), numFactory.one(), new ZeroCostModel()));
+
+        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                () -> record.operate(futuresTrade));
+        assertEquals("a native futures trade requires a non-null execution timestamp; set the fill time",
+                failure.getMessage());
+        assertEquals(1, record.getTrades().size());
+    }
 }

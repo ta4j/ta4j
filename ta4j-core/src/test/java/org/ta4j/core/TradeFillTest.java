@@ -15,6 +15,7 @@ import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import java.util.List;
 
 public class TradeFillTest extends AbstractIndicatorTest<BarSeries, Num> {
 
@@ -92,5 +93,32 @@ public class TradeFillTest extends AbstractIndicatorTest<BarSeries, Num> {
         }
 
         assertEquals(original, restored);
+    }
+
+    @Test
+    public void futuresFillWithoutAnExecutionTimestampIsRejected() {
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01))
+                .quantityIncrement(numFactory.one())
+                .minimumQuantity(numFactory.one())
+                .build();
+
+        NullPointerException failure = assertThrows(NullPointerException.class,
+                () -> TradeFill.builder()
+                        .index(0)
+                        .price(numFactory.numOf(50_000))
+                        .amount(numFactory.numOf(2))
+                        .side(ExecutionSide.BUY)
+                        .futuresContract(contract)
+                        .fees(List.of())
+                        .build());
+        assertEquals("time", failure.getMessage());
     }
 }

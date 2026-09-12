@@ -244,7 +244,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
 
         FuturesContract futuresContract = tradingRecord.getFuturesContract();
         if (order.triggered && limitReachable(order.tradeType, bar, order.limitPrice)) {
-            Num fillAmount = fillAmount(order.remainingAmount(), bar.getVolume());
+            Num fillAmount = fillAmount(order.remainingAmount(), bar.getVolume(), futuresContract);
             if (fillAmount.isPositive()) {
                 // Commit the fill to the record before booking it on the pending
                 // order, so a rejected fill leaves the pending order unbooked.
@@ -413,13 +413,19 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         return reference.multipliedBy(one.minus(limitOffsetRatio));
     }
 
-    private Num fillAmount(Num remainingAmount, Num barVolume) {
+    private Num fillAmount(Num remainingAmount, Num barVolume, FuturesContract futuresContract) {
         Num availableAmount = remainingAmount;
         if (!Num.isNaNOrNull(barVolume)) {
             if (!barVolume.isPositive()) {
                 return remainingAmount.getNumFactory().zero();
             }
             availableAmount = barVolume.multipliedBy(maxBarParticipationRate);
+        }
+        if (futuresContract != null) {
+            // A simulated partial fill must honor the contract quantity
+            // increment; an exchange-observed fill keeps its executed
+            // quantity.
+            availableAmount = FuturesOrderQuantitySupport.roundDown(futuresContract, availableAmount);
         }
         if (availableAmount.isNaN() || availableAmount.isNegativeOrZero()) {
             return remainingAmount.getNumFactory().zero();

@@ -70,6 +70,13 @@ public class Returns implements PerformanceIndicator {
     private final List<Num> returnFactors;
 
     /**
+     * Whether the first stored bar index reports a return. A windowed futures
+     * series reports the first bar's return measured from the account capital;
+     * every other layout keeps a placeholder value at the first stored position.
+     */
+    private final boolean firstBarReported;
+
+    /**
      * Constructor.
      *
      * @param barSeries            the bar series
@@ -152,6 +159,7 @@ public class Returns implements PerformanceIndicator {
         returnFactors = new ArrayList<>(Collections.nCopies(Math.max(size, 0), initial));
         rawValues = new ArrayList<>(Collections.nCopies(Math.max(size, 0), zero));
         values = new ArrayList<>(Collections.nCopies(Math.max(size, 0), zero));
+        this.firstBarReported = FuturesPerformanceSupport.isFutures(record) && this.seriesBegin > 0;
         if (FuturesPerformanceSupport.isFutures(record)) {
             fillFuturesReturnFactors(record, markPriceIndicator, finalIndex, handling, fallbackCapital);
         } else {
@@ -400,6 +408,17 @@ public class Returns implements PerformanceIndicator {
      */
     public List<Num> getRawValues() {
         return absoluteValues(rawValues);
+    }
+
+    /**
+     * @return whether the first stored bar index reports a return. A windowed
+     *         futures series reports the first bar's return from the account
+     *         capital; every other layout keeps a placeholder value at the first
+     *         stored position.
+     * @since 0.25.1
+     */
+    public boolean hasFirstBarReturn() {
+        return firstBarReported;
     }
 
     @Override

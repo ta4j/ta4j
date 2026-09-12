@@ -240,23 +240,6 @@ class FuturesTradingRecordTest {
     }
 
     @Test
-    void futuresEntryWithoutAnExecutionTimestampIsRejectedBeforeEnteringAccounting() {
-        for (NumFactory numFactory : factories()) {
-            FuturesContract contract = linearBtcPerpetual(numFactory);
-            NullPointerException failure = assertThrows(NullPointerException.class,
-                    () -> TradeFill.builder()
-                            .index(0)
-                            .price(numFactory.numOf(50_000))
-                            .amount(numFactory.numOf(2))
-                            .side(ExecutionSide.BUY)
-                            .futuresContract(contract)
-                            .fees(List.of())
-                            .build());
-            assertEquals("time", failure.getMessage());
-        }
-    }
-
-    @Test
     void singleExitFillAllocatesRecordedFeesPerClosedLot() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = linearBtcPerpetual(numFactory);

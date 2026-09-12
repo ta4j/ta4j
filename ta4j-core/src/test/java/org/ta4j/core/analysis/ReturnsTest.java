@@ -35,6 +35,15 @@ import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import java.util.ArrayList;
+import java.util.List;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.FuturesContract;
+import org.ta4j.core.TradeFill;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
+import static org.junit.Assert.assertTrue;
 
 public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -409,4 +418,111 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                 .volume(1)
                 .add();
     }
+
+    @Test
+    public void spotReturnsWindowedSeriesMatchesUnwindowedInsideWindow() {
+        BarSeries full = series(numFactory, 0);
+        BarSeries windowed = series(numFactory, BEGIN);
+        Position fullPosition = spotPosition(numFactory, 0);
+        Position windowedPosition = spotPosition(numFactory, BEGIN);
+
+        Returns fullReturns = new Returns(full, fullPosition, ReturnRepresentation.DECIMAL);
+        Returns windowedReturns = new Returns(windowed, windowedPosition, ReturnRepresentation.DECIMAL);
+
+        assertEquals(windowed.getEndIndex() + 1, windowedReturns.getValues().size());
+        assertTrue("first bar of a series from index 0 is a placeholder", fullReturns.getRawValues().get(0).isNaN());
+        assertTrue("returns before the first bar are undefined", windowedReturns.getRawValues().get(0).isNaN());
+        assertNumEquals(numFactory.zero(), windowedReturns.getRawValues().get(BEGIN - 1));
+        for (int index = 1; index < CLOSES.length; index++) {
+            assertNumEquals(fullReturns.getRawValues().get(index), windowedReturns.getRawValues().get(BEGIN + index));
+        }
+    }
+
+    @Test
+    public void futuresReturnsWindowedSeriesMatchesUnwindowedInsideWindow() {
+        FuturesContract contract = linearPerpetual(numFactory);
+        BarSeries full = series(numFactory, 0);
+        BarSeries windowed = series(numFactory, BEGIN);
+        BaseTradingRecord fullRecord = futuresRecord(contract, 0);
+        BaseTradingRecord windowedRecord = futuresRecord(contract, BEGIN);
+
+        Returns fullReturns = new Returns(full, fullRecord, ReturnRepresentation.DECIMAL);
+        Returns windowedReturns = new Returns(windowed, windowedRecord, ReturnRepresentation.DECIMAL);
+
+        assertEquals(full.getEndIndex() + 1, fullReturns.getValues().size());
+        assertEquals(windowed.getEndIndex() + 1, windowedReturns.getValues().size());
+        for (int index = 0; index <= windowed.getEndIndex(); index++) {
+            assertEquals("getValue must agree with getValues at " + index, windowedReturns.getValues().get(index),
+                    windowedReturns.getValue(index));
+        }
+        assertTrue("returns before the first bar are undefined", windowedReturns.getRawValues().get(0).isNaN());
+        assertNumEquals(numFactory.zero(), windowedReturns.getRawValues().get(BEGIN - 1));
+        for (int index = 1; index < CLOSES.length; index++) {
+            assertNumEquals(fullReturns.getRawValues().get(index), windowedReturns.getRawValues().get(BEGIN + index));
+        }
+    }
+
+    private static Position spotPosition(NumFactory numFactory, int indexOffset) {
+        Num one = numFactory.numOf(1);
+        Trade entry = Trade.buyAt(1 + indexOffset, numFactory.numOf(CLOSES[1]), one, RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.sellAt(4 + indexOffset, numFactory.numOf(CLOSES[4]), one, RecordedTradeCostModel.INSTANCE);
+        return new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+    }
+
+    private static BaseTradingRecord futuresRecord(FuturesContract contract, int indexOffset) {
+        NumFactory numFactory = contract.contractSize().getNumFactory();
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(500))
+                .build();
+        record.operate(fill(contract, indexOffset, ExecutionSide.BUY, 1_000, 100));
+        record.operate(fill(contract, indexOffset + 4, ExecutionSide.SELL, 1_000, 110));
+        return record;
+    }
+
+    private static TradeFill fill(FuturesContract contract, int index, ExecutionSide side, double amount,
+            double price) {
+        NumFactory numFactory = contract.contractSize().getNumFactory();
+        return TradeFill.builder()
+                .index(index)
+                .time(T0.plusSeconds(index))
+                .price(numFactory.numOf(price))
+                .amount(numFactory.numOf(amount))
+                .side(side)
+                .orderId("order-" + index)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+    }
+
+    private static BarSeries series(NumFactory numFactory, int beginIndex) {
+        List<Bar> bars = new ArrayList<>();
+        Instant endTime = T0;
+        for (double close : CLOSES) {
+            Num price = numFactory.numOf(close);
+            bars.add(new BaseBar(Duration.ofMinutes(1), endTime.minus(Duration.ofMinutes(1)), endTime, price, price,
+                    price, price, numFactory.zero(), numFactory.zero(), 0));
+            endTime = endTime.plus(Duration.ofMinutes(1));
+        }
+        return new BaseBarSeriesBuilder().withNumFactory(numFactory).withBeginIndex(beginIndex).withBars(bars).build();
+    }
+
+    private static FuturesContract linearPerpetual(NumFactory numFactory) {
+        return FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01))
+                .build();
+    }
+
+    private static final Instant T0 = Instant.parse("2025-01-01T00:00:00Z");
+
+    private static final double[] CLOSES = { 100d, 102d, 105d, 103d, 110d };
+
+    private static final int BEGIN = 2;
 }

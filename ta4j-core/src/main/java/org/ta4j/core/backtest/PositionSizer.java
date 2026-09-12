@@ -293,6 +293,33 @@ public interface PositionSizer {
             Objects.requireNonNull(holdingCostModel, "holdingCostModel");
         }
 
+        /**
+         * Creates an entry sizing context without a resolved execution timestamp.
+         *
+         * <p>
+         * Retained for binary compatibility with callers compiled against the
+         * pre-{@code fillTime} constructor; delegates with {@code fillTime} set to
+         * {@code null}.
+         * </p>
+         *
+         * @param signalIndex          bar index where the strategy emitted an operation
+         * @param entryIndex           estimated execution bar index
+         * @param entryPrice           estimated entry price
+         * @param strategy             strategy being evaluated
+         * @param barSeries            backtested bar series
+         * @param tradeType            entry trade type
+         * @param tradingRecord        trading record for the current run
+         * @param transactionCostModel transaction cost model
+         * @param holdingCostModel     holding cost model
+         * @since 0.25.1
+         */
+        public Context(int signalIndex, int entryIndex, Num entryPrice, Strategy strategy, BarSeries barSeries,
+                TradeType tradeType, TradingRecord tradingRecord, CostModel transactionCostModel,
+                CostModel holdingCostModel) {
+            this(signalIndex, entryIndex, entryPrice, null, strategy, barSeries, tradeType, tradingRecord,
+                    transactionCostModel, holdingCostModel);
+        }
+
         @Override
         public BarSeries barSeries() {
             return snapshotSeries(barSeries);
