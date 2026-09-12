@@ -630,6 +630,7 @@ public class BaseTradingRecord implements TradingRecord {
      * @param end       last index of the projected window
      */
     private void aggregateProjectedCashFlows(List<Position> positions, int end) {
+        NumFactory numFactory = defaultNumFactory();
         Map<String, Num> amounts = new LinkedHashMap<>();
         Map<String, Num> settlements = new LinkedHashMap<>();
         Map<String, FuturesCashFlow> templates = new LinkedHashMap<>();
@@ -646,8 +647,8 @@ public class BaseTradingRecord implements TradingRecord {
                     throw new IllegalArgumentException(
                             "Cash flow " + eventId + " is allocated with inconsistent metadata");
                 }
-                amounts.merge(eventId, cashFlow.amount(), Num::plus);
-                settlements.merge(eventId, cashFlow.settlementAmount(), Num::plus);
+                amounts.merge(eventId, numFactory.numOf(cashFlow.amount().getDelegate()), Num::plus);
+                settlements.merge(eventId, numFactory.numOf(cashFlow.settlementAmount().getDelegate()), Num::plus);
             }
         }
         List<FuturesCashFlow> aggregated = new ArrayList<>(templates.size());
@@ -656,8 +657,8 @@ public class BaseTradingRecord implements TradingRecord {
             FuturesCashFlow template = entry.getValue();
             Num amount = amounts.get(eventId);
             Num settlement = settlements.get(eventId);
-            FuturesCashFlow recorded = template.amount().isEqual(amount)
-                    && template.settlementAmount().isEqual(settlement) ? template
+            FuturesCashFlow recorded = FuturesValidation.numEquals(template.amount(), amount)
+                    && FuturesValidation.numEquals(template.settlementAmount(), settlement) ? template
                             : template.toBuilder().amount(amount).settlementAmount(settlement).build();
             processedEvents.put(eventId, recorded);
             aggregated.add(recorded);

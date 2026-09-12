@@ -63,9 +63,9 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
             Num notional = contract.settlementNotional(entry.getAmount().abs(), entry.getPricePerAsset(series));
             Num openingFees = entry.getCost();
             if (openingFees == null || openingFees.isNaN()) {
-                openingFees = factory.zero();
+                openingFees = notional.getNumFactory().zero();
             } else {
-                openingFees = factory.numOf(openingFees.getDelegate());
+                openingFees = notional.getNumFactory().numOf(openingFees.getDelegate());
             }
             return notional.plus(openingFees);
         }

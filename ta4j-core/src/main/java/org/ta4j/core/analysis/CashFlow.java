@@ -277,9 +277,10 @@ public class CashFlow implements PerformanceIndicator {
         FuturesPerformanceSupport.Cursor cursor = FuturesPerformanceSupport.cursor(barSeries, tradingRecord,
                 Math.min(effectiveFinalIndex, seriesEnd), markExposure, markPriceIndicator);
         int windowEndIndex = Math.min(valueEndIndex, seriesEnd);
-        for (int barIndex = valueStartIndex; barIndex <= windowEndIndex; barIndex++) {
-            Num pnl = cursor.pnlAt(barIndex);
-            setValue(barIndex, capital.plus(pnl).dividedBy(capital));
+        for (long barIndex = valueStartIndex; barIndex <= windowEndIndex; barIndex++) {
+            int index = (int) barIndex;
+            Num pnl = cursor.pnlAt(index);
+            setValue(index, capital.plus(pnl).dividedBy(capital));
         }
     }
 
