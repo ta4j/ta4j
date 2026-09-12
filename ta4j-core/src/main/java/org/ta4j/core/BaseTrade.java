@@ -586,7 +586,10 @@ public class BaseTrade implements Trade {
     private static Num sumFillFees(Num zero, List<TradeFill> fills) {
         Num totalFee = zero;
         for (TradeFill fill : fills) {
-            totalFee = totalFee.plus(fill.fee());
+            Num fillFee = fill.fee();
+            if (fillFee != null && !fillFee.isNaN()) {
+                totalFee = totalFee.plus(zero.getNumFactory().numOf(fillFee.getDelegate()));
+            }
         }
         return totalFee;
     }
@@ -596,9 +599,10 @@ public class BaseTrade implements Trade {
         if (fills.isEmpty()) {
             throw new IllegalArgumentException("fills must not be empty");
         }
-        Num totalAmount = fills.getFirst().amount().getNumFactory().zero();
-        Num quoteWeightedPrice = fills.getFirst().price().getNumFactory().zero();
-        Num quotePriceSum = fills.getFirst().price().getNumFactory().zero();
+        NumFactory numFactory = fills.getFirst().price().getNumFactory();
+        Num totalAmount = numFactory.zero();
+        Num quoteWeightedPrice = numFactory.zero();
+        Num quotePriceSum = numFactory.zero();
         FuturesContract contract = singleContract(fills);
         TradeFill earliestFill = fills.getFirst();
         ExecutionSide expectedSide = executionSide(tradeType);
@@ -615,9 +619,11 @@ public class BaseTrade implements Trade {
             if (fill.index() < earliestFill.index()) {
                 earliestFill = fill;
             }
-            totalAmount = totalAmount.plus(fill.amount());
-            quoteWeightedPrice = quoteWeightedPrice.plus(fill.price().multipliedBy(fill.amount()));
-            quotePriceSum = quotePriceSum.plus(fill.amount().dividedBy(fill.price()));
+            Num amount = numFactory.numOf(fill.amount().getDelegate());
+            Num price = numFactory.numOf(fill.price().getDelegate());
+            totalAmount = totalAmount.plus(amount);
+            quoteWeightedPrice = quoteWeightedPrice.plus(price.multipliedBy(amount));
+            quotePriceSum = quotePriceSum.plus(amount.dividedBy(price));
         }
         Num aggregatedPrice = contract != null && contract.settlementType() == FuturesContract.SettlementType.INVERSE
                 ? totalAmount.dividedBy(quotePriceSum)

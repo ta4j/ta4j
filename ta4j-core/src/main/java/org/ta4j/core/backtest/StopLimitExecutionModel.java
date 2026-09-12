@@ -244,7 +244,8 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
 
         FuturesContract futuresContract = tradingRecord.getFuturesContract();
         if (order.triggered && limitReachable(order.tradeType, bar, order.limitPrice)) {
-            Num fillAmount = fillAmount(order.remainingAmount(), bar.getVolume(), futuresContract);
+            Num fillAmount = fillAmount(order.remainingAmount(), bar.getVolume(), futuresContract,
+                    isCompleteClose(tradingRecord, order.remainingAmount()));
             boolean entryAllowed = futuresContract == null || ExecutionModelSupport.isEntryAllowed(tradingRecord,
                     futuresContract, order.tradeType, bar.getEndTime());
             if (fillAmount.isPositive() && entryAllowed) {
@@ -415,7 +416,10 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         return reference.multipliedBy(one.minus(limitOffsetRatio));
     }
 
-    private Num fillAmount(Num remainingAmount, Num barVolume, FuturesContract futuresContract) {
+    private Num fillAmount(Num remainingAmount, Num barVolume, FuturesContract futuresContract, boolean completeClose) {
+        if (completeClose) {
+            return remainingAmount;
+        }
         Num availableAmount = remainingAmount;
         if (!Num.isNaNOrNull(barVolume)) {
             if (!barVolume.isPositive()) {
@@ -423,10 +427,11 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             }
             availableAmount = barVolume.multipliedBy(maxBarParticipationRate);
         }
+        if (availableAmount.isGreaterThanOrEqual(remainingAmount)) {
+            return remainingAmount;
+        }
         if (futuresContract != null) {
-            // A simulated partial fill must honor the contract quantity
-            // increment; an exchange-observed fill keeps its executed
-            // quantity.
+            // A simulated partial fill must honor the contract quantity increment.
             availableAmount = FuturesOrderQuantitySupport.roundDown(futuresContract, availableAmount);
         }
         if (availableAmount.isNaN() || availableAmount.isNegativeOrZero()) {

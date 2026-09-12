@@ -20,6 +20,7 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.named.NamedAssetRegistry;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.serialization.AnalysisCriterionSerialization;
 import org.ta4j.core.serialization.ComponentDescriptor;
 
@@ -438,7 +439,7 @@ public interface AnalysisCriterion {
             PositionInclusionPolicy inclusionPolicy = context.positionInclusionPolicy();
             for (Position position : source.getPositions()) {
                 if (includeClosedPosition(position, start, end, inclusionPolicy)) {
-                    includedPositions.add(trimFuturesPositionToWindow(position, end));
+                    includedPositions.addAll(trimFuturesPositionToWindow(position, end));
                 }
             }
             if (context.openPositionHandling() == OpenPositionHandling.MARK_TO_MARKET) {
@@ -536,28 +537,104 @@ public interface AnalysisCriterion {
         return positions;
     }
 
-    private static Position trimFuturesPositionToWindow(Position position, int end) {
+    private static List<Position> trimFuturesPositionToWindow(Position position, int end) {
         Trade entry = position.getEntry();
-        List<TradeFill> retainedEntryFills = Trade.executionFillsOf(entry)
-                .stream()
-                .filter(fill -> fill.index() <= end)
-                .toList();
+        List<TradeFill> allEntryFills = Trade.executionFillsOf(entry);
+        List<TradeFill> retainedEntryFills = allEntryFills.stream().filter(fill -> fill.index() <= end).toList();
         Trade exit = position.getExit();
-        List<TradeFill> retainedExitFills = exit == null ? List.of()
-                : Trade.executionFillsOf(exit).stream().filter(fill -> fill.index() <= end).toList();
-        if (retainedEntryFills.size() == Trade.executionFillsOf(entry).size()
-                && (exit == null || retainedExitFills.size() == Trade.executionFillsOf(exit).size())) {
-            return position;
+        List<TradeFill> allExitFills = exit == null ? List.of() : Trade.executionFillsOf(exit);
+        List<TradeFill> retainedExitFills = allExitFills.stream().filter(fill -> fill.index() <= end).toList();
+        if (retainedEntryFills.size() == allEntryFills.size()
+                && (exit == null || retainedExitFills.size() == allExitFills.size())) {
+            return List.of(position);
+        }
+        if (retainedEntryFills.isEmpty()) {
+            return List.of();
         }
         CostModel transactionCostModel = position.getTransactionCostModel();
         CostModel holdingCostModel = position.getHoldingCostModel();
         Trade retainedEntry = Trade.fromFills(entry.getType(), retainedEntryFills, entry.getCostModel());
         if (exit == null || retainedExitFills.isEmpty()) {
-            return new Position(retainedEntry, transactionCostModel, holdingCostModel, position.getCashFlows());
+            return List
+                    .of(new Position(retainedEntry, transactionCostModel, holdingCostModel, position.getCashFlows()));
         }
         Trade retainedExit = Trade.fromFills(exit.getType(), retainedExitFills, exit.getCostModel());
-        return new Position(retainedEntry, retainedExit, transactionCostModel, holdingCostModel,
-                position.getCashFlows());
+        Num retainedEntryAmount = retainedEntry.getAmount();
+        Num retainedExitAmount = retainedExit.getAmount();
+        if (retainedExitAmount.isGreaterThan(retainedEntryAmount)) {
+            throw new IllegalArgumentException("retained exit amount cannot exceed retained entry amount");
+        }
+        if (retainedExitAmount.isEqual(retainedEntryAmount)) {
+            return List.of(new Position(retainedEntry, retainedExit, transactionCostModel, holdingCostModel,
+                    position.getCashFlows()));
+        }
+
+        List<TradeFill> closedEntryFills = new ArrayList<>();
+        List<TradeFill> openEntryFills = new ArrayList<>();
+        Num remainingClosedAmount = retainedExitAmount;
+        for (TradeFill fill : retainedEntryFills) {
+            Num fillAmount = retainedEntryAmount.getNumFactory().numOf(fill.amount().getDelegate());
+            if (!remainingClosedAmount.isPositive()) {
+                openEntryFills.add(fill);
+                continue;
+            }
+            Num closedAmount = fillAmount.isLessThanOrEqual(remainingClosedAmount) ? fillAmount : remainingClosedAmount;
+            if (closedAmount.isPositive()) {
+                closedEntryFills.add(resizeFill(fill, closedAmount, fillAmount));
+            }
+            Num openAmount = fillAmount.minus(closedAmount);
+            if (openAmount.isPositive()) {
+                openEntryFills.add(resizeFill(fill, openAmount, fillAmount));
+            }
+            remainingClosedAmount = remainingClosedAmount.minus(closedAmount);
+        }
+        if (remainingClosedAmount.isPositive() || closedEntryFills.isEmpty() || openEntryFills.isEmpty()) {
+            throw new IllegalStateException("could not split a partially closed futures position");
+        }
+        Num openAmount = retainedEntryAmount.minus(retainedExitAmount);
+        List<FuturesCashFlow> closedCashFlows = scaleCashFlows(position.getCashFlows(), retainedExitAmount,
+                retainedEntryAmount);
+        List<FuturesCashFlow> openCashFlows = scaleCashFlows(position.getCashFlows(), openAmount, retainedEntryAmount);
+        Position closedPosition = new Position(Trade.fromFills(entry.getType(), closedEntryFills, entry.getCostModel()),
+                retainedExit, transactionCostModel, holdingCostModel, closedCashFlows);
+        Position openPosition = new Position(Trade.fromFills(entry.getType(), openEntryFills, entry.getCostModel()),
+                transactionCostModel, holdingCostModel, openCashFlows);
+        return List.of(closedPosition, openPosition);
+    }
+
+    private static TradeFill resizeFill(TradeFill fill, Num amount, Num originalAmount) {
+        TradeFill.Builder builder = fill.toBuilder().amount(amount);
+        if (fill.hasRecordedFees()) {
+            builder.fees(fill.fees()
+                    .stream()
+                    .map(fee -> fee.toBuilder()
+                            .amount(scaleValue(fee.amount(), amount, originalAmount))
+                            .settlementAmount(fee.settlementAmount() == null ? null
+                                    : scaleValue(fee.settlementAmount(), amount, originalAmount))
+                            .build())
+                    .toList());
+        } else if (fill.fee() != null) {
+            builder.fee(scaleValue(fill.fee(), amount, originalAmount));
+        }
+        return builder.build();
+    }
+
+    private static List<FuturesCashFlow> scaleCashFlows(List<FuturesCashFlow> cashFlows, Num amount, Num totalAmount) {
+        if (cashFlows.isEmpty()) {
+            return List.of();
+        }
+        return cashFlows.stream()
+                .map(cashFlow -> cashFlow.toBuilder()
+                        .amount(scaleValue(cashFlow.amount(), amount, totalAmount))
+                        .settlementAmount(scaleValue(cashFlow.settlementAmount(), amount, totalAmount))
+                        .build())
+                .toList();
+    }
+
+    private static Num scaleValue(Num value, Num amount, Num totalAmount) {
+        NumFactory factory = value.getNumFactory();
+        Num ratio = factory.numOf(amount.getDelegate()).dividedBy(factory.numOf(totalAmount.getDelegate()));
+        return value.multipliedBy(ratio);
     }
 
     private static boolean includeClosedPosition(Position position, int start, int end,

@@ -17,8 +17,10 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 class BaseTradeTest {
 
@@ -191,5 +193,19 @@ class BaseTradeTest {
         assertEquals(earlierTime, trade.getTime());
         assertEquals("order-earlier", trade.getOrderId());
         assertEquals("corr-earlier", trade.getCorrelationId());
+    }
+
+    @Test
+    void fromFillsNormalizesMixedFactoriesBeforeAggregation() {
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
+        TradeFill doubleFill = new TradeFill(1, Instant.EPOCH, NUM_FACTORY.hundred(), NUM_FACTORY.one(),
+                NUM_FACTORY.zero(), ExecutionSide.BUY, null, null);
+        TradeFill decimalFill = new TradeFill(2, Instant.EPOCH, decimalFactory.numOf(102), decimalFactory.one(),
+                decimalFactory.zero(), ExecutionSide.BUY, null, null);
+
+        Trade trade = Trade.fromFills(TradeType.BUY, List.of(doubleFill, decimalFill), RecordedTradeCostModel.INSTANCE);
+
+        assertNumEquals(NUM_FACTORY.two(), trade.getAmount());
+        assertNumEquals(NUM_FACTORY.numOf(101), trade.getPricePerAsset());
     }
 }

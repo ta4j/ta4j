@@ -133,6 +133,17 @@ public class TotalFeesCriterionTest extends AbstractCriterionTest {
         assertNumEquals(numFactory.one(), getCriterion().calculate(series, closed), 1e-12);
     }
 
+    @Test
+    public void futuresRecordIncludesExecutedFeesBeyondSeriesEnd() {
+        FuturesContract contract = linearBtcPerpetual();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100).build();
+        BaseTradingRecord record = futuresRecord(contract);
+
+        record.operate(futuresFill(contract, 1, ExecutionSide.BUY, 100, 100, 0.5));
+
+        assertNumEquals(numFactory.numOf(0.5), getCriterion().calculate(series, record), 1e-12);
+    }
+
     private FuturesContract linearBtcPerpetual() {
         return FuturesContract.builder()
                 .venue("CDE")

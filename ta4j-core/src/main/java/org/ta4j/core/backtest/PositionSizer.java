@@ -667,11 +667,15 @@ public interface PositionSizer {
                     .build();
             Num fee = zero;
             for (TradeFee component : transactionCostModel.calculateFees(fill)) {
-                if (!contract.settlementCurrency().equals(component.currency())) {
-                    throw new IllegalArgumentException("cannot size a futures entry with a " + component.currency()
-                            + " fee component; express modeled fees in " + contract.settlementCurrency());
+                Num settlementAmount = component.settlementAmount();
+                if (settlementAmount == null) {
+                    if (!contract.settlementCurrency().equals(component.currency())) {
+                        throw new IllegalArgumentException("cannot size a futures entry with a " + component.currency()
+                                + " fee component; express modeled fees in " + contract.settlementCurrency());
+                    }
+                    settlementAmount = component.amount();
                 }
-                fee = fee.plus(numFactory().numOf(component.amount().getDelegate()));
+                fee = fee.plus(numFactory().numOf(settlementAmount.getDelegate()));
             }
             return fee;
         }

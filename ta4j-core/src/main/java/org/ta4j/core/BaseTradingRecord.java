@@ -1682,10 +1682,6 @@ public class BaseTradingRecord implements TradingRecord {
         return fallbackTime;
     }
 
-    private static List<TradeFill> fillsAtPrice(List<TradeFill> fills, Num price) {
-        return fills.stream().map(fill -> fill.toBuilder().price(price).build()).toList();
-    }
-
     private static Trade recordedTrade(int index, Instant time, Num pricePerAsset, Num amount, Num fee,
             ExecutionSide side, String orderId, String correlationId) {
         return recordedTrade(index, time, pricePerAsset, amount, fee, side, orderId, correlationId, null, null);
@@ -1981,7 +1977,7 @@ public class BaseTradingRecord implements TradingRecord {
             for (PositionLot lot : openLots) {
                 Trade entry = recordedTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
                         lot.fee(), lot.side(), lot.orderId(), lot.correlationId(), lot.futuresContract(),
-                        lot.feeComponents(), lot.fillsAtPrice(lot.entryPrice()));
+                        lot.feeComponents(), lot.fills());
                 trades.add(new SequencedTrade(entry, lot.entrySequence()));
             }
             return List.copyOf(trades);
@@ -1996,7 +1992,7 @@ public class BaseTradingRecord implements TradingRecord {
             for (PositionLot lot : openLots) {
                 Trade entry = recordedTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
                         lot.fee(), lot.side(), lot.orderId(), lot.correlationId(), lot.futuresContract(),
-                        lot.feeComponents(), lot.fillsAtPrice(lot.entryPrice()));
+                        lot.feeComponents(), lot.fills());
                 positions.add(new Position(entry, RecordedTradeCostModel.INSTANCE, holdingCostModel, lot.cashFlows()));
             }
             return positions;
@@ -2215,7 +2211,7 @@ public class BaseTradingRecord implements TradingRecord {
             Num average = aggregateEntryPrice(totalAmount, totalCost, inverseNotional);
             List<TradeFill> mergedFills = new ArrayList<>();
             for (PositionLot lot : openLots) {
-                mergedFills.addAll(lot.fillsAtPrice(average));
+                mergedFills.addAll(lot.fills());
             }
             Trade entry = recordedTrade(entryIndex == Integer.MAX_VALUE ? 0 : entryIndex,
                     hasUnknownEntryTime ? null : earliest, average, totalAmount, fee, side, null, null,
@@ -2290,7 +2286,7 @@ public class BaseTradingRecord implements TradingRecord {
             }
             Trade entry = recordedTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), closeAmount,
                     entryFeePortion, lot.side(), lot.orderId(), lot.correlationId(), lot.futuresContract(),
-                    entryComponents, fillsAtPrice(entryFills, lot.entryPrice()));
+                    entryComponents, entryFills);
             TradeFill.Builder exitFillBuilder = exitFill.toBuilder()
                     .index(index)
                     .time(timeOf(trade))
@@ -2544,13 +2540,6 @@ public class BaseTradingRecord implements TradingRecord {
 
             private List<TradeFill> fills() {
                 return fills;
-            }
-
-            private List<TradeFill> fillsAtPrice(Num price) {
-                if (fills.isEmpty()) {
-                    return List.of();
-                }
-                return fills.stream().map(fill -> fill.toBuilder().price(price).build()).toList();
             }
 
             private void addCashFlow(FuturesCashFlow cashFlow) {

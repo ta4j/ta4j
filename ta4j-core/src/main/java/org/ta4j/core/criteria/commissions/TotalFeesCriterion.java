@@ -67,7 +67,8 @@ public class TotalFeesCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         NumFactory factory = series.numFactory();
         if (tradingRecord.getFuturesContract() != null) {
-            return toSeriesNum(factory, executedFees(factory, tradingRecord, tradingRecord.getEndIndex(series)));
+            int finalIndex = Math.max(tradingRecord.getEndIndex(series), lastExecutedIndex(tradingRecord));
+            return toSeriesNum(factory, executedFees(factory, tradingRecord, finalIndex));
         }
         Num recordedFees = tradingRecord.getRecordedTotalFees();
         if (recordedFees != null) {
@@ -110,6 +111,18 @@ public class TotalFeesCriterion extends AbstractAnalysisCriterion {
         return total;
     }
 
+    private int lastExecutedIndex(TradingRecord tradingRecord) {
+        int lastIndex = -1;
+        for (Trade trade : tradingRecord.getTrades()) {
+            for (TradeFill fill : Trade.executionFillsOf(trade)) {
+                if (fill.index() >= 0) {
+                    lastIndex = Math.max(lastIndex, fill.index());
+                }
+            }
+        }
+        return lastIndex;
+    }
+
     private Num executedFees(NumFactory factory, Position position, int finalIndex) {
         Num total = factory.zero();
         Trade entry = position.getEntry();
@@ -126,7 +139,7 @@ public class TotalFeesCriterion extends AbstractAnalysisCriterion {
     private Num fee(NumFactory factory, Trade trade, int finalIndex) {
         Num total = factory.zero();
         for (TradeFill fill : Trade.executionFillsOf(trade)) {
-            if (fill.index() <= finalIndex && fill.fee() != null && !fill.fee().isNaN()) {
+            if (fill.index() >= 0 && fill.index() <= finalIndex && fill.fee() != null && !fill.fee().isNaN()) {
                 total = total.plus(factory.numOf(fill.fee().getDelegate()));
             }
         }
