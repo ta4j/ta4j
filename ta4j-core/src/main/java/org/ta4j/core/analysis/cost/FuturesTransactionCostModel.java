@@ -80,11 +80,12 @@ public final class FuturesTransactionCostModel implements CostModel {
         if (entry == null) {
             return DoubleNumFactory.getInstance().zero();
         }
-        Num total = entry.getPricePerAsset().getNumFactory().zero();
-        total = total.plus(sumModeledFees(entry, currentIndex));
+        NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
+        Num total = numFactory.zero();
+        total = total.plus(numFactory.numOf(sumModeledFees(entry, currentIndex).getDelegate()));
         Trade exit = position.getExit();
         if (exit != null) {
-            total = total.plus(sumModeledFees(exit, currentIndex));
+            total = total.plus(numFactory.numOf(sumModeledFees(exit, currentIndex).getDelegate()));
         }
         return total;
     }
@@ -143,10 +144,11 @@ public final class FuturesTransactionCostModel implements CostModel {
             throw new IllegalArgumentException("fee components are only defined for futures fills");
         }
         NumFactory numFactory = fill.price().getNumFactory();
+        Num amount = numFactory.numOf(fill.amount().getDelegate());
         Num settlementNotional = contract.settlementNotional(fill.amount(), fill.price());
         Num commission = settlementNotional.multipliedBy(numFactory.numOf(selectedRate(fill).getDelegate()));
         if (minimumPerContract != null) {
-            Num floor = fill.amount().multipliedBy(numFactory.numOf(minimumPerContract.getDelegate()));
+            Num floor = amount.multipliedBy(numFactory.numOf(minimumPerContract.getDelegate()));
             if (floor.isGreaterThan(commission)) {
                 commission = floor;
             }
@@ -155,8 +157,8 @@ public final class FuturesTransactionCostModel implements CostModel {
         List<TradeFee> fees = new ArrayList<>(perContractCharges.size() + 1);
         fees.add(component(TradeFee.Type.COMMISSION, commission, contract.settlementCurrency()));
         for (Map.Entry<TradeFee.Type, Num> charge : perContractCharges.entrySet()) {
-            Num amount = fill.amount().multipliedBy(numFactory.numOf(charge.getValue().getDelegate()));
-            fees.add(component(charge.getKey(), amount, contract.settlementCurrency()));
+            Num chargeAmount = amount.multipliedBy(numFactory.numOf(charge.getValue().getDelegate()));
+            fees.add(component(charge.getKey(), chargeAmount, contract.settlementCurrency()));
         }
         return List.copyOf(fees);
     }
@@ -188,10 +190,12 @@ public final class FuturesTransactionCostModel implements CostModel {
     }
 
     private Num sumModeledFees(Trade trade, int currentIndex) {
-        Num total = trade.getPricePerAsset().getNumFactory().zero();
+        NumFactory numFactory = trade.getPricePerAsset().getNumFactory();
+        Num total = numFactory.zero();
         for (TradeFill fill : Trade.executionFillsOf(trade)) {
             if (fill.index() <= currentIndex) {
-                total = total.plus(calculate(fill));
+                Num fee = fill.hasRecordedFees() ? fill.fee() : calculate(fill);
+                total = total.plus(numFactory.numOf(fee.getDelegate()));
             }
         }
         return total;

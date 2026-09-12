@@ -13,6 +13,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.FuturesContract;
+import org.ta4j.core.Position;
 import org.ta4j.core.RealtimeBar;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradeFee;
@@ -178,6 +179,8 @@ class FuturesTransactionCostModelTest {
                             .currency("USD")
                             .build()));
             Trade observed = Trade.fromFill(recorded, expensive);
+            Position observedPosition = new Position(observed, expensive, expensive);
+            assertNumEquals(0.15, expensive.calculate(observedPosition, 0));
             assertNumEquals(0.15, observed.getCost());
             assertNumEquals(contract.settlementNotional(contracts, price), observed.getValue());
             assertEquals(contract, observed.getFuturesContract());

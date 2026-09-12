@@ -236,8 +236,8 @@ public final class FuturesPositionSnapshot implements Serializable {
             return false;
         }
         return contract.equals(snapshot.contract) && observedAt.equals(snapshot.observedAt)
-                && signedContracts.isEqual(snapshot.signedContracts) && Objects.equals(positionId, snapshot.positionId)
-                && marginMode == snapshot.marginMode
+                && FuturesValidation.numEquals(signedContracts, snapshot.signedContracts)
+                && Objects.equals(positionId, snapshot.positionId) && marginMode == snapshot.marginMode
                 && FuturesValidation.numEqualsNullable(averageEntryPrice, snapshot.averageEntryPrice)
                 && FuturesValidation.numEqualsNullable(collateral, snapshot.collateral)
                 && FuturesValidation.numEqualsNullable(initialMargin, snapshot.initialMargin)

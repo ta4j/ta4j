@@ -131,8 +131,9 @@ public final class FuturesFunding implements Serializable {
             return false;
         }
         return contract.equals(funding.contract) && eventId.equals(funding.eventId) && index == funding.index
-                && time.equals(funding.time) && rate.isEqual(funding.rate)
-                && referencePrice.isEqual(funding.referencePrice) && Objects.equals(source, funding.source);
+                && time.equals(funding.time) && FuturesValidation.numEquals(rate, funding.rate)
+                && FuturesValidation.numEquals(referencePrice, funding.referencePrice)
+                && Objects.equals(source, funding.source);
     }
 
     @Override

@@ -7,6 +7,7 @@ import java.util.ArrayDeque;
 import java.util.List;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Derives the settlement economics of a matched futures {@link Position} from
@@ -64,21 +65,24 @@ final class FuturesPositionAccounting {
     static Num payoff(Position position, Num finalPrice, int finalIndex) {
         FuturesContract contract = requireContract(position);
         Trade entry = position.getEntry();
+        NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
         List<TradeFill> entryFills = executedFills(entry, finalIndex);
         ArrayDeque<FillSlice> exits = new ArrayDeque<>();
         Trade exit = position.getExit();
         if (exit != null) {
             for (TradeFill fill : executedFills(exit, finalIndex)) {
-                exits.addLast(new FillSlice(fill.price(), fill.amount()));
+                exits.addLast(fillSlice(fill, numFactory));
             }
         }
-        Num total = entry.getPricePerAsset().getNumFactory().zero();
+        Num total = numFactory.zero();
         for (TradeFill entryFill : entryFills) {
-            Num remainingEntry = entryFill.amount();
+            FillSlice normalizedEntry = fillSlice(entryFill, numFactory);
+            Num remainingEntry = normalizedEntry.amount();
             while (remainingEntry.isPositive() && !exits.isEmpty()) {
                 FillSlice exitFill = exits.removeFirst();
                 Num matched = remainingEntry.isLessThan(exitFill.amount()) ? remainingEntry : exitFill.amount();
-                total = total.plus(contract.profit(entry.getType(), matched, entryFill.price(), exitFill.price()));
+                total = total
+                        .plus(contract.profit(entry.getType(), matched, normalizedEntry.price(), exitFill.price()));
                 remainingEntry = remainingEntry.minus(matched);
                 Num remainingExit = exitFill.amount().minus(matched);
                 if (remainingExit.isPositive()) {
@@ -86,7 +90,8 @@ final class FuturesPositionAccounting {
                 }
             }
             if (remainingEntry.isPositive()) {
-                total = total.plus(contract.profit(entry.getType(), remainingEntry, entryFill.price(), finalPrice));
+                total = total
+                        .plus(contract.profit(entry.getType(), remainingEntry, normalizedEntry.price(), finalPrice));
             }
         }
         return total;
@@ -164,10 +169,11 @@ final class FuturesPositionAccounting {
      */
     static Num executedFees(Position position, int finalIndex) {
         Trade entry = position.getEntry();
-        Num total = sumFillFees(entry, finalIndex);
+        NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
+        Num total = sumFillFees(entry, finalIndex, numFactory);
         Trade exit = position.getExit();
         if (exit != null) {
-            total = total.plus(sumFillFees(exit, finalIndex));
+            total = total.plus(sumFillFees(exit, finalIndex, numFactory));
         }
         return total;
     }
@@ -285,20 +291,23 @@ final class FuturesPositionAccounting {
     private static Num executedPayoff(Position position, int finalIndex) {
         FuturesContract contract = requireContract(position);
         Trade entry = position.getEntry();
+        NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
         ArrayDeque<FillSlice> exits = new ArrayDeque<>();
         Trade exit = position.getExit();
         if (exit != null) {
             for (TradeFill fill : executedFills(exit, finalIndex)) {
-                exits.addLast(new FillSlice(fill.price(), fill.amount()));
+                exits.addLast(fillSlice(fill, numFactory));
             }
         }
-        Num total = entry.getPricePerAsset().getNumFactory().zero();
+        Num total = numFactory.zero();
         for (TradeFill entryFill : executedFills(entry, finalIndex)) {
-            Num remainingEntry = entryFill.amount();
+            FillSlice normalizedEntry = fillSlice(entryFill, numFactory);
+            Num remainingEntry = normalizedEntry.amount();
             while (remainingEntry.isPositive() && !exits.isEmpty()) {
                 FillSlice exitFill = exits.removeFirst();
                 Num matched = remainingEntry.isLessThan(exitFill.amount()) ? remainingEntry : exitFill.amount();
-                total = total.plus(contract.profit(entry.getType(), matched, entryFill.price(), exitFill.price()));
+                total = total
+                        .plus(contract.profit(entry.getType(), matched, normalizedEntry.price(), exitFill.price()));
                 remainingEntry = remainingEntry.minus(matched);
                 Num remainingExit = exitFill.amount().minus(matched);
                 if (remainingExit.isPositive()) {
@@ -314,11 +323,12 @@ final class FuturesPositionAccounting {
         if (exit == null) {
             return false;
         }
-        Num executed = exit.getPricePerAsset().getNumFactory().zero();
+        NumFactory numFactory = exit.getPricePerAsset().getNumFactory();
+        Num executed = numFactory.zero();
         for (TradeFill fill : executedFills(exit, finalIndex)) {
-            executed = executed.plus(fill.amount());
+            executed = executed.plus(numFactory.numOf(fill.amount().getDelegate()));
         }
-        return executed.isGreaterThanOrEqual(exit.getAmount());
+        return executed.isGreaterThanOrEqual(numFactory.numOf(exit.getAmount().getDelegate()));
     }
 
     private static Trade executedExit(Position position, int finalIndex) {
@@ -333,12 +343,17 @@ final class FuturesPositionAccounting {
                 .toList();
     }
 
-    private static Num sumFillFees(Trade trade, int finalIndex) {
-        Num total = trade.getPricePerAsset().getNumFactory().zero();
+    private static Num sumFillFees(Trade trade, int finalIndex, NumFactory numFactory) {
+        Num total = numFactory.zero();
         for (TradeFill fill : executedFills(trade, finalIndex)) {
-            total = total.plus(fill.fee());
+            total = total.plus(numFactory.numOf(fill.fee().getDelegate()));
         }
         return total;
+    }
+
+    private static FillSlice fillSlice(TradeFill fill, NumFactory numFactory) {
+        return new FillSlice(numFactory.numOf(fill.price().getDelegate()),
+                numFactory.numOf(fill.amount().getDelegate()));
     }
 
     private record FillSlice(Num price, Num amount) {

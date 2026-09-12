@@ -56,7 +56,7 @@ final class SettlementAmountSupport {
             if (settlementAmount == null) {
                 return amount;
             }
-            if (!settlementAmount.isEqual(amount)) {
+            if (!FuturesValidation.numEquals(settlementAmount, amount)) {
                 throw new IllegalArgumentException(
                         "settlementAmount must equal amount when both are expressed in " + settlementCurrency);
             }

@@ -473,4 +473,43 @@ public class PositionTest {
                     open.getUnrealizedProfit(numFactory.numOf(110), 0).plus(open.getRealizedProfit(0)));
         }
     }
+
+    @Test
+    public void partialFuturesHoldingCostUsesSettlementNotional() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.numOf(10))
+                    .build();
+            TradeFill executed = TradeFill.builder()
+                    .index(0)
+                    .time(T0)
+                    .price(numFactory.numOf(100))
+                    .amount(numFactory.numOf(2))
+                    .side(ExecutionSide.SELL)
+                    .futuresContract(contract)
+                    .fees(List.of())
+                    .build();
+            TradeFill future = TradeFill.builder()
+                    .index(3)
+                    .time(T0.plusSeconds(3))
+                    .price(numFactory.numOf(110))
+                    .amount(numFactory.one())
+                    .side(ExecutionSide.SELL)
+                    .futuresContract(contract)
+                    .fees(List.of())
+                    .build();
+            Trade entry = Trade.fromFills(TradeType.SELL, List.of(executed, future), RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE,
+                    new LinearBorrowingCostModel(0.01, LinearBorrowingCostModel.Applicability.BOTH));
+
+            assertNumEquals(40, position.getHoldingCost(2));
+        }
+    }
 }
