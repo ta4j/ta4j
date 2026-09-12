@@ -123,20 +123,24 @@ public final class FuturesContract implements Serializable {
                 "quantityIncrement");
         this.minimumQuantity = FuturesValidation.requirePositiveFiniteOrNull(builder.minimumQuantity,
                 "minimumQuantity");
-        Num maximumQuantity = FuturesValidation.requirePositiveFiniteOrNull(builder.maximumQuantity, "maximumQuantity");
-        this.maximumQuantity = normalizeToFactory(maximumQuantity, this.minimumQuantity);
+        Num validatedMaximumQuantity = FuturesValidation.requirePositiveFiniteOrNull(builder.maximumQuantity,
+                "maximumQuantity");
+        this.maximumQuantity = normalizeToFactory(validatedMaximumQuantity, this.minimumQuantity);
         this.minimumNotional = FuturesValidation.requirePositiveFiniteOrNull(builder.minimumNotional,
                 "minimumNotional");
-        Num maximumNotional = FuturesValidation.requirePositiveFiniteOrNull(builder.maximumNotional, "maximumNotional");
-        this.maximumNotional = normalizeToFactory(maximumNotional, this.minimumNotional);
+        Num validatedMaximumNotional = FuturesValidation.requirePositiveFiniteOrNull(builder.maximumNotional,
+                "maximumNotional");
+        this.maximumNotional = normalizeToFactory(validatedMaximumNotional, this.minimumNotional);
         this.perpetualStyle = builder.perpetualStyle;
         this.trading24x7 = builder.trading24x7;
         this.nonCrypto = builder.nonCrypto;
         this.riskManagedBy = FuturesValidation.requireNonBlankOrNull(builder.riskManagedBy, "riskManagedBy");
         this.attributes = Map.copyOf(Objects.requireNonNull(builder.attributes, "attributes"));
         requireSettlementConvention();
-        FuturesValidation.requireNotGreaterThan(minimumQuantity, maximumQuantity, "minimumQuantity", "maximumQuantity");
-        FuturesValidation.requireNotGreaterThan(minimumNotional, maximumNotional, "minimumNotional", "maximumNotional");
+        FuturesValidation.requireNotGreaterThan(minimumQuantity, this.maximumQuantity, "minimumQuantity",
+                "maximumQuantity");
+        FuturesValidation.requireNotGreaterThan(minimumNotional, this.maximumNotional, "minimumNotional",
+                "maximumNotional");
     }
 
     private static Num normalizeToFactory(Num value, Num reference) {
