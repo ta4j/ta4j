@@ -4,15 +4,25 @@
 package org.ta4j.core.criteria.pnl;
 
 import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.time.Instant;
+import java.util.List;
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.FuturesContract;
+import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFill;
+import org.ta4j.core.TradeFee;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.ReturnRepresentationPolicy;
@@ -547,5 +557,57 @@ public class NetReturnCriterionTest extends AbstractPnlCriterionTest {
 
         assertNumEquals(-0.5148514851485149, resultRate);
         assertNumEquals(0.48514851485148514, resultTotal);
+    }
+
+    private static final Instant T0 = Instant.parse("2025-01-01T00:00:00Z");
+
+    private static FuturesContract inverseBtcPerpetual(NumFactory numFactory) {
+        return FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTCUSD-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.INVERSE)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("BTC")
+                .contractSize(numFactory.numOf(100))
+                .build();
+    }
+
+    private static TradeFee commission(NumFactory numFactory, double amount, String currency) {
+        return TradeFee.builder()
+                .type(TradeFee.Type.COMMISSION)
+                .amount(numFactory.numOf(amount))
+                .currency(currency)
+                .build();
+    }
+
+    private static TradeFill fill(FuturesContract contract, int index, ExecutionSide side, double amount, double price,
+            List<TradeFee> fees) {
+        NumFactory numFactory = contract.contractSize().getNumFactory();
+        return TradeFill.builder()
+                .index(index)
+                .time(T0.plusSeconds(index))
+                .price(numFactory.numOf(price))
+                .amount(numFactory.numOf(amount))
+                .side(side)
+                .orderId("order-" + index)
+                .futuresContract(contract)
+                .fees(fees)
+                .build();
+    }
+
+    @Test
+    public void netReturnCriterionUsesEntrySettlementNotionalForFutures() {
+        FuturesContract contract = inverseBtcPerpetual(numFactory);
+        Position position = new Position(
+                Trade.fromFill(fill(contract, 0, ExecutionSide.BUY, 100, 20_000,
+                        List.of(commission(numFactory, 0.0001, "BTC"))), RecordedTradeCostModel.INSTANCE),
+                Trade.fromFill(fill(contract, 1, ExecutionSide.SELL, 100, 25_000,
+                        List.of(commission(numFactory, 0.00012, "BTC"))), RecordedTradeCostModel.INSTANCE),
+                RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+
+        assertNumEquals(1.19956, new NetReturnCriterion().calculate(series, position));
     }
 }

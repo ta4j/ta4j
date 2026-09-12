@@ -24,9 +24,11 @@ import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class PositionTest {
 
@@ -425,5 +427,36 @@ public class PositionTest {
         assertNumEquals(DoubleNum.valueOf(-1.02), profitOfOpenPositionFinalBefore);
         assertNumEquals(expectedProfitOfClosedPositionAfter, profitOfClosedPositionFinalAfter);
         assertNumEquals(expectedProfitOfClosedPositionBefore, profitOfClosedPositionFinalBefore);
+    }
+
+    private static final Instant T0 = Instant.parse("2025-01-01T00:00:00Z");
+
+    private static List<NumFactory> factories() {
+        return List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance());
+    }
+
+    @Test
+    public void spotPositionsKeepRealizedAndUnrealizedSplit() {
+        for (NumFactory numFactory : factories()) {
+            Trade entry = new BaseTrade(0, T0, numFactory.numOf(100), numFactory.one(), numFactory.zero(),
+                    ExecutionSide.BUY, null, null);
+            Trade exit = new BaseTrade(1, T0.plusSeconds(1), numFactory.numOf(110), numFactory.one(), numFactory.zero(),
+                    ExecutionSide.SELL, null, null);
+
+            Position closed = new Position(entry, exit, entry.getCostModel(), new ZeroCostModel());
+            assertNumEquals(10, closed.getProfit());
+            assertNumEquals(10, closed.getRealizedProfit(1));
+            assertNumEquals(0, closed.getUnrealizedProfit(numFactory.numOf(110), 1));
+            assertNumEquals(3, closed.getReturnOnMargin(numFactory.numOf(5), numFactory.numOf(110), 1));
+
+            Trade costlyEntry = new BaseTrade(0, T0, numFactory.numOf(100), numFactory.one(), numFactory.one(),
+                    ExecutionSide.BUY, null, null);
+            Position open = new Position(costlyEntry, costlyEntry.getCostModel(), new ZeroCostModel());
+            assertNumEquals(9, open.getProfit(0, numFactory.numOf(110)));
+            assertNumEquals(-1, open.getRealizedProfit(0));
+            assertNumEquals(10, open.getUnrealizedProfit(numFactory.numOf(110), 0));
+            assertNumEquals(open.getProfit(0, numFactory.numOf(110)),
+                    open.getUnrealizedProfit(numFactory.numOf(110), 0).plus(open.getRealizedProfit(0)));
+        }
     }
 }

@@ -8,6 +8,8 @@
 - **Futures stop-limit execution**: `StopLimitExecutionModel` supports futures contracts by committing each partial fill to the trading record as it executes, sizing entries from per-contract margin affordability, validating quantity increment/minimum/maximum and quote-notional bounds, cancelling an unfilled entry remainder before an opposing exit, and settling nothing past the run end.
 - **Futures execution and sizing hardening**: execution targets carry their resolved fill timestamp and `PositionSizer.Context` exposes it as `fillTime`, so modeled futures entry fees are calculated at the actual execution time (next-open begin, current-close end) instead of a bar-time heuristic; `BarSeriesManager` event-horizon advances skip bar indexes whose raw data has been evicted instead of throwing, and still advance for accessible extension bars; `StopLimitExecutionModel` commits a futures fill to the trading record before booking it on the pending order, so a fill rejected by the record leaves no unbooked remainder; `BaseTradingRecord` rejects futures entries without an execution timestamp with a precise error and records per-lot exit fee components for multi-lot closes; `FuturesOrderQuantitySupport` keeps quantities that are a valid multiple within tolerance instead of flooring them one increment down; `ProcessCapabilityCriterion` Javadoc now states the inverse-contract ratio orientation correctly.
 
+- **Futures test ownership and unit constants**: `PositionTest` now verifies the spot realized/unrealized profit split and `NetReturnCriterionTest` verifies that futures net return uses entry settlement notional, moving both to the classes they exercise; contract tests use `NumFactory.one()` for unit constants.
+
 ## 0.25.0 (2026-09-07)
 
 ### Breaking

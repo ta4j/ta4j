@@ -19,7 +19,6 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
-import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
@@ -442,47 +441,6 @@ class FuturesTradingRecordTest {
             assertNumEquals(17, restored.getRealizedProfit(1));
             assertNumEquals(40, restored.getUnrealizedProfit(numFactory.numOf(12_000), 1));
             assertNumEquals(57, restored.getProfit(1, numFactory.numOf(12_000)));
-        }
-    }
-
-    @Test
-    void spotPositionsKeepRealizedAndUnrealizedSplit() {
-        for (NumFactory numFactory : factories()) {
-            Trade entry = new BaseTrade(0, T0, numFactory.numOf(100), numFactory.one(), numFactory.zero(),
-                    ExecutionSide.BUY, null, null);
-            Trade exit = new BaseTrade(1, T0.plusSeconds(1), numFactory.numOf(110), numFactory.one(), numFactory.zero(),
-                    ExecutionSide.SELL, null, null);
-
-            Position closed = new Position(entry, exit, entry.getCostModel(), new ZeroCostModel());
-            assertNumEquals(10, closed.getProfit());
-            assertNumEquals(10, closed.getRealizedProfit(1));
-            assertNumEquals(0, closed.getUnrealizedProfit(numFactory.numOf(110), 1));
-            assertNumEquals(3, closed.getReturnOnMargin(numFactory.numOf(5), numFactory.numOf(110), 1));
-
-            Trade costlyEntry = new BaseTrade(0, T0, numFactory.numOf(100), numFactory.one(), numFactory.one(),
-                    ExecutionSide.BUY, null, null);
-            Position open = new Position(costlyEntry, costlyEntry.getCostModel(), new ZeroCostModel());
-            assertNumEquals(9, open.getProfit(0, numFactory.numOf(110)));
-            assertNumEquals(-1, open.getRealizedProfit(0));
-            assertNumEquals(10, open.getUnrealizedProfit(numFactory.numOf(110), 0));
-            assertNumEquals(open.getProfit(0, numFactory.numOf(110)),
-                    open.getUnrealizedProfit(numFactory.numOf(110), 0).plus(open.getRealizedProfit(0)));
-        }
-    }
-
-    @Test
-    void netReturnCriterionUsesEntrySettlementNotionalForFutures() {
-        for (NumFactory numFactory : factories()) {
-            FuturesContract contract = inverseBtcPerpetual(numFactory);
-            Position position = new Position(
-                    Trade.fromFill(fill(contract, 0, ExecutionSide.BUY, 100, 20_000,
-                            List.of(commission(numFactory, 0.0001, "BTC"))), RecordedTradeCostModel.INSTANCE),
-                    Trade.fromFill(fill(contract, 1, ExecutionSide.SELL, 100, 25_000,
-                            List.of(commission(numFactory, 0.00012, "BTC"))), RecordedTradeCostModel.INSTANCE),
-                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
-            BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
-
-            assertNumEquals(1.19956, new NetReturnCriterion().calculate(series, position));
         }
     }
 
