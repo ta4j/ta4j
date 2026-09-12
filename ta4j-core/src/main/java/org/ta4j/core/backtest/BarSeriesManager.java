@@ -674,11 +674,7 @@ public class BarSeriesManager {
     }
 
     private static void validateAmount(Num amount) {
-        if (amount == null || amount.isNaN()) {
-            throw new IllegalArgumentException("Amount must be positive and finite");
-        }
-
-        if (amount.isNegativeOrZero() || !Double.isFinite(amount.doubleValue())) {
+        if (amount == null || !Num.isFinite(amount) || amount.isNegativeOrZero()) {
             throw new IllegalArgumentException("Amount must be positive and finite");
         }
     }

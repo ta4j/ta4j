@@ -61,7 +61,8 @@ final class FuturesRecordReturnSupport {
      *                      number factory
      * @param tradingRecord native futures trading record
      * @param gross         true for gross profit, i.e. realized net profit with the
-     *                      executed fees restored and the signed funding removed
+     *                      executed fees and holding costs restored and signed
+     *                      funding removed
      * @return total return including the base, i.e. {@code 1 + profit / capital}
      * @throws IllegalStateException when the record has no positive finite initial
      *                               capital
@@ -74,7 +75,8 @@ final class FuturesRecordReturnSupport {
         Num profit = realizedProfit(numFactory, tradingRecord, finalIndex);
         if (gross) {
             profit = profit.plus(executedFees(numFactory, tradingRecord, finalIndex))
-                    .minus(funding(numFactory, tradingRecord, finalIndex));
+                    .minus(funding(numFactory, tradingRecord, finalIndex))
+                    .plus(holdingCosts(numFactory, tradingRecord, finalIndex));
         }
         return numFactory.one().plus(profit.dividedBy(capital));
     }
@@ -104,6 +106,14 @@ final class FuturesRecordReturnSupport {
         Num total = numFactory.zero();
         for (Position position : positions(tradingRecord, finalIndex)) {
             total = total.plus(executedFees(numFactory, position, finalIndex));
+        }
+        return total;
+    }
+
+    private static Num holdingCosts(NumFactory numFactory, TradingRecord tradingRecord, int finalIndex) {
+        Num total = numFactory.zero();
+        for (Position position : positions(tradingRecord, finalIndex)) {
+            total = total.plus(toNum(numFactory, position.getHoldingCost(finalIndex)));
         }
         return total;
     }

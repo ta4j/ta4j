@@ -683,6 +683,7 @@ public interface PositionSizer {
                     .withNumFactory(series.numFactory())
                     .withBars(series.getBarData())
                     .withMaxBarCount(series.getMaximumBarCount())
+                    .withBeginIndex(Math.max(0, series.getBeginIndex()))
                     .build();
         }
     }

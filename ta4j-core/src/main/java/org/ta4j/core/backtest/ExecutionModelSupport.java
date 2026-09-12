@@ -73,6 +73,13 @@ final class ExecutionModelSupport {
         return new TradeExecutionModel.ExecutionTarget(index, price, time);
     }
 
+    static boolean isEntryAllowed(TradingRecord tradingRecord, FuturesContract futuresContract, TradeType tradeType,
+            Instant fillTime) {
+        Instant tradingDisabledAt = futuresContract.tradingDisabledAt();
+        return tradingDisabledAt == null || tradeType != tradingRecord.getStartingType() || fillTime == null
+                || fillTime.isBefore(tradingDisabledAt);
+    }
+
     /**
      * Routes one execution to the trading record.
      *
@@ -98,12 +105,16 @@ final class ExecutionModelSupport {
             tradingRecord.operate(target.index(), target.price(), amount);
             return;
         }
-        FuturesOrderQuantitySupport.requireTradable(futuresContract, amount, target.price());
         TradeType tradeType = nextTradeType(tradingRecord);
+        Instant fillTime = fillTime(barSeries, target.index(), priceSource);
+        if (!isEntryAllowed(tradingRecord, futuresContract, tradeType, fillTime)) {
+            return;
+        }
+        FuturesOrderQuantitySupport.requireTradable(futuresContract, amount, target.price());
         tradingRecord.operate(TradeFill.builder()
                 .futuresContract(futuresContract)
                 .index(target.index())
-                .time(fillTime(barSeries, target.index(), priceSource))
+                .time(fillTime)
                 .price(target.price())
                 .amount(amount)
                 .side(tradeType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL)

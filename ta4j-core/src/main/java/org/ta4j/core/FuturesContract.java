@@ -123,12 +123,12 @@ public final class FuturesContract implements Serializable {
                 "quantityIncrement");
         this.minimumQuantity = FuturesValidation.requirePositiveFiniteOrNull(builder.minimumQuantity,
                 "minimumQuantity");
-        this.maximumQuantity = FuturesValidation.requirePositiveFiniteOrNull(builder.maximumQuantity,
-                "maximumQuantity");
+        Num maximumQuantity = FuturesValidation.requirePositiveFiniteOrNull(builder.maximumQuantity, "maximumQuantity");
+        this.maximumQuantity = normalizeToFactory(maximumQuantity, this.minimumQuantity);
         this.minimumNotional = FuturesValidation.requirePositiveFiniteOrNull(builder.minimumNotional,
                 "minimumNotional");
-        this.maximumNotional = FuturesValidation.requirePositiveFiniteOrNull(builder.maximumNotional,
-                "maximumNotional");
+        Num maximumNotional = FuturesValidation.requirePositiveFiniteOrNull(builder.maximumNotional, "maximumNotional");
+        this.maximumNotional = normalizeToFactory(maximumNotional, this.minimumNotional);
         this.perpetualStyle = builder.perpetualStyle;
         this.trading24x7 = builder.trading24x7;
         this.nonCrypto = builder.nonCrypto;
@@ -137,6 +137,13 @@ public final class FuturesContract implements Serializable {
         requireSettlementConvention();
         FuturesValidation.requireNotGreaterThan(minimumQuantity, maximumQuantity, "minimumQuantity", "maximumQuantity");
         FuturesValidation.requireNotGreaterThan(minimumNotional, maximumNotional, "minimumNotional", "maximumNotional");
+    }
+
+    private static Num normalizeToFactory(Num value, Num reference) {
+        if (value == null || reference == null) {
+            return value;
+        }
+        return reference.getNumFactory().numOf(value.getDelegate());
     }
 
     private void requireSettlementConvention() {
