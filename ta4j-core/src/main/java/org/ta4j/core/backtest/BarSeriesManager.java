@@ -637,10 +637,13 @@ public class BarSeriesManager {
      * Advances the record's event horizon to a bar boundary.
      *
      * <p>
-     * Bars outside the series range and bars without timestamps are skipped, so a
-     * run over a partially timestamped series stays runnable. The advance is a
-     * no-op for spot records and whenever the boundary is already behind the
-     * horizon, which keeps next-open fills from moving the horizon backwards.
+     * Bars outside the raw data range and bars without timestamps are skipped, so a
+     * run over a partially timestamped series stays runnable. Accessible extension
+     * bars whose raw data reach beyond the logical end index still advance the
+     * horizon, so a closeout executed on them is timestamp-checked against the bars
+     * actually available. The advance is a no-op for spot records and whenever the
+     * boundary is already behind the horizon, which keeps next-open fills from
+     * moving the horizon backwards.
      * </p>
      *
      * @param tradingRecord record being run
@@ -649,7 +652,11 @@ public class BarSeriesManager {
      *                      begin
      */
     private void advanceToBarBoundary(TradingRecord tradingRecord, int index, boolean barEnd) {
-        if (index < barSeries.getBeginIndex() || index > barSeries.getEndIndex()) {
+        if (index < barSeries.getBeginIndex()) {
+            return;
+        }
+        if (index > barSeries.getEndIndex()
+                && index - barSeries.getRemovedBarsCount() >= barSeries.getBarData().size()) {
             return;
         }
         Bar bar = barSeries.getBar(index);
@@ -687,8 +694,8 @@ public class BarSeriesManager {
     private PositionSizer.Context positionSizerContext(int index, Strategy strategy, TradingRecord tradingRecord,
             TradeType tradeType) {
         ExecutionTarget target = estimateEntryTarget(index, tradeType);
-        return new PositionSizer.Context(index, target.index(), target.price(), strategy, barSeries, tradeType,
-                tradingRecord, transactionCostModel, holdingCostModel);
+        return new PositionSizer.Context(index, target.index(), target.price(), target.time(), strategy, barSeries,
+                tradeType, tradingRecord, transactionCostModel, holdingCostModel);
     }
 
     private ExecutionTarget estimateEntryTarget(int index, TradeType tradeType) {
@@ -711,7 +718,8 @@ public class BarSeriesManager {
         } else if (fallbackIndex > safeEnd) {
             fallbackIndex = safeEnd;
         }
-        return new ExecutionTarget(fallbackIndex, barSeries.getBar(fallbackIndex).getClosePrice());
+        Bar bar = barSeries.getBar(fallbackIndex);
+        return new ExecutionTarget(fallbackIndex, bar.getClosePrice(), bar.getEndTime());
     }
 
     private static BarSeries snapshotSeries(BarSeries barSeries) {

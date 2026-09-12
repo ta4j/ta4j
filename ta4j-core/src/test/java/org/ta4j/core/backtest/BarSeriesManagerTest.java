@@ -9,6 +9,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.lang.reflect.Method;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
@@ -735,5 +737,29 @@ public class BarSeriesManagerTest {
     private void assertEntryAmount(double expected, TradingRecord tradingRecord) {
         double actual = tradingRecord.getPositions().getFirst().getEntry().getAmount().doubleValue();
         assertEquals(expected, actual, 1e-9);
+    }
+
+    @Test
+    public void advanceToBarBoundarySkipsRawInaccessibleExtensionIndexes() throws Exception {
+        BarSeries windowed = new MockBarSeriesBuilder().withNumFactory(numFactory).withMaxBarCount(4).build();
+        for (int i = 0; i < 10; i++) {
+            windowed.barBuilder()
+                    .endTime(Instant.parse("2013-01-01T05:00:00Z").plusSeconds(600L * i))
+                    .closePrice(1d)
+                    .add();
+        }
+        assertEquals(6, windowed.getRemovedBarsCount());
+        assertEquals(9, windowed.getEndIndex());
+
+        BarSeriesManager manager = new BarSeriesManager(windowed);
+        BaseTradingRecord record = BaseTradingRecord.builder().build();
+        Method boundary = BarSeriesManager.class.getDeclaredMethod("advanceToBarBoundary", TradingRecord.class,
+                int.class, boolean.class);
+        boundary.setAccessible(true);
+        // Before the raw-accessibility guard, these extension indexes threw
+        // IndexOutOfBoundsException from getBar; they are no-ops now.
+        boundary.invoke(manager, record, windowed.getEndIndex() + 1, true);
+        boundary.invoke(manager, record, windowed.getEndIndex() + 1, false);
+        boundary.invoke(manager, record, windowed.getEndIndex() + 100, true);
     }
 }

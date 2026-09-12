@@ -261,6 +261,8 @@ public interface PositionSizer {
      * @param signalIndex          bar index where the strategy emitted an operation
      * @param entryIndex           estimated execution bar index
      * @param entryPrice           estimated entry price
+     * @param fillTime             resolved execution timestamp of the entry target,
+     *                             or {@code null} when unknown
      * @param strategy             strategy being evaluated
      * @param barSeries            backtested bar series
      * @param tradeType            entry trade type
@@ -269,8 +271,8 @@ public interface PositionSizer {
      * @param holdingCostModel     holding cost model
      * @since 0.22.9
      */
-    public record Context(int signalIndex, int entryIndex, Num entryPrice, Strategy strategy, BarSeries barSeries,
-            TradeType tradeType, TradingRecord tradingRecord, CostModel transactionCostModel,
+    public record Context(int signalIndex, int entryIndex, Num entryPrice, Instant fillTime, Strategy strategy,
+            BarSeries barSeries, TradeType tradeType, TradingRecord tradingRecord, CostModel transactionCostModel,
             CostModel holdingCostModel) {
 
         private static final int MAX_AFFORDABLE_SEARCH_ITERATIONS = 80;
@@ -504,9 +506,12 @@ public interface PositionSizer {
                 return zero;
             }
             int index = clampedEntryIndex();
+            // A resolved target timestamp is authoritative for the modeled fill;
+            // fall back to the entry bar when the target carried none.
+            Instant time = fillTime != null ? fillTime : entryTime(index);
             TradeFill fill = TradeFill.builder()
                     .index(index)
-                    .time(entryTime(index))
+                    .time(time)
                     .price(entryPrice)
                     .amount(amount)
                     .side(entrySide())

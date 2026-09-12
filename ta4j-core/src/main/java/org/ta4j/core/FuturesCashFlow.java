@@ -254,7 +254,6 @@ public final class FuturesCashFlow implements Serializable {
             this.source = source.source;
         }
 
-        @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The builder stores the immutable FuturesContract by reference; the contract is never mutated after the value is built")
         /**
          * Sets the futures contract for this cash flow.
          *
@@ -262,6 +261,7 @@ public final class FuturesCashFlow implements Serializable {
          * @return this builder
          * @since 0.25.1
          */
+        @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The builder stores the immutable FuturesContract by reference; the contract is never mutated after the value is built")
         public Builder contract(FuturesContract contract) {
             this.contract = contract;
             return this;

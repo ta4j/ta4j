@@ -10,6 +10,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
@@ -110,8 +111,8 @@ class FuturesExecutionTest {
 
     private static PositionSizer.Context sizerContext(BarSeries series, TradingRecord tradingRecord,
             CostModel transactionCostModel, Num entryPrice) {
-        return new PositionSizer.Context(0, 0, entryPrice, entryOnFirstBar(), series, TradeType.BUY, tradingRecord,
-                transactionCostModel, new ZeroCostModel());
+        return new PositionSizer.Context(0, 0, entryPrice, null, entryOnFirstBar(), series, TradeType.BUY,
+                tradingRecord, transactionCostModel, new ZeroCostModel());
     }
 
     private static TradeFill fill(FuturesContract contract, int index, ExecutionSide side, Num amount, Num price) {
@@ -382,6 +383,165 @@ class FuturesExecutionTest {
             assertNumEquals(series.getBar(1).getOpenPrice(), openFill.price());
             assertNumEquals(0.2, entry.getCost());
             assertNumEquals(2, openRecord.getCurrentPosition().getEntry().getAmount());
+        }
+    }
+
+    @Test
+    void largestTradableKeepsAToleranceMultipleInsteadOfSteppingDown() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.numOf(1))
+                    .quantityIncrement(numFactory.numOf(0.1))
+                    .build();
+            // The closest representable double below 0.3 sits within tolerance of the
+            // 0.3 multiple, so it must stay on 0.3 instead of stepping down to 0.2.
+            assertNumEquals(0.3,
+                    FuturesOrderQuantitySupport.roundDown(contract, numFactory.numOf(0.29999999999999998d)));
+            assertNumEquals(0.2, FuturesOrderQuantitySupport.roundDown(contract, numFactory.numOf(0.29)));
+        }
+    }
+
+    @Test
+    void entrySizingFeeCalculationReceivesTheResolvedFillTimestamp() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearContract(numFactory, 1);
+            BarSeries series = flatSeries(numFactory, 100d, 100d, 100d);
+
+            BaseTradingRecord nextOpenRecord = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .initialCapital(numFactory.numOf(1_000))
+                    .initialMarginRate(numFactory.numOf(0.1))
+                    .transactionCostModel(new ZeroCostModel())
+                    .build();
+            CapturingCostModel nextOpenFees = new CapturingCostModel(numFactory);
+            new BarSeriesManager(series, nextOpenFees, new ZeroCostModel()).run(entryOnFirstBar(), nextOpenRecord,
+                    context -> context.entryCost(numFactory.numOf(2)));
+            assertEquals(series.getBar(1).getBeginTime(), nextOpenFees.capturedTime(),
+                    "a next-open fill must be fee-calculated at the open-bar begin time");
+
+            BaseTradingRecord currentCloseRecord = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .initialCapital(numFactory.numOf(1_000))
+                    .initialMarginRate(numFactory.numOf(0.1))
+                    .transactionCostModel(new ZeroCostModel())
+                    .build();
+            CapturingCostModel currentCloseFees = new CapturingCostModel(numFactory);
+            new BarSeriesManager(series, currentCloseFees, new ZeroCostModel(), new TradeOnCurrentCloseModel())
+                    .run(entryOnFirstBar(), currentCloseRecord, context -> context.entryCost(numFactory.numOf(2)));
+            assertEquals(series.getBar(0).getEndTime(), currentCloseFees.capturedTime(),
+                    "a current-close fill must be fee-calculated at the close time");
+        }
+    }
+
+    @Test
+    void rejectedFuturesFillLeavesThePendingOrderUnbooked() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearContract(numFactory, 1);
+            BarSeries series = flatSeries(numFactory, 100d, 100d, 6d, 8d, 6d);
+            StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(),
+                    numFactory.numOf(0.5), 4);
+            BaseTradingRecord tradingRecord = futuresRecord(contract, new FlakyCostModel(numFactory, 2));
+
+            assertThrows(IllegalStateException.class, () -> new BarSeriesManager(series, model).run(entryOnFirstBar(),
+                    tradingRecord, numFactory.numOf(10)));
+
+            model.getPendingOrder(tradingRecord).ifPresent(pending -> {
+                assertNumEquals(3, pending.filledAmount());
+                assertEquals(1, pending.fills().size());
+            });
+            assertEquals(1, tradingRecord.getTrades().size());
+        }
+    }
+
+    /**
+     * A {@link CostModel} that records the timestamp of the fill it is asked to
+     * price, for fee-calculation routing assertions.
+     */
+    private static final class CapturingCostModel implements CostModel {
+        private final NumFactory numFactory;
+        private final AtomicReference<Instant> capturedTime = new AtomicReference<>();
+
+        private CapturingCostModel(NumFactory numFactory) {
+            this.numFactory = numFactory;
+        }
+
+        @Override
+        public Num calculate(Position position, int finalIndex) {
+            return numFactory.zero();
+        }
+
+        @Override
+        public Num calculate(Position position) {
+            return numFactory.zero();
+        }
+
+        @Override
+        public Num calculate(Num price, Num amount) {
+            return numFactory.zero();
+        }
+
+        @Override
+        public Num calculate(TradeFill fill) {
+            capturedTime.set(fill.time());
+            return numFactory.zero();
+        }
+
+        @Override
+        public boolean equals(CostModel otherModel) {
+            return otherModel instanceof CapturingCostModel;
+        }
+
+        Instant capturedTime() {
+            return capturedTime.get();
+        }
+    }
+
+    /**
+     * A {@link CostModel} that fails when pricing the fill at a configured index,
+     * simulating a contextual cost-model failure during fill booking.
+     */
+    private static final class FlakyCostModel implements CostModel {
+        private final NumFactory numFactory;
+        private final int failingIndex;
+
+        private FlakyCostModel(NumFactory numFactory, int failingIndex) {
+            this.numFactory = numFactory;
+            this.failingIndex = failingIndex;
+        }
+
+        @Override
+        public Num calculate(Position position, int finalIndex) {
+            return numFactory.zero();
+        }
+
+        @Override
+        public Num calculate(Position position) {
+            return numFactory.zero();
+        }
+
+        @Override
+        public Num calculate(Num price, Num amount) {
+            return numFactory.zero();
+        }
+
+        @Override
+        public Num calculate(TradeFill fill) {
+            if (fill.index() == failingIndex) {
+                throw new IllegalStateException("simulated cost model failure at index " + failingIndex);
+            }
+            return numFactory.numOf(0.1);
+        }
+
+        @Override
+        public boolean equals(CostModel otherModel) {
+            return otherModel instanceof FlakyCostModel;
         }
     }
 }

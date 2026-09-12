@@ -246,10 +246,13 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         if (order.triggered && limitReachable(order.tradeType, bar, order.limitPrice)) {
             Num fillAmount = fillAmount(order.remainingAmount(), bar.getVolume());
             if (fillAmount.isPositive()) {
-                TradeFill fill = order.recordFill(index, bar, order.limitPrice, fillAmount, futuresContract);
+                // Commit the fill to the record before booking it on the pending
+                // order, so a rejected fill leaves the pending order unbooked.
+                TradeFill fill = order.toFill(index, bar, order.limitPrice, fillAmount, futuresContract);
                 if (futuresContract != null) {
                     tradingRecord.operate(fill);
                 }
+                order.recordFill(fill, fillAmount, futuresContract);
             }
         }
 
@@ -373,7 +376,8 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         if (activationIndex > barSeries.getEndIndex()) {
             return null;
         }
-        return new ExecutionTarget(activationIndex, toLimitPrice(referenceTarget.price(), tradeType));
+        return new ExecutionTarget(activationIndex, toLimitPrice(referenceTarget.price(), tradeType),
+                barSeries.getBar(activationIndex).getEndTime());
     }
 
     /**
@@ -561,14 +565,12 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             return requestedAmount.minus(filledAmount);
         }
 
-        private TradeFill recordFill(int index, Bar bar, Num price, Num amount, FuturesContract futuresContract) {
-            TradeFill fill = toFill(index, bar, price, amount, futuresContract);
+        private void recordFill(TradeFill fill, Num amount, FuturesContract futuresContract) {
             fills.add(fill);
             filledAmount = filledAmount.plus(amount);
             if (futuresContract != null) {
                 bookedAmount = filledAmount;
             }
-            return fill;
         }
 
         private TradeFill toFill(int index, Bar bar, Num price, Num amount, FuturesContract futuresContract) {

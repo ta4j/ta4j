@@ -56,7 +56,12 @@ final class FuturesOrderQuantitySupport {
         if (increment == null) {
             return quantity;
         }
-        BigDecimal steps = quantity.bigDecimalValue().divide(increment.bigDecimalValue(), 0, RoundingMode.FLOOR);
+        // The tolerance epsilon keeps a quantity that isMultipleOf accepts (within
+        // floating-point noise of a multiple) on that multiple instead of one step
+        // below it.
+        BigDecimal steps = quantity.bigDecimalValue()
+                .add(increment.abs().bigDecimalValue().multiply(MULTIPLE_TOLERANCE))
+                .divide(increment.bigDecimalValue(), 0, RoundingMode.FLOOR);
         return increment.multipliedBy(quantity.getNumFactory().numOf(steps));
     }
 

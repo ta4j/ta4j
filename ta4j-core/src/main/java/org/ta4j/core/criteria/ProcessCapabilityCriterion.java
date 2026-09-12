@@ -54,19 +54,21 @@ import org.ta4j.core.num.NumFactory;
  * compensated (Neumaier) summation and remains order-stable across the record.
  * Gross returns with non-finite magnitude are treated as decimals. A native
  * futures position uses the contract-aware gross return, so its orientation
- * follows the contract: a linear {@code BUY} and an inverse {@code SELL} gain
- * with the exit-over-entry ratio, while a linear {@code SELL} and an inverse
- * {@code BUY} gain with its inverse. The underflow boundaries, the mixed-return
- * centering, and the decimal recovery all apply that same orientation, so an
- * inverse series scores exactly like the equivalent linear series. When a limit
- * overflows the active representation (for example an LSL of -1e400 on a
- * {@code DoubleNum} series) or factory narrowing alters the retained limit (for
- * example a precision-2 LSL of 0.944 becoming 0.94), the mean-to-limit distance
- * is computed in decimal space and narrowed once against the complete 3-sigma
- * denominator. Decimal factories retain their configured finite precision
- * during this recovery, so representable capabilities stay finite and a limit
- * only marginally beyond the representation range or the rounding gap still
- * scores its full positive capability instead of collapsing to zero.
+ * follows the contract: the driving ratio is exit over entry for a linear
+ * contract and entry over exit for an inverse one, and a linear {@code BUY} and
+ * an inverse {@code SELL} gain with that ratio, while a linear {@code SELL} and
+ * an inverse {@code BUY} gain with its inverse. The underflow boundaries, the
+ * mixed-return centering, and the decimal recovery all apply that same
+ * orientation, so an inverse series scores exactly like the equivalent linear
+ * series. When a limit overflows the active representation (for example an LSL
+ * of -1e400 on a {@code DoubleNum} series) or factory narrowing alters the
+ * retained limit (for example a precision-2 LSL of 0.944 becoming 0.94), the
+ * mean-to-limit distance is computed in decimal space and narrowed once against
+ * the complete 3-sigma denominator. Decimal factories retain their configured
+ * finite precision during this recovery, so representable capabilities stay
+ * finite and a limit only marginally beyond the representation range or the
+ * rounding gap still scores its full positive capability instead of collapsing
+ * to zero.
  *
  * @since 0.24.2
  */

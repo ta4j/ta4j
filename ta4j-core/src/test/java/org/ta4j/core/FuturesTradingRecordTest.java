@@ -241,6 +241,46 @@ class FuturesTradingRecordTest {
     }
 
     @Test
+    void futuresEntryWithoutAnExecutionTimestampIsRejectedBeforeEnteringAccounting() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            NullPointerException failure = assertThrows(NullPointerException.class,
+                    () -> TradeFill.builder()
+                            .index(0)
+                            .price(numFactory.numOf(50_000))
+                            .amount(numFactory.numOf(2))
+                            .side(ExecutionSide.BUY)
+                            .futuresContract(contract)
+                            .fees(List.of())
+                            .build());
+            assertEquals("time", failure.getMessage());
+        }
+    }
+
+    @Test
+    void singleExitFillAllocatesRecordedFeesPerClosedLot() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(contract).build();
+
+            record.operate(fill(contract, 0, ExecutionSide.BUY, 3, 10_000, List.of(commission(numFactory, 3, "USD"))));
+            record.operate(fill(contract, 1, ExecutionSide.BUY, 3, 10_100, List.of(commission(numFactory, 3, "USD"))));
+            record.operate(fill(contract, 2, ExecutionSide.SELL, 6, 10_200, List.of(commission(numFactory, 6, "USD"))));
+
+            assertEquals(2, record.getPositions().size());
+            Num totalRecordedExitFees = numFactory.zero();
+            for (Position position : record.getPositions()) {
+                TradeFill recordedExit = position.getExit().getFills().getFirst();
+                assertEquals(1, recordedExit.fees().size());
+                Num lotFee = recordedExit.fees().getFirst().settlementAmount();
+                assertNumEquals(3, lotFee);
+                totalRecordedExitFees = totalRecordedExitFees.plus(lotFee);
+            }
+            assertNumEquals(6, totalRecordedExitFees);
+        }
+    }
+
+    @Test
     void variationMarginMovesProfitFromUnrealizedToRealized() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = linearBtcPerpetual(numFactory);

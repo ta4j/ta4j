@@ -943,6 +943,10 @@ public class BaseTradingRecord implements TradingRecord {
         Objects.requireNonNull(trade, "trade");
         requireMutable("operate(Trade)");
         Objects.requireNonNull(trade.getType(), "trade.type");
+        if (trade.getFuturesContract() != null && trade.getTime() == null) {
+            throw new IllegalArgumentException(
+                    "a native futures trade requires a non-null execution timestamp; set the fill time");
+        }
         lock.writeLock().lock();
         try {
             List<TradeFill> fills = Trade.executionFillsOf(trade);
@@ -1192,6 +1196,10 @@ public class BaseTradingRecord implements TradingRecord {
                 continue;
             }
             Instant fillTime = plannedTrade.getTime();
+            if (fillTime == null) {
+                throw new IllegalArgumentException(
+                        "Futures fill " + plannedTradeFill.index() + " requires a non-null execution timestamp");
+            }
             if (eventHorizon != null && fillTime.isBefore(eventHorizon)) {
                 throw new IllegalArgumentException(
                         "Fill at " + fillTime + " precedes the processed event horizon " + eventHorizon);
@@ -2234,15 +2242,18 @@ public class BaseTradingRecord implements TradingRecord {
             Trade entry = recordedTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), closeAmount,
                     entryFeePortion, lot.side(), lot.orderId(), lot.correlationId(), lot.futuresContract(),
                     entryComponents, fillsAtPrice(entryFills, lot.entryPrice()));
-            TradeFill recordedExitFill = exitFill.toBuilder()
+            TradeFill.Builder exitFillBuilder = exitFill.toBuilder()
                     .index(index)
                     .time(timeOf(trade))
                     .price(trade.getPricePerAsset())
                     .amount(closeAmount)
                     .side(sideOf(trade.getType()))
                     .orderId(trade.getOrderId())
-                    .correlationId(trade.getCorrelationId())
-                    .build();
+                    .correlationId(trade.getCorrelationId());
+            if (exitComponents != null && !exitComponents.isEmpty()) {
+                exitFillBuilder.fees(exitComponents);
+            }
+            TradeFill recordedExitFill = exitFillBuilder.build();
             Trade exit = recordedTrade(index, timeOf(trade), trade.getPricePerAsset(), closeAmount, exitFeePortion,
                     sideOf(trade.getType()), trade.getOrderId(), trade.getCorrelationId(), trade.getFuturesContract(),
                     exitComponents, List.of(recordedExitFill));

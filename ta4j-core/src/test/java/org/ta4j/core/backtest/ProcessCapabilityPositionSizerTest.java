@@ -836,7 +836,7 @@ public class ProcessCapabilityPositionSizerTest {
     private PositionSizer.Context context(BarSeries series, int signalIndex, int entryIndex) {
         Strategy strategy = new BaseStrategy(new FixedRule(), new FixedRule());
         TradingRecord tradingRecord = new BaseTradingRecord();
-        return new PositionSizer.Context(signalIndex, entryIndex, numOf(1), strategy, series, TradeType.BUY,
+        return new PositionSizer.Context(signalIndex, entryIndex, numOf(1), null, strategy, series, TradeType.BUY,
                 tradingRecord, new ZeroCostModel(), new ZeroCostModel());
     }
 }

@@ -4,6 +4,7 @@
 package org.ta4j.core.backtest;
 
 import java.time.Instant;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.FuturesContract;
@@ -35,7 +36,8 @@ final class ExecutionModelSupport {
             if (!hasAccessibleBar(signalIndex, barSeries)) {
                 return null;
             }
-            return createExecutionTarget(signalIndex, barSeries.getBar(signalIndex).getClosePrice());
+            Bar bar = barSeries.getBar(signalIndex);
+            return createExecutionTarget(signalIndex, bar.getClosePrice(), bar.getEndTime());
         }
         // Executing on the next open requires a subsequent bar; using >= keeps the
         // check exact even when signalIndex is Integer.MAX_VALUE, where signalIndex + 1
@@ -47,7 +49,8 @@ final class ExecutionModelSupport {
         if (executionIndex > barSeries.getEndIndex()) {
             return null;
         }
-        return createExecutionTarget(executionIndex, barSeries.getBar(executionIndex).getOpenPrice());
+        Bar bar = barSeries.getBar(executionIndex);
+        return createExecutionTarget(executionIndex, bar.getOpenPrice(), bar.getBeginTime());
     }
 
     private static boolean hasAccessibleBar(int signalIndex, BarSeries barSeries) {
@@ -66,8 +69,8 @@ final class ExecutionModelSupport {
         return currentPosition.getEntry().getType().complementType();
     }
 
-    private static TradeExecutionModel.ExecutionTarget createExecutionTarget(int index, Num price) {
-        return new TradeExecutionModel.ExecutionTarget(index, price);
+    private static TradeExecutionModel.ExecutionTarget createExecutionTarget(int index, Num price, Instant time) {
+        return new TradeExecutionModel.ExecutionTarget(index, price, time);
     }
 
     /**

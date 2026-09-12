@@ -98,7 +98,7 @@ public class SlippageExecutionModel implements TradeExecutionModel {
             return null;
         }
         Num slippedPrice = applySlippage(referenceTarget.price(), tradeType, slippageRatio);
-        return new ExecutionTarget(referenceTarget.index(), slippedPrice);
+        return new ExecutionTarget(referenceTarget.index(), slippedPrice, referenceTarget.time());
     }
 
     private static Num applySlippage(Num price, TradeType tradeType, Num slippageRatio) {
