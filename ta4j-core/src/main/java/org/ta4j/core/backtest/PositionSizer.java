@@ -197,7 +197,7 @@ public interface PositionSizer {
         validateProbability(fixedWinProbability, "winProbability");
         validatePositiveNumber(fixedPayoffRatio, "payoffRatio");
         validatePositiveNumber(fixedCoefficient, "coefficient");
-        validatePositiveKellyFraction(fixedWinProbability, fixedPayoffRatio, fixedCoefficient);
+        validatePositiveKellyFraction(fixedWinProbability, fixedPayoffRatio);
         return context -> {
             Num one = context.numFactory().one();
             Num probability = context.numOf(fixedWinProbability);
@@ -232,6 +232,19 @@ public interface PositionSizer {
         }
     }
 
+    private static BigDecimal decimalValue(Number value) {
+        if (value instanceof BigDecimal decimalValue) {
+            return decimalValue;
+        }
+        if (value instanceof BigInteger bigIntegerValue) {
+            return new BigDecimal(bigIntegerValue);
+        }
+        if (value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long) {
+            return BigDecimal.valueOf(value.longValue());
+        }
+        return BigDecimal.valueOf(value.doubleValue());
+    }
+
     /**
      * Captures a factory input for later sizing.
      *
@@ -258,18 +271,22 @@ public interface PositionSizer {
 
     private static void validateProbability(Number value, String name) {
         Objects.requireNonNull(value, name);
-        double doubleValue = value.doubleValue();
-        if (!Double.isFinite(doubleValue) || doubleValue <= 0 || doubleValue >= 1) {
+        if (value instanceof Float || value instanceof Double) {
+            double doubleValue = value.doubleValue();
+            if (!Double.isFinite(doubleValue)) {
+                throw new IllegalArgumentException(name + " must be finite and in (0, 1)");
+            }
+        }
+        BigDecimal decimalValue = decimalValue(value);
+        if (decimalValue.signum() <= 0 || decimalValue.compareTo(BigDecimal.ONE) >= 0) {
             throw new IllegalArgumentException(name + " must be finite and in (0, 1)");
         }
     }
 
-    private static void validatePositiveKellyFraction(Number winProbability, Number payoffRatio, Number coefficient) {
-        double probability = winProbability.doubleValue();
-        double ratio = payoffRatio.doubleValue();
-        double multiplier = coefficient.doubleValue();
-        double kellyFraction = (probability - ((1 - probability) / ratio)) * multiplier;
-        if (kellyFraction <= 0) {
+    private static void validatePositiveKellyFraction(Number winProbability, Number payoffRatio) {
+        BigDecimal probability = decimalValue(winProbability);
+        BigDecimal ratio = decimalValue(payoffRatio);
+        if (probability.multiply(ratio).compareTo(BigDecimal.ONE.subtract(probability)) <= 0) {
             throw new IllegalArgumentException("Kelly fraction must be positive");
         }
     }

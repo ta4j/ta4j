@@ -148,4 +148,13 @@ class PositionSizerTest {
         Num amount = sizingContext.maxAffordableAmount(budget);
         assertNumEquals(budget.minus(numFactory.one()), amount);
     }
+
+    @Test
+    void kellyAcceptsProbabilityBeyondDoubleRange() {
+        NumFactory numFactory = DecimalNumFactory.getInstance();
+        PositionSizer sizer = PositionSizer.kelly(BigDecimal.ONE, new BigDecimal("1E-400"), new BigDecimal("1E401"));
+        Num amount = sizer.amount(new PositionSizer.Context(0, 0, numFactory.one(), null, entryOnFirstBar(),
+                flatSeries(numFactory, 1), TradeType.BUY, spotRecord(), new ZeroCostModel(), new ZeroCostModel()));
+        assertTrue(amount.isPositive());
+    }
 }
