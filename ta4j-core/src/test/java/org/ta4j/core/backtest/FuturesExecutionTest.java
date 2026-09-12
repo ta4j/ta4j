@@ -282,26 +282,29 @@ class FuturesExecutionTest {
     }
 
     @Test
-    void maxAffordableAmountLandsExactlyOnBoundsBeyondTheContinuousSearch() {
+    void maxAffordableAmountConvergesExactlyAtLargeMagnitudes() {
         // At default DoubleNum / 16-digit DecimalNum precision the unit fee is
-        // below the ulp at 2^100, so both paths land on the precision boundary.
-        // At 40-digit precision the fee is resolvable: the boundary sits
-        // 2^20 grid units beyond what the 80-iteration continuous search
-        // reaches, and the increment-grid binary search must recover it exactly.
+        // below the ulp at 2^100, so the search lands on the precision boundary.
+        // At 40-digit precision the fee is resolvable: the boundary sits 2^20
+        // units beyond what a capped 80-iteration search reaches, and the
+        // unbounded precision-safe binary search must recover it exactly on
+        // both the increment-grid and no-increment continuous paths.
         for (NumFactory numFactory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance(),
                 DecimalNumFactory.getInstance(40))) {
             Num budget = numFactory.numOf(BigInteger.TWO.pow(100));
-            FuturesContract contract = linearContract(numFactory, 1);
-            BarSeries series = flatSeries(numFactory, 1, 1, 1);
-            FixedTransactionCostModel fees = new FixedTransactionCostModel(1.0);
-            BaseTradingRecord tradingRecord = BaseTradingRecord.builder()
-                    .futuresContract(contract)
-                    .initialMarginRate(numFactory.one())
-                    .transactionCostModel(fees)
-                    .build();
-            PositionSizer.Context context = sizerContext(series, tradingRecord, fees, numFactory.one());
-            Num expected = budget.minus(numFactory.one());
-            assertNumEquals(expected, context.maxAffordableAmount(budget));
+            for (FuturesContract contract : List.of(linearContract(numFactory, 1),
+                    linearContract(numFactory, 1).toBuilder().quantityIncrement(null).build())) {
+                BarSeries series = flatSeries(numFactory, 1, 1, 1);
+                FixedTransactionCostModel fees = new FixedTransactionCostModel(1.0);
+                BaseTradingRecord tradingRecord = BaseTradingRecord.builder()
+                        .futuresContract(contract)
+                        .initialMarginRate(numFactory.one())
+                        .transactionCostModel(fees)
+                        .build();
+                PositionSizer.Context context = sizerContext(series, tradingRecord, fees, numFactory.one());
+                Num expected = budget.minus(numFactory.one());
+                assertNumEquals(expected, context.maxAffordableAmount(budget));
+            }
         }
     }
 

@@ -275,8 +275,6 @@ public interface PositionSizer {
             BarSeries barSeries, TradeType tradeType, TradingRecord tradingRecord, CostModel transactionCostModel,
             CostModel holdingCostModel) {
 
-        private static final int MAX_AFFORDABLE_SEARCH_ITERATIONS = 80;
-
         /**
          * Creates an entry sizing context.
          *
@@ -513,9 +511,9 @@ public interface PositionSizer {
         private Num searchLargestAffordable(Num budget, Num high) {
             Num low = numFactory().zero();
             Num two = numFactory().two();
-            for (int i = 0; i < MAX_AFFORDABLE_SEARCH_ITERATIONS; i++) {
+            while (true) {
                 Num mid = low.plus(high).dividedBy(two);
-                if (mid.isZero() || mid.isEqual(low) || mid.isEqual(high)) {
+                if (mid.isEqual(low) || mid.isEqual(high)) {
                     break;
                 }
                 if (entryCost(mid).isLessThanOrEqual(budget)) {
