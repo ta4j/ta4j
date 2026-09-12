@@ -691,7 +691,7 @@ public class BaseTradingRecord implements TradingRecord {
             return totalFees;
         }
         Num fee = feeOf(trade);
-        return totalFees == null ? fee : totalFees.plus(fee);
+        return totalFees == null ? fee : totalFees.plus(totalFees.getNumFactory().numOf(fee.getDelegate()));
     }
 
     private void adoptPosition(Position position) {
@@ -2409,6 +2409,13 @@ public class BaseTradingRecord implements TradingRecord {
                     : lot.fee().multipliedBy(closeAmount).dividedBy(lotAmount);
             List<FuturesCashFlow> sliceCashFlows = lot.allocateCashFlows(closeAmount);
             List<TradeFill> entryFills = lot.allocateFills(closeAmount);
+            if (matchPolicy == ExecutionMatchPolicy.AVG_COST && !entryFills.isEmpty()) {
+                List<TradeFill> repricedEntryFills = new ArrayList<>(entryFills.size());
+                for (TradeFill entryFill : entryFills) {
+                    repricedEntryFills.add(entryFill.toBuilder().price(lot.entryPrice()).build());
+                }
+                entryFills = List.copyOf(repricedEntryFills);
+            }
             List<TradeFee> entryComponents = lot.allocateFeeComponents(closeAmount);
             if (closeAmount.isEqual(lotAmount)) {
                 openLots.remove(lot);

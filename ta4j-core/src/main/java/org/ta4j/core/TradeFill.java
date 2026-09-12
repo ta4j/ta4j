@@ -422,8 +422,10 @@ public final class TradeFill implements Serializable {
         if (!(other instanceof TradeFill fill)) {
             return false;
         }
-        return index == fill.index && Objects.equals(time, fill.time) && Objects.equals(price, fill.price)
-                && Objects.equals(amount, fill.amount) && Objects.equals(fee, fill.fee) && side == fill.side
+        return index == fill.index && Objects.equals(time, fill.time)
+                && FuturesValidation.numEqualsNullable(price, fill.price)
+                && FuturesValidation.numEqualsNullable(amount, fill.amount)
+                && FuturesValidation.numEqualsNullable(fee, fill.fee) && side == fill.side
                 && Objects.equals(orderId, fill.orderId) && Objects.equals(correlationId, fill.correlationId)
                 && Objects.equals(instrument, fill.instrument) && Objects.equals(futuresContract, fill.futuresContract)
                 && liquidity == fill.liquidity && Objects.equals(executionId, fill.executionId)
@@ -434,8 +436,9 @@ public final class TradeFill implements Serializable {
 
     @Override
     public int hashCode() {
-        return Objects.hash(index, time, price, amount, fee, side, orderId, correlationId, instrument, futuresContract,
-                liquidity, executionId, fees, liquidation, reduceOnly, marketSnapshot, positionSnapshot);
+        return Objects.hash(index, time, FuturesValidation.numHash(price), FuturesValidation.numHash(amount),
+                FuturesValidation.numHash(fee), side, orderId, correlationId, instrument, futuresContract, liquidity,
+                executionId, fees, liquidation, reduceOnly, marketSnapshot, positionSnapshot);
     }
 
     @Override

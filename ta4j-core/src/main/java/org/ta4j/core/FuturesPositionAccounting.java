@@ -276,16 +276,31 @@ final class FuturesPositionAccounting {
     }
 
     /**
-     * Returns the quantity of the position that is matched between entry and exit.
+     * Returns the quantity used to normalize the position's executed futures
+     * exposure.
      *
      * @param position futures position
-     * @return matched contract count; the entry amount while the position is open
+     * @return matched contract count
      * @since 0.25.1
      */
     static Num matchedQuantity(Position position) {
         Trade entry = position.getEntry();
         Trade exit = position.getExit();
-        return exit == null ? entry.getAmount() : exit.getAmount();
+        if (exit != null) {
+            return exit.getAmount();
+        }
+        List<TradeFill> fills = Trade.executionFillsOf(entry);
+        if (fills.isEmpty()) {
+            return entry.getAmount();
+        }
+        NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
+        Num executedAmount = numFactory.zero();
+        for (TradeFill fill : fills) {
+            if (fill.index() >= 0) {
+                executedAmount = executedAmount.plus(numFactory.numOf(fill.amount().getDelegate()));
+            }
+        }
+        return executedAmount;
     }
 
     private static Num executedPayoff(Position position, int finalIndex) {

@@ -80,10 +80,14 @@ final class ExecutionModelSupport {
     }
 
     static boolean isEntryAllowed(TradingRecord tradingRecord, FuturesContract futuresContract, Instant fillTime) {
-        Instant tradingDisabledAt = futuresContract.tradingDisabledAt();
+        Instant entryCutoff = futuresContract.tradingDisabledAt();
+        if (futuresContract.productType() == FuturesContract.ProductType.DATED
+                && (entryCutoff == null || futuresContract.expiry().isBefore(entryCutoff))) {
+            entryCutoff = futuresContract.expiry();
+        }
         Position currentPosition = tradingRecord.getCurrentPosition();
         boolean positionOpen = currentPosition != null && currentPosition.isOpened();
-        return tradingDisabledAt == null || positionOpen || fillTime == null || fillTime.isBefore(tradingDisabledAt);
+        return entryCutoff == null || positionOpen || fillTime == null || fillTime.isBefore(entryCutoff);
     }
 
     /**
