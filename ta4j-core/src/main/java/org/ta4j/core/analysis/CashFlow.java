@@ -337,8 +337,10 @@ public class CashFlow implements PerformanceIndicator {
                 multiplyValue(windowStartIndex, windowStartRatio);
                 windowStartSeeded = true;
             }
-            int start = Math.max(Math.max(entryIndex + 1, seriesBegin + 1), windowStartIndex + 1);
-            for (int barIndex = start; barIndex < endIndex && barIndex <= windowEndIndex; barIndex++) {
+            long start = Math.max(Math.max((long) entryIndex + 1L, (long) seriesBegin + 1L),
+                    (long) windowStartIndex + 1L);
+            for (long index = start; index < endIndex && index <= windowEndIndex; index++) {
+                int barIndex = (int) index;
                 Num closePrice = barSeries.getBar(barIndex).getClosePrice();
                 Num intermediateNetPrice = addCost(closePrice, averageHoldingCostPerPeriod, isLongTrade);
                 Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
@@ -350,7 +352,9 @@ public class CashFlow implements PerformanceIndicator {
             if (ratioIndex <= windowEndIndex && !(windowStartSeeded && ratioIndex == windowStartIndex)) {
                 multiplyValue(ratioIndex, ratio);
             }
-            multiplyRange(ratioIndex + 1, windowEndIndex, ratio);
+            if (ratioIndex < windowEndIndex) {
+                multiplyRange(ratioIndex + 1, windowEndIndex, ratio);
+            }
             return;
         }
 

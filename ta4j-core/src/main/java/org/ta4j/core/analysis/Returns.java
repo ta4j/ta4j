@@ -470,12 +470,13 @@ public class Returns implements PerformanceIndicator {
         NumFactory numFactory = barSeries.numFactory();
         Num minusOne = numFactory.minusOne();
         boolean isLongTrade = entry.isBuy();
-        int start = Math.max(entryIndex + 1, seriesBegin + 1);
+        long start = Math.max((long) entryIndex + 1L, (long) seriesBegin + 1L);
 
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
             Num avgCost = averageHoldingCostPerPeriod(position, endIndex, numFactory);
             Num lastPrice = entry.getNetPrice();
-            for (int i = start; i < endIndex; i++) {
+            for (long index = start; index < endIndex; index++) {
+                int i = (int) index;
                 Bar bar = barSeries.getBar(i);
                 Num intermediateNetPrice = addCost(bar.getClosePrice(), avgCost, isLongTrade);
                 Num rawReturn = calculateReturn(intermediateNetPrice, lastPrice);

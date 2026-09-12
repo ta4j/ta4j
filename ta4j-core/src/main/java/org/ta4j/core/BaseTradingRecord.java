@@ -219,6 +219,11 @@ public class BaseTradingRecord implements TradingRecord {
         }
         List<FuturesFunding> sorted = new ArrayList<>(fundingSchedule);
         sorted.sort(Comparator.comparing(FuturesFunding::time).thenComparing(FuturesFunding::eventId));
+        for (int i = 1; i < sorted.size(); i++) {
+            if (sorted.get(i).index() < sorted.get(i - 1).index()) {
+                throw new IllegalArgumentException("Funding schedule indices must be nondecreasing in time order");
+            }
+        }
         return List.copyOf(sorted);
     }
 
@@ -998,8 +1003,13 @@ public class BaseTradingRecord implements TradingRecord {
         requireMutable("operate(TradeFill)");
         lock.writeLock().lock();
         try {
-            int resolvedIndex = fill.index() >= 0 ? fill.index() : nextTradeIndex;
-            operate(Trade.fromFill(fill.toBuilder().index(resolvedIndex).build(), getTransactionCostModel()));
+            TradeType tradeType = Objects.requireNonNull(fill.side(), "fill.side").toTradeType();
+            List<PlannedTradeFill> plannedTradeFills = planTradeFills(tradeType, List.of(fill), fill.orderId(),
+                    fill.correlationId(), fill.time());
+            validatePlannedFillTimes(plannedTradeFills);
+            for (PlannedTradeFill plannedTradeFill : plannedTradeFills) {
+                applyTradeInternal(plannedTradeFill.index(), plannedTradeFill.trade(), -1L);
+            }
         } finally {
             lock.writeLock().unlock();
         }
@@ -1324,10 +1334,14 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     private List<PlannedTradeFill> planTradeFills(Trade trade, List<TradeFill> fills) {
+        return planTradeFills(trade.getType(), fills, trade.getOrderId(), trade.getCorrelationId(), trade.getTime());
+    }
+
+    private List<PlannedTradeFill> planTradeFills(TradeType tradeType, List<TradeFill> fills, String tradeOrderId,
+            String tradeCorrelationId, Instant tradeTime) {
         if (fills.isEmpty()) {
             throw new IllegalArgumentException("trade must expose at least one fill");
         }
-        TradeType tradeType = trade.getType();
         ExecutionSide tradeSide = sideOf(tradeType);
         ExecutionSide openSide = currentOpenSide();
         Position netOpenPosition = positionBook.netOpenPosition();
@@ -1336,8 +1350,8 @@ public class BaseTradingRecord implements TradingRecord {
         Num totalAmount = fillFactory.zero();
         List<PlannedTradeFill> plannedTradeFills = new ArrayList<>(fills.size());
         for (TradeFill fill : fills) {
-            PlannedTradeFill plannedTradeFill = planTradeFill(tradeType, tradeSide, fill, trade.getOrderId(),
-                    trade.getCorrelationId(), trade.getTime(), plannedNextIndex, fillFactory);
+            PlannedTradeFill plannedTradeFill = planTradeFill(tradeType, tradeSide, fill, tradeOrderId,
+                    tradeCorrelationId, tradeTime, plannedNextIndex, fillFactory);
             plannedTradeFills.add(plannedTradeFill);
             plannedNextIndex = Math.max(plannedNextIndex, plannedTradeFill.index() + 1);
             totalAmount = totalAmount.plus(plannedTradeFill.trade().getAmount());
@@ -2030,10 +2044,17 @@ public class BaseTradingRecord implements TradingRecord {
                 for (TradeFill fill : lot.fills()) {
                     latest = latestTime(latest, fill.time());
                 }
+                for (FuturesCashFlow cashFlow : lot.cashFlows()) {
+                    latest = latestTime(latest, cashFlow.time());
+                }
             }
             for (ClosedPosition closedPosition : closedPositions) {
-                latest = latestTradeTime(latest, closedPosition.position().getEntry());
-                latest = latestTradeTime(latest, closedPosition.position().getExit());
+                Position position = closedPosition.position();
+                latest = latestTradeTime(latest, position.getEntry());
+                latest = latestTradeTime(latest, position.getExit());
+                for (FuturesCashFlow cashFlow : position.getCashFlows()) {
+                    latest = latestTime(latest, cashFlow.time());
+                }
             }
             return latest;
         }

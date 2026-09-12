@@ -246,8 +246,9 @@ public final class CumulativePnL implements PerformanceIndicator {
 
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
             Num averageCostPerPeriod = averageHoldingCostPerPeriod(position, endIndex, numFactory);
-            int start = Math.max(entryIndex + 1, seriesBegin + 1);
-            for (int i = start; i < endIndex; i++) {
+            long start = Math.max((long) entryIndex + 1L, (long) seriesBegin + 1L);
+            for (long index = start; index < endIndex; index++) {
+                int i = (int) index;
                 Num close = barSeries.getBar(i).getClosePrice();
                 Num netIntermediate = addCost(close, averageCostPerPeriod, isLong);
                 Num delta = isLong ? netIntermediate.minus(netEntryPrice) : netEntryPrice.minus(netIntermediate);
