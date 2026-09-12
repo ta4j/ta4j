@@ -476,6 +476,9 @@ public class BaseTradingRecord implements TradingRecord {
 
     private static RecordConfig positionConfig(Position position) {
         Objects.requireNonNull(position, "position must not be null");
+        if (position.getFuturesContract() != null) {
+            return futuresPositionsConfig(position.getFuturesContract(), List.of(position));
+        }
         return tradesConfig(defaultCostModel(position.getTransactionCostModel()),
                 defaultCostModel(position.getHoldingCostModel()), positionToTrades(position));
     }
@@ -1194,9 +1197,8 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     private void applyFundingInternal(FuturesFunding funding) {
-        Num signedContracts = positionBook.signedContractsAt(funding.time());
-        Num amount = futuresContract.fundingCashFlow(signedContracts, funding.referencePrice(), funding.rate());
-        recordProcessedCashFlow(FuturesCashFlow.builder()
+        Num amount = positionBook.fundingAmountAt(funding.time(), funding.referencePrice(), funding.rate());
+        recordProcessedFundingCashFlow(FuturesCashFlow.builder()
                 .contract(futuresContract)
                 .type(FuturesCashFlow.Type.FUNDING)
                 .eventId(funding.eventId())
@@ -1226,6 +1228,20 @@ public class BaseTradingRecord implements TradingRecord {
                     "Cash flow " + cashFlow.eventId() + " is already recorded with different values");
         }
         positionBook.allocateCashFlow(cashFlow);
+        processedEvents.put(cashFlow.eventId(), cashFlow);
+        cashFlows.add(cashFlow);
+    }
+
+    private void recordProcessedFundingCashFlow(FuturesCashFlow cashFlow) {
+        FuturesCashFlow recorded = processedEvents.get(cashFlow.eventId());
+        if (recorded != null) {
+            if (recorded.equals(cashFlow)) {
+                return;
+            }
+            throw new IllegalArgumentException(
+                    "Cash flow " + cashFlow.eventId() + " is already recorded with different values");
+        }
+        positionBook.allocateFundingCashFlow(cashFlow);
         processedEvents.put(cashFlow.eventId(), cashFlow);
         cashFlows.add(cashFlow);
     }
@@ -2033,24 +2049,47 @@ public class BaseTradingRecord implements TradingRecord {
         }
 
         /**
-         * Nets the signed contracts held immediately before the supplied time.
+         * Sums the per-slice funding cash flows held immediately before the supplied
+         * time.
          *
          * <p>
          * A slice entered at the boundary does not pay; a slice exited at the boundary
          * still pays, because it was still held immediately before the event timestamp.
          * </p>
          *
-         * @param eventTime cash-flow event time
-         * @return signed contracts held immediately before {@code eventTime}
+         * @param eventTime      cash-flow event time
+         * @param referencePrice funding reference price
+         * @param fundingRate    signed funding rate
+         * @return funding cash flow in the settlement currency
          */
-        private Num signedContractsAt(Instant eventTime) {
+        private Num fundingAmountAt(Instant eventTime, Num referencePrice, Num fundingRate) {
             NumFactory factory = futuresContract.contractSize().getNumFactory();
             Num total = factory.zero();
             for (CashFlowSlice slice : eligibleSlices(eventTime)) {
                 Num quantity = factory.numOf(slice.quantity().getDelegate());
-                total = slice.buy() ? total.plus(quantity) : total.minus(quantity);
+                Num signedContracts = slice.buy() ? quantity : quantity.negate();
+                total = total.plus(futuresContract.fundingCashFlow(signedContracts, referencePrice, fundingRate));
             }
             return total;
+        }
+
+        private void allocateFundingCashFlow(FuturesCashFlow cashFlow) {
+            List<CashFlowSlice> slices = eligibleSlices(cashFlow.time());
+            for (CashFlowSlice slice : slices) {
+                Num quantity = cashFlow.amount().getNumFactory().numOf(slice.quantity().getDelegate());
+                Num signedContracts = slice.buy() ? quantity : quantity.negate();
+                Num portionAmount = futuresContract.fundingCashFlow(signedContracts, cashFlow.referencePrice(),
+                        cashFlow.rate());
+                FuturesCashFlow portion = cashFlow.toBuilder()
+                        .amount(portionAmount)
+                        .settlementAmount(portionAmount)
+                        .build();
+                if (slice.lot() != null) {
+                    slice.lot().addCashFlow(portion);
+                } else {
+                    appendCashFlowToClosedPosition(slice.closedIndex(), portion);
+                }
+            }
         }
 
         /**

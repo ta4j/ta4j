@@ -558,7 +558,8 @@ public final class FuturesContract implements Serializable {
         return venue.equals(contract.venue) && symbol.equals(contract.symbol) && productType == contract.productType
                 && settlementType == contract.settlementType && baseCurrency.equals(contract.baseCurrency)
                 && quoteCurrency.equals(contract.quoteCurrency)
-                && settlementCurrency.equals(contract.settlementCurrency) && contractSize.isEqual(contract.contractSize)
+                && settlementCurrency.equals(contract.settlementCurrency)
+                && FuturesValidation.numEquals(contractSize, contract.contractSize)
                 && Objects.equals(productId, contract.productId) && Objects.equals(contractCode, contract.contractCode)
                 && Objects.equals(contractRoot, contract.contractRoot)
                 && Objects.equals(displayName, contract.displayName)

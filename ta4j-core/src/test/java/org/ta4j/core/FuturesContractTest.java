@@ -232,6 +232,19 @@ class FuturesContractTest {
         }
     }
 
+    @Test
+    void numericallyEqualContractsHaveFactoryIndependentHashes() {
+        FuturesContract doubleContract = linearBuilder(DoubleNumFactory.getInstance())
+                .quantityIncrement(DoubleNumFactory.getInstance().one())
+                .build();
+        FuturesContract decimalContract = linearBuilder(DecimalNumFactory.getInstance())
+                .quantityIncrement(DecimalNumFactory.getInstance().one())
+                .build();
+
+        assertEquals(doubleContract, decimalContract);
+        assertEquals(doubleContract.hashCode(), decimalContract.hashCode());
+    }
+
     private static FuturesContract roundTrip(FuturesContract contract) throws Exception {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         try (ObjectOutputStream out = new ObjectOutputStream(bytes)) {

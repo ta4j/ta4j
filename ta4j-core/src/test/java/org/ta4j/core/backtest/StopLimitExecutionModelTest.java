@@ -88,6 +88,53 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
     }
 
     @Test
+    public void completeFuturesCloseUsesRemainingOffGridAmount() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(100d).add();
+        series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(100d).add();
+        series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(0.1d).add();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .quantityIncrement(numFactory.one())
+                .build();
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .transactionCostModel(new ZeroCostModel())
+                .build();
+        record.operate(TradeFill.builder()
+                .index(0)
+                .time(series.getBar(0).getEndTime())
+                .price(numFactory.hundred())
+                .amount(numFactory.numOf(1.5))
+                .side(ExecutionSide.BUY)
+                .futuresContract(contract)
+                .build());
+        record.operate(TradeFill.builder()
+                .index(1)
+                .time(series.getBar(1).getEndTime())
+                .price(numFactory.hundred())
+                .amount(numFactory.one())
+                .side(ExecutionSide.SELL)
+                .futuresContract(contract)
+                .build());
+
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(),
+                numFactory.numOf(0.5), 1, TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+        model.execute(1, record, series, numFactory.one());
+        model.onBar(2, record, series);
+
+        assertTrue(record.isClosed());
+        assertTrue(model.getPendingOrder(record).isEmpty());
+    }
+
+    @Test
     public void rejectsUntriggeredOrderWhenItExpires() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(100d).highPrice(102d).lowPrice(98d).closePrice(100d).volume(10d).add();

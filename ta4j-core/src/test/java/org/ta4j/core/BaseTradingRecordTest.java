@@ -1531,6 +1531,64 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    void singleFuturesPositionConstructorPreservesCashFlows() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Position position = new Position(
+                    Trade.fromFill(fill(contract, 0, ExecutionSide.BUY, 3, 10_000,
+                            List.of(commission(numFactory, 3, "USD"))), RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel(),
+                    List.of(FuturesCashFlow.builder()
+                            .contract(contract)
+                            .type(FuturesCashFlow.Type.VARIATION_MARGIN)
+                            .eventId("vm-single")
+                            .index(1)
+                            .time(T0.plusSeconds(1))
+                            .amount(numFactory.numOf(20))
+                            .currency("USD")
+                            .build()));
+
+            BaseTradingRecord record = new BaseTradingRecord(position);
+
+            assertEquals(contract, record.getFuturesContract());
+            assertEquals(1, record.getOpenPositions().size());
+            Position imported = record.getOpenPositions().getFirst();
+            assertEquals(1, imported.getCashFlows().size());
+            assertNumEquals(20, imported.getCashFlows().getFirst().settlementAmount());
+            assertNumEquals(17, imported.getRealizedProfit(1));
+            assertNumEquals(3, record.getTotalFees());
+        }
+    }
+
+    @Test
+    void scheduledFundingAllocatesOppositeHeldSlicesIndividually() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Position closedLong = new Position(
+                    Trade.fromFill(fillAtTime(contract, 0, T0, ExecutionSide.BUY, 1, 10_000, List.of()),
+                            RecordedTradeCostModel.INSTANCE),
+                    Trade.fromFill(fillAtTime(contract, 3, T0.plusSeconds(3), ExecutionSide.SELL, 1, 10_000, List.of()),
+                            RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            Position openShort = new Position(
+                    Trade.fromFill(fillAtTime(contract, 1, T0.plusSeconds(1), ExecutionSide.SELL, 1, 10_000, List.of()),
+                            RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            BaseTradingRecord record = new BaseTradingRecord(List.of(closedLong, openShort));
+
+            record.recordFunding(fundingEvent(contract, 2, 0.001, 10_000));
+
+            assertEquals(1, record.getCashFlows().size());
+            assertNumEquals(0, record.getCashFlows().getFirst().amount());
+            FuturesCashFlow longFunding = record.getPositions().getFirst().getCashFlows().getFirst();
+            FuturesCashFlow shortFunding = record.getOpenPositions().getFirst().getCashFlows().getFirst();
+            assertTrue(longFunding.amount().isNegative());
+            assertTrue(shortFunding.amount().isPositive());
+            assertNumEquals(0, longFunding.amount().plus(shortFunding.amount()));
+        }
+    }
+
+    @Test
     void fundingBoundariesDecideWhoPaysAndEventsCannotMoveBackInTime() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = linearBtcPerpetual(numFactory);

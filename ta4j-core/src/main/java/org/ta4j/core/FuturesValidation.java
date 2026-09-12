@@ -118,10 +118,20 @@ final class FuturesValidation {
         return value.bigDecimalValue().stripTrailingZeros().hashCode();
     }
 
+    static boolean numEquals(Num left, Num right) {
+        if (left == right) {
+            return true;
+        }
+        if (left.isNaN() || right.isNaN()) {
+            return left.isNaN() && right.isNaN();
+        }
+        return left.bigDecimalValue().compareTo(right.bigDecimalValue()) == 0;
+    }
+
     static boolean numEqualsNullable(Num left, Num right) {
         if (left == null || right == null) {
             return left == right;
         }
-        return left == right || left.isEqual(right);
+        return numEquals(left, right);
     }
 }
