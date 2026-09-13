@@ -3,7 +3,9 @@
  */
 package org.ta4j.core;
 
+import java.time.Instant;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.List;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.num.Num;
@@ -356,6 +358,91 @@ final class FuturesPositionAccounting {
                 .stream()
                 .filter(fill -> fill.index() >= 0 && fill.index() <= finalIndex)
                 .toList();
+    }
+
+    /**
+     * Allocates cash flows to entry fills by timestamp eligibility. A fill owns a
+     * share of every cash flow that happens strictly after it, pro rata by fill
+     * amount; the last eligible fill absorbs the rounding residue so the shares
+     * always add up to the recorded event.
+     *
+     * @param cashFlows       recorded cash flows, {@code null} treated as empty
+     * @param fills           entry fills the cash flows are allocated to, may be
+     *                        {@code null} or empty
+     * @param quantityFactory factory the fill quantities are expressed in
+     * @return one immutable slice per fill, aligned with {@code fills}; the source
+     *         flows as a single slice when there is no fill to allocate to
+     * @throws IllegalStateException    when an entry fill has no timestamp
+     * @throws IllegalArgumentException when a cash flow has no eligible fill
+     * @since 0.25.1
+     */
+    static List<List<FuturesCashFlow>> allocateCashFlowsByFill(List<FuturesCashFlow> cashFlows, List<TradeFill> fills,
+            NumFactory quantityFactory) {
+        List<FuturesCashFlow> source = cashFlows == null ? List.of() : List.copyOf(cashFlows);
+        if (fills == null || fills.isEmpty()) {
+            return List.of(source);
+        }
+        List<List<FuturesCashFlow>> slices = new ArrayList<>(fills.size());
+        for (int i = 0; i < fills.size(); i++) {
+            slices.add(new ArrayList<>());
+        }
+        for (FuturesCashFlow cashFlow : source) {
+            List<Integer> eligibleIndices = new ArrayList<>();
+            Num eligibleAmount = quantityFactory.zero();
+            for (int i = 0; i < fills.size(); i++) {
+                TradeFill fill = fills.get(i);
+                Instant fillTime = fill.time();
+                if (fillTime == null) {
+                    throw new IllegalStateException("Futures cash flows require entry timestamps");
+                }
+                if (fillTime.isBefore(cashFlow.time())) {
+                    eligibleIndices.add(i);
+                    eligibleAmount = eligibleAmount.plus(quantityFactory.numOf(fill.amount().getDelegate()));
+                }
+            }
+            if (eligibleIndices.isEmpty() || eligibleAmount.isZero()) {
+                throw new IllegalArgumentException("Cash flow has no eligible entry fill at " + cashFlow.time());
+            }
+            NumFactory amountFactory = cashFlow.amount().getNumFactory();
+            NumFactory settlementFactory = cashFlow.settlementAmount().getNumFactory();
+            Num eventAmount = amountFactory.numOf(cashFlow.amount().getDelegate());
+            Num eventSettlement = settlementFactory.numOf(cashFlow.settlementAmount().getDelegate());
+            Num allocatedAmount = amountFactory.zero();
+            Num allocatedSettlement = settlementFactory.zero();
+            for (int eligibleIndex = 0; eligibleIndex < eligibleIndices.size(); eligibleIndex++) {
+                int fillIndex = eligibleIndices.get(eligibleIndex);
+                Num fillAmount = quantityFactory.numOf(fills.get(fillIndex).amount().getDelegate());
+                boolean last = eligibleIndex == eligibleIndices.size() - 1;
+                Num portionAmount = last ? eventAmount.minus(allocatedAmount)
+                        : proportional(eventAmount, amountFactory.numOf(fillAmount.getDelegate()),
+                                amountFactory.numOf(eligibleAmount.getDelegate()));
+                Num portionSettlement = last ? eventSettlement.minus(allocatedSettlement)
+                        : proportional(eventSettlement, settlementFactory.numOf(fillAmount.getDelegate()),
+                                settlementFactory.numOf(eligibleAmount.getDelegate()));
+                allocatedAmount = allocatedAmount.plus(portionAmount);
+                allocatedSettlement = allocatedSettlement.plus(portionSettlement);
+                slices.get(fillIndex)
+                        .add(cashFlow.toBuilder().amount(portionAmount).settlementAmount(portionSettlement).build());
+            }
+        }
+        List<List<FuturesCashFlow>> immutableSlices = new ArrayList<>(slices.size());
+        for (List<FuturesCashFlow> slice : slices) {
+            immutableSlices.add(List.copyOf(slice));
+        }
+        return List.copyOf(immutableSlices);
+    }
+
+    /**
+     * Scales a value to the portion of a total it represents.
+     *
+     * @param value   value to scale
+     * @param portion portion of the total
+     * @param total   total the portion is measured against
+     * @return {@code value * portion / total}
+     * @since 0.25.1
+     */
+    static Num proportional(Num value, Num portion, Num total) {
+        return value.multipliedBy(portion).dividedBy(total);
     }
 
     private static Num sumFillFees(Trade trade, int finalIndex, NumFactory numFactory) {

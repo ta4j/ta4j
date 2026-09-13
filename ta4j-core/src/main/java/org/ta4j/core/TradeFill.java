@@ -389,8 +389,17 @@ public final class TradeFill implements Serializable {
     static TradeFill forTrade(Trade trade, ExecutionSide side) {
         FuturesContract contract = trade.getFuturesContract();
         if (contract == null) {
-            return new TradeFill(trade.getIndex(), trade.getTime(), trade.getPricePerAsset(), trade.getAmount(),
-                    trade.getCost(), side, trade.getOrderId(), trade.getCorrelationId());
+            return TradeFill.builder()
+                    .index(trade.getIndex())
+                    .time(trade.getTime())
+                    .price(trade.getPricePerAsset())
+                    .amount(trade.getAmount())
+                    .fee(trade.getCost())
+                    .side(side)
+                    .orderId(trade.getOrderId())
+                    .correlationId(trade.getCorrelationId())
+                    .instrument(trade.getInstrument())
+                    .build();
         }
         List<TradeFee> components = trade.getFees();
         if (components.isEmpty()) {

@@ -78,6 +78,14 @@ public class Returns implements PerformanceIndicator {
     private final boolean firstBarReported;
 
     /**
+     * Whether the value reported at the first stored bar is the cumulative equity
+     * accumulated since the account capital, which happens when the retained head
+     * is preceded by realized or marked exposure. Such a seed is not a period
+     * return.
+     */
+    private final boolean seededFirstBarReturn;
+
+    /**
      * Constructor.
      *
      * @param barSeries            the bar series
@@ -161,6 +169,8 @@ public class Returns implements PerformanceIndicator {
         rawValues = new ArrayList<>(Collections.nCopies(Math.max(size, 0), zero));
         values = new ArrayList<>(Collections.nCopies(Math.max(size, 0), zero));
         this.firstBarReported = FuturesPerformanceSupport.isFutures(record) && this.seriesBegin > 0;
+        this.seededFirstBarReturn = this.firstBarReported && FuturesPerformanceSupport.hasPreWindowActivity(record,
+                this.seriesBegin, FuturesPerformanceSupport.includesExposure(handling, equityCurveMode));
         if (FuturesPerformanceSupport.isFutures(record)) {
             fillFuturesReturnFactors(record, markPriceIndicator, finalIndex, handling, fallbackCapital);
         } else {
@@ -426,6 +436,19 @@ public class Returns implements PerformanceIndicator {
      */
     public boolean hasFirstBarReturn() {
         return firstBarReported;
+    }
+
+    /**
+     * Returns whether the value reported at the first stored bar is the cumulative
+     * equity accumulated since the account capital instead of a period return. Risk
+     * criteria omit such a seed, because it repeats results realized before the
+     * retained head of the series.
+     *
+     * @return {@code true} when the first reported value is a cumulative seed
+     * @since 0.25.1
+     */
+    public boolean hasSeededFirstBarReturn() {
+        return seededFirstBarReturn;
     }
 
     @Override

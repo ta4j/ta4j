@@ -595,32 +595,50 @@ public interface AnalysisCriterion {
                     position.getCashFlows()));
         }
 
+        NumFactory quantityFactory = retainedEntryAmount.getNumFactory();
         List<TradeFill> closedEntryFills = new ArrayList<>();
         List<TradeFill> openEntryFills = new ArrayList<>();
+        List<Num> closedAmounts = new ArrayList<>();
         Num remainingClosedAmount = retainedExitAmount;
         for (TradeFill fill : retainedEntryFills) {
-            Num fillAmount = retainedEntryAmount.getNumFactory().numOf(fill.amount().getDelegate());
-            if (!remainingClosedAmount.isPositive()) {
-                openEntryFills.add(fill);
-                continue;
+            Num fillAmount = quantityFactory.numOf(fill.amount().getDelegate());
+            Num closedAmount = quantityFactory.zero();
+            if (remainingClosedAmount.isPositive()) {
+                closedAmount = fillAmount.isLessThanOrEqual(remainingClosedAmount) ? fillAmount : remainingClosedAmount;
+                remainingClosedAmount = remainingClosedAmount.minus(closedAmount);
             }
-            Num closedAmount = fillAmount.isLessThanOrEqual(remainingClosedAmount) ? fillAmount : remainingClosedAmount;
+            Num openAmount = fillAmount.minus(closedAmount);
             if (closedAmount.isPositive()) {
                 closedEntryFills.add(resizeFill(fill, closedAmount, fillAmount));
             }
-            Num openAmount = fillAmount.minus(closedAmount);
             if (openAmount.isPositive()) {
                 openEntryFills.add(resizeFill(fill, openAmount, fillAmount));
             }
-            remainingClosedAmount = remainingClosedAmount.minus(closedAmount);
+            closedAmounts.add(closedAmount);
         }
         if (remainingClosedAmount.isPositive() || closedEntryFills.isEmpty() || openEntryFills.isEmpty()) {
             throw new IllegalStateException("could not split a partially closed futures position");
         }
-        Num openAmount = retainedEntryAmount.minus(retainedExitAmount);
-        List<FuturesCashFlow> closedCashFlows = scaleCashFlows(position.getCashFlows(), retainedExitAmount,
-                retainedEntryAmount);
-        List<FuturesCashFlow> openCashFlows = scaleCashFlows(position.getCashFlows(), openAmount, retainedEntryAmount);
+        // A cash flow belongs to the entry fill that was live when it was recorded,
+        // so the split scales each fill's own allocation rather than the aggregate.
+        List<List<FuturesCashFlow>> cashFlowSlices = FuturesPositionAccounting
+                .allocateCashFlowsByFill(position.getCashFlows(), retainedEntryFills, quantityFactory);
+        List<FuturesCashFlow> closedCashFlows = new ArrayList<>();
+        List<FuturesCashFlow> openCashFlows = new ArrayList<>();
+        for (int i = 0; i < retainedEntryFills.size(); i++) {
+            Num fillAmount = quantityFactory.numOf(retainedEntryFills.get(i).amount().getDelegate());
+            Num closedAmount = closedAmounts.get(i);
+            for (FuturesCashFlow cashFlow : cashFlowSlices.get(i)) {
+                Num closedPortion = scaleValue(cashFlow.amount(), closedAmount, fillAmount);
+                Num closedSettlement = scaleValue(cashFlow.settlementAmount(), closedAmount, fillAmount);
+                closedCashFlows
+                        .add(cashFlow.toBuilder().amount(closedPortion).settlementAmount(closedSettlement).build());
+                openCashFlows.add(cashFlow.toBuilder()
+                        .amount(cashFlow.amount().minus(closedPortion))
+                        .settlementAmount(cashFlow.settlementAmount().minus(closedSettlement))
+                        .build());
+            }
+        }
         Position closedPosition = new Position(Trade.fromFills(entry.getType(), closedEntryFills, entry.getCostModel()),
                 retainedExit, transactionCostModel, holdingCostModel, closedCashFlows);
         Position openPosition = new Position(Trade.fromFills(entry.getType(), openEntryFills, entry.getCostModel()),
@@ -651,18 +669,6 @@ public interface AnalysisCriterion {
             builder.fee(scaleValue(fill.fee(), amount, originalAmount));
         }
         return builder.build();
-    }
-
-    private static List<FuturesCashFlow> scaleCashFlows(List<FuturesCashFlow> cashFlows, Num amount, Num totalAmount) {
-        if (cashFlows.isEmpty()) {
-            return List.of();
-        }
-        return cashFlows.stream()
-                .map(cashFlow -> cashFlow.toBuilder()
-                        .amount(scaleValue(cashFlow.amount(), amount, totalAmount))
-                        .settlementAmount(scaleValue(cashFlow.settlementAmount(), amount, totalAmount))
-                        .build())
-                .toList();
     }
 
     private static Num scaleValue(Num value, Num amount, Num totalAmount) {

@@ -10,6 +10,8 @@ import java.io.ObjectOutputStream;
 import java.time.Instant;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.util.ArrayList;
+import org.ta4j.core.analysis.AnalysisContext;
+import org.ta4j.core.analysis.AnalysisWindow;
 import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import java.util.List;
@@ -29,6 +31,7 @@ import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.criteria.NumberOfWinningPositionsCriterion;
 import org.ta4j.core.criteria.PositionsRatioCriterion;
 import org.ta4j.core.criteria.SqnCriterion;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.helpers.VarianceCriterion;
 import org.ta4j.core.criteria.pnl.GrossLossCriterion;
 import org.ta4j.core.criteria.pnl.GrossProfitCriterion;
@@ -36,6 +39,7 @@ import org.ta4j.core.criteria.pnl.GrossProfitLossRatioCriterion;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitLossRatioCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitLossPercentageCriterion;
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -1128,6 +1132,60 @@ class BaseTradingRecordTest {
         assertEquals("a native futures trade requires a non-null execution timestamp; set the fill time",
                 failure.getMessage());
         assertEquals(1, record.getTrades().size());
+    }
+
+    @Test
+    void recordFundingAndCashFlowsRejectIndicesThatBreakTimeOrder() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            BaseTradingRecord record = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .initialCapital(numFactory.numOf(1_000))
+                    .build();
+            record.operate(fill(contract, 0, ExecutionSide.BUY, 100, 10_000, List.of()));
+
+            record.recordFunding(FuturesFunding.builder()
+                    .contract(contract)
+                    .eventId("funding-late")
+                    .index(10)
+                    .time(T0.plusSeconds(10))
+                    .rate(numFactory.numOf(0.001))
+                    .referencePrice(numFactory.numOf(10_000))
+                    .build());
+            // Recording this event later must not carry an earlier index: profit
+            // queries filter by index, so they would include it while excluding the
+            // event that happened before it.
+            FuturesFunding backInTime = FuturesFunding.builder()
+                    .contract(contract)
+                    .eventId("funding-early")
+                    .index(5)
+                    .time(T0.plusSeconds(20))
+                    .rate(numFactory.numOf(0.001))
+                    .referencePrice(numFactory.numOf(10_000))
+                    .build();
+            assertThrows(IllegalArgumentException.class, () -> record.recordFunding(backInTime));
+
+            FuturesCashFlow lateFlow = FuturesCashFlow.builder()
+                    .contract(contract)
+                    .type(FuturesCashFlow.Type.VARIATION_MARGIN)
+                    .eventId("vm-late")
+                    .index(15)
+                    .time(T0.plusSeconds(30))
+                    .amount(numFactory.one())
+                    .currency(contract.settlementCurrency())
+                    .build();
+            record.recordCashFlow(lateFlow);
+            FuturesCashFlow flowBackInTime = FuturesCashFlow.builder()
+                    .contract(contract)
+                    .type(FuturesCashFlow.Type.VARIATION_MARGIN)
+                    .eventId("vm-early")
+                    .index(12)
+                    .time(T0.plusSeconds(40))
+                    .amount(numFactory.one())
+                    .currency(contract.settlementCurrency())
+                    .build();
+            assertThrows(IllegalArgumentException.class, () -> record.recordCashFlow(flowBackInTime));
+        }
     }
 
     private static final Instant T0 = Instant.parse("2025-01-01T00:00:00Z");
@@ -2279,6 +2337,50 @@ class BaseTradingRecordTest {
                             .reduce(Num::plus)
                             .orElseThrow());
             assertTrue(record.getOpenPositions().getFirst().getCashFlows().isEmpty());
+        }
+    }
+
+    @Test
+    void windowProjectionAttributesCashFlowsToTheEntryFillsThatOwnThem() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                    .withData(100, 100, 100, 100, 100, 100, 100)
+                    .build();
+            // The funding flow is owned by the first entry fill alone: the second
+            // entry fill is executed after the flow timestamp.
+            List<FuturesCashFlow> funding = List
+                    .of(cashFlow(contract, FuturesCashFlow.Type.FUNDING, "funding-1", 1, -2));
+            // Record-produced positions always carry a single exit fill, so a
+            // position that is only half closed inside the window has to be imported.
+            Position partiallyClosed = new Position(
+                    Trade.fromFills(TradeType.BUY,
+                            List.of(fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()),
+                                    fill(contract, 2, ExecutionSide.BUY, 1_000, 100, List.of())),
+                            RecordedTradeCostModel.INSTANCE),
+                    Trade.fromFills(TradeType.SELL,
+                            List.of(fill(contract, 4, ExecutionSide.SELL, 1_000, 100, List.of()),
+                                    fill(contract, 6, ExecutionSide.SELL, 1_000, 100, List.of())),
+                            RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel(), funding);
+            Position closedInsideTheWindow = new Position(
+                    Trade.fromFill(fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()),
+                            RecordedTradeCostModel.INSTANCE),
+                    Trade.fromFill(fill(contract, 4, ExecutionSide.SELL, 1_000, 100, List.of()),
+                            RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel(), funding);
+
+            NetProfitLossPercentageCriterion criterion = new NetProfitLossPercentageCriterion(
+                    ReturnRepresentation.MULTIPLICATIVE);
+            AnalysisWindow window = AnalysisWindow.barRange(0, 4);
+            // The half that is still open at the window end is ignored, so the merged
+            // position must report what the same 1000 contracts report on their own:
+            // 1 - 2 / 1000.
+            Num expected = criterion.calculate(series, new BaseTradingRecord(List.of(closedInsideTheWindow)), window,
+                    AnalysisContext.defaults());
+            Num actual = criterion.calculate(series, new BaseTradingRecord(List.of(partiallyClosed)), window,
+                    AnalysisContext.defaults());
+            assertNumEquals(expected, actual);
         }
     }
 

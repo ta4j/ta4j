@@ -433,12 +433,31 @@ public class BaseTrade implements Trade {
     }
 
     /**
-     * @return the contract symbol, or {@code null} for a spot trade
+     * Returns the instrument the trade identifies itself with. A futures trade is
+     * identified by its contract symbol; a spot trade by the label its fills agree
+     * on, so a trade recorded from labelled fills keeps its instrument.
+     *
+     * @return the contract symbol, the common fill instrument, or {@code null} when
+     *         no instrument is available
      * @since 0.25.1
      */
     @Override
     public String getInstrument() {
-        return futuresContract == null ? null : futuresContract.symbol();
+        if (futuresContract != null) {
+            return futuresContract.symbol();
+        }
+        String instrument = null;
+        for (TradeFill fill : fills) {
+            String fillInstrument = fill.instrument();
+            if (fillInstrument == null) {
+                continue;
+            }
+            if (instrument != null && !instrument.equals(fillInstrument)) {
+                return null;
+            }
+            instrument = fillInstrument;
+        }
+        return instrument;
     }
 
     private static TradeConfig config(Trade.TradeType type, int index, Instant time, Num pricePerAsset, Num amount,
@@ -752,8 +771,11 @@ public class BaseTrade implements Trade {
         json.addProperty("side", side == null ? null : side.name());
         json.addProperty("orderId", orderId);
         json.addProperty("correlationId", correlationId);
+        String instrument = getInstrument();
+        if (instrument != null) {
+            json.addProperty("instrument", instrument);
+        }
         if (futuresContract != null) {
-            json.addProperty("instrument", futuresContract.symbol());
             json.addProperty("futuresContract", futuresContract.toString());
             json.addProperty("feeComponents", GSON.toJson(feeComponents));
         }

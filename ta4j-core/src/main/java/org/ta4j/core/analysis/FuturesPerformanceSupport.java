@@ -64,6 +64,29 @@ final class FuturesPerformanceSupport {
     }
 
     /**
+     * Returns whether the record realized exposure or marked open exposure before
+     * the retained head of the analysed series. Such a record seeds the first
+     * reported value with the equity accumulated before the head, so that value is
+     * a cumulative result rather than a period return.
+     *
+     * @param record       trading record
+     * @param seriesBegin  first stored index of the analysed series
+     * @param markExposure {@code true} when open exposure is marked to the market
+     * @return {@code true} when the first reported value is a cumulative seed
+     * @since 0.25.1
+     */
+    static boolean hasPreWindowActivity(TradingRecord record, int seriesBegin, boolean markExposure) {
+        for (Position position : record.getPositions()) {
+            if (position.getEntry() != null && position.getEntry().getIndex() < seriesBegin) {
+                return true;
+            }
+        }
+        Position current = record.getCurrentPosition();
+        return markExposure && current != null && current.getEntry() != null
+                && current.getEntry().getIndex() < seriesBegin;
+    }
+
+    /**
      * Validates that a mark price indicator belongs to the analysed series.
      *
      * @param series             analysed bar series

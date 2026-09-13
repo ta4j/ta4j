@@ -31,7 +31,9 @@ final class RiskTailSupport {
      * <p>
      * The placeholder value at the first stored position is excluded: a windowed
      * futures series reports an actual first-bar return and keeps it, while every
-     * other layout has a synthetic placeholder there.
+     * other layout has a synthetic placeholder there. A first value that only
+     * repeats the equity accumulated before the retained head is excluded as well,
+     * because it is a cumulative result rather than a period return.
      * </p>
      *
      * @param returns the return series
@@ -40,7 +42,7 @@ final class RiskTailSupport {
     static List<Num> sortedRates(Returns returns) {
         BarSeries series = returns.getBarSeries();
         int seriesBegin = series.getBeginIndex();
-        boolean hasFirstReturn = returns.hasFirstBarReturn();
+        boolean hasFirstReturn = returns.hasFirstBarReturn() && !returns.hasSeededFirstBarReturn();
         if (!hasFirstReturn && seriesBegin == Integer.MAX_VALUE) {
             return List.of();
         }

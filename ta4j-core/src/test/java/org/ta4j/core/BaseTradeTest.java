@@ -4,6 +4,7 @@
 package org.ta4j.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -207,5 +208,36 @@ class BaseTradeTest {
 
         assertNumEquals(NUM_FACTORY.two(), trade.getAmount());
         assertNumEquals(NUM_FACTORY.numOf(101), trade.getPricePerAsset());
+    }
+
+    @Test
+    void spotTradesExposeTheInstrumentCarriedByTheirFills() {
+        Trade trade = Trade.fromFills(TradeType.BUY, List.of(labelledFill(1, "BTC-USD")),
+                RecordedTradeCostModel.INSTANCE);
+
+        assertEquals("BTC-USD", trade.getInstrument());
+        assertTrue(trade.toString().contains("\"instrument\":\"BTC-USD\""));
+    }
+
+    @Test
+    void spotTradesWithoutACommonFillInstrumentReportNone() {
+        Trade disagreeing = Trade.fromFills(TradeType.BUY,
+                List.of(labelledFill(1, "BTC-USD"), labelledFill(2, "ETH-USD")), RecordedTradeCostModel.INSTANCE);
+        Trade unlabelled = Trade.fromFills(TradeType.BUY, List.of(labelledFill(1, null)),
+                RecordedTradeCostModel.INSTANCE);
+
+        assertNull(disagreeing.getInstrument());
+        assertNull(unlabelled.getInstrument());
+    }
+
+    private static TradeFill labelledFill(int index, String instrument) {
+        return TradeFill.builder()
+                .index(index)
+                .time(Instant.EPOCH)
+                .price(NUM_FACTORY.hundred())
+                .amount(NUM_FACTORY.one())
+                .side(ExecutionSide.BUY)
+                .instrument(instrument)
+                .build();
     }
 }

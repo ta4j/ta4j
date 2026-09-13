@@ -13,6 +13,8 @@ import java.io.ObjectOutputStream;
 import java.time.Instant;
 import java.util.List;
 import org.junit.Test;
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NumFactory;
@@ -130,5 +132,22 @@ public class TradeFillTest {
 
             assertEquals(original, restored);
         }
+    }
+
+    @Test
+    public void forTradeCarriesTheTradeInstrument() {
+        TradeFill labelled = TradeFill.builder()
+                .index(2)
+                .time(Instant.EPOCH)
+                .price(numFactory.hundred())
+                .amount(numFactory.one())
+                .side(ExecutionSide.BUY)
+                .instrument("BTC-USD")
+                .build();
+        Trade trade = Trade.fromFills(TradeType.BUY, List.of(labelled), RecordedTradeCostModel.INSTANCE);
+
+        TradeFill mirror = TradeFill.forTrade(trade, ExecutionSide.BUY);
+
+        assertEquals("BTC-USD", mirror.instrument());
     }
 }
