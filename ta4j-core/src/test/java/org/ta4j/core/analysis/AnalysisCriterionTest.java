@@ -149,4 +149,29 @@ public class AnalysisCriterionTest {
                             .withPositionInclusionPolicy(AnalysisContext.PositionInclusionPolicy.FULLY_CONTAINED)));
         }
     }
+
+    @Test
+    public void markedFullyContainedWindowKeepsExposureAfterPartialExit() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 100, 100, 110, 120, 120, 120, 125);
+            BaseTradingRecord spanning = new BaseTradingRecord(new Position(
+                    Trade.fromFills(TradeType.BUY,
+                            List.of(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 100, 100,
+                                    List.of())),
+                            RecordedTradeCostModel.INSTANCE),
+                    Trade.fromFills(TradeType.SELL, List.of(
+                            FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 50, 120, List.of()),
+                            FuturesAnalysisTestSupport.fill(contract, 6, ExecutionSide.SELL, 50, 125, List.of())),
+                            RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+
+            AnalysisContext markedFullyContained = AnalysisContext.defaults()
+                    .withOpenPositionHandling(OpenPositionHandling.MARK_TO_MARKET)
+                    .withPositionInclusionPolicy(AnalysisContext.PositionInclusionPolicy.FULLY_CONTAINED);
+
+            assertNumEquals(20, new NetProfitCriterion().calculate(barSeries, spanning, AnalysisWindow.barRange(0, 4),
+                    markedFullyContained));
+        }
+    }
 }
