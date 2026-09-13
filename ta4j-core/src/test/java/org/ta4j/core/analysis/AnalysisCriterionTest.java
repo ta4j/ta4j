@@ -132,6 +132,19 @@ public class AnalysisCriterionTest {
                     RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
 
             assertNumEquals(15, criterion.calculate(barSeries, imported, AnalysisWindow.barRange(2, 4), marked));
+            // A position whose exit only spans the window is not included: no
+            // executed exit fill occurred inside it.
+            BaseTradingRecord spanningExit = new BaseTradingRecord(new Position(
+                    Trade.fromFills(TradeType.BUY,
+                            List.of(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 100, 100,
+                                    List.of())),
+                            RecordedTradeCostModel.INSTANCE),
+                    Trade.fromFills(TradeType.SELL, List.of(
+                            FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 50, 110, List.of()),
+                            FuturesAnalysisTestSupport.fill(contract, 6, ExecutionSide.SELL, 50, 125, List.of())),
+                            RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+            assertNumEquals(0, criterion.calculate(barSeries, spanningExit, AnalysisWindow.barRange(2, 4), marked));
 
             // An exit fill beyond the window end breaks full containment.
             BaseTradingRecord spanning = new BaseTradingRecord(new Position(

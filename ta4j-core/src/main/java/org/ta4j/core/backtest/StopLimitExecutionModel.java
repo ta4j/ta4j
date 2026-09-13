@@ -245,9 +245,13 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         FuturesContract futuresContract = tradingRecord.getFuturesContract();
         if (order.triggered && limitReachable(order.tradeType, bar, order.limitPrice)) {
             Num fillAmount = fillAmount(order.remainingAmount(), bar.getVolume(), futuresContract);
+            boolean completeClose = isCompleteClose(tradingRecord, order.remainingAmount());
             if (futuresContract != null) {
-                fillAmount = FuturesOrderQuantitySupport.maximumOrderQuantity(futuresContract, fillAmount,
-                        order.limitPrice);
+                fillAmount = completeClose
+                        ? FuturesOrderQuantitySupport.completeCloseChunk(futuresContract, order.remainingAmount(),
+                                fillAmount, order.limitPrice)
+                        : FuturesOrderQuantitySupport.maximumOrderQuantity(futuresContract, fillAmount,
+                                order.limitPrice);
             }
             boolean entryAllowed = futuresContract == null || ExecutionModelSupport.isExecutionAllowed(tradingRecord,
                     futuresContract, order.tradeType, bar.getEndTime());

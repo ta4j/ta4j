@@ -143,7 +143,8 @@ final class ExecutionModelSupport {
         Num remainingAmount = amount;
         while (remainingAmount.isPositive()) {
             Num fillAmount = completeClose
-                    ? FuturesOrderQuantitySupport.maximumOrderQuantity(futuresContract, remainingAmount, target.price())
+                    ? FuturesOrderQuantitySupport.completeCloseChunk(futuresContract, remainingAmount, remainingAmount,
+                            target.price())
                     : remainingAmount;
             if (!fillAmount.isPositive()) {
                 throw new IllegalArgumentException("complete close exceeds the contract's maximum order limits");

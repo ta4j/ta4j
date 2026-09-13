@@ -583,7 +583,8 @@ public interface AnalysisCriterion {
         }
         CostModel transactionCostModel = position.getTransactionCostModel();
         CostModel holdingCostModel = position.getHoldingCostModel();
-        Trade retainedEntry = Trade.fromFills(entry.getType(), retainedEntryFills, entry.getCostModel());
+        Trade retainedEntry = BaseTrade.fromFillsAtPrice(entry.getType(), retainedEntryFills, entry.getPricePerAsset(),
+                entry.getCostModel());
         if (exit == null || retainedExitFills.isEmpty()) {
             return List
                     .of(new Position(retainedEntry, transactionCostModel, holdingCostModel, position.getCashFlows()));
@@ -643,10 +644,11 @@ public interface AnalysisCriterion {
                         .build());
             }
         }
-        Position closedPosition = new Position(Trade.fromFills(entry.getType(), closedEntryFills, entry.getCostModel()),
-                retainedExit, transactionCostModel, holdingCostModel, closedCashFlows);
-        Position openPosition = new Position(Trade.fromFills(entry.getType(), openEntryFills, entry.getCostModel()),
-                transactionCostModel, holdingCostModel, openCashFlows);
+        Position closedPosition = new Position(BaseTrade.fromFillsAtPrice(entry.getType(), closedEntryFills,
+                entry.getPricePerAsset(), entry.getCostModel()), retainedExit, transactionCostModel, holdingCostModel,
+                closedCashFlows);
+        Position openPosition = new Position(BaseTrade.fromFillsAtPrice(entry.getType(), openEntryFills,
+                entry.getPricePerAsset(), entry.getCostModel()), transactionCostModel, holdingCostModel, openCashFlows);
         return List.of(closedPosition, openPosition);
     }
 
@@ -686,15 +688,21 @@ public interface AnalysisCriterion {
         if (position == null || !position.isClosed()) {
             return false;
         }
-        // A closed position is judged by the executions it actually made: an
-        // aggregate trade index only reports its earliest fill.
-        int entryStart = firstExecutedFillIndex(position.getEntry());
-        int exitStart = firstExecutedFillIndex(position.getExit());
         int exitEnd = lastExecutedFillIndex(position.getExit());
+        int entryStart = firstExecutedFillIndex(position.getEntry());
         return switch (positionInclusionPolicy) {
-        case EXIT_IN_WINDOW -> exitStart <= end && exitEnd >= start;
+        case EXIT_IN_WINDOW -> hasExecutedFillInWindow(position.getExit(), start, end);
         case FULLY_CONTAINED -> entryStart >= start && exitEnd <= end;
         };
+    }
+
+    private static boolean hasExecutedFillInWindow(Trade trade, int start, int end) {
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() >= start && fill.index() <= end) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static int firstExecutedFillIndex(Trade trade) {

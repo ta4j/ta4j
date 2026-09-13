@@ -773,7 +773,11 @@ public class BaseTradingRecord implements TradingRecord {
             }
             normalizedFills.add(builder.build());
         }
-        return Trade.fromFills(trade.getType(), normalizedFills, trade.getCostModel());
+        Num pricePerAsset = convertToRecordFactory(trade.getPricePerAsset());
+        if (pricePerAsset == null) {
+            return Trade.fromFills(trade.getType(), normalizedFills, trade.getCostModel());
+        }
+        return BaseTrade.fromFillsAtPrice(trade.getType(), normalizedFills, pricePerAsset, trade.getCostModel());
     }
 
     private List<FuturesCashFlow> normalizeToRecordFactory(List<FuturesCashFlow> cashFlows) {
@@ -804,7 +808,7 @@ public class BaseTradingRecord implements TradingRecord {
         try {
             for (TradeFill fill : Trade.executionFillsOf(trade)) {
                 if (fill.index() >= nextTradeIndex) {
-                    nextTradeIndex = fill.index() == Integer.MAX_VALUE ? Integer.MAX_VALUE : fill.index() + 1;
+                    nextTradeIndex = nextIndexAfter(fill.index());
                 }
                 if (futuresContract != null && fill.index() >= 0 && fill.time() != null) {
                     advanceHorizonThrough(fill.time());
@@ -813,6 +817,10 @@ public class BaseTradingRecord implements TradingRecord {
         } finally {
             lock.writeLock().unlock();
         }
+    }
+
+    private static int nextIndexAfter(int index) {
+        return index == Integer.MAX_VALUE ? Integer.MAX_VALUE : index + 1;
     }
 
     private static RecordConfig tradesConfig(Trade... trades) {
@@ -1513,7 +1521,9 @@ public class BaseTradingRecord implements TradingRecord {
     private int nextIndex() {
         lock.writeLock().lock();
         try {
-            return nextTradeIndex++;
+            int index = nextTradeIndex;
+            nextTradeIndex = nextIndexAfter(index);
+            return index;
         } finally {
             lock.writeLock().unlock();
         }
@@ -1539,8 +1549,7 @@ public class BaseTradingRecord implements TradingRecord {
             PlannedTradeFill plannedTradeFill = planTradeFill(tradeType, tradeSide, fill, tradeOrderId,
                     tradeCorrelationId, tradeTime, plannedNextIndex, fillFactory);
             plannedTradeFills.add(plannedTradeFill);
-            int nextIndexAfterFill = plannedTradeFill.index() == Integer.MAX_VALUE ? Integer.MAX_VALUE
-                    : plannedTradeFill.index() + 1;
+            int nextIndexAfterFill = nextIndexAfter(plannedTradeFill.index());
             plannedNextIndex = Math.max(plannedNextIndex, nextIndexAfterFill);
             totalAmount = totalAmount.plus(plannedTradeFill.trade().getAmount());
         }
@@ -1679,7 +1688,7 @@ public class BaseTradingRecord implements TradingRecord {
         lock.writeLock().lock();
         try {
             advanceForFill(trade);
-            nextTradeIndex = Math.max(nextTradeIndex, index + 1);
+            nextTradeIndex = Math.max(nextTradeIndex, nextIndexAfter(index));
             long appliedSequence = sequence >= 0 ? sequence : nextSequence++;
             if (appliedSequence >= nextSequence) {
                 nextSequence = appliedSequence + 1;
@@ -2530,7 +2539,8 @@ public class BaseTradingRecord implements TradingRecord {
                     }
                     Num exitAmount = factory.numOf(exitFill.amount().getDelegate());
                     for (int i = 0; i < entryFills.size() && exitAmount.isPositive(); i++) {
-                        if (!entryFills.get(i).time().isBefore(eventTime) || !remaining.get(i).isPositive()) {
+                        if (entryFills.get(i).index() < 0 || !entryFills.get(i).time().isBefore(eventTime)
+                                || !remaining.get(i).isPositive()) {
                             continue;
                         }
                         Num matched = remaining.get(i).isLessThanOrEqual(exitAmount) ? remaining.get(i) : exitAmount;

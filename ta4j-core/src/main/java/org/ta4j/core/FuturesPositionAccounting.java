@@ -76,24 +76,47 @@ final class FuturesPositionAccounting {
                 exits.addLast(fillSlice(fill, numFactory));
             }
         }
+        return matchedPayoff(entry, contract, numFactory, exits, finalIndex, finalPrice);
+    }
+
+    /**
+     * Matches executed entry fills against executed exit fills and returns the
+     * settlement payoff of the matched quantity.
+     *
+     * <p>
+     * Every executed entry fill is valued at the entry trade's price per asset, so
+     * a merged average-cost lot realizes its merged basis instead of the historic
+     * price of one of its fills.
+     * </p>
+     *
+     * @param entry           entry trade carrying the basis
+     * @param contract        futures contract
+     * @param numFactory      numeric factory of the entry price
+     * @param exits           queued exit slices, consumed in order
+     * @param finalIndex      index up to which executions are recognized
+     * @param unexecutedPrice price applied to entry quantity without an exit, or
+     *                        {@code null} to leave that quantity unrealized
+     * @return signed payoff in the settlement currency
+     */
+    private static Num matchedPayoff(Trade entry, FuturesContract contract, NumFactory numFactory,
+            ArrayDeque<FillSlice> exits, int finalIndex, Num unexecutedPrice) {
+        Num basis = entry.getPricePerAsset();
         Num total = numFactory.zero();
-        for (TradeFill entryFill : entryFills) {
-            FillSlice normalizedEntry = fillSlice(entryFill, numFactory);
-            Num remainingEntry = normalizedEntry.amount();
+        for (TradeFill entryFill : executedFills(entry, finalIndex)) {
+            FillSlice entrySlice = fillSlice(entryFill, numFactory);
+            Num remainingEntry = entrySlice.amount();
             while (remainingEntry.isPositive() && !exits.isEmpty()) {
                 FillSlice exitFill = exits.removeFirst();
                 Num matched = remainingEntry.isLessThan(exitFill.amount()) ? remainingEntry : exitFill.amount();
-                total = total
-                        .plus(contract.profit(entry.getType(), matched, normalizedEntry.price(), exitFill.price()));
+                total = total.plus(contract.profit(entry.getType(), matched, basis, exitFill.price()));
                 remainingEntry = remainingEntry.minus(matched);
                 Num remainingExit = exitFill.amount().minus(matched);
                 if (remainingExit.isPositive()) {
                     exits.addFirst(new FillSlice(exitFill.price(), remainingExit));
                 }
             }
-            if (remainingEntry.isPositive()) {
-                total = total
-                        .plus(contract.profit(entry.getType(), remainingEntry, normalizedEntry.price(), finalPrice));
+            if (unexecutedPrice != null && remainingEntry.isPositive()) {
+                total = total.plus(contract.profit(entry.getType(), remainingEntry, basis, unexecutedPrice));
             }
         }
         return total;
@@ -315,23 +338,7 @@ final class FuturesPositionAccounting {
                 exits.addLast(fillSlice(fill, numFactory));
             }
         }
-        Num total = numFactory.zero();
-        for (TradeFill entryFill : executedFills(entry, finalIndex)) {
-            FillSlice normalizedEntry = fillSlice(entryFill, numFactory);
-            Num remainingEntry = normalizedEntry.amount();
-            while (remainingEntry.isPositive() && !exits.isEmpty()) {
-                FillSlice exitFill = exits.removeFirst();
-                Num matched = remainingEntry.isLessThan(exitFill.amount()) ? remainingEntry : exitFill.amount();
-                total = total
-                        .plus(contract.profit(entry.getType(), matched, normalizedEntry.price(), exitFill.price()));
-                remainingEntry = remainingEntry.minus(matched);
-                Num remainingExit = exitFill.amount().minus(matched);
-                if (remainingExit.isPositive()) {
-                    exits.addFirst(new FillSlice(exitFill.price(), remainingExit));
-                }
-            }
-        }
-        return total;
+        return matchedPayoff(entry, contract, numFactory, exits, finalIndex, null);
     }
 
     private static boolean isFullyExecutedExit(Position position, int finalIndex) {

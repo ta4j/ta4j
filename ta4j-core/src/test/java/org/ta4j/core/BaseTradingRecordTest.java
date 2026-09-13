@@ -2536,13 +2536,10 @@ class BaseTradingRecordTest {
     void fundingAllocationIgnoresDeferredEntryFills() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = linearBtcPerpetual(numFactory);
-            Position openLong = new Position(
-                    Trade.fromFills(TradeType.BUY,
-                            List.of(fillAtTime(contract, 0, T0, ExecutionSide.BUY, 2, 10_000, List.of()),
-                                    fillAtTime(contract, -1, T0.plusSeconds(1), ExecutionSide.BUY, 2, 10_000,
-                                            List.of())),
-                            RecordedTradeCostModel.INSTANCE),
-                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            Position openLong = new Position(Trade.fromFills(TradeType.BUY,
+                    List.of(fillAtTime(contract, -1, T0.plusSeconds(1), ExecutionSide.BUY, 2, 10_000, List.of()),
+                            fillAtTime(contract, 0, T0, ExecutionSide.BUY, 2, 10_000, List.of())),
+                    RecordedTradeCostModel.INSTANCE), RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
             BaseTradingRecord openRecord = new BaseTradingRecord(openLong);
 
             openRecord.recordFunding(fundingEvent(contract, 3, 0.001, 10_000));
@@ -2556,9 +2553,8 @@ class BaseTradingRecordTest {
             // reached by the event yet.
             Position closedLong = new Position(
                     Trade.fromFills(TradeType.BUY,
-                            List.of(fillAtTime(contract, 0, T0, ExecutionSide.BUY, 2, 10_000, List.of()),
-                                    fillAtTime(contract, -1, T0.plusSeconds(1), ExecutionSide.BUY, 2, 10_000,
-                                            List.of())),
+                            List.of(fillAtTime(contract, -1, T0.plusSeconds(1), ExecutionSide.BUY, 2, 10_000,
+                                    List.of()), fillAtTime(contract, 0, T0, ExecutionSide.BUY, 2, 10_000, List.of())),
                             RecordedTradeCostModel.INSTANCE),
                     Trade.fromFill(fillAtTime(contract, 3, T0.plusSeconds(3), ExecutionSide.SELL, 4, 10_000, List.of()),
                             RecordedTradeCostModel.INSTANCE),
@@ -2622,5 +2618,32 @@ class BaseTradingRecordTest {
                     () -> new BaseTradingRecord(List.of(imported, mismatched)));
             assertTrue(rejected.getMessage().contains("same transaction cost model"));
         }
+    }
+
+    @Test
+    void averageCostClosedSliceUsesMergedEntryBasis() {
+        FuturesContract contract = linearBtcPerpetual(numFactory);
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .matchPolicy(ExecutionMatchPolicy.AVG_COST)
+                .build();
+        record.operate(fill(contract, 0, ExecutionSide.BUY, 1, 100, List.of()));
+        record.operate(fill(contract, 1, ExecutionSide.BUY, 1, 110, List.of()));
+        record.operate(fill(contract, 2, ExecutionSide.SELL, 1, 101, List.of()));
+
+        Position closed = record.getPositions().getFirst();
+
+        assertNumEquals(-0.04, closed.getRealizedProfit(2));
+    }
+
+    @Test
+    void recorderAssignedIndexSaturatesAfterMaximumExplicitIndex() {
+        FuturesContract contract = linearBtcPerpetual(numFactory);
+        BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(contract).build();
+        record.operate(fillAtTime(contract, Integer.MAX_VALUE, T0, ExecutionSide.BUY, 1, 100, List.of()));
+        record.operate(fillAtTime(contract, -1, T0.plusSeconds(1), ExecutionSide.BUY, 1, 101, List.of()));
+
+        assertEquals(Integer.MAX_VALUE, record.getLastTrade().getIndex());
+        assertEquals(Integer.MAX_VALUE, record.getLastTrade().getFills().getFirst().index());
     }
 }

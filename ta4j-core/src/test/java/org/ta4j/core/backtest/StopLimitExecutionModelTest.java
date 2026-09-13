@@ -91,7 +91,7 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
     @Test
     public void completeFuturesCloseSplitsAtMaximumNotional() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        for (int index = 0; index < 3; index++) {
+        for (int index = 0; index < 4; index++) {
             series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(100d).add();
         }
         FuturesContract contract = FuturesContract.builder()
@@ -103,7 +103,8 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
                 .quoteCurrency("USD")
                 .settlementCurrency("USD")
                 .contractSize(numFactory.one())
-                .maximumNotional(numFactory.numOf(300))
+                .maximumNotional(numFactory.numOf(250))
+                .quantityIncrement(numFactory.one())
                 .build();
         BaseTradingRecord record = BaseTradingRecord.builder()
                 .futuresContract(contract)
@@ -125,13 +126,16 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         model.execute(0, record, series, numFactory.numOf(5));
         model.onBar(1, record, series);
         model.onBar(2, record, series);
+        model.onBar(3, record, series);
 
         assertTrue(record.isClosed());
-        assertEquals(2, record.getPositions().size());
-        assertNumEquals(3, record.getPositions().get(0).getEntry().getAmount());
+        assertEquals(3, record.getPositions().size());
+        assertNumEquals(2, record.getPositions().get(0).getEntry().getAmount());
         assertNumEquals(2, record.getPositions().get(1).getEntry().getAmount());
-        assertNumEquals(3, record.getPositions().get(0).getExit().getAmount());
+        assertNumEquals(1, record.getPositions().get(2).getEntry().getAmount());
+        assertNumEquals(2, record.getPositions().get(0).getExit().getAmount());
         assertNumEquals(2, record.getPositions().get(1).getExit().getAmount());
+        assertNumEquals(1, record.getPositions().get(2).getExit().getAmount());
     }
 
     @Test

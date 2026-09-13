@@ -115,6 +115,29 @@ final class FuturesOrderQuantitySupport {
     }
 
     /**
+     * Returns a complete-close chunk that respects the quantity increment when
+     * another chunk is required. The final residual may remain off-grid.
+     *
+     * @param contract  contract declaring the maxima and increment
+     * @param remaining remaining close quantity
+     * @param requested quantity available for this execution attempt
+     * @param price     execution quote
+     * @return a quantity to close now, or zero when no increment-safe chunk fits
+     */
+    static Num completeCloseChunk(FuturesContract contract, Num remaining, Num requested, Num price) {
+        Num maximum = maximumOrderQuantity(contract, requested, price);
+        if (maximum.isGreaterThanOrEqual(remaining)) {
+            return requested;
+        }
+        Num rounded = roundDown(contract, maximum);
+        Num increment = toNum(contract.quantityIncrement(), remaining.getNumFactory());
+        if (increment != null && rounded.isGreaterThan(maximum)) {
+            rounded = rounded.minus(increment);
+        }
+        return rounded;
+    }
+
+    /**
      * Returns whether a quantity is tradable at an execution quote under every
      * declared constraint.
      *
