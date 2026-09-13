@@ -854,6 +854,24 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertTrue(message.contains("index = 10"));
     }
 
+    @Test
+    public void testNestedMutationFailureStopsOuterBarOverride() {
+        final Num price = numOf(10);
+        final Num zero = numFactory.zero();
+        final Instant endTime = Instant.parse("2024-04-02T00:00:00Z");
+        final BaseBarSeries companion = new BaseBarSeries("failing-companion", List
+                .of(new FailingPriceBar(Duration.ofDays(1), endTime.minus(Duration.ofDays(1)), endTime, price, zero)),
+                0, 0, false, numFactory, barBuilderFactory);
+        final ForwardingTradeBar outerBar = new ForwardingTradeBar(Duration.ofDays(1),
+                endTime.minus(Duration.ofDays(1)), endTime, price, zero, companion);
+        final BaseBarSeries outer = new BaseBarSeries("outer", List.of(outerBar), 0, 0, false, numFactory,
+                barBuilderFactory);
+
+        assertThrows(IllegalStateException.class, () -> outer.addTrade(numFactory.one(), numOf(11)));
+
+        assertFalse(outerBar.continuedAfterNestedMutation());
+    }
+
     // ==================== Helper Methods for Testing ====================
 
     /**
@@ -933,4 +951,46 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
             return this.reportedClosePrice;
         }
     }
+
+    private static final class FailingPriceBar extends BaseBar {
+
+        private static final long serialVersionUID = 5752756062982582710L;
+
+        private FailingPriceBar(final Duration period, final Instant beginTime, final Instant endTime, final Num price,
+                final Num zero) {
+            super(period, beginTime, endTime, price, price, price, price, zero, zero, 0);
+        }
+
+        @Override
+        public void addPrice(final Num price) {
+            super.addPrice(price);
+            throw new IllegalStateException("nested mutation failed");
+        }
+    }
+
+    private static final class ForwardingTradeBar extends BaseBar {
+
+        private static final long serialVersionUID = 687779242707368209L;
+
+        private final BaseBarSeries companion;
+        private boolean continuedAfterNestedMutation;
+
+        private ForwardingTradeBar(final Duration period, final Instant beginTime, final Instant endTime,
+                final Num price, final Num zero, final BaseBarSeries companion) {
+            super(period, beginTime, endTime, price, price, price, price, zero, zero, 0);
+            this.companion = companion;
+        }
+
+        @Override
+        public void addTrade(final Num tradeVolume, final Num tradePrice) {
+            companion.addPrice(tradePrice);
+            continuedAfterNestedMutation = true;
+            super.addTrade(tradeVolume, tradePrice);
+        }
+
+        private boolean continuedAfterNestedMutation() {
+            return continuedAfterNestedMutation;
+        }
+    }
+
 }

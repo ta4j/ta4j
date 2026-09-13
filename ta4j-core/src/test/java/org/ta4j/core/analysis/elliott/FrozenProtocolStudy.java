@@ -39,8 +39,8 @@ import org.ta4j.core.num.Num;
 final class FrozenProtocolStudy {
 
     private static final Logger LOG = LogManager.getLogger(FrozenProtocolStudy.class);
-    private static final String FROZEN_PROTOCOL_FINGERPRINT = "f0cea1e5b4da07b0b49c2e51ba1c48350cdccf8001d2742ec2f9f057ff3407c2";
-    private static final List<String> FROZEN_COMPETING_MODES = List.of("3+3", "5+5", "7+3", "change-point-baseline");
+    private static final String FROZEN_PROTOCOL_FINGERPRINT = "320d6be02a7459e93ff91a5c3583f275472c3adbeb340a157754c717c7535deb";
+    private static final List<String> FROZEN_COMPETING_MODES = List.of("3+3", "5+5", "change-point-baseline");
     private static final List<String> FROZEN_METRICS = List.of("completeOccupancyRate", "ambiguousRate", "noMatchRate",
             "confirmationLagBars", "labelStabilityJaccard", "evidencePassRate", "jointPassRate");
 

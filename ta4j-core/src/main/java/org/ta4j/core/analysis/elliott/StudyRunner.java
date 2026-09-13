@@ -55,8 +55,7 @@ final class StudyRunner {
     private final List<TopologyGrammar> grammars;
     private final List<RelationshipRule> rules;
     private final List<RuleAblation.Mode> ablationModes;
-    private static final List<String> STRUCTURAL_COMPETING_MODES = List.of("3+3", "5+5", "7+3",
-            "change-point-baseline");
+    private static final List<String> STRUCTURAL_COMPETING_MODES = List.of("3+3", "5+5", "change-point-baseline");
 
     private final Configuration configuration;
 
@@ -1022,7 +1021,6 @@ final class StudyRunner {
             return switch (name) {
             case "3+3" -> new AlternativeGrammar(name, new int[] { 3, 3 });
             case "5+5" -> new AlternativeGrammar(name, new int[] { 5, 5 });
-            case "7+3" -> new AlternativeGrammar(name, new int[] { 7, 3 });
             default -> throw new IllegalArgumentException("unknown alternative grammar: " + name);
             };
         }

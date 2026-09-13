@@ -239,7 +239,7 @@ class StudyRunnerTest {
                 report.h2().modes().stream().map(StudyReport.ModeReport::mode).toList());
         assertEquals("H1", report.h1().id());
         assertEquals("H2", report.h2().id());
-        assertEquals(7, report.competingGrammars().size());
+        assertEquals(6, report.competingGrammars().size());
         assertTrue(report.competingGrammars()
                 .stream()
                 .anyMatch(mode -> "competing-change-point-baseline".equals(mode.mode())));
@@ -459,6 +459,11 @@ class StudyRunnerTest {
                 new double[] { 10, 12, 11, 14, 12, 13, 11, 15, 13, 16, 14 });
 
         assertEquals(1, StudyRunner.AlternativeGrammar.of("5+5").matches(laterExtension).size());
+    }
+
+    @Test
+    void duplicateTenLegCompetitorIsNotAccepted() {
+        assertThrows(IllegalArgumentException.class, () -> StudyRunner.AlternativeGrammar.of("7+3"));
     }
 
     @Test

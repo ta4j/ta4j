@@ -610,9 +610,19 @@ public class BaseBar implements Bar {
             if (publication != null) {
                 previousState.deferNestedPublication(publication);
             }
+            if (failure != null) {
+                rethrow(failure);
+            }
             return null;
         }
         return publication;
+    }
+
+    private static void rethrow(final Throwable failure) {
+        if (failure instanceof RuntimeException runtimeException) {
+            throw runtimeException;
+        }
+        throw (Error) failure;
     }
 
     private MutationState currentMutationState() {
