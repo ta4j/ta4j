@@ -104,7 +104,7 @@ final class ConfirmationTracker {
         final int begin = Math.max(series.getBeginIndex(), 0);
         final int end = Math.min(series.getEndIndex(), endIndex);
         final List<Integer> versionAsOf = new ArrayList<>();
-        final List<List<ConfirmedPivot>> versions = new ArrayList<>();
+        final List<ReplayVersion> versions = new ArrayList<>();
         List<SwingPivot> previousReportedSnapshot = null;
         if (begin <= end) {
             for (int asOf = begin;; asOf++) {
@@ -112,7 +112,8 @@ final class ConfirmationTracker {
                 if (previousReportedSnapshot == null || !reported.equals(previousReportedSnapshot)) {
                     final boolean changed = reconcile(order, known, reported, asOf, collapsed);
                     if (changed) {
-                        versions.add(List.copyOf(PivotHistory.of(order).pivots()));
+                        versions.add(
+                                ReplayVersion.of(versions.isEmpty() ? null : versions.get(versions.size() - 1), order));
                         versionAsOf.add(asOf);
                     }
                     previousReportedSnapshot = List.copyOf(reported);
@@ -365,7 +366,7 @@ final class ConfirmationTracker {
      * Final frozen history plus the exact per-bar pivot states observed while the
      * series was replayed.
      */
-    record CausalReplay(PivotHistory history, List<List<ConfirmedPivot>> versions, int[] versionAsOf) {
+    record CausalReplay(PivotHistory history, List<ReplayVersion> versions, int[] versionAsOf) {
         CausalReplay {
             Objects.requireNonNull(history, "history");
             versions = versions == null ? List.of() : List.copyOf(versions);
@@ -400,7 +401,34 @@ final class ConfirmationTracker {
                     high = mid - 1;
                 }
             }
-            return found < 0 ? List.of() : versions.get(found);
+            return found < 0 ? List.of() : versions.get(found).materialize();
+        }
+    }
+
+    private record ReplayVersion(ReplayVersion parent, int prefixLength, List<ConfirmedPivot> suffix) {
+
+        private static ReplayVersion of(final ReplayVersion parent, final List<ConfirmedPivot> pivots) {
+            final List<ConfirmedPivot> previous = parent == null ? List.of() : parent.materialize();
+            int prefixLength = 0;
+            while (prefixLength < previous.size() && prefixLength < pivots.size()
+                    && previous.get(prefixLength).equals(pivots.get(prefixLength))) {
+                prefixLength++;
+            }
+            return new ReplayVersion(parent, prefixLength, List.copyOf(pivots.subList(prefixLength, pivots.size())));
+        }
+
+        private List<ConfirmedPivot> materialize() {
+            final ArrayList<ReplayVersion> versions = new ArrayList<>();
+            for (ReplayVersion version = this; version != null; version = version.parent) {
+                versions.add(version);
+            }
+            final List<ConfirmedPivot> pivots = new ArrayList<>();
+            for (int index = versions.size() - 1; index >= 0; index--) {
+                final ReplayVersion version = versions.get(index);
+                pivots.subList(version.prefixLength, pivots.size()).clear();
+                pivots.addAll(version.suffix);
+            }
+            return List.copyOf(pivots);
         }
     }
 }

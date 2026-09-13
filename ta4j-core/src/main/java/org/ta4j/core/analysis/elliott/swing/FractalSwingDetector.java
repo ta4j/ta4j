@@ -15,6 +15,7 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseRealtimeBar;
 import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.indicators.RecentFractalSwingHighIndicator;
@@ -612,8 +613,9 @@ public final class FractalSwingDetector implements SwingDetector {
             return false;
         }
 
-        private static boolean isUntrackableBar(final Bar bar) {
-            return bar.getClass() != BaseBar.class && bar.getClass() != BaseRealtimeBar.class;
+        private boolean isUntrackableBar(final Bar bar) {
+            return !(series instanceof BaseBarSeries)
+                    || (bar.getClass() != BaseBar.class && bar.getClass() != BaseRealtimeBar.class);
         }
 
         /**
