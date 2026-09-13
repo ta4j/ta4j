@@ -103,22 +103,11 @@ public final class StopLossPositionRiskModel implements PositionRiskModel {
             Num perUnitRisk = entryPrice.minus(stopPrice).abs();
             return perUnitRisk.multipliedBy(amount.abs());
         }
-        Num remainingAmount = remainingAmount(position, amount);
-        if (remainingAmount.isZero()) {
+        Num executedEntryAmount = executedAmount(position.getEntry(), amount);
+        if (executedEntryAmount.isZero()) {
             return series.numFactory().zero();
         }
-        return contract.profit(position.getEntry().getType(), remainingAmount, entryPrice, stopPrice).abs();
-    }
-
-    private static Num remainingAmount(Position position, Num entryAmount) {
-        Num executedEntryAmount = executedAmount(position.getEntry(), entryAmount);
-        Trade exit = position.getExit();
-        if (exit == null) {
-            return executedEntryAmount.abs();
-        }
-        Num executedExitAmount = executedAmount(exit, exit.getAmount());
-        Num remaining = executedEntryAmount.abs().minus(executedExitAmount.abs());
-        return remaining.isPositive() ? remaining : entryAmount.getNumFactory().zero();
+        return contract.profit(position.getEntry().getType(), executedEntryAmount.abs(), entryPrice, stopPrice).abs();
     }
 
     private static Num executedAmount(Trade trade, Num fallback) {

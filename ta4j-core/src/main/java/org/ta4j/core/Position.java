@@ -391,7 +391,8 @@ public class Position implements Serializable {
         }
         Num grossProfit = isOpened() || exit.getIndex() > finalIndex ? openGrossProfit(finalPrice)
                 : getGrossProfit(finalPrice);
-        Num tradingCost = getPositionCost(finalIndex);
+        Num tradingCost = isOpened() || exit.getIndex() > finalIndex ? entry.getCost().plus(getHoldingCost(finalIndex))
+                : getPositionCost(finalIndex);
         return grossProfit.minus(tradingCost);
     }
 
@@ -607,6 +608,9 @@ public class Position implements Serializable {
     public Num getGrossReturn(Num entryPrice, Num exitPrice) {
         if (futuresContract != null) {
             Num quantity = FuturesPositionAccounting.matchedQuantity(this);
+            if (quantity.isZero()) {
+                return entryPrice.getNumFactory().one();
+            }
             Num entryNotional = futuresContract.settlementNotional(quantity, entryPrice);
             Num payoff = futuresContract.profit(getStartingType(), quantity, entryPrice, exitPrice);
             return entryPrice.getNumFactory().one().plus(payoff.dividedBy(entryNotional));

@@ -452,7 +452,7 @@ public interface AnalysisCriterion {
                 }
             }
             if (context.openPositionHandling() == OpenPositionHandling.MARK_TO_MARKET) {
-                List<Position> positionsToMark = futuresPositionsForMarkToMarket(source, start, end, inclusionPolicy);
+                List<Position> positionsToMark = futuresPositionsForMarkToMarket(source, end, inclusionPolicy);
                 for (Position positionToMark : positionsToMark) {
                     if (positionToMark.isClosed()) {
                         if (inclusionPolicy == PositionInclusionPolicy.FULLY_CONTAINED
@@ -532,8 +532,8 @@ public interface AnalysisCriterion {
         return List.of(currentPosition);
     }
 
-    private static List<Position> futuresPositionsForMarkToMarket(TradingRecord source, int windowStartIndex,
-            int windowEndIndex, PositionInclusionPolicy inclusionPolicy) {
+    private static List<Position> futuresPositionsForMarkToMarket(TradingRecord source, int windowEndIndex,
+            PositionInclusionPolicy inclusionPolicy) {
         List<Position> positions = new ArrayList<>(openPositionsForMarkToMarket(source, windowEndIndex));
         for (Position closedPosition : source.getPositions()) {
             Trade entry = closedPosition.getEntry();

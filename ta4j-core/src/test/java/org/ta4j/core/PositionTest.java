@@ -437,7 +437,7 @@ public class PositionTest {
         Num expectedHoldingCostsBefore = DoubleNum.valueOf(2.0 * 4.0 * 0.001);
         // The exit at index 10 is executed after the cutoff, so the exposure still
         // open at index 5 is marked at 3: one contract sold at 2 is worth -1.
-        Num expectedProfitOfClosedPositionBefore = DoubleNum.valueOf(-1.04).minus(expectedHoldingCostsBefore);
+        Num expectedProfitOfClosedPositionBefore = DoubleNum.valueOf(-1.02).minus(expectedHoldingCostsBefore);
 
         assertNumEquals(DoubleNum.valueOf(-1.05), profitOfOpenPositionFinalAfter);
         assertNumEquals(DoubleNum.valueOf(-1.02), profitOfOpenPositionFinalBefore);

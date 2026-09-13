@@ -257,6 +257,9 @@ final class FuturesPositionAccounting {
     static Num grossReturn(Position position, Num finalPrice) {
         Trade entry = position.getEntry();
         Num quantity = matchedQuantity(position);
+        if (quantity.isZero()) {
+            return entry.getPricePerAsset().getNumFactory().one();
+        }
         Num entryNotional = requireContract(position).settlementNotional(quantity, entry.getPricePerAsset());
         Num payoff = payoff(position, finalPrice);
         return entry.getPricePerAsset().getNumFactory().one().plus(payoff.dividedBy(entryNotional));
