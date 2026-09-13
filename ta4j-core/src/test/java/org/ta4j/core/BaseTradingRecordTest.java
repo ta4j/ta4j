@@ -2646,4 +2646,60 @@ class BaseTradingRecordTest {
         assertEquals(Integer.MAX_VALUE, record.getLastTrade().getIndex());
         assertEquals(Integer.MAX_VALUE, record.getLastTrade().getFills().getFirst().index());
     }
+
+    @Test
+    void duplicateProcessedFundingEventPublishesNothing() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            BaseTradingRecord record = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .fundingSchedule(List.of(fundingEvent(contract, 20, 0.002, 10_000)))
+                    .build();
+            record.operate(fill(contract, 0, ExecutionSide.BUY, 2, 10_000, List.of()));
+            record.recordFunding(fundingEvent(contract, 10, 0.001, 10_000));
+            int cashFlows = record.getCashFlows().size();
+
+            // The reused event id disagrees with the processed flow and its timestamp
+            // is past the scheduled one, so the conflict must be rejected before any
+            // due schedule is applied.
+            FuturesFunding conflicting = FuturesFunding.builder()
+                    .contract(contract)
+                    .eventId("funding-10")
+                    .index(30)
+                    .time(T0.plusSeconds(30))
+                    .rate(numFactory.numOf(0.002))
+                    .referencePrice(numFactory.numOf(10_000))
+                    .build();
+            IllegalArgumentException rejected = assertThrows(IllegalArgumentException.class,
+                    () -> record.recordFunding(conflicting));
+
+            assertTrue(rejected.getMessage().contains("already recorded with different values"));
+            assertEquals(cashFlows, record.getCashFlows().size());
+            assertEquals(1, record.getFundingSchedule().size());
+        }
+    }
+
+    @Test
+    void importedAverageCostPositionKeepsMergedEntryBasis() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            BaseTradingRecord source = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .matchPolicy(ExecutionMatchPolicy.AVG_COST)
+                    .build();
+            source.operate(fill(contract, 0, ExecutionSide.BUY, 1, 100, List.of()));
+            source.operate(fill(contract, 1, ExecutionSide.BUY, 1, 110, List.of()));
+            source.operate(fill(contract, 2, ExecutionSide.SELL, 1, 120, List.of()));
+
+            Position open = source.getCurrentPosition();
+            assertNumEquals(105, open.getEntry().getPricePerAsset());
+
+            BaseTradingRecord imported = new BaseTradingRecord(open);
+
+            // The imported lot keeps the merged basis instead of the price of the
+            // retained fill: (120 - 105) * 1 * 0.01.
+            assertNumEquals(105, imported.getCurrentPosition().getEntry().getPricePerAsset());
+            assertNumEquals(0.15, imported.getCurrentPosition().getProfit(2, numFactory.numOf(120)));
+        }
+    }
 }

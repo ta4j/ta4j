@@ -63,14 +63,17 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
         Trade entry = position.getEntry();
         FuturesContract contract = position.getFuturesContract();
         if (contract != null) {
-            List<TradeFill> executedFills = Trade.executionFillsOf(entry)
-                    .stream()
+            List<TradeFill> fills = Trade.executionFillsOf(entry);
+            List<TradeFill> executedFills = fills.stream()
                     .filter(fill -> fill.index() >= 0 && fill.index() <= series.getEndIndex())
                     .toList();
             if (executedFills.isEmpty()) {
                 return series.numFactory().zero();
             }
-            Trade executedEntry = Trade.fromFills(entry.getType(), executedFills, entry.getCostModel());
+            // Retained fills keep the entry trade's own basis; only an as-of subset that
+            // drops fills is repriced from the fills it retains.
+            Trade executedEntry = executedFills.size() == fills.size() ? entry
+                    : Trade.fromFills(entry.getType(), executedFills, entry.getCostModel());
             Num notional = contract.settlementNotional(executedEntry.getAmount().abs(),
                     executedEntry.getPricePerAsset(series));
             Num openingFees = executedEntry.getCost();

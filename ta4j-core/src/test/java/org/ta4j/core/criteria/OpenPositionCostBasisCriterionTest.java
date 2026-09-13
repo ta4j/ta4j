@@ -158,4 +158,26 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
         // fee of the executed fill.
         assertNumEquals(numFactory.numOf(102), getCriterion().calculate(series, position), 1e-12);
     }
+
+    @Test
+    public void futuresCostBasisKeepsMergedAverageCostBasis() {
+        FuturesContract contract = linearBtcPerpetual();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110).build();
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .matchPolicy(ExecutionMatchPolicy.AVG_COST)
+                .initialCapital(numFactory.numOf(1_000))
+                .build();
+
+        record.operate(futuresFill(contract, 0, ExecutionSide.BUY, 100, 100, 0));
+        record.operate(futuresFill(contract, 1, ExecutionSide.BUY, 100, 110, 0));
+        record.operate(futuresFill(contract, 2, ExecutionSide.SELL, 100, 120, 0));
+        Position open = record.getCurrentPosition();
+
+        assertNumEquals(numFactory.numOf(105), open.getEntry().getPricePerAsset(), 1e-12);
+        // The open remainder keeps the merged basis of 105: 100 contracts x 0.01 BTC
+        // x 105 USD.
+        assertNumEquals(numFactory.numOf(105), getCriterion().calculate(series, open), 1e-12);
+        assertNumEquals(numFactory.numOf(105), getCriterion().calculate(series, record), 1e-12);
+    }
 }

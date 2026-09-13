@@ -909,6 +909,7 @@ public class BaseTradingRecord implements TradingRecord {
         lock.writeLock().lock();
         try {
             requireScheduledFundingConflict(funding);
+            requireProcessedFundingConflict(funding);
             requireIndexInTimeOrder(funding.time(), funding.eventId(), funding.index(),
                     "Funding event indices must be nondecreasing in time order");
             applyScheduledFunding(funding.time());
@@ -1346,6 +1347,21 @@ public class BaseTradingRecord implements TradingRecord {
                 throw new IllegalArgumentException(
                         "Cash flow " + funding.eventId() + " is already scheduled with different values");
             }
+        }
+    }
+
+    private void requireProcessedFundingConflict(FuturesFunding funding) {
+        FuturesCashFlow recorded = processedEvents.get(funding.eventId());
+        if (recorded == null) {
+            return;
+        }
+        boolean sameEvent = Objects.equals(recorded.time(), funding.time())
+                && Objects.equals(recorded.rate(), funding.rate())
+                && Objects.equals(recorded.referencePrice(), funding.referencePrice())
+                && recorded.index() == funding.index();
+        if (!sameEvent) {
+            throw new IllegalArgumentException(
+                    "Cash flow " + funding.eventId() + " is already recorded with different values");
         }
     }
 
@@ -2947,16 +2963,19 @@ public class BaseTradingRecord implements TradingRecord {
                 Trade entry = Objects.requireNonNull(position.getEntry(), "position.entry");
                 List<TradeFill> fills = Trade.executionFillsOf(entry);
                 if (position.getFuturesContract() != null) {
-                    fills = fills.stream().filter(fill -> fill.index() >= 0).toList();
-                    if (fills.isEmpty()) {
+                    List<TradeFill> executedFills = fills.stream().filter(fill -> fill.index() >= 0).toList();
+                    if (executedFills.isEmpty()) {
                         return null;
                     }
-                    Trade executedEntry = Trade.fromFills(entry.getType(), fills, entry.getCostModel());
+                    // Retained fills keep the entry trade's own basis; only an executed subset
+                    // that drops fills is repriced from the fills it retains.
+                    Trade executedEntry = executedFills.size() == fills.size() ? entry
+                            : Trade.fromFills(entry.getType(), executedFills, entry.getCostModel());
                     return new PositionLot(executedEntry.getIndex(), executedEntry.getTime(),
                             executedEntry.getPricePerAsset(), sideOf(executedEntry.getType()),
                             executedEntry.getAmount(), executedFeeOf(executedEntry), executedEntry.getOrderId(),
                             executedEntry.getCorrelationId(), entrySequence, position.getFuturesContract(),
-                            List.copyOf(executedEntry.getFees()), position.getCashFlows(), fills);
+                            List.copyOf(executedEntry.getFees()), position.getCashFlows(), executedFills);
                 }
                 return new PositionLot(entry.getIndex(), entry.getTime(), entry.getPricePerAsset(),
                         sideOf(entry.getType()), entry.getAmount(), feeOf(entry), entry.getOrderId(),
