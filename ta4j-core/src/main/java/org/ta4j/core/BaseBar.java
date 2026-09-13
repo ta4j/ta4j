@@ -602,8 +602,8 @@ public class BaseBar implements Bar {
         // Subclass overrides and partial failures may mutate without publishing.
         // Match the originating series' fallback for every retaining series.
         final int publicationCount = Math.max(1, deferredState.publicationCount);
-        final RetainedBarMutationPublication primaryPublication = captureRetainedBarMutation(publicationCount,
-                nestedMutation ? null : origin, failure);
+        final RetainedBarMutationPublication primaryPublication = captureRetainedBarMutation(publicationCount, origin,
+                failure);
         final RetainedBarMutationPublication publication = RetainedBarMutationPublication.combine(primaryPublication,
                 deferredState.nestedPublications());
         if (nestedMutation) {
@@ -676,10 +676,15 @@ public class BaseBar implements Bar {
      */
     @Override
     public void addPrice(Num price) {
-        applyTradePrice(price);
-        final MutationState state = currentMutationState();
-        if (state == null || state.suppressionDepth == 0) {
-            publishRetainedBarMutation();
+        try {
+            applyTradePrice(price);
+            final MutationState state = currentMutationState();
+            if (state == null || state.suppressionDepth == 0) {
+                publishRetainedBarMutation();
+            }
+        } catch (RuntimeException | Error failure) {
+            publishRetainedBarMutationAfterFailure(failure);
+            throw failure;
         }
     }
 
@@ -775,10 +780,8 @@ public class BaseBar implements Bar {
                 }
             }
         }
-        // The top-level originating series still holds its write lock. Publish its
-        // revision before unlock so readers never see a changed terminal bar with
-        // an old cache key. Nested mutations pass a null origin and publish all
-        // callbacks after the owning operation releases its lock.
+        // The originating series holds its write lock for the full mutation.
+        // Publish its revision before unlock; nested peer callbacks remain deferred.
         Throwable publicationFailure = failure;
         if (origin != null) {
             for (int index = mutations.size() - 1; index >= 0; index--) {

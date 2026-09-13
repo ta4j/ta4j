@@ -84,7 +84,9 @@ public class BaseBarSeries implements BarSeries {
         // Transient fields are null after deserialization; restore the logger
         // before any retained-bar access can reach the trace-logging branch.
         this.log = LoggerFactory.getLogger(getClass());
-        attachRetainedBarMutationTracking();
+        if (!defersRetainedBarMutationTracking()) {
+            attachRetainedBarMutationTracking();
+        }
     }
 
     /**
@@ -133,10 +135,16 @@ public class BaseBarSeries implements BarSeries {
         this.seriesEndIndex = config.seriesEndIndex();
         this.removedBarsCount = config.removedBarsCount();
         this.constrained = config.constrained();
-        attachRetainedBarMutationTracking();
+        if (!defersRetainedBarMutationTracking()) {
+            attachRetainedBarMutationTracking();
+        }
     }
 
-    private synchronized void attachRetainedBarMutationTracking() {
+    private boolean defersRetainedBarMutationTracking() {
+        return this instanceof ConcurrentBarSeries;
+    }
+
+    final synchronized void attachRetainedBarMutationTracking() {
         for (int innerIndex = 0; innerIndex < this.bars.size(); innerIndex++) {
             attachBarMutationTracking(this.bars.get(innerIndex), this.removedBarsCount + innerIndex);
         }

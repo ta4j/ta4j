@@ -37,6 +37,7 @@ final class BlockBootstrapNulls {
      * overflow (~709.78) and underflow-to-zero boundaries.
      */
     private static final double MAX_DIRECT_EXPONENT = 700d;
+    private static final double MAX_FINITE_DOUBLE_LOG = Math.log(Double.MAX_VALUE);
 
     /**
      * Checks whether a reconstructed close is a finite positive value in the active
@@ -208,6 +209,10 @@ final class BlockBootstrapNulls {
                 return numFactory.numOf(Math.exp(y));
             }
             return numFactory.one().dividedBy(expNum(numFactory, -y));
+        }
+        if (numFactory instanceof DoubleNumFactory) {
+            final double exponent = y <= MAX_FINITE_DOUBLE_LOG ? Math.min(y, Math.nextDown(MAX_FINITE_DOUBLE_LOG)) : y;
+            return numFactory.numOf(Math.exp(exponent));
         }
         final long whole = (long) Math.floor(y);
         Num result = numFactory.numOf(y - whole).exp();

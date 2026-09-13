@@ -98,6 +98,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
         super(name, bars, seriesBeginIndex, seriesEndIndex, removedBarsCount, constrained, numFactory,
                 barBuilderFactory);
         initLocks(new ReentrantReadWriteLock());
+        attachRetainedBarMutationTracking();
         this.tradeBarBuilder = Objects.requireNonNull(super.barBuilder(), "barBuilder cannot be null");
     }
 
@@ -106,6 +107,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
             final ReadWriteLock readWriteLock) {
         super(name, bars, seriesBeginIndex, seriesEndIndex, constrained, numFactory, barBuilderFactory);
         initLocks(readWriteLock);
+        attachRetainedBarMutationTracking();
         this.tradeBarBuilder = Objects.requireNonNull(super.barBuilder(), "barBuilder cannot be null");
     }
 
@@ -118,6 +120,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
     private void readObject(final ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
         initLocks(new ReentrantReadWriteLock());
+        attachRetainedBarMutationTracking();
         tradeBarBuilder = null;
     }
 

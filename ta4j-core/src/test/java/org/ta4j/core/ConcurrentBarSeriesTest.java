@@ -896,6 +896,33 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     }
 
     @Test
+    public void directFailedIncompatiblePriceInvalidatesEveryRetainingSeries() {
+        final NumFactory decimalFactory = DecimalNumFactory.getInstance();
+        final Duration period = Duration.ofMinutes(1);
+        final Instant start = Instant.parse("2024-05-01T00:00:00Z");
+        final Num decimalPrice = decimalFactory.numOf(10);
+        final BaseBar sharedBar = new BaseBar(period, start, start.plus(period), decimalPrice, decimalPrice,
+                decimalPrice, decimalPrice, decimalFactory.zero(), decimalFactory.zero(), 0);
+        final BaseBar historicalBar = new BaseBar(period, start.minus(period), start, decimalPrice, decimalPrice,
+                decimalPrice, decimalPrice, decimalFactory.zero(), decimalFactory.zero(), 0);
+        final ConcurrentBarSeries terminal = new ConcurrentBarSeries("direct-incompatible-terminal", List.of(sharedBar),
+                0, 0, false, decimalFactory, barBuilderFactory);
+        final ConcurrentBarSeries historical = new ConcurrentBarSeries("direct-incompatible-historical",
+                List.of(historicalBar, sharedBar), 0, 1, false, decimalFactory, barBuilderFactory);
+        final Num incompatiblePrice = DoubleNumFactory.getInstance().numOf(20);
+        final long terminalRevision = terminal.getBarHistoryRevision();
+        final long historicalRevision = historical.getBarHistoryRevision();
+
+        assertThrows(ClassCastException.class, () -> sharedBar.addPrice(incompatiblePrice));
+
+        assertSame(incompatiblePrice, sharedBar.getClosePrice());
+        assertEquals(terminalRevision + 1, terminal.getBarHistoryRevision());
+        assertEquals(historicalRevision + 1, historical.getBarHistoryRevision());
+        assertEquals(0, terminal.getBarSeriesChangeSnapshot(terminalRevision).earliestChangedIndex());
+        assertEquals(1, historical.getBarSeriesChangeSnapshot(historicalRevision).earliestChangedIndex());
+    }
+
+    @Test
     public void nestedMutationFailurePublishesCompanionAndRestoresDeferralScope() {
         final Duration period = Duration.ofMinutes(1);
         final Instant start = Instant.parse("2024-05-01T00:00:00Z");
