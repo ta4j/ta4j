@@ -90,7 +90,7 @@ public class AnalysisCriterionTest {
             FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
             BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 100, 100, 105);
             TradeFill executed = FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of());
-            TradeFill deferred = FuturesAnalysisTestSupport.fill(contract, -1, ExecutionSide.BUY, 1_000, 100,
+            TradeFill deferred = FuturesAnalysisTestSupport.fill(contract, -1, ExecutionSide.BUY, 1_000, 200,
                     List.of());
             Trade entry = Trade.fromFills(TradeType.BUY, List.of(executed, deferred), RecordedTradeCostModel.INSTANCE);
             BaseTradingRecord record = new BaseTradingRecord(
@@ -186,6 +186,28 @@ public class AnalysisCriterionTest {
 
             assertNumEquals(20, new NetProfitCriterion().calculate(barSeries, spanning, AnalysisWindow.barRange(0, 4),
                     markedFullyContained));
+        }
+    }
+
+    @Test
+    public void windowProjectionRecomputesBasisWhenEntryFillIsExcluded() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 100, 110);
+            Position position = new Position(
+                    Trade.fromFills(TradeType.BUY,
+                            List.of(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1, 100, List.of()),
+                                    FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.BUY, 1, 200, List.of())),
+                            RecordedTradeCostModel.INSTANCE),
+                    Trade.fromFill(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1, 110, List.of()),
+                            RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            AnalysisContext marked = AnalysisContext.defaults()
+                    .withOpenPositionHandling(OpenPositionHandling.MARK_TO_MARKET);
+
+            assertNumEquals(0.1, new NetProfitCriterion().calculate(barSeries, new BaseTradingRecord(position),
+                    AnalysisWindow.barRange(0, 1), marked));
         }
     }
 

@@ -31,19 +31,26 @@ public class LinearTransactionCostModel implements CostModel {
 
     /**
      * @param position     the position
-     * @param currentIndex current bar index (irrelevant for the
-     *                     LinearTransactionCostModel)
+     * @param currentIndex current bar index through which futures fills are
+     *                     included
      * @return the trading cost of the single {@code position}
      */
     @Override
     public Num calculate(Position position, int currentIndex) {
+        Trade entryTrade = position.getEntry();
+        if (entryTrade != null && entryTrade.getFuturesContract() != null) {
+            return calculateFuturesPosition(position, currentIndex);
+        }
         return this.calculate(position);
     }
 
     @Override
     public Num calculate(Position position) {
-        Num totalPositionCost = null;
         Trade entryTrade = position.getEntry();
+        if (entryTrade != null && entryTrade.getFuturesContract() != null) {
+            return calculateFuturesPosition(position, Integer.MAX_VALUE);
+        }
+        Num totalPositionCost = null;
         if (entryTrade != null) {
             // transaction costs of the entry trade
             totalPositionCost = entryTrade.getCost();
@@ -52,6 +59,26 @@ public class LinearTransactionCostModel implements CostModel {
             }
         }
         return totalPositionCost;
+    }
+
+    private Num calculateFuturesPosition(Position position, int currentIndex) {
+        Num totalPositionCost = calculateFuturesTradeCost(position.getEntry(), currentIndex);
+        Trade exitTrade = position.getExit();
+        if (exitTrade != null) {
+            totalPositionCost = totalPositionCost.plus(calculateFuturesTradeCost(exitTrade, currentIndex));
+        }
+        return totalPositionCost;
+    }
+
+    private Num calculateFuturesTradeCost(Trade trade, int currentIndex) {
+        Num totalTradeCost = trade.getPricePerAsset().getNumFactory().zero();
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() < 0 || fill.index() > currentIndex) {
+                continue;
+            }
+            totalTradeCost = totalTradeCost.plus(fill.hasRecordedFees() ? fill.fee() : calculate(fill));
+        }
+        return totalTradeCost;
     }
 
     @Override

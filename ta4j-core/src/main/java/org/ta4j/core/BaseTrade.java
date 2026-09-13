@@ -807,7 +807,7 @@ public class BaseTrade implements Trade {
         }
         int delta = index - this.index;
         List<TradeFill> indexedFills = fills.stream()
-                .map(fill -> fill.toBuilder().index(fill.index() + delta).build())
+                .map(fill -> fill.index() < 0 ? fill : fill.toBuilder().index(fill.index() + delta).build())
                 .toList();
         return new BaseTrade(type, indexedFills, resolveCopyCostModel(indexedFills));
     }

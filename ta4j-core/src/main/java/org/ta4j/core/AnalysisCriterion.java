@@ -497,8 +497,7 @@ public interface AnalysisCriterion {
         if (retainedEntryFills.isEmpty()) {
             return null;
         }
-        Trade projectedEntryTrade = BaseTrade.fromFillsAtPrice(entryTrade.getType(), retainedEntryFills,
-                entryTrade.getPricePerAsset(), entryTrade.getCostModel());
+        Trade projectedEntryTrade = tradeForRetainedFills(entryTrade, retainedEntryFills);
         FuturesContract contract = currentPosition.getFuturesContract();
         if (contract == null) {
             return null;
@@ -583,8 +582,7 @@ public interface AnalysisCriterion {
         }
         CostModel transactionCostModel = position.getTransactionCostModel();
         CostModel holdingCostModel = position.getHoldingCostModel();
-        Trade retainedEntry = BaseTrade.fromFillsAtPrice(entry.getType(), retainedEntryFills, entry.getPricePerAsset(),
-                entry.getCostModel());
+        Trade retainedEntry = tradeForRetainedFills(entry, retainedEntryFills);
         if (exit == null || retainedExitFills.isEmpty()) {
             return List
                     .of(new Position(retainedEntry, transactionCostModel, holdingCostModel, position.getCashFlows()));
@@ -644,12 +642,19 @@ public interface AnalysisCriterion {
                         .build());
             }
         }
-        Position closedPosition = new Position(BaseTrade.fromFillsAtPrice(entry.getType(), closedEntryFills,
-                entry.getPricePerAsset(), entry.getCostModel()), retainedExit, transactionCostModel, holdingCostModel,
-                closedCashFlows);
-        Position openPosition = new Position(BaseTrade.fromFillsAtPrice(entry.getType(), openEntryFills,
-                entry.getPricePerAsset(), entry.getCostModel()), transactionCostModel, holdingCostModel, openCashFlows);
+        Position closedPosition = new Position(Trade.fromFills(entry.getType(), closedEntryFills, entry.getCostModel()),
+                retainedExit, transactionCostModel, holdingCostModel, closedCashFlows);
+        Position openPosition = new Position(Trade.fromFills(entry.getType(), openEntryFills, entry.getCostModel()),
+                transactionCostModel, holdingCostModel, openCashFlows);
         return List.of(closedPosition, openPosition);
+    }
+
+    private static Trade tradeForRetainedFills(Trade originalTrade, List<TradeFill> retainedFills) {
+        if (retainedFills.size() == Trade.executionFillsOf(originalTrade).size()) {
+            return BaseTrade.fromFillsAtPrice(originalTrade.getType(), retainedFills, originalTrade.getPricePerAsset(),
+                    originalTrade.getCostModel());
+        }
+        return Trade.fromFills(originalTrade.getType(), retainedFills, originalTrade.getCostModel());
     }
 
     private static Num totalFillAmount(List<TradeFill> fills, NumFactory factory) {

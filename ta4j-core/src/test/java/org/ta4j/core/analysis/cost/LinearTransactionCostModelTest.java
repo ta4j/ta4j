@@ -90,6 +90,41 @@ public class LinearTransactionCostModelTest {
     }
 
     @Test
+    public void calculateFuturesPositionCostThroughCurrentIndex() {
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(DoubleNum.valueOf(0.01))
+                .build();
+        TradeFill entryFill = TradeFill.builder()
+                .index(0)
+                .time(Instant.EPOCH)
+                .price(DoubleNum.valueOf(100))
+                .amount(DoubleNum.valueOf(1))
+                .side(ExecutionSide.BUY)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+        TradeFill exitFill = entryFill.toBuilder()
+                .index(5)
+                .time(Instant.EPOCH.plusSeconds(5))
+                .price(DoubleNum.valueOf(200))
+                .side(ExecutionSide.SELL)
+                .build();
+        Trade entry = Trade.fromFill(entryFill, transactionModel);
+        Trade exit = Trade.fromFill(exitFill, transactionModel);
+        Position position = new Position(entry, exit, transactionModel, new ZeroCostModel());
+
+        assertNumEquals(entry.getCost(), transactionModel.calculate(position, 2));
+        assertNumEquals(entry.getCost().plus(exit.getCost()), transactionModel.calculate(position));
+    }
+
+    @Test
     public void testEquality() {
         LinearTransactionCostModel model = new LinearTransactionCostModel(0.1);
         CostModel modelSameClass = new LinearTransactionCostModel(0.2);

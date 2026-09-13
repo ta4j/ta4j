@@ -47,6 +47,19 @@ final class FuturesAnalysisTestSupport {
                 .build();
     }
 
+    static FuturesContract inverseBtcPerpetual(NumFactory numFactory) {
+        return FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTCUSD-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.INVERSE)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("BTC")
+                .contractSize(numFactory.numOf(100))
+                .build();
+    }
+
     static BarSeries series(NumFactory numFactory, double... closes) {
         return new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closes).build();
     }

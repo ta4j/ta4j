@@ -151,8 +151,10 @@ final class FuturesPerformanceSupport {
         NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
         Num entryNotional = numFactory.zero();
         boolean hasExecutedFill = false;
+        boolean allFillsExecuted = true;
         for (TradeFill fill : fills) {
             if (fill.index() < 0) {
+                allFillsExecuted = false;
                 continue;
             }
             hasExecutedFill = true;
@@ -160,8 +162,8 @@ final class FuturesPerformanceSupport {
             Num price = numFactory.numOf(fill.price().getDelegate());
             entryNotional = entryNotional.plus(contract.settlementNotional(amount, price));
         }
-        return hasExecutedFill ? entryNotional
-                : contract.settlementNotional(entry.getAmount().abs(), entry.getPricePerAsset());
+        return allFillsExecuted ? contract.settlementNotional(entry.getAmount().abs(), entry.getPricePerAsset())
+                : hasExecutedFill ? entryNotional : numFactory.zero();
     }
 
     /**

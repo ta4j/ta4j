@@ -125,6 +125,20 @@ class BaseTradeTest {
     }
 
     @Test
+    public void withIndexPreservesDeferredFillIndex() {
+        TradeFill executedFill = new TradeFill(2, Instant.EPOCH, NUM_FACTORY.hundred(), NUM_FACTORY.one(),
+                NUM_FACTORY.numOf(0.1), ExecutionSide.BUY, "order-1", "corr-1");
+        TradeFill deferredFill = new TradeFill(-1, Instant.EPOCH.plusSeconds(60), NUM_FACTORY.numOf(102),
+                NUM_FACTORY.one(), NUM_FACTORY.numOf(0.2), ExecutionSide.BUY, "order-1", "corr-1");
+        BaseTrade original = new BaseTrade(TradeType.BUY, List.of(executedFill, deferredFill),
+                RecordedTradeCostModel.INSTANCE);
+
+        BaseTrade reindexed = original.withIndex(10);
+
+        assertEquals(List.of(10, -1), reindexed.getFills().stream().map(TradeFill::index).toList());
+    }
+
+    @Test
     void withIndexAfterSerializationPreservesRecordedFee() throws Exception {
         BaseTrade original = new BaseTrade(4, Instant.parse("2025-01-01T00:00:00Z"), NUM_FACTORY.hundred(),
                 NUM_FACTORY.one(), NUM_FACTORY.numOf(0.3), ExecutionSide.BUY, "order-4", "corr-4");

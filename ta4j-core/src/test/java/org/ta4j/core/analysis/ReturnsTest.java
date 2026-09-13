@@ -621,6 +621,21 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
+    public void allExecutedInverseEntryUsesAggregateTradeBasis() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.inverseBtcPerpetual(testFactory);
+            Trade entry = Trade.fromFills(TradeType.BUY,
+                    List.of(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 100, 20_000, List.of()),
+                            FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.BUY, 100, 25_000, List.of())),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            Num expected = contract.settlementNotional(entry.getAmount(), entry.getPricePerAsset());
+
+            assertNumEquals(expected, FuturesPerformanceSupport.entryNotional(position));
+        }
+    }
+
+    @Test
     public void partiallyClosedFuturesReturnsUseEachSliceEntryNotional() {
         for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
             FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);

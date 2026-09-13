@@ -189,6 +189,11 @@ public class BaseTradingRecord implements TradingRecord {
         this.nextSequence = config.nextSequence();
         this.cashFlows = new ArrayList<>(config.cashFlows());
         this.processedEvents = new LinkedHashMap<>(config.processedEvents());
+        if (futuresContract != null) {
+            for (FuturesCashFlow cashFlow : cashFlows) {
+                advanceHorizonThrough(cashFlow.time());
+            }
+        }
     }
 
     private static RecordConfig recordConfig(TradeType startingType, ExecutionMatchPolicy matchPolicy,
@@ -679,6 +684,7 @@ public class BaseTradingRecord implements TradingRecord {
                     && FuturesValidation.numEquals(template.settlementAmount(), settlement) ? template
                             : template.toBuilder().amount(amount).settlementAmount(settlement).build();
             processedEvents.put(eventId, recorded);
+            advanceHorizonThrough(recorded.time());
             aggregated.add(recorded);
         }
         aggregated.sort(Comparator.comparing(FuturesCashFlow::time));

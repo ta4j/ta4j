@@ -2342,6 +2342,23 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    public void importedCashFlowsRestoreTheEventHorizon() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Trade entry = Trade.fromFill(fillAtTime(contract, 0, T0, ExecutionSide.BUY, 1, 10_000, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+            Position imported = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel(),
+                    List.of(cashFlow(contract, FuturesCashFlow.Type.FUNDING, "later", 5, -1)));
+            BaseTradingRecord record = new BaseTradingRecord(imported);
+
+            IllegalArgumentException rejection = assertThrows(IllegalArgumentException.class, () -> record
+                    .operate(fillAtTime(contract, 4, T0.plusSeconds(4), ExecutionSide.BUY, 1, 10_000, List.of())));
+
+            assertTrue(rejection.getMessage().contains("event horizon"));
+        }
+    }
+
+    @Test
     void windowProjectionAttributesCashFlowsToTheEntryFillsThatOwnThem() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = linearBtcPerpetual(numFactory);

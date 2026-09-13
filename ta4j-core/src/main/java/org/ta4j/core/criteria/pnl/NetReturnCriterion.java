@@ -74,8 +74,7 @@ public class NetReturnCriterion extends AbstractReturnCriterion {
         Num one = series.numFactory().one();
         FuturesContract contract = position.getFuturesContract();
         if (contract != null) {
-            Trade exit = position.getExit();
-            Num quantity = exit == null ? amount : exit.getAmount();
+            Num quantity = amount;
             Num entryNotional = contract.settlementNotional(quantity, entry.getPricePerAsset());
             if (entryNotional.isZero()) {
                 return one;
