@@ -68,7 +68,6 @@ final class FuturesPositionAccounting {
         FuturesContract contract = requireContract(position);
         Trade entry = position.getEntry();
         NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
-        List<TradeFill> entryFills = executedFills(entry, finalIndex);
         ArrayDeque<FillSlice> exits = new ArrayDeque<>();
         Trade exit = position.getExit();
         if (exit != null) {
