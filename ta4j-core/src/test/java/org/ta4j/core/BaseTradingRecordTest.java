@@ -2196,4 +2196,34 @@ class BaseTradingRecordTest {
         assertEquals(doubleSnapshot, decimalSnapshot);
         assertEquals(doubleSnapshot.hashCode(), decimalSnapshot.hashCode());
     }
+
+    @Test
+    void rehydratedRecordKeepsApplyingItsOwnNumericFactory() throws Exception {
+        FuturesContract doubleContract = linearBtcPerpetual(DoubleNumFactory.getInstance());
+        FuturesContract decimalContract = linearBtcPerpetual(DecimalNumFactory.getInstance());
+        BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(doubleContract).build();
+        record.operate(fill(doubleContract, 0, ExecutionSide.BUY, 2, 10_000, List.of()));
+
+        BaseTradingRecord rehydrated = serializedCopy(record);
+        // The rehydrated record has to normalize foreign fills into its own factory.
+        rehydrated.operate(fill(decimalContract, 1, ExecutionSide.BUY, 1, 10_000, List.of()));
+
+        assertEquals(2, rehydrated.getOpenPositions().size());
+        assertNumEquals(3d, rehydrated.getCurrentPosition().getEntry().getAmount());
+        assertNumEquals(10_000d, rehydrated.getCurrentPosition().getEntry().getNetPrice());
+    }
+
+    @Test
+    void importedOpenLotsShareTheRecordNumericFactory() {
+        FuturesContract doubleContract = linearBtcPerpetual(DoubleNumFactory.getInstance());
+        FuturesContract decimalContract = linearBtcPerpetual(DecimalNumFactory.getInstance());
+        Position doubleLot = openPosition(doubleContract, 0, 2, 10_000, List.of());
+        Position decimalLot = openPosition(decimalContract, 0, 3, 10_000, List.of());
+
+        BaseTradingRecord record = new BaseTradingRecord(List.of(doubleLot, decimalLot));
+
+        assertEquals(2, record.getOpenPositions().size());
+        assertNumEquals(5d, record.getCurrentPosition().getEntry().getAmount());
+        assertNumEquals(10_000d, record.getCurrentPosition().getEntry().getNetPrice());
+    }
 }

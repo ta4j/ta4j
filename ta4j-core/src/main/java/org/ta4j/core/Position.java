@@ -386,7 +386,8 @@ public class Position implements Serializable {
         if (futuresContract != null) {
             return FuturesPositionAccounting.profit(this, finalPrice, finalIndex);
         }
-        Num grossProfit = getGrossProfit(finalPrice);
+        Num grossProfit = isOpened() || exit.getIndex() > finalIndex ? openGrossProfit(finalPrice)
+                : getGrossProfit(finalPrice);
         Num tradingCost = getPositionCost(finalIndex);
         return grossProfit.minus(tradingCost);
     }
@@ -512,18 +513,29 @@ public class Position implements Serializable {
         if (futuresContract != null) {
             return FuturesPositionAccounting.payoff(this, finalPrice, Integer.MAX_VALUE);
         }
-        Num grossProfit;
         if (isOpened()) {
-            grossProfit = entry.getAmount().multipliedBy(finalPrice).minus(entry.getValue());
-        } else {
-            grossProfit = exit.getValue().minus(entry.getValue());
+            return openGrossProfit(finalPrice);
         }
+        Num grossProfit = exit.getValue().minus(entry.getValue());
 
         // Profits of long position are losses of short
         if (entry.isSell()) {
             grossProfit = grossProfit.negate();
         }
         return grossProfit;
+    }
+
+    /**
+     * Calculates the gross profit of the outstanding exposure valued at the
+     * supplied price against its entry value. Profits of a long position are losses
+     * of a short.
+     *
+     * @param finalPrice price used to value the outstanding exposure
+     * @return the gross profit of the outstanding exposure
+     */
+    private Num openGrossProfit(Num finalPrice) {
+        Num grossProfit = entry.getAmount().multipliedBy(finalPrice).minus(entry.getValue());
+        return entry.isSell() ? grossProfit.negate() : grossProfit;
     }
 
     /**

@@ -435,7 +435,9 @@ public class PositionTest {
         Num expectedHoldingCostsAfter = DoubleNum.valueOf(2.0 * 9.0 * 0.001);
         Num expectedProfitOfClosedPositionAfter = DoubleNum.valueOf(-0.04).minus(expectedHoldingCostsAfter);
         Num expectedHoldingCostsBefore = DoubleNum.valueOf(2.0 * 4.0 * 0.001);
-        Num expectedProfitOfClosedPositionBefore = DoubleNum.valueOf(-0.04).minus(expectedHoldingCostsBefore);
+        // The exit at index 10 is executed after the cutoff, so the exposure still
+        // open at index 5 is marked at 3: one contract sold at 2 is worth -1.
+        Num expectedProfitOfClosedPositionBefore = DoubleNum.valueOf(-1.04).minus(expectedHoldingCostsBefore);
 
         assertNumEquals(DoubleNum.valueOf(-1.05), profitOfOpenPositionFinalAfter);
         assertNumEquals(DoubleNum.valueOf(-1.02), profitOfOpenPositionFinalBefore);
@@ -510,6 +512,22 @@ public class PositionTest {
                     new LinearBorrowingCostModel(0.01, LinearBorrowingCostModel.Applicability.BOTH));
 
             assertNumEquals(40, position.getHoldingCost(2));
+        }
+    }
+
+    @Test
+    public void spotProfitMarksExposureOfPositionsClosedAfterTheFinalIndex() {
+        for (NumFactory numFactory : factories()) {
+            Trade entry = Trade.buyAt(0, numFactory.numOf(100), numFactory.one(), new ZeroCostModel());
+            Trade exit = Trade.sellAt(3, numFactory.numOf(120), numFactory.one(), new ZeroCostModel());
+            Position position = new Position(entry, exit);
+
+            // The exit is executed after the cutoff, so the mark has to value the
+            // exposure that is still open at the cutoff.
+            assertNumEquals(0d, position.getProfit(1, numFactory.numOf(100)));
+            assertNumEquals(10d, position.getProfit(1, numFactory.numOf(110)));
+            assertNumEquals(10d, position.getUnrealizedProfit(numFactory.numOf(110), 1));
+            assertNumEquals(20d, position.getProfit(3, numFactory.numOf(100)));
         }
     }
 }

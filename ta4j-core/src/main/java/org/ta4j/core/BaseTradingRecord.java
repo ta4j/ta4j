@@ -695,15 +695,83 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     private void adoptPosition(Position position) {
+        Position adoptedPosition = normalizeToRecordFactory(position);
         long entrySequence = nextSequence++;
         long exitSequence = nextSequence++;
-        positionBook.adopt(position, entrySequence, exitSequence);
-        advanceNextTradeIndex(position.getEntry());
-        advanceNextTradeIndex(position.getExit());
-        Num price = position.getEntry().getPricePerAsset();
-        if ((numFactory == null || numFactory.one().isNaN()) && price != null && !price.isNaN()) {
+        positionBook.adopt(adoptedPosition, entrySequence, exitSequence);
+        advanceNextTradeIndex(adoptedPosition.getEntry());
+        advanceNextTradeIndex(adoptedPosition.getExit());
+        Num price = adoptedPosition.getEntry().getPricePerAsset();
+        if (!hasNumFactory() && price != null && !price.isNaN()) {
             numFactory = price.getNumFactory();
         }
+    }
+
+    private boolean hasNumFactory() {
+        return numFactory != null && !numFactory.one().isNaN();
+    }
+
+    /**
+     * Rebuilds an imported position in the record's numeric factory, so that an
+     * imported lot can be aggregated with the lots the record recorded itself.
+     * Positions recorded in another implementation of the same factory are returned
+     * unchanged.
+     *
+     * @param position imported position
+     * @return the position expressed in the record's numeric factory
+     */
+    private Position normalizeToRecordFactory(Position position) {
+        Trade entry = position.getEntry();
+        Num entryPrice = entry == null ? null : entry.getPricePerAsset();
+        if (!hasNumFactory() || entryPrice == null || entryPrice.isNaN()
+                || entryPrice.getNumFactory().getClass() == numFactory.getClass()) {
+            return position;
+        }
+        Trade normalizedEntry = normalizeToRecordFactory(entry);
+        List<FuturesCashFlow> normalizedCashFlows = normalizeToRecordFactory(position.getCashFlows());
+        if (position.getExit() == null) {
+            return new Position(normalizedEntry, position.getTransactionCostModel(), position.getHoldingCostModel(),
+                    normalizedCashFlows);
+        }
+        return new Position(normalizedEntry, normalizeToRecordFactory(position.getExit()),
+                position.getTransactionCostModel(), position.getHoldingCostModel(), normalizedCashFlows);
+    }
+
+    private Trade normalizeToRecordFactory(Trade trade) {
+        List<TradeFill> fills = Trade.executionFillsOf(trade);
+        List<TradeFill> normalizedFills = new ArrayList<>(fills.size());
+        for (TradeFill fill : fills) {
+            TradeFill.Builder builder = fill.toBuilder()
+                    .price(convertToRecordFactory(fill.price()))
+                    .amount(convertToRecordFactory(fill.amount()));
+            if (fill.hasRecordedFees()) {
+                builder.fees(normalizeFees(fill.fees(), numFactory));
+            } else {
+                builder.fee(convertToRecordFactory(fill.fee()));
+            }
+            normalizedFills.add(builder.build());
+        }
+        return Trade.fromFills(trade.getType(), normalizedFills, trade.getCostModel());
+    }
+
+    private List<FuturesCashFlow> normalizeToRecordFactory(List<FuturesCashFlow> cashFlows) {
+        if (cashFlows.isEmpty()) {
+            return cashFlows;
+        }
+        List<FuturesCashFlow> normalizedCashFlows = new ArrayList<>(cashFlows.size());
+        for (FuturesCashFlow cashFlow : cashFlows) {
+            normalizedCashFlows.add(cashFlow.toBuilder()
+                    .amount(convertToRecordFactory(cashFlow.amount()))
+                    .settlementAmount(convertToRecordFactory(cashFlow.settlementAmount()))
+                    .rate(convertToRecordFactory(cashFlow.rate()))
+                    .referencePrice(convertToRecordFactory(cashFlow.referencePrice()))
+                    .build());
+        }
+        return normalizedCashFlows;
+    }
+
+    private Num convertToRecordFactory(Num value) {
+        return value == null ? null : numFactory.numOf(value.getDelegate());
     }
 
     private void advanceNextTradeIndex(Trade trade) {
@@ -1480,7 +1548,7 @@ public class BaseTradingRecord implements TradingRecord {
                 positionBook.recordExit(index, trade, appliedSequence);
             }
 
-            if ((numFactory == null || numFactory.one().isNaN()) && price != null && !price.isNaN()) {
+            if (!hasNumFactory() && price != null && !price.isNaN()) {
                 numFactory = price.getNumFactory();
             }
             if (totalFees == null) {
@@ -1683,7 +1751,7 @@ public class BaseTradingRecord implements TradingRecord {
         tradesCache = null;
         tradesCacheVersion = -1L;
         modificationCount = 0L;
-        numFactory = null;
+        numFactory = restoredNumFactory();
         if (cashFlows == null) {
             cashFlows = new ArrayList<>();
         }
@@ -1702,6 +1770,35 @@ public class BaseTradingRecord implements TradingRecord {
         if (fundingCursor < 0 || fundingCursor > fundingSchedule.size()) {
             fundingCursor = fundingSchedule.size();
         }
+    }
+
+    /**
+     * Infers the numeric factory of a deserialized record from its retained
+     * numerics, so that subsequently recorded fills are normalized into the factory
+     * the record was recorded with instead of the factory of the incoming fill.
+     *
+     * @return the recorded numeric factory, {@code null} when the record retains no
+     *         numeric
+     */
+    private NumFactory restoredNumFactory() {
+        NumFactory recordedNumFactory = positionBook.recordedNumFactory();
+        if (recordedNumFactory != null) {
+            return recordedNumFactory;
+        }
+        if (isRecorded(initialCapital)) {
+            return initialCapital.getNumFactory();
+        }
+        if (isRecorded(totalFees)) {
+            return totalFees.getNumFactory();
+        }
+        if (isRecorded(initialMarginRate)) {
+            return initialMarginRate.getNumFactory();
+        }
+        return null;
+    }
+
+    private static boolean isRecorded(Num value) {
+        return value != null && !value.isNaN();
     }
 
     /**
@@ -1961,6 +2058,27 @@ public class BaseTradingRecord implements TradingRecord {
                 }
             }
             openLots.addLast(PositionLot.of(position, entrySequence));
+        }
+
+        private NumFactory recordedNumFactory() {
+            for (PositionLot lot : openLots) {
+                NumFactory lotNumFactory = numFactoryOf(lot.entryPrice());
+                if (lotNumFactory != null) {
+                    return lotNumFactory;
+                }
+            }
+            for (ClosedPosition closedPosition : closedPositions) {
+                Trade closedEntry = closedPosition.position().getEntry();
+                NumFactory closedNumFactory = closedEntry == null ? null : numFactoryOf(closedEntry.getPricePerAsset());
+                if (closedNumFactory != null) {
+                    return closedNumFactory;
+                }
+            }
+            return null;
+        }
+
+        private static NumFactory numFactoryOf(Num price) {
+            return price == null || price.isNaN() ? null : price.getNumFactory();
         }
 
         private void recordEntry(int index, Trade trade, long sequence) {
@@ -2410,6 +2528,11 @@ public class BaseTradingRecord implements TradingRecord {
             List<FuturesCashFlow> sliceCashFlows = lot.allocateCashFlows(closeAmount);
             List<TradeFill> entryFills = lot.allocateFills(closeAmount);
             if (matchPolicy == ExecutionMatchPolicy.AVG_COST && !entryFills.isEmpty()) {
+                // AVG_COST attributes the lot's average price to every closed slice, and the
+                // entry trade derives its price from these fills, so the retained fills must
+                // carry that average rather than the prices of the executions they were
+                // sliced from. The aggregate payoff is unchanged either way, since it
+                // reduces to sum(exit amount * exit price) - sum(entry amount * entry price).
                 List<TradeFill> repricedEntryFills = new ArrayList<>(entryFills.size());
                 for (TradeFill entryFill : entryFills) {
                     repricedEntryFills.add(entryFill.toBuilder().price(lot.entryPrice()).build());

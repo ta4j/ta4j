@@ -799,4 +799,42 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
             return recordedOperations;
         }
     }
+
+    @Test
+    public void pendingEntryRemainderStopsFillingAfterTheDatedCutoff() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(2d).add();
+        series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(2d).add();
+        series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(2d).add();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-DEC")
+                .productType(FuturesContract.ProductType.DATED)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .expiry(series.getBar(2).getEndTime())
+                .build();
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(1_000))
+                .transactionCostModel(new ZeroCostModel())
+                .build();
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(),
+                numFactory.numOf(0.5), 5);
+
+        model.execute(0, record, series, numFactory.numOf(3));
+        model.onBar(1, record, series);
+        assertNumEquals(1d, record.getCurrentPosition().getEntry().getAmount());
+
+        model.onBar(2, record, series);
+
+        // The unfilled entry remainder may not keep filling at or after the expiry.
+        assertNumEquals(1d, record.getCurrentPosition().getEntry().getAmount());
+        StopLimitExecutionModel.PendingOrderSnapshot pending = model.getPendingOrder(record).orElseThrow();
+        assertNumEquals(3d, pending.requestedAmount());
+        assertNumEquals(1d, pending.filledAmount());
+    }
 }

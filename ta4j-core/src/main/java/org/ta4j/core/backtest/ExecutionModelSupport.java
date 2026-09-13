@@ -79,15 +79,31 @@ final class ExecutionModelSupport {
         return new TradeExecutionModel.ExecutionTarget(index, price, time);
     }
 
-    static boolean isEntryAllowed(TradingRecord tradingRecord, FuturesContract futuresContract, Instant fillTime) {
+    /**
+     * Checks whether an execution of the supplied trade type may still run at the
+     * supplied time. A dated contract stops executing at its expiry (or an earlier
+     * trading cutoff), but an execution that reduces the exposure opened before the
+     * cutoff is always allowed so that a position can still be closed.
+     *
+     * @param tradingRecord   record whose current position is inspected
+     * @param futuresContract traded contract, providing the cutoff
+     * @param tradeType       trade type of the pending execution
+     * @param fillTime        timestamp of the execution, may be {@code null}
+     * @return {@code true} if the execution may run
+     */
+    static boolean isExecutionAllowed(TradingRecord tradingRecord, FuturesContract futuresContract, TradeType tradeType,
+            Instant fillTime) {
         Instant entryCutoff = futuresContract.tradingDisabledAt();
         if (futuresContract.productType() == FuturesContract.ProductType.DATED
                 && (entryCutoff == null || futuresContract.expiry().isBefore(entryCutoff))) {
             entryCutoff = futuresContract.expiry();
         }
+        if (entryCutoff == null || fillTime == null || fillTime.isBefore(entryCutoff)) {
+            return true;
+        }
         Position currentPosition = tradingRecord.getCurrentPosition();
-        boolean positionOpen = currentPosition != null && currentPosition.isOpened();
-        return entryCutoff == null || positionOpen || fillTime == null || fillTime.isBefore(entryCutoff);
+        return currentPosition != null && currentPosition.isOpened() && currentPosition.getEntry() != null
+                && tradeType == currentPosition.getEntry().getType().complementType();
     }
 
     /**
@@ -117,7 +133,7 @@ final class ExecutionModelSupport {
         }
         TradeType tradeType = nextTradeType(tradingRecord);
         Instant fillTime = fillTime(barSeries, target.index(), priceSource);
-        if (!isEntryAllowed(tradingRecord, futuresContract, fillTime)) {
+        if (!isExecutionAllowed(tradingRecord, futuresContract, tradeType, fillTime)) {
             return;
         }
         if (!isCompleteClose(tradingRecord, tradeType, amount)) {

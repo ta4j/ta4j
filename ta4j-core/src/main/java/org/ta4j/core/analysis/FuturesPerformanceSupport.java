@@ -14,6 +14,7 @@ import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -104,7 +105,9 @@ final class FuturesPerformanceSupport {
 
     /**
      * Returns the unlevered capital of a single futures position: the settlement
-     * notional of its original entry quantity at the entry price.
+     * notional of its executed entry quantity at the executed entry price. Deferred
+     * entry fills, which are not part of the position's executed exposure, are
+     * ignored.
      *
      * @param position futures position
      * @return entry settlement notional in the settlement currency
@@ -113,7 +116,21 @@ final class FuturesPerformanceSupport {
     static Num entryNotional(Position position) {
         FuturesContract contract = requireFuturesContract(position);
         Trade entry = position.getEntry();
-        return contract.settlementNotional(entry.getAmount().abs(), entry.getPricePerAsset());
+        List<TradeFill> fills = Trade.executionFillsOf(entry);
+        NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
+        Num entryNotional = numFactory.zero();
+        boolean hasExecutedFill = false;
+        for (TradeFill fill : fills) {
+            if (fill.index() < 0) {
+                continue;
+            }
+            hasExecutedFill = true;
+            Num amount = numFactory.numOf(fill.amount().getDelegate()).abs();
+            Num price = numFactory.numOf(fill.price().getDelegate());
+            entryNotional = entryNotional.plus(contract.settlementNotional(amount, price));
+        }
+        return hasExecutedFill ? entryNotional
+                : contract.settlementNotional(entry.getAmount().abs(), entry.getPricePerAsset());
     }
 
     /**
