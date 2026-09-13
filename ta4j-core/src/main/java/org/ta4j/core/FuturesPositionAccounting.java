@@ -282,15 +282,11 @@ final class FuturesPositionAccounting {
      * exposure.
      *
      * @param position futures position
-     * @return matched contract count
+     * @return executed entry contract count
      * @since 0.25.1
      */
     static Num matchedQuantity(Position position) {
         Trade entry = position.getEntry();
-        Trade exit = position.getExit();
-        if (exit != null) {
-            return exit.getAmount();
-        }
         List<TradeFill> fills = Trade.executionFillsOf(entry);
         if (fills.isEmpty()) {
             return entry.getAmount();

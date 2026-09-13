@@ -455,7 +455,8 @@ public interface AnalysisCriterion {
                 List<Position> positionsToMark = futuresPositionsForMarkToMarket(source, end);
                 for (Position positionToMark : positionsToMark) {
                     if (positionToMark.isClosed()) {
-                        if (includeClosedPosition(positionToMark, start, end, inclusionPolicy)) {
+                        if (inclusionPolicy == PositionInclusionPolicy.FULLY_CONTAINED
+                                && includeClosedPosition(positionToMark, start, end, inclusionPolicy)) {
                             includedPositions.add(positionToMark);
                         }
                         continue;

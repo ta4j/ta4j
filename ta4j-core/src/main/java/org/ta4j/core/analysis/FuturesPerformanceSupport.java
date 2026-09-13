@@ -82,8 +82,14 @@ final class FuturesPerformanceSupport {
             }
         }
         Position current = record.getCurrentPosition();
-        return markExposure && current != null && current.getEntry() != null
-                && current.getEntry().getIndex() < seriesBegin;
+        if (current == null || current.getEntry() == null || current.getEntry().getIndex() >= seriesBegin) {
+            return false;
+        }
+        if (markExposure) {
+            return true;
+        }
+        int finalIndex = seriesBegin - 1;
+        return !current.getRealizedProfit(finalIndex).isZero();
     }
 
     /**

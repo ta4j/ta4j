@@ -746,9 +746,7 @@ public class BaseTradingRecord implements TradingRecord {
      */
     private Position normalizeToRecordFactory(Position position) {
         Trade entry = position.getEntry();
-        Num entryPrice = entry == null ? null : entry.getPricePerAsset();
-        if (!hasNumFactory() || entryPrice == null || entryPrice.isNaN()
-                || entryPrice.getNumFactory().getClass() == numFactory.getClass()) {
+        if (!hasNumFactory() || entry == null) {
             return position;
         }
         Trade normalizedEntry = normalizeToRecordFactory(entry);
@@ -2203,7 +2201,10 @@ public class BaseTradingRecord implements TradingRecord {
                             "Cannot adopt an open position: an open lot with the opposite side is already present");
                 }
             }
-            openLots.addLast(PositionLot.of(position, entrySequence));
+            PositionLot adoptedLot = PositionLot.of(position, entrySequence);
+            if (adoptedLot != null) {
+                openLots.addLast(adoptedLot);
+            }
         }
 
         private NumFactory recordedNumFactory() {
@@ -2299,9 +2300,10 @@ public class BaseTradingRecord implements TradingRecord {
         private Instant latestExecutionTime() {
             Instant latest = null;
             for (PositionLot lot : openLots) {
-                latest = latestTime(latest, lot.entryTime);
                 for (TradeFill fill : lot.fills()) {
-                    latest = latestTime(latest, fill.time());
+                    if (fill.index() >= 0) {
+                        latest = latestTime(latest, fill.time());
+                    }
                 }
                 for (FuturesCashFlow cashFlow : lot.cashFlows()) {
                     latest = latestTime(latest, cashFlow.time());
@@ -2322,11 +2324,15 @@ public class BaseTradingRecord implements TradingRecord {
             if (trade == null) {
                 return latest;
             }
-            Instant result = latestTime(latest, trade.getTime());
+            Instant result = latest;
+            boolean hasExecutedFill = false;
             for (TradeFill fill : Trade.executionFillsOf(trade)) {
-                result = latestTime(result, fill.time());
+                if (fill.index() >= 0) {
+                    hasExecutedFill = true;
+                    result = latestTime(result, fill.time());
+                }
             }
-            return result;
+            return hasExecutedFill ? latestTime(result, trade.getTime()) : result;
         }
 
         private static Instant latestTime(Instant latest, Instant candidate) {
@@ -2927,10 +2933,30 @@ public class BaseTradingRecord implements TradingRecord {
 
             private static PositionLot of(Position position, long entrySequence) {
                 Trade entry = Objects.requireNonNull(position.getEntry(), "position.entry");
+                List<TradeFill> fills = Trade.executionFillsOf(entry);
+                if (position.getFuturesContract() != null) {
+                    fills = fills.stream().filter(fill -> fill.index() >= 0).toList();
+                    if (fills.isEmpty()) {
+                        return null;
+                    }
+                    NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
+                    Num amount = numFactory.zero();
+                    for (TradeFill fill : fills) {
+                        amount = amount.plus(numFactory.numOf(fill.amount().getDelegate()));
+                    }
+                    List<TradeFee> feeComponents = List.copyOf(entry.getFees());
+                    if (!amount.isEqual(entry.getAmount())) {
+                        feeComponents = scaleFeeComponents(feeComponents, amount, entry.getAmount());
+                    }
+                    return new PositionLot(entry.getIndex(), entry.getTime(), entry.getPricePerAsset(),
+                            sideOf(entry.getType()), amount, executedFeeOf(entry), entry.getOrderId(),
+                            entry.getCorrelationId(), entrySequence, position.getFuturesContract(), feeComponents,
+                            position.getCashFlows(), fills);
+                }
                 return new PositionLot(entry.getIndex(), entry.getTime(), entry.getPricePerAsset(),
                         sideOf(entry.getType()), entry.getAmount(), feeOf(entry), entry.getOrderId(),
-                        entry.getCorrelationId(), entrySequence, position.getFuturesContract(),
-                        List.copyOf(entry.getFees()), position.getCashFlows(), Trade.executionFillsOf(entry));
+                        entry.getCorrelationId(), entrySequence, null, List.copyOf(entry.getFees()),
+                        position.getCashFlows(), fills);
             }
 
             private int entryIndex() {
