@@ -331,8 +331,9 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             return false;
         }
         if (order.remainingAmount().isPositive()) {
-            addRejectedOrder(tradingRecord, new RejectedOrder(index, index, order.tradeType, order.remainingAmount(),
-                    order.filledAmount, "Unfilled futures remainder cancelled by an opposing signal"));
+            addRejectedOrder(tradingRecord,
+                    new RejectedOrder(order.signalIndex, index, order.tradeType, order.requestedAmount,
+                            order.filledAmount, "Unfilled futures remainder cancelled by an opposing signal"));
         }
         removePendingOrder(tradingRecord);
         return true;

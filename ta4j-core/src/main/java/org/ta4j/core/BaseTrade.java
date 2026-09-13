@@ -738,7 +738,7 @@ public class BaseTrade implements Trade {
     @Override
     public int hashCode() {
         return Objects.hash(type, index, time, pricePerAsset, amount, cost, side, orderId, correlationId,
-                futuresContract, feeComponents);
+                futuresContract, feeComponents, fills);
     }
 
     @Override
@@ -755,7 +755,7 @@ public class BaseTrade implements Trade {
                 && Objects.equals(side, other.side) && Objects.equals(orderId, other.orderId)
                 && Objects.equals(correlationId, other.correlationId)
                 && Objects.equals(futuresContract, other.futuresContract)
-                && Objects.equals(feeComponents, other.feeComponents);
+                && Objects.equals(feeComponents, other.feeComponents) && Objects.equals(fills, other.fills);
     }
 
     @Override

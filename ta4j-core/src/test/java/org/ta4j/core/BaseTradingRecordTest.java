@@ -2399,4 +2399,45 @@ class BaseTradingRecordTest {
                 .fees(List.of())
                 .build();
     }
+
+    @Test
+    void rejectedSpecificIdExitLeavesScheduledFundingUnapplied() {
+        FuturesContract contract = linearBtcPerpetual(numFactory);
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .matchPolicy(ExecutionMatchPolicy.SPECIFIC_ID)
+                .initialCapital(numFactory.numOf(500))
+                .fundingSchedule(List.of(fundingEvent(contract, 2, 0.001, 100)))
+                .build();
+        record.operate(fill(contract, 1, ExecutionSide.BUY, 1, 100, List.of()));
+
+        assertThrows(IllegalStateException.class,
+                () -> record.operate(fill(contract, 3, ExecutionSide.SELL, 1, 120, List.of())));
+
+        // the rejected exit must not advance the horizon or settle the pending funding
+        // event
+        assertTrue(record.getCashFlows().isEmpty());
+        assertTrue(record.getPositions().isEmpty());
+        assertEquals(1, record.getOpenPositions().size());
+    }
+
+    @Test
+    void averageCostPartialCloseKeepsTheRetainedFillAtTheLotBasis() {
+        FuturesContract contract = linearBtcPerpetual(numFactory);
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .matchPolicy(ExecutionMatchPolicy.AVG_COST)
+                .initialCapital(numFactory.numOf(500))
+                .build();
+        record.operate(fill(contract, 1, ExecutionSide.BUY, 1, 100, List.of()));
+        record.operate(fill(contract, 2, ExecutionSide.BUY, 1, 110, List.of()));
+        record.operate(fill(contract, 3, ExecutionSide.SELL, 1, 120, List.of()));
+
+        Position open = record.getOpenPositions().get(0);
+
+        // the merged lot basis is 105; the retained execution must not leak its own 110
+        // price
+        assertNumEquals(numFactory.numOf(105), open.getEntry().getPricePerAsset());
+    }
+
 }

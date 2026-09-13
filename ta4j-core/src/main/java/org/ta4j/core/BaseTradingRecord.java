@@ -1079,6 +1079,7 @@ public class BaseTradingRecord implements TradingRecord {
             List<PlannedTradeFill> plannedTradeFills = planTradeFills(tradeType, List.of(fill), fill.orderId(),
                     fill.correlationId(), fill.time());
             validatePlannedFillTimes(plannedTradeFills);
+            validateSpecificIdBatch(tradeType, plannedTradeFills);
             for (PlannedTradeFill plannedTradeFill : plannedTradeFills) {
                 applyTradeInternal(plannedTradeFill.index(), plannedTradeFill.trade(), -1L);
             }
@@ -1101,7 +1102,7 @@ public class BaseTradingRecord implements TradingRecord {
             List<TradeFill> fills = Trade.executionFillsOf(trade);
             List<PlannedTradeFill> plannedTradeFills = planTradeFills(trade, fills);
             validatePlannedFillTimes(plannedTradeFills);
-            validateSpecificIdBatch(trade, plannedTradeFills);
+            validateSpecificIdBatch(trade.getType(), plannedTradeFills);
             for (PlannedTradeFill plannedTradeFill : plannedTradeFills) {
                 applyTradeInternal(plannedTradeFill.index(), plannedTradeFill.trade(), -1L);
             }
@@ -1578,12 +1579,12 @@ public class BaseTradingRecord implements TradingRecord {
      * @param trade        the batch trade
      * @param plannedFills planned fills in application order
      */
-    private void validateSpecificIdBatch(Trade trade, List<PlannedTradeFill> plannedFills) {
-        if (plannedFills.size() < 2 || matchPolicy != ExecutionMatchPolicy.SPECIFIC_ID) {
+    private void validateSpecificIdBatch(TradeType tradeType, List<PlannedTradeFill> plannedFills) {
+        if (plannedFills.isEmpty() || matchPolicy != ExecutionMatchPolicy.SPECIFIC_ID) {
             return;
         }
         ExecutionSide openSide = currentOpenSide();
-        if (openSide == null || sideOf(trade.getType()) == openSide) {
+        if (openSide == null || sideOf(tradeType) == openSide) {
             return;
         }
         positionBook.validateExitBatch(plannedFills);
@@ -2160,18 +2161,13 @@ public class BaseTradingRecord implements TradingRecord {
             if (trade.getType() == null) {
                 throw new IllegalArgumentException("trade type must be set");
             }
-            if (matchPolicy == ExecutionMatchPolicy.AVG_COST) {
-                normalizeAvgCostLots();
-            }
             PositionLot lot = PositionLot.of(index, timeOf(trade), trade.getPricePerAsset(), sideOf(trade.getType()),
                     trade.getAmount(), feeOf(trade), trade.getOrderId(), trade.getCorrelationId(), sequence,
                     futuresContract, feesOf(trade), Trade.executionFillsOf(trade));
-            if (matchPolicy == ExecutionMatchPolicy.AVG_COST && !openLots.isEmpty()) {
-                PositionLot merged = openLots.removeFirst().merge(lot);
-                openLots.addFirst(merged);
-                return;
-            }
             openLots.addLast(lot);
+            if (matchPolicy == ExecutionMatchPolicy.AVG_COST) {
+                normalizeAvgCostLots();
+            }
         }
 
         private List<Position> recordExit(int index, Trade trade, long sequence) {
@@ -2607,7 +2603,7 @@ public class BaseTradingRecord implements TradingRecord {
         }
 
         private void normalizeAvgCostLots() {
-            if (openLots.size() <= 1) {
+            if (openLots.isEmpty()) {
                 return;
             }
             PositionLot merged = null;
@@ -2615,9 +2611,8 @@ public class BaseTradingRecord implements TradingRecord {
                 PositionLot lot = openLots.removeFirst();
                 merged = merged == null ? lot : merged.merge(lot);
             }
-            if (merged != null) {
-                openLots.addFirst(merged);
-            }
+            merged.repriceFillsAtBasis();
+            openLots.addFirst(merged);
         }
 
         private ClosedPosition closeLot(PositionLot lot, Trade trade, int index, Num closeAmount, Num exitFeePortion,
@@ -2627,18 +2622,6 @@ public class BaseTradingRecord implements TradingRecord {
                     : lot.fee().multipliedBy(closeAmount).dividedBy(lotAmount);
             List<FuturesCashFlow> sliceCashFlows = lot.allocateCashFlows(closeAmount);
             List<TradeFill> entryFills = lot.allocateFills(closeAmount);
-            if (matchPolicy == ExecutionMatchPolicy.AVG_COST && !entryFills.isEmpty()) {
-                // AVG_COST attributes the lot's average price to every closed slice, and the
-                // entry trade derives its price from these fills, so the retained fills must
-                // carry that average rather than the prices of the executions they were
-                // sliced from. The aggregate payoff is unchanged either way, since it
-                // reduces to sum(exit amount * exit price) - sum(entry amount * entry price).
-                List<TradeFill> repricedEntryFills = new ArrayList<>(entryFills.size());
-                for (TradeFill entryFill : entryFills) {
-                    repricedEntryFills.add(entryFill.toBuilder().price(lot.entryPrice()).build());
-                }
-                entryFills = List.copyOf(repricedEntryFills);
-            }
             List<TradeFee> entryComponents = lot.allocateFeeComponents(closeAmount);
             if (closeAmount.isEqual(lotAmount)) {
                 openLots.remove(lot);
@@ -2974,6 +2957,29 @@ public class BaseTradingRecord implements TradingRecord {
                 }
                 fills = List.copyOf(retained);
                 return List.copyOf(allocated);
+            }
+
+            /**
+             * Rewrites the recorded executions of an average-cost lot at its basis.
+             *
+             * <p>
+             * A merged average-cost lot prices its whole amount at {@code entryPrice}, so
+             * its executions must report that basis as well; otherwise a partial close
+             * hands out slices carrying the prices of the executions they came from, and
+             * the retained open amount reports a basis the lot no longer has. Executions
+             * already priced at the basis are kept as they are, and counts and amounts are
+             * preserved so the cash-flow slices stay aligned.
+             * </p>
+             */
+            private void repriceFillsAtBasis() {
+                if (fills.isEmpty()) {
+                    return;
+                }
+                List<TradeFill> repriced = new ArrayList<>(fills.size());
+                for (TradeFill fill : fills) {
+                    repriced.add(fill.price().isEqual(entryPrice) ? fill : fill.toBuilder().price(entryPrice).build());
+                }
+                fills = List.copyOf(repriced);
             }
 
             private List<TradeFee> allocateFeeComponents(Num portion) {

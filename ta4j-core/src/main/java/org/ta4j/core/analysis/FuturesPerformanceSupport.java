@@ -292,6 +292,8 @@ final class FuturesPerformanceSupport {
         private final Indicator<Num> markPrice;
         private final NumFactory numFactory;
         private int activeCount;
+        private int settledCount;
+        private Num settledRealized;
         private int lastIndex = Integer.MIN_VALUE;
 
         private Cursor(BarSeries series, List<Position> positions, int finalIndex, boolean markExposure,
@@ -302,6 +304,7 @@ final class FuturesPerformanceSupport {
             this.markExposure = markExposure;
             this.markPrice = markPrice;
             this.numFactory = series.numFactory();
+            this.settledRealized = numFactory.zero();
         }
 
         /**
@@ -323,9 +326,10 @@ final class FuturesPerformanceSupport {
                     && positions.get(activeCount).getEntry().getIndex() <= effectiveIndex) {
                 activeCount++;
             }
+            settle(effectiveIndex);
             Num mark = markExposure && activeCount > 0 ? markAt(effectiveIndex) : null;
-            Num total = numFactory.zero();
-            for (int i = 0; i < activeCount; i++) {
+            Num total = settledRealized;
+            for (int i = settledCount; i < activeCount; i++) {
                 Position position = positions.get(i);
                 total = total.plus(toFactory(numFactory, position.getRealizedProfit(effectiveIndex)));
                 if (mark != null) {
@@ -333,6 +337,57 @@ final class FuturesPerformanceSupport {
                 }
             }
             return total;
+        }
+
+        /**
+         * Folds the leading exhausted positions into the running total.
+         *
+         * <p>
+         * A position whose entry and exit executions and cash flows are all accounted
+         * at {@code effectiveIndex} can no longer change its realized profit, so it is
+         * measured once here instead of on every later bar.
+         * </p>
+         *
+         * @param effectiveIndex last bar accounted by the current cursor step
+         */
+        private void settle(int effectiveIndex) {
+            while (settledCount < activeCount && isSettled(positions.get(settledCount), effectiveIndex)) {
+                Position position = positions.get(settledCount);
+                settledRealized = settledRealized
+                        .plus(toFactory(numFactory, position.getRealizedProfit(effectiveIndex)));
+                settledCount++;
+            }
+        }
+
+        /**
+         * Returns whether {@code position} is fully accounted at
+         * {@code effectiveIndex}.
+         *
+         * @param position       measured position
+         * @param effectiveIndex last bar accounted by the current cursor step
+         * @return {@code true} when no later bar can change the realized profit
+         */
+        private static boolean isSettled(Position position, int effectiveIndex) {
+            Trade exit = position.getExit();
+            if (exit == null || !allFillsExecuted(exit, effectiveIndex)
+                    || !allFillsExecuted(position.getEntry(), effectiveIndex)) {
+                return false;
+            }
+            for (FuturesCashFlow cashFlow : position.getCashFlows()) {
+                if (cashFlow.index() > effectiveIndex) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static boolean allFillsExecuted(Trade trade, int effectiveIndex) {
+            for (TradeFill fill : Trade.executionFillsOf(trade)) {
+                if (fill.index() < 0 || fill.index() > effectiveIndex) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         private Num markAt(int index) {

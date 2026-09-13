@@ -6,6 +6,7 @@ package org.ta4j.core.analysis;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
@@ -455,6 +456,70 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
             for (int index = 0; index <= barSeries.getEndIndex(); index++) {
                 assertNumEquals(0.0, pnl.getValue(index));
             }
+        }
+    }
+
+    @Test
+    public void futuresCurveDoesNotRecomputeSettledPositions() {
+        FuturesContract contract = linearPerpetual(numFactory);
+        CountingHoldingCostModel holdingCosts = new CountingHoldingCostModel();
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(1_000))
+                .holdingCostModel(holdingCosts)
+                .build();
+        int periods = 10;
+        for (int period = 0; period < periods; period++) {
+            record.operate(fill(contract, 2 * period, ExecutionSide.BUY, 1, 100));
+            record.operate(fill(contract, 2 * period + 1, ExecutionSide.SELL, 1, 101));
+        }
+        BarSeries curveSeries = flatRuntimeSeries(numFactory, 2 * periods + 1);
+        holdingCosts.reset();
+
+        CumulativePnL pnl = new CumulativePnL(curveSeries, record, curveSeries.getEndIndex(),
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertEquals(2 * periods + 1, pnl.getSize());
+        // settled positions are folded once instead of being re-measured on every later
+        // bar
+        assertTrue("holding costs were recomputed " + holdingCosts.calls() + " times",
+                holdingCosts.calls() <= 3 * periods);
+    }
+
+    private static BarSeries flatRuntimeSeries(NumFactory numFactory, int barCount) {
+        List<Bar> bars = new ArrayList<>();
+        Instant endTime = T0;
+        for (int index = 0; index < barCount; index++) {
+            Num price = numFactory.hundred();
+            bars.add(new BaseBar(Duration.ofMinutes(1), endTime.minus(Duration.ofMinutes(1)), endTime, price, price,
+                    price, price, numFactory.zero(), numFactory.zero(), 0));
+            endTime = endTime.plus(Duration.ofMinutes(1));
+        }
+        return new BaseBarSeriesBuilder().withNumFactory(numFactory).withBars(bars).build();
+    }
+
+    private static final class CountingHoldingCostModel extends ZeroCostModel {
+
+        private int calls;
+
+        @Override
+        public Num calculate(Position position) {
+            calls++;
+            return super.calculate(position);
+        }
+
+        @Override
+        public Num calculate(Position position, int currentIndex) {
+            calls++;
+            return super.calculate(position, currentIndex);
+        }
+
+        private void reset() {
+            calls = 0;
+        }
+
+        private int calls() {
+            return calls;
         }
     }
 

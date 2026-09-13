@@ -248,7 +248,10 @@ class FuturesExecutionTest {
             assertEquals(1, model.getRejectedOrders(tradingRecord).size());
             StopLimitExecutionModel.RejectedOrder cancellation = model.getRejectedOrders(tradingRecord).getFirst();
             assertTrue(cancellation.reason().contains("cancelled by an opposing signal"));
-            assertNumEquals(4, cancellation.requestedAmount());
+            // the rejection reports the signal bar and the original request, not the
+            // remainder
+            assertEquals(0, cancellation.signalIndex());
+            assertNumEquals(10, cancellation.requestedAmount());
             assertNumEquals(6, cancellation.filledAmount());
         }
     }

@@ -4,6 +4,7 @@
 package org.ta4j.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -240,4 +241,29 @@ class BaseTradeTest {
                 .instrument(instrument)
                 .build();
     }
+
+    @Test
+    void tradesWithDifferentFillCompositionsAreNotEqual() {
+        Trade split = Trade.fromFills(TradeType.BUY, List.of(composedFill(1, 1), composedFill(1, 1)),
+                RecordedTradeCostModel.INSTANCE);
+        Trade combined = Trade.fromFills(TradeType.BUY, List.of(composedFill(1, 2)), RecordedTradeCostModel.INSTANCE);
+        Trade sameSplit = Trade.fromFills(TradeType.BUY, List.of(composedFill(1, 1), composedFill(1, 1)),
+                RecordedTradeCostModel.INSTANCE);
+
+        assertNumEquals(NUM_FACTORY.two(), split.getAmount());
+        assertNumEquals(NUM_FACTORY.two(), combined.getAmount());
+        assertNotEquals(split, combined);
+        assertEquals(split, sameSplit);
+    }
+
+    private static TradeFill composedFill(int index, double amount) {
+        return TradeFill.builder()
+                .index(index)
+                .time(Instant.EPOCH)
+                .price(NUM_FACTORY.hundred())
+                .amount(NUM_FACTORY.numOf(amount))
+                .side(ExecutionSide.BUY)
+                .build();
+    }
+
 }

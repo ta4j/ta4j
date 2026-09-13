@@ -525,10 +525,16 @@ public interface PositionSizer {
             if (contract == null) {
                 upperBound = budget.dividedBy(entryPrice);
             } else {
-                Num marginPerContract = contract.marginRequirement(numFactory().one(), entryPrice,
-                        requireInitialMarginRate());
-                Num entryFeePerContract = modeledEntryFee(contract, numFactory().one());
-                upperBound = marginPerContract.isPositive() ? budget.dividedBy(marginPerContract)
+                Num one = numFactory().one();
+                Num entryFeePerContract = modeledEntryFee(contract, one);
+                // The bracket may only overstate the affordable count, so the fee
+                // contribution is the marginal per-contract fee between one and two
+                // contracts: the per-contract models charge exactly that, while a
+                // charge that does not grow with the contract count contributes none
+                // and leaves the search to resolve the boundary.
+                Num costPerContract = contract.marginRequirement(one, entryPrice, requireInitialMarginRate())
+                        .plus(modeledEntryFee(contract, numFactory().two()).minus(entryFeePerContract));
+                upperBound = costPerContract.isPositive() ? budget.dividedBy(costPerContract)
                         : entryFeePerContract.isPositive() ? budget.dividedBy(entryFeePerContract)
                                 : maximumTradableAmount(contract);
             }
@@ -567,16 +573,18 @@ public interface PositionSizer {
          * Finds the largest tradable contract count that the budget can afford.
          *
          * <p>
-         * The count is bounded above by the margin-only upper bound, as any count above
-         * it demands more margin than the budget. The search therefore runs as a binary
-         * search over the quantity increment grid between zero and that bound,
-         * converging in {@code log2} of the bound instead of stepping one increment at
-         * a time. The result is zero when no tradable count is affordable, e.g. when
-         * the affordable range lies below the minimum quantity or notional.
+         * The count is bounded above by the marginal per-contract cost bound, as any
+         * count above it demands at least that much margin and fees per contract. The
+         * search therefore runs as a binary search over the quantity increment grid
+         * between zero and that bound, converging in {@code log2} of the bound instead
+         * of stepping one increment at a time. The result is zero when no tradable
+         * count is affordable, e.g. when the affordable range lies below the minimum
+         * quantity or notional.
          * </p>
          *
          * @param contract   contract declaring the quantity constraints
-         * @param upperBound margin-only upper bound on the affordable count
+         * @param upperBound marginal per-contract cost upper bound on the affordable
+         *                   count
          * @param budget     cash available for entry
          * @return the largest tradable contract count the budget can afford, or zero
          */

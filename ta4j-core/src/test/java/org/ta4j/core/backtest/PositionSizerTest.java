@@ -19,6 +19,7 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
+import org.ta4j.core.analysis.cost.FuturesTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -171,4 +172,28 @@ class PositionSizerTest {
         assertEquals(numFactory.getClass(), amount.getNumFactory().getClass());
         assertNumEquals(numFactory.numOf(5), amount);
     }
+
+    @Test
+    void maxAffordableAmountHonorsPerContractRebates() {
+        NumFactory numFactory = DoubleNumFactory.getInstance();
+        FuturesContract contract = linearContract(numFactory);
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(9))
+                .initialMarginRate(numFactory.numOf(0.1))
+                .build();
+        PositionSizer.Context sizingContext = new PositionSizer.Context(0, 0, numFactory.hundred(), null,
+                entryOnFirstBar(), flatSeries(numFactory, 100), TradeType.BUY, record,
+                FuturesTransactionCostModel.builder()
+                        .makerRate(numFactory.numOf(-0.01))
+                        .takerRate(numFactory.numOf(-0.01))
+                        .build(),
+                new ZeroCostModel());
+
+        // one contract costs 10 of margin but earns a 1 rebate, so a 9 budget affords
+        // one contract
+        assertNumEquals(numFactory.one(), sizingContext.maxAffordableAmount(numFactory.numOf(9)));
+        assertNumEquals(numFactory.zero(), sizingContext.maxAffordableAmount(numFactory.numOf(8)));
+    }
+
 }
