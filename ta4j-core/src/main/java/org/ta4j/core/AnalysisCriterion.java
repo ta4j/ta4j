@@ -435,8 +435,20 @@ public interface AnalysisCriterion {
         if (hasBars) {
             PositionInclusionPolicy inclusionPolicy = context.positionInclusionPolicy();
             for (Position position : source.getPositions()) {
-                if (includeClosedPosition(position, start, end, inclusionPolicy)) {
-                    includedPositions.addAll(trimFuturesPositionToWindow(position, end));
+                if (!includeClosedPosition(position, start, end, inclusionPolicy)) {
+                    continue;
+                }
+                for (Position trimmedPosition : trimFuturesPositionToWindow(position, end)) {
+                    if (trimmedPosition.isClosed()) {
+                        includedPositions.add(trimmedPosition);
+                    } else if (context.openPositionHandling() == OpenPositionHandling.MARK_TO_MARKET) {
+                        Position syntheticPosition = createMarkToMarketFuturesPosition(series, trimmedPosition, end,
+                                holdingCostModel);
+                        if (syntheticPosition != null
+                                && includeClosedPosition(syntheticPosition, start, end, inclusionPolicy)) {
+                            includedPositions.add(syntheticPosition);
+                        }
+                    }
                 }
             }
             if (context.openPositionHandling() == OpenPositionHandling.MARK_TO_MARKET) {

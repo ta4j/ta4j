@@ -3,10 +3,13 @@
  */
 package org.ta4j.core.criteria.risk;
 
+import java.util.List;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.StopLossPriceModel;
 import org.ta4j.core.rules.StopLossRule;
@@ -108,12 +111,28 @@ public final class StopLossPositionRiskModel implements PositionRiskModel {
     }
 
     private static Num remainingAmount(Position position, Num entryAmount) {
+        Num executedEntryAmount = executedAmount(position.getEntry(), entryAmount);
         Trade exit = position.getExit();
         if (exit == null) {
-            return entryAmount.abs();
+            return executedEntryAmount.abs();
         }
-        Num remaining = entryAmount.abs().minus(exit.getAmount().abs());
+        Num executedExitAmount = executedAmount(exit, exit.getAmount());
+        Num remaining = executedEntryAmount.abs().minus(executedExitAmount.abs());
         return remaining.isPositive() ? remaining : entryAmount.getNumFactory().zero();
+    }
+
+    private static Num executedAmount(Trade trade, Num fallback) {
+        List<TradeFill> fills = trade.getFills();
+        if (fills.isEmpty()) {
+            return fallback;
+        }
+        Num total = fallback.getNumFactory().zero();
+        for (TradeFill fill : fills) {
+            if (fill.index() >= 0) {
+                total = total.plus(total.getNumFactory().numOf(fill.amount().getDelegate()));
+            }
+        }
+        return total;
     }
 
     /**

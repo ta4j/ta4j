@@ -33,9 +33,9 @@ public final class RecordedTradeCostModel implements CostModel {
         if (entry == null) {
             return zero;
         }
-        Num total = entry.getIndex() <= finalIndex ? entry.getCost() : zero;
-        if (exit != null && exit.getIndex() <= finalIndex) {
-            total = total.plus(exit.getCost());
+        Num total = calculate(entry, finalIndex);
+        if (exit != null) {
+            total = total.plus(total.getNumFactory().numOf(calculate(exit, finalIndex).getDelegate()));
         }
         return total;
     }
@@ -48,10 +48,11 @@ public final class RecordedTradeCostModel implements CostModel {
         if (entry == null) {
             return zero;
         }
-        if (exit == null) {
-            return entry.getCost();
+        Num total = calculate(entry, Integer.MAX_VALUE);
+        if (exit != null) {
+            total = total.plus(total.getNumFactory().numOf(calculate(exit, Integer.MAX_VALUE).getDelegate()));
         }
-        return entry.getCost().plus(exit.getCost());
+        return total;
     }
 
     @Override
@@ -88,6 +89,19 @@ public final class RecordedTradeCostModel implements CostModel {
     @Override
     public boolean equals(CostModel otherModel) {
         return otherModel instanceof RecordedTradeCostModel;
+    }
+
+    private Num calculate(Trade trade, int finalIndex) {
+        if (trade.getFuturesContract() == null) {
+            return trade.getIndex() <= finalIndex ? trade.getCost() : trade.getCost().getNumFactory().zero();
+        }
+        Num total = trade.getPricePerAsset().getNumFactory().zero();
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() >= 0 && fill.index() <= finalIndex) {
+                total = total.plus(total.getNumFactory().numOf(calculate(fill).getDelegate()));
+            }
+        }
+        return total;
     }
 
     private Num zeroFor(Trade entry, Trade exit) {
