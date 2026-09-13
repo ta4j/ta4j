@@ -461,7 +461,7 @@ public class BaseTrade implements Trade {
         for (TradeFill fill : fills) {
             String fillInstrument = fill.instrument();
             if (fillInstrument == null) {
-                continue;
+                return null;
             }
             if (instrument != null && !instrument.equals(fillInstrument)) {
                 return null;

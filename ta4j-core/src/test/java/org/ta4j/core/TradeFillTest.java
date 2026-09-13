@@ -5,7 +5,7 @@ package org.ta4j.core;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
-
+import static org.junit.Assert.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
@@ -82,6 +82,21 @@ public class TradeFillTest {
     public void rejectsNullPriceOrAmount() {
         assertThrows(NullPointerException.class, () -> new TradeFill(1, null, numFactory.one()));
         assertThrows(NullPointerException.class, () -> new TradeFill(1, numFactory.one(), null));
+    }
+
+    @Test
+    public void rejectsInfinitePriceOrAmount() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new TradeFill(1, numFactory.numOf(Double.POSITIVE_INFINITY), numFactory.one()));
+        assertThrows(IllegalArgumentException.class,
+                () -> new TradeFill(1, numFactory.one(), numFactory.numOf(Double.NEGATIVE_INFINITY)));
+    }
+
+    @Test
+    public void preservesNaNPriceForSpotCompatibility() {
+        TradeFill fill = new TradeFill(1, numFactory.numOf(Double.NaN), numFactory.one());
+
+        assertTrue(Double.isNaN(fill.price().doubleValue()));
     }
 
     @Test

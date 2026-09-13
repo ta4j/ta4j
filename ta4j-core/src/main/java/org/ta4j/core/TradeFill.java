@@ -81,6 +81,8 @@ public final class TradeFill implements Serializable {
         this.positionSnapshot = builder.positionSnapshot;
         if (futuresContract == null) {
             requireSpotOnly(builder);
+            FuturesValidation.requireNotInfinite(price, "price");
+            FuturesValidation.requireNotInfinite(amount, "amount");
             this.instrument = builder.instrument;
             this.fees = null;
             this.fee = builder.fee == null ? price.getNumFactory().zero() : builder.fee;
@@ -187,7 +189,8 @@ public final class TradeFill implements Serializable {
      * @param side          optional execution side
      * @param orderId       optional order id
      * @param correlationId optional correlation id
-     * @throws NullPointerException when price or amount is null
+     * @throws NullPointerException     when price or amount is null
+     * @throws IllegalArgumentException when price or amount is infinite
      * @since 0.22.4
      */
     public TradeFill(int index, Instant time, Num price, Num amount, Num fee, ExecutionSide side, String orderId,

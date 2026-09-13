@@ -240,9 +240,12 @@ class BaseTradeTest {
                 List.of(labelledFill(1, "BTC-USD"), labelledFill(2, "ETH-USD")), RecordedTradeCostModel.INSTANCE);
         Trade unlabelled = Trade.fromFills(TradeType.BUY, List.of(labelledFill(1, null)),
                 RecordedTradeCostModel.INSTANCE);
+        Trade mixed = Trade.fromFills(TradeType.BUY, List.of(labelledFill(1, "BTC-USD"), labelledFill(2, null)),
+                RecordedTradeCostModel.INSTANCE);
 
         assertNull(disagreeing.getInstrument());
         assertNull(unlabelled.getInstrument());
+        assertNull(mixed.getInstrument());
     }
 
     @Test

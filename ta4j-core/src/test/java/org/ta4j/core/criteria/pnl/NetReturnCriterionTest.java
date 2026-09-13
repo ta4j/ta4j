@@ -810,25 +810,6 @@ public class NetReturnCriterionTest extends AbstractPnlCriterionTest {
     }
 
     @Test
-    public void partialEntryHoldingCostOnlyUsesFillsThroughFinalIndex() {
-        for (NumFactory numFactory : factories()) {
-            FuturesContract contract = linearBtcPerpetual(numFactory);
-            LinearBorrowingCostModel holdingCostModel = new LinearBorrowingCostModel(0.01,
-                    LinearBorrowingCostModel.Applicability.BOTH);
-            Trade entry = Trade.fromFills(Trade.TradeType.BUY,
-                    List.of(fill(contract, 0, ExecutionSide.BUY, 100, 100, List.of()),
-                            fill(contract, 2, ExecutionSide.BUY, 100, 100, List.of())),
-                    RecordedTradeCostModel.INSTANCE);
-            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, holdingCostModel);
-
-            assertNumEquals(1, position.getHoldingCost(1));
-            // The first 100 contracts are held for two periods, while the second fill
-            // executes at the observation index and accrues nothing: 2 + 0.
-            assertNumEquals(2, position.getHoldingCost(2));
-        }
-    }
-
-    @Test
     public void futuresRecordReturnIncludesExecutionsBeyondSeriesEnd() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = linearBtcPerpetual(numFactory);

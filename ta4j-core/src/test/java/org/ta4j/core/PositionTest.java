@@ -516,6 +516,32 @@ public class PositionTest {
     }
 
     @Test
+    public void partialEntryHoldingCostOnlyUsesFillsThroughFinalIndex() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.numOf(0.01))
+                    .build();
+            LinearBorrowingCostModel holdingCostModel = new LinearBorrowingCostModel(0.01,
+                    LinearBorrowingCostModel.Applicability.BOTH);
+            Trade entry = Trade.fromFills(TradeType.BUY, List.of(futuresFill(contract, 0, 100, 100, ExecutionSide.BUY),
+                    futuresFill(contract, 2, 100, 100, ExecutionSide.BUY)), RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, holdingCostModel);
+
+            assertNumEquals(1, position.getHoldingCost(1));
+            // The first 100 contracts are held for two periods, while the second fill
+            // executes at the observation index and accrues nothing: 2 + 0.
+            assertNumEquals(2, position.getHoldingCost(2));
+        }
+    }
+
+    @Test
     public void spotProfitMarksExposureOfPositionsClosedAfterTheFinalIndex() {
         for (NumFactory numFactory : factories()) {
             Trade entry = Trade.buyAt(0, numFactory.numOf(100), numFactory.one(), new ZeroCostModel());

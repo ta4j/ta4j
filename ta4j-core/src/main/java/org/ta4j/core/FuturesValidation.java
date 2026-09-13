@@ -47,6 +47,16 @@ final class FuturesValidation {
         return requireNonBlank(value, name);
     }
 
+    static Num requireNotInfinite(Num value, String name) {
+        Objects.requireNonNull(value, name);
+        Number delegate = value.getDelegate();
+        if (delegate instanceof Double doubleValue && Double.isInfinite(doubleValue)
+                || delegate instanceof Float floatValue && Float.isInfinite(floatValue)) {
+            throw new IllegalArgumentException(name + " must not be infinite");
+        }
+        return value;
+    }
+
     static Num requireFinite(Num value, String name) {
         Objects.requireNonNull(value, name);
         if (!Num.isFinite(value)) {
