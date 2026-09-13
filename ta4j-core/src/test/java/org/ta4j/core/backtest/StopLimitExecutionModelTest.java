@@ -4,11 +4,11 @@
 package org.ta4j.core.backtest;
 
 import static org.junit.Assert.assertEquals;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -19,15 +19,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.junit.Test;
-import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.BaseTrade;
-import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ExecutionMatchPolicy;
+import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
@@ -35,6 +35,7 @@ import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -45,6 +46,93 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
 
     public StopLimitExecutionModelTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void completeFuturesCloseRespectsBarVolumeCap() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(100d).add();
+        series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(0.1d).add();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .build();
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(1_000))
+                .transactionCostModel(new ZeroCostModel())
+                .build();
+        record.operate(TradeFill.builder()
+                .index(0)
+                .time(series.getBar(0).getEndTime())
+                .price(numFactory.hundred())
+                .amount(numFactory.one())
+                .side(ExecutionSide.BUY)
+                .orderId("entry")
+                .futuresContract(contract)
+                .build());
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(),
+                numFactory.numOf(0.5), 2);
+
+        model.execute(0, record, series, numFactory.one());
+        model.onBar(1, record, series);
+
+        assertTrue(record.getCurrentPosition().isOpened());
+        assertNumEquals(0.95, record.getCurrentPosition().getEntry().getAmount());
+        assertTrue(model.getPendingOrder(record).isPresent());
+    }
+
+    @Test
+    public void completeFuturesCloseUsesRemainingOffGridAmount() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(100d).add();
+        series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(100d).add();
+        series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(1d).add();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .quantityIncrement(numFactory.one())
+                .build();
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .transactionCostModel(new ZeroCostModel())
+                .build();
+        record.operate(TradeFill.builder()
+                .index(0)
+                .time(series.getBar(0).getEndTime())
+                .price(numFactory.hundred())
+                .amount(numFactory.numOf(1.5))
+                .side(ExecutionSide.BUY)
+                .futuresContract(contract)
+                .build());
+        record.operate(TradeFill.builder()
+                .index(1)
+                .time(series.getBar(1).getEndTime())
+                .price(numFactory.hundred())
+                .amount(numFactory.one())
+                .side(ExecutionSide.SELL)
+                .futuresContract(contract)
+                .build());
+
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(),
+                numFactory.numOf(0.5), 1, TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+        model.execute(1, record, series, numFactory.one());
+        model.onBar(2, record, series);
+
+        assertTrue(record.isClosed());
+        assertTrue(model.getPendingOrder(record).isEmpty());
     }
 
     @Test
@@ -710,5 +798,43 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         private List<Trade> recordedOperations() {
             return recordedOperations;
         }
+    }
+
+    @Test
+    public void pendingEntryRemainderStopsFillingAfterTheDatedCutoff() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(2d).add();
+        series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(2d).add();
+        series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(2d).add();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-DEC")
+                .productType(FuturesContract.ProductType.DATED)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .expiry(series.getBar(2).getEndTime())
+                .build();
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(1_000))
+                .transactionCostModel(new ZeroCostModel())
+                .build();
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(),
+                numFactory.numOf(0.5), 5);
+
+        model.execute(0, record, series, numFactory.numOf(3));
+        model.onBar(1, record, series);
+        assertNumEquals(1d, record.getCurrentPosition().getEntry().getAmount());
+
+        model.onBar(2, record, series);
+
+        // The unfilled entry remainder may not keep filling at or after the expiry.
+        assertNumEquals(1d, record.getCurrentPosition().getEntry().getAmount());
+        StopLimitExecutionModel.PendingOrderSnapshot pending = model.getPendingOrder(record).orElseThrow();
+        assertNumEquals(3d, pending.requestedAmount());
+        assertNumEquals(1d, pending.filledAmount());
     }
 }

@@ -10,6 +10,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
+import static org.junit.Assert.assertThrows;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseTrade;
@@ -27,6 +31,14 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import java.util.ArrayList;
+import org.ta4j.core.FuturesContract;
+import org.ta4j.core.TradeFill;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
+import java.util.List;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeriesBuilder;
 
 public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -589,6 +601,273 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         private Num cost(Position position) {
             return position.getEntry().getPricePerAsset().getNumFactory().numOf(fee);
+        }
+    }
+
+    @Test
+    public void cashFlowWindowedSeriesMatchesUnwindowedInsideWindow() {
+        FuturesContract contract = linearPerpetual(numFactory);
+        BarSeries full = series(numFactory, 0);
+        BarSeries windowed = series(numFactory, BEGIN);
+        BaseTradingRecord fullRecord = futuresRecord(contract, 0);
+        BaseTradingRecord windowedRecord = futuresRecord(contract, BEGIN);
+
+        CashFlow fullCashFlow = new CashFlow(full, fullRecord, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        CashFlow windowedCashFlow = new CashFlow(windowed, windowedRecord, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        assertEquals(5, fullCashFlow.getSize());
+        assertEquals(5, windowedCashFlow.getSize());
+        assertNumEquals(numFactory.one(), windowedCashFlow.getValue(0));
+        assertNumEquals(numFactory.one(), windowedCashFlow.getValue(BEGIN - 1));
+        for (int index = 0; index < CLOSES.length; index++) {
+            assertNumEquals(fullCashFlow.getValue(index), windowedCashFlow.getValue(BEGIN + index));
+        }
+    }
+
+    private static BaseTradingRecord futuresRecord(FuturesContract contract, int indexOffset) {
+        NumFactory numFactory = contract.contractSize().getNumFactory();
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(500))
+                .build();
+        record.operate(fill(contract, indexOffset, ExecutionSide.BUY, 1_000, 100));
+        record.operate(fill(contract, indexOffset + 4, ExecutionSide.SELL, 1_000, 110));
+        return record;
+    }
+
+    private static TradeFill fill(FuturesContract contract, int index, ExecutionSide side, double amount,
+            double price) {
+        NumFactory numFactory = contract.contractSize().getNumFactory();
+        return TradeFill.builder()
+                .index(index)
+                .time(T0.plusSeconds(index))
+                .price(numFactory.numOf(price))
+                .amount(numFactory.numOf(amount))
+                .side(side)
+                .orderId("order-" + index)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+    }
+
+    private static BarSeries series(NumFactory numFactory, int beginIndex) {
+        List<Bar> bars = new ArrayList<>();
+        Instant endTime = T0;
+        for (double close : CLOSES) {
+            Num price = numFactory.numOf(close);
+            bars.add(new BaseBar(Duration.ofMinutes(1), endTime.minus(Duration.ofMinutes(1)), endTime, price, price,
+                    price, price, numFactory.zero(), numFactory.zero(), 0));
+            endTime = endTime.plus(Duration.ofMinutes(1));
+        }
+        return new BaseBarSeriesBuilder().withNumFactory(numFactory).withBeginIndex(beginIndex).withBars(bars).build();
+    }
+
+    private static FuturesContract linearPerpetual(NumFactory numFactory) {
+        return FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01))
+                .build();
+    }
+
+    private static final Instant T0 = Instant.parse("2025-01-01T00:00:00Z");
+
+    private static final double[] CLOSES = { 100d, 102d, 105d, 103d, 110d };
+
+    private static final int BEGIN = 2;
+
+    @Test
+    public void futuresMarkToMarketEquityIsNormalizedByAccountCapital() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 500);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 4, ExecutionSide.SELL, 1_000, 110, List.of()));
+
+            CashFlow cashFlow = new CashFlow(barSeries, record, EquityCurveMode.MARK_TO_MARKET,
+                    OpenPositionHandling.MARK_TO_MARKET);
+
+            assertEquals(EquityCurveMode.MARK_TO_MARKET, cashFlow.getEquityCurveMode());
+            assertEquals(5, cashFlow.getSize());
+            assertNumEquals(1.0, cashFlow.getValue(0));
+            assertNumEquals(1.04, cashFlow.getValue(1));
+            assertNumEquals(1.1, cashFlow.getValue(2));
+            assertNumEquals(1.06, cashFlow.getValue(3));
+            assertNumEquals(1.2, cashFlow.getValue(4));
+
+            CashFlow window = new CashFlow(barSeries, record, 2, 3, EquityCurveMode.MARK_TO_MARKET,
+                    OpenPositionHandling.MARK_TO_MARKET);
+            assertNumEquals(1.1, window.getValue(2));
+            assertNumEquals(1.06, window.getValue(3));
+        }
+    }
+
+    @Test
+    public void futuresRealizedCashFlowAndIgnoredOpenPositionsKeepPaidCashOnly() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 500);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100,
+                    List.of(FuturesAnalysisTestSupport.commission(testFactory, 2))));
+            record.recordCashFlow(FuturesAnalysisTestSupport.variationMargin(contract, 3, 20));
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 4, ExecutionSide.SELL, 1_000, 110,
+                    List.of(FuturesAnalysisTestSupport.commission(testFactory, 3))));
+
+            CashFlow realized = new CashFlow(barSeries, record, EquityCurveMode.REALIZED,
+                    OpenPositionHandling.MARK_TO_MARKET);
+            CashFlow ignored = new CashFlow(barSeries, record, EquityCurveMode.MARK_TO_MARKET,
+                    OpenPositionHandling.IGNORE);
+            CashFlow marked = new CashFlow(barSeries, record, EquityCurveMode.MARK_TO_MARKET,
+                    OpenPositionHandling.MARK_TO_MARKET);
+
+            for (int index = 0; index < 3; index++) {
+                assertNumEquals(0.996, realized.getValue(index));
+                assertNumEquals(0.996, ignored.getValue(index));
+            }
+            assertNumEquals(1.036, realized.getValue(3));
+            assertNumEquals(1.19, realized.getValue(4));
+            assertNumEquals(1.19, ignored.getValue(4));
+            assertNumEquals(0.996, marked.getValue(0));
+            assertNumEquals(1.036, marked.getValue(1));
+            assertNumEquals(1.096, marked.getValue(2));
+            assertNumEquals(1.056, marked.getValue(3));
+            assertNumEquals(1.19, marked.getValue(4));
+        }
+    }
+
+    @Test
+    public void futuresCashFlowWithNonpositiveMarkToMarketEquityUsesActualEquity() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 100, 95, 96);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 500);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 100_000, 100, List.of()));
+
+            CashFlow marked = new CashFlow(barSeries, record, EquityCurveMode.MARK_TO_MARKET,
+                    OpenPositionHandling.MARK_TO_MARKET);
+            CashFlow realized = new CashFlow(barSeries, record, EquityCurveMode.REALIZED,
+                    OpenPositionHandling.MARK_TO_MARKET);
+
+            assertNumEquals(1.0, marked.getValue(0));
+            assertNumEquals(-9.0, marked.getValue(1));
+            assertNumEquals(-7.0, marked.getValue(2));
+            assertNumEquals(1.0, realized.getValue(0));
+            assertNumEquals(1.0, realized.getValue(1));
+            assertNumEquals(1.0, realized.getValue(2));
+        }
+    }
+
+    @Test
+    public void futuresCashFlowRequiresExplicitAccountCapital() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(contract).build();
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+
+            assertThrows(IllegalStateException.class, () -> new CashFlow(barSeries, record,
+                    EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET));
+
+            BaseTradingRecord spot = new BaseTradingRecord();
+            spot.operate(0, testFactory.numOf(100), testFactory.one());
+            spot.operate(2, testFactory.numOf(110), testFactory.one());
+            new CashFlow(barSeries, spot, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        }
+    }
+
+    @Test
+    public void singleFuturesPositionCashFlowUsesEntrySettlementNotional() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            Position position = FuturesAnalysisTestSupport.openPosition(contract, 0, 1_000, 100);
+
+            assertNumEquals(1_000.0, contract.settlementNotional(testFactory.numOf(1_000), testFactory.numOf(100)));
+            CashFlow cashFlow = new CashFlow(barSeries, position, EquityCurveMode.MARK_TO_MARKET);
+
+            assertNumEquals(1.0, cashFlow.getValue(0));
+            assertNumEquals(1.02, cashFlow.getValue(1));
+            assertNumEquals(1.05, cashFlow.getValue(2));
+            assertNumEquals(1.03, cashFlow.getValue(3));
+            assertNumEquals(1.1, cashFlow.getValue(4));
+        }
+    }
+
+    @Test
+    public void partiallyClosedFuturesCashFlowsUseEachSliceEntryNotional() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 10_000, 11_000);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 1_000_000);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 4, 10_000,
+                    List.of(FuturesAnalysisTestSupport.commission(testFactory, 4))));
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1, 11_000,
+                    List.of(FuturesAnalysisTestSupport.commission(testFactory, 1))));
+
+            Position closedSlice = record.getPositions().getFirst();
+            Position openRemainder = record.getOpenPositions().getFirst();
+            assertNumEquals(100.0, contract.settlementNotional(closedSlice.getEntry().getAmount(),
+                    closedSlice.getEntry().getPricePerAsset()));
+            assertNumEquals(300.0, contract.settlementNotional(openRemainder.getEntry().getAmount(),
+                    openRemainder.getEntry().getPricePerAsset()));
+
+            CashFlow closedCashFlow = new CashFlow(barSeries, closedSlice, EquityCurveMode.MARK_TO_MARKET);
+            CashFlow openCashFlow = new CashFlow(barSeries, openRemainder, EquityCurveMode.MARK_TO_MARKET);
+            assertNumEquals(0.99, closedCashFlow.getValue(0));
+            assertNumEquals(1.08, closedCashFlow.getValue(1));
+            assertNumEquals(0.99, openCashFlow.getValue(0));
+            assertNumEquals(1.09, openCashFlow.getValue(1));
+
+            TradingRecord publicRecord = new BaseTradingRecord(List.of(closedSlice));
+            assertThrows(IllegalStateException.class, () -> new CashFlow(barSeries, publicRecord,
+                    EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET));
+        }
+    }
+
+    @Test
+    public void futuresCashFlowRejectsMarkPriceFromAnotherSeries() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            BarSeries otherSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 500);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 4, ExecutionSide.SELL, 1_000, 110, List.of()));
+
+            assertThrows(IllegalArgumentException.class,
+                    () -> new CashFlow(barSeries, record, new ClosePriceIndicator(otherSeries), 4,
+                            EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET));
+
+            CashFlow constantMark = new CashFlow(barSeries, record,
+                    new ConstantIndicator<>(barSeries, testFactory.numOf(108)), 4, EquityCurveMode.MARK_TO_MARKET,
+                    OpenPositionHandling.MARK_TO_MARKET);
+            assertNumEquals(1.16, constantMark.getValue(0));
+            assertNumEquals(1.16, constantMark.getValue(3));
+            assertNumEquals(1.2, constantMark.getValue(4));
+        }
+    }
+
+    @Test
+    public void emptyFundedFuturesCashFlowIsFlat() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 500);
+            CashFlow cashFlow = new CashFlow(barSeries, record, EquityCurveMode.MARK_TO_MARKET,
+                    OpenPositionHandling.MARK_TO_MARKET);
+
+            for (int index = 0; index <= barSeries.getEndIndex(); index++) {
+                assertNumEquals(1.0, cashFlow.getValue(index));
+            }
         }
     }
 

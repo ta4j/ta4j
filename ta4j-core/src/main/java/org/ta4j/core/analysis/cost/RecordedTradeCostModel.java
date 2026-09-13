@@ -3,8 +3,12 @@
  */
 package org.ta4j.core.analysis.cost;
 
+import java.util.List;
+import java.util.Objects;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFee;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
@@ -29,9 +33,9 @@ public final class RecordedTradeCostModel implements CostModel {
         if (entry == null) {
             return zero;
         }
-        Num total = entry.getIndex() <= finalIndex ? entry.getCost() : zero;
-        if (exit != null && exit.getIndex() <= finalIndex) {
-            total = total.plus(exit.getCost());
+        Num total = calculate(entry, finalIndex);
+        if (exit != null) {
+            total = total.plus(total.getNumFactory().numOf(calculate(exit, finalIndex).getDelegate()));
         }
         return total;
     }
@@ -44,10 +48,11 @@ public final class RecordedTradeCostModel implements CostModel {
         if (entry == null) {
             return zero;
         }
-        if (exit == null) {
-            return entry.getCost();
+        Num total = calculate(entry, Integer.MAX_VALUE);
+        if (exit != null) {
+            total = total.plus(total.getNumFactory().numOf(calculate(exit, Integer.MAX_VALUE).getDelegate()));
         }
-        return entry.getCost().plus(exit.getCost());
+        return total;
     }
 
     @Override
@@ -56,8 +61,47 @@ public final class RecordedTradeCostModel implements CostModel {
     }
 
     @Override
+    public Num calculate(TradeFill fill) {
+        Objects.requireNonNull(fill, "fill");
+        if (fill.futuresContract() == null) {
+            return fill.fee();
+        }
+        if (!fill.hasRecordedFees()) {
+            throw new IllegalArgumentException(
+                    "native fill has no recorded fees; configure a modeled transaction cost or supply fees");
+        }
+        return fill.fee();
+    }
+
+    @Override
+    public List<TradeFee> calculateFees(TradeFill fill) {
+        Objects.requireNonNull(fill, "fill");
+        if (fill.futuresContract() == null) {
+            throw new IllegalArgumentException("fee components are only defined for futures fills");
+        }
+        if (!fill.hasRecordedFees()) {
+            throw new IllegalArgumentException(
+                    "native fill has no recorded fees; configure a modeled transaction cost or supply fees");
+        }
+        return fill.fees();
+    }
+
+    @Override
     public boolean equals(CostModel otherModel) {
         return otherModel instanceof RecordedTradeCostModel;
+    }
+
+    private Num calculate(Trade trade, int finalIndex) {
+        if (trade.getFuturesContract() == null) {
+            return trade.getIndex() <= finalIndex ? trade.getCost() : trade.getCost().getNumFactory().zero();
+        }
+        Num total = trade.getPricePerAsset().getNumFactory().zero();
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() >= 0 && fill.index() <= finalIndex) {
+                total = total.plus(total.getNumFactory().numOf(calculate(fill).getDelegate()));
+            }
+        }
+        return total;
     }
 
     private Num zeroFor(Trade entry, Trade exit) {

@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.ta4j.core.analysis.Returns;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -16,8 +17,8 @@ import org.ta4j.core.num.NumFactory;
  * {@link ExpectedShortfallCriterion}.
  * <p>
  * Both risk criteria operate on the same view of a return series: the raw
- * returns excluding the initial placeholder value at index 0, sorted ascending,
- * with the tail size derived from the confidence level.
+ * returns excluding the placeholder value at the first stored position, sorted
+ * ascending, with the tail size derived from the confidence level.
  */
 final class RiskTailSupport {
 
@@ -25,14 +26,36 @@ final class RiskTailSupport {
     }
 
     /**
-     * Returns the raw return rates of the given series, excluding the initial
-     * placeholder value at index 0, sorted ascending.
+     * Returns the raw return rates of the given series, sorted ascending.
+     *
+     * <p>
+     * The placeholder value at the first stored position is excluded: a windowed
+     * futures series reports an actual first-bar return and keeps it, while every
+     * other layout has a synthetic placeholder there. A first value that only
+     * repeats the equity accumulated before the retained head is excluded as well,
+     * because it is a cumulative result rather than a period return.
+     * </p>
      *
      * @param returns the return series
      * @return the sorted raw return rates
      */
     static List<Num> sortedRates(Returns returns) {
-        List<Num> returnRates = new ArrayList<>(returns.getRawValues().subList(1, returns.getSize() + 1));
+        BarSeries series = returns.getBarSeries();
+        int seriesBegin = series.getBeginIndex();
+        boolean hasFirstReturn = returns.hasFirstBarReturn() && !returns.hasSeededFirstBarReturn();
+        if (!hasFirstReturn && seriesBegin == Integer.MAX_VALUE) {
+            return List.of();
+        }
+        int firstReturnIndex = hasFirstReturn ? seriesBegin : seriesBegin + 1;
+        int lastReturnIndex = series.getEndIndex();
+        if (firstReturnIndex > lastReturnIndex) {
+            return List.of();
+        }
+        long returnCount = (long) lastReturnIndex - firstReturnIndex + 1;
+        List<Num> returnRates = new ArrayList<>((int) Math.min(returnCount, series.getBarCount()));
+        for (long index = firstReturnIndex; index <= lastReturnIndex; index++) {
+            returnRates.add(returns.getValue((int) index));
+        }
         Collections.sort(returnRates);
         return returnRates;
     }

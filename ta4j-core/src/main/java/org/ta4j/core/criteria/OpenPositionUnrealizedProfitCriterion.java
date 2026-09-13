@@ -20,6 +20,13 @@ import org.ta4j.core.num.NumFactory;
  * exists.
  * </p>
  *
+ * <p>
+ * A native futures position is marked via
+ * {@link Position#getUnrealizedProfit(Num, int)}, which measures the remaining
+ * contract exposure in settlement currency and excludes the already settled
+ * variation margin, execution fees and funding.
+ * </p>
+ *
  * @since 0.22.2
  */
 public class OpenPositionUnrealizedProfitCriterion extends AbstractAnalysisCriterion {
@@ -32,7 +39,7 @@ public class OpenPositionUnrealizedProfitCriterion extends AbstractAnalysisCrite
         }
         int endIndex = series.getEndIndex();
         Num closePrice = series.getBar(endIndex).getClosePrice();
-        Num profit = position.getProfit(endIndex, closePrice);
+        Num profit = unrealizedProfit(position, closePrice, endIndex);
         return toSeriesNum(factory, profit);
     }
 
@@ -45,13 +52,20 @@ public class OpenPositionUnrealizedProfitCriterion extends AbstractAnalysisCrite
         if (!current.isOpened()) {
             return factory.zero();
         }
-        Num profit = current.getProfit(endIndex, closePrice);
+        Num profit = unrealizedProfit(current, closePrice, endIndex);
         return toSeriesNum(factory, profit);
     }
 
     @Override
     public boolean betterThan(Num v1, Num v2) {
         return v1.isGreaterThan(v2);
+    }
+
+    private Num unrealizedProfit(Position position, Num closePrice, int endIndex) {
+        if (position.getFuturesContract() == null) {
+            return position.getProfit(endIndex, closePrice);
+        }
+        return position.getUnrealizedProfit(closePrice, endIndex);
     }
 
     private Num toSeriesNum(NumFactory factory, Num value) {

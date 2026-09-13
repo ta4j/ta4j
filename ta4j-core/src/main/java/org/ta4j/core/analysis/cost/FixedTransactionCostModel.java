@@ -3,8 +3,10 @@
  */
 package org.ta4j.core.analysis.cost;
 
+import java.util.Objects;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.num.Num;
 
 /**
@@ -38,6 +40,10 @@ public class FixedTransactionCostModel implements CostModel {
      */
     @Override
     public Num calculate(Position position, int currentIndex) {
+        Trade entry = position.getEntry();
+        if (entry != null && entry.getFuturesContract() != null) {
+            return sumExecutedFillCosts(position, currentIndex);
+        }
         final var numFactory = position.getEntry().getPricePerAsset().getNumFactory();
         Num multiplier = numFactory.one();
         if (position.isClosed()) {
@@ -47,10 +53,46 @@ public class FixedTransactionCostModel implements CostModel {
     }
 
     /**
+     * <b>Note:</b> A partially executed native trade charges only the fills already
+     * executed no later than {@code currentIndex}.
+     *
+     * <p>
+     * The fixed fee is applied once per executed fill, because the venue charges
+     * per contract execution rather than per entry/exit trade.
+     * </p>
+     */
+    private Num sumExecutedFillCosts(Position position, int currentIndex) {
+        Trade entry = position.getEntry();
+        Num total = entry.getPricePerAsset().getNumFactory().zero();
+        total = total.plus(sumFillCosts(entry, currentIndex));
+        Trade exit = position.getExit();
+        if (exit != null) {
+            total = total.plus(sumFillCosts(exit, currentIndex));
+        }
+        return total;
+    }
+
+    private Num sumFillCosts(Trade trade, int currentIndex) {
+        Num total = trade.getPricePerAsset().getNumFactory().zero();
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() < 0 || fill.index() > currentIndex) {
+                continue;
+            }
+            Num fillCost = feePerTrade == 0d || !fill.hasRecordedFees() ? calculate(fill) : fill.fee();
+            total = total.plus(total.getNumFactory().numOf(fillCost.getDelegate()));
+        }
+        return total;
+    }
+
+    /**
      * @return the transaction cost of the single {@code position}
      */
     @Override
     public Num calculate(Position position) {
+        Trade entry = position.getEntry();
+        if (entry != null && entry.getFuturesContract() != null) {
+            return sumExecutedFillCosts(position, Integer.MAX_VALUE);
+        }
         return this.calculate(position, 0);
     }
 
@@ -63,6 +105,22 @@ public class FixedTransactionCostModel implements CostModel {
     @Override
     public Num calculate(Num price, Num amount) {
         return price.getNumFactory().numOf(feePerTrade);
+    }
+
+    /**
+     * Charges {@link #feePerTrade} once per native execution fill.
+     *
+     * @param fill the execution fill
+     * @return the trading cost of {@code fill}
+     * @since 0.25.1
+     */
+    @Override
+    public Num calculate(TradeFill fill) {
+        Objects.requireNonNull(fill, "fill");
+        if (fill.futuresContract() == null) {
+            return calculate(fill.price(), fill.amount());
+        }
+        return fill.price().getNumFactory().numOf(feePerTrade);
     }
 
     @Override

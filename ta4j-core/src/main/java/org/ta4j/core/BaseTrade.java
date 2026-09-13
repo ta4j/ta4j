@@ -5,15 +5,22 @@ package org.ta4j.core;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.Serial;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
+
+import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Unified {@link Trade} implementation for backtest and live flows.
@@ -36,6 +43,7 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.22.4
  */
+@SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Every constructor validates trade data and futures-fill consistency before an instance is published, so invalid trades are rejected fail-fast instead of escaping partially initialized")
 public class BaseTrade implements Trade {
 
     @Serial
@@ -64,6 +72,12 @@ public class BaseTrade implements Trade {
 
     /** Execution fills for this trade (single fill for scalar trades). */
     private final List<TradeFill> fills;
+
+    /** The contract shared by every fill, or null for a spot trade. */
+    private final FuturesContract futuresContract;
+
+    /** Resolved fee components in the settlement currency; empty for spot. */
+    private final List<TradeFee> feeComponents;
 
     /** Execution timestamp. */
     private final Instant time;
@@ -171,6 +185,17 @@ public class BaseTrade implements Trade {
         this(fillConfig(type, fills, transactionCostModel));
     }
 
+    static Trade fromFillsAtPrice(Trade.TradeType type, List<TradeFill> fills, Num pricePerAsset,
+            CostModel transactionCostModel) {
+        Objects.requireNonNull(pricePerAsset, "pricePerAsset");
+        Objects.requireNonNull(transactionCostModel, "transactionCostModel");
+        FillSummary fillSummary = summarizeFills(type, fills);
+        FillMetadata metadata = summarizeMetadata(type, fillSummary.firstFill());
+        return new BaseTrade(config(type, fillSummary.firstFill().index(), metadata.time(), pricePerAsset,
+                fillSummary.totalAmount(), metadata.side(), metadata.orderId(), metadata.correlationId(),
+                fillSummary.fills(), transactionCostModel));
+    }
+
     private BaseTrade(TradeConfig config) {
         this.type = config.type();
         this.index = config.index();
@@ -178,12 +203,22 @@ public class BaseTrade implements Trade {
         this.netPrice = config.netPrice();
         this.amount = config.amount();
         this.fills = config.fills();
+        this.futuresContract = singleContract(config.fills());
+        this.feeComponents = aggregateFeeComponents(futuresContract, config.fills());
         this.time = config.time();
         this.side = config.side();
         this.orderId = config.orderId();
         this.correlationId = config.correlationId();
         this.cost = config.cost();
         this.costModel = config.costModel();
+    }
+
+    @Serial
+    private void readObject(ObjectInputStream inputStream) throws IOException, ClassNotFoundException {
+        inputStream.defaultReadObject();
+        if (costModel == null && futuresContract != null) {
+            costModel = RecordedTradeCostModel.INSTANCE;
+        }
     }
 
     private static TradeConfig seriesConfig(int index, BarSeries series, Trade.TradeType type) {
@@ -388,18 +423,132 @@ public class BaseTrade implements Trade {
         return costModel == null ? DEFAULT_COST_MODEL : costModel;
     }
 
+    /**
+     * @return the traded contract, or {@code null} for a spot trade
+     * @since 0.25.1
+     */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "FuturesContract is immutable, so returning the shared contract value cannot expose mutable trade state")
+    @Override
+    public FuturesContract getFuturesContract() {
+        return futuresContract;
+    }
+
+    /**
+     * @return resolved fee components of every fill, in the settlement currency;
+     *         empty for a spot trade
+     * @since 0.25.1
+     */
+    @Override
+    public List<TradeFee> getFees() {
+        return feeComponents == null ? List.of() : feeComponents;
+    }
+
+    /**
+     * Returns the instrument the trade identifies itself with. A futures trade is
+     * identified by its contract symbol; a spot trade by the label its fills agree
+     * on, so a trade recorded from labelled fills keeps its instrument.
+     *
+     * @return the contract symbol, the common fill instrument, or {@code null} when
+     *         no instrument is available
+     * @since 0.25.1
+     */
+    @Override
+    public String getInstrument() {
+        if (futuresContract != null) {
+            return futuresContract.symbol();
+        }
+        String instrument = null;
+        for (TradeFill fill : fills) {
+            String fillInstrument = fill.instrument();
+            if (fillInstrument == null) {
+                continue;
+            }
+            if (instrument != null && !instrument.equals(fillInstrument)) {
+                return null;
+            }
+            instrument = fillInstrument;
+        }
+        return instrument;
+    }
+
     private static TradeConfig config(Trade.TradeType type, int index, Instant time, Num pricePerAsset, Num amount,
             ExecutionSide side, String orderId, String correlationId, List<TradeFill> fills,
             CostModel transactionCostModel) {
         CostModel validatedCostModel = Objects.requireNonNull(transactionCostModel, "transactionCostModel");
-        PriceCost priceCost = priceCost(type, pricePerAsset, amount, fills, validatedCostModel);
-        return new TradeConfig(type, index, pricePerAsset, priceCost.netPrice(), amount, List.copyOf(fills), time, side,
+        List<TradeFill> normalizedFills = resolveFuturesFees(fills, validatedCostModel);
+        PriceCost priceCost = priceCost(type, pricePerAsset, amount, normalizedFills, validatedCostModel);
+        return new TradeConfig(type, index, pricePerAsset, priceCost.netPrice(), amount, normalizedFills, time, side,
                 orderId, correlationId, priceCost.cost(), validatedCostModel);
+    }
+
+    /**
+     * Resolves fee components for futures fills that carry no recorded fees.
+     *
+     * <p>
+     * Explicitly recorded fees always win over a modeled schedule, so a fill
+     * captured from an exchange is never re-priced.
+     * </p>
+     */
+    private static List<TradeFill> resolveFuturesFees(List<TradeFill> fills, CostModel transactionCostModel) {
+        FuturesContract contract = singleContract(fills);
+        if (contract == null) {
+            return List.copyOf(fills);
+        }
+        List<TradeFill> resolvedFills = new ArrayList<>(fills.size());
+        for (TradeFill fill : fills) {
+            resolvedFills.add(fill.hasRecordedFees() ? fill
+                    : fill.toBuilder().fees(transactionCostModel.calculateFees(fill)).build());
+        }
+        return List.copyOf(resolvedFills);
+    }
+
+    /**
+     * Resolves the single contract shared by {@code fills}.
+     *
+     * @param fills the execution fills of one trade
+     * @return the shared contract, or {@code null} when every fill is a spot fill
+     * @throws IllegalArgumentException when fills mix spot and futures fills, or
+     *                                  mix contract specifications
+     */
+    private static FuturesContract singleContract(List<TradeFill> fills) {
+        FuturesContract contract = null;
+        boolean hasSpotFill = false;
+        for (TradeFill fill : fills) {
+            FuturesContract fillContract = fill.futuresContract();
+            if (fillContract == null) {
+                hasSpotFill = true;
+            } else if (contract == null) {
+                contract = fillContract;
+            } else if (!contract.equals(fillContract)) {
+                throw new IllegalArgumentException(
+                        "fills must share one contract, found " + contract + " and " + fillContract);
+            }
+        }
+        if (contract != null && hasSpotFill) {
+            throw new IllegalArgumentException("fills must not mix spot and futures fills");
+        }
+        return contract;
+    }
+
+    private static List<TradeFee> aggregateFeeComponents(FuturesContract contract, List<TradeFill> fills) {
+        if (contract == null) {
+            return List.of();
+        }
+        List<TradeFee> components = new ArrayList<>();
+        for (TradeFill fill : fills) {
+            components.addAll(fill.fees());
+        }
+        return List.copyOf(components);
     }
 
     private static PriceCost priceCost(Trade.TradeType type, Num pricePerAsset, Num amount, List<TradeFill> fills,
             CostModel transactionCostModel) {
-        Num cost = resolveCost(transactionCostModel, pricePerAsset, amount, fills);
+        FuturesContract contract = singleContract(fills);
+        Num cost = resolveCost(transactionCostModel, pricePerAsset, amount, fills, contract);
+
+        if (contract != null) {
+            return new PriceCost(cost, futuresNetPrice(contract, type, pricePerAsset, amount, cost));
+        }
 
         final Num netPrice;
         if (amount.isZero()) {
@@ -416,9 +565,49 @@ public class BaseTrade implements Trade {
         return new PriceCost(cost, netPrice);
     }
 
-    private static Num resolveCost(CostModel transactionCostModel, Num pricePerAsset, Num amount,
-            List<TradeFill> fills) {
-        if (transactionCostModel instanceof RecordedTradeCostModel) {
+    /**
+     * Derives the effective entry/exit price that a futures fee is charged against.
+     *
+     * <p>
+     * Settlement is expressed in the settlement currency, so the fee per contract
+     * is {@code cost / (amount * contractSize)} in that currency. A linear contract
+     * is quoted in it directly; an inverse contract is quoted as the base currency
+     * price, so the charge is applied to the reciprocal quote and inverted back.
+     * The result is the quote price whose settlement notional equals
+     * {@code trade value + cost}. Costs too large for the contract to settle return
+     * {@link org.ta4j.core.num.NaN#NaN}.
+     * </p>
+     */
+    private static Num futuresNetPrice(FuturesContract contract, Trade.TradeType type, Num pricePerAsset, Num amount,
+            Num cost) {
+        if (amount.isZero()) {
+            return pricePerAsset;
+        }
+        Num feePerContract = cost
+                .dividedBy(amount.multipliedBy(amount.getNumFactory().numOf(contract.contractSize().getDelegate())));
+        NumFactory numFactory = pricePerAsset.getNumFactory();
+        if (contract.settlementType() == FuturesContract.SettlementType.LINEAR) {
+            Num adjusted = type == Trade.TradeType.BUY ? pricePerAsset.plus(feePerContract)
+                    : pricePerAsset.minus(feePerContract);
+            return isUsableQuote(adjusted) ? adjusted : NaN;
+        }
+        Num inverseQuote = numFactory.one().dividedBy(pricePerAsset);
+        Num adjustedInverse = type == Trade.TradeType.BUY ? inverseQuote.minus(feePerContract)
+                : inverseQuote.plus(feePerContract);
+        if (!isUsableQuote(adjustedInverse)) {
+            return NaN;
+        }
+        Num adjusted = numFactory.one().dividedBy(adjustedInverse);
+        return isUsableQuote(adjusted) ? adjusted : NaN;
+    }
+
+    private static boolean isUsableQuote(Num quote) {
+        return Num.isFinite(quote) && quote.isPositive();
+    }
+
+    private static Num resolveCost(CostModel transactionCostModel, Num pricePerAsset, Num amount, List<TradeFill> fills,
+            FuturesContract contract) {
+        if (contract != null || transactionCostModel instanceof RecordedTradeCostModel) {
             return sumFillFees(pricePerAsset.getNumFactory().zero(), fills);
         }
         return transactionCostModel.calculate(pricePerAsset, amount);
@@ -427,7 +616,10 @@ public class BaseTrade implements Trade {
     private static Num sumFillFees(Num zero, List<TradeFill> fills) {
         Num totalFee = zero;
         for (TradeFill fill : fills) {
-            totalFee = totalFee.plus(fill.fee());
+            Num fillFee = fill.fee();
+            if (fillFee != null && !fillFee.isNaN()) {
+                totalFee = totalFee.plus(zero.getNumFactory().numOf(fillFee.getDelegate()));
+            }
         }
         return totalFee;
     }
@@ -437,9 +629,12 @@ public class BaseTrade implements Trade {
         if (fills.isEmpty()) {
             throw new IllegalArgumentException("fills must not be empty");
         }
-        Num totalAmount = fills.getFirst().amount().getNumFactory().zero();
-        Num weightedPrice = fills.getFirst().price().getNumFactory().zero();
-        TradeFill earliestFill = fills.getFirst();
+        NumFactory numFactory = fills.getFirst().price().getNumFactory();
+        Num totalAmount = numFactory.zero();
+        Num quoteWeightedPrice = numFactory.zero();
+        Num quotePriceSum = numFactory.zero();
+        FuturesContract contract = singleContract(fills);
+        TradeFill earliestFill = null;
         ExecutionSide expectedSide = executionSide(tradeType);
         for (TradeFill fill : fills) {
             if (fill.side() != null && fill.side() != expectedSide) {
@@ -451,13 +646,20 @@ public class BaseTrade implements Trade {
             if (fill.amount().isNaN() || fill.amount().isZero() || fill.amount().isNegative()) {
                 throw new IllegalArgumentException("fill amount must be positive");
             }
-            if (fill.index() < earliestFill.index()) {
+            if (fill.index() >= 0 && (earliestFill == null || fill.index() < earliestFill.index())) {
                 earliestFill = fill;
             }
-            totalAmount = totalAmount.plus(fill.amount());
-            weightedPrice = weightedPrice.plus(fill.price().multipliedBy(fill.amount()));
+            Num amount = numFactory.numOf(fill.amount().getDelegate());
+            Num price = numFactory.numOf(fill.price().getDelegate());
+            totalAmount = totalAmount.plus(amount);
+            quoteWeightedPrice = quoteWeightedPrice.plus(price.multipliedBy(amount));
+            quotePriceSum = quotePriceSum.plus(amount.dividedBy(price));
         }
-        return new FillSummary(List.copyOf(fills), earliestFill, totalAmount, weightedPrice.dividedBy(totalAmount));
+        Num aggregatedPrice = contract != null && contract.settlementType() == FuturesContract.SettlementType.INVERSE
+                ? totalAmount.dividedBy(quotePriceSum)
+                : quoteWeightedPrice.dividedBy(totalAmount);
+        return new FillSummary(List.copyOf(fills), earliestFill == null ? fills.getFirst() : earliestFill, totalAmount,
+                aggregatedPrice);
     }
 
     private static FillMetadata summarizeMetadata(Trade.TradeType tradeType, TradeFill firstFill) {
@@ -474,6 +676,12 @@ public class BaseTrade implements Trade {
      */
     private List<TradeFill> exportedFills() {
         if (fills.isEmpty() || cost == null || cost.isNaN()) {
+            return fills;
+        }
+
+        if (futuresContract != null) {
+            // Native fee components are already the authoritative cost record; they
+            // must never be redistributed through the scalar spot path.
             return fills;
         }
 
@@ -519,8 +727,7 @@ public class BaseTrade implements Trade {
     }
 
     private TradeFill copyWithFee(TradeFill fill, Num fee) {
-        return new TradeFill(fill.index(), fill.time(), fill.price(), fill.amount(), fee, fill.side(), fill.orderId(),
-                fill.correlationId());
+        return fill.toBuilder().fee(fee).build();
     }
 
     private static ExecutionSide executionSide(Trade.TradeType tradeType) {
@@ -542,7 +749,8 @@ public class BaseTrade implements Trade {
 
     @Override
     public int hashCode() {
-        return Objects.hash(type, index, time, pricePerAsset, amount, cost, side, orderId, correlationId);
+        return Objects.hash(type, index, time, pricePerAsset, amount, cost, side, orderId, correlationId,
+                futuresContract, feeComponents, fills);
     }
 
     @Override
@@ -557,7 +765,9 @@ public class BaseTrade implements Trade {
                 && Objects.equals(time, other.time) && Objects.equals(pricePerAsset, other.pricePerAsset)
                 && Objects.equals(amount, other.amount) && Objects.equals(cost, other.cost)
                 && Objects.equals(side, other.side) && Objects.equals(orderId, other.orderId)
-                && Objects.equals(correlationId, other.correlationId);
+                && Objects.equals(correlationId, other.correlationId)
+                && Objects.equals(futuresContract, other.futuresContract)
+                && Objects.equals(feeComponents, other.feeComponents) && Objects.equals(fills, other.fills);
     }
 
     @Override
@@ -573,6 +783,14 @@ public class BaseTrade implements Trade {
         json.addProperty("side", side == null ? null : side.name());
         json.addProperty("orderId", orderId);
         json.addProperty("correlationId", correlationId);
+        String instrument = getInstrument();
+        if (instrument != null) {
+            json.addProperty("instrument", instrument);
+        }
+        if (futuresContract != null) {
+            json.addProperty("futuresContract", futuresContract.toString());
+            json.addProperty("feeComponents", GSON.toJson(feeComponents));
+        }
         return GSON.toJson(json);
     }
 
@@ -589,8 +807,7 @@ public class BaseTrade implements Trade {
         }
         int delta = index - this.index;
         List<TradeFill> indexedFills = fills.stream()
-                .map(fill -> new TradeFill(fill.index() + delta, fill.time(), fill.price(), fill.amount(), fill.fee(),
-                        fill.side(), fill.orderId(), fill.correlationId()))
+                .map(fill -> fill.toBuilder().index(fill.index() + delta).build())
                 .toList();
         return new BaseTrade(type, indexedFills, resolveCopyCostModel(indexedFills));
     }

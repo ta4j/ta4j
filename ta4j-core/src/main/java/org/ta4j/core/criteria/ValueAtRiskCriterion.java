@@ -84,7 +84,7 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
         Num zero = numFactory.zero();
         Num valueAtRisk = zero;
         // F(x_var) >= alpha (=1-confidence)
-        int nInTail = RiskTailSupport.nInTail(returns.getSize(), confidence);
+        int nInTail = RiskTailSupport.nInTail(returnRates.size(), confidence);
 
         // The series is not empty, nInTail > 0
         valueAtRisk = returnRates.get(nInTail - 1);

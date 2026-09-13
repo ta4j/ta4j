@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -11,11 +12,13 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.ReturnRepresentationPolicy;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -44,6 +47,9 @@ public class Returns implements PerformanceIndicator {
     /** The bar series. */
     private final BarSeries barSeries;
 
+    /** The first logical bar index stored in the internal buffers. */
+    private final int seriesBegin;
+
     /**
      * The raw return rates (before formatting).
      * <p>
@@ -65,6 +71,21 @@ public class Returns implements PerformanceIndicator {
     private final List<Num> returnFactors;
 
     /**
+     * Whether the first stored bar index reports a return. A windowed futures
+     * series reports the first bar's return measured from the account capital;
+     * every other layout keeps a placeholder value at the first stored position.
+     */
+    private final boolean firstBarReported;
+
+    /**
+     * Whether the value reported at the first stored bar is the cumulative equity
+     * accumulated since the account capital, which happens when the retained head
+     * is preceded by realized or marked exposure. Such a seed is not a period
+     * return.
+     */
+    private final boolean seededFirstBarReturn;
+
+    /**
      * Constructor.
      *
      * @param barSeries            the bar series
@@ -80,19 +101,155 @@ public class Returns implements PerformanceIndicator {
     public Returns(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
             ReturnRepresentation representation, EquityCurveMode equityCurveMode,
             OpenPositionHandling openPositionHandling) {
+        this(barSeries, tradingRecord, new ClosePriceIndicator(barSeries), finalIndex, representation, equityCurveMode,
+                openPositionHandling, null);
+    }
+
+    /**
+     * Constructor for a futures trading record valuing open exposure at an explicit
+     * mark price.
+     *
+     * <p>
+     * The mark price indicator is validated against the analysed series and is
+     * consumed by native futures records only; closing prices remain the documented
+     * backtest mark proxy otherwise.
+     * </p>
+     *
+     * @param barSeries            the bar series
+     * @param tradingRecord        the trading record
+     * @param markPriceIndicator   mark price indicator on the same series
+     * @param finalIndex           the index up to which the returns of open
+     *                             positions are considered
+     * @param representation       the return representation (determines both
+     *                             calculation method and output format)
+     * @param equityCurveMode      the calculation mode
+     * @param openPositionHandling how to handle open positions
+     * @since 0.25.1
+     */
+    public Returns(BarSeries barSeries, TradingRecord tradingRecord, Indicator<Num> markPriceIndicator, int finalIndex,
+            ReturnRepresentation representation, EquityCurveMode equityCurveMode,
+            OpenPositionHandling openPositionHandling) {
+        this(barSeries, tradingRecord, markPriceIndicator, finalIndex, representation, equityCurveMode,
+                openPositionHandling, null);
+    }
+
+    /**
+     * Canonical constructor. Derives the return factors of a native futures record
+     * from consecutive equity ratios and keeps the incremental position-combination
+     * path for every other record.
+     *
+     * @param barSeries            the bar series
+     * @param tradingRecord        the trading record
+     * @param markPriceIndicator   mark price indicator on the same series
+     * @param finalIndex           the index up to which the returns of open
+     *                             positions are considered
+     * @param representation       the return representation (determines both
+     *                             calculation method and output format)
+     * @param equityCurveMode      the calculation mode
+     * @param openPositionHandling how to handle open positions
+     * @param fallbackCapital      unlevered capital of a single position analysis,
+     *                             may be {@code null}
+     */
+    private Returns(BarSeries barSeries, TradingRecord tradingRecord, Indicator<Num> markPriceIndicator, int finalIndex,
+            ReturnRepresentation representation, EquityCurveMode equityCurveMode,
+            OpenPositionHandling openPositionHandling, Num fallbackCapital) {
+        TradingRecord record = Objects.requireNonNull(tradingRecord);
+        OpenPositionHandling handling = Objects.requireNonNull(openPositionHandling);
+        FuturesPerformanceSupport.requireMarkSeries(Objects.requireNonNull(barSeries),
+                Objects.requireNonNull(markPriceIndicator));
         this.barSeries = snapshotSeries(barSeries);
+        this.seriesBegin = this.barSeries.getBeginIndex();
         this.representation = Objects.requireNonNull(representation);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        int seriesEnd = this.barSeries.getEndIndex();
-        int size = Math.max(seriesEnd + 1, 0);
+        int size = this.barSeries.getBarCount();
         Num one = this.barSeries.numFactory().one();
         Num zero = this.barSeries.numFactory().zero();
         Num initial = representation == ReturnRepresentation.LOG ? zero : one;
-        returnFactors = new ArrayList<>(Collections.nCopies(size, initial));
-        rawValues = new ArrayList<>(Collections.nCopies(size, zero));
-        values = new ArrayList<>(Collections.nCopies(size, zero));
-        calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
+        returnFactors = new ArrayList<>(Collections.nCopies(Math.max(size, 0), initial));
+        rawValues = new ArrayList<>(Collections.nCopies(Math.max(size, 0), zero));
+        values = new ArrayList<>(Collections.nCopies(Math.max(size, 0), zero));
+        this.firstBarReported = FuturesPerformanceSupport.isFutures(record) && this.seriesBegin > 0;
+        this.seededFirstBarReturn = this.firstBarReported && FuturesPerformanceSupport.hasPreWindowActivity(record,
+                this.seriesBegin, FuturesPerformanceSupport.includesExposure(handling, equityCurveMode));
+        if (FuturesPerformanceSupport.isFutures(record)) {
+            fillFuturesReturnFactors(record, markPriceIndicator, finalIndex, handling, fallbackCapital);
+        } else {
+            calculate(record, finalIndex, handling);
+        }
         buildReturns();
+    }
+
+    /**
+     * Fills the return factors with the ratio of consecutive futures equity values,
+     * normalized by the record account capital.
+     *
+     * <p>
+     * Bar {@code 0} has no reported return; the first reported return is measured
+     * from the account capital, so the cumulative product of the reported returns
+     * equals the account growth from the initial capital.
+     * </p>
+     *
+     * <p>
+     * A previous equity of zero or less makes the subsequent return undefined and
+     * is reported as {@link NaN#NaN}; a positive previous equity still reports the
+     * actual arithmetic loss when the current equity falls to zero or below.
+     * </p>
+     *
+     * @param tradingRecord   the futures trading record
+     * @param markPrice       mark price indicator on the analysed series
+     * @param finalIndex      index up until open position P&amp;L is considered
+     * @param handling        how to handle open positions
+     * @param fallbackCapital unlevered capital of a single position analysis, may
+     *                        be {@code null}
+     */
+    private void fillFuturesReturnFactors(TradingRecord tradingRecord, Indicator<Num> markPrice, int finalIndex,
+            OpenPositionHandling handling, Num fallbackCapital) {
+        int seriesEnd = barSeries.getEndIndex();
+        if (seriesEnd < 1) {
+            return;
+        }
+        NumFactory numFactory = barSeries.numFactory();
+        Num capital = FuturesPerformanceSupport.accountCapital(numFactory, tradingRecord, fallbackCapital);
+        boolean markExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
+        int effectiveFinalIndex = Math.min(tradingRecord.getEndIndex(barSeries), finalIndex);
+        FuturesPerformanceSupport.Cursor cursor = FuturesPerformanceSupport.cursor(barSeries, tradingRecord,
+                Math.min(effectiveFinalIndex, seriesEnd), markExposure, markPrice);
+        int firstBar = Math.max(1, seriesBegin);
+        if (firstBar > seriesEnd) {
+            return;
+        }
+        // A retained series reports its head as the first return, and that return is
+        // measured from the account capital so the cumulative product covers every
+        // profit realized before the retained head as well.
+        Num previousEquity = capital;
+        for (int barIndex = firstBar;; barIndex++) {
+            Num equity = capital.plus(cursor.pnlAt(barIndex));
+            returnFactors.set(barIndex - seriesBegin, returnFactor(previousEquity, equity));
+            previousEquity = equity;
+            if (barIndex == seriesEnd) {
+                break;
+            }
+        }
+    }
+
+    /**
+     * Converts consecutive equity values into the factor expected by
+     * {@link #buildReturns()}.
+     *
+     * @param previousEquity equity at the previous bar
+     * @param equity         equity at the current bar
+     * @return log return when the representation is
+     *         {@link ReturnRepresentation#LOG}, the equity ratio otherwise
+     */
+    private Num returnFactor(Num previousEquity, Num equity) {
+        if (!previousEquity.isPositive() || !Num.isFinite(previousEquity) || !Num.isFinite(equity)) {
+            return NaN.NaN;
+        }
+        Num ratio = equity.dividedBy(previousEquity);
+        if (representation == ReturnRepresentation.LOG) {
+            return ratio.isPositive() ? ratio.log() : NaN.NaN;
+        }
+        return ratio;
     }
 
     /**
@@ -144,7 +301,9 @@ public class Returns implements PerformanceIndicator {
      */
     public Returns(BarSeries barSeries, Position position, ReturnRepresentation representation,
             EquityCurveMode equityCurveMode) {
-        this(barSeries, new BaseTradingRecord(position), representation, equityCurveMode);
+        this(barSeries, FuturesPerformanceSupport.analysisRecord(position), new ClosePriceIndicator(barSeries),
+                barSeries.getEndIndex(), representation, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET,
+                FuturesPerformanceSupport.fallbackCapital(position));
     }
 
     /**
@@ -238,7 +397,7 @@ public class Returns implements PerformanceIndicator {
      *         representation)
      */
     public List<Num> getValues() {
-        return List.copyOf(values);
+        return absoluteValues(values);
     }
 
     /**
@@ -248,14 +407,48 @@ public class Returns implements PerformanceIndicator {
      */
     @Override
     public Num getValue(int index) {
-        return values.get(index);
+        if (index < 0) {
+            throw new IndexOutOfBoundsException("index must not be negative: " + index);
+        }
+        if (index < seriesBegin) {
+            return index == 0 ? NaN.NaN : barSeries.numFactory().zero();
+        }
+        int offset = index - seriesBegin;
+        if (offset >= values.size()) {
+            throw new IndexOutOfBoundsException("index is outside the series window: " + index);
+        }
+        return values.get(offset);
     }
 
     /**
      * @return the raw return rates (before formatting)
      */
     public List<Num> getRawValues() {
-        return List.copyOf(rawValues);
+        return absoluteValues(rawValues);
+    }
+
+    /**
+     * @return whether the first stored bar index reports a return. A windowed
+     *         futures series reports the first bar's return from the account
+     *         capital; every other layout keeps a placeholder value at the first
+     *         stored position.
+     * @since 0.25.1
+     */
+    public boolean hasFirstBarReturn() {
+        return firstBarReported;
+    }
+
+    /**
+     * Returns whether the value reported at the first stored bar is the cumulative
+     * equity accumulated since the account capital instead of a period return. Risk
+     * criteria omit such a seed, because it repeats results realized before the
+     * retained head of the series.
+     *
+     * @return {@code true} when the first reported value is a cumulative seed
+     * @since 0.25.1
+     */
+    public boolean hasSeededFirstBarReturn() {
+        return seededFirstBarReturn;
     }
 
     @Override
@@ -272,7 +465,7 @@ public class Returns implements PerformanceIndicator {
      * @return the size of the return series.
      */
     public int getSize() {
-        return barSeries.getBarCount() - 1;
+        return firstBarReported ? barSeries.getBarCount() : barSeries.getBarCount() - 1;
     }
 
     /**
@@ -303,12 +496,13 @@ public class Returns implements PerformanceIndicator {
         NumFactory numFactory = barSeries.numFactory();
         Num minusOne = numFactory.minusOne();
         boolean isLongTrade = entry.isBuy();
-        int start = Math.max(entryIndex + 1, seriesBegin + 1);
+        long start = Math.max((long) entryIndex + 1L, (long) seriesBegin + 1L);
 
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
             Num avgCost = averageHoldingCostPerPeriod(position, endIndex, numFactory);
             Num lastPrice = entry.getNetPrice();
-            for (int i = start; i < endIndex; i++) {
+            for (long index = start; index < endIndex; index++) {
+                int i = (int) index;
                 Bar bar = barSeries.getBar(i);
                 Num intermediateNetPrice = addCost(bar.getClosePrice(), avgCost, isLongTrade);
                 Num rawReturn = calculateReturn(intermediateNetPrice, lastPrice);
@@ -366,13 +560,14 @@ public class Returns implements PerformanceIndicator {
     }
 
     private void combineReturnAtIndex(int index, Num strategyReturn) {
-        if (index < 0 || index >= returnFactors.size()) {
+        int offset = index - seriesBegin;
+        if (offset < 0 || offset >= returnFactors.size()) {
             return;
         }
         if (representation == ReturnRepresentation.LOG) {
-            returnFactors.set(index, returnFactors.get(index).plus(strategyReturn));
+            returnFactors.set(offset, returnFactors.get(offset).plus(strategyReturn));
         } else {
-            returnFactors.set(index, returnFactors.get(index).multipliedBy(toFactor(strategyReturn)));
+            returnFactors.set(offset, returnFactors.get(offset).multipliedBy(toFactor(strategyReturn)));
         }
     }
 
@@ -380,10 +575,13 @@ public class Returns implements PerformanceIndicator {
         if (rawValues.isEmpty()) {
             return;
         }
-        rawValues.set(0, NaN.NaN);
-        values.set(0, NaN.NaN);
         Num one = barSeries.numFactory().one();
-        for (int i = 1; i < rawValues.size(); i++) {
+        int start = seriesBegin == 0 ? 1 : 0;
+        if (seriesBegin == 0) {
+            rawValues.set(0, NaN.NaN);
+            values.set(0, NaN.NaN);
+        }
+        for (int i = start; i < rawValues.size(); i++) {
             if (representation == ReturnRepresentation.LOG) {
                 Num logReturn = returnFactors.get(i);
                 rawValues.set(i, logReturn);
@@ -397,11 +595,48 @@ public class Returns implements PerformanceIndicator {
         }
     }
 
+    private List<Num> absoluteValues(List<Num> stored) {
+        int size = barSeries.getBarCount();
+        if (size == 0) {
+            return List.of();
+        }
+        if (seriesBegin > Integer.MAX_VALUE - size) {
+            throw new IllegalStateException(
+                    "series window is too large to address with absolute indices: " + seriesBegin);
+        }
+        int absoluteSize = seriesBegin + size;
+        Num zero = barSeries.numFactory().zero();
+        return new AbstractList<>() {
+            @Override
+            public Num get(int index) {
+                if (index < 0 || index >= absoluteSize) {
+                    throw new IndexOutOfBoundsException("index: " + index + ", size: " + absoluteSize);
+                }
+                if (index < seriesBegin) {
+                    return index == 0 ? NaN.NaN : zero;
+                }
+                return stored.get(index - seriesBegin);
+            }
+
+            @Override
+            public int size() {
+                return absoluteSize;
+            }
+        };
+    }
+
     private static BarSeries snapshotSeries(final BarSeries barSeries) {
         BarSeries series = Objects.requireNonNull(barSeries);
+        if (series.getBarCount() == 0) {
+            return new BaseBarSeriesBuilder().withName(series.getName())
+                    .withNumFactory(series.numFactory())
+                    .withMaxBarCount(series.getMaximumBarCount())
+                    .build();
+        }
         return new BaseBarSeriesBuilder().withName(series.getName())
                 .withNumFactory(series.numFactory())
                 .withBars(series.getBarData())
+                .withBeginIndex(series.getBeginIndex())
                 .withMaxBarCount(series.getMaximumBarCount())
                 .build();
     }

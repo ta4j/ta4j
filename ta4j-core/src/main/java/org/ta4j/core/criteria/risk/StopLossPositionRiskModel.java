@@ -3,8 +3,13 @@
  */
 package org.ta4j.core.criteria.risk;
 
+import java.util.List;
+
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.StopLossPriceModel;
 import org.ta4j.core.rules.StopLossRule;
@@ -57,6 +62,16 @@ public final class StopLossPositionRiskModel implements PositionRiskModel {
      * times position amount.
      *
      * <p>
+     * A native futures position is evaluated through the contract's settlement
+     * economics instead: the loss is the contract profit of the unclosed contracts
+     * between the net entry price and the stop price. The net entry price already
+     * embeds the recorded entry fees for both linear and inverse settlement, so the
+     * fees paid on entry are part of the loss, and inverse price sensitivity and
+     * the contract multiplier are applied by the contract rather than by a
+     * quote-price gap.
+     * </p>
+     *
+     * <p>
      * This method returns zero when the position context is missing or unusable
      * (missing entry, NaN values, zero amount, or unavailable stop price).
      *
@@ -83,8 +98,41 @@ public final class StopLossPositionRiskModel implements PositionRiskModel {
         if (Num.isNaNOrNull(stopPrice)) {
             return series.numFactory().zero();
         }
-        Num perUnitRisk = entryPrice.minus(stopPrice).abs();
-        return perUnitRisk.multipliedBy(amount.abs());
+        FuturesContract contract = position.getFuturesContract();
+        if (contract == null) {
+            Num perUnitRisk = entryPrice.minus(stopPrice).abs();
+            return perUnitRisk.multipliedBy(amount.abs());
+        }
+        Num remainingAmount = remainingAmount(position, amount);
+        if (remainingAmount.isZero()) {
+            return series.numFactory().zero();
+        }
+        return contract.profit(position.getEntry().getType(), remainingAmount, entryPrice, stopPrice).abs();
+    }
+
+    private static Num remainingAmount(Position position, Num entryAmount) {
+        Num executedEntryAmount = executedAmount(position.getEntry(), entryAmount);
+        Trade exit = position.getExit();
+        if (exit == null) {
+            return executedEntryAmount.abs();
+        }
+        Num executedExitAmount = executedAmount(exit, exit.getAmount());
+        Num remaining = executedEntryAmount.abs().minus(executedExitAmount.abs());
+        return remaining.isPositive() ? remaining : entryAmount.getNumFactory().zero();
+    }
+
+    private static Num executedAmount(Trade trade, Num fallback) {
+        List<TradeFill> fills = trade.getFills();
+        if (fills.isEmpty()) {
+            return fallback;
+        }
+        Num total = fallback.getNumFactory().zero();
+        for (TradeFill fill : fills) {
+            if (fill.index() >= 0) {
+                total = total.plus(total.getNumFactory().numOf(fill.amount().getDelegate()));
+            }
+        }
+        return total;
     }
 
     /**

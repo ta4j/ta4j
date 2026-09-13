@@ -4,6 +4,8 @@
 package org.ta4j.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -17,8 +19,10 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 class BaseTradeTest {
 
@@ -192,4 +196,91 @@ class BaseTradeTest {
         assertEquals("order-earlier", trade.getOrderId());
         assertEquals("corr-earlier", trade.getCorrelationId());
     }
+
+    @Test
+    void fromFillsNormalizesMixedFactoriesBeforeAggregation() {
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
+        TradeFill doubleFill = new TradeFill(1, Instant.EPOCH, NUM_FACTORY.hundred(), NUM_FACTORY.one(),
+                NUM_FACTORY.zero(), ExecutionSide.BUY, null, null);
+        TradeFill decimalFill = new TradeFill(2, Instant.EPOCH, decimalFactory.numOf(102), decimalFactory.one(),
+                decimalFactory.zero(), ExecutionSide.BUY, null, null);
+
+        Trade trade = Trade.fromFills(TradeType.BUY, List.of(doubleFill, decimalFill), RecordedTradeCostModel.INSTANCE);
+
+        assertNumEquals(NUM_FACTORY.two(), trade.getAmount());
+        assertNumEquals(NUM_FACTORY.numOf(101), trade.getPricePerAsset());
+    }
+
+    @Test
+    void spotTradesExposeTheInstrumentCarriedByTheirFills() {
+        Trade trade = Trade.fromFills(TradeType.BUY, List.of(labelledFill(1, "BTC-USD")),
+                RecordedTradeCostModel.INSTANCE);
+
+        assertEquals("BTC-USD", trade.getInstrument());
+        assertTrue(trade.toString().contains("\"instrument\":\"BTC-USD\""));
+    }
+
+    @Test
+    void spotTradesWithoutACommonFillInstrumentReportNone() {
+        Trade disagreeing = Trade.fromFills(TradeType.BUY,
+                List.of(labelledFill(1, "BTC-USD"), labelledFill(2, "ETH-USD")), RecordedTradeCostModel.INSTANCE);
+        Trade unlabelled = Trade.fromFills(TradeType.BUY, List.of(labelledFill(1, null)),
+                RecordedTradeCostModel.INSTANCE);
+
+        assertNull(disagreeing.getInstrument());
+        assertNull(unlabelled.getInstrument());
+    }
+
+    @Test
+    void fromFillsIgnoresDeferredFillWhenChoosingIdentityAnchor() {
+        Instant deferredTime = Instant.parse("2025-01-01T00:00:00Z");
+        Instant executedTime = Instant.parse("2025-01-01T00:01:00Z");
+        TradeFill deferred = new TradeFill(-1, deferredTime, NUM_FACTORY.hundred(), NUM_FACTORY.one(),
+                NUM_FACTORY.zero(), ExecutionSide.BUY, "deferred", "corr-deferred");
+        TradeFill executed = new TradeFill(4, executedTime, NUM_FACTORY.numOf(101), NUM_FACTORY.one(),
+                NUM_FACTORY.zero(), ExecutionSide.BUY, "executed", "corr-executed");
+
+        Trade trade = Trade.fromFills(TradeType.BUY, List.of(deferred, executed), RecordedTradeCostModel.INSTANCE);
+
+        assertEquals(4, trade.getIndex());
+        assertEquals(executedTime, trade.getTime());
+        assertEquals("executed", trade.getOrderId());
+        assertEquals("corr-executed", trade.getCorrelationId());
+    }
+
+    private static TradeFill labelledFill(int index, String instrument) {
+        return TradeFill.builder()
+                .index(index)
+                .time(Instant.EPOCH)
+                .price(NUM_FACTORY.hundred())
+                .amount(NUM_FACTORY.one())
+                .side(ExecutionSide.BUY)
+                .instrument(instrument)
+                .build();
+    }
+
+    @Test
+    void tradesWithDifferentFillCompositionsAreNotEqual() {
+        Trade split = Trade.fromFills(TradeType.BUY, List.of(composedFill(1, 1), composedFill(1, 1)),
+                RecordedTradeCostModel.INSTANCE);
+        Trade combined = Trade.fromFills(TradeType.BUY, List.of(composedFill(1, 2)), RecordedTradeCostModel.INSTANCE);
+        Trade sameSplit = Trade.fromFills(TradeType.BUY, List.of(composedFill(1, 1), composedFill(1, 1)),
+                RecordedTradeCostModel.INSTANCE);
+
+        assertNumEquals(NUM_FACTORY.two(), split.getAmount());
+        assertNumEquals(NUM_FACTORY.two(), combined.getAmount());
+        assertNotEquals(split, combined);
+        assertEquals(split, sameSplit);
+    }
+
+    private static TradeFill composedFill(int index, double amount) {
+        return TradeFill.builder()
+                .index(index)
+                .time(Instant.EPOCH)
+                .price(NUM_FACTORY.hundred())
+                .amount(NUM_FACTORY.numOf(amount))
+                .side(ExecutionSide.BUY)
+                .build();
+    }
+
 }

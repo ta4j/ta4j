@@ -16,10 +16,14 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.FuturesCashFlow;
+import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.TradeFee;
+import org.ta4j.core.TradeFill;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -93,6 +97,109 @@ public class TotalFeesCriterionTest extends AbstractCriterionTest {
 
         assertTrue(criterion.betterThan(numFactory.one(), numFactory.two()));
         assertFalse(criterion.betterThan(numFactory.two(), numFactory.one()));
+    }
+
+    @Test
+    public void futuresRecordTotalsRecordedSettlementFeesOnly() {
+        FuturesContract contract = linearBtcPerpetual();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110).build();
+        BaseTradingRecord record = futuresRecord(contract);
+
+        record.operate(futuresFill(contract, 0, ExecutionSide.BUY, 100, 100, 0.5));
+        record.recordCashFlow(funding(contract, 1, -1));
+        record.recordCashFlow(variationMargin(contract, 1, 2));
+        record.operate(futuresFill(contract, 2, ExecutionSide.SELL, 100, 110, 0.5));
+
+        // Only the two executed fills are fees; funding and variation margin are
+        // account settlements that this criterion never reports.
+        assertNumEquals(numFactory.one(), getCriterion().calculate(series, record), 1e-12);
+    }
+
+    @Test
+    public void futuresPositionTotalsExecutedFillFeesOnly() {
+        FuturesContract contract = linearBtcPerpetual();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110).build();
+        BaseTradingRecord record = futuresRecord(contract);
+
+        record.operate(futuresFill(contract, 0, ExecutionSide.BUY, 100, 100, 0.5));
+        record.recordCashFlow(funding(contract, 1, -1));
+
+        Position open = record.getCurrentPosition();
+        assertNumEquals(numFactory.numOf(0.5), getCriterion().calculate(series, open), 1e-12);
+
+        record.operate(futuresFill(contract, 2, ExecutionSide.SELL, 100, 110, 0.5));
+
+        Position closed = record.getPositions().get(0);
+        assertNumEquals(numFactory.one(), getCriterion().calculate(series, closed), 1e-12);
+    }
+
+    @Test
+    public void futuresRecordIncludesExecutedFeesBeyondSeriesEnd() {
+        FuturesContract contract = linearBtcPerpetual();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100).build();
+        BaseTradingRecord record = futuresRecord(contract);
+
+        record.operate(futuresFill(contract, 1, ExecutionSide.BUY, 100, 100, 0.5));
+
+        assertNumEquals(numFactory.numOf(0.5), getCriterion().calculate(series, record), 1e-12);
+    }
+
+    private FuturesContract linearBtcPerpetual() {
+        return FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01))
+                .build();
+    }
+
+    private BaseTradingRecord futuresRecord(FuturesContract contract) {
+        return BaseTradingRecord.builder().futuresContract(contract).initialCapital(numFactory.numOf(1_000)).build();
+    }
+
+    private TradeFill futuresFill(FuturesContract contract, int index, ExecutionSide side, double amount, double price,
+            double fee) {
+        List<TradeFee> fees = fee == 0 ? List.of()
+                : List.of(TradeFee.builder()
+                        .type(TradeFee.Type.COMMISSION)
+                        .amount(numFactory.numOf(fee))
+                        .currency("USD")
+                        .build());
+        return TradeFill.builder()
+                .index(index)
+                .time(Instant.parse("2025-01-01T00:00:00Z").plusSeconds(index))
+                .price(numFactory.numOf(price))
+                .amount(numFactory.numOf(amount))
+                .side(side)
+                .orderId("order-" + index)
+                .futuresContract(contract)
+                .fees(fees)
+                .build();
+    }
+
+    private FuturesCashFlow funding(FuturesContract contract, int index, double amount) {
+        return cashFlow(contract, FuturesCashFlow.Type.FUNDING, "funding-" + index, index, amount);
+    }
+
+    private FuturesCashFlow variationMargin(FuturesContract contract, int index, double amount) {
+        return cashFlow(contract, FuturesCashFlow.Type.VARIATION_MARGIN, "vm-" + index, index, amount);
+    }
+
+    private FuturesCashFlow cashFlow(FuturesContract contract, FuturesCashFlow.Type type, String eventId, int index,
+            double amount) {
+        return FuturesCashFlow.builder()
+                .contract(contract)
+                .type(type)
+                .eventId(eventId)
+                .index(index)
+                .time(Instant.parse("2025-01-01T00:00:00Z").plusSeconds(index))
+                .amount(numFactory.numOf(amount))
+                .currency(contract.settlementCurrency())
+                .build();
     }
 
     private static final class TradingRecordFeeStub implements TradingRecord {

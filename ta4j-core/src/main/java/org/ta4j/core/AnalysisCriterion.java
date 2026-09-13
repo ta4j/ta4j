@@ -20,6 +20,7 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.named.NamedAssetRegistry;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.serialization.AnalysisCriterionSerialization;
 import org.ta4j.core.serialization.ComponentDescriptor;
 
@@ -353,6 +354,9 @@ public interface AnalysisCriterion {
 
     private static TradingRecord projectTradingRecord(BarSeries series, TradingRecord source, int start, int end,
             boolean hasBars, AnalysisContext context) {
+        if (source.getFuturesContract() != null) {
+            return projectFuturesTradingRecord(series, source, start, end, hasBars, context);
+        }
         CostModel transactionCostModel = Objects.requireNonNullElseGet(source.getTransactionCostModel(),
                 ZeroCostModel::new);
         CostModel holdingCostModel = Objects.requireNonNullElseGet(source.getHoldingCostModel(), ZeroCostModel::new);
@@ -371,8 +375,7 @@ public interface AnalysisCriterion {
         }
 
         if (context.openPositionHandling() == OpenPositionHandling.MARK_TO_MARKET) {
-            List<Position> openPositions = openPositionsForMarkToMarket(source, end, transactionCostModel,
-                    holdingCostModel);
+            List<Position> openPositions = openPositionsForMarkToMarket(source, end);
             for (Position openPosition : openPositions) {
                 Position syntheticPosition = createMarkToMarketPosition(series, openPosition, end, holdingCostModel);
                 if (syntheticPosition != null
@@ -412,8 +415,111 @@ public interface AnalysisCriterion {
         return new Position(entryTrade, syntheticExit, transactionCostModel, holdingCostModel);
     }
 
-    private static List<Position> openPositionsForMarkToMarket(TradingRecord source, int windowEndIndex,
-            CostModel transactionCostModel, CostModel holdingCostModel) {
+    /**
+     * Projects a native futures trading record onto a window by copying the
+     * already-matched positions selected by the inclusion policy.
+     *
+     * <p>
+     * Closed positions keep their recorded entry and exit, and their cash-flow
+     * allocations are trimmed to the window end. Open positions selected for
+     * {@link OpenPositionHandling#MARK_TO_MARKET} are closed with a synthetic
+     * contract-carrying exit at the window end, which turns their prior variation
+     * margin into the marked payoff without charging any fee. Their entries and
+     * exits are never replayed, so the projection cannot rematch overlapping lots.
+     * </p>
+     */
+    private static TradingRecord projectFuturesTradingRecord(BarSeries series, TradingRecord source, int start, int end,
+            boolean hasBars, AnalysisContext context) {
+        CostModel holdingCostModel = Objects.requireNonNullElseGet(source.getHoldingCostModel(), ZeroCostModel::new);
+        List<Position> includedPositions = new ArrayList<>();
+        if (hasBars) {
+            PositionInclusionPolicy inclusionPolicy = context.positionInclusionPolicy();
+            for (Position position : source.getPositions()) {
+                if (!includeClosedPosition(position, start, end, inclusionPolicy)) {
+                    continue;
+                }
+                for (Position trimmedPosition : trimFuturesPositionToWindow(position, end)) {
+                    if (trimmedPosition.isClosed()) {
+                        includedPositions.add(trimmedPosition);
+                    } else if (context.openPositionHandling() == OpenPositionHandling.MARK_TO_MARKET) {
+                        Position syntheticPosition = createMarkToMarketFuturesPosition(series, trimmedPosition, end,
+                                holdingCostModel);
+                        if (syntheticPosition != null
+                                && includeClosedPosition(syntheticPosition, start, end, inclusionPolicy)) {
+                            includedPositions.add(syntheticPosition);
+                        }
+                    }
+                }
+            }
+            if (context.openPositionHandling() == OpenPositionHandling.MARK_TO_MARKET) {
+                List<Position> positionsToMark = futuresPositionsForMarkToMarket(source, end);
+                for (Position positionToMark : positionsToMark) {
+                    if (positionToMark.isClosed()) {
+                        if (includeClosedPosition(positionToMark, start, end, inclusionPolicy)) {
+                            includedPositions.add(positionToMark);
+                        }
+                        continue;
+                    }
+                    Position syntheticPosition = createMarkToMarketFuturesPosition(series, positionToMark, end,
+                            holdingCostModel);
+                    if (syntheticPosition != null
+                            && includeClosedPosition(syntheticPosition, start, end, inclusionPolicy)) {
+                        includedPositions.add(syntheticPosition);
+                    }
+                }
+            }
+        }
+        return BaseTradingRecord.projectedFutures(source, includedPositions, start, end);
+    }
+
+    /**
+     * Closes an open futures position at the mark of the window end with a
+     * synthetic exit that carries the same contract.
+     *
+     * <p>
+     * {@link Position} rejects an entry that references a futures contract next to
+     * an exit that does not, so the synthetic exit is built from a contract-aware
+     * fill with no fees: the recorded fee total of the projected record must stay
+     * limited to the fees the run actually charged.
+     * </p>
+     */
+    private static Position createMarkToMarketFuturesPosition(BarSeries series, Position currentPosition,
+            int windowEndIndex, CostModel holdingCostModel) {
+        if (currentPosition == null || !currentPosition.isOpened()) {
+            return null;
+        }
+        Trade entryTrade = currentPosition.getEntry();
+        if (entryTrade == null || entryTrade.getIndex() > windowEndIndex) {
+            return null;
+        }
+        List<TradeFill> retainedEntryFills = FuturesPositionAccounting.executedFills(entryTrade, windowEndIndex);
+        if (retainedEntryFills.isEmpty()) {
+            return null;
+        }
+        Trade projectedEntryTrade = Trade.fromFills(entryTrade.getType(), retainedEntryFills,
+                entryTrade.getCostModel());
+        FuturesContract contract = currentPosition.getFuturesContract();
+        if (contract == null) {
+            return null;
+        }
+        Bar windowEndBar = series.getBar(windowEndIndex);
+        Num closePrice = windowEndBar.getClosePrice();
+        CostModel transactionCostModel = entryTrade.getCostModel();
+        TradeFill fill = TradeFill.builder()
+                .index(windowEndIndex)
+                .time(windowEndBar.getEndTime())
+                .price(closePrice)
+                .amount(projectedEntryTrade.getAmount())
+                .side(projectedEntryTrade.isBuy() ? ExecutionSide.SELL : ExecutionSide.BUY)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+        Trade syntheticExit = Trade.fromFill(fill, transactionCostModel);
+        return new Position(projectedEntryTrade, syntheticExit, transactionCostModel, holdingCostModel,
+                currentPosition.getCashFlows());
+    }
+
+    private static List<Position> openPositionsForMarkToMarket(TradingRecord source, int windowEndIndex) {
         List<Position> openPositions = source.getOpenPositions();
         if (!openPositions.isEmpty()) {
             return openPositionsWithinWindow(openPositions, windowEndIndex);
@@ -423,6 +529,20 @@ public interface AnalysisCriterion {
             return List.of();
         }
         return List.of(currentPosition);
+    }
+
+    private static List<Position> futuresPositionsForMarkToMarket(TradingRecord source, int windowEndIndex) {
+        List<Position> positions = new ArrayList<>(openPositionsForMarkToMarket(source, windowEndIndex));
+        for (Position closedPosition : source.getPositions()) {
+            Trade entry = closedPosition.getEntry();
+            Trade exit = closedPosition.getExit();
+            if (entry == null || exit == null || firstExecutedFillIndex(entry) > windowEndIndex
+                    || lastExecutedFillIndex(exit) <= windowEndIndex) {
+                continue;
+            }
+            positions.addAll(trimFuturesPositionToWindow(closedPosition, windowEndIndex));
+        }
+        return positions;
     }
 
     private static List<Position> openPositionsWithinWindow(List<Position> openPositions, int windowEndIndex) {
@@ -439,17 +559,158 @@ public interface AnalysisCriterion {
         return positions;
     }
 
+    private static List<Position> trimFuturesPositionToWindow(Position position, int end) {
+        Trade entry = position.getEntry();
+        List<TradeFill> allEntryFills = Trade.executionFillsOf(entry);
+        List<TradeFill> retainedEntryFills = FuturesPositionAccounting.executedFills(entry, end);
+        Trade exit = position.getExit();
+        List<TradeFill> allExitFills = exit == null ? List.of() : Trade.executionFillsOf(exit);
+        List<TradeFill> retainedExitFills = exit == null ? List.of()
+                : FuturesPositionAccounting.executedFills(exit, end);
+        if (retainedEntryFills.size() == allEntryFills.size()
+                && (exit == null || retainedExitFills.size() == allExitFills.size())
+                && (exit == null || FuturesValidation.numEquals(
+                        totalFillAmount(retainedEntryFills, entry.getAmount().getNumFactory()),
+                        totalFillAmount(retainedExitFills, exit.getAmount().getNumFactory())))) {
+            return List.of(position);
+        }
+        if (retainedEntryFills.isEmpty()) {
+            return List.of();
+        }
+        CostModel transactionCostModel = position.getTransactionCostModel();
+        CostModel holdingCostModel = position.getHoldingCostModel();
+        Trade retainedEntry = Trade.fromFills(entry.getType(), retainedEntryFills, entry.getCostModel());
+        if (exit == null || retainedExitFills.isEmpty()) {
+            return List
+                    .of(new Position(retainedEntry, transactionCostModel, holdingCostModel, position.getCashFlows()));
+        }
+        Trade retainedExit = Trade.fromFills(exit.getType(), retainedExitFills, exit.getCostModel());
+        Num retainedEntryAmount = retainedEntry.getAmount();
+        Num retainedExitAmount = retainedEntryAmount.getNumFactory().numOf(retainedExit.getAmount().getDelegate());
+        if (retainedExitAmount.isGreaterThan(retainedEntryAmount)) {
+            throw new IllegalArgumentException("retained exit amount cannot exceed retained entry amount");
+        }
+        if (FuturesValidation.numEquals(retainedExitAmount, retainedEntryAmount)) {
+            return List.of(new Position(retainedEntry, retainedExit, transactionCostModel, holdingCostModel,
+                    position.getCashFlows()));
+        }
+
+        NumFactory quantityFactory = retainedEntryAmount.getNumFactory();
+        List<TradeFill> closedEntryFills = new ArrayList<>();
+        List<TradeFill> openEntryFills = new ArrayList<>();
+        List<Num> closedAmounts = new ArrayList<>();
+        Num remainingClosedAmount = retainedExitAmount;
+        for (TradeFill fill : retainedEntryFills) {
+            Num fillAmount = quantityFactory.numOf(fill.amount().getDelegate());
+            Num closedAmount = quantityFactory.zero();
+            if (remainingClosedAmount.isPositive()) {
+                closedAmount = fillAmount.isLessThanOrEqual(remainingClosedAmount) ? fillAmount : remainingClosedAmount;
+                remainingClosedAmount = remainingClosedAmount.minus(closedAmount);
+            }
+            Num openAmount = fillAmount.minus(closedAmount);
+            if (closedAmount.isPositive()) {
+                closedEntryFills.add(resizeFill(fill, closedAmount, fillAmount));
+            }
+            if (openAmount.isPositive()) {
+                openEntryFills.add(resizeFill(fill, openAmount, fillAmount));
+            }
+            closedAmounts.add(closedAmount);
+        }
+        if (remainingClosedAmount.isPositive() || closedEntryFills.isEmpty() || openEntryFills.isEmpty()) {
+            throw new IllegalStateException("could not split a partially closed futures position");
+        }
+        // A cash flow belongs to the entry fill that was live when it was recorded,
+        // so the split scales each fill's own allocation rather than the aggregate.
+        List<List<FuturesCashFlow>> cashFlowSlices = FuturesPositionAccounting
+                .allocateCashFlowsByFill(position.getCashFlows(), retainedEntryFills, quantityFactory);
+        List<FuturesCashFlow> closedCashFlows = new ArrayList<>();
+        List<FuturesCashFlow> openCashFlows = new ArrayList<>();
+        for (int i = 0; i < retainedEntryFills.size(); i++) {
+            Num fillAmount = quantityFactory.numOf(retainedEntryFills.get(i).amount().getDelegate());
+            Num closedAmount = closedAmounts.get(i);
+            for (FuturesCashFlow cashFlow : cashFlowSlices.get(i)) {
+                Num closedPortion = scaleValue(cashFlow.amount(), closedAmount, fillAmount);
+                Num closedSettlement = scaleValue(cashFlow.settlementAmount(), closedAmount, fillAmount);
+                closedCashFlows
+                        .add(cashFlow.toBuilder().amount(closedPortion).settlementAmount(closedSettlement).build());
+                openCashFlows.add(cashFlow.toBuilder()
+                        .amount(cashFlow.amount().minus(closedPortion))
+                        .settlementAmount(cashFlow.settlementAmount().minus(closedSettlement))
+                        .build());
+            }
+        }
+        Position closedPosition = new Position(Trade.fromFills(entry.getType(), closedEntryFills, entry.getCostModel()),
+                retainedExit, transactionCostModel, holdingCostModel, closedCashFlows);
+        Position openPosition = new Position(Trade.fromFills(entry.getType(), openEntryFills, entry.getCostModel()),
+                transactionCostModel, holdingCostModel, openCashFlows);
+        return List.of(closedPosition, openPosition);
+    }
+
+    private static Num totalFillAmount(List<TradeFill> fills, NumFactory factory) {
+        Num total = factory.zero();
+        for (TradeFill fill : fills) {
+            total = total.plus(factory.numOf(fill.amount().getDelegate()));
+        }
+        return total;
+    }
+
+    private static TradeFill resizeFill(TradeFill fill, Num amount, Num originalAmount) {
+        TradeFill.Builder builder = fill.toBuilder().amount(amount);
+        if (fill.hasRecordedFees()) {
+            builder.fees(fill.fees()
+                    .stream()
+                    .map(fee -> fee.toBuilder()
+                            .amount(scaleValue(fee.amount(), amount, originalAmount))
+                            .settlementAmount(fee.settlementAmount() == null ? null
+                                    : scaleValue(fee.settlementAmount(), amount, originalAmount))
+                            .build())
+                    .toList());
+        } else if (fill.fee() != null) {
+            builder.fee(scaleValue(fill.fee(), amount, originalAmount));
+        }
+        return builder.build();
+    }
+
+    private static Num scaleValue(Num value, Num amount, Num totalAmount) {
+        NumFactory factory = value.getNumFactory();
+        Num ratio = factory.numOf(amount.getDelegate()).dividedBy(factory.numOf(totalAmount.getDelegate()));
+        return value.multipliedBy(ratio);
+    }
+
     private static boolean includeClosedPosition(Position position, int start, int end,
             PositionInclusionPolicy positionInclusionPolicy) {
         if (position == null || !position.isClosed()) {
             return false;
         }
-        int entry = position.getEntry().getIndex();
-        int exit = position.getExit().getIndex();
+        // A closed position is judged by the executions it actually made: an
+        // aggregate trade index only reports its earliest fill.
+        int entryStart = firstExecutedFillIndex(position.getEntry());
+        int exitStart = firstExecutedFillIndex(position.getExit());
+        int exitEnd = lastExecutedFillIndex(position.getExit());
         return switch (positionInclusionPolicy) {
-        case EXIT_IN_WINDOW -> exit >= start && exit <= end;
-        case FULLY_CONTAINED -> entry >= start && exit <= end;
+        case EXIT_IN_WINDOW -> exitStart <= end && exitEnd >= start;
+        case FULLY_CONTAINED -> entryStart >= start && exitEnd <= end;
         };
+    }
+
+    private static int firstExecutedFillIndex(Trade trade) {
+        int earliest = Integer.MAX_VALUE;
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() >= 0) {
+                earliest = Math.min(earliest, fill.index());
+            }
+        }
+        return earliest == Integer.MAX_VALUE ? trade.getIndex() : earliest;
+    }
+
+    private static int lastExecutedFillIndex(Trade trade) {
+        int latest = Integer.MIN_VALUE;
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() >= 0) {
+                latest = Math.max(latest, fill.index());
+            }
+        }
+        return latest == Integer.MIN_VALUE ? trade.getIndex() : latest;
     }
 
     /**
