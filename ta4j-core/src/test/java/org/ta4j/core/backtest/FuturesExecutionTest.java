@@ -406,10 +406,10 @@ class FuturesExecutionTest {
             assertNumEquals(numFactory.numOf(1.6326530612244898e-4),
                     riskModel.risk(series, openPosition(inverse, numFactory.numOf(4), entryPrice)), 1e-12);
 
-            // only the unclosed contracts remain exposed
-            assertNumEquals(30, riskModel.risk(series, closedPosition(linear, numFactory.numOf(4), entryPrice,
+            // closed futures positions retain their initial entry exposure as risk
+            assertNumEquals(40, riskModel.risk(series, closedPosition(linear, numFactory.numOf(4), entryPrice,
                     numFactory.numOf(1), numFactory.numOf(55_000))));
-            assertNumEquals(0, riskModel.risk(series, closedPosition(linear, numFactory.numOf(4), entryPrice,
+            assertNumEquals(40, riskModel.risk(series, closedPosition(linear, numFactory.numOf(4), entryPrice,
                     numFactory.numOf(4), numFactory.numOf(55_000))));
         }
     }
