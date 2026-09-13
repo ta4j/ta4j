@@ -525,8 +525,9 @@ public class BaseTradingRecord implements TradingRecord {
             throw new IllegalArgumentException("Position entry must not be null");
         }
         CostModel holdingCostModel = holdingCostModelOf(positions);
+        CostModel transactionCostModel = transactionCostModelOf(positions);
         BaseTradingRecord initialized = new BaseTradingRecord(recordConfig(entry.getType(), ExecutionMatchPolicy.FIFO,
-                RecordedTradeCostModel.INSTANCE, holdingCostModel, null, null, contract, null, null, List.of()));
+                transactionCostModel, holdingCostModel, null, null, contract, null, null, List.of()));
         Num totalFees = null;
         for (Position position : positions) {
             initialized.adoptPosition(position);
@@ -535,6 +536,16 @@ public class BaseTradingRecord implements TradingRecord {
         initialized.aggregateProjectedCashFlows(positions, Integer.MAX_VALUE);
         initialized.totalFees = totalFees == null ? initialized.defaultNumFactory().zero() : totalFees;
         return initialized.toRecordConfig();
+    }
+
+    private static CostModel transactionCostModelOf(List<Position> positions) {
+        CostModel transactionCostModel = positions.getFirst().getTransactionCostModel();
+        for (Position position : positions) {
+            if (!transactionCostModel.equals(position.getTransactionCostModel())) {
+                throw new IllegalArgumentException("All positions must use the same transaction cost model");
+            }
+        }
+        return transactionCostModel;
     }
 
     private static CostModel holdingCostModelOf(List<Position> positions) {
@@ -682,16 +693,29 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     private static Num accumulateRecordedFees(Num totalFees, Position position) {
-        Num accumulated = plusFee(totalFees, position.getEntry());
-        return plusFee(accumulated, position.getExit());
+        Num accumulated = plusExecutedFees(totalFees, position.getEntry());
+        return plusExecutedFees(accumulated, position.getExit());
     }
 
-    private static Num plusFee(Num totalFees, Trade trade) {
+    private static Num plusExecutedFees(Num totalFees, Trade trade) {
         if (trade == null) {
             return totalFees;
         }
-        Num fee = feeOf(trade);
+        Num fee = trade.getFuturesContract() == null ? feeOf(trade) : executedFeeOf(trade);
         return totalFees == null ? fee : totalFees.plus(totalFees.getNumFactory().numOf(fee.getDelegate()));
+    }
+
+    private static Num executedFeeOf(Trade trade) {
+        Num total = null;
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            // A deferred fill carries no execution yet, so its fee is not a
+            // recorded cost of the position.
+            if (fill.index() < 0 || fill.fee() == null || fill.fee().isNaN()) {
+                continue;
+            }
+            total = total == null ? fill.fee() : total.plus(total.getNumFactory().numOf(fill.fee().getDelegate()));
+        }
+        return total == null ? feeOf(trade) : total;
     }
 
     private void adoptPosition(Position position) {
@@ -1390,8 +1414,10 @@ public class BaseTradingRecord implements TradingRecord {
      */
     private void validatePlannedFillTimes(List<PlannedTradeFill> plannedTradeFills) {
         Instant previousTime = null;
-        int previousIndex = -1;
-        boolean hasPreviousIndex = false;
+        // Batch validation starts from the executions that were already recorded,
+        // otherwise a later batch could lower the logical index horizon.
+        int previousIndex = nextTradeIndex - 1;
+        boolean hasPreviousIndex = nextTradeIndex > 0;
         for (PlannedTradeFill plannedTradeFill : plannedTradeFills) {
             Trade plannedTrade = plannedTradeFill.trade();
             if (plannedTrade.getFuturesContract() == null) {
@@ -2402,7 +2428,7 @@ public class BaseTradingRecord implements TradingRecord {
                     if (entryTime == null) {
                         throw new IllegalStateException("Futures cash flows require entry timestamps");
                     }
-                    if (entryTime.isBefore(eventTime)) {
+                    if (fill.index() >= 0 && entryTime.isBefore(eventTime)) {
                         slices.add(new CashFlowSlice(lot.entrySequence(), fill.amount(),
                                 lot.side() == ExecutionSide.BUY, lot, fillIndex, -1));
                     }
@@ -2438,7 +2464,7 @@ public class BaseTradingRecord implements TradingRecord {
                     if (exitTime == null) {
                         throw new IllegalStateException("Futures cash flows require exit timestamps");
                     }
-                    if (!exitTime.isBefore(eventTime)) {
+                    if (exitFill.index() < 0 || !exitTime.isBefore(eventTime)) {
                         continue;
                     }
                     Num exitAmount = factory.numOf(exitFill.amount().getDelegate());
@@ -2454,7 +2480,8 @@ public class BaseTradingRecord implements TradingRecord {
             }
             List<CashFlowSlice> slices = new ArrayList<>();
             for (int i = 0; i < entryFills.size(); i++) {
-                if (entryFills.get(i).time().isBefore(eventTime) && remaining.get(i).isPositive()) {
+                if (entryFills.get(i).index() >= 0 && entryFills.get(i).time().isBefore(eventTime)
+                        && remaining.get(i).isPositive()) {
                     slices.add(new CashFlowSlice(closed.entrySequence(), remaining.get(i),
                             entry.getType() == TradeType.BUY, null, -1, closedIndex));
                 }

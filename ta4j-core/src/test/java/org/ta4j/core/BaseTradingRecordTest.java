@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
+import org.ta4j.core.analysis.cost.FuturesTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.ExpectancyCriterion;
 import org.ta4j.core.criteria.NumberOfLosingPositionsCriterion;
@@ -2440,4 +2441,120 @@ class BaseTradingRecordTest {
         assertNumEquals(numFactory.numOf(105), open.getEntry().getPricePerAsset());
     }
 
+    @Test
+    void separateFuturesFillBatchesRejectADecreasingIndex() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(contract).build();
+
+            record.operate(fillAtTime(contract, 10, T0, ExecutionSide.BUY, 1, 10_000, List.of()));
+
+            // The later timestamp must not let a lower logical index slip past the
+            // index horizon of the executions that were already recorded.
+            IllegalArgumentException rejected = assertThrows(IllegalArgumentException.class, () -> record
+                    .operate(fillAtTime(contract, 5, T0.plusSeconds(1), ExecutionSide.BUY, 1, 10_000, List.of())));
+            assertTrue(rejected.getMessage().contains("nondecreasing index order"));
+            assertEquals(1, record.getOpenPositions().size());
+        }
+    }
+
+    @Test
+    void importedFuturesPositionExcludesDeferredFillsFromRecordedFees() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Trade entry = Trade.fromFills(TradeType.BUY,
+                    List.of(fillAtTime(contract, 0, T0, ExecutionSide.BUY, 2, 10_000,
+                            List.of(commission(numFactory, 1, "USD"))),
+                            fillAtTime(contract, -1, T0.plusSeconds(1), ExecutionSide.BUY, 2, 10_000,
+                                    List.of(commission(numFactory, 2, "USD")))),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            BaseTradingRecord record = new BaseTradingRecord(position);
+
+            // The aggregate trade cost carries both components, but only the executed
+            // fill has been charged.
+            assertNumEquals(3, entry.getCost());
+            assertNumEquals(1, record.getRecordedTotalFees());
+        }
+    }
+
+    @Test
+    void fundingAllocationIgnoresDeferredEntryFills() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Position openLong = new Position(
+                    Trade.fromFills(TradeType.BUY,
+                            List.of(fillAtTime(contract, 0, T0, ExecutionSide.BUY, 2, 10_000, List.of()),
+                                    fillAtTime(contract, -1, T0.plusSeconds(1), ExecutionSide.BUY, 2, 10_000,
+                                            List.of())),
+                            RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            BaseTradingRecord openRecord = new BaseTradingRecord(openLong);
+
+            openRecord.recordFunding(fundingEvent(contract, 3, 0.001, 10_000));
+
+            // Only the 2 executed contracts of the 4 planned contracts are charged:
+            // 2 * 0.01 * 10_000 * 0.001.
+            assertNumEquals(-0.2, openRecord.getCashFlows().getFirst().amount());
+            assertNumEquals(-0.2, openRecord.getOpenPositions().getFirst().getCashFlows().getFirst().amount());
+
+            // The same rule holds for a closed position whose exit has not been
+            // reached by the event yet.
+            Position closedLong = new Position(
+                    Trade.fromFills(TradeType.BUY,
+                            List.of(fillAtTime(contract, 0, T0, ExecutionSide.BUY, 2, 10_000, List.of()),
+                                    fillAtTime(contract, -1, T0.plusSeconds(1), ExecutionSide.BUY, 2, 10_000,
+                                            List.of())),
+                            RecordedTradeCostModel.INSTANCE),
+                    Trade.fromFill(fillAtTime(contract, 3, T0.plusSeconds(3), ExecutionSide.SELL, 4, 10_000, List.of()),
+                            RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            BaseTradingRecord closedRecord = new BaseTradingRecord(closedLong);
+
+            closedRecord.recordFunding(fundingEvent(contract, 2, 0.001, 10_000));
+
+            assertNumEquals(-0.2, closedRecord.getCashFlows().getFirst().amount());
+            assertNumEquals(-0.2, closedRecord.getPositions().getFirst().getCashFlows().getFirst().amount());
+        }
+    }
+
+    @Test
+    void importedFuturesPositionsKeepTheirModeledTransactionCostModel() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            CostModel modeled = FuturesTransactionCostModel.builder()
+                    .makerRate(numFactory.zero())
+                    .takerRate(numFactory.zero())
+                    .perContractCharge(TradeFee.Type.COMMISSION, numFactory.numOf(0.5))
+                    .build();
+            Position imported = new Position(
+                    Trade.fromFill(fill(contract, 0, ExecutionSide.BUY, 2, 10_000, List.of()), modeled), modeled,
+                    new ZeroCostModel());
+            BaseTradingRecord record = new BaseTradingRecord(imported);
+
+            // A fill without recorded components is priced by the imported model
+            // instead of failing in the recorded-fee model of the projection.
+            TradeFill unpriced = TradeFill.builder()
+                    .index(1)
+                    .time(T0.plusSeconds(1))
+                    .price(numFactory.numOf(10_000))
+                    .amount(numFactory.one())
+                    .side(ExecutionSide.BUY)
+                    .futuresContract(contract)
+                    .build();
+            record.operate(unpriced);
+
+            assertEquals(modeled, record.getTransactionCostModel());
+            assertNumEquals(0.5, record.getRecordedTotalFees());
+
+            CostModel other = new ZeroCostModel();
+            Position mismatched = new Position(
+                    Trade.fromFill(fill(contract, 0, ExecutionSide.BUY, 1, 10_000, List.of()), other), other,
+                    new ZeroCostModel());
+            IllegalArgumentException rejected = assertThrows(IllegalArgumentException.class,
+                    () -> new BaseTradingRecord(List.of(imported, mismatched)));
+            assertTrue(rejected.getMessage().contains("same transaction cost model"));
+        }
+    }
 }

@@ -20,6 +20,7 @@ import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.pnl.NetProfitLossPercentageCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.num.NumFactory;
 
@@ -103,6 +104,49 @@ public class AnalysisCriterionTest {
             // notional
             // of 1000 USD is the exposure: 1 + 50 / 1000.
             assertNumEquals(1.05, criterion.calculate(barSeries, record, AnalysisWindow.barRange(0, 2), marked));
+        }
+    }
+
+    @Test
+    public void windowProjectionUsesExitFillIndicesForInclusion() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 100, 100, 110, 115, 120, 125, 130);
+            AnalysisContext marked = AnalysisContext.defaults()
+                    .withOpenPositionHandling(OpenPositionHandling.MARK_TO_MARKET);
+            NetProfitCriterion criterion = new NetProfitCriterion();
+
+            // The exit trade aggregates to its first fill index (1), yet it also
+            // executes 50 contracts inside the window; an included position
+            // contributes its whole realized profit: 0.01 * (50 * 10 + 50 * 20).
+            BaseTradingRecord imported = new BaseTradingRecord(new Position(
+                    Trade.fromFills(TradeType.BUY,
+                            List.of(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 100, 100,
+                                    List.of())),
+                            RecordedTradeCostModel.INSTANCE),
+                    Trade.fromFills(TradeType.SELL, List.of(
+                            FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 50, 110, List.of()),
+                            FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 50, 120, List.of())),
+                            RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+
+            assertNumEquals(15, criterion.calculate(barSeries, imported, AnalysisWindow.barRange(2, 4), marked));
+
+            // An exit fill beyond the window end breaks full containment.
+            BaseTradingRecord spanning = new BaseTradingRecord(new Position(
+                    Trade.fromFills(TradeType.BUY,
+                            List.of(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 100, 100,
+                                    List.of())),
+                            RecordedTradeCostModel.INSTANCE),
+                    Trade.fromFills(TradeType.SELL, List.of(
+                            FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 50, 120, List.of()),
+                            FuturesAnalysisTestSupport.fill(contract, 6, ExecutionSide.SELL, 50, 125, List.of())),
+                            RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+
+            assertNumEquals(0,
+                    criterion.calculate(barSeries, spanning, AnalysisWindow.barRange(0, 4), AnalysisContext.defaults()
+                            .withPositionInclusionPolicy(AnalysisContext.PositionInclusionPolicy.FULLY_CONTAINED)));
         }
     }
 }

@@ -617,6 +617,19 @@ public class PositionTest {
         }
     }
 
+    private static FuturesCashFlow variationMargin(FuturesContract contract, int index, double amount) {
+        NumFactory numFactory = contract.contractSize().getNumFactory();
+        return FuturesCashFlow.builder()
+                .contract(contract)
+                .type(FuturesCashFlow.Type.VARIATION_MARGIN)
+                .eventId("vm-" + index)
+                .index(index)
+                .time(T0.plusSeconds(index))
+                .amount(numFactory.numOf(amount))
+                .currency(contract.settlementCurrency())
+                .build();
+    }
+
     private static TradeFill futuresFill(FuturesContract contract, int index, double price, double amount,
             ExecutionSide side) {
         NumFactory numFactory = contract.contractSize().getNumFactory();
@@ -629,5 +642,36 @@ public class PositionTest {
                 .futuresContract(contract)
                 .fees(List.of())
                 .build();
+    }
+
+    @Test
+    public void positionsWithDifferentCashFlowsAreNotEqual() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.numOf(10))
+                    .build();
+            Trade entry = Trade.fromFills(TradeType.BUY, List.of(futuresFill(contract, 0, 100, 2, ExecutionSide.BUY)),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFills(TradeType.SELL, List.of(futuresFill(contract, 3, 110, 2, ExecutionSide.SELL)),
+                    RecordedTradeCostModel.INSTANCE);
+
+            Position unfunded = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel(),
+                    List.of());
+            Position charged = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel(),
+                    List.of(variationMargin(contract, 2, -5)));
+            Position alsoCharged = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel(),
+                    List.of(variationMargin(contract, 2, -5)));
+
+            assertNotEquals(unfunded, charged);
+            assertEquals(charged, alsoCharged);
+            assertEquals(charged.hashCode(), alsoCharged.hashCode());
+        }
     }
 }

@@ -682,12 +682,35 @@ public interface AnalysisCriterion {
         if (position == null || !position.isClosed()) {
             return false;
         }
-        int entry = position.getEntry().getIndex();
-        int exit = position.getExit().getIndex();
+        // A closed position is judged by the executions it actually made: an
+        // aggregate trade index only reports its earliest fill.
+        int entryStart = firstExecutedFillIndex(position.getEntry());
+        int exitStart = firstExecutedFillIndex(position.getExit());
+        int exitEnd = lastExecutedFillIndex(position.getExit());
         return switch (positionInclusionPolicy) {
-        case EXIT_IN_WINDOW -> exit >= start && exit <= end;
-        case FULLY_CONTAINED -> entry >= start && exit <= end;
+        case EXIT_IN_WINDOW -> exitStart <= end && exitEnd >= start;
+        case FULLY_CONTAINED -> entryStart >= start && exitEnd <= end;
         };
+    }
+
+    private static int firstExecutedFillIndex(Trade trade) {
+        int earliest = Integer.MAX_VALUE;
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() >= 0) {
+                earliest = Math.min(earliest, fill.index());
+            }
+        }
+        return earliest == Integer.MAX_VALUE ? trade.getIndex() : earliest;
+    }
+
+    private static int lastExecutedFillIndex(Trade trade) {
+        int latest = Integer.MIN_VALUE;
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() >= 0) {
+                latest = Math.max(latest, fill.index());
+            }
+        }
+        return latest == Integer.MIN_VALUE ? trade.getIndex() : latest;
     }
 
     /**
