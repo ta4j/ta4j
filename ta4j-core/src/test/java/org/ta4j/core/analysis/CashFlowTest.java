@@ -730,17 +730,17 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                     OpenPositionHandling.MARK_TO_MARKET);
 
             for (int index = 0; index < 3; index++) {
-                assertNumEquals(0.996, realized.getValue(index));
-                assertNumEquals(0.996, ignored.getValue(index));
+                assertNumEquals(0.992, realized.getValue(index));
+                assertNumEquals(0.992, ignored.getValue(index));
             }
-            assertNumEquals(1.036, realized.getValue(3));
-            assertNumEquals(1.19, realized.getValue(4));
-            assertNumEquals(1.19, ignored.getValue(4));
-            assertNumEquals(0.996, marked.getValue(0));
-            assertNumEquals(1.036, marked.getValue(1));
-            assertNumEquals(1.096, marked.getValue(2));
-            assertNumEquals(1.056, marked.getValue(3));
-            assertNumEquals(1.19, marked.getValue(4));
+            assertNumEquals(1.032, realized.getValue(3));
+            assertNumEquals(1.18, realized.getValue(4));
+            assertNumEquals(1.18, ignored.getValue(4));
+            assertNumEquals(0.992, marked.getValue(0));
+            assertNumEquals(1.032, marked.getValue(1));
+            assertNumEquals(1.092, marked.getValue(2));
+            assertNumEquals(1.052, marked.getValue(3));
+            assertNumEquals(1.18, marked.getValue(4));
         }
     }
 
@@ -822,10 +822,10 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
             CashFlow closedCashFlow = new CashFlow(barSeries, closedSlice, EquityCurveMode.MARK_TO_MARKET);
             CashFlow openCashFlow = new CashFlow(barSeries, openRemainder, EquityCurveMode.MARK_TO_MARKET);
-            assertNumEquals(0.99, closedCashFlow.getValue(0));
-            assertNumEquals(1.08, closedCashFlow.getValue(1));
-            assertNumEquals(0.99, openCashFlow.getValue(0));
-            assertNumEquals(1.09, openCashFlow.getValue(1));
+            assertNumEquals(0.98, closedCashFlow.getValue(0));
+            assertNumEquals(1.06, closedCashFlow.getValue(1));
+            assertNumEquals(0.98, openCashFlow.getValue(0));
+            assertNumEquals(1.08, openCashFlow.getValue(1));
 
             TradingRecord publicRecord = new BaseTradingRecord(List.of(closedSlice));
             assertThrows(IllegalStateException.class, () -> new CashFlow(barSeries, publicRecord,

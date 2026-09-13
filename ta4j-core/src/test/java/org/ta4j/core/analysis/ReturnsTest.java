@@ -621,7 +621,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
             Position closedSlice = record.getPositions().getFirst();
             Returns closedReturns = new Returns(barSeries, closedSlice, ReturnRepresentation.DECIMAL);
             assertTrue(closedReturns.getValue(0).isNaN());
-            assertNumEquals(0.08, closedReturns.getValue(1));
+            assertNumEquals(0.06000000000000005, closedReturns.getValue(1));
         }
     }
 

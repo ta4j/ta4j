@@ -1539,7 +1539,9 @@ public class BaseTradingRecord implements TradingRecord {
             PlannedTradeFill plannedTradeFill = planTradeFill(tradeType, tradeSide, fill, tradeOrderId,
                     tradeCorrelationId, tradeTime, plannedNextIndex, fillFactory);
             plannedTradeFills.add(plannedTradeFill);
-            plannedNextIndex = Math.max(plannedNextIndex, plannedTradeFill.index() + 1);
+            int nextIndexAfterFill = plannedTradeFill.index() == Integer.MAX_VALUE ? Integer.MAX_VALUE
+                    : plannedTradeFill.index() + 1;
+            plannedNextIndex = Math.max(plannedNextIndex, nextIndexAfterFill);
             totalAmount = totalAmount.plus(plannedTradeFill.trade().getAmount());
         }
         if (openSide != null && tradeSide != openSide && netOpenPosition != null

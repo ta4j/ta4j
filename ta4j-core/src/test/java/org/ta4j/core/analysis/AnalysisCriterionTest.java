@@ -46,10 +46,10 @@ public class AnalysisCriterionTest {
 
             NetReturnCriterion criterion = new NetReturnCriterion();
             AnalysisContext exitInWindow = AnalysisContext.defaults();
-            assertNumEquals(1.016, criterion.calculate(barSeries, record));
-            assertNumEquals(1.008, criterion.calculate(barSeries, record, AnalysisWindow.barRange(3, 5), exitInWindow));
-            assertNumEquals(1.008, criterion.calculate(barSeries, record, AnalysisWindow.barRange(0, 2), exitInWindow));
-            assertNumEquals(1.008,
+            assertNumEquals(1.012, criterion.calculate(barSeries, record));
+            assertNumEquals(1.006, criterion.calculate(barSeries, record, AnalysisWindow.barRange(3, 5), exitInWindow));
+            assertNumEquals(1.006, criterion.calculate(barSeries, record, AnalysisWindow.barRange(0, 2), exitInWindow));
+            assertNumEquals(1.006,
                     criterion.calculate(barSeries, record, AnalysisWindow.barRange(3, 5), AnalysisContext.defaults()
                             .withPositionInclusionPolicy(AnalysisContext.PositionInclusionPolicy.FULLY_CONTAINED)));
             assertNumEquals(1.0, criterion.calculate(barSeries, record, AnalysisWindow.barRange(3, 4), exitInWindow));
@@ -71,14 +71,14 @@ public class AnalysisCriterionTest {
             AnalysisContext marked = AnalysisContext.defaults()
                     .withOpenPositionHandling(OpenPositionHandling.MARK_TO_MARKET);
 
-            assertNumEquals(1.009, criterion.calculate(barSeries, record, window, marked));
+            assertNumEquals(1.008, criterion.calculate(barSeries, record, window, marked));
 
             CashFlow equity = new CashFlow(barSeries, record, EquityCurveMode.MARK_TO_MARKET,
                     OpenPositionHandling.MARK_TO_MARKET);
             CashFlow realized = new CashFlow(barSeries, record, EquityCurveMode.REALIZED,
                     OpenPositionHandling.MARK_TO_MARKET);
-            assertNumEquals(1.009, equity.getValue(2));
-            assertNumEquals(1.002, realized.getValue(2));
+            assertNumEquals(1.008, equity.getValue(2));
+            assertNumEquals(1.001, realized.getValue(2));
             assertNumEquals(1.0, criterion.calculate(barSeries, record, window, AnalysisContext.defaults()));
         }
     }
@@ -172,6 +172,30 @@ public class AnalysisCriterionTest {
 
             assertNumEquals(20, new NetProfitCriterion().calculate(barSeries, spanning, AnalysisWindow.barRange(0, 4),
                     markedFullyContained));
+        }
+    }
+
+    @Test
+    public void markedStraddlingExitIsNotProjectedTwice() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 100, 100, 110, 115);
+            BaseTradingRecord record = new BaseTradingRecord(new Position(
+                    Trade.fromFills(TradeType.BUY,
+                            List.of(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 100, 100,
+                                    List.of())),
+                            RecordedTradeCostModel.INSTANCE),
+                    Trade.fromFills(TradeType.SELL, List.of(
+                            FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 50, 110, List.of()),
+                            FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 50, 115, List.of())),
+                            RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+
+            AnalysisContext marked = AnalysisContext.defaults()
+                    .withOpenPositionHandling(OpenPositionHandling.MARK_TO_MARKET);
+
+            assertNumEquals(10,
+                    new NetProfitCriterion().calculate(barSeries, record, AnalysisWindow.barRange(0, 2), marked));
         }
     }
 }

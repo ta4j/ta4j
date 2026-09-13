@@ -678,7 +678,11 @@ public class Position implements Serializable {
         if (executedEntryFills.isEmpty()) {
             return numFactory.zero();
         }
-        if (Trade.executionFillsOf(entry).size() == 1 && (exit == null || Trade.executionFillsOf(exit).size() == 1)) {
+        List<TradeFill> executedExitFills = exit == null ? List.of()
+                : FuturesPositionAccounting.executedFills(exit, finalIndex);
+        boolean fullyMatchedSingleFill = exit == null || (executedExitFills.size() == 1 && FuturesValidation
+                .numEquals(executedEntryFills.getFirst().amount(), executedExitFills.getFirst().amount()));
+        if (Trade.executionFillsOf(entry).size() == 1 && executedEntryFills.size() == 1 && fullyMatchedSingleFill) {
             return model.calculate(this, finalIndex);
         }
         Deque<TradeFill> closingFills = new ArrayDeque<>(

@@ -78,7 +78,7 @@ public class FixedTransactionCostModel implements CostModel {
             if (fill.index() < 0 || fill.index() > currentIndex) {
                 continue;
             }
-            Num fillCost = feePerTrade == 0d || !fill.hasRecordedFees() ? calculate(fill) : fill.fee();
+            Num fillCost = fill.hasRecordedFees() ? fill.fee() : calculate(fill);
             total = total.plus(total.getNumFactory().numOf(fillCost.getDelegate()));
         }
         return total;

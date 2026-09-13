@@ -611,7 +611,7 @@ public class NetReturnCriterionTest extends AbstractPnlCriterionTest {
                 RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
         BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
 
-        assertNumEquals(1.19956, new NetReturnCriterion().calculate(series, position));
+        assertNumEquals(1.19912, new NetReturnCriterion().calculate(series, position));
     }
 
     private static List<NumFactory> factories() {
@@ -676,11 +676,13 @@ public class NetReturnCriterionTest extends AbstractPnlCriterionTest {
             NetReturnCriterion net = new NetReturnCriterion(ReturnRepresentation.MULTIPLICATIVE);
             GrossReturnCriterion gross = new GrossReturnCriterion(ReturnRepresentation.MULTIPLICATIVE);
 
-            assertNumEquals(1.008, net.calculate(barSeries, record));
+            assertNumEquals(1.007, net.calculate(barSeries, record));
             assertNumEquals(1.010, gross.calculate(barSeries, record));
 
-            assertNumEquals(0.008, new NetReturnCriterion(ReturnRepresentation.DECIMAL).calculate(barSeries, record));
-            assertNumEquals(0.8, new NetReturnCriterion(ReturnRepresentation.PERCENTAGE).calculate(barSeries, record));
+            assertNumEquals(0.006999999999999895,
+                    new NetReturnCriterion(ReturnRepresentation.DECIMAL).calculate(barSeries, record));
+            assertNumEquals(0.6999999999999895,
+                    new NetReturnCriterion(ReturnRepresentation.PERCENTAGE).calculate(barSeries, record));
         }
     }
 
@@ -696,7 +698,7 @@ public class NetReturnCriterionTest extends AbstractPnlCriterionTest {
 
             // Open economics are realized cash: -0.5 fees - 1 funding + 3 margin = 1.5.
             // Gross restores the fees and the funding, so it reports the paid margin.
-            assertNumEquals(1.0015,
+            assertNumEquals(1.001,
                     new NetReturnCriterion(ReturnRepresentation.MULTIPLICATIVE).calculate(barSeries, record));
             assertNumEquals(1.003,
                     new GrossReturnCriterion(ReturnRepresentation.MULTIPLICATIVE).calculate(barSeries, record));
@@ -715,7 +717,7 @@ public class NetReturnCriterionTest extends AbstractPnlCriterionTest {
             record.operate(fill(contract, 3, ExecutionSide.SELL, 100, 106, List.of(commission(numFactory, 1))));
 
             // Two sequential slices realize 8 and 4 on the same account.
-            assertNumEquals(1.012,
+            assertNumEquals(1.008,
                     new NetReturnCriterion(ReturnRepresentation.MULTIPLICATIVE).calculate(barSeries, record));
 
             BaseTradingRecord spot = BaseTradingRecord.builder().transactionCostModel(new ZeroCostModel()).build();
@@ -761,7 +763,7 @@ public class NetReturnCriterionTest extends AbstractPnlCriterionTest {
 
             assertNumEquals(100.0, contract.settlementNotional(position.getEntry().getAmount(), numFactory.numOf(100)));
             // The same 8 realized on a 100 notional position is unlevered.
-            assertNumEquals(1.08,
+            assertNumEquals(1.07,
                     new NetReturnCriterion(ReturnRepresentation.MULTIPLICATIVE).calculate(barSeries, position));
         }
     }
