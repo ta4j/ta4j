@@ -10,6 +10,7 @@ import java.util.List;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
@@ -172,6 +173,28 @@ public class AnalysisCriterionTest {
 
             assertNumEquals(20, new NetProfitCriterion().calculate(barSeries, spanning, AnalysisWindow.barRange(0, 4),
                     markedFullyContained));
+        }
+    }
+
+    @Test
+    public void markedAverageCostPreservesProjectedEntryBasis() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 100, 110, 120);
+            BaseTradingRecord record = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .matchPolicy(ExecutionMatchPolicy.AVG_COST)
+                    .initialCapital(testFactory.numOf(1_000))
+                    .build();
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1, 100, List.of()));
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.BUY, 1, 110, List.of()));
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.SELL, 1, 120, List.of()));
+
+            AnalysisContext marked = AnalysisContext.defaults()
+                    .withOpenPositionHandling(OpenPositionHandling.MARK_TO_MARKET);
+
+            assertNumEquals(0.3,
+                    new NetProfitCriterion().calculate(barSeries, record, AnalysisWindow.barRange(0, 2), marked));
         }
     }
 

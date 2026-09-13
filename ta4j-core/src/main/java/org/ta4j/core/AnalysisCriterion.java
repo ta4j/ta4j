@@ -497,8 +497,8 @@ public interface AnalysisCriterion {
         if (retainedEntryFills.isEmpty()) {
             return null;
         }
-        Trade projectedEntryTrade = Trade.fromFills(entryTrade.getType(), retainedEntryFills,
-                entryTrade.getCostModel());
+        Trade projectedEntryTrade = BaseTrade.fromFillsAtPrice(entryTrade.getType(), retainedEntryFills,
+                entryTrade.getPricePerAsset(), entryTrade.getCostModel());
         FuturesContract contract = currentPosition.getFuturesContract();
         if (contract == null) {
             return null;
