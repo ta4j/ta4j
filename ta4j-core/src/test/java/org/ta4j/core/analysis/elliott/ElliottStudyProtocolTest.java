@@ -23,7 +23,7 @@ import org.ta4j.core.analysis.elliott.swing.SwingDetector;
 import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
 
 class ElliottStudyProtocolTest {
-    private static final String PINNED_PROTOCOL_FINGERPRINT = "51698bdb1ac4a385024cd9909a2c5ced74af254a53eafda5ab5aa12010e3bdb8";
+    private static final String PINNED_PROTOCOL_FINGERPRINT = "f0cea1e5b4da07b0b49c2e51ba1c48350cdccf8001d2742ec2f9f057ff3407c2";
 
     /**
      * The protocol is immutable and its dataset digests are verified on load; parse

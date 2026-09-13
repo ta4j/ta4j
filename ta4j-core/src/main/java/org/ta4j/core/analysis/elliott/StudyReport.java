@@ -46,11 +46,13 @@ final class StudyReport {
     private final List<ModeReport> ablations;
     private final RobustnessReport robustness;
     private final List<NullReport> nulls;
+    private final List<AmbiguousCandidateEvidence> ambiguousCandidateEvidence;
 
     StudyReport(final String assetId, final String protocolFingerprint, final long seed, final String primaryDetector,
             final List<PartitionSpec> partitions, final LocalDate forbiddenCalibrationStart, final HypothesisReport h1,
             final HypothesisReport h2, final List<ModeReport> competingGrammars, final List<ModeReport> ablations,
-            final RobustnessReport robustness, final List<NullReport> nulls) {
+            final RobustnessReport robustness, final List<NullReport> nulls,
+            final List<AmbiguousCandidateEvidence> ambiguousCandidateEvidence) {
         this.assetId = requireText(assetId, "assetId");
         this.protocolFingerprint = requireText(protocolFingerprint, "protocolFingerprint");
         this.seed = seed;
@@ -63,6 +65,7 @@ final class StudyReport {
         this.ablations = immutable(ablations, "ablations");
         this.robustness = Objects.requireNonNull(robustness, "robustness");
         this.nulls = immutable(nulls, "nulls");
+        this.ambiguousCandidateEvidence = immutable(ambiguousCandidateEvidence, "ambiguousCandidateEvidence");
     }
 
     /**
@@ -193,6 +196,7 @@ final class StudyReport {
         root.add("ablations", modesJson(ablations));
         root.add("robustness", robustnessJson(robustness));
         root.add("nulls", nullsJson(nulls));
+        root.add("ambiguousCandidateEvidence", ambiguousCandidateEvidenceJson(ambiguousCandidateEvidence));
         return JSON.toJson(root);
     }
 
@@ -217,6 +221,36 @@ final class StudyReport {
     @Override
     public String toString() {
         return toJson();
+    }
+
+    private static JsonArray ambiguousCandidateEvidenceJson(final List<AmbiguousCandidateEvidence> candidates) {
+        final JsonArray json = new JsonArray();
+        for (final AmbiguousCandidateEvidence candidate : candidates) {
+            final JsonObject candidateJson = new JsonObject();
+            candidateJson.addProperty("observationIndex", candidate.observationIndex());
+            candidateJson.addProperty("direction", candidate.candidate().direction().name());
+            candidateJson.addProperty("startBarIndex", candidate.candidate().startBarIndex());
+            candidateJson.addProperty("endBarIndex", candidate.candidate().endBarIndex());
+            final JsonArray evidenceJson = new JsonArray();
+            for (final RuleEvidence evidence : candidate.ruleEvidence()) {
+                final JsonObject evidenceEntry = new JsonObject();
+                evidenceEntry.addProperty("ruleId", evidence.ruleId());
+                evidenceEntry.addProperty("state", evidence.state().name());
+                if (evidence.score().isPresent()) {
+                    evidenceEntry.addProperty("score", evidence.score().orElseThrow());
+                }
+                final JsonArray observations = new JsonArray();
+                for (final String observation : evidence.observations()) {
+                    observations.add(observation);
+                }
+                evidenceEntry.add("observations", observations);
+                evidenceEntry.addProperty("explanation", evidence.explanation());
+                evidenceJson.add(evidenceEntry);
+            }
+            candidateJson.add("ruleEvidence", evidenceJson);
+            json.add(candidateJson);
+        }
+        return json;
     }
 
     private static JsonObject hypothesisJson(final HypothesisReport hypothesis) {
@@ -260,11 +294,12 @@ final class StudyReport {
         json.addProperty("noMatchCount", metrics.noMatchCount());
         json.addProperty("invalidatedCount", metrics.invalidatedCount());
         json.addProperty("insufficientHistoryCount", metrics.insufficientHistoryCount());
-        addStatistic(json, "matchRate", metrics.matchRate());
+        addStatistic(json, "completeOccupancyRate", metrics.completeOccupancyRate());
         addStatistic(json, "ambiguousRate", metrics.ambiguousRate());
         addStatistic(json, "noMatchRate", metrics.noMatchRate());
         addStatistic(json, "confirmationLagBars", metrics.confirmationLagBars());
         addStatistic(json, "labelStabilityJaccard", metrics.labelStabilityJaccard());
+        json.addProperty("relationshipEvidenceScope", "unique-topology-only");
         json.addProperty("evidenceEvaluationCount", metrics.evidenceEvaluationCount());
         json.addProperty("evidencePassCount", metrics.evidencePassCount());
         json.addProperty("evidenceFailCount", metrics.evidenceFailCount());
@@ -488,6 +523,14 @@ final class StudyReport {
         }
     }
 
+    record AmbiguousCandidateEvidence(int observationIndex, TopologyCandidate candidate,
+            List<RuleEvidence> ruleEvidence) {
+        AmbiguousCandidateEvidence {
+            candidate = Objects.requireNonNull(candidate, "candidate");
+            ruleEvidence = immutable(ruleEvidence, "ruleEvidence");
+        }
+    }
+
     /**
      * Immutable metrics for exactly one protocol partition.
      *
@@ -495,7 +538,7 @@ final class StudyReport {
      */
     record PartitionMetrics(String partition, int fromIndex, int toIndex, long evaluationCount, long completeCount,
             long formingCount, long ambiguousCount, long noMatchCount, long invalidatedCount,
-            long insufficientHistoryCount, double matchRate, double ambiguousRate, double noMatchRate,
+            long insufficientHistoryCount, double completeOccupancyRate, double ambiguousRate, double noMatchRate,
             double confirmationLagBars, double labelStabilityJaccard, long evidenceEvaluationCount,
             long evidencePassCount, long evidenceFailCount, long evidencePendingCount, long evidenceUnavailableCount,
             long evidenceNotApplicableCount, double evidencePassRate, long jointEvaluationCount, long jointPassCount,
@@ -527,7 +570,7 @@ final class StudyReport {
             if (ruleEvaluationTotal != evidenceEvaluationCount) {
                 throw new IllegalArgumentException("rule counts must sum to evidenceEvaluationCount");
             }
-            requireRate("matchRate", matchRate, completeCount, evaluationCount);
+            requireRate("completeOccupancyRate", completeOccupancyRate, completeCount, evaluationCount);
             requireRate("ambiguousRate", ambiguousRate, ambiguousCount, evaluationCount);
             requireRate("noMatchRate", noMatchRate, noMatchCount, evaluationCount);
             requireRate("evidencePassRate", evidencePassRate, evidencePassCount, evidenceEvaluationCount);

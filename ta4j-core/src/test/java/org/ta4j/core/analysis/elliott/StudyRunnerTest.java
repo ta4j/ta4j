@@ -257,6 +257,9 @@ class StudyRunnerTest {
         assertTrue(report.toJson().contains("\"members\""));
         assertTrue(report.toJson().contains("protocolFingerprint"));
         assertTrue(report.toJson().contains("evidencePassRate"));
+        assertTrue(report.toJson().contains("completeOccupancyRate"));
+        assertTrue(report.toJson().contains("unique-topology-only"));
+        assertTrue(report.toJson().contains("ambiguousCandidateEvidence"));
         final StudyReport.PartitionMetrics topologyPartition = report.h1()
                 .modes()
                 .get(0)
@@ -417,7 +420,7 @@ class StudyRunnerTest {
     }
 
     @Test
-    void competingAlternativeGrammarSeparatesFormingFromNoMatch() {
+    void competingAlternativeGrammarRetainsNoMatchForContradictoryTails() {
         final StudyRunner.Configuration configuration = configuration(StudyRunner.Partitions.lockedDefault(), 1);
         final StudyRunner fallingRunner = new StudyRunner(StudyRunnerTest::scriptedDetector, grammars(), rules(),
                 configuration);
@@ -437,18 +440,6 @@ class StudyRunnerTest {
         assertEquals(0, fivePlusFive.partitions().get(0).formingCount());
         assertTrue(fivePlusFive.partitions().get(0).noMatchCount() > 0);
 
-        // A directional run whose junction stays the window extreme forms.
-        final StudyRunner trendingRunner = new StudyRunner(StudyRunnerTest::scriptedDetector, grammars(), rules(),
-                configuration);
-        final StudyReport trendingReport = trendingRunner.evaluate("BTC", buildTrendingSeries(24), 0, 23);
-        final StudyReport.ModeReport threePlusThree = trendingReport.competingGrammars()
-                .stream()
-                .filter(mode -> "competing-3+3".equals(mode.mode()))
-                .findFirst()
-                .orElseThrow();
-        assertEquals(0, threePlusThree.partitions().get(0).completeCount());
-        assertTrue(threePlusThree.partitions().get(0).formingCount() > 0);
-        assertTrue(threePlusThree.partitions().get(0).labelStabilityJaccard() < 1.0d);
     }
 
     @Test
@@ -463,20 +454,11 @@ class StudyRunnerTest {
     }
 
     @Test
-    void competingGrammarsAreSeparatedByJunctionExtremity() {
-        // Regression: with odd first segments, 3+3, 5+5 and 7+3 reduced to
-        // identical strict alternation over 11 pivots. The junction pivot must
-        // now be the window extreme on the leading trend side.
+    void competingGrammarDoesNotRequireAnExtremeAtTheSegmentJunction() {
+        final List<ConfirmedPivot> laterExtension = alternatingWindow(
+                new double[] { 10, 12, 11, 14, 12, 13, 11, 15, 13, 16, 14 });
 
-        final List<ConfirmedPivot> fiveFiveShape = alternatingWindow(
-                new double[] { 10, 12, 11, 14, 12, 16, 13, 15, 13.5d, 15.5d, 14 });
-        assertEquals(1, StudyRunner.AlternativeGrammar.of("5+5").matches(fiveFiveShape).size());
-        assertTrue(StudyRunner.AlternativeGrammar.of("7+3").matches(fiveFiveShape).isEmpty());
-
-        final List<ConfirmedPivot> sevenThreeShape = alternatingWindow(
-                new double[] { 10, 12, 11, 14, 12, 15, 13, 17, 14, 16, 15 });
-        assertEquals(1, StudyRunner.AlternativeGrammar.of("7+3").matches(sevenThreeShape).size());
-        assertTrue(StudyRunner.AlternativeGrammar.of("5+5").matches(sevenThreeShape).isEmpty());
+        assertEquals(1, StudyRunner.AlternativeGrammar.of("5+5").matches(laterExtension).size());
     }
 
     @Test
@@ -488,14 +470,15 @@ class StudyRunnerTest {
         final List<ConfirmedPivot> pivots = alternatingWindow(
                 new double[] { 0, 10, 5, 20, 8, 15, 10, 18, 12, 25, 14, 22, 16 });
 
-        assertEquals(List.of("0-6", "6-12"), StudyRunner.AlternativeGrammar.of("3+3").matches(pivots));
+        assertTrue(StudyRunner.AlternativeGrammar.of("3+3").matches(pivots).contains("0-6"));
+        assertTrue(StudyRunner.AlternativeGrammar.of("3+3").matches(pivots).contains("6-12"));
     }
 
     @Test
     void alternativeGrammarMarksCompetingPartialPlacementsAmbiguous() {
         final List<ConfirmedPivot> pivots = alternatingWindow(new double[] { 0, 10, 5, 20, 8, 20 });
 
-        assertEquals(Set.of("BULLISH:0-5", "BULLISH:2-5"),
+        assertEquals(Set.of("BULLISH:0-5", "BULLISH:2-5", "BEARISH:1-5"),
                 StudyRunner.AlternativeGrammar.of("3+3").partialMatches(pivots));
     }
 

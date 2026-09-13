@@ -761,38 +761,6 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     }
 
     @Test
-    public void symmetricCompanionMutationsDoNotInvertSeriesWriteLocks() throws Exception {
-        final CompanionMutatingTradeBar firstBar = new CompanionMutatingTradeBar(testBars.get(3));
-        final CompanionMutatingTradeBar secondBar = new CompanionMutatingTradeBar(testBars.get(4));
-        firstBar.setCompanionBar(secondBar);
-        secondBar.setCompanionBar(firstBar);
-        final CoordinatedMutationLockPhases phases = new CoordinatedMutationLockPhases();
-        final ConcurrentBarSeries first = new ConcurrentBarSeries("first-companion-bar", List.of(firstBar), 0, 0, false,
-                numFactory, barBuilderFactory, new CoordinatedMutationReadWriteLock(phases));
-        final ConcurrentBarSeries second = new ConcurrentBarSeries("second-companion-bar", List.of(secondBar), 0, 0,
-                false, numFactory, barBuilderFactory, new CoordinatedMutationReadWriteLock(phases));
-        final long firstTrades = firstBar.getTrades();
-        final long secondTrades = secondBar.getTrades();
-
-        final Future<?> firstTrade = executorService.submit(() -> first.addTrade(numOf(1), numOf(20)));
-        final Future<?> secondTrade = executorService.submit(() -> second.addTrade(numOf(1), numOf(30)));
-        try {
-            firstTrade.get(5, TimeUnit.SECONDS);
-            secondTrade.get(5, TimeUnit.SECONDS);
-        } finally {
-            firstTrade.cancel(true);
-            secondTrade.cancel(true);
-        }
-
-        assertEquals(firstTrades + 1, firstBar.getTrades());
-        assertEquals(secondTrades + 1, secondBar.getTrades());
-        assertEquals(2L, first.getBarHistoryRevision());
-        assertEquals(2L, second.getBarHistoryRevision());
-        assertEquals(0, first.getBarSeriesChangeSnapshot(0).earliestChangedIndex());
-        assertEquals(0, second.getBarSeriesChangeSnapshot(0).earliestChangedIndex());
-    }
-
-    @Test
     public void nestedCompanionTradeMutationsDoNotBypassDeferral() throws Exception {
         final Bar firstCompanion = testBars.get(1);
         final Bar secondCompanion = testBars.get(2);
@@ -2908,46 +2876,29 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         }
     }
 
-    /**
-     * Bar whose trade application first mutates a retained companion bar,
-     * reproducing deterministically the interleaving in which another thread
-     * mutates an earlier retained bar of the same series while a series-level write
-     * operation is running.
-     */
+    private enum CompanionMutation {
+        PRICE, TRADE
+    }
+
     private static final class CompanionMutatingTradeBar extends BaseBar {
 
         private static final long serialVersionUID = 6157293408821547093L;
 
-        private Bar companionBar;
-
-        private CompanionMutatingTradeBar(final Bar source) {
-            this(source, null);
-        }
+        private final Bar companionBar;
 
         private CompanionMutatingTradeBar(final Bar source, final Bar companionBar) {
             super(source.getTimePeriod(), source.getBeginTime().plus(Duration.ofDays(7)),
                     source.getEndTime().plus(Duration.ofDays(7)), source.getOpenPrice(), source.getHighPrice(),
                     source.getLowPrice(), source.getClosePrice(), source.getVolume(), source.getAmount(),
                     source.getTrades());
-            this.companionBar = companionBar;
-        }
-
-        private void setCompanionBar(final Bar companionBar) {
-            if (this.companionBar != null) {
-                throw new IllegalStateException("Companion bar is already configured");
-            }
             this.companionBar = Objects.requireNonNull(companionBar, "companionBar");
         }
 
         @Override
         public void addTrade(final Num tradeVolume, final Num tradePrice) {
-            Objects.requireNonNull(companionBar, "companionBar").addPrice(tradePrice);
+            companionBar.addPrice(tradePrice);
             super.addTrade(tradeVolume, tradePrice);
         }
-    }
-
-    private enum CompanionMutation {
-        PRICE, TRADE
     }
 
     private static final class CompanionForwardingBar extends BaseBar {

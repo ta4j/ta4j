@@ -167,9 +167,11 @@ final class StudyRunner {
                 TopologyGrammar.MOTIVE_5, "topology-only"));
 
         final List<StudyReport.ModeReport> ablations = new ArrayList<>();
+        final List<StudyReport.AmbiguousCandidateEvidence> ambiguousCandidateEvidence = new ArrayList<>();
         for (final RuleAblation.Mode mode : ablationModes) {
             ablations.add(evaluateMode(series, start, end, configuration.partitions(), detectorFactory,
-                    TopologyGrammar.CYCLE_5_3, mode.name(), mode.rules()));
+                    TopologyGrammar.CYCLE_5_3, mode.name(), mode.rules(),
+                    "classical-all".equals(mode.name()) ? ambiguousCandidateEvidence : null));
         }
 
         final List<StudyReport.ModeReport> competing = new ArrayList<>();
@@ -220,7 +222,7 @@ final class StudyRunner {
                 .toList();
         return new StudyReport(assetId, configuration.protocolFingerprint(), configuration.seed(),
                 configuration.primaryDetector(), partitionSpecs, configuration.partitions().forbiddenCalibrationStart(),
-                h1, h2, competing, ablations, robustness, nullReports);
+                h1, h2, competing, ablations, robustness, nullReports, ambiguousCandidateEvidence);
     }
 
     private List<StudyReport.NullReport> evaluateNulls(final BarSeries source, final int start, final int end) {
@@ -420,8 +422,9 @@ final class StudyRunner {
 
     private StudyReport.ModeReport evaluateMode(final BarSeries series, final int start, final int end,
             final Partitions partitions, final Supplier<SwingDetector> factory, final TopologyGrammar grammar,
-            final String mode, final List<RelationshipRule> activeRules) {
-        final List<MetricAccumulator> accumulators = newAccumulators(activeRules);
+            final String mode, final List<RelationshipRule> activeRules,
+            final List<StudyReport.AmbiguousCandidateEvidence> ambiguousCandidateEvidence) {
+        final List<MetricAccumulator> accumulators = newAccumulators(activeRules, ambiguousCandidateEvidence);
         final ConfirmationTracker.CausalReplay replay = observeReplay(series, factory, end);
         recordTopology(series, start, end, partitions, replay, grammar, activeRules, accumulators, 0);
         return new StudyReport.ModeReport(mode, grammar.name(), activeRuleIds(activeRules),
@@ -583,15 +586,22 @@ final class StudyRunner {
         return new ConfirmationTracker(nonNullDetector).observeReplay(series, endIndex);
     }
 
-    private List<MetricAccumulator> newAccumulators(final List<RelationshipRule> activeRules) {
-        return newAccumulators(activeRules, configuration.partitions());
+    private List<MetricAccumulator> newAccumulators(final List<RelationshipRule> activeRules,
+            final List<StudyReport.AmbiguousCandidateEvidence> ambiguousCandidateEvidence) {
+        return newAccumulators(activeRules, configuration.partitions(), ambiguousCandidateEvidence);
     }
 
     private static List<MetricAccumulator> newAccumulators(final List<RelationshipRule> activeRules,
             final Partitions partitions) {
+        return newAccumulators(activeRules, partitions, null);
+    }
+
+    private static List<MetricAccumulator> newAccumulators(final List<RelationshipRule> activeRules,
+            final Partitions partitions,
+            final List<StudyReport.AmbiguousCandidateEvidence> ambiguousCandidateEvidence) {
         final List<MetricAccumulator> accumulators = new ArrayList<>(partitions.entries().size());
         for (int index = 0; index < partitions.entries().size(); index++) {
-            accumulators.add(new MetricAccumulator(activeRules));
+            accumulators.add(new MetricAccumulator(activeRules, ambiguousCandidateEvidence));
         }
         return accumulators;
     }
@@ -712,6 +722,7 @@ final class StudyRunner {
 
     private static final class MetricAccumulator {
         private final List<RuleCounter> ruleCounters;
+        private final List<StudyReport.AmbiguousCandidateEvidence> ambiguousCandidateEvidence;
         private long evaluationCount;
         private long completeCount;
         private long formingCount;
@@ -737,7 +748,13 @@ final class StudyRunner {
         private int lastIndex = Integer.MIN_VALUE;
 
         private MetricAccumulator(final List<RelationshipRule> activeRules) {
+            this(activeRules, null);
+        }
+
+        private MetricAccumulator(final List<RelationshipRule> activeRules,
+                final List<StudyReport.AmbiguousCandidateEvidence> ambiguousCandidateEvidence) {
             this.ruleCounters = activeRules.stream().map(rule -> new RuleCounter(rule.id())).toList();
+            this.ambiguousCandidateEvidence = ambiguousCandidateEvidence;
         }
 
         private void record(final TopologyAnalysis analysis, final int index, final List<RelationshipRule> activeRules,
@@ -772,6 +789,12 @@ final class StudyRunner {
                     labels.add(candidate.direction() + ":" + candidate.startBarIndex() + "-" + candidate.endBarIndex());
                 }
                 updateStability(labels);
+                if (ambiguousCandidateEvidence != null) {
+                    for (final TopologyCandidate candidate : analysis.candidates()) {
+                        ambiguousCandidateEvidence.add(new StudyReport.AmbiguousCandidateEvidence(index, candidate,
+                                ruleEvidence(candidate, activeRules, series)));
+                    }
+                }
             }
             case NO_MATCH -> {
                 noMatchCount++;
@@ -821,21 +844,29 @@ final class StudyRunner {
             updateStability(Set.of("insufficient-history"));
         }
 
+        private static List<RuleEvidence> ruleEvidence(final TopologyCandidate candidate,
+                final List<RelationshipRule> activeRules, final BarSeries series) {
+            final List<RuleEvidence> evidence = new ArrayList<>(activeRules.size());
+            for (final RelationshipRule rule : activeRules) {
+                final RuleEvidence result = rule.evaluate(candidate, series);
+                if (!rule.id().equals(result.ruleId())) {
+                    throw new IllegalArgumentException("rule evidence id mismatch: rule " + rule.id()
+                            + " returned evidence for " + result.ruleId());
+                }
+                evidence.add(result);
+            }
+            return List.copyOf(evidence);
+        }
+
         private void evaluateRules(final TopologyCandidate candidate, final List<RelationshipRule> activeRules,
                 final BarSeries series) {
             if (activeRules.isEmpty()) {
                 return;
             }
+            final List<RuleEvidence> ruleEvidence = ruleEvidence(candidate, activeRules, series);
             boolean allRulesPass = true;
             for (int index = 0; index < activeRules.size(); index++) {
-                final RelationshipRule rule = activeRules.get(index);
-                final RuleEvidence evidence = rule.evaluate(candidate, series);
-                // Evidence carrying another rule's id would silently credit a
-                // foreign ledger row; reject before any state or score lands.
-                if (!rule.id().equals(evidence.ruleId())) {
-                    throw new IllegalArgumentException("rule evidence id mismatch: rule " + rule.id()
-                            + " returned evidence for " + evidence.ruleId());
-                }
+                final RuleEvidence evidence = ruleEvidence.get(index);
                 evidenceEvaluationCount++;
                 if (evidence.state() != EvidenceState.PASS) {
                     allRulesPass = false;
@@ -1081,34 +1112,9 @@ final class StudyRunner {
                     return false;
                 }
             }
-            return boundaryIsExtreme(window, direction);
-        }
-
-        /**
-         * Preregistration integrity: the junction between the two named segments must
-         * be observable, otherwise grammars sharing an odd first-segment length (3+3,
-         * 5+5 and 7+3 over 11 pivots) would match identical windows under different
-         * labels. The junction pivot is therefore required to be the window extreme on
-         * the leading trend side (bullish high / bearish low), which separates the
-         * match sets of the competing grammars.
-         */
-        private boolean boundaryIsExtreme(final List<ConfirmedPivot> window, final WaveDirection direction) {
-            final int boundary = segmentLegs[0];
-            if (boundary >= window.size()) {
-                return true;
-            }
-            final Num extreme = window.get(boundary).price();
-            for (int i = 0; i < window.size(); i++) {
-                if (i == boundary) {
-                    continue;
-                }
-                final Num price = window.get(i).price();
-                if (direction == WaveDirection.BULLISH ? price.isGreaterThan(extreme) : price.isLessThan(extreme)) {
-                    return false;
-                }
-            }
             return true;
         }
+
     }
 
     /**

@@ -12,7 +12,7 @@
     },
     "H2": {
       "id": "H2",
-      "statement": "Complete five-leg motives are followed by three-leg countertrend corrections (CYCLE_5_3) more often than under nulls and competing grammars.",
+      "statement": "Across evaluation bars, CYCLE_5_3 occupies complete status more often than under nulls and competing grammars.",
       "grammar": "CYCLE_5_3"
     }
   },
@@ -89,7 +89,7 @@
     "change-point-baseline"
   ],
   "metrics": [
-    "matchRate",
+    "completeOccupancyRate",
     "ambiguousRate",
     "noMatchRate",
     "confirmationLagBars",
@@ -97,6 +97,7 @@
     "evidencePassRate",
     "jointPassRate"
   ],
+  "relationshipEvidenceScope": "unique-topology-only",
   "ablationSet": [
     "topology-only",
     "+wave2-origin",
