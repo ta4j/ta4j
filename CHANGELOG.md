@@ -5,6 +5,7 @@
 - Realtime bars now publish retained-series invalidation when side or liquidity aggregation fails after a partial trade. Fractal replay uses one exact-class mutation-tracking policy, and bootstrap logarithms avoid constructing out-of-domain scales for bounded numeric factories.
 - Deferred retained-bar callbacks revalidate surviving aliases after head eviction, and concurrent fractal observation captures revision, bounds and bar state under one read lease rather than racing structural clears.
 - `BaseBar` mutation ownership is now lazy for unretained bars and compact for a single retaining series, promoting to a weak map only for shared bars. Failed partial price updates and successful subclass overrides that omit superclass publication invalidate every retaining series, not only the originating one.
+- Explicit `ConcurrentBarSeries.withWriteLock` leases now defer retained-bar invalidation callbacks until their outermost write lock is released, preventing cross-series deadlocks for shared bars.
 - `BacktestExecutor` now has explicit `executeWithRuntimeReport` overloads with a strict platform-worker cap for fixed amounts and `PositionSizer` entries. They avoid nested parallel streams so constrained ForkJoin callers can preserve their hard worker limits without compensation-thread rejection.
 
 ## 0.25.0 (2026-09-07)

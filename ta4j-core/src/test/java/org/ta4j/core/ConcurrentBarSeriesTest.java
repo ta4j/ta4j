@@ -761,6 +761,39 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     }
 
     @Test
+    public void explicitWriteLeasesDeferSharedBarCallbacksUntilAfterUnlock() throws Exception {
+        final Duration period = Duration.ofMinutes(1);
+        final Instant start = Instant.parse("2024-05-02T00:00:00Z");
+        final BaseBar sharedBar = new BaseBar(period, start, start.plus(period), numOf(10), numOf(10), numOf(10),
+                numOf(10), numFactory.zero(), numFactory.zero(), 0);
+        final ConcurrentBarSeries first = new ConcurrentBarSeries("first-explicit-lease", List.of(sharedBar), 0, 0,
+                false, numFactory, barBuilderFactory);
+        final ConcurrentBarSeries second = new ConcurrentBarSeries("second-explicit-lease", List.of(sharedBar), 0, 0,
+                false, numFactory, barBuilderFactory);
+        final CyclicBarrier writeLeases = new CyclicBarrier(2);
+
+        final Future<?> firstMutation = executorService.submit(() -> first.withWriteLock(() -> {
+            CoordinatedMutationLockPhases.await(writeLeases);
+            sharedBar.addPrice(numOf(20));
+        }));
+        final Future<?> secondMutation = executorService.submit(() -> second.withWriteLock(() -> {
+            CoordinatedMutationLockPhases.await(writeLeases);
+            sharedBar.addPrice(numOf(30));
+        }));
+        try {
+            firstMutation.get(5, TimeUnit.SECONDS);
+            secondMutation.get(5, TimeUnit.SECONDS);
+        } finally {
+            firstMutation.cancel(true);
+            secondMutation.cancel(true);
+        }
+
+        assertNumEquals(30, sharedBar.getHighPrice());
+        assertEquals(2L, first.getBarHistoryRevision());
+        assertEquals(2L, second.getBarHistoryRevision());
+    }
+
+    @Test
     public void nestedCompanionTradeMutationsDoNotBypassDeferral() throws Exception {
         final Bar firstCompanion = testBars.get(1);
         final Bar secondCompanion = testBars.get(2);
