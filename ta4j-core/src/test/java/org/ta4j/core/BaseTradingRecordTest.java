@@ -2423,7 +2423,7 @@ class BaseTradingRecordTest {
     }
 
     @Test
-    void averageCostPartialCloseKeepsTheRetainedFillAtTheLotBasis() {
+    void averageCostPartialClosePreservesHistoricalRetainedFillPrice() {
         FuturesContract contract = linearBtcPerpetual(numFactory);
         BaseTradingRecord record = BaseTradingRecord.builder()
                 .futuresContract(contract)
@@ -2436,9 +2436,8 @@ class BaseTradingRecordTest {
 
         Position open = record.getOpenPositions().get(0);
 
-        // the merged lot basis is 105; the retained execution must not leak its own 110
-        // price
         assertNumEquals(numFactory.numOf(105), open.getEntry().getPricePerAsset());
+        assertNumEquals(numFactory.numOf(110), open.getEntry().getFills().getFirst().price());
     }
 
     @Test
@@ -2480,6 +2479,42 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    void directEventCannotFollowExecutionWithLowerIndex() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(contract).build();
+            record.operate(fillAtTime(contract, 10, T0, ExecutionSide.BUY, 1, 10_000, List.of()));
+
+            IllegalArgumentException rejected = assertThrows(IllegalArgumentException.class,
+                    () -> record.recordCashFlow(
+                            cashFlow(contract, FuturesCashFlow.Type.VARIATION_MARGIN, "event-after-fill", 5, 1)));
+
+            assertTrue(rejected.getMessage().contains("nondecreasing in time order"));
+            assertTrue(record.getCashFlows().isEmpty());
+        }
+    }
+
+    @Test
+    void scheduledEventIdConflictDoesNotApplyEarlierScheduledEvents() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            FuturesFunding scheduled = fundingEvent(contract, 10, 0.001, 10_000);
+            BaseTradingRecord record = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .fundingSchedule(List.of(scheduled))
+                    .build();
+            record.operate(fill(contract, 0, ExecutionSide.BUY, 2, 10_000, List.of()));
+
+            IllegalArgumentException rejected = assertThrows(IllegalArgumentException.class, () -> record
+                    .recordCashFlow(cashFlow(contract, FuturesCashFlow.Type.FUNDING, scheduled.eventId(), 10, 0.3)));
+
+            assertTrue(rejected.getMessage().contains("already scheduled with different values"));
+            assertTrue(record.getCashFlows().isEmpty());
+            assertEquals(1, record.getFundingSchedule().size());
+        }
+    }
+
+    @Test
     void fundingAllocationIgnoresDeferredEntryFills() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = linearBtcPerpetual(numFactory);
@@ -2516,6 +2551,19 @@ class BaseTradingRecordTest {
 
             assertNumEquals(-0.2, closedRecord.getCashFlows().getFirst().amount());
             assertNumEquals(-0.2, closedRecord.getPositions().getFirst().getCashFlows().getFirst().amount());
+        }
+    }
+
+    @Test
+    void importedAllDeferredFuturesFillsDoNotChargeTheirFees() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Trade entry = Trade.fromFills(TradeType.BUY, List.of(fillAtTime(contract, -1, T0, ExecutionSide.BUY, 1,
+                    10_000, List.of(commission(numFactory, 3, "USD")))), RecordedTradeCostModel.INSTANCE);
+            BaseTradingRecord record = new BaseTradingRecord(
+                    new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+
+            assertNumEquals(numFactory.zero(), record.getRecordedTotalFees());
         }
     }
 

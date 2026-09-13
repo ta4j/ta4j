@@ -715,7 +715,7 @@ public class BaseTradingRecord implements TradingRecord {
             }
             total = total == null ? fill.fee() : total.plus(total.getNumFactory().numOf(fill.fee().getDelegate()));
         }
-        return total == null ? feeOf(trade) : total;
+        return total == null ? trade.getPricePerAsset().getNumFactory().zero() : total;
     }
 
     private void adoptPosition(Position position) {
@@ -902,6 +902,7 @@ public class BaseTradingRecord implements TradingRecord {
         requireEventContract(funding.contract(), "Funding event");
         lock.writeLock().lock();
         try {
+            requireScheduledFundingConflict(funding);
             requireIndexInTimeOrder(funding.time(), funding.eventId(), funding.index(),
                     "Funding event indices must be nondecreasing in time order");
             applyScheduledFunding(funding.time());
@@ -928,6 +929,7 @@ public class BaseTradingRecord implements TradingRecord {
                 throw new IllegalArgumentException(
                         "Cash flow " + cashFlow.eventId() + " is already recorded with different values");
             }
+            requireScheduledCashFlowConflict(cashFlow);
             requireIndexInTimeOrder(cashFlow.time(), cashFlow.eventId(), cashFlow.index(),
                     "Cash flow indices must be nondecreasing in time order");
             if (eventHorizon == null || cashFlow.time().isAfter(eventHorizon)) {
@@ -1323,6 +1325,41 @@ public class BaseTradingRecord implements TradingRecord {
         for (FuturesCashFlow recorded : processedEvents.values()) {
             requireIndexOrder(time, eventId, index, recorded.time(), recorded.eventId(), recorded.index(), message);
         }
+        for (Trade trade : tradesSnapshot()) {
+            for (TradeFill fill : Trade.executionFillsOf(trade)) {
+                if (fill.index() >= 0 && fill.time() != null) {
+                    requireExecutionIndexOrder(time, index, fill.time(), fill.index(), message);
+                }
+            }
+        }
+    }
+
+    private void requireScheduledFundingConflict(FuturesFunding funding) {
+        for (FuturesFunding scheduled : fundingSchedule) {
+            if (Objects.equals(funding.eventId(), scheduled.eventId()) && !funding.equals(scheduled)) {
+                throw new IllegalArgumentException(
+                        "Cash flow " + funding.eventId() + " is already scheduled with different values");
+            }
+        }
+    }
+
+    private void requireScheduledCashFlowConflict(FuturesCashFlow cashFlow) {
+        for (FuturesFunding scheduled : fundingSchedule) {
+            if (!Objects.equals(cashFlow.eventId(), scheduled.eventId())) {
+                continue;
+            }
+            if (!cashFlow.equals(fundingCashFlow(scheduled))) {
+                throw new IllegalArgumentException(
+                        "Cash flow " + cashFlow.eventId() + " is already scheduled with different values");
+            }
+        }
+    }
+
+    private static void requireExecutionIndexOrder(Instant time, int index, Instant otherTime, int otherIndex,
+            String message) {
+        if (time.compareTo(otherTime) <= 0 ? index > otherIndex : index < otherIndex) {
+            throw new IllegalArgumentException(message);
+        }
     }
 
     private static void requireIndexOrder(Instant time, String eventId, int index, Instant otherTime, String otherId,
@@ -1352,8 +1389,12 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     private void applyFundingInternal(FuturesFunding funding) {
+        recordProcessedFundingCashFlow(fundingCashFlow(funding));
+    }
+
+    private FuturesCashFlow fundingCashFlow(FuturesFunding funding) {
         Num amount = positionBook.fundingAmountAt(funding.time(), funding.referencePrice(), funding.rate());
-        recordProcessedFundingCashFlow(FuturesCashFlow.builder()
+        return FuturesCashFlow.builder()
                 .contract(futuresContract)
                 .type(FuturesCashFlow.Type.FUNDING)
                 .eventId(funding.eventId())
@@ -1364,7 +1405,7 @@ public class BaseTradingRecord implements TradingRecord {
                 .rate(funding.rate())
                 .referencePrice(funding.referencePrice())
                 .source(funding.source())
-                .build());
+                .build();
     }
 
     /**
@@ -1438,9 +1479,20 @@ public class BaseTradingRecord implements TradingRecord {
             if (hasPreviousIndex && plannedTradeFill.index() < previousIndex) {
                 throw new IllegalArgumentException("Futures fills must be in nondecreasing index order");
             }
+            requireExecutionIndexInTimeOrder(fillTime, plannedTradeFill.index(),
+                    "Futures fill indices must be nondecreasing in time order");
             previousTime = fillTime;
             previousIndex = plannedTradeFill.index();
             hasPreviousIndex = true;
+        }
+    }
+
+    private void requireExecutionIndexInTimeOrder(Instant time, int index, String message) {
+        for (FuturesFunding scheduled : fundingSchedule) {
+            requireExecutionIndexOrder(time, index, scheduled.time(), scheduled.index(), message);
+        }
+        for (FuturesCashFlow recorded : processedEvents.values()) {
+            requireExecutionIndexOrder(time, index, recorded.time(), recorded.index(), message);
         }
     }
 
@@ -1946,7 +1998,8 @@ public class BaseTradingRecord implements TradingRecord {
             ExecutionSide side, String orderId, String correlationId, FuturesContract futuresContract,
             List<TradeFee> feeComponents, List<TradeFill> fillSlices) {
         if (futuresContract != null && fillSlices != null && !fillSlices.isEmpty()) {
-            return Trade.fromFills(side.toTradeType(), fillSlices, RecordedTradeCostModel.INSTANCE);
+            return BaseTrade.fromFillsAtPrice(side.toTradeType(), fillSlices, pricePerAsset,
+                    RecordedTradeCostModel.INSTANCE);
         }
         if (futuresContract != null) {
             TradeFill fill = TradeFill.builder()
@@ -2638,7 +2691,6 @@ public class BaseTradingRecord implements TradingRecord {
                 PositionLot lot = openLots.removeFirst();
                 merged = merged == null ? lot : merged.merge(lot);
             }
-            merged.repriceFillsAtBasis();
             openLots.addFirst(merged);
         }
 
@@ -2984,29 +3036,6 @@ public class BaseTradingRecord implements TradingRecord {
                 }
                 fills = List.copyOf(retained);
                 return List.copyOf(allocated);
-            }
-
-            /**
-             * Rewrites the recorded executions of an average-cost lot at its basis.
-             *
-             * <p>
-             * A merged average-cost lot prices its whole amount at {@code entryPrice}, so
-             * its executions must report that basis as well; otherwise a partial close
-             * hands out slices carrying the prices of the executions they came from, and
-             * the retained open amount reports a basis the lot no longer has. Executions
-             * already priced at the basis are kept as they are, and counts and amounts are
-             * preserved so the cash-flow slices stay aligned.
-             * </p>
-             */
-            private void repriceFillsAtBasis() {
-                if (fills.isEmpty()) {
-                    return;
-                }
-                List<TradeFill> repriced = new ArrayList<>(fills.size());
-                for (TradeFill fill : fills) {
-                    repriced.add(fill.price().isEqual(entryPrice) ? fill : fill.toBuilder().price(entryPrice).build());
-                }
-                fills = List.copyOf(repriced);
             }
 
             private List<TradeFee> allocateFeeComponents(Num portion) {

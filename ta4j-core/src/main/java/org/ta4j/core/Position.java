@@ -243,14 +243,14 @@ public class Position implements Serializable {
         if (obj instanceof Position p) {
             return (entry == null ? p.getEntry() == null : entry.equals(p.getEntry()))
                     && (exit == null ? p.getExit() == null : exit.equals(p.getExit()))
-                    && cashFlows.equals(p.getCashFlows());
+                    && getCashFlows().equals(p.getCashFlows());
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(entry, exit, cashFlows);
+        return Objects.hash(entry, exit, getCashFlows());
     }
 
     /**

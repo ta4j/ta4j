@@ -292,7 +292,7 @@ final class FuturesPerformanceSupport {
         private final Indicator<Num> markPrice;
         private final NumFactory numFactory;
         private int activeCount;
-        private int settledCount;
+        private final boolean[] settledPositions;
         private Num settledRealized;
         private int lastIndex = Integer.MIN_VALUE;
 
@@ -305,6 +305,7 @@ final class FuturesPerformanceSupport {
             this.markPrice = markPrice;
             this.numFactory = series.numFactory();
             this.settledRealized = numFactory.zero();
+            this.settledPositions = new boolean[positions.size()];
         }
 
         /**
@@ -329,7 +330,10 @@ final class FuturesPerformanceSupport {
             settle(effectiveIndex);
             Num mark = markExposure && activeCount > 0 ? markAt(effectiveIndex) : null;
             Num total = settledRealized;
-            for (int i = settledCount; i < activeCount; i++) {
+            for (int i = 0; i < activeCount; i++) {
+                if (settledPositions[i]) {
+                    continue;
+                }
                 Position position = positions.get(i);
                 total = total.plus(toFactory(numFactory, position.getRealizedProfit(effectiveIndex)));
                 if (mark != null) {
@@ -351,11 +355,12 @@ final class FuturesPerformanceSupport {
          * @param effectiveIndex last bar accounted by the current cursor step
          */
         private void settle(int effectiveIndex) {
-            while (settledCount < activeCount && isSettled(positions.get(settledCount), effectiveIndex)) {
-                Position position = positions.get(settledCount);
-                settledRealized = settledRealized
-                        .plus(toFactory(numFactory, position.getRealizedProfit(effectiveIndex)));
-                settledCount++;
+            for (int i = 0; i < activeCount; i++) {
+                if (!settledPositions[i] && isSettled(positions.get(i), effectiveIndex)) {
+                    settledRealized = settledRealized
+                            .plus(toFactory(numFactory, positions.get(i).getRealizedProfit(effectiveIndex)));
+                    settledPositions[i] = true;
+                }
             }
         }
 

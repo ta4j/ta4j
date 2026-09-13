@@ -185,6 +185,17 @@ public class BaseTrade implements Trade {
         this(fillConfig(type, fills, transactionCostModel));
     }
 
+    static Trade fromFillsAtPrice(Trade.TradeType type, List<TradeFill> fills, Num pricePerAsset,
+            CostModel transactionCostModel) {
+        Objects.requireNonNull(pricePerAsset, "pricePerAsset");
+        Objects.requireNonNull(transactionCostModel, "transactionCostModel");
+        FillSummary fillSummary = summarizeFills(type, fills);
+        FillMetadata metadata = summarizeMetadata(type, fillSummary.firstFill());
+        return new BaseTrade(config(type, fillSummary.firstFill().index(), metadata.time(), pricePerAsset,
+                fillSummary.totalAmount(), metadata.side(), metadata.orderId(), metadata.correlationId(),
+                fillSummary.fills(), transactionCostModel));
+    }
+
     private BaseTrade(TradeConfig config) {
         this.type = config.type();
         this.index = config.index();
@@ -623,7 +634,7 @@ public class BaseTrade implements Trade {
         Num quoteWeightedPrice = numFactory.zero();
         Num quotePriceSum = numFactory.zero();
         FuturesContract contract = singleContract(fills);
-        TradeFill earliestFill = fills.getFirst();
+        TradeFill earliestFill = null;
         ExecutionSide expectedSide = executionSide(tradeType);
         for (TradeFill fill : fills) {
             if (fill.side() != null && fill.side() != expectedSide) {
@@ -635,7 +646,7 @@ public class BaseTrade implements Trade {
             if (fill.amount().isNaN() || fill.amount().isZero() || fill.amount().isNegative()) {
                 throw new IllegalArgumentException("fill amount must be positive");
             }
-            if (fill.index() < earliestFill.index()) {
+            if (fill.index() >= 0 && (earliestFill == null || fill.index() < earliestFill.index())) {
                 earliestFill = fill;
             }
             Num amount = numFactory.numOf(fill.amount().getDelegate());
@@ -647,7 +658,8 @@ public class BaseTrade implements Trade {
         Num aggregatedPrice = contract != null && contract.settlementType() == FuturesContract.SettlementType.INVERSE
                 ? totalAmount.dividedBy(quotePriceSum)
                 : quoteWeightedPrice.dividedBy(totalAmount);
-        return new FillSummary(List.copyOf(fills), earliestFill, totalAmount, aggregatedPrice);
+        return new FillSummary(List.copyOf(fills), earliestFill == null ? fills.getFirst() : earliestFill, totalAmount,
+                aggregatedPrice);
     }
 
     private static FillMetadata summarizeMetadata(Trade.TradeType tradeType, TradeFill firstFill) {

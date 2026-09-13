@@ -231,6 +231,23 @@ class BaseTradeTest {
         assertNull(unlabelled.getInstrument());
     }
 
+    @Test
+    void fromFillsIgnoresDeferredFillWhenChoosingIdentityAnchor() {
+        Instant deferredTime = Instant.parse("2025-01-01T00:00:00Z");
+        Instant executedTime = Instant.parse("2025-01-01T00:01:00Z");
+        TradeFill deferred = new TradeFill(-1, deferredTime, NUM_FACTORY.hundred(), NUM_FACTORY.one(),
+                NUM_FACTORY.zero(), ExecutionSide.BUY, "deferred", "corr-deferred");
+        TradeFill executed = new TradeFill(4, executedTime, NUM_FACTORY.numOf(101), NUM_FACTORY.one(),
+                NUM_FACTORY.zero(), ExecutionSide.BUY, "executed", "corr-executed");
+
+        Trade trade = Trade.fromFills(TradeType.BUY, List.of(deferred, executed), RecordedTradeCostModel.INSTANCE);
+
+        assertEquals(4, trade.getIndex());
+        assertEquals(executedTime, trade.getTime());
+        assertEquals("executed", trade.getOrderId());
+        assertEquals("corr-executed", trade.getCorrelationId());
+    }
+
     private static TradeFill labelledFill(int index, String instrument) {
         return TradeFill.builder()
                 .index(index)

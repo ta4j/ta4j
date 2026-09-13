@@ -336,16 +336,23 @@ final class FuturesPositionAccounting {
     }
 
     private static boolean isFullyExecutedExit(Position position, int finalIndex) {
+        Trade entry = position.getEntry();
         Trade exit = position.getExit();
         if (exit == null) {
             return false;
         }
-        NumFactory numFactory = exit.getPricePerAsset().getNumFactory();
-        Num executed = numFactory.zero();
-        for (TradeFill fill : executedFills(exit, finalIndex)) {
-            executed = executed.plus(numFactory.numOf(fill.amount().getDelegate()));
+        NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
+        Num executedEntry = executedAmount(entry, finalIndex, numFactory);
+        Num executedExit = executedAmount(exit, finalIndex, numFactory);
+        return executedEntry.isPositive() && executedExit.isGreaterThanOrEqual(executedEntry);
+    }
+
+    private static Num executedAmount(Trade trade, int finalIndex, NumFactory numFactory) {
+        Num total = numFactory.zero();
+        for (TradeFill fill : executedFills(trade, finalIndex)) {
+            total = total.plus(numFactory.numOf(fill.amount().getDelegate()));
         }
-        return executed.isGreaterThanOrEqual(numFactory.numOf(exit.getAmount().getDelegate()));
+        return total;
     }
 
     private static Trade executedExit(Position position, int finalIndex) {
@@ -395,7 +402,7 @@ final class FuturesPositionAccounting {
                 if (fillTime == null) {
                     throw new IllegalStateException("Futures cash flows require entry timestamps");
                 }
-                if (fillTime.isBefore(cashFlow.time())) {
+                if (fill.index() >= 0 && fillTime.isBefore(cashFlow.time())) {
                     eligibleIndices.add(i);
                     eligibleAmount = eligibleAmount.plus(quantityFactory.numOf(fill.amount().getDelegate()));
                 }

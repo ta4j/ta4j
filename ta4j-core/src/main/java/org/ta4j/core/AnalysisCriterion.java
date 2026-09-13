@@ -536,8 +536,8 @@ public interface AnalysisCriterion {
         for (Position closedPosition : source.getPositions()) {
             Trade entry = closedPosition.getEntry();
             Trade exit = closedPosition.getExit();
-            if (entry == null || exit == null || entry.getIndex() > windowEndIndex
-                    || exit.getIndex() <= windowEndIndex) {
+            if (entry == null || exit == null || firstExecutedFillIndex(entry) > windowEndIndex
+                    || lastExecutedFillIndex(exit) <= windowEndIndex) {
                 continue;
             }
             positions.addAll(trimFuturesPositionToWindow(closedPosition, windowEndIndex));
