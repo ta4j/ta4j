@@ -615,6 +615,20 @@ public class NetReturnCriterionTest extends AbstractPnlCriterionTest {
     }
 
     @Test
+    public void netReturnCriterionUsesExecutedEntryAmountForDeferredFills() {
+        FuturesContract contract = linearBtcPerpetual(numFactory);
+        Trade entry = Trade
+                .fromFills(Trade.TradeType.BUY,
+                        List.of(fill(contract, 0, ExecutionSide.BUY, 1, 100, List.of()),
+                                fill(contract, -1, ExecutionSide.BUY, 1, 100, List.of())),
+                        RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, Trade.fromFill(fill(contract, 1, ExecutionSide.SELL, 1, 110, List.of()),
+                RecordedTradeCostModel.INSTANCE), RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        assertNumEquals(1.1, new NetReturnCriterion().calculate(series(numFactory), position));
+    }
+
+    @Test
     public void netReturnCriterionUsesFullEntryAmountAfterPartialExit() {
         FuturesContract contract = linearBtcPerpetual(numFactory);
         Position position = new Position(

@@ -642,15 +642,22 @@ public interface AnalysisCriterion {
                         .build());
             }
         }
-        Position closedPosition = new Position(Trade.fromFills(entry.getType(), closedEntryFills, entry.getCostModel()),
+        boolean allEntryFillsRetained = retainedEntryFills.size() == allEntryFills.size();
+        Position closedPosition = new Position(tradeForRetainedFills(entry, closedEntryFills, allEntryFillsRetained),
                 retainedExit, transactionCostModel, holdingCostModel, closedCashFlows);
-        Position openPosition = new Position(Trade.fromFills(entry.getType(), openEntryFills, entry.getCostModel()),
+        Position openPosition = new Position(tradeForRetainedFills(entry, openEntryFills, allEntryFillsRetained),
                 transactionCostModel, holdingCostModel, openCashFlows);
         return List.of(closedPosition, openPosition);
     }
 
     private static Trade tradeForRetainedFills(Trade originalTrade, List<TradeFill> retainedFills) {
-        if (retainedFills.size() == Trade.executionFillsOf(originalTrade).size()) {
+        return tradeForRetainedFills(originalTrade, retainedFills,
+                retainedFills.size() == Trade.executionFillsOf(originalTrade).size());
+    }
+
+    private static Trade tradeForRetainedFills(Trade originalTrade, List<TradeFill> retainedFills,
+            boolean preserveOriginalBasis) {
+        if (preserveOriginalBasis) {
             return BaseTrade.fromFillsAtPrice(originalTrade.getType(), retainedFills, originalTrade.getPricePerAsset(),
                     originalTrade.getCostModel());
         }

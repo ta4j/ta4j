@@ -43,6 +43,7 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.FuturesContract;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
+import org.ta4j.core.mocks.MockIndicator;
 import static org.junit.Assert.assertTrue;
 
 public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
@@ -617,6 +618,22 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
             assertNumEquals(0.02941176470588236, returns.getValue(2));
             assertNumEquals(-0.0190476190476191, returns.getValue(3));
             assertNumEquals(0.06796116504854367, returns.getValue(4));
+        }
+    }
+
+    @Test
+    public void futuresReturnsPropagateUnavailableMarkAsNaN() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 100, 110);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 500);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+            Indicator<Num> markPrice = new MockIndicator(barSeries, List.of(testFactory.numOf(100), NaN.NaN));
+
+            Returns returns = new Returns(barSeries, record, markPrice, 1, ReturnRepresentation.DECIMAL,
+                    EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+            assertTrue(returns.getValue(1).isNaN());
         }
     }
 

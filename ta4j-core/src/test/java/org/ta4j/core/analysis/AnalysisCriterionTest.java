@@ -20,6 +20,7 @@ import org.ta4j.core.TradeFill;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.ReturnRepresentation;
+import org.ta4j.core.criteria.pnl.NetAverageProfitCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitLossPercentageCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
@@ -230,6 +231,28 @@ public class AnalysisCriterionTest {
 
             assertNumEquals(0.3,
                     new NetProfitCriterion().calculate(barSeries, record, AnalysisWindow.barRange(0, 2), marked));
+        }
+    }
+
+    @Test
+    public void markedPartialProjectionSlicesPreserveAverageCostBasis() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 100, 110, 120);
+            Position position = new Position(
+                    Trade.fromFills(TradeType.BUY,
+                            List.of(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1, 100, List.of()),
+                                    FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.BUY, 1, 110, List.of())),
+                            RecordedTradeCostModel.INSTANCE),
+                    Trade.fromFill(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.SELL, 1, 101, List.of()),
+                            RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            BaseTradingRecord record = new BaseTradingRecord(position);
+            AnalysisContext marked = AnalysisContext.defaults()
+                    .withOpenPositionHandling(OpenPositionHandling.MARK_TO_MARKET);
+
+            assertNumEquals(0.15, new NetAverageProfitCriterion().calculate(barSeries, record,
+                    AnalysisWindow.barRange(0, 2), marked));
         }
     }
 

@@ -347,6 +347,9 @@ final class FuturesPerformanceSupport {
                 Position position = positions.get(i);
                 total = total.plus(toFactory(numFactory, position.getRealizedProfit(effectiveIndex)));
                 if (mark != null) {
+                    if (!Num.isFinite(mark)) {
+                        return NaN.NaN;
+                    }
                     total = total.plus(toFactory(numFactory, position.getUnrealizedProfit(mark, effectiveIndex)));
                 }
             }
