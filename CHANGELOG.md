@@ -1,4 +1,5 @@
 ## Unreleased
+- **Futures review round 35**: adopted entries recompute their basis from executed fills, realized return heads preserve zero-activity samples, and complete closes respect contract quantity and notional maxima.
 
 - **Futures review round 34**: mark-to-market projections preserve average-cost basis, deferred returns stay neutral, closed futures retain initial risk, and as-of spot profit excludes future exit costs.
 - `BacktestExecutor` now has explicit `executeWithRuntimeReport` overloads with a strict platform-worker cap for fixed amounts and `PositionSizer` entries. They avoid nested parallel streams so constrained ForkJoin callers can preserve their hard worker limits without compensation-thread rejection.

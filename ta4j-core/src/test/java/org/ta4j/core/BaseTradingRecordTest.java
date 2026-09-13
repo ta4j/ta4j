@@ -2479,6 +2479,24 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    void importedFuturesPositionRecomputesBasisAfterDeferredFills() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Trade entry = Trade.fromFills(TradeType.BUY,
+                    List.of(fillAtTime(contract, 0, T0, ExecutionSide.BUY, 2, 100, List.of()),
+                            fillAtTime(contract, -1, T0.plusSeconds(1), ExecutionSide.BUY, 2, 200, List.of())),
+                    RecordedTradeCostModel.INSTANCE);
+
+            BaseTradingRecord record = new BaseTradingRecord(
+                    new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+
+            assertNumEquals(2, record.getCurrentPosition().getEntry().getAmount());
+            assertNumEquals(100, record.getCurrentPosition().getEntry().getPricePerAsset());
+            assertNumEquals(1.1, record.getCurrentPosition().getGrossReturn(numFactory.numOf(110)));
+        }
+    }
+
+    @Test
     void directEventCannotFollowExecutionWithLowerIndex() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = linearBtcPerpetual(numFactory);

@@ -136,17 +136,28 @@ final class ExecutionModelSupport {
         if (!isExecutionAllowed(tradingRecord, futuresContract, tradeType, fillTime)) {
             return;
         }
-        if (!isCompleteClose(tradingRecord, tradeType, amount)) {
+        boolean completeClose = isCompleteClose(tradingRecord, tradeType, amount);
+        if (!completeClose) {
             FuturesOrderQuantitySupport.requireTradable(futuresContract, amount, target.price());
         }
-        tradingRecord.operate(TradeFill.builder()
-                .futuresContract(futuresContract)
-                .index(target.index())
-                .time(fillTime)
-                .price(target.price())
-                .amount(amount)
-                .side(tradeType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL)
-                .build());
+        Num remainingAmount = amount;
+        while (remainingAmount.isPositive()) {
+            Num fillAmount = completeClose
+                    ? FuturesOrderQuantitySupport.maximumOrderQuantity(futuresContract, remainingAmount, target.price())
+                    : remainingAmount;
+            if (!fillAmount.isPositive()) {
+                throw new IllegalArgumentException("complete close exceeds the contract's maximum order limits");
+            }
+            tradingRecord.operate(TradeFill.builder()
+                    .futuresContract(futuresContract)
+                    .index(target.index())
+                    .time(fillTime)
+                    .price(target.price())
+                    .amount(fillAmount)
+                    .side(tradeType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL)
+                    .build());
+            remainingAmount = remainingAmount.minus(fillAmount);
+        }
     }
 
     private static Instant fillTime(BarSeries barSeries, int index, TradeExecutionModel.PriceSource priceSource) {

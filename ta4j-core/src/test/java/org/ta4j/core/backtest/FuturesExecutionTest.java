@@ -339,6 +339,38 @@ class FuturesExecutionTest {
     }
 
     @Test
+    void completeFuturesExitSplitsAtMaximumQuantity() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearContract(numFactory, 1).toBuilder()
+                    .maximumQuantity(numFactory.numOf(3))
+                    .build();
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 100d).build();
+            BaseTradingRecord tradingRecord = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .initialCapital(numFactory.numOf(1_000))
+                    .transactionCostModel(new ZeroCostModel())
+                    .build();
+            tradingRecord.operate(TradeFill.builder()
+                    .futuresContract(contract)
+                    .index(0)
+                    .time(series.getBar(0).getEndTime())
+                    .price(numFactory.hundred())
+                    .amount(numFactory.numOf(5))
+                    .side(ExecutionSide.BUY)
+                    .build());
+
+            new TradeOnCurrentCloseModel().execute(1, tradingRecord, series, numFactory.numOf(5));
+
+            assertTrue(tradingRecord.isClosed());
+            assertEquals(2, tradingRecord.getPositions().size());
+            assertNumEquals(3, tradingRecord.getPositions().get(0).getEntry().getAmount());
+            assertNumEquals(2, tradingRecord.getPositions().get(1).getEntry().getAmount());
+            assertNumEquals(3, tradingRecord.getPositions().get(0).getExit().getAmount());
+            assertNumEquals(2, tradingRecord.getPositions().get(1).getExit().getAmount());
+        }
+    }
+
+    @Test
     void futuresQuantityConstraintsRoundDownAndRejectUntradableOrders() {
         for (NumFactory numFactory : factories()) {
             Num price = numFactory.numOf(50_000);

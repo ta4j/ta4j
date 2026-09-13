@@ -89,6 +89,52 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
     }
 
     @Test
+    public void completeFuturesCloseSplitsAtMaximumNotional() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int index = 0; index < 3; index++) {
+            series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(100d).add();
+        }
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .maximumNotional(numFactory.numOf(300))
+                .build();
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(1_000))
+                .transactionCostModel(new ZeroCostModel())
+                .build();
+        record.operate(TradeFill.builder()
+                .index(0)
+                .time(series.getBar(0).getEndTime())
+                .price(numFactory.hundred())
+                .amount(numFactory.numOf(5))
+                .side(ExecutionSide.BUY)
+                .orderId("entry")
+                .futuresContract(contract)
+                .build());
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(),
+                numFactory.one(), 3);
+
+        model.execute(0, record, series, numFactory.numOf(5));
+        model.onBar(1, record, series);
+        model.onBar(2, record, series);
+
+        assertTrue(record.isClosed());
+        assertEquals(2, record.getPositions().size());
+        assertNumEquals(3, record.getPositions().get(0).getEntry().getAmount());
+        assertNumEquals(2, record.getPositions().get(1).getEntry().getAmount());
+        assertNumEquals(3, record.getPositions().get(0).getExit().getAmount());
+        assertNumEquals(2, record.getPositions().get(1).getExit().getAmount());
+    }
+
+    @Test
     public void completeFuturesCloseUsesRemainingOffGridAmount() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(100d).add();

@@ -98,6 +98,23 @@ final class FuturesOrderQuantitySupport {
     }
 
     /**
+     * Caps an order at the contract's quantity and notional maxima without applying
+     * minimums or increment rounding.
+     *
+     * @param contract contract declaring the maxima, never {@code null}
+     * @param quantity nonnegative and finite upper bound
+     * @param price    positive and finite execution quote
+     * @return a quantity within the declared maxima
+     */
+    static Num maximumOrderQuantity(FuturesContract contract, Num quantity, Num price) {
+        Objects.requireNonNull(contract, "contract");
+        requireNonNegativeFinite(quantity, "quantity");
+        requirePositiveFinite(price, "execution price");
+        Num bounded = capToMaximumQuantity(contract, quantity);
+        return capToMaximumNotional(contract, bounded, price);
+    }
+
+    /**
      * Returns whether a quantity is tradable at an execution quote under every
      * declared constraint.
      *

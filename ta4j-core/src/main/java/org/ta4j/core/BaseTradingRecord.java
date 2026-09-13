@@ -2941,19 +2941,12 @@ public class BaseTradingRecord implements TradingRecord {
                     if (fills.isEmpty()) {
                         return null;
                     }
-                    NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
-                    Num amount = numFactory.zero();
-                    for (TradeFill fill : fills) {
-                        amount = amount.plus(numFactory.numOf(fill.amount().getDelegate()));
-                    }
-                    List<TradeFee> feeComponents = List.copyOf(entry.getFees());
-                    if (!amount.isEqual(entry.getAmount())) {
-                        feeComponents = scaleFeeComponents(feeComponents, amount, entry.getAmount());
-                    }
-                    return new PositionLot(entry.getIndex(), entry.getTime(), entry.getPricePerAsset(),
-                            sideOf(entry.getType()), amount, executedFeeOf(entry), entry.getOrderId(),
-                            entry.getCorrelationId(), entrySequence, position.getFuturesContract(), feeComponents,
-                            position.getCashFlows(), fills);
+                    Trade executedEntry = Trade.fromFills(entry.getType(), fills, entry.getCostModel());
+                    return new PositionLot(executedEntry.getIndex(), executedEntry.getTime(),
+                            executedEntry.getPricePerAsset(), sideOf(executedEntry.getType()),
+                            executedEntry.getAmount(), executedFeeOf(executedEntry), executedEntry.getOrderId(),
+                            executedEntry.getCorrelationId(), entrySequence, position.getFuturesContract(),
+                            List.copyOf(executedEntry.getFees()), position.getCashFlows(), fills);
                 }
                 return new PositionLot(entry.getIndex(), entry.getTime(), entry.getPricePerAsset(),
                         sideOf(entry.getType()), entry.getAmount(), feeOf(entry), entry.getOrderId(),

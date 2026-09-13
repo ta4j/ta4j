@@ -462,6 +462,19 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         }
     }
 
+    @Test
+    public void realizedReturnsKeepZeroActivityAtRetainedHead() {
+        FuturesContract contract = linearPerpetual(numFactory);
+        BarSeries windowed = series(numFactory, BEGIN);
+        BaseTradingRecord record = futuresRecord(contract, 0);
+
+        Returns returns = new Returns(windowed, record, ReturnRepresentation.DECIMAL, EquityCurveMode.REALIZED,
+                OpenPositionHandling.IGNORE);
+
+        assertFalse(returns.hasSeededFirstBarReturn());
+        assertNumEquals(numFactory.zero(), returns.getRawValues().get(BEGIN - 1));
+    }
+
     private static Position spotPosition(NumFactory numFactory, int indexOffset) {
         Num one = numFactory.one();
         Trade entry = Trade.buyAt(1 + indexOffset, numFactory.numOf(CLOSES[1]), one, RecordedTradeCostModel.INSTANCE);

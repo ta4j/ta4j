@@ -76,9 +76,12 @@ final class FuturesPerformanceSupport {
      * @since 0.25.1
      */
     static boolean hasPreWindowActivity(TradingRecord record, int seriesBegin, boolean markExposure) {
+        int finalIndex = seriesBegin - 1;
         for (Position position : record.getPositions()) {
             if (position.getEntry() != null && position.getEntry().getIndex() < seriesBegin) {
-                return true;
+                if (markExposure || !position.getRealizedProfit(finalIndex).isZero()) {
+                    return true;
+                }
             }
         }
         Position current = record.getCurrentPosition();
@@ -88,7 +91,6 @@ final class FuturesPerformanceSupport {
         if (markExposure) {
             return true;
         }
-        int finalIndex = seriesBegin - 1;
         return !current.getRealizedProfit(finalIndex).isZero();
     }
 
