@@ -587,4 +587,47 @@ public class PositionTest {
             assertNumEquals(40, closedPosition.getHoldingCost());
         }
     }
+
+    @Test
+    public void futuresHoldingCostAccruesOverEachClosingFillExposure() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.numOf(10))
+                    .build();
+            TradeFill entryFill = futuresFill(contract, 0, 100, 2, ExecutionSide.BUY);
+            TradeFill firstExitFill = futuresFill(contract, 3, 110, 1, ExecutionSide.SELL);
+            TradeFill secondExitFill = futuresFill(contract, 5, 110, 1, ExecutionSide.SELL);
+            Trade entry = Trade.fromFills(TradeType.BUY, List.of(entryFill), RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFills(TradeType.SELL, List.of(firstExitFill, secondExitFill),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE,
+                    new LinearBorrowingCostModel(0.01, LinearBorrowingCostModel.Applicability.BOTH));
+
+            // One contract is held for 3 periods and the other for 5: 1_000 * 3 * 0.01
+            // plus 1_000 * 5 * 0.01.
+            assertNumEquals(80, position.getHoldingCost(5));
+            assertNumEquals(80, position.getHoldingCost());
+        }
+    }
+
+    private static TradeFill futuresFill(FuturesContract contract, int index, double price, double amount,
+            ExecutionSide side) {
+        NumFactory numFactory = contract.contractSize().getNumFactory();
+        return TradeFill.builder()
+                .index(index)
+                .time(T0.plusSeconds(index))
+                .price(numFactory.numOf(price))
+                .amount(numFactory.numOf(amount))
+                .side(side)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+    }
 }

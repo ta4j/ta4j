@@ -1097,6 +1097,7 @@ public class BaseTradingRecord implements TradingRecord {
             List<TradeFill> fills = Trade.executionFillsOf(trade);
             List<PlannedTradeFill> plannedTradeFills = planTradeFills(trade, fills);
             validatePlannedFillTimes(plannedTradeFills);
+            validateSpecificIdBatch(trade, plannedTradeFills);
             for (PlannedTradeFill plannedTradeFill : plannedTradeFills) {
                 applyTradeInternal(plannedTradeFill.index(), plannedTradeFill.trade(), -1L);
             }
@@ -1521,6 +1522,31 @@ public class BaseTradingRecord implements TradingRecord {
                     fill.side() == null ? sideOf(trade.getType()) : fill.side(), fill.orderId(), fill.correlationId());
         }
         return Trade.fromFills(trade.getType(), indexedFills, trade.getCostModel());
+    }
+
+    /**
+     * Validates a whole multi-fill batch before any of its fills is applied, so a
+     * state-dependent lot matching failure cannot publish a partial batch.
+     *
+     * <p>
+     * Specific-id matching consumes the lots named by the individual exit fills, so
+     * a later fill of a batch can become unmatchable only after an earlier fill of
+     * the same batch was applied. Every other matching policy is already covered by
+     * the aggregate amount validation of {@link #planTradeFills}.
+     * </p>
+     *
+     * @param trade        the batch trade
+     * @param plannedFills planned fills in application order
+     */
+    private void validateSpecificIdBatch(Trade trade, List<PlannedTradeFill> plannedFills) {
+        if (plannedFills.size() < 2 || matchPolicy != ExecutionMatchPolicy.SPECIFIC_ID) {
+            return;
+        }
+        ExecutionSide openSide = currentOpenSide();
+        if (openSide == null || sideOf(trade.getType()) == openSide) {
+            return;
+        }
+        positionBook.validateExitBatch(plannedFills);
     }
 
     private void applyTradeInternal(int index, Trade trade, long sequence) {
@@ -2487,23 +2513,57 @@ public class BaseTradingRecord implements TradingRecord {
                 return openLots.peekLast();
             }
             if (matchPolicy == ExecutionMatchPolicy.SPECIFIC_ID) {
-                return matchSpecificLot(trade);
+                return matchSpecificLot(openLots, trade);
             }
             return openLots.peekFirst();
         }
 
-        private PositionLot matchSpecificLot(Trade trade) {
+        private static PositionLot matchSpecificLot(Deque<PositionLot> lots, Trade trade) {
             String correlationId = trade.getCorrelationId();
             String key = correlationId != null && !correlationId.isBlank() ? correlationId : trade.getOrderId();
             if (key == null || key.isBlank()) {
                 throw new IllegalStateException("Specific-id matching requires correlationId or orderId");
             }
-            for (PositionLot lot : openLots) {
+            for (PositionLot lot : lots) {
                 if (key.equals(lot.correlationId()) || key.equals(lot.orderId())) {
                     return lot;
                 }
             }
             throw new IllegalStateException("No open lot matches " + key);
+        }
+
+        /**
+         * Validates that every planned exit fill of a specific-id batch matches an open
+         * lot before any of them is applied, so a rejected batch leaves the book
+         * untouched.
+         *
+         * @param plannedFills planned exit fills in application order
+         */
+        private void validateExitBatch(List<PlannedTradeFill> plannedFills) {
+            Deque<PositionLot> simulated = new ArrayDeque<>(openLots.size());
+            for (PositionLot lot : openLots) {
+                simulated.addLast(lot.forMatching());
+            }
+            for (PlannedTradeFill plannedFill : plannedFills) {
+                simulateExit(simulated, plannedFill.trade());
+            }
+        }
+
+        private static void simulateExit(Deque<PositionLot> simulated, Trade trade) {
+            PositionLot lot = simulated.isEmpty() ? null : matchSpecificLot(simulated, trade);
+            if (lot == null) {
+                throw new IllegalStateException("No open lots to close");
+            }
+            Num amount = trade.getAmount();
+            Num lotAmount = lot.amount();
+            if (amount.isGreaterThan(lotAmount)) {
+                throw new IllegalStateException("Exit amount exceeds matched lot amount");
+            }
+            if (amount.isEqual(lotAmount)) {
+                simulated.remove(lot);
+                return;
+            }
+            lot.reduce(amount, amount.getNumFactory().zero());
         }
 
         private void normalizeAvgCostLots() {
@@ -2918,6 +2978,18 @@ public class BaseTradingRecord implements TradingRecord {
                 return List.copyOf(allocated);
             }
 
+            /**
+             * Returns a detached copy so batch validation can simulate lot consumption
+             * without mutating the live book.
+             *
+             * @return structural copy of this lot
+             */
+            private PositionLot forMatching() {
+                return new PositionLot(entryIndex, entryTime, entryPrice, side, amount, fee, orderId, correlationId,
+                        entrySequence, futuresContract, feeComponents, cashFlows, fills,
+                        copyCashFlowSlices(cashFlowSlices));
+            }
+
             private PositionLot reduce(Num reduceAmount, Num reduceFee) {
                 amount = amount.minus(reduceAmount);
                 fee = fee.minus(reduceFee);
@@ -3025,7 +3097,10 @@ public class BaseTradingRecord implements TradingRecord {
                     for (int i = 0; i < fills.size(); i++) {
                         TradeFill fill = fills.get(i);
                         Instant fillTime = fill.time();
-                        if (fillTime == null || !fillTime.isAfter(cashFlow.time())) {
+                        if (fillTime == null) {
+                            throw new IllegalStateException("Futures cash flows require entry timestamps");
+                        }
+                        if (fillTime.isBefore(cashFlow.time())) {
                             eligibleIndices.add(i);
                             eligibleAmount = eligibleAmount.plus(quantityFactory.numOf(fill.amount().getDelegate()));
                         }

@@ -69,6 +69,11 @@ final class FuturesOrderQuantitySupport {
      * Rounds a quantity down to the largest tradable quantity within all declared
      * quantity and notional maxima, or zero when none is tradable.
      *
+     * <p>
+     * The increment tolerance can lift the capped quantity onto the next increment,
+     * which may exceed a maximum; the next lower increment is then used.
+     * </p>
+     *
      * @param contract contract declaring the constraints, never {@code null}
      * @param quantity nonnegative and finite upper bound
      * @param price    positive and finite execution quote
@@ -81,10 +86,15 @@ final class FuturesOrderQuantitySupport {
         Num bounded = capToMaximumQuantity(contract, quantity);
         bounded = capToMaximumNotional(contract, bounded, price);
         Num rounded = roundDown(contract, bounded);
-        if (!isTradable(contract, rounded, price)) {
+        if (isTradable(contract, rounded, price)) {
+            return rounded;
+        }
+        Num increment = toNum(contract.quantityIncrement(), quantity.getNumFactory());
+        Num steppedDown = increment == null ? null : rounded.minus(increment);
+        if (steppedDown == null || !steppedDown.isPositive() || !isTradable(contract, steppedDown, price)) {
             return quantity.getNumFactory().zero();
         }
-        return rounded;
+        return steppedDown;
     }
 
     /**

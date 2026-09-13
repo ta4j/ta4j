@@ -673,4 +673,23 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
             assertNumEquals(0.02941176470588236, returns.getValue(2));
         }
     }
+
+    @Test
+    public void retainedFuturesReturnsMeasureTheirFirstBarFromCapital() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries retained = FuturesAnalysisTestSupport.series(testFactory, 10_000, 10_100, 10_100, 10_100, 10_100);
+            retained.setMaximumBarCount(3);
+            assertEquals(2, retained.getBeginIndex());
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 100);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1, 10_000, List.of()));
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1, 10_100, List.of()));
+
+            Returns returns = new Returns(retained, record, ReturnRepresentation.DECIMAL);
+
+            // One contract of 0.01 units earns 1 on the capital of 100 before the
+            // retained head, so the first reported bar grows equity from that capital.
+            assertNumEquals(0.01, returns.getValue(2));
+        }
+    }
 }

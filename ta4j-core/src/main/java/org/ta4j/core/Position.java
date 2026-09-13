@@ -7,6 +7,8 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
 
@@ -642,21 +644,24 @@ public class Position implements Serializable {
 
     /**
      * Calculates the holding cost of the closed position. Entry fills of a native
-     * futures position accrue over their own exposure interval.
+     * futures position accrue over their own exposure interval, so a position whose
+     * fills span several executions is charged to its completion index.
      *
      * @return the cost of the position
      */
     public Num getHoldingCost() {
-        if (futuresContract != null && exit != null && Trade.executionFillsOf(entry).size() > 1) {
-            return getHoldingCost(exit.getIndex());
+        if (futuresContract != null && exit != null
+                && (Trade.executionFillsOf(entry).size() > 1 || Trade.executionFillsOf(exit).size() > 1)) {
+            return getHoldingCost(exitCompletionIndex());
         }
         return holdingCostModel.calculate(this);
     }
 
     /**
      * Calculates the holding cost of the position. For native futures positions,
-     * every entry fill executed at or before {@code finalIndex} accrues over its
-     * own exposure interval.
+     * every executed fill accrues over its own exposure interval: an entry fill is
+     * charged until the closing fill that consumes it, and any remainder until
+     * {@code finalIndex}.
      *
      * @param finalIndex the index of the final bar to be considered (if position is
      *                   open)
@@ -668,22 +673,75 @@ public class Position implements Serializable {
             return model.calculate(this, finalIndex);
         }
         NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
-        List<TradeFill> entryFills = Trade.executionFillsOf(entry);
         List<TradeFill> executedEntryFills = FuturesPositionAccounting.executedFills(entry, finalIndex);
         if (executedEntryFills.isEmpty()) {
             return numFactory.zero();
         }
-        if (entryFills.size() == 1) {
+        if (Trade.executionFillsOf(entry).size() == 1 && (exit == null || Trade.executionFillsOf(exit).size() == 1)) {
             return model.calculate(this, finalIndex);
         }
+        Deque<TradeFill> closingFills = new ArrayDeque<>(
+                exit == null ? List.of() : FuturesPositionAccounting.executedFills(exit, finalIndex));
+        Deque<Num> closingAmounts = new ArrayDeque<>();
+        for (TradeFill closingFill : closingFills) {
+            closingAmounts.addLast(closingFill.amount());
+        }
         Num holdingCost = numFactory.zero();
-        for (TradeFill executedFill : executedEntryFills) {
-            Trade fillEntry = Trade.fromFills(entry.getType(), List.of(executedFill), getTransactionCostModel());
-            Position fillPosition = exit == null ? new Position(fillEntry, getTransactionCostModel(), model)
-                    : new Position(fillEntry, exit, getTransactionCostModel(), model);
-            holdingCost = holdingCost.plus(model.calculate(fillPosition, finalIndex));
+        for (TradeFill entryFill : executedEntryFills) {
+            Num openAmount = entryFill.amount();
+            while (openAmount.isPositive() && !closingAmounts.isEmpty()) {
+                TradeFill closingFill = closingFills.removeFirst();
+                Num closingAmount = closingAmounts.removeFirst();
+                Num closeAmount = openAmount.isLessThan(closingAmount) ? openAmount : closingAmount;
+                holdingCost = holdingCost
+                        .plus(model.calculate(slicePosition(entryFill, closingFill, closeAmount), finalIndex));
+                openAmount = openAmount.minus(closeAmount);
+                Num retainedAmount = closingAmount.minus(closeAmount);
+                if (retainedAmount.isPositive()) {
+                    closingFills.addFirst(closingFill);
+                    closingAmounts.addFirst(retainedAmount);
+                }
+            }
+            if (openAmount.isPositive()) {
+                holdingCost = holdingCost.plus(model.calculate(slicePosition(entryFill, null, openAmount), finalIndex));
+            }
         }
         return holdingCost;
+    }
+
+    /**
+     * Builds the sub-position of a single entry fill matched against a single
+     * closing fill, so a pluggable cost model can charge that exposure slice.
+     *
+     * @param entryFill   entry fill holding the slice
+     * @param closingFill closing fill consuming the slice, or {@code null} when the
+     *                    slice is still open
+     * @param amount      amount of the slice
+     * @return sub-position covering the slice
+     */
+    private Position slicePosition(TradeFill entryFill, TradeFill closingFill, Num amount) {
+        Trade sliceEntry = Trade.fromFills(entry.getType(), List.of(entryFill.toBuilder().amount(amount).build()),
+                getTransactionCostModel());
+        if (closingFill == null) {
+            return new Position(sliceEntry, getTransactionCostModel(), getHoldingCostModel());
+        }
+        Trade sliceExit = Trade.fromFills(exit.getType(), List.of(closingFill.toBuilder().amount(amount).build()),
+                getTransactionCostModel());
+        return new Position(sliceEntry, sliceExit, getTransactionCostModel(), getHoldingCostModel());
+    }
+
+    /**
+     * @return the index of the latest executed closing fill, falling back to the
+     *         recorded index of the exit
+     */
+    private int exitCompletionIndex() {
+        int completionIndex = exit.getIndex();
+        for (TradeFill exitFill : Trade.executionFillsOf(exit)) {
+            if (exitFill.index() >= 0) {
+                completionIndex = Math.max(completionIndex, exitFill.index());
+            }
+        }
+        return completionIndex;
     }
 
     /**

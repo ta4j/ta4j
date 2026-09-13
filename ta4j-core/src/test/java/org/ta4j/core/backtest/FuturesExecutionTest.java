@@ -618,4 +618,18 @@ class FuturesExecutionTest {
             return otherModel instanceof FlakyCostModel;
         }
     }
+
+    @Test
+    void largestTradableStepsBelowAToleranceRoundedNotionalCap() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearContract(numFactory, 1).toBuilder()
+                    .quantityIncrement(numFactory.numOf(1))
+                    .maximumNotional(numFactory.numOf(299.99999995))
+                    .build();
+            // The increment tolerance rounds the capped notional up to 3 contracts, whose
+            // 300 notional exceeds the cap, so the largest tradable quantity is 2.
+            assertNumEquals(2,
+                    FuturesOrderQuantitySupport.largestTradable(contract, numFactory.numOf(10), numFactory.numOf(100)));
+        }
+    }
 }

@@ -2226,4 +2226,75 @@ class BaseTradingRecordTest {
         assertNumEquals(5d, record.getCurrentPosition().getEntry().getAmount());
         assertNumEquals(10_000d, record.getCurrentPosition().getEntry().getNetPrice());
     }
+
+    @Test
+    void specificIdBatchLeavesTheBookUntouchedWhenAFillCannotBeMatched() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            BaseTradingRecord record = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .matchPolicy(ExecutionMatchPolicy.SPECIFIC_ID)
+                    .build();
+            record.operate(identifiedFill(contract, 0, ExecutionSide.BUY, 1, 10_000, "lot-a"));
+            record.operate(identifiedFill(contract, 1, ExecutionSide.BUY, 1, 10_000, "lot-b"));
+            Trade batch = Trade.fromFills(TradeType.SELL,
+                    List.of(identifiedFill(contract, 2, ExecutionSide.SELL, 1, 11_000, "lot-a"),
+                            identifiedFill(contract, 3, ExecutionSide.SELL, 1, 11_000, "unknown-lot")),
+                    RecordedTradeCostModel.INSTANCE);
+
+            assertThrows(IllegalStateException.class, () -> record.operate(batch));
+
+            // The matched fill of a rejected batch must not be published on its own.
+            assertTrue(record.getPositions().isEmpty());
+            assertEquals(2, record.getOpenPositions().size());
+            assertNumEquals(1, record.getOpenPositions().get(0).getEntry().getAmount());
+            assertNumEquals(1, record.getOpenPositions().get(1).getEntry().getAmount());
+        }
+    }
+
+    @Test
+    void importedFillAtCashFlowTimeKeepsTheCashFlowOffItsSlice() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            TradeFill earlierFill = fillAtTime(contract, 0, T0, ExecutionSide.BUY, 1, 10_000, List.of());
+            TradeFill boundaryFill = fillAtTime(contract, 1, T0.plusSeconds(1), ExecutionSide.BUY, 1, 10_000,
+                    List.of());
+            Trade entry = Trade.fromFills(TradeType.BUY, List.of(earlierFill, boundaryFill),
+                    RecordedTradeCostModel.INSTANCE);
+            Position imported = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel(),
+                    List.of(cashFlow(contract, FuturesCashFlow.Type.FUNDING, "boundary", 1, -1)));
+
+            BaseTradingRecord record = new BaseTradingRecord(imported);
+            record.operate(fillAtTime(contract, 2, T0.plusSeconds(2), ExecutionSide.SELL, 1, 10_000, List.of()));
+
+            // A fill executed at the cash flow timestamp is not eligible for it, so the
+            // closed slice carries the whole flow.
+            assertEquals(1, record.getPositions().size());
+            assertNumEquals(-1,
+                    record.getPositions()
+                            .getFirst()
+                            .getCashFlows()
+                            .stream()
+                            .map(FuturesCashFlow::amount)
+                            .reduce(Num::plus)
+                            .orElseThrow());
+            assertTrue(record.getOpenPositions().getFirst().getCashFlows().isEmpty());
+        }
+    }
+
+    private static TradeFill identifiedFill(FuturesContract contract, int index, ExecutionSide side, double amount,
+            double price, String correlationId) {
+        NumFactory numFactory = contract.contractSize().getNumFactory();
+        return TradeFill.builder()
+                .index(index)
+                .time(T0.plusSeconds(index))
+                .price(numFactory.numOf(price))
+                .amount(numFactory.numOf(amount))
+                .side(side)
+                .orderId("order-" + index)
+                .correlationId(correlationId)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+    }
 }

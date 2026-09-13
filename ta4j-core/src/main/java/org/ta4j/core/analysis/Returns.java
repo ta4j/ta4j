@@ -208,7 +208,10 @@ public class Returns implements PerformanceIndicator {
         if (firstBar > seriesEnd) {
             return;
         }
-        Num previousEquity = firstBar == 1 ? capital : capital.plus(cursor.pnlAt(firstBar - 1));
+        // A retained series reports its head as the first return, and that return is
+        // measured from the account capital so the cumulative product covers every
+        // profit realized before the retained head as well.
+        Num previousEquity = capital;
         for (int barIndex = firstBar;; barIndex++) {
             Num equity = capital.plus(cursor.pnlAt(barIndex));
             returnFactors.set(barIndex - seriesBegin, returnFactor(previousEquity, equity));
