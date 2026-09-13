@@ -7,7 +7,6 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -16,6 +15,7 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * A {@code Position} models either a closed entry/exit pair or an open position
@@ -641,17 +641,22 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculates the holding cost of the closed position.
+     * Calculates the holding cost of the closed position. Entry fills of a native
+     * futures position accrue over their own exposure interval.
      *
      * @return the cost of the position
      */
     public Num getHoldingCost() {
+        if (futuresContract != null && exit != null && Trade.executionFillsOf(entry).size() > 1) {
+            return getHoldingCost(exit.getIndex());
+        }
         return holdingCostModel.calculate(this);
     }
 
     /**
      * Calculates the holding cost of the position. For native futures positions,
-     * only entry fills executed at or before {@code finalIndex} are included.
+     * every entry fill executed at or before {@code finalIndex} accrues over its
+     * own exposure interval.
      *
      * @param finalIndex the index of the final bar to be considered (if position is
      *                   open)
@@ -662,23 +667,23 @@ public class Position implements Serializable {
         if (futuresContract == null) {
             return model.calculate(this, finalIndex);
         }
+        NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
         List<TradeFill> entryFills = Trade.executionFillsOf(entry);
-        List<TradeFill> executedEntryFills = new ArrayList<>(entryFills.size());
-        for (TradeFill fill : entryFills) {
-            if (fill.index() >= 0 && fill.index() <= finalIndex) {
-                executedEntryFills.add(fill);
-            }
-        }
+        List<TradeFill> executedEntryFills = FuturesPositionAccounting.executedFills(entry, finalIndex);
         if (executedEntryFills.isEmpty()) {
-            return entry.getPricePerAsset().getNumFactory().zero();
+            return numFactory.zero();
         }
-        if (executedEntryFills.size() == entryFills.size()) {
+        if (entryFills.size() == 1) {
             return model.calculate(this, finalIndex);
         }
-        Trade executedEntry = Trade.fromFills(entry.getType(), executedEntryFills, getTransactionCostModel());
-        Position executedPosition = exit == null ? new Position(executedEntry, getTransactionCostModel(), model)
-                : new Position(executedEntry, exit, getTransactionCostModel(), model);
-        return model.calculate(executedPosition, finalIndex);
+        Num holdingCost = numFactory.zero();
+        for (TradeFill executedFill : executedEntryFills) {
+            Trade fillEntry = Trade.fromFills(entry.getType(), List.of(executedFill), getTransactionCostModel());
+            Position fillPosition = exit == null ? new Position(fillEntry, getTransactionCostModel(), model)
+                    : new Position(fillEntry, exit, getTransactionCostModel(), model);
+            holdingCost = holdingCost.plus(model.calculate(fillPosition, finalIndex));
+        }
+        return holdingCost;
     }
 
     /**

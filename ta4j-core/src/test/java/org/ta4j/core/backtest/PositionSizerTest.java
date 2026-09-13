@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.backtest;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -21,6 +22,7 @@ import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.FixedRule;
@@ -156,5 +158,17 @@ class PositionSizerTest {
         Num amount = sizer.amount(new PositionSizer.Context(0, 0, numFactory.one(), null, entryOnFirstBar(),
                 flatSeries(numFactory, 1), TradeType.BUY, spotRecord(), new ZeroCostModel(), new ZeroCostModel()));
         assertTrue(amount.isPositive());
+    }
+
+    @Test
+    void fixedRewrapsAmountCreatedByAnotherFactory() {
+        NumFactory numFactory = DecimalNumFactory.getInstance();
+        Num foreignAmount = DoubleNumFactory.getInstance().numOf(5);
+        PositionSizer sizer = PositionSizer.fixed(foreignAmount);
+
+        Num amount = sizer.amount(context(numFactory, spotRecord()));
+
+        assertEquals(numFactory.getClass(), amount.getNumFactory().getClass());
+        assertNumEquals(numFactory.numOf(5), amount);
     }
 }

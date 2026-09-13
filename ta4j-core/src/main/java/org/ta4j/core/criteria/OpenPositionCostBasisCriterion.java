@@ -3,10 +3,13 @@
  */
 package org.ta4j.core.criteria;
 
+import java.util.List;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -60,8 +63,17 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
         Trade entry = position.getEntry();
         FuturesContract contract = position.getFuturesContract();
         if (contract != null) {
-            Num notional = contract.settlementNotional(entry.getAmount().abs(), entry.getPricePerAsset(series));
-            Num openingFees = entry.getCost();
+            List<TradeFill> executedFills = Trade.executionFillsOf(entry)
+                    .stream()
+                    .filter(fill -> fill.index() >= 0 && fill.index() <= series.getEndIndex())
+                    .toList();
+            if (executedFills.isEmpty()) {
+                return series.numFactory().zero();
+            }
+            Trade executedEntry = Trade.fromFills(entry.getType(), executedFills, entry.getCostModel());
+            Num notional = contract.settlementNotional(executedEntry.getAmount().abs(),
+                    executedEntry.getPricePerAsset(series));
+            Num openingFees = executedEntry.getCost();
             if (openingFees == null || openingFees.isNaN()) {
                 openingFees = notional.getNumFactory().zero();
             } else {

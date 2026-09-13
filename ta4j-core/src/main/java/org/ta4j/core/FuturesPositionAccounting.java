@@ -351,7 +351,7 @@ final class FuturesPositionAccounting {
         return exit != null && !executedFills(exit, finalIndex).isEmpty() ? exit : null;
     }
 
-    private static List<TradeFill> executedFills(Trade trade, int finalIndex) {
+    static List<TradeFill> executedFills(Trade trade, int finalIndex) {
         return Trade.executionFillsOf(trade)
                 .stream()
                 .filter(fill -> fill.index() >= 0 && fill.index() <= finalIndex)

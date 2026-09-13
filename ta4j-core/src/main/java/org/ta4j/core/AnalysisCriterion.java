@@ -492,12 +492,7 @@ public interface AnalysisCriterion {
         if (entryTrade == null || entryTrade.getIndex() > windowEndIndex) {
             return null;
         }
-        List<TradeFill> retainedEntryFills = new ArrayList<>();
-        for (TradeFill fill : Trade.executionFillsOf(entryTrade)) {
-            if (fill.index() <= windowEndIndex) {
-                retainedEntryFills.add(fill);
-            }
-        }
+        List<TradeFill> retainedEntryFills = FuturesPositionAccounting.executedFills(entryTrade, windowEndIndex);
         if (retainedEntryFills.isEmpty()) {
             return null;
         }
@@ -567,10 +562,11 @@ public interface AnalysisCriterion {
     private static List<Position> trimFuturesPositionToWindow(Position position, int end) {
         Trade entry = position.getEntry();
         List<TradeFill> allEntryFills = Trade.executionFillsOf(entry);
-        List<TradeFill> retainedEntryFills = allEntryFills.stream().filter(fill -> fill.index() <= end).toList();
+        List<TradeFill> retainedEntryFills = FuturesPositionAccounting.executedFills(entry, end);
         Trade exit = position.getExit();
         List<TradeFill> allExitFills = exit == null ? List.of() : Trade.executionFillsOf(exit);
-        List<TradeFill> retainedExitFills = allExitFills.stream().filter(fill -> fill.index() <= end).toList();
+        List<TradeFill> retainedExitFills = exit == null ? List.of()
+                : FuturesPositionAccounting.executedFills(exit, end);
         if (retainedEntryFills.size() == allEntryFills.size()
                 && (exit == null || retainedExitFills.size() == allExitFills.size())
                 && (exit == null || FuturesValidation.numEquals(

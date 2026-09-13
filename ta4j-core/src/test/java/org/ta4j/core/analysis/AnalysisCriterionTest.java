@@ -12,6 +12,14 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.FuturesContract;
+import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.TradeFill;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.criteria.ReturnRepresentation;
+import org.ta4j.core.criteria.pnl.NetProfitLossPercentageCriterion;
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.num.NumFactory;
 
@@ -71,6 +79,30 @@ public class AnalysisCriterionTest {
             assertNumEquals(1.009, equity.getValue(2));
             assertNumEquals(1.002, realized.getValue(2));
             assertNumEquals(1.0, criterion.calculate(barSeries, record, window, AnalysisContext.defaults()));
+        }
+    }
+
+    @Test
+    public void windowProjectionIgnoresDeferredEntryFills() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 100, 100, 105);
+            TradeFill executed = FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of());
+            TradeFill deferred = FuturesAnalysisTestSupport.fill(contract, -1, ExecutionSide.BUY, 1_000, 100,
+                    List.of());
+            Trade entry = Trade.fromFills(TradeType.BUY, List.of(executed, deferred), RecordedTradeCostModel.INSTANCE);
+            BaseTradingRecord record = new BaseTradingRecord(
+                    new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+
+            NetProfitLossPercentageCriterion criterion = new NetProfitLossPercentageCriterion(
+                    ReturnRepresentation.MULTIPLICATIVE);
+            AnalysisContext marked = AnalysisContext.defaults()
+                    .withOpenPositionHandling(OpenPositionHandling.MARK_TO_MARKET);
+
+            // Only the executed 1000 contracts are marked and only their settlement
+            // notional
+            // of 1000 USD is the exposure: 1 + 50 / 1000.
+            assertNumEquals(1.05, criterion.calculate(barSeries, record, AnalysisWindow.barRange(0, 2), marked));
         }
     }
 }

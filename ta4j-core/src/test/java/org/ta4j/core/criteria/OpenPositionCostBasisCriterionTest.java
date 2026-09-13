@@ -19,9 +19,11 @@ import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradeFee;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -141,5 +143,19 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
                 .futuresContract(contract)
                 .fees(fees)
                 .build();
+    }
+
+    @Test
+    public void futuresCostBasisIgnoresDeferredEntryFills() {
+        FuturesContract contract = linearBtcPerpetual();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110).build();
+        TradeFill executed = futuresFill(contract, 0, ExecutionSide.BUY, 100, 100, 2);
+        TradeFill deferred = futuresFill(contract, -1, ExecutionSide.BUY, 100, 100, 500);
+        Trade entry = Trade.fromFills(TradeType.BUY, List.of(executed, deferred), RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        // 100 contracts x 0.01 BTC x 100 USD = 100 settlement notional and only the 2
+        // fee of the executed fill.
+        assertNumEquals(numFactory.numOf(102), getCriterion().calculate(series, position), 1e-12);
     }
 }

@@ -793,7 +793,9 @@ public class NetReturnCriterionTest extends AbstractPnlCriterionTest {
             Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, holdingCostModel);
 
             assertNumEquals(1, position.getHoldingCost(1));
-            assertNumEquals(4, position.getHoldingCost(2));
+            // The first 100 contracts are held for two periods, while the second fill
+            // executes at the observation index and accrues nothing: 2 + 0.
+            assertNumEquals(2, position.getHoldingCost(2));
         }
     }
 

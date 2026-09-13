@@ -530,4 +530,61 @@ public class PositionTest {
             assertNumEquals(20d, position.getProfit(3, numFactory.numOf(100)));
         }
     }
+
+    @Test
+    public void futuresHoldingCostAccruesOverEachEntryFillExposure() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.numOf(10))
+                    .build();
+            TradeFill first = TradeFill.builder()
+                    .index(0)
+                    .time(T0)
+                    .price(numFactory.numOf(100))
+                    .amount(numFactory.two())
+                    .side(ExecutionSide.SELL)
+                    .futuresContract(contract)
+                    .fees(List.of())
+                    .build();
+            TradeFill second = TradeFill.builder()
+                    .index(2)
+                    .time(T0.plusSeconds(2))
+                    .price(numFactory.numOf(100))
+                    .amount(numFactory.one())
+                    .side(ExecutionSide.SELL)
+                    .futuresContract(contract)
+                    .fees(List.of())
+                    .build();
+            Trade entry = Trade.fromFills(TradeType.SELL, List.of(first, second), RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE,
+                    new LinearBorrowingCostModel(0.01, LinearBorrowingCostModel.Applicability.BOTH));
+
+            // 2 contracts x 10 x 100 = 2000 notional held for 2 periods is 40, while the
+            // second fill executes at the observation index and accrues nothing.
+            assertNumEquals(40, position.getHoldingCost(2));
+
+            TradeFill exitFill = TradeFill.builder()
+                    .index(2)
+                    .time(T0.plusSeconds(2))
+                    .price(numFactory.numOf(100))
+                    .amount(numFactory.numOf(3))
+                    .side(ExecutionSide.BUY)
+                    .futuresContract(contract)
+                    .fees(List.of())
+                    .build();
+            Position closedPosition = new Position(entry,
+                    Trade.fromFills(TradeType.BUY, List.of(exitFill), RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE,
+                    new LinearBorrowingCostModel(0.01, LinearBorrowingCostModel.Applicability.BOTH));
+
+            assertNumEquals(40, closedPosition.getHoldingCost());
+        }
+    }
 }

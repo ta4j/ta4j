@@ -107,6 +107,12 @@ public interface PositionSizer {
      * notional bounds.
      * </p>
      *
+     * <p>
+     * The amount is re-wrapped into the record number factory when the sizer is
+     * evaluated, so a value created by another factory cannot leak foreign
+     * arithmetic into the record.
+     * </p>
+     *
      * @param amount fixed amount
      * @return fixed amount position sizer
      * @since 0.22.9
@@ -114,8 +120,9 @@ public interface PositionSizer {
     static PositionSizer fixed(Num amount) {
         validatePositiveNum(amount, "amount");
         return context -> {
-            FuturesOrderQuantitySupport.requireTradable(context.futuresContract(), amount, context.entryPrice());
-            return amount;
+            Num resolved = context.numOf(amount.getDelegate());
+            FuturesOrderQuantitySupport.requireTradable(context.futuresContract(), resolved, context.entryPrice());
+            return resolved;
         };
     }
 
