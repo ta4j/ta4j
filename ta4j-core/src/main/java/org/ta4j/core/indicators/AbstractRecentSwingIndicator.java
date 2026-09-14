@@ -243,16 +243,17 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
             if (targetIndex <= lastScannedIndex) {
                 return historyReset;
             }
-            for (int currentIndex = Math.max(beginIndex,
-                    lastScannedIndex + 1); currentIndex <= targetIndex; currentIndex++) {
-                final int swingIndex = swingIndexDetector.apply(currentIndex);
+            final long firstIndex = Math.max((long) beginIndex, (long) lastScannedIndex + 1L);
+            for (long currentIndex = firstIndex; currentIndex <= targetIndex; currentIndex++) {
+                final int currentBarIndex = (int) currentIndex;
+                final int swingIndex = swingIndexDetector.apply(currentBarIndex);
                 if (swingIndex < 0) {
                     if (purgeOnNegativeDetection()) {
                         confirmedSwings.clear();
                     }
                     continue;
                 }
-                final boolean validSwing = swingIndex >= beginIndex && swingIndex <= currentIndex;
+                final boolean validSwing = swingIndex >= beginIndex && swingIndex <= currentBarIndex;
                 if (!validSwing) {
                     continue;
                 }
@@ -262,7 +263,7 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
                 }
                 if (confirmedSwings.isEmpty()
                         || swingIndex > confirmedSwings.get(confirmedSwings.size() - 1).swingIndex()) {
-                    confirmedSwings.add(new ConfirmedSwing(swingIndex, currentIndex));
+                    confirmedSwings.add(new ConfirmedSwing(swingIndex, currentBarIndex));
                 }
             }
             lastScannedIndex = targetIndex;

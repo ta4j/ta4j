@@ -4,7 +4,23 @@
 - **Futures review round 35**: adopted entries recompute their basis from executed fills, realized return heads preserve zero-activity samples, and complete closes respect contract quantity and notional maxima.
 
 - **Futures review round 34**: mark-to-market projections preserve average-cost basis, deferred returns stay neutral, closed futures retain initial risk, and as-of spot profit excludes future exit costs.
-- `BacktestExecutor` now has explicit `executeWithRuntimeReport` overloads with a strict platform-worker cap for fixed amounts and `PositionSizer` entries. They avoid nested parallel streams so constrained ForkJoin callers can preserve their hard worker limits without compensation-thread rejection.
+
+### Added
+
+- **Experimental Elliott topology analysis (`CF-525`)**: Added package-private pivot history, confirmation tracking, and grammar analysis under `org.ta4j.core.analysis.elliott` for `MOTIVE_5`, `CORRECTIVE_3`, and `CYCLE_5_3`. Outcomes distinguish insufficient history, no match, forming, complete, ambiguous, and invalidated candidates; four selectable relationship rules emit structured evidence. Deterministic internal study tooling includes `StudyRunner`, `StudyReport`, and `DetectorRobustnessMatrix`.
+- **Runtime-reported backtests**: Added `BacktestExecutor.executeWithRuntimeReport` overloads for fixed amounts and `PositionSizer` entries. A platform-worker cap avoids nested parallel streams for constrained ForkJoin callers.
+
+### Changed
+
+- **Elliott study evidence (`CF-525`)**: H2 now measures complete-topology bar occupancy; relationship aggregates declare their unique-topology scope; competing grammars share signed-pivot eligibility without duplicate ten-leg comparisons.
+- **Bar mutation ownership**: `BaseBar` uses lazy ownership for unretained bars, compact state for one retaining series, and a weak map for shared bars. Partial price-update failures and subclass mutations that omit superclass publication now invalidate every retaining series.
+- **Concurrent retained-bar handling**: `ConcurrentBarSeries.withWriteLock` defers invalidation callbacks until the outermost lease, preventing cross-series deadlocks; surviving aliases are revalidated after head eviction.
+- **Fractal replay and observation**: Replay uses one exact-class mutation-tracking policy, while observation captures revision, bounds, and bar state under one read lease.
+
+### Fixed
+
+- Realtime bars now publish retained-series invalidation when side or liquidity aggregation fails after a partial trade.
+- Bootstrap logarithms no longer construct out-of-domain scales for bounded numeric factories.
 
 - **Native perpetual-futures trading support**: `Trade`, `TradeFill`, `TradingRecord`, and `Position` now model contracts whose settlement and economics are not spot cash. `FuturesContract` describes a linear or inverse perpetual or dated contract (venue, symbol, contract size, base/quote/settlement currencies, price and quantity increments, quantity and notional bounds, expiry) and computes base quantity, settlement notional, per-contract profit, margin requirement, effective leverage, and funding cash flow; `FuturesMarketSnapshot` records mark, index, and settlement prices together with the funding rate, open interest, and margin rates, and `FuturesPositionSnapshot` records signed contracts, average entry price, collateral, initial and maintenance margin, margin ratio, leverage, liquidation price, and realized and unrealized P&L. `FuturesFunding` and `FuturesCashFlow` model scheduled funding events and signed settlement cash flows (funding, variation margin) with per-position allocation. `TradeFee` records per-execution fees, and `FuturesTransactionCostModel` charges `max(rate x settlement notional, minimum per contract x contracts)` per fill with optional maker/taker rates.
 - **Futures execution and record economics**: `TradeFill` carries contract, liquidity, and fees, and a fill without recorded fees is priced by the configured transaction cost model (`RecordedTradeCostModel` still requires recorded fees). `BaseTradingRecord` accepts a futures contract, explicit `initialCapital` and `initialMarginRate`, a funding schedule, and recorded cash flows, market snapshots, and position snapshots; it applies due funding events as the event horizon advances and attributes each cash flow to the positions open at its time. `Position` reports realized and unrealized profit, executed fees, funding, and variation margin separately, and `BaseTrade` aggregates multi-fill entries and exits with a contract-aware weighted-average price (harmonic for inverse contracts).
