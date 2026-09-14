@@ -24,6 +24,7 @@ import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNum;
@@ -830,5 +831,32 @@ public class PositionTest {
         Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
 
         assertNumEquals(20, position.getProfit());
+    }
+
+    @Test
+    public void grossReturnExcludesDeferredExitValuation() {
+        NumFactory numFactory = DoubleNumFactory.getInstance();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .build();
+        Trade entry = Trade.fromFill(futuresFill(contract, numFactory, 0, 100, 2, ExecutionSide.BUY),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFills(TradeType.SELL,
+                List.of(futuresFill(contract, numFactory, 1, 110, 1, ExecutionSide.SELL),
+                        futuresFill(contract, numFactory, -1, 200, 1, ExecutionSide.SELL)),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 150).build();
+
+        assertNumEquals(1.1, position.getGrossReturn());
+        assertNumEquals(1.1, position.getGrossReturn(series));
+        assertNumEquals(1.1, new GrossReturnCriterion().calculate(series, position));
     }
 }

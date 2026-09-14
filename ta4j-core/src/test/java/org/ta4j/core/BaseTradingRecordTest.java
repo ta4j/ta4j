@@ -7,6 +7,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.math.MathContext;
 import java.time.Instant;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.util.ArrayList;
@@ -2970,5 +2971,47 @@ class BaseTradingRecordTest {
             FuturesFunding earlierFunding = explicitFunding.toBuilder().index(8).build();
             assertThrows(IllegalArgumentException.class, () -> reversedFunding.recordFunding(earlierFunding));
         }
+    }
+
+    @Test
+    public void processedFundingRejectsDifferentSourceForSameEvent() {
+        FuturesContract contract = linearBtcPerpetual(numFactory);
+        BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(contract).build();
+        FuturesFunding original = fundingEvent(contract, 1, 0.1, 10_000).toBuilder().source("venue-a").build();
+        FuturesFunding conflicting = original.toBuilder().source("venue-b").build();
+
+        record.recordFunding(original);
+
+        IllegalArgumentException rejected = assertThrows(IllegalArgumentException.class,
+                () -> record.recordFunding(conflicting));
+        assertTrue(rejected.getMessage().contains("already recorded with different values"));
+        assertEquals(1, record.getCashFlows().size());
+        assertEquals("venue-a", record.getCashFlows().getFirst().source());
+    }
+
+    @Test
+    public void allocatedCrossCurrencyCashFlowPreservesSettlementFactory() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        NumFactory decimalFactory = DecimalNumFactory.getInstance(new MathContext(34));
+        FuturesContract contract = linearBtcPerpetual(doubleFactory);
+        BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(contract).build();
+        record.operate(fill(contract, 0, ExecutionSide.BUY, 1, 10_000, List.of()));
+        Num settlement = decimalFactory.numOf("0.123456789012345678901234567890");
+        FuturesCashFlow cashFlow = FuturesCashFlow.builder()
+                .contract(contract)
+                .type(FuturesCashFlow.Type.FUNDING)
+                .eventId("cross-currency")
+                .index(1)
+                .time(T0.plusSeconds(1))
+                .amount(doubleFactory.one())
+                .currency("EUR")
+                .settlementAmount(settlement)
+                .build();
+
+        record.recordCashFlow(cashFlow);
+
+        Num allocated = record.getOpenPositions().getFirst().getCashFlows().getFirst().settlementAmount();
+        assertEquals(settlement.getNumFactory().getClass(), allocated.getNumFactory().getClass());
+        assertEquals(settlement.bigDecimalValue(), allocated.bigDecimalValue());
     }
 }

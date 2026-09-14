@@ -553,7 +553,8 @@ public class Position implements Serializable {
         if (isOpened()) {
             return zero();
         } else {
-            return getGrossReturn(exit.getPricePerAsset());
+            return futuresContract != null ? getGrossReturn(futuresProfitMarkPrice())
+                    : getGrossReturn(exit.getPricePerAsset());
         }
     }
 
@@ -586,6 +587,9 @@ public class Position implements Serializable {
     public Num getGrossReturn(BarSeries barSeries) {
         Num entryPrice = getEntry().getPricePerAsset(barSeries);
         Num exitPrice = getExit().getPricePerAsset(barSeries);
+        if (futuresContract != null) {
+            return FuturesPositionAccounting.grossReturn(this, futuresProfitMarkPrice());
+        }
         return getGrossReturn(entryPrice, exitPrice);
     }
 

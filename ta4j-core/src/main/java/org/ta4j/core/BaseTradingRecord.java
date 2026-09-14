@@ -1375,7 +1375,7 @@ public class BaseTradingRecord implements TradingRecord {
         boolean sameEvent = Objects.equals(recorded.time(), funding.time())
                 && FuturesValidation.numEqualsNullable(recorded.rate(), funding.rate())
                 && FuturesValidation.numEqualsNullable(recorded.referencePrice(), funding.referencePrice())
-                && recorded.index() == funding.index();
+                && recorded.index() == funding.index() && Objects.equals(recorded.source(), funding.source());
         if (!sameEvent) {
             throw new IllegalArgumentException(
                     "Cash flow " + funding.eventId() + " is already recorded with different values");
@@ -2536,6 +2536,7 @@ public class BaseTradingRecord implements TradingRecord {
             Num settlement = cashFlow.settlementAmount();
             boolean zeroFlow = amount.isZero() && settlement.isZero();
             NumFactory factory = amount.getNumFactory();
+            NumFactory settlementFactory = settlement.getNumFactory();
             Num totalQuantity = factory.zero();
             for (CashFlowSlice slice : slices) {
                 totalQuantity = totalQuantity.plus(factory.numOf(slice.quantity().getDelegate()));
@@ -2551,9 +2552,9 @@ public class BaseTradingRecord implements TradingRecord {
                 return;
             }
             Num eventAmount = factory.numOf(amount.getDelegate());
-            Num eventSettlement = factory.numOf(settlement.getDelegate());
+            Num eventSettlement = settlementFactory.numOf(settlement.getDelegate());
             Num allocatedAmount = factory.zero();
-            Num allocatedSettlement = factory.zero();
+            Num allocatedSettlement = settlementFactory.zero();
             for (int i = 0; i < slices.size(); i++) {
                 CashFlowSlice slice = slices.get(i);
                 Num quantity = factory.numOf(slice.quantity().getDelegate());
@@ -2561,7 +2562,9 @@ public class BaseTradingRecord implements TradingRecord {
                 Num portionAmount = last ? eventAmount.minus(allocatedAmount)
                         : FuturesPositionAccounting.proportional(eventAmount, quantity, totalQuantity);
                 Num portionSettlement = last ? eventSettlement.minus(allocatedSettlement)
-                        : FuturesPositionAccounting.proportional(eventSettlement, quantity, totalQuantity);
+                        : FuturesPositionAccounting.proportional(eventSettlement,
+                                settlementFactory.numOf(quantity.getDelegate()),
+                                settlementFactory.numOf(totalQuantity.getDelegate()));
                 allocatedAmount = allocatedAmount.plus(portionAmount);
                 allocatedSettlement = allocatedSettlement.plus(portionSettlement);
                 FuturesCashFlow portion = cashFlow.toBuilder()
