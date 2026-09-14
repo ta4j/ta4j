@@ -2847,4 +2847,61 @@ class BaseTradingRecordTest {
             assertNumEquals(1, record.getOpenPositions().getFirst().getEntry().getAmount());
         }
     }
+
+    @Test
+    public void importedPartialExitPreservesEachExecutedExitFill() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Trade entry = Trade.fromFill(fillAtTime(contract, 0, T0, ExecutionSide.BUY, 3, 100, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFills(TradeType.SELL,
+                    List.of(fillAtTime(contract, 1, T0.plusSeconds(1), ExecutionSide.SELL, 1, 110, List.of()),
+                            fillAtTime(contract, 2, T0.plusSeconds(2), ExecutionSide.SELL, 1, 120, List.of())),
+                    RecordedTradeCostModel.INSTANCE);
+            Position importedPosition = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            BaseTradingRecord record = new BaseTradingRecord(List.of(importedPosition));
+
+            assertEquals(2, record.getPositions().size());
+            assertEquals(1, record.getPositions().get(0).getExit().getIndex());
+            assertEquals(2, record.getPositions().get(1).getExit().getIndex());
+            assertNumEquals(110, record.getPositions().get(0).getExit().getPricePerAsset());
+            assertNumEquals(120, record.getPositions().get(1).getExit().getPricePerAsset());
+            assertEquals(1, record.getOpenPositions().size());
+            assertNumEquals(1, record.getOpenPositions().getFirst().getEntry().getAmount());
+        }
+    }
+
+    @Test
+    public void scheduledFundingRunsBeforeAnEqualTimeExecution() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Instant boundary = T0.plusSeconds(9);
+            FuturesFunding funding = FuturesFunding.builder()
+                    .contract(contract)
+                    .eventId("funding-boundary")
+                    .index(9)
+                    .time(boundary)
+                    .rate(numFactory.numOf(0.001))
+                    .referencePrice(numFactory.numOf(10_000))
+                    .build();
+            BaseTradingRecord record = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .fundingSchedule(List.of(funding))
+                    .build();
+
+            record.operate(fillAtTime(contract, 10, boundary, ExecutionSide.BUY, 1, 10_000, List.of()));
+
+            assertEquals(1, record.getCashFlows().size());
+            assertNumEquals(0, record.getCashFlows().getFirst().amount());
+            assertTrue(record.getOpenPositions().getFirst().getCashFlows().isEmpty());
+
+            BaseTradingRecord reversed = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .fundingSchedule(List.of(funding))
+                    .build();
+            assertThrows(IllegalArgumentException.class,
+                    () -> reversed.operate(fillAtTime(contract, 8, boundary, ExecutionSide.BUY, 1, 10_000, List.of())));
+        }
+    }
 }

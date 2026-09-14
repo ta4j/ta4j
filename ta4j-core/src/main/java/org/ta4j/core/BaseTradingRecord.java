@@ -1396,7 +1396,7 @@ public class BaseTradingRecord implements TradingRecord {
 
     private static void requireExecutionIndexOrder(Instant time, int index, Instant otherTime, int otherIndex,
             String message) {
-        if (time.compareTo(otherTime) <= 0 ? index > otherIndex : index < otherIndex) {
+        if (time.compareTo(otherTime) < 0 ? index > otherIndex : index < otherIndex) {
             throw new IllegalArgumentException(message);
         }
     }
@@ -2264,10 +2264,12 @@ public class BaseTradingRecord implements TradingRecord {
                         .stream()
                         .filter(fill -> fill.index() >= 0)
                         .toList();
-                Trade exit = Trade.fromFills(position.getExit().getType(), executedExitFills,
-                        position.getExit().getCostModel() == null ? transactionCostModel
-                                : position.getExit().getCostModel());
-                recordExit(exit.getIndex(), exit, exitSequence);
+                for (TradeFill exitFill : executedExitFills) {
+                    Trade exit = Trade.fromFills(position.getExit().getType(), List.of(exitFill),
+                            position.getExit().getCostModel() == null ? transactionCostModel
+                                    : position.getExit().getCostModel());
+                    recordExit(exitFill.index(), exit, exitSequence);
+                }
                 return;
             } else {
                 PositionLot adoptedLot = PositionLot.of(position, entrySequence);
