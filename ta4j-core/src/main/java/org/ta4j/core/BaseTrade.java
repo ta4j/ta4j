@@ -695,7 +695,7 @@ public class BaseTrade implements Trade {
         Num zero = fills.getFirst().price().getNumFactory().zero();
         Num recordedFeeTotal = sumFillFees(zero, fills);
         Num residualFee = cost.minus(recordedFeeTotal);
-        if (!residualFee.isPositive()) {
+        if (residualFee.isZero()) {
             return fills;
         }
 

@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
@@ -320,5 +321,14 @@ class BaseTradeTest {
 
         assertNumEquals(NUM_FACTORY.numOf(105), reindexed.getPricePerAsset());
         assertEquals(10, reindexed.getFills().getFirst().index());
+    }
+
+    @Test
+    public void exportsNegativeModeledCostIntoFillFee() {
+        Trade trade = Trade.fromFills(TradeType.BUY,
+                List.of(new TradeFill(0, NUM_FACTORY.hundred(), NUM_FACTORY.one())),
+                new LinearTransactionCostModel(-0.001));
+
+        assertNumEquals(NUM_FACTORY.numOf(-0.1), trade.getFills().getFirst().fee());
     }
 }
