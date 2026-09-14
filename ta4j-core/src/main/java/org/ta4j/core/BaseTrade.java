@@ -653,7 +653,9 @@ public class BaseTrade implements Trade {
             Num price = numFactory.numOf(fill.price().getDelegate());
             totalAmount = totalAmount.plus(amount);
             quoteWeightedPrice = quoteWeightedPrice.plus(price.multipliedBy(amount));
-            quotePriceSum = quotePriceSum.plus(amount.dividedBy(price));
+            if (contract != null && contract.settlementType() == FuturesContract.SettlementType.INVERSE) {
+                quotePriceSum = quotePriceSum.plus(amount.dividedBy(price));
+            }
         }
         Num aggregatedPrice = contract != null && contract.settlementType() == FuturesContract.SettlementType.INVERSE
                 ? totalAmount.dividedBy(quotePriceSum)

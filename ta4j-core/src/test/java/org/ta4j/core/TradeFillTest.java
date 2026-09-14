@@ -100,6 +100,12 @@ public class TradeFillTest {
     }
 
     @Test
+    public void rejectsInfiniteSpotFee() {
+        assertThrows(IllegalArgumentException.class, () -> new TradeFill(1, Instant.EPOCH, numFactory.one(),
+                numFactory.one(), numFactory.numOf(Double.POSITIVE_INFINITY), ExecutionSide.BUY, null, null));
+    }
+
+    @Test
     public void futuresFillWithoutAnExecutionTimestampIsRejected() {
         FuturesContract contract = FuturesContract.builder()
                 .venue("CDE")

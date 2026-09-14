@@ -249,6 +249,15 @@ class BaseTradeTest {
     }
 
     @Test
+    void spotZeroPriceAggregatesWithoutInverseWeighting() {
+        Trade trade = Trade.fromFills(TradeType.BUY, List.of(new TradeFill(1, Instant.EPOCH, NUM_FACTORY.zero(),
+                NUM_FACTORY.one(), NUM_FACTORY.zero(), ExecutionSide.BUY, null, null)),
+                RecordedTradeCostModel.INSTANCE);
+
+        assertNumEquals(NUM_FACTORY.zero(), trade.getPricePerAsset());
+    }
+
+    @Test
     void fromFillsIgnoresDeferredFillWhenChoosingIdentityAnchor() {
         Instant deferredTime = Instant.parse("2025-01-01T00:00:00Z");
         Instant executedTime = Instant.parse("2025-01-01T00:01:00Z");

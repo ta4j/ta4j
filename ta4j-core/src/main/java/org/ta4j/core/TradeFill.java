@@ -85,7 +85,8 @@ public final class TradeFill implements Serializable {
             FuturesValidation.requireNotInfinite(amount, "amount");
             this.instrument = builder.instrument;
             this.fees = null;
-            this.fee = builder.fee == null ? price.getNumFactory().zero() : builder.fee;
+            this.fee = builder.fee == null ? price.getNumFactory().zero()
+                    : FuturesValidation.requireNotInfinite(builder.fee, "fee");
         } else {
             requireFuturesMetadata(builder);
             this.instrument = builder.instrument == null ? futuresContract.symbol() : builder.instrument;

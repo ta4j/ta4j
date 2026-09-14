@@ -118,6 +118,9 @@ final class FuturesPositionAccounting {
                 total = total.plus(contract.profit(entry.getType(), remainingEntry, basis, unexecutedPrice));
             }
         }
+        if (!exits.isEmpty()) {
+            throw new IllegalArgumentException("futures exit amount exceeds executed entry amount");
+        }
         return total;
     }
 

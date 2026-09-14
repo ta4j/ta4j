@@ -1362,8 +1362,8 @@ public class BaseTradingRecord implements TradingRecord {
             return;
         }
         boolean sameEvent = Objects.equals(recorded.time(), funding.time())
-                && Objects.equals(recorded.rate(), funding.rate())
-                && Objects.equals(recorded.referencePrice(), funding.referencePrice())
+                && FuturesValidation.numEqualsNullable(recorded.rate(), funding.rate())
+                && FuturesValidation.numEqualsNullable(recorded.referencePrice(), funding.referencePrice())
                 && recorded.index() == funding.index();
         if (!sameEvent) {
             throw new IllegalArgumentException(

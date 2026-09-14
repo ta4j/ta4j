@@ -2240,6 +2240,18 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    void processedFundingAcceptsNumericallyEquivalentFactoryValues() {
+        FuturesContract doubleContract = linearBtcPerpetual(DoubleNumFactory.getInstance());
+        FuturesContract decimalContract = linearBtcPerpetual(DecimalNumFactory.getInstance());
+        BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(doubleContract).build();
+
+        record.recordFunding(fundingEvent(doubleContract, 1, 0.1, 10_000));
+        record.recordFunding(fundingEvent(decimalContract, 1, 0.1, 10_000));
+
+        assertEquals(1, record.getCashFlows().size());
+    }
+
+    @Test
     void numericallyEqualMarketSnapshotsHaveFactoryIndependentHashes() {
         FuturesMarketSnapshot doubleSnapshot = FuturesMarketSnapshot.builder()
                 .contract(linearBtcPerpetual(DoubleNumFactory.getInstance()))

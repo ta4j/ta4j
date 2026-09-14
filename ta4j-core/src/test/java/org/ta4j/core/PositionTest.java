@@ -477,6 +477,29 @@ public class PositionTest {
     }
 
     @Test
+    public void futuresProfitRejectsExitExposureBeyondEntry() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.numOf(0.01))
+                    .build();
+            Trade entry = Trade.fromFill(futuresFill(contract, 0, 100, 1, ExecutionSide.BUY),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFill(futuresFill(contract, 1, 100, 2, ExecutionSide.SELL),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            assertThrows(IllegalArgumentException.class, position::getProfit);
+        }
+    }
+
+    @Test
     public void partialFuturesHoldingCostUsesSettlementNotional() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = FuturesContract.builder()
