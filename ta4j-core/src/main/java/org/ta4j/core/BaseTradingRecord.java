@@ -80,6 +80,7 @@ public class BaseTradingRecord implements TradingRecord {
     private List<FuturesFunding> fundingSchedule;
     private String name;
     private int nextTradeIndex;
+    private boolean terminalTradeIndexRecorded;
     private transient List<Trade> tradesCache;
     private transient long tradesCacheVersion;
     private long modificationCount;
@@ -183,6 +184,7 @@ public class BaseTradingRecord implements TradingRecord {
         this.fundingSchedule = config.fundingSchedule() == null ? List.of() : config.fundingSchedule();
         this.eventHorizon = futuresContract == null ? null : positionBook.latestExecutionTime();
         this.nextTradeIndex = config.nextTradeIndex();
+        this.terminalTradeIndexRecorded = config.terminalTradeIndexRecorded();
         this.modificationCount = config.modificationCount();
         this.totalFees = config.totalFees();
         this.numFactory = config.numFactory();
@@ -214,7 +216,7 @@ public class BaseTradingRecord implements TradingRecord {
         PositionBook positionBook = new PositionBook(startingType, matchPolicy, resolvedTransactionCostModel,
                 resolvedHoldingCostModel, futuresContract);
         return new RecordConfig(startingType, matchPolicy, resolvedTransactionCostModel, resolvedHoldingCostModel,
-                positionBook, startIndex, endIndex, 0, 0L, null, null, 0L, futuresContract, initialCapital,
+                positionBook, startIndex, endIndex, 0, false, 0L, null, null, 0L, futuresContract, initialCapital,
                 initialMarginRate, sortedFundingSchedule(fundingSchedule), List.of(), Map.of());
     }
 
@@ -816,6 +818,9 @@ public class BaseTradingRecord implements TradingRecord {
                 if (fill.index() >= nextTradeIndex) {
                     nextTradeIndex = nextIndexAfter(fill.index());
                 }
+                if (fill.index() == Integer.MAX_VALUE) {
+                    terminalTradeIndexRecorded = true;
+                }
                 if (futuresContract != null && fill.index() >= 0 && fill.time() != null) {
                     advanceHorizonThrough(fill.time());
                 }
@@ -847,9 +852,9 @@ public class BaseTradingRecord implements TradingRecord {
 
     private RecordConfig toRecordConfig() {
         return new RecordConfig(startingType, matchPolicy, transactionCostModel, holdingCostModel, positionBook,
-                startIndex, endIndex, nextTradeIndex, modificationCount, totalFees, numFactory, nextSequence,
-                futuresContract, initialCapital, initialMarginRate, fundingSchedule, List.copyOf(cashFlows),
-                new LinkedHashMap<>(processedEvents));
+                startIndex, endIndex, nextTradeIndex, terminalTradeIndexRecorded, modificationCount, totalFees,
+                numFactory, nextSequence, futuresContract, initialCapital, initialMarginRate, fundingSchedule,
+                List.copyOf(cashFlows), new LinkedHashMap<>(processedEvents));
     }
 
     private static FuturesContract contractOf(Trade... trades) {
@@ -1489,8 +1494,8 @@ public class BaseTradingRecord implements TradingRecord {
         Instant previousTime = null;
         // Batch validation starts from the executions that were already recorded,
         // otherwise a later batch could lower the logical index horizon.
-        int previousIndex = nextTradeIndex - 1;
-        boolean hasPreviousIndex = nextTradeIndex > 0;
+        int previousIndex = terminalTradeIndexRecorded ? Integer.MAX_VALUE : nextTradeIndex - 1;
+        boolean hasPreviousIndex = terminalTradeIndexRecorded || nextTradeIndex > 0;
         for (PlannedTradeFill plannedTradeFill : plannedTradeFills) {
             Trade plannedTrade = plannedTradeFill.trade();
             if (plannedTrade.getFuturesContract() == null) {
@@ -1715,6 +1720,9 @@ public class BaseTradingRecord implements TradingRecord {
         try {
             advanceForFill(trade);
             nextTradeIndex = Math.max(nextTradeIndex, nextIndexAfter(index));
+            if (index == Integer.MAX_VALUE) {
+                terminalTradeIndexRecorded = true;
+            }
             long appliedSequence = sequence >= 0 ? sequence : nextSequence++;
             if (appliedSequence >= nextSequence) {
                 nextSequence = appliedSequence + 1;
@@ -2180,10 +2188,10 @@ public class BaseTradingRecord implements TradingRecord {
 
     private record RecordConfig(TradeType startingType, ExecutionMatchPolicy matchPolicy,
             CostModel transactionCostModel, CostModel holdingCostModel, PositionBook positionBook, Integer startIndex,
-            Integer endIndex, int nextTradeIndex, long modificationCount, Num totalFees, NumFactory numFactory,
-            long nextSequence, FuturesContract futuresContract, Num initialCapital, Num initialMarginRate,
-            List<FuturesFunding> fundingSchedule, List<FuturesCashFlow> cashFlows,
-            Map<String, FuturesCashFlow> processedEvents) {
+            Integer endIndex, int nextTradeIndex, boolean terminalTradeIndexRecorded, long modificationCount,
+            Num totalFees, NumFactory numFactory, long nextSequence, FuturesContract futuresContract,
+            Num initialCapital, Num initialMarginRate, List<FuturesFunding> fundingSchedule,
+            List<FuturesCashFlow> cashFlows, Map<String, FuturesCashFlow> processedEvents) {
     }
 
     /**

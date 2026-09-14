@@ -2786,4 +2786,20 @@ class BaseTradingRecordTest {
             assertEquals(2, record.getPositions().size());
         }
     }
+
+    @Test
+    public void rejectsLowerIndexAfterMaxValueWasRecorded() {
+        FuturesContract contract = linearBtcPerpetual(numFactory);
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(100_000))
+                .build();
+        Instant maxTime = Instant.EPOCH.plusSeconds(Integer.MAX_VALUE);
+
+        record.operate(fillAtTime(contract, Integer.MAX_VALUE, maxTime, ExecutionSide.BUY, 1, 100, List.of()));
+
+        assertThrows(IllegalArgumentException.class, () -> record.operate(fillAtTime(contract, Integer.MAX_VALUE - 1,
+                maxTime.plusSeconds(1), ExecutionSide.BUY, 1, 100, List.of())));
+        assertEquals(numFactory.one(), record.getCurrentPosition().getEntry().getAmount());
+    }
 }

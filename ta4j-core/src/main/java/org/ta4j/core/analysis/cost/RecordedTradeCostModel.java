@@ -92,11 +92,13 @@ public final class RecordedTradeCostModel implements CostModel {
     }
 
     private Num calculate(Trade trade, int finalIndex) {
-        if (trade.getFuturesContract() == null) {
-            return trade.getIndex() <= finalIndex ? trade.getCost() : trade.getCost().getNumFactory().zero();
+        List<TradeFill> fills = Trade.executionFillsOf(trade);
+        if (fills.isEmpty()) {
+            return trade.getFuturesContract() == null && trade.getIndex() <= finalIndex ? trade.getCost()
+                    : trade.getCost().getNumFactory().zero();
         }
         Num total = trade.getPricePerAsset().getNumFactory().zero();
-        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+        for (TradeFill fill : fills) {
             if (fill.index() >= 0 && fill.index() <= finalIndex) {
                 total = total.plus(total.getNumFactory().numOf(calculate(fill).getDelegate()));
             }
