@@ -309,4 +309,16 @@ class BaseTradeTest {
                 .build();
     }
 
+    @Test
+    public void withIndexPreservesExplicitBasisAfterPartialClose() {
+        TradeFill fill = new TradeFill(2, Instant.EPOCH, NUM_FACTORY.numOf(110), NUM_FACTORY.one(), NUM_FACTORY.zero(),
+                ExecutionSide.BUY, null, null);
+        BaseTrade original = (BaseTrade) BaseTrade.fromFillsAtPrice(TradeType.BUY, List.of(fill),
+                NUM_FACTORY.numOf(105), RecordedTradeCostModel.INSTANCE);
+
+        BaseTrade reindexed = original.withIndex(10);
+
+        assertNumEquals(NUM_FACTORY.numOf(105), reindexed.getPricePerAsset());
+        assertEquals(10, reindexed.getFills().getFirst().index());
+    }
 }

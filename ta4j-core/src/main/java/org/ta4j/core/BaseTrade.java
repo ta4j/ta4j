@@ -811,7 +811,7 @@ public class BaseTrade implements Trade {
         List<TradeFill> indexedFills = fills.stream()
                 .map(fill -> fill.index() < 0 ? fill : fill.toBuilder().index(fill.index() + delta).build())
                 .toList();
-        return new BaseTrade(type, indexedFills, resolveCopyCostModel(indexedFills));
+        return (BaseTrade) fromFillsAtPrice(type, indexedFills, pricePerAsset, resolveCopyCostModel(indexedFills));
     }
 
     private CostModel resolveCopyCostModel(List<TradeFill> indexedFills) {

@@ -693,17 +693,17 @@ public class Position implements Serializable {
                 exit == null ? List.of() : FuturesPositionAccounting.executedFills(exit, finalIndex));
         Deque<Num> closingAmounts = new ArrayDeque<>();
         for (TradeFill closingFill : closingFills) {
-            closingAmounts.addLast(closingFill.amount());
+            closingAmounts.addLast(numFactory.numOf(closingFill.amount().getDelegate()));
         }
         Num holdingCost = numFactory.zero();
         for (TradeFill entryFill : executedEntryFills) {
-            Num openAmount = entryFill.amount();
+            Num openAmount = numFactory.numOf(entryFill.amount().getDelegate());
             while (openAmount.isPositive() && !closingAmounts.isEmpty()) {
                 TradeFill closingFill = closingFills.removeFirst();
                 Num closingAmount = closingAmounts.removeFirst();
                 Num closeAmount = openAmount.isLessThan(closingAmount) ? openAmount : closingAmount;
-                holdingCost = holdingCost
-                        .plus(model.calculate(slicePosition(entryFill, closingFill, closeAmount), finalIndex));
+                Num sliceCost = model.calculate(slicePosition(entryFill, closingFill, closeAmount), finalIndex);
+                holdingCost = holdingCost.plus(numFactory.numOf(sliceCost.getDelegate()));
                 openAmount = openAmount.minus(closeAmount);
                 Num retainedAmount = closingAmount.minus(closeAmount);
                 if (retainedAmount.isPositive()) {
@@ -712,7 +712,8 @@ public class Position implements Serializable {
                 }
             }
             if (openAmount.isPositive()) {
-                holdingCost = holdingCost.plus(model.calculate(slicePosition(entryFill, null, openAmount), finalIndex));
+                Num sliceCost = model.calculate(slicePosition(entryFill, null, openAmount), finalIndex);
+                holdingCost = holdingCost.plus(numFactory.numOf(sliceCost.getDelegate()));
             }
         }
         return holdingCost;

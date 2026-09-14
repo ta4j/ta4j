@@ -9,8 +9,10 @@ import org.ta4j.core.*;
 import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
 import org.ta4j.core.mocks.MockBarBuilderFactory;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.FixedRule;
 
@@ -144,7 +146,7 @@ public class LinearTransactionCostModelTest {
                 .side(ExecutionSide.BUY)
                 .futuresContract(contract)
                 .build();
-        var decimalFactory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
         TradeFill exitFill = TradeFill.builder()
                 .index(1)
                 .time(Instant.EPOCH.plusSeconds(1))

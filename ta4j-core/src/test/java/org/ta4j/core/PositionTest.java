@@ -768,4 +768,43 @@ public class PositionTest {
             assertNumEquals(10, position.getProfit(1, numFactory.numOf(110)));
         }
     }
+
+    private static TradeFill futuresFill(FuturesContract contract, NumFactory fillFactory, int index, double price,
+            double amount, ExecutionSide side) {
+        return TradeFill.builder()
+                .index(index)
+                .time(T0.plusSeconds(index))
+                .price(fillFactory.numOf(price))
+                .amount(fillFactory.numOf(amount))
+                .side(side)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+    }
+
+    @Test
+    public void futuresHoldingCostNormalizesMixedFillFactories() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(doubleFactory.numOf(10))
+                .build();
+        Trade entry = Trade.fromFills(TradeType.BUY,
+                List.of(futuresFill(contract, doubleFactory, 0, 100, 1, ExecutionSide.BUY),
+                        futuresFill(contract, decimalFactory, 1, 110, 1, ExecutionSide.BUY)),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(futuresFill(contract, decimalFactory, 2, 120, 2, ExecutionSide.SELL),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE,
+                new LinearBorrowingCostModel(0.01, LinearBorrowingCostModel.Applicability.BOTH));
+
+        assertNumEquals(31, position.getHoldingCost(2));
+    }
 }

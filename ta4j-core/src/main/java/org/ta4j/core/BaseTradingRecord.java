@@ -1251,6 +1251,10 @@ public class BaseTradingRecord implements TradingRecord {
         return openPositionsSnapshot();
     }
 
+    boolean hasOpenRemainderAfter(Position position, int endIndex) {
+        return positionBook.hasOpenRemainderAfter(position, endIndex);
+    }
+
     /**
      * Returns the aggregated net open position.
      *
@@ -2223,10 +2227,6 @@ public class BaseTradingRecord implements TradingRecord {
                 throw new IllegalArgumentException("Position contract " + positionContract.symbol()
                         + " does not match the record contract " + futuresContract.symbol());
             }
-            if (position.isClosed()) {
-                closedPositions.add(new ClosedPosition(position, entrySequence, exitSequence));
-                return;
-            }
             ExecutionSide side = sideOf(position.getEntry().getType());
             for (PositionLot lot : openLots) {
                 if (lot.side() != side) {
@@ -2234,10 +2234,45 @@ public class BaseTradingRecord implements TradingRecord {
                             "Cannot adopt an open position: an open lot with the opposite side is already present");
                 }
             }
-            PositionLot adoptedLot = PositionLot.of(position, entrySequence);
-            if (adoptedLot != null) {
+            if (position.isClosed()) {
+                if (!position.getExit().getAmount().isLessThan(position.getEntry().getAmount())) {
+                    closedPositions.add(new ClosedPosition(position, entrySequence, exitSequence));
+                    return;
+                }
+                PositionLot adoptedLot = PositionLot.of(position, entrySequence);
+                if (adoptedLot == null) {
+                    closedPositions.add(new ClosedPosition(position, entrySequence, exitSequence));
+                    return;
+                }
+                Num executedExitAmount = executedAmount(position.getExit(), numFactoryOf(adoptedLot.entryPrice()));
+                if (executedExitAmount == null || executedExitAmount.isZero()
+                        || executedExitAmount.isGreaterThan(adoptedLot.amount())) {
+                    closedPositions.add(new ClosedPosition(position, entrySequence, exitSequence));
+                    return;
+                }
                 openLots.addLast(adoptedLot);
+                List<TradeFill> executedExitFills = Trade.executionFillsOf(position.getExit());
+                Trade exit = Trade.fromFills(position.getExit().getType(), executedExitFills,
+                        position.getExit().getCostModel() == null ? transactionCostModel
+                                : position.getExit().getCostModel());
+                recordExit(exit.getIndex(), exit, exitSequence);
+                return;
+            } else {
+                PositionLot adoptedLot = PositionLot.of(position, entrySequence);
+                if (adoptedLot != null) {
+                    openLots.addLast(adoptedLot);
+                }
             }
+        }
+
+        private static Num executedAmount(Trade trade, NumFactory numFactory) {
+            Num amount = numFactory.zero();
+            boolean hasExecution = false;
+            for (TradeFill fill : Trade.executionFillsOf(trade)) {
+                amount = amount.plus(numFactory.numOf(fill.amount().getDelegate()));
+                hasExecution = true;
+            }
+            return hasExecution ? amount : null;
         }
 
         private NumFactory recordedNumFactory() {
@@ -2385,6 +2420,31 @@ public class BaseTradingRecord implements TradingRecord {
                 trades.add(new SequencedTrade(entry, lot.entrySequence()));
             }
             return List.copyOf(trades);
+        }
+
+        private boolean hasOpenRemainderAfter(Position position, int endIndex) {
+            for (ClosedPosition closedPosition : closedPositions) {
+                if (closedPosition.position() != position) {
+                    continue;
+                }
+                for (PositionLot lot : openLots) {
+                    if (lot.entrySequence() == closedPosition.entrySequence()
+                            && firstExecutedFillIndex(lot.fills()) > endIndex) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        private static int firstExecutedFillIndex(List<TradeFill> fills) {
+            int firstIndex = Integer.MAX_VALUE;
+            for (TradeFill fill : fills) {
+                if (fill.index() >= 0 && fill.index() < firstIndex) {
+                    firstIndex = fill.index();
+                }
+            }
+            return firstIndex;
         }
 
         private List<Position> closedPositions() {

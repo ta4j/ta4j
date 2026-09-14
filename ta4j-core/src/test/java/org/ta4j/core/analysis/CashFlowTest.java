@@ -888,4 +888,22 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
             assertNumEquals(1.3, cashFlow.getValue(2));
         }
     }
+
+    @Test
+    public void whollyDeferredFuturesPositionCashFlowIsNeutral() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            Trade entry = Trade.fromFill(
+                    FuturesAnalysisTestSupport.fill(contract, -1, ExecutionSide.BUY, 1_000, 100, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            CashFlow cashFlow = new CashFlow(barSeries, position, EquityCurveMode.MARK_TO_MARKET);
+
+            for (int index = 0; index <= barSeries.getEndIndex(); index++) {
+                assertNumEquals(1, cashFlow.getValue(index));
+            }
+        }
+    }
 }

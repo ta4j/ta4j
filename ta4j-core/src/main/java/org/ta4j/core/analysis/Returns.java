@@ -210,6 +210,9 @@ public class Returns implements PerformanceIndicator {
         }
         NumFactory numFactory = barSeries.numFactory();
         Num capital = FuturesPerformanceSupport.accountCapital(numFactory, tradingRecord, fallbackCapital);
+        if (capital.isZero()) {
+            return;
+        }
         boolean markExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
         int effectiveFinalIndex = Math.min(tradingRecord.getEndIndex(barSeries), finalIndex);
         FuturesPerformanceSupport.Cursor cursor = FuturesPerformanceSupport.cursor(barSeries, tradingRecord,

@@ -189,4 +189,43 @@ public class ValueAtRiskCriterionTest {
         }
         return new BaseBarSeriesBuilder().withNumFactory(numFactory).withBeginIndex(beginIndex).withBars(bars).build();
     }
+
+    @Test
+    public void unavailableFuturesMarkPropagatesThroughValueAtRisk() {
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01))
+                .build();
+        BarSeries bars = seriesWithCloses(numFactory, 0, 100, 100, Double.NaN, 100);
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(1_000))
+                .build();
+        record.operate(TradeFill.builder()
+                .index(1)
+                .time(T0.plusSeconds(1))
+                .price(numFactory.numOf(100))
+                .amount(numFactory.numOf(1_000))
+                .side(ExecutionSide.BUY)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build());
+        record.operate(TradeFill.builder()
+                .index(3)
+                .time(T0.plusSeconds(3))
+                .price(numFactory.numOf(100))
+                .amount(numFactory.numOf(1_000))
+                .side(ExecutionSide.SELL)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build());
+
+        assertTrue(getCriterion().calculate(bars, record).isNaN());
+    }
 }

@@ -86,6 +86,9 @@ public class ExpectedShortfallCriterion extends AbstractAnalysisCriterion {
         if (returnRates.isEmpty()) {
             return RiskTailSupport.neutralValue(numFactory, returnRepresentation);
         }
+        if (RiskTailSupport.hasNonFinite(returnRates)) {
+            return org.ta4j.core.num.NaN.NaN;
+        }
         Num zero = numFactory.zero();
         Num expectedShortfall = zero;
         // F(x_var) >= alpha (=1-confidence)

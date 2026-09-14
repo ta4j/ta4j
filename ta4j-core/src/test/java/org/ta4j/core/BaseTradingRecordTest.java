@@ -2762,4 +2762,28 @@ class BaseTradingRecordTest {
         assertEquals(2, imported.getOpenPositions().size());
         assertTrue(imported.getTransactionCostModel().equals(decimalModel));
     }
+
+    @Test
+    public void importedPartiallyClosedFuturesPositionRetainsExecutedRemainder() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Position importedPosition = new Position(
+                    Trade.fromFill(fill(contract, 0, ExecutionSide.BUY, 2, 100, List.of()),
+                            RecordedTradeCostModel.INSTANCE),
+                    Trade.fromFill(fill(contract, 1, ExecutionSide.SELL, 1, 110, List.of()),
+                            RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            BaseTradingRecord record = new BaseTradingRecord(List.of(importedPosition));
+
+            assertEquals(1, record.getPositions().size());
+            assertEquals(1, record.getOpenPositions().size());
+            assertNumEquals(1, record.getOpenPositions().getFirst().getEntry().getAmount());
+
+            record.operate(fill(contract, 2, ExecutionSide.SELL, 1, 120, List.of()));
+
+            assertTrue(record.getOpenPositions().isEmpty());
+            assertEquals(2, record.getPositions().size());
+        }
+    }
 }

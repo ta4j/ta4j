@@ -737,4 +737,23 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
             assertNumEquals(0.01, returns.getValue(2));
         }
     }
+
+    @Test
+    public void whollyDeferredFuturesPositionReturnsNeutralCurve() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            Trade entry = Trade.fromFill(
+                    FuturesAnalysisTestSupport.fill(contract, -1, ExecutionSide.BUY, 1_000, 100, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            Returns returns = new Returns(barSeries, position, ReturnRepresentation.DECIMAL);
+
+            assertTrue(returns.getValue(0).isNaN());
+            for (int index = 1; index <= barSeries.getEndIndex(); index++) {
+                assertNumEquals(0, returns.getValue(index));
+            }
+        }
+    }
 }

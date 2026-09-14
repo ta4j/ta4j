@@ -438,7 +438,9 @@ public interface AnalysisCriterion {
                 if (!includeClosedPosition(position, start, end, inclusionPolicy)) {
                     continue;
                 }
-                for (Position trimmedPosition : trimFuturesPositionToWindow(position, end)) {
+                for (Position trimmedPosition : trimFuturesPositionToWindow(position, end,
+                        source instanceof BaseTradingRecord baseRecord
+                                && baseRecord.hasOpenRemainderAfter(position, end))) {
                     if (trimmedPosition.isClosed()) {
                         includedPositions.add(trimmedPosition);
                     } else if (context.openPositionHandling() == OpenPositionHandling.MARK_TO_MARKET) {
@@ -543,7 +545,9 @@ public interface AnalysisCriterion {
                             : lastExecutedFillIndex(exit) <= windowEndIndex)) {
                 continue;
             }
-            positions.addAll(trimFuturesPositionToWindow(closedPosition, windowEndIndex));
+            positions.addAll(trimFuturesPositionToWindow(closedPosition, windowEndIndex,
+                    source instanceof BaseTradingRecord baseRecord
+                            && baseRecord.hasOpenRemainderAfter(closedPosition, windowEndIndex)));
         }
         return positions;
     }
@@ -554,7 +558,7 @@ public interface AnalysisCriterion {
             if (openPosition == null || !openPosition.isOpened()) {
                 continue;
             }
-            if (openPosition.getEntry().getIndex() > windowEndIndex) {
+            if (firstExecutedFillIndex(openPosition.getEntry()) > windowEndIndex) {
                 continue;
             }
             positions.add(openPosition);
@@ -562,7 +566,7 @@ public interface AnalysisCriterion {
         return positions;
     }
 
-    private static List<Position> trimFuturesPositionToWindow(Position position, int end) {
+    private static List<Position> trimFuturesPositionToWindow(Position position, int end, boolean recomputeBasis) {
         Trade entry = position.getEntry();
         List<TradeFill> allEntryFills = Trade.executionFillsOf(entry);
         List<TradeFill> retainedEntryFills = FuturesPositionAccounting.executedFills(entry, end);
@@ -575,7 +579,16 @@ public interface AnalysisCriterion {
                 && (exit == null || FuturesValidation.numEquals(
                         totalFillAmount(retainedEntryFills, entry.getAmount().getNumFactory()),
                         totalFillAmount(retainedExitFills, exit.getAmount().getNumFactory())))) {
-            return List.of(position);
+            if (!recomputeBasis) {
+                return List.of(position);
+            }
+            CostModel transactionCostModel = position.getTransactionCostModel();
+            CostModel holdingCostModel = position.getHoldingCostModel();
+            Trade recomputedEntry = tradeForRetainedFills(entry, retainedEntryFills, false);
+            return List.of(exit == null
+                    ? new Position(recomputedEntry, transactionCostModel, holdingCostModel, position.getCashFlows())
+                    : new Position(recomputedEntry, exit, transactionCostModel, holdingCostModel,
+                            position.getCashFlows()));
         }
         if (retainedEntryFills.isEmpty()) {
             return List.of();

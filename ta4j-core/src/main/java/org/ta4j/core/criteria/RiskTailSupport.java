@@ -54,10 +54,20 @@ final class RiskTailSupport {
         long returnCount = (long) lastReturnIndex - firstReturnIndex + 1;
         List<Num> returnRates = new ArrayList<>((int) Math.min(returnCount, series.getBarCount()));
         for (long index = firstReturnIndex; index <= lastReturnIndex; index++) {
-            returnRates.add(returns.getValue((int) index));
+            Num returnRate = returns.getValue((int) index);
+            returnRates.add(returnRate);
         }
         Collections.sort(returnRates);
         return returnRates;
+    }
+
+    static boolean hasNonFinite(List<Num> returnRates) {
+        for (Num returnRate : returnRates) {
+            if (!Num.isFinite(returnRate)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

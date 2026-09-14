@@ -120,7 +120,8 @@ final class FuturesPerformanceSupport {
      */
     static Num accountCapital(NumFactory numFactory, TradingRecord record, Num fallbackCapital) {
         Num capital = record.getInitialCapital();
-        if (capital == null) {
+        boolean usingFallback = capital == null || capital.isZero();
+        if (usingFallback) {
             capital = fallbackCapital;
         }
         if (capital == null) {
@@ -128,6 +129,9 @@ final class FuturesPerformanceSupport {
                     "native futures account analysis requires an explicit initial capital; configure the trading record initial capital or analyse a single position");
         }
         Num converted = toFactory(numFactory, capital);
+        if (usingFallback && converted.isZero()) {
+            return converted;
+        }
         if (!converted.isPositive() || !Num.isFinite(converted)) {
             throw new IllegalStateException("native futures account analysis requires positive finite capital");
         }

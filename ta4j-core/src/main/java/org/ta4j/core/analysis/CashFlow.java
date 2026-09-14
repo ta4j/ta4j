@@ -271,6 +271,9 @@ public class CashFlow implements PerformanceIndicator {
             Num fallbackCapital) {
         NumFactory numFactory = barSeries.numFactory();
         Num capital = FuturesPerformanceSupport.accountCapital(numFactory, tradingRecord, fallbackCapital);
+        if (capital.isZero()) {
+            return;
+        }
         boolean markExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
         int seriesEnd = barSeries.getEndIndex();
         int effectiveFinalIndex = Math.min(Objects.requireNonNull(tradingRecord).getEndIndex(barSeries), finalIndex);
