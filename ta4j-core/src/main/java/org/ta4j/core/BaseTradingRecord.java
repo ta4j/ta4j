@@ -1344,7 +1344,7 @@ public class BaseTradingRecord implements TradingRecord {
      */
     private void requireIndexInTimeOrder(Instant time, String eventId, int index, String message) {
         for (FuturesFunding scheduled : fundingSchedule) {
-            requireIndexOrder(time, eventId, index, scheduled.time(), scheduled.eventId(), scheduled.index(), message);
+            requireExecutionIndexOrder(time, index, scheduled.time(), scheduled.index(), message);
         }
         for (FuturesCashFlow recorded : processedEvents.values()) {
             requireIndexOrder(time, eventId, index, recorded.time(), recorded.eventId(), recorded.index(), message);

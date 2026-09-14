@@ -2904,4 +2904,71 @@ class BaseTradingRecordTest {
                     () -> reversed.operate(fillAtTime(contract, 8, boundary, ExecutionSide.BUY, 1, 10_000, List.of())));
         }
     }
+
+    @Test
+    public void directFuturesEventsFollowScheduledFundingOrder() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Instant boundary = T0.plusSeconds(9);
+            FuturesFunding scheduled = FuturesFunding.builder()
+                    .contract(contract)
+                    .eventId("z-scheduled")
+                    .index(9)
+                    .time(boundary)
+                    .rate(numFactory.numOf(0.001))
+                    .referencePrice(numFactory.numOf(10_000))
+                    .build();
+
+            BaseTradingRecord cashFlowRecord = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .fundingSchedule(List.of(scheduled))
+                    .build();
+            cashFlowRecord.operate(fillAtTime(contract, 8, T0.plusSeconds(8), ExecutionSide.BUY, 1, 10_000, List.of()));
+            FuturesCashFlow cashFlow = FuturesCashFlow.builder()
+                    .contract(contract)
+                    .type(FuturesCashFlow.Type.VARIATION_MARGIN)
+                    .eventId("a-cash-flow")
+                    .index(10)
+                    .time(boundary)
+                    .amount(numFactory.one())
+                    .currency(contract.settlementCurrency())
+                    .build();
+            cashFlowRecord.recordCashFlow(cashFlow);
+            assertEquals(2, cashFlowRecord.getCashFlows().size());
+
+            BaseTradingRecord reversedCashFlow = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .fundingSchedule(List.of(scheduled))
+                    .build();
+            reversedCashFlow
+                    .operate(fillAtTime(contract, 8, T0.plusSeconds(8), ExecutionSide.BUY, 1, 10_000, List.of()));
+            FuturesCashFlow earlierCashFlow = cashFlow.toBuilder().index(8).build();
+            assertThrows(IllegalArgumentException.class, () -> reversedCashFlow.recordCashFlow(earlierCashFlow));
+
+            BaseTradingRecord fundingRecord = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .fundingSchedule(List.of(scheduled))
+                    .build();
+            fundingRecord.operate(fillAtTime(contract, 8, T0.plusSeconds(8), ExecutionSide.BUY, 1, 10_000, List.of()));
+            FuturesFunding explicitFunding = FuturesFunding.builder()
+                    .contract(contract)
+                    .eventId("a-funding")
+                    .index(10)
+                    .time(boundary)
+                    .rate(numFactory.numOf(0.001))
+                    .referencePrice(numFactory.numOf(10_000))
+                    .build();
+            fundingRecord.recordFunding(explicitFunding);
+            assertEquals(2, fundingRecord.getCashFlows().size());
+
+            BaseTradingRecord reversedFunding = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .fundingSchedule(List.of(scheduled))
+                    .build();
+            reversedFunding
+                    .operate(fillAtTime(contract, 8, T0.plusSeconds(8), ExecutionSide.BUY, 1, 10_000, List.of()));
+            FuturesFunding earlierFunding = explicitFunding.toBuilder().index(8).build();
+            assertThrows(IllegalArgumentException.class, () -> reversedFunding.recordFunding(earlierFunding));
+        }
+    }
 }
