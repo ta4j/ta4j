@@ -1,12 +1,21 @@
 ## Unreleased
 
-- **Experimental Elliott topology kernel lands in package-private internals with an internal test-plane study bridge (`CF-525`)**: a falsifiable hypothesis stack under `org.ta4j.core.analysis.elliott` adds confirmation-aware pivot history (`PivotHistory`, `ConfirmedPivot`, `ConfirmationTracker`), grammar matching for `MOTIVE_5`, `CORRECTIVE_3`, and `CYCLE_5_3` with first-class insufficient-history/no-match/forming/complete/ambiguous/invalidated outcomes (`TopologyAnalyzer`, bounded to the 64 most recent candidates), and four independently selectable relationship rules (wave-2 origin, wave-3 not-shortest, wave-4 non-overlap, wave-5 momentum divergence) emitting structured evidence instead of opaque confidence scores. `StudyRunner`, `StudyReport`, and `DetectorRobustnessMatrix` provide a deterministic internal study path.
-- **CF-525 study evidence is now unambiguous**: H2 reports complete-topology bar occupancy rather than cycle counts, relationship-rule aggregates state their unique-topology scope, and competing grammars share the same signed-pivot eligibility without duplicate ten-leg comparisons.
-- Realtime bars now publish retained-series invalidation when side or liquidity aggregation fails after a partial trade. Fractal replay uses one exact-class mutation-tracking policy, and bootstrap logarithms avoid constructing out-of-domain scales for bounded numeric factories.
-- Deferred retained-bar callbacks revalidate surviving aliases after head eviction, and concurrent fractal observation captures revision, bounds and bar state under one read lease rather than racing structural clears.
-- `BaseBar` mutation ownership is now lazy for unretained bars and compact for a single retaining series, promoting to a weak map only for shared bars. Failed partial price updates and successful subclass overrides that omit superclass publication invalidate every retaining series, not only the originating one.
-- Explicit `ConcurrentBarSeries.withWriteLock` leases now defer retained-bar invalidation callbacks until their outermost write lock is released, preventing cross-series deadlocks for shared bars.
-- `BacktestExecutor` now has explicit `executeWithRuntimeReport` overloads with a strict platform-worker cap for fixed amounts and `PositionSizer` entries. They avoid nested parallel streams so constrained ForkJoin callers can preserve their hard worker limits without compensation-thread rejection.
+### Added
+
+- **Experimental Elliott topology analysis (`CF-525`)**: Added package-private pivot history, confirmation tracking, and grammar analysis under `org.ta4j.core.analysis.elliott` for `MOTIVE_5`, `CORRECTIVE_3`, and `CYCLE_5_3`. Outcomes distinguish insufficient history, no match, forming, complete, ambiguous, and invalidated candidates; four selectable relationship rules emit structured evidence. Deterministic internal study tooling includes `StudyRunner`, `StudyReport`, and `DetectorRobustnessMatrix`.
+- **Runtime-reported backtests**: Added `BacktestExecutor.executeWithRuntimeReport` overloads for fixed amounts and `PositionSizer` entries. A platform-worker cap avoids nested parallel streams for constrained ForkJoin callers.
+
+### Changed
+
+- **Elliott study evidence (`CF-525`)**: H2 now measures complete-topology bar occupancy; relationship aggregates declare their unique-topology scope; competing grammars share signed-pivot eligibility without duplicate ten-leg comparisons.
+- **Bar mutation ownership**: `BaseBar` uses lazy ownership for unretained bars, compact state for one retaining series, and a weak map for shared bars. Partial price-update failures and subclass mutations that omit superclass publication now invalidate every retaining series.
+- **Concurrent retained-bar handling**: `ConcurrentBarSeries.withWriteLock` defers invalidation callbacks until the outermost lease, preventing cross-series deadlocks; surviving aliases are revalidated after head eviction.
+- **Fractal replay and observation**: Replay uses one exact-class mutation-tracking policy, while observation captures revision, bounds, and bar state under one read lease.
+
+### Fixed
+
+- Realtime bars now publish retained-series invalidation when side or liquidity aggregation fails after a partial trade.
+- Bootstrap logarithms no longer construct out-of-domain scales for bounded numeric factories.
 
 ## 0.25.0 (2026-09-07)
 
