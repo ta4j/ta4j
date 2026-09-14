@@ -64,10 +64,12 @@ public class FixedTransactionCostModel implements CostModel {
     private Num sumExecutedFillCosts(Position position, int currentIndex) {
         Trade entry = position.getEntry();
         Num total = entry.getPricePerAsset().getNumFactory().zero();
-        total = total.plus(sumFillCosts(entry, currentIndex));
+        Num entryCost = sumFillCosts(entry, currentIndex);
+        total = total.plus(total.getNumFactory().numOf(entryCost.getDelegate()));
         Trade exit = position.getExit();
         if (exit != null) {
-            total = total.plus(sumFillCosts(exit, currentIndex));
+            Num exitCost = sumFillCosts(exit, currentIndex);
+            total = total.plus(total.getNumFactory().numOf(exitCost.getDelegate()));
         }
         return total;
     }

@@ -527,14 +527,12 @@ public interface PositionSizer {
             } else {
                 Num one = numFactory().one();
                 Num entryFeePerContract = modeledEntryFee(contract, one);
-                // The bracket may only overstate the affordable count, so the fee
-                // contribution is the marginal per-contract fee between one and two
-                // contracts: the per-contract models charge exactly that, while a
-                // charge that does not grow with the contract count contributes none
-                // and leaves the search to resolve the boundary.
-                Num costPerContract = contract.marginRequirement(one, entryPrice, requireInitialMarginRate())
-                        .plus(modeledEntryFee(contract, numFactory().two()).minus(entryFeePerContract));
-                upperBound = costPerContract.isPositive() ? budget.dividedBy(costPerContract)
+                // The bracket includes the one-contract intercept and the marginal
+                // contract cost, so fixed charges and rebates shift the boundary.
+                Num oneContractCost = entryCost(one);
+                Num costPerContract = entryCost(numFactory().two()).minus(oneContractCost);
+                upperBound = costPerContract.isPositive()
+                        ? budget.minus(oneContractCost).plus(costPerContract).dividedBy(costPerContract)
                         : entryFeePerContract.isPositive() ? budget.dividedBy(entryFeePerContract)
                                 : maximumTradableAmount(contract);
             }

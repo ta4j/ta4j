@@ -727,16 +727,18 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     private void adoptPosition(Position position) {
+        if (!hasNumFactory()) {
+            Num price = position.getEntry().getPricePerAsset();
+            if (price != null && !price.isNaN()) {
+                numFactory = price.getNumFactory();
+            }
+        }
         Position adoptedPosition = normalizeToRecordFactory(position);
         long entrySequence = nextSequence++;
         long exitSequence = nextSequence++;
         positionBook.adopt(adoptedPosition, entrySequence, exitSequence);
         advanceNextTradeIndex(adoptedPosition.getEntry());
         advanceNextTradeIndex(adoptedPosition.getExit());
-        Num price = adoptedPosition.getEntry().getPricePerAsset();
-        if (!hasNumFactory() && price != null && !price.isNaN()) {
-            numFactory = price.getNumFactory();
-        }
     }
 
     private boolean hasNumFactory() {
@@ -2243,23 +2245,25 @@ public class BaseTradingRecord implements TradingRecord {
                 }
             }
             if (position.isClosed()) {
-                if (!position.getExit().getAmount().isLessThan(position.getEntry().getAmount())) {
-                    closedPositions.add(new ClosedPosition(position, entrySequence, exitSequence));
-                    return;
-                }
                 PositionLot adoptedLot = PositionLot.of(position, entrySequence);
                 if (adoptedLot == null) {
                     closedPositions.add(new ClosedPosition(position, entrySequence, exitSequence));
                     return;
                 }
                 Num executedExitAmount = executedAmount(position.getExit(), numFactoryOf(adoptedLot.entryPrice()));
-                if (executedExitAmount == null || executedExitAmount.isZero()
-                        || executedExitAmount.isGreaterThan(adoptedLot.amount())) {
+                if (executedExitAmount == null || executedExitAmount.isZero()) {
+                    openLots.addLast(adoptedLot);
+                    return;
+                }
+                if (!executedExitAmount.isLessThan(adoptedLot.amount())) {
                     closedPositions.add(new ClosedPosition(position, entrySequence, exitSequence));
                     return;
                 }
                 openLots.addLast(adoptedLot);
-                List<TradeFill> executedExitFills = Trade.executionFillsOf(position.getExit());
+                List<TradeFill> executedExitFills = Trade.executionFillsOf(position.getExit())
+                        .stream()
+                        .filter(fill -> fill.index() >= 0)
+                        .toList();
                 Trade exit = Trade.fromFills(position.getExit().getType(), executedExitFills,
                         position.getExit().getCostModel() == null ? transactionCostModel
                                 : position.getExit().getCostModel());
@@ -2277,6 +2281,9 @@ public class BaseTradingRecord implements TradingRecord {
             Num amount = numFactory.zero();
             boolean hasExecution = false;
             for (TradeFill fill : Trade.executionFillsOf(trade)) {
+                if (fill.index() < 0) {
+                    continue;
+                }
                 amount = amount.plus(numFactory.numOf(fill.amount().getDelegate()));
                 hasExecution = true;
             }

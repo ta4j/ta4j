@@ -2802,4 +2802,49 @@ class BaseTradingRecordTest {
                 maxTime.plusSeconds(1), ExecutionSide.BUY, 1, 100, List.of())));
         assertEquals(numFactory.one(), record.getCurrentPosition().getEntry().getAmount());
     }
+
+    @Test
+    public void importedFirstFuturesPositionNormalizesToEntryFactory() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
+        FuturesContract contract = linearBtcPerpetual(doubleFactory);
+        Trade entry = Trade.fromFill(fill(contract, 0, ExecutionSide.BUY, 1, 100, List.of()),
+                RecordedTradeCostModel.INSTANCE);
+        TradeFill decimalExitFill = TradeFill.builder()
+                .index(1)
+                .time(T0.plusSeconds(1))
+                .price(decimalFactory.numOf(110))
+                .amount(decimalFactory.one())
+                .side(ExecutionSide.SELL)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+        Trade exit = Trade.fromFill(decimalExitFill, RecordedTradeCostModel.INSTANCE);
+        Position importedPosition = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        BaseTradingRecord record = new BaseTradingRecord(List.of(importedPosition));
+        Position normalized = record.getPositions().getFirst();
+
+        assertEquals(doubleFactory.getClass(), normalized.getEntry().getPricePerAsset().getNumFactory().getClass());
+        assertEquals(doubleFactory.getClass(), normalized.getExit().getPricePerAsset().getNumFactory().getClass());
+    }
+
+    @Test
+    public void importedPartiallyExecutedExitKeepsDeferredRemainderOpen() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Trade entry = Trade.fromFill(fill(contract, 0, ExecutionSide.BUY, 2, 100, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFills(TradeType.SELL,
+                    List.of(fill(contract, 1, ExecutionSide.SELL, 1, 110, List.of()),
+                            fill(contract, -1, ExecutionSide.SELL, 1, 200, List.of())),
+                    RecordedTradeCostModel.INSTANCE);
+            Position importedPosition = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            BaseTradingRecord record = new BaseTradingRecord(List.of(importedPosition));
+
+            assertEquals(1, record.getOpenPositions().size());
+            assertNumEquals(1, record.getOpenPositions().getFirst().getEntry().getAmount());
+        }
+    }
 }

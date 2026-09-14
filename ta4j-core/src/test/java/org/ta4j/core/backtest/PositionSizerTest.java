@@ -196,4 +196,19 @@ class PositionSizerTest {
         assertNumEquals(numFactory.zero(), sizingContext.maxAffordableAmount(numFactory.numOf(8)));
     }
 
+    @Test
+    public void maxAffordableAmountHonorsFixedRebates() {
+        NumFactory numFactory = DoubleNumFactory.getInstance();
+        FuturesContract contract = linearContract(numFactory);
+        FixedTransactionCostModel rebate = new FixedTransactionCostModel(-1);
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(19))
+                .initialMarginRate(numFactory.numOf(0.1))
+                .build();
+        PositionSizer.Context sizingContext = new PositionSizer.Context(0, 0, numFactory.hundred(), null,
+                entryOnFirstBar(), flatSeries(numFactory, 100), TradeType.BUY, record, rebate, new ZeroCostModel());
+
+        assertNumEquals(numFactory.numOf(2), sizingContext.maxAffordableAmount(numFactory.numOf(19)));
+    }
 }

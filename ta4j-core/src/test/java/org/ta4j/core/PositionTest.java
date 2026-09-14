@@ -807,4 +807,28 @@ public class PositionTest {
 
         assertNumEquals(31, position.getHoldingCost(2));
     }
+
+    @Test
+    public void noArgumentProfitExcludesDeferredExitValuation() {
+        NumFactory numFactory = DoubleNumFactory.getInstance();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .build();
+        Trade entry = Trade.fromFill(futuresFill(contract, numFactory, 0, 100, 2, ExecutionSide.BUY),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFills(TradeType.SELL,
+                List.of(futuresFill(contract, numFactory, 1, 110, 1, ExecutionSide.SELL),
+                        futuresFill(contract, numFactory, -1, 200, 1, ExecutionSide.SELL)),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        assertNumEquals(20, position.getProfit());
+    }
 }

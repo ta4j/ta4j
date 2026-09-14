@@ -369,7 +369,7 @@ public class Position implements Serializable {
         if (isOpened()) {
             return zero();
         } else if (futuresContract != null) {
-            return FuturesPositionAccounting.profit(this, exit.getPricePerAsset(), Integer.MAX_VALUE);
+            return FuturesPositionAccounting.profit(this, futuresProfitMarkPrice(), Integer.MAX_VALUE);
         } else {
             return getGrossProfit(exit.getPricePerAsset()).minus(getPositionCost());
         }
@@ -947,5 +947,20 @@ public class Position implements Serializable {
     @Override
     public String toString() {
         return "Entry: " + entry + " exit: " + exit;
+    }
+
+    private Num futuresProfitMarkPrice() {
+        if (exit == null) {
+            return null;
+        }
+        List<TradeFill> exitFills = Trade.executionFillsOf(exit);
+        List<TradeFill> executedExitFills = exitFills.stream().filter(fill -> fill.index() >= 0).toList();
+        if (executedExitFills.size() == exitFills.size()) {
+            return exit.getPricePerAsset();
+        }
+        if (executedExitFills.isEmpty()) {
+            return null;
+        }
+        return Trade.fromFills(exit.getType(), executedExitFills, exit.getCostModel()).getPricePerAsset();
     }
 }
