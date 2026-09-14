@@ -454,11 +454,11 @@ class StudyRunnerTest {
     }
 
     @Test
-    void competingGrammarDoesNotRequireAnExtremeAtTheSegmentJunction() {
+    public void competingGrammarRequiresAnExtremeAtTheSegmentJunction() {
         final List<ConfirmedPivot> laterExtension = alternatingWindow(
                 new double[] { 10, 12, 11, 14, 12, 13, 11, 15, 13, 16, 14 });
 
-        assertEquals(1, StudyRunner.AlternativeGrammar.of("5+5").matches(laterExtension).size());
+        assertTrue(StudyRunner.AlternativeGrammar.of("5+5").matches(laterExtension).isEmpty());
     }
 
     @Test

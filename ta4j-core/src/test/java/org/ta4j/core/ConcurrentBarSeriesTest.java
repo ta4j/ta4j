@@ -45,9 +45,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
+import org.ta4j.core.analysis.elliott.swing.FractalSwingDetector;
 import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.bars.TimeBarBuilderFactory;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
@@ -999,6 +1001,133 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
         origin.get().addPrice(numOf(20));
         assertTrue("write-lock observer was not invoked", observed.get());
+    }
+
+    @Test
+    public void localRetainedMutationInvalidationPrecedesWriteUnlock() {
+        final AtomicReference<ConcurrentBarSeries> origin = new AtomicReference<>();
+        final AtomicReference<CachedIndicator<Num>> cachedClose = new AtomicReference<>();
+        final AtomicReference<Num> observedClose = new AtomicReference<>();
+        final AtomicReference<Long> observedRevision = new AtomicReference<>();
+        final AtomicBoolean outerUnlockObserved = new AtomicBoolean();
+        final AtomicBoolean checking = new AtomicBoolean();
+        final ReentrantReadWriteLock lock = new ReentrantReadWriteLock() {
+            private final WriteLock observingWriteLock = new WriteLock(this) {
+                @Override
+                public void unlock() {
+                    if (checking.get() && getWriteHoldCount() == 1 && outerUnlockObserved.compareAndSet(false, true)) {
+                        observedRevision.set(origin.get().getBarHistoryRevision());
+                        observedClose.set(cachedClose.get().getValue(0));
+                    }
+                    super.unlock();
+                }
+            };
+
+            @Override
+            public WriteLock writeLock() {
+                return observingWriteLock;
+            }
+        };
+        final Duration period = Duration.ofMinutes(1);
+        final Instant start = Instant.parse("2024-05-01T00:00:00Z");
+        final BaseBar bar = new BaseBar(period, start, start.plus(period), numOf(10), numOf(10), numOf(10), numOf(10),
+                numFactory.zero(), numFactory.zero(), 0);
+        final BaseBar secondBar = new BaseBar(period, start.plus(period), start.plus(period).plus(period), numOf(30),
+                numOf(30), numOf(30), numOf(30), numFactory.zero(), numFactory.zero(), 0);
+        origin.set(new ConcurrentBarSeries("local-invalidation", List.of(bar, secondBar), 0, 1, false, numFactory,
+                barBuilderFactory, lock));
+        cachedClose.set(new CachedIndicator<Num>(origin.get()) {
+            @Override
+            protected Num calculate(final int index) {
+                return getBarSeries().getBar(index).getClosePrice();
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        });
+
+        assertNumEquals(10, cachedClose.get().getValue(0));
+        checking.set(true);
+        origin.get().withWriteLock(() -> ((BaseBar) origin.get().getBar(0)).addPrice(numOf(20)));
+        assertEquals(Long.valueOf(1L), observedRevision.get());
+        assertNumEquals(20, observedClose.get());
+    }
+
+    @Test
+    public void detectorDoesNotInvertSeriesAndReplayLocks() throws Exception {
+        final CountDownLatch readerReadAttempted = new CountDownLatch(1);
+        final CountDownLatch writerHolding = new CountDownLatch(1);
+        final AtomicBoolean armed = new AtomicBoolean();
+        final AtomicInteger readerReadCount = new AtomicInteger();
+        final AtomicReference<Thread> reader = new AtomicReference<>();
+        final ReentrantReadWriteLock lock = new ReentrantReadWriteLock() {
+            private final ReadLock coordinatingReadLock = new ReadLock(this) {
+                @Override
+                public void lock() {
+                    final boolean readerAttempt = armed.get() && Thread.currentThread() == reader.get()
+                            && readerReadCount.incrementAndGet() == 4;
+                    if (!readerAttempt) {
+                        super.lock();
+                        return;
+                    }
+                    readerReadAttempted.countDown();
+                    try {
+                        if (!writerHolding.await(2, TimeUnit.SECONDS)) {
+                            throw new AssertionError("writer did not acquire the series lock");
+                        }
+                    } catch (InterruptedException exception) {
+                        Thread.currentThread().interrupt();
+                        throw new AssertionError("reader lock coordination interrupted", exception);
+                    }
+                    final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+                    while (!super.tryLock()) {
+                        if (System.nanoTime() >= deadline) {
+                            throw new AssertionError("detector acquired replay state before the series read lock");
+                        }
+                        Thread.yield();
+                    }
+                }
+            };
+            private final WriteLock coordinatingWriteLock = new WriteLock(this) {
+                @Override
+                public void lock() {
+                    super.lock();
+                    writerHolding.countDown();
+                }
+            };
+
+            @Override
+            public ReadLock readLock() {
+                return coordinatingReadLock;
+            }
+
+            @Override
+            public WriteLock writeLock() {
+                return coordinatingWriteLock;
+            }
+        };
+        final Duration period = Duration.ofMinutes(1);
+        final Instant start = Instant.parse("2024-05-01T00:00:00Z");
+        final BaseBar bar = new BaseBar(period, start, start.plus(period), numOf(10), numOf(10), numOf(10), numOf(10),
+                numFactory.zero(), numFactory.zero(), 0);
+        final ConcurrentBarSeries series = new ConcurrentBarSeries("detector-lock-order", List.of(bar), 0, 0, false,
+                numFactory, barBuilderFactory, lock);
+        final FractalSwingDetector detector = new FractalSwingDetector(1);
+        detector.detectPivots(series, 0);
+        armed.set(true);
+
+        final Future<?> readerFuture = executorService.submit(() -> {
+            reader.set(Thread.currentThread());
+            detector.detectPivots(series, 0);
+        });
+        assertTrue("reader did not reach detector history read", readerReadAttempted.await(2, TimeUnit.SECONDS));
+        final Future<?> writerFuture = executorService
+                .submit(() -> series.withWriteLock(() -> detector.detectPivots(series, 0)));
+
+        writerFuture.get(4, TimeUnit.SECONDS);
+        readerFuture.get(4, TimeUnit.SECONDS);
     }
 
     @Test

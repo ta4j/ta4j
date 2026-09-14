@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
@@ -104,11 +105,11 @@ public final class FractalSwingDetector implements SwingDetector {
             return new SwingDetectorResult(List.of(), List.of());
         }
         final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
-        return replayStates.computeIfAbsent(new SeriesKey(series), ignored -> new ConcurrentHashMap<>())
-                .computeIfAbsent(degree,
-                        ignored -> new CausalReplayState(series, lookbackLength, lookforwardLength, allowedEqualBars,
-                                degree))
-                .resultAt(clampedIndex);
+        final CausalReplayState state = replayStates
+                .computeIfAbsent(new SeriesKey(series), ignored -> new ConcurrentHashMap<>())
+                .computeIfAbsent(degree, ignored -> new CausalReplayState(series, lookbackLength, lookforwardLength,
+                        allowedEqualBars, degree));
+        return withSeriesReadLock(series, () -> state.resultAt(clampedIndex));
     }
 
     @Override
@@ -118,11 +119,18 @@ public final class FractalSwingDetector implements SwingDetector {
             return List.of();
         }
         final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
-        return replayStates.computeIfAbsent(new SeriesKey(series), ignored -> new ConcurrentHashMap<>())
-                .computeIfAbsent(ElliottDegree.MINUETTE,
-                        ignored -> new CausalReplayState(series, lookbackLength, lookforwardLength, allowedEqualBars,
-                                ElliottDegree.MINUETTE))
-                .pivotsAt(clampedIndex);
+        final CausalReplayState state = replayStates
+                .computeIfAbsent(new SeriesKey(series), ignored -> new ConcurrentHashMap<>())
+                .computeIfAbsent(ElliottDegree.MINUETTE, ignored -> new CausalReplayState(series, lookbackLength,
+                        lookforwardLength, allowedEqualBars, ElliottDegree.MINUETTE));
+        return withSeriesReadLock(series, () -> state.pivotsAt(clampedIndex));
+    }
+
+    private static <T> T withSeriesReadLock(final BarSeries series, final Supplier<T> action) {
+        if (series instanceof ConcurrentBarSeries concurrentSeries) {
+            return concurrentSeries.withReadLock(action);
+        }
+        return action.get();
     }
 
     /**

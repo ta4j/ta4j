@@ -21,6 +21,7 @@ import java.util.Objects;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Iterator;
 
 /**
  * Thread-safe {@link BarSeries} implementation for concurrent read/write use
@@ -400,7 +401,8 @@ public class ConcurrentBarSeries extends BaseBarSeries {
 
     /**
      * Runs the supplied action while holding the write lock. Retained-bar callbacks
-     * triggered by the action run after the outermost write lease is released.
+     * triggered by the action publish on this series before unlock; callbacks for
+     * peer series run after the outermost write lease is released.
      *
      * @param action mutating action to execute
      *
@@ -427,15 +429,20 @@ public class ConcurrentBarSeries extends BaseBarSeries {
         Objects.requireNonNull(action, "action cannot be null");
         this.writeLock.lock();
         final DeferredRetainedMutationCallbacks callbacks = beginDeferredRetainedMutationCallbacks();
+        final boolean outermost = callbacks.isOutermost();
         Throwable failure = null;
+        Throwable localCallbackFailure = null;
         try {
             return action.get();
         } catch (RuntimeException | Error cause) {
             failure = cause;
             throw cause;
         } finally {
+            if (outermost) {
+                localCallbackFailure = flushLocalRetainedMutationCallbacks(callbacks);
+            }
             this.writeLock.unlock();
-            completeDeferredRetainedMutationCallbacks(callbacks, failure);
+            completeDeferredRetainedMutationCallbacks(callbacks, failure, localCallbackFailure);
         }
     }
 
@@ -470,13 +477,35 @@ public class ConcurrentBarSeries extends BaseBarSeries {
         return callbacks;
     }
 
+    private Throwable flushLocalRetainedMutationCallbacks(final DeferredRetainedMutationCallbacks callbacks) {
+        Throwable callbackFailure = null;
+        final Iterator<RetainedMutationCallback> iterator = callbacks.callbacks().iterator();
+        while (iterator.hasNext()) {
+            final RetainedMutationCallback callback = iterator.next();
+            if (callback.series() != this) {
+                continue;
+            }
+            iterator.remove();
+            try {
+                super.retainedBarMutated(callback.bar(), callback.index());
+            } catch (RuntimeException | Error cause) {
+                if (callbackFailure == null) {
+                    callbackFailure = cause;
+                } else {
+                    callbackFailure.addSuppressed(cause);
+                }
+            }
+        }
+        return callbackFailure;
+    }
+
     private static void completeDeferredRetainedMutationCallbacks(final DeferredRetainedMutationCallbacks callbacks,
-            final Throwable actionFailure) {
+            final Throwable actionFailure, final Throwable localCallbackFailure) {
         if (!callbacks.leave()) {
             return;
         }
         DEFERRED_RETAINED_MUTATION_CALLBACKS.remove();
-        Throwable callbackFailure = null;
+        Throwable callbackFailure = localCallbackFailure;
         for (RetainedMutationCallback callback : callbacks.callbacks()) {
             try {
                 callback.series().retainedBarMutated(callback.bar(), callback.index());
@@ -946,6 +975,10 @@ public class ConcurrentBarSeries extends BaseBarSeries {
 
         private void enter() {
             nesting++;
+        }
+
+        private boolean isOutermost() {
+            return nesting == 1;
         }
 
         private boolean leave() {

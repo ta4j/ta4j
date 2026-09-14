@@ -1110,6 +1110,25 @@ final class StudyRunner {
                     return false;
                 }
             }
+            return !complete || matchesSegmentJunction(window);
+        }
+
+        private boolean matchesSegmentJunction(final List<ConfirmedPivot> window) {
+            final int junction = segmentLegs[0];
+            final SwingPivotType junctionType = window.get(junction).type();
+            final Num junctionPrice = window.get(junction).price();
+            for (int pivot = 0; pivot < junction; pivot++) {
+                final ConfirmedPivot previous = window.get(pivot);
+                if (previous.type() != junctionType) {
+                    continue;
+                }
+                final boolean junctionIsMoreExtreme = junctionType == SwingPivotType.HIGH
+                        ? junctionPrice.isGreaterThan(previous.price())
+                        : junctionPrice.isLessThan(previous.price());
+                if (!junctionIsMoreExtreme) {
+                    return false;
+                }
+            }
             return true;
         }
 
