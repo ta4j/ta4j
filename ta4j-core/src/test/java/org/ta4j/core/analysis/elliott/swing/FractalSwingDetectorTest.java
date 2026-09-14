@@ -280,6 +280,22 @@ class FractalSwingDetectorTest {
     }
 
     @Test
+    public void ascendingReplayRevalidatesUntrackableBars() {
+        final BaseBarSeries series = revisionAwareSeriesWithCustomBar(UntrackedBar::new,
+                new double[] { 5, 6, 10, 7, 8 }, new double[] { 4, 5, 9, 6, 5 });
+        final FractalSwingDetector detector = new FractalSwingDetector(1);
+
+        assertThat(detector.detectPivots(series, 3)).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(2, SwingPivotType.HIGH));
+        final long revisionBeforeMutation = series.getBarHistoryRevision();
+        series.getBar(1).addPrice(DecimalNum.valueOf(20));
+
+        assertThat(series.getBarHistoryRevision()).isEqualTo(revisionBeforeMutation);
+        assertThat(detector.detectPivots(series, 4)).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(1, SwingPivotType.HIGH));
+    }
+
+    @Test
     void nonpublishingBaseBarSubclassInvalidatesRevisionAwareReplayResult() {
         assertUntrackedMutationReplaysCorrectly(UntrackedBaseBar::new);
     }
@@ -454,8 +470,11 @@ class FractalSwingDetectorTest {
     }
 
     private static BaseBarSeries revisionAwareSeriesWithCustomBar(final Function<BaseBar, Bar> customBar) {
-        final double[] highs = { 5, 6, 10, 7 };
-        final double[] lows = { 4, 5, 9, 6 };
+        return revisionAwareSeriesWithCustomBar(customBar, new double[] { 5, 6, 10, 7 }, new double[] { 4, 5, 9, 6 });
+    }
+
+    private static BaseBarSeries revisionAwareSeriesWithCustomBar(final Function<BaseBar, Bar> customBar,
+            final double[] highs, final double[] lows) {
         final List<Bar> bars = new ArrayList<>();
         for (int index = 0; index < highs.length; index++) {
             final Num close = DecimalNum.valueOf((highs[index] + lows[index]) / 2);

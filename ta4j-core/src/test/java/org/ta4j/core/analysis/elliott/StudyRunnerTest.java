@@ -459,6 +459,8 @@ class StudyRunnerTest {
                 new double[] { 10, 12, 11, 14, 12, 13, 11, 15, 13, 16, 14 });
 
         assertTrue(StudyRunner.AlternativeGrammar.of("5+5").matches(laterExtension).isEmpty());
+        final List<ConfirmedPivot> impossiblePrefix = alternatingWindow(new double[] { 10, 12, 11, 14, 12, 13 });
+        assertTrue(StudyRunner.AlternativeGrammar.of("5+5").partialMatches(impossiblePrefix).isEmpty());
     }
 
     @Test
@@ -480,11 +482,10 @@ class StudyRunnerTest {
     }
 
     @Test
-    void alternativeGrammarMarksCompetingPartialPlacementsAmbiguous() {
+    public void alternativeGrammarRejectsNonExtremePartialJunctions() {
         final List<ConfirmedPivot> pivots = alternatingWindow(new double[] { 0, 10, 5, 20, 8, 20 });
 
-        assertEquals(Set.of("BULLISH:0-5", "BULLISH:2-5", "BEARISH:1-5"),
-                StudyRunner.AlternativeGrammar.of("3+3").partialMatches(pivots));
+        assertEquals(Set.of("BULLISH:0-5"), StudyRunner.AlternativeGrammar.of("3+3").partialMatches(pivots));
     }
 
     @Test

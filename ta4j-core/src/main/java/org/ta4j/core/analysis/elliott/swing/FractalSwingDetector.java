@@ -105,11 +105,13 @@ public final class FractalSwingDetector implements SwingDetector {
             return new SwingDetectorResult(List.of(), List.of());
         }
         final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
-        final CausalReplayState state = replayStates
-                .computeIfAbsent(new SeriesKey(series), ignored -> new ConcurrentHashMap<>())
-                .computeIfAbsent(degree, ignored -> new CausalReplayState(series, lookbackLength, lookforwardLength,
-                        allowedEqualBars, degree));
-        return withSeriesReadLock(series, () -> state.resultAt(clampedIndex));
+        return withSeriesReadLock(series, () -> {
+            final CausalReplayState state = replayStates
+                    .computeIfAbsent(new SeriesKey(series), ignored -> new ConcurrentHashMap<>())
+                    .computeIfAbsent(degree, ignored -> new CausalReplayState(series, lookbackLength, lookforwardLength,
+                            allowedEqualBars, degree));
+            return state.resultAt(clampedIndex);
+        });
     }
 
     @Override
@@ -119,11 +121,13 @@ public final class FractalSwingDetector implements SwingDetector {
             return List.of();
         }
         final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
-        final CausalReplayState state = replayStates
-                .computeIfAbsent(new SeriesKey(series), ignored -> new ConcurrentHashMap<>())
-                .computeIfAbsent(ElliottDegree.MINUETTE, ignored -> new CausalReplayState(series, lookbackLength,
-                        lookforwardLength, allowedEqualBars, ElliottDegree.MINUETTE));
-        return withSeriesReadLock(series, () -> state.pivotsAt(clampedIndex));
+        return withSeriesReadLock(series, () -> {
+            final CausalReplayState state = replayStates
+                    .computeIfAbsent(new SeriesKey(series), ignored -> new ConcurrentHashMap<>())
+                    .computeIfAbsent(ElliottDegree.MINUETTE, ignored -> new CausalReplayState(series, lookbackLength,
+                            lookforwardLength, allowedEqualBars, ElliottDegree.MINUETTE));
+            return state.pivotsAt(clampedIndex);
+        });
     }
 
     private static <T> T withSeriesReadLock(final BarSeries series, final Supplier<T> action) {
@@ -528,9 +532,9 @@ public final class FractalSwingDetector implements SwingDetector {
          * apply internally, so stale merge state never survives a mutation they would
          * themselves discard. Revision-aware series changes remain O(1). For legacy
          * series whose revisions cannot observe direct {@link Bar} mutations, the
-         * retained OHLC snapshots are validated only when a replay rewinds, an append
-         * extends the observed window, or a cached as-of result is queried again;
-         * ordinary ascending replay therefore stays incremental.
+         * retained OHLC snapshots are validated when revisions are unavailable.
+         * Untrackable bars are rescanned on every query; tracked bars retain
+         * incremental replay.
          */
         private boolean seriesHistoryChanged(final int requestedIndex) {
             if (series instanceof ConcurrentBarSeries concurrentSeries) {
@@ -567,12 +571,9 @@ public final class FractalSwingDetector implements SwingDetector {
                 boolean changed = currentBeginIndex != observedBeginIndex
                         || (!revisionUnavailable && currentRevision != observedRevision)
                         || currentEndIndex < observedEndIndex;
-                final boolean observedWindowExtended = currentEndIndex > observedEndIndex;
-                final boolean replayPositionRequiresValidation = observedWindowExtended
-                        || requestedIndex <= lastScannedIndex;
-                final boolean validateLegacySnapshots = revisionUnavailable && replayPositionRequiresValidation;
-                final boolean validateUntrackableSnapshots = !observedUntrackableBars.isEmpty()
-                        && replayPositionRequiresValidation;
+                final boolean validateLegacySnapshots = revisionUnavailable
+                        && (currentEndIndex > observedEndIndex || requestedIndex <= lastScannedIndex);
+                final boolean validateUntrackableSnapshots = !observedUntrackableBars.isEmpty();
                 if (!changed && (validateLegacySnapshots || validateUntrackableSnapshots)) {
                     if (validateLegacySnapshots) {
                         changed = retainedBarsChanged(currentBeginIndex, Math.min(observedEndIndex, currentEndIndex));

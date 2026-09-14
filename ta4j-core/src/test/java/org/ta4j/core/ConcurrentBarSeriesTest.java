@@ -1115,7 +1115,6 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         final ConcurrentBarSeries series = new ConcurrentBarSeries("detector-lock-order", List.of(bar), 0, 0, false,
                 numFactory, barBuilderFactory, lock);
         final FractalSwingDetector detector = new FractalSwingDetector(1);
-        detector.detectPivots(series, 0);
         armed.set(true);
 
         final Future<?> readerFuture = executorService.submit(() -> {
@@ -1128,6 +1127,67 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
         writerFuture.get(4, TimeUnit.SECONDS);
         readerFuture.get(4, TimeUnit.SECONDS);
+    }
+
+    @Test
+    public void nestedSeriesCallbacksPublishBeforeOwnUnlock() {
+        final ReentrantReadWriteLock outerLock = new ReentrantReadWriteLock();
+        final AtomicReference<ConcurrentBarSeries> nestedSeries = new AtomicReference<>();
+        final AtomicReference<CachedIndicator<Num>> nestedClose = new AtomicReference<>();
+        final AtomicReference<Num> currentClose = new AtomicReference<>(numOf(10));
+        final AtomicReference<Long> observedRevision = new AtomicReference<>();
+        final AtomicReference<Num> observedClose = new AtomicReference<>();
+        final AtomicBoolean armed = new AtomicBoolean();
+        final ReentrantReadWriteLock nestedLock = new ReentrantReadWriteLock() {
+            private final WriteLock observingWriteLock = new WriteLock(this) {
+                @Override
+                public void unlock() {
+                    final boolean shouldObserve = armed.get();
+                    super.unlock();
+                    if (shouldObserve) {
+                        final long revision = nestedSeries.get().getBarHistoryRevision();
+                        if (observedRevision.compareAndSet(null, revision)) {
+                            observedClose.set(nestedClose.get().getValue(0));
+                        }
+                    }
+                }
+            };
+
+            @Override
+            public WriteLock writeLock() {
+                return observingWriteLock;
+            }
+        };
+        final ConcurrentBarSeries outer = new ConcurrentBarSeries("nested-callback-outer",
+                new ArrayList<>(testBars.subList(0, 2)), 0, 1, false, numFactory, barBuilderFactory, outerLock);
+        final ConcurrentBarSeries nested = new ConcurrentBarSeries("nested-callback-nested",
+                new ArrayList<>(testBars.subList(0, 2)), 0, 1, false, numFactory, barBuilderFactory, nestedLock);
+        nestedSeries.set(nested);
+        nestedClose.set(new CachedIndicator<Num>(nested) {
+            @Override
+            protected Num calculate(final int index) {
+                return currentClose.get();
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        });
+        assertNumEquals(10, nestedClose.get().getValue(0));
+        armed.set(true);
+
+        outer.withWriteLock((java.util.function.Supplier<Void>) () -> {
+            nested.withWriteLock((java.util.function.Supplier<Void>) () -> {
+                currentClose.set(numOf(20));
+                nested.retainedBarMutated((BaseBar) nested.getBar(0), 0);
+                return null;
+            });
+            return null;
+        });
+
+        assertEquals(Long.valueOf(1L), observedRevision.get());
+        assertNumEquals(20, observedClose.get());
     }
 
     @Test

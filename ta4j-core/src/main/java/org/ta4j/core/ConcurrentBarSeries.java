@@ -21,6 +21,7 @@ import java.util.Objects;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 
 /**
@@ -428,8 +429,8 @@ public class ConcurrentBarSeries extends BaseBarSeries {
     public <T> T withWriteLock(final Supplier<T> action) {
         Objects.requireNonNull(action, "action cannot be null");
         this.writeLock.lock();
-        final DeferredRetainedMutationCallbacks callbacks = beginDeferredRetainedMutationCallbacks();
-        final boolean outermost = callbacks.isOutermost();
+        final DeferredRetainedMutationCallbacks callbacks = beginDeferredRetainedMutationCallbacks(this);
+        final boolean outermost = callbacks.isOutermost(this);
         Throwable failure = null;
         Throwable localCallbackFailure = null;
         try {
@@ -442,7 +443,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
                 localCallbackFailure = flushLocalRetainedMutationCallbacks(callbacks);
             }
             this.writeLock.unlock();
-            completeDeferredRetainedMutationCallbacks(callbacks, failure, localCallbackFailure);
+            completeDeferredRetainedMutationCallbacks(callbacks, this, failure, localCallbackFailure);
         }
     }
 
@@ -467,13 +468,14 @@ public class ConcurrentBarSeries extends BaseBarSeries {
         }
     }
 
-    private static DeferredRetainedMutationCallbacks beginDeferredRetainedMutationCallbacks() {
+    private static DeferredRetainedMutationCallbacks beginDeferredRetainedMutationCallbacks(
+            final ConcurrentBarSeries series) {
         DeferredRetainedMutationCallbacks callbacks = DEFERRED_RETAINED_MUTATION_CALLBACKS.get();
         if (callbacks == null) {
             callbacks = new DeferredRetainedMutationCallbacks();
             DEFERRED_RETAINED_MUTATION_CALLBACKS.set(callbacks);
         }
-        callbacks.enter();
+        callbacks.enter(series);
         return callbacks;
     }
 
@@ -500,8 +502,10 @@ public class ConcurrentBarSeries extends BaseBarSeries {
     }
 
     private static void completeDeferredRetainedMutationCallbacks(final DeferredRetainedMutationCallbacks callbacks,
-            final Throwable actionFailure, final Throwable localCallbackFailure) {
-        if (!callbacks.leave()) {
+            final ConcurrentBarSeries series, final Throwable actionFailure, final Throwable localCallbackFailure) {
+        final boolean outermost = callbacks.leave(series);
+        if (!outermost) {
+            propagateCallbackFailure(localCallbackFailure, actionFailure);
             return;
         }
         DEFERRED_RETAINED_MUTATION_CALLBACKS.remove();
@@ -517,14 +521,19 @@ public class ConcurrentBarSeries extends BaseBarSeries {
                 }
             }
         }
-        if (callbackFailure != null) {
-            if (actionFailure != null) {
-                actionFailure.addSuppressed(callbackFailure);
-            } else if (callbackFailure instanceof RuntimeException runtimeException) {
-                throw runtimeException;
-            } else {
-                throw (Error) callbackFailure;
-            }
+        propagateCallbackFailure(callbackFailure, actionFailure);
+    }
+
+    private static void propagateCallbackFailure(final Throwable callbackFailure, final Throwable actionFailure) {
+        if (callbackFailure == null) {
+            return;
+        }
+        if (actionFailure != null) {
+            actionFailure.addSuppressed(callbackFailure);
+        } else if (callbackFailure instanceof RuntimeException runtimeException) {
+            throw runtimeException;
+        } else {
+            throw (Error) callbackFailure;
         }
     }
 
@@ -971,17 +980,26 @@ public class ConcurrentBarSeries extends BaseBarSeries {
     private static final class DeferredRetainedMutationCallbacks {
 
         private final List<RetainedMutationCallback> callbacks = new ArrayList<>();
+        private final IdentityHashMap<ConcurrentBarSeries, Integer> leaseNesting = new IdentityHashMap<>();
         private int nesting;
 
-        private void enter() {
+        private void enter(final ConcurrentBarSeries series) {
             nesting++;
+            final Integer current = leaseNesting.get(series);
+            leaseNesting.put(series, current == null ? 1 : current + 1);
         }
 
-        private boolean isOutermost() {
-            return nesting == 1;
+        private boolean isOutermost(final ConcurrentBarSeries series) {
+            return leaseNesting.get(series) == 1;
         }
 
-        private boolean leave() {
+        private boolean leave(final ConcurrentBarSeries series) {
+            final int current = leaseNesting.get(series);
+            if (current == 1) {
+                leaseNesting.remove(series);
+            } else {
+                leaseNesting.put(series, current - 1);
+            }
             return --nesting == 0;
         }
 

@@ -1110,7 +1110,7 @@ final class StudyRunner {
                     return false;
                 }
             }
-            return !complete || matchesSegmentJunction(window);
+            return window.size() <= segmentLegs[0] || matchesSegmentJunction(window);
         }
 
         private boolean matchesSegmentJunction(final List<ConfirmedPivot> window) {
