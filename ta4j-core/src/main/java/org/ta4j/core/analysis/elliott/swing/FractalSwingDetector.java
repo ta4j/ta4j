@@ -563,7 +563,8 @@ public final class FractalSwingDetector implements SwingDetector {
                 final boolean replayPositionRequiresValidation = observedWindowExtended
                         || requestedIndex <= lastScannedIndex;
                 final boolean validateLegacySnapshots = revisionUnavailable && replayPositionRequiresValidation;
-                final boolean validateUntrackableSnapshots = !observedUntrackableBars.isEmpty();
+                final boolean validateUntrackableSnapshots = !observedUntrackableBars.isEmpty()
+                        && replayPositionRequiresValidation;
                 if (!changed && (validateLegacySnapshots || validateUntrackableSnapshots)) {
                     if (validateLegacySnapshots) {
                         changed = retainedBarsChanged(currentBeginIndex, Math.min(observedEndIndex, currentEndIndex));

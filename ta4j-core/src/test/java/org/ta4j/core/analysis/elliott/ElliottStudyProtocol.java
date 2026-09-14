@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Objects;
 
@@ -120,7 +121,7 @@ final class ElliottStudyProtocol {
             ElliottStudyProtocol protocol = fromRaw(raw, fingerprint);
             verifyDatasets(protocol.datasets);
             return protocol;
-        } catch (IllegalArgumentException exception) {
+        } catch (IllegalArgumentException | DateTimeParseException exception) {
             throw new IllegalStateException("Invalid study protocol resource: " + RESOURCE, exception);
         }
     }

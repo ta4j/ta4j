@@ -386,10 +386,6 @@ final class StudyRunner {
         }
     }
 
-    /**
-     * Returns the last bar of {@code series} whose date belongs to the given
-     * partition, or -1 when the partition has no bars in the series.
-     */
     private static BarSeries subSeriesThrough(final BarSeries series, final int start, final int inclusiveEnd) {
         if (inclusiveEnd == series.getEndIndex()) {
             return series;
@@ -397,6 +393,10 @@ final class StudyRunner {
         return series.getSubSeries(start, Math.addExact(inclusiveEnd, 1));
     }
 
+    /**
+     * Returns the last bar of {@code series} whose date belongs to the given
+     * partition, or -1 when the partition has no bars in the series.
+     */
     private static int lastBarInPartition(final BarSeries series, final Partitions partitions,
             final int partitionIndex) {
         int last = -1;

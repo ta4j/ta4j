@@ -967,12 +967,14 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     public void originRevisionIsVisibleBeforeMutationUnlock() {
         final AtomicReference<ConcurrentBarSeries> origin = new AtomicReference<>();
         final AtomicBoolean checking = new AtomicBoolean();
+        final AtomicBoolean observed = new AtomicBoolean();
         final ReentrantReadWriteLock lock = new ReentrantReadWriteLock() {
             private final WriteLock observingWriteLock = new WriteLock(this) {
                 @Override
                 public void unlock() {
                     try {
                         if (checking.get() && getWriteHoldCount() == 1) {
+                            observed.set(true);
                             assertEquals(1L, origin.get().getBarHistoryRevision());
                             assertNumEquals(20, origin.get().getLastBar().getClosePrice());
                         }
@@ -996,6 +998,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         checking.set(true);
 
         origin.get().addPrice(numOf(20));
+        assertTrue("write-lock observer was not invoked", observed.get());
     }
 
     @Test

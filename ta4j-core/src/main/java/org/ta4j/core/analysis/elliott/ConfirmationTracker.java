@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis.elliott;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -105,6 +106,7 @@ final class ConfirmationTracker {
         final int end = Math.min(series.getEndIndex(), endIndex);
         final List<Integer> versionAsOf = new ArrayList<>();
         final List<ReplayVersion> versions = new ArrayList<>();
+        List<ConfirmedPivot> previousVersion = List.of();
         List<SwingPivot> previousReportedSnapshot = null;
         if (begin <= end) {
             for (int asOf = begin;; asOf++) {
@@ -112,9 +114,10 @@ final class ConfirmationTracker {
                 if (previousReportedSnapshot == null || !reported.equals(previousReportedSnapshot)) {
                     final boolean changed = reconcile(order, known, reported, asOf, collapsed);
                     if (changed) {
-                        versions.add(
-                                ReplayVersion.of(versions.isEmpty() ? null : versions.get(versions.size() - 1), order));
+                        final ReplayVersion parent = versions.isEmpty() ? null : versions.get(versions.size() - 1);
+                        versions.add(ReplayVersion.of(parent, previousVersion, order, versions.size()));
                         versionAsOf.add(asOf);
+                        previousVersion = List.copyOf(order);
                     }
                     previousReportedSnapshot = List.copyOf(reported);
                 }
@@ -401,34 +404,73 @@ final class ConfirmationTracker {
                     high = mid - 1;
                 }
             }
-            return found < 0 ? List.of() : versions.get(found).materialize();
+            return found < 0 ? List.of() : versions.get(found).snapshot();
         }
     }
 
-    private record ReplayVersion(ReplayVersion parent, int prefixLength, List<ConfirmedPivot> suffix) {
+    private static final int REPLAY_CHECKPOINT_INTERVAL = 32;
 
-        private static ReplayVersion of(final ReplayVersion parent, final List<ConfirmedPivot> pivots) {
-            final List<ConfirmedPivot> previous = parent == null ? List.of() : parent.materialize();
+    private static final class ReplayVersion {
+
+        private final ReplayVersion parent;
+        private final int prefixLength;
+        private final List<ConfirmedPivot> suffix;
+        private final List<ConfirmedPivot> checkpoint;
+        private final int size;
+        private final List<ConfirmedPivot> snapshot;
+
+        private ReplayVersion(final ReplayVersion parent, final int prefixLength, final List<ConfirmedPivot> suffix,
+                final List<ConfirmedPivot> checkpoint, final int size) {
+            this.parent = parent;
+            this.prefixLength = prefixLength;
+            this.suffix = suffix;
+            this.checkpoint = checkpoint;
+            this.size = size;
+            this.snapshot = new ReplaySnapshot(this);
+        }
+
+        private static ReplayVersion of(final ReplayVersion parent, final List<ConfirmedPivot> previous,
+                final List<ConfirmedPivot> pivots, final int versionIndex) {
             int prefixLength = 0;
             while (prefixLength < previous.size() && prefixLength < pivots.size()
                     && previous.get(prefixLength).equals(pivots.get(prefixLength))) {
                 prefixLength++;
             }
-            return new ReplayVersion(parent, prefixLength, List.copyOf(pivots.subList(prefixLength, pivots.size())));
+            final List<ConfirmedPivot> suffix = List.copyOf(pivots.subList(prefixLength, pivots.size()));
+            final List<ConfirmedPivot> checkpoint = versionIndex % REPLAY_CHECKPOINT_INTERVAL == 0 ? List.copyOf(pivots)
+                    : null;
+            return new ReplayVersion(parent, prefixLength, suffix, checkpoint, pivots.size());
         }
 
-        private List<ConfirmedPivot> materialize() {
-            final ArrayList<ReplayVersion> versions = new ArrayList<>();
-            for (ReplayVersion version = this; version != null; version = version.parent) {
-                versions.add(version);
+        private List<ConfirmedPivot> snapshot() {
+            return snapshot;
+        }
+    }
+
+    private static final class ReplaySnapshot extends AbstractList<ConfirmedPivot> {
+
+        private final ReplayVersion version;
+
+        private ReplaySnapshot(final ReplayVersion version) {
+            this.version = version;
+        }
+
+        @Override
+        public ConfirmedPivot get(final int index) {
+            Objects.checkIndex(index, version.size);
+            ReplayVersion current = version;
+            while (current.checkpoint == null) {
+                if (index >= current.prefixLength) {
+                    return current.suffix.get(index - current.prefixLength);
+                }
+                current = current.parent;
             }
-            final List<ConfirmedPivot> pivots = new ArrayList<>();
-            for (int index = versions.size() - 1; index >= 0; index--) {
-                final ReplayVersion version = versions.get(index);
-                pivots.subList(version.prefixLength, pivots.size()).clear();
-                pivots.addAll(version.suffix);
-            }
-            return List.copyOf(pivots);
+            return current.checkpoint.get(index);
+        }
+
+        @Override
+        public int size() {
+            return version.size;
         }
     }
 }
