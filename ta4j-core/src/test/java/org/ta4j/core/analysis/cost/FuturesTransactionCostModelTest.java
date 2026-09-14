@@ -222,4 +222,29 @@ class FuturesTransactionCostModelTest {
             assertNumEquals(0.15, trade.getFees().getFirst().settlementAmount());
         }
     }
+
+    @Test
+    void considersEquivalentSchedulesEqualAcrossNumFactories() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
+        FuturesTransactionCostModel doubleModel = FuturesTransactionCostModel.builder()
+                .makerRate(doubleFactory.numOf(0.00002))
+                .takerRate(doubleFactory.numOf(0.00001))
+                .minimumPerContract(doubleFactory.numOf(0.05))
+                .perContractCharge(TradeFee.Type.CLEARING, doubleFactory.numOf(0.2))
+                .source("venue")
+                .asOf(T0)
+                .build();
+        FuturesTransactionCostModel decimalModel = FuturesTransactionCostModel.builder()
+                .makerRate(decimalFactory.numOf(0.00002))
+                .takerRate(decimalFactory.numOf(0.00001))
+                .minimumPerContract(decimalFactory.numOf(0.05))
+                .perContractCharge(TradeFee.Type.CLEARING, decimalFactory.numOf(0.2))
+                .source("venue")
+                .asOf(T0)
+                .build();
+
+        assertTrue(doubleModel.equals(decimalModel));
+        assertTrue(decimalModel.equals(doubleModel));
+    }
 }

@@ -747,4 +747,25 @@ public class PositionTest {
             assertNumEquals(50, position.getHoldingCost(3));
         }
     }
+
+    @Test
+    public void asOfProfitUsesOnlyRetainedEntryFills() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.one())
+                    .build();
+            Trade entry = Trade.fromFills(TradeType.BUY, List.of(futuresFill(contract, 0, 100, 1, ExecutionSide.BUY),
+                    futuresFill(contract, 2, 200, 1, ExecutionSide.BUY)), RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            assertNumEquals(10, position.getProfit(1, numFactory.numOf(110)));
+        }
+    }
 }

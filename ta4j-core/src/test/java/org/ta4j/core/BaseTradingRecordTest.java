@@ -2731,4 +2731,35 @@ class BaseTradingRecordTest {
             assertNumEquals(0.15, imported.getCurrentPosition().getProfit(2, numFactory.numOf(120)));
         }
     }
+
+    @Test
+    void importedFuturesPositionsAcceptEquivalentNumericSchedules() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
+        FuturesTransactionCostModel doubleModel = FuturesTransactionCostModel.builder()
+                .makerRate(doubleFactory.numOf(0.00002))
+                .takerRate(doubleFactory.numOf(0.00001))
+                .minimumPerContract(doubleFactory.numOf(0.05))
+                .perContractCharge(TradeFee.Type.CLEARING, doubleFactory.numOf(0.2))
+                .build();
+        FuturesTransactionCostModel decimalModel = FuturesTransactionCostModel.builder()
+                .makerRate(decimalFactory.numOf(0.00002))
+                .takerRate(decimalFactory.numOf(0.00001))
+                .minimumPerContract(decimalFactory.numOf(0.05))
+                .perContractCharge(TradeFee.Type.CLEARING, decimalFactory.numOf(0.2))
+                .build();
+        FuturesContract doubleContract = linearBtcPerpetual(doubleFactory);
+        FuturesContract decimalContract = linearBtcPerpetual(decimalFactory);
+        Position doublePosition = new Position(
+                Trade.fromFill(fill(doubleContract, 0, ExecutionSide.BUY, 1, 10_000, List.of()), doubleModel),
+                doubleModel, new ZeroCostModel());
+        Position decimalPosition = new Position(
+                Trade.fromFill(fill(decimalContract, 0, ExecutionSide.BUY, 1, 10_000, List.of()), decimalModel),
+                decimalModel, new ZeroCostModel());
+
+        BaseTradingRecord imported = new BaseTradingRecord(List.of(doublePosition, decimalPosition));
+
+        assertEquals(2, imported.getOpenPositions().size());
+        assertTrue(imported.getTransactionCostModel().equals(decimalModel));
+    }
 }

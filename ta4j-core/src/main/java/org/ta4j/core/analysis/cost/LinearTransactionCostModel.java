@@ -9,6 +9,7 @@ import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * With this cost model, the trading costs for opening or closing a position
@@ -65,18 +66,21 @@ public class LinearTransactionCostModel implements CostModel {
         Num totalPositionCost = calculateFuturesTradeCost(position.getEntry(), currentIndex);
         Trade exitTrade = position.getExit();
         if (exitTrade != null) {
-            totalPositionCost = totalPositionCost.plus(calculateFuturesTradeCost(exitTrade, currentIndex));
+            Num exitCost = calculateFuturesTradeCost(exitTrade, currentIndex);
+            totalPositionCost = totalPositionCost.plus(totalPositionCost.getNumFactory().numOf(exitCost.getDelegate()));
         }
         return totalPositionCost;
     }
 
     private Num calculateFuturesTradeCost(Trade trade, int currentIndex) {
-        Num totalTradeCost = trade.getPricePerAsset().getNumFactory().zero();
+        NumFactory numFactory = trade.getPricePerAsset().getNumFactory();
+        Num totalTradeCost = numFactory.zero();
         for (TradeFill fill : Trade.executionFillsOf(trade)) {
             if (fill.index() < 0 || fill.index() > currentIndex) {
                 continue;
             }
-            totalTradeCost = totalTradeCost.plus(fill.hasRecordedFees() ? fill.fee() : calculate(fill));
+            Num fillCost = fill.hasRecordedFees() ? fill.fee() : calculate(fill);
+            totalTradeCost = totalTradeCost.plus(numFactory.numOf(fillCost.getDelegate()));
         }
         return totalTradeCost;
     }

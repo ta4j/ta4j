@@ -871,4 +871,21 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         }
     }
 
+    @Test
+    public void futuresCashFlowDoesNotMaterializeDiscardedHistory() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            barSeries.setMaximumBarCount(3);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 500);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 90, List.of()));
+
+            CashFlow cashFlow = new CashFlow(barSeries, record, 0, 4, EquityCurveMode.MARK_TO_MARKET,
+                    OpenPositionHandling.MARK_TO_MARKET);
+
+            assertNumEquals(1, cashFlow.getValue(0));
+            assertNumEquals(1, cashFlow.getValue(1));
+            assertNumEquals(1.3, cashFlow.getValue(2));
+        }
+    }
 }

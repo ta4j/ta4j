@@ -125,6 +125,43 @@ public class LinearTransactionCostModelTest {
     }
 
     @Test
+    public void calculateMixedFactoryFuturesPositionCost() {
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(DoubleNum.valueOf(0.01))
+                .build();
+        TradeFill entryFill = TradeFill.builder()
+                .index(0)
+                .time(Instant.EPOCH)
+                .price(DoubleNum.valueOf(100))
+                .amount(DoubleNum.valueOf(1))
+                .side(ExecutionSide.BUY)
+                .futuresContract(contract)
+                .build();
+        var decimalFactory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        TradeFill exitFill = TradeFill.builder()
+                .index(1)
+                .time(Instant.EPOCH.plusSeconds(1))
+                .price(decimalFactory.numOf(200))
+                .amount(decimalFactory.one())
+                .side(ExecutionSide.SELL)
+                .futuresContract(contract)
+                .fee(decimalFactory.zero())
+                .build();
+        Trade entry = Trade.fromFill(entryFill, transactionModel);
+        Trade exit = Trade.fromFill(exitFill, transactionModel);
+        Position position = new Position(entry, exit, transactionModel, new ZeroCostModel());
+
+        assertNumEquals(0.01, transactionModel.calculate(position));
+    }
+
+    @Test
     public void testEquality() {
         LinearTransactionCostModel model = new LinearTransactionCostModel(0.1);
         CostModel modelSameClass = new LinearTransactionCostModel(0.2);

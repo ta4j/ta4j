@@ -83,9 +83,9 @@ final class FuturesPositionAccounting {
      * settlement payoff of the matched quantity.
      *
      * <p>
-     * Every executed entry fill is valued at the entry trade's price per asset, so
-     * a merged average-cost lot realizes its merged basis instead of the historic
-     * price of one of its fills.
+     * Every executed entry fill is valued at the retained entry basis. When
+     * finalIndex includes all entry fills, this is the trade's merged basis;
+     * otherwise it is recomputed from the fills executed by finalIndex.
      * </p>
      *
      * @param entry           entry trade carrying the basis
@@ -99,9 +99,10 @@ final class FuturesPositionAccounting {
      */
     private static Num matchedPayoff(Trade entry, FuturesContract contract, NumFactory numFactory,
             ArrayDeque<FillSlice> exits, int finalIndex, Num unexecutedPrice) {
-        Num basis = entry.getPricePerAsset();
+        List<TradeFill> entryFills = executedFills(entry, finalIndex);
+        Num basis = entryBasis(entry, contract, numFactory, entryFills);
         Num total = numFactory.zero();
-        for (TradeFill entryFill : executedFills(entry, finalIndex)) {
+        for (TradeFill entryFill : entryFills) {
             FillSlice entrySlice = fillSlice(entryFill, numFactory);
             Num remainingEntry = entrySlice.amount();
             while (remainingEntry.isPositive() && !exits.isEmpty()) {
@@ -466,6 +467,28 @@ final class FuturesPositionAccounting {
             total = total.plus(numFactory.numOf(fill.fee().getDelegate()));
         }
         return total;
+    }
+
+    private static Num entryBasis(Trade entry, FuturesContract contract, NumFactory numFactory,
+            List<TradeFill> entryFills) {
+        List<TradeFill> allEntryFills = Trade.executionFillsOf(entry);
+        if (entryFills.isEmpty() || entryFills.size() == allEntryFills.size()) {
+            return entry.getPricePerAsset();
+        }
+        Num totalAmount = numFactory.zero();
+        Num quoteWeightedPrice = numFactory.zero();
+        Num quotePriceSum = numFactory.zero();
+        for (TradeFill fill : entryFills) {
+            FillSlice slice = fillSlice(fill, numFactory);
+            totalAmount = totalAmount.plus(slice.amount());
+            quoteWeightedPrice = quoteWeightedPrice.plus(slice.price().multipliedBy(slice.amount()));
+            if (contract.settlementType() == FuturesContract.SettlementType.INVERSE) {
+                quotePriceSum = quotePriceSum.plus(slice.amount().dividedBy(slice.price()));
+            }
+        }
+        return contract.settlementType() == FuturesContract.SettlementType.INVERSE
+                ? totalAmount.dividedBy(quotePriceSum)
+                : quoteWeightedPrice.dividedBy(totalAmount);
     }
 
     private static FillSlice fillSlice(TradeFill fill, NumFactory numFactory) {

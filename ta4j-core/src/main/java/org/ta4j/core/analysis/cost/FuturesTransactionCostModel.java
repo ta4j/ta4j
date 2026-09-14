@@ -168,10 +168,33 @@ public final class FuturesTransactionCostModel implements CostModel {
         if (!(otherModel instanceof FuturesTransactionCostModel other)) {
             return false;
         }
-        return Objects.equals(makerRate, other.makerRate) && Objects.equals(takerRate, other.takerRate)
-                && Objects.equals(minimumPerContract, other.minimumPerContract)
-                && perContractCharges.equals(other.perContractCharges) && defaultLiquidity == other.defaultLiquidity
-                && Objects.equals(source, other.source) && Objects.equals(asOf, other.asOf);
+        return numEqualsNullable(makerRate, other.makerRate) && numEqualsNullable(takerRate, other.takerRate)
+                && numEqualsNullable(minimumPerContract, other.minimumPerContract)
+                && numMapEquals(perContractCharges, other.perContractCharges)
+                && defaultLiquidity == other.defaultLiquidity && Objects.equals(source, other.source)
+                && Objects.equals(asOf, other.asOf);
+    }
+
+    private static boolean numEqualsNullable(Num left, Num right) {
+        if (left == null || right == null) {
+            return left == right;
+        }
+        if (left.isNaN() || right.isNaN()) {
+            return left.isNaN() && right.isNaN();
+        }
+        return left.bigDecimalValue().compareTo(right.bigDecimalValue()) == 0;
+    }
+
+    private static boolean numMapEquals(Map<TradeFee.Type, Num> left, Map<TradeFee.Type, Num> right) {
+        if (!left.keySet().equals(right.keySet())) {
+            return false;
+        }
+        for (Map.Entry<TradeFee.Type, Num> charge : left.entrySet()) {
+            if (!numEqualsNullable(charge.getValue(), right.get(charge.getKey()))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private Num selectedRate(TradeFill fill) {
