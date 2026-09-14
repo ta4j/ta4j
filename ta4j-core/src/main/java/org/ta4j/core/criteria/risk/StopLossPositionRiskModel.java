@@ -4,6 +4,7 @@
 package org.ta4j.core.criteria.risk;
 
 import java.util.List;
+import java.util.ArrayList;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.FuturesContract;
@@ -64,11 +65,11 @@ public final class StopLossPositionRiskModel implements PositionRiskModel {
      * <p>
      * A native futures position is evaluated through the contract's settlement
      * economics instead: the loss is the contract profit of the unclosed contracts
-     * between the net entry price and the stop price. The net entry price already
-     * embeds the recorded entry fees for both linear and inverse settlement, so the
-     * fees paid on entry are part of the loss, and inverse price sensitivity and
-     * the contract multiplier are applied by the contract rather than by a
-     * quote-price gap.
+     * between the executed net entry price and the stop price. The executed net
+     * entry price embeds the recorded entry fees for executed fills, so the fees
+     * paid on entry are part of the loss, and inverse price sensitivity and the
+     * contract multiplier are applied by the contract rather than by a quote-price
+     * gap.
      * </p>
      *
      * <p>
@@ -88,8 +89,14 @@ public final class StopLossPositionRiskModel implements PositionRiskModel {
         if (position == null || position.getEntry() == null) {
             return series.numFactory().zero();
         }
-        Num entryPrice = position.getEntry().getNetPrice();
-        Num amount = position.getEntry().getAmount();
+        FuturesContract contract = position.getFuturesContract();
+        Trade entry = position.getEntry();
+        Trade effectiveEntry = contract == null ? entry : executedEntryTrade(entry);
+        if (effectiveEntry == null) {
+            return series.numFactory().zero();
+        }
+        Num entryPrice = effectiveEntry.getNetPrice();
+        Num amount = contract == null ? entry.getAmount() : effectiveEntry.getAmount();
         if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(amount) || amount.isZero()) {
             return series.numFactory().zero();
         }
@@ -98,30 +105,38 @@ public final class StopLossPositionRiskModel implements PositionRiskModel {
         if (Num.isNaNOrNull(stopPrice)) {
             return series.numFactory().zero();
         }
-        FuturesContract contract = position.getFuturesContract();
         if (contract == null) {
             Num perUnitRisk = entryPrice.minus(stopPrice).abs();
             return perUnitRisk.multipliedBy(amount.abs());
         }
-        Num executedEntryAmount = executedAmount(position.getEntry(), amount);
-        if (executedEntryAmount.isZero()) {
-            return series.numFactory().zero();
-        }
-        return contract.profit(position.getEntry().getType(), executedEntryAmount.abs(), entryPrice, stopPrice).abs();
+        return contract.profit(entry.getType(), amount.abs(), entryPrice, stopPrice).abs();
     }
 
-    private static Num executedAmount(Trade trade, Num fallback) {
+    private static Trade executedEntryTrade(Trade trade) {
         List<TradeFill> fills = trade.getFills();
         if (fills.isEmpty()) {
-            return fallback;
+            return trade;
         }
-        Num total = fallback.getNumFactory().zero();
+        boolean hasDeferredFill = false;
         for (TradeFill fill : fills) {
-            if (fill.index() >= 0) {
-                total = total.plus(total.getNumFactory().numOf(fill.amount().getDelegate()));
+            if (fill.index() < 0) {
+                hasDeferredFill = true;
+                break;
             }
         }
-        return total;
+        if (!hasDeferredFill) {
+            return trade;
+        }
+        List<TradeFill> executedFills = new ArrayList<>(fills.size());
+        for (TradeFill fill : fills) {
+            if (fill.index() >= 0) {
+                executedFills.add(fill);
+            }
+        }
+        if (executedFills.isEmpty()) {
+            return null;
+        }
+        return Trade.fromFills(trade.getType(), executedFills, trade.getCostModel());
     }
 
     /**
@@ -141,12 +156,16 @@ public final class StopLossPositionRiskModel implements PositionRiskModel {
             if (series == null || position == null || position.getEntry() == null) {
                 return null;
             }
-            Num entryPrice = position.getEntry().getNetPrice();
+            Trade executedEntry = executedEntryTrade(position.getEntry());
+            if (executedEntry == null) {
+                return null;
+            }
+            Num entryPrice = executedEntry.getNetPrice();
             if (Num.isNaNOrNull(entryPrice)) {
                 return null;
             }
             Num lossPercent = series.numFactory().numOf(lossPercentage);
-            return StopLossRule.stopLossPrice(entryPrice, lossPercent, position.getEntry().isBuy());
+            return StopLossRule.stopLossPrice(entryPrice, lossPercent, executedEntry.isBuy());
         };
     }
 }

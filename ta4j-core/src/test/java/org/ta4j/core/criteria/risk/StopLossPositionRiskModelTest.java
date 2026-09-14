@@ -3,16 +3,24 @@
  */
 package org.ta4j.core.criteria.risk;
 
+import java.time.Instant;
+import java.util.List;
 import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFill;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.FixedAmountStopLossRule;
 
 public class StopLossPositionRiskModelTest {
@@ -94,5 +102,47 @@ public class StopLossPositionRiskModelTest {
         PositionRiskModel model = new StopLossPositionRiskModel(5);
 
         assertNumEquals(0, model.risk(series, position));
+    }
+
+    @Test
+    public void excludesDeferredFuturesEntryFillsFromStopLossBasis() {
+        BarSeries series = new MockBarSeriesBuilder().withData(100).build();
+        NumFactory numFactory = series.numFactory();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("TEST")
+                .symbol("TEST-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .quantityIncrement(numFactory.one())
+                .minimumQuantity(numFactory.one())
+                .build();
+        TradeFill executedFill = TradeFill.builder()
+                .index(0)
+                .time(Instant.parse("2025-01-01T00:00:00Z"))
+                .price(numFactory.hundred())
+                .amount(numFactory.one())
+                .side(ExecutionSide.BUY)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+        TradeFill deferredFill = TradeFill.builder()
+                .index(-1)
+                .time(Instant.parse("2025-01-01T00:00:01Z"))
+                .price(numFactory.numOf(200))
+                .amount(numFactory.one())
+                .side(ExecutionSide.BUY)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+        Trade entry = Trade.fromFills(Trade.TradeType.BUY, List.of(executedFill, deferredFill));
+        Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        PositionRiskModel model = new StopLossPositionRiskModel(5);
+
+        assertNumEquals(5, model.risk(series, position));
     }
 }
