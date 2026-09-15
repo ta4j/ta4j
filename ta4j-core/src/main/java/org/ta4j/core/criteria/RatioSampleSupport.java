@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.criteria;
 
+import java.time.Duration;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Objects;
@@ -21,6 +22,7 @@ import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexes;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.utils.BarSeriesUtils;
+import org.ta4j.core.utils.TimeConstants;
 
 final class RatioSampleSupport {
 
@@ -45,11 +47,16 @@ final class RatioSampleSupport {
     private static Stream<Sample> timeBasedSamples(BarSeries series, SamplingFrequency samplingFrequency,
             ZoneId groupingZoneId, ExcessReturns excessReturns) {
         int beginIndex = series.getBeginIndex();
-        int startIndex = beginIndex + 1;
+        boolean includeInitialReturn = excessReturns.hasInitialReturn();
+        int startIndex = includeInitialReturn ? beginIndex : beginIndex + 1;
+        int anchorIndex = includeInitialReturn ? beginIndex - 1 : beginIndex;
         int endIndex = series.getEndIndex();
         SamplingFrequencyIndexes samplingFrequencyIndexes = new SamplingFrequencyIndexes(samplingFrequency,
                 groupingZoneId);
-        return samplingFrequencyIndexes.sample(series, beginIndex, startIndex, endIndex)
+        if (includeInitialReturn && beginIndex == endIndex) {
+            return Stream.of(toSample(series, new IndexPair(anchorIndex, beginIndex), excessReturns));
+        }
+        return samplingFrequencyIndexes.sample(series, anchorIndex, startIndex, endIndex)
                 .map(indexPair -> toSample(series, indexPair, excessReturns));
     }
 
@@ -166,7 +173,18 @@ final class RatioSampleSupport {
     private static Sample toSample(BarSeries series, IndexPair indexPair, ExcessReturns excessReturns) {
         int previousIndex = indexPair.previousIndex();
         int currentIndex = indexPair.currentIndex();
-        return new Sample(excessReturns.excessReturn(previousIndex, currentIndex),
-                BarSeriesUtils.deltaYears(series, previousIndex, currentIndex));
+        Num deltaYears;
+        if (previousIndex == series.getBeginIndex() - 1 && excessReturns.hasInitialReturn()) {
+            long seconds = Math
+                    .max(0, Duration
+                            .between(series.getBar(series.getBeginIndex()).getBeginTime(),
+                                    series.getBar(currentIndex).getEndTime())
+                            .getSeconds());
+            NumFactory numFactory = series.numFactory();
+            deltaYears = numFactory.numOf(seconds).dividedBy(numFactory.numOf(TimeConstants.SECONDS_PER_YEAR));
+        } else {
+            deltaYears = BarSeriesUtils.deltaYears(series, previousIndex, currentIndex);
+        }
+        return new Sample(excessReturns.excessReturn(previousIndex, currentIndex), deltaYears);
     }
 }

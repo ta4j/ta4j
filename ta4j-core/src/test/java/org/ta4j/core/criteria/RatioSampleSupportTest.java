@@ -21,10 +21,13 @@ import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradeFill;
+import org.ta4j.core.TradeFee;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.ExcessReturns;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
+import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.analysis.frequency.Sample;
@@ -256,6 +259,91 @@ public class RatioSampleSupportTest {
         public List<Position> getOpenPositions() {
             return List.of();
         }
+    }
+
+    @Test
+    public void timeSamplingIncludesInitialFuturesFeeButNotPreWindowSeed() {
+        BarSeries series = buildDailySeries("initial_futures_fee", new double[] { 100d, 100d, 100d, 100d });
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .build();
+        Trade entry = Trade.fromFill(fill(contract, 0, ExecutionSide.BUY, 1d, 100d).toBuilder()
+                .fees(List.of(TradeFee.builder()
+                        .type(TradeFee.Type.COMMISSION)
+                        .amount(numFactory.one())
+                        .currency("USD")
+                        .build()))
+                .build(), RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(fill(contract, 0, ExecutionSide.SELL, 1d, 100d), RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE,
+                new LinearBorrowingCostModel(0d));
+        BaseTradingRecord record = new BaseTradingRecord(position);
+        ExcessReturns returns = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO, position,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        List<Sample> samples = RatioSampleSupport
+                .samples(series, record, SamplingFrequency.BAR, ZoneOffset.UTC, returns,
+                        OpenPositionHandling.MARK_TO_MARKET)
+                .toList();
+        assertEquals(4, samples.size());
+        assertNumEquals(-0.01d, samples.getFirst().value());
+        assertNumEquals(BarSeriesUtils.deltaYears(series, 0, 1), samples.getFirst().deltaYears(), 1e-12);
+        assertNumEquals(0d, samples.get(1).value());
+        List<Sample> monthly = RatioSampleSupport
+                .samples(series, record, SamplingFrequency.MONTH, ZoneOffset.UTC, returns,
+                        OpenPositionHandling.MARK_TO_MARKET)
+                .toList();
+        assertEquals(1, monthly.size());
+        assertNumEquals(-0.01d, monthly.getFirst().value());
+        series.setMaximumBarCount(3);
+        ExcessReturns retained = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO,
+                position, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        List<Sample> retainedSamples = RatioSampleSupport
+                .samples(series, record, SamplingFrequency.BAR, ZoneOffset.UTC, retained,
+                        OpenPositionHandling.MARK_TO_MARKET)
+                .toList();
+        assertEquals(2, retainedSamples.size());
+        for (Sample sample : retainedSamples) {
+            assertNumEquals(0d, sample.value());
+        }
+    }
+
+    @Test
+    public void singleRetainedBarSamplesFreshMarkedEquityWithRiskFreeDuration() {
+        BarSeries source = buildDailySeries("single_futures_mark", new double[] { 110d });
+        BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(7)
+                .build();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .build();
+        Position position = new Position(
+                Trade.fromFill(fill(contract, 7, ExecutionSide.BUY, 1d, 100d), RecordedTradeCostModel.INSTANCE),
+                RecordedTradeCostModel.INSTANCE, new LinearBorrowingCostModel(0d));
+        ExcessReturns returns = new ExcessReturns(series, numFactory.numOf(0.05d), CashReturnPolicy.CASH_EARNS_ZERO,
+                position, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        List<Sample> samples = RatioSampleSupport
+                .samples(series, new BaseTradingRecord(position), SamplingFrequency.BAR, ZoneOffset.UTC, returns,
+                        OpenPositionHandling.MARK_TO_MARKET)
+                .toList();
+        double years = 86400d / org.ta4j.core.utils.TimeConstants.SECONDS_PER_YEAR;
+        assertEquals(1, samples.size());
+        assertNumEquals(years, samples.getFirst().deltaYears());
+        assertNumEquals(1.1d / Math.pow(1.05d, years) - 1d, samples.getFirst().value());
     }
 
 }

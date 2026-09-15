@@ -1,4 +1,5 @@
 ## Unreleased
+- **Futures review round 51**: time-based Sharpe and Sortino samples include nonzero initial futures equity moves from capital, with first-bar risk-free duration and calendar grouping; cumulative pre-window seeds remain excluded.
 - **Futures review round 50**: invested and trade intervals end at the final executed exit fill; nonpositive futures stops return zero risk; bounded cash-flow snapshots retain only their normalized window, including empty and reversed ranges. Regression helper types are explicit.
 - **Futures review round 49**: custom stop-loss models use executed futures entry fills; partially exited aggregate futures retain invested intervals and trade-frequency samples through the mark-to-market horizon.
 - **Futures review round 48**: empty futures projections retain the source numeric factory for recorded fees; imported futures positions reject exits before sufficient entry exposure by index and execution time.

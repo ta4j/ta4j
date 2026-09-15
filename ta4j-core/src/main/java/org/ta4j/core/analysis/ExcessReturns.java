@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis;
 
+import java.time.Duration;
 import java.util.Objects;
 
 import org.ta4j.core.utils.BarSeriesUtils;
@@ -12,6 +13,7 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.utils.TimeConstants;
 
 /**
  * Computes compounded excess returns between sampled index pairs.
@@ -148,9 +150,21 @@ public final class ExcessReturns {
     }
 
     /**
+     * Whether the curve has a nonzero first-bar futures return from initial
+     * capital, rather than cumulative activity before the retained window.
+     *
+     * @return whether sampling should include the capital-to-first-bar move
+     * @since 0.25.1
+     */
+    public boolean hasInitialReturn() {
+        return cashFlow.hasInitialReturn();
+    }
+
+    /**
      * Computes the compounded excess return using the configured cash flow.
      *
-     * @param previousIndex the start index
+     * @param previousIndex the start index; one before the series begin index uses
+     *                      initial capital when {@link #hasInitialReturn()} is true
      * @param currentIndex  the end index
      * @return the compounded excess return
      * @since 0.22.2
@@ -195,7 +209,17 @@ public final class ExcessReturns {
     private Num riskFreeGrowth(int previousIndex, int currentIndex, Num one) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
-        Num deltaYears = BarSeriesUtils.deltaYears(series, previousIndex, currentIndex);
+        Num deltaYears;
+        if (previousIndex == series.getBeginIndex() - 1 && hasInitialReturn()) {
+            long seconds = Math
+                    .max(0, Duration
+                            .between(series.getBar(series.getBeginIndex()).getBeginTime(),
+                                    series.getBar(currentIndex).getEndTime())
+                            .getSeconds());
+            deltaYears = numFactory.numOf(seconds).dividedBy(numFactory.numOf(TimeConstants.SECONDS_PER_YEAR));
+        } else {
+            deltaYears = BarSeriesUtils.deltaYears(series, previousIndex, currentIndex);
+        }
         if (deltaYears.isLessThanOrEqual(zero)) {
             return one;
         }

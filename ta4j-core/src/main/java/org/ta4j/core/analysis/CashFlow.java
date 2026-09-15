@@ -55,6 +55,8 @@ public class CashFlow implements PerformanceIndicator {
      */
     private final Indicator<Num> markPriceIndicator;
 
+    private final boolean initialReturnEligible;
+
     /**
      * Constructor.
      *
@@ -255,6 +257,8 @@ public class CashFlow implements PerformanceIndicator {
         this.markPriceIndicator = markPriceIndicator;
         int size = this.valueEndIndex < this.valueStartIndex ? 0 : this.valueEndIndex - this.valueStartIndex + 1;
         this.values = new ArrayList<>(Collections.nCopies(size, barSeries.numFactory().one()));
+        this.initialReturnEligible = futures && size > 0 && !FuturesPerformanceSupport.hasPreWindowActivity(record,
+                this.valueStartIndex, FuturesPerformanceSupport.includesExposure(handling, equityCurveMode));
         if (futures) {
             fillFuturesValues(record, finalIndex, handling, fallbackCapital);
             return;
@@ -373,6 +377,10 @@ public class CashFlow implements PerformanceIndicator {
             Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
             multiplyRange(Math.max(ratioIndex, windowStartIndex), windowEndIndex, ratio);
         }
+    }
+
+    boolean hasInitialReturn() {
+        return initialReturnEligible && !values.getFirst().isEqual(barSeries.numFactory().one());
     }
 
     /**
