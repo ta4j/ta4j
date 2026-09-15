@@ -194,4 +194,72 @@ public class StopLossPositionRiskModelTest {
         // remaining contract has a net entry basis of 101 and risks 11.
         assertNumEquals(11, model.risk(series, position));
     }
+
+    @Test
+    public void returnsZeroRiskForDeferredScalarFuturesEntry() {
+        BarSeries series = new MockBarSeriesBuilder().withData(100).build();
+        NumFactory numFactory = series.numFactory();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("TEST")
+                .symbol("TEST-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .quantityIncrement(numFactory.one())
+                .minimumQuantity(numFactory.one())
+                .build();
+        ZeroCostModel costModel = new ZeroCostModel();
+        Trade deferredEntry = new org.ta4j.core.BaseTrade(-1, Trade.TradeType.BUY, numFactory.hundred(),
+                numFactory.one(), costModel) {
+            @Override
+            public FuturesContract getFuturesContract() {
+                return contract;
+            }
+
+            @Override
+            public List<TradeFill> getFills() {
+                return List.of();
+            }
+        };
+        Position position = new Position(deferredEntry, costModel, new ZeroCostModel());
+
+        assertNumEquals(0, new StopLossPositionRiskModel(5).risk(series, position));
+    }
+
+    @Test
+    public void preservesExecutedScalarFuturesEntryCompatibility() {
+        BarSeries series = new MockBarSeriesBuilder().withData(100).build();
+        NumFactory numFactory = series.numFactory();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("TEST")
+                .symbol("TEST-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .quantityIncrement(numFactory.one())
+                .minimumQuantity(numFactory.one())
+                .build();
+        ZeroCostModel costModel = new ZeroCostModel();
+        Trade executedEntry = new org.ta4j.core.BaseTrade(0, Trade.TradeType.BUY, numFactory.hundred(),
+                numFactory.one(), costModel) {
+            @Override
+            public FuturesContract getFuturesContract() {
+                return contract;
+            }
+
+            @Override
+            public List<TradeFill> getFills() {
+                return List.of();
+            }
+        };
+        Position position = new Position(executedEntry, costModel, new ZeroCostModel());
+
+        assertNumEquals(5, new StopLossPositionRiskModel(5).risk(series, position));
+    }
 }

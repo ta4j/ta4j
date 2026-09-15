@@ -284,4 +284,40 @@ class PositionSizerTest {
 
         assertNumEquals(numFactory.zero(), sizingContext.maxAffordableAmount(numFactory.hundred()));
     }
+
+    @Test
+    public void maxAffordableAmountNormalizesForeignBudgets() {
+        NumFactory[] factories = { DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance() };
+        for (int i = 0; i < factories.length; i++) {
+            NumFactory factory = factories[i];
+            Num budget = factories[1 - i].numOf(5);
+            assertNumEquals(4, context(factory, futuresRecord(factory, factory.numOf(5))).maxAffordableAmount(budget));
+            assertNumEquals(4, context(factory, spotRecord()).maxAffordableAmount(budget));
+        }
+    }
+
+    @Test
+    public void maxAffordableAmountChecksMaximumBeyondFeeSpike() {
+        for (NumFactory factory : new NumFactory[] { DoubleNumFactory.getInstance(),
+                DecimalNumFactory.getInstance() }) {
+            FuturesContract contract = linearContract(factory).toBuilder().maximumQuantity(factory.numOf(10)).build();
+            BaseTradingRecord record = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .initialCapital(factory.numOf(5))
+                    .initialMarginRate(factory.one())
+                    .build();
+            CostModel feeModel = new ZeroCostModel() {
+                @Override
+                public Num calculate(TradeFill fill) {
+                    NumFactory numFactory = fill.amount().getNumFactory();
+                    return numFactory.numOf(fill.amount().isLessThan(numFactory.numOf(10)) ? 10 : -10);
+                }
+            };
+            PositionSizer.Context sizingContext = new PositionSizer.Context(0, 0, factory.one(), null,
+                    entryOnFirstBar(), flatSeries(factory, 1), TradeType.BUY, record, feeModel, new ZeroCostModel());
+            assertNumEquals(11, sizingContext.entryCost(factory.one()));
+            assertNumEquals(0, sizingContext.entryCost(factory.numOf(10)));
+            assertNumEquals(10, sizingContext.maxAffordableAmount(factory.numOf(5)));
+        }
+    }
 }

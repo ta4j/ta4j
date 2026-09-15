@@ -115,7 +115,7 @@ public final class StopLossPositionRiskModel implements PositionRiskModel {
     }
 
     private static Trade executedEntryTrade(Trade trade) {
-        List<TradeFill> fills = trade.getFills();
+        List<TradeFill> fills = Trade.executionFillsOf(trade);
         if (fills.isEmpty()) {
             return trade;
         }

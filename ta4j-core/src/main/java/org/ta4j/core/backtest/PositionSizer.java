@@ -515,6 +515,7 @@ public interface PositionSizer {
         public Num maxAffordableAmount(Num budget) {
             validateFiniteNum(budget, "budget");
             validatePositiveNum(entryPrice, "entryPrice");
+            budget = numFactory().numOf(budget.getDelegate());
             Num zero = numFactory().zero();
             if (!budget.isPositive()) {
                 return zero;
@@ -554,10 +555,11 @@ public interface PositionSizer {
          * Finds the largest tradable contract count that the budget can afford.
          *
          * <p>
-         * The search probes actual entry costs until it finds an unaffordable quantity,
-         * then bisects that bracket. A configured quantity or notional maximum caps
-         * every probe. Without a configured maximum, the search fails explicitly when
-         * no unaffordable quantity is found within the convergence guard.
+         * A configured maximum is checked first so a rebate at that limit cannot be
+         * hidden by an earlier fee spike. Otherwise the search probes actual entry
+         * costs until it finds an unaffordable quantity, then bisects that bracket.
+         * Without a configured maximum, the search fails explicitly when no
+         * unaffordable quantity is found within the convergence guard.
          * </p>
          *
          * @param contract   contract declaring the quantity constraints
@@ -573,6 +575,9 @@ public interface PositionSizer {
                     : FuturesOrderQuantitySupport.largestTradable(contract, upperBound, entryPrice);
             if (maximum != null && !maximum.isPositive()) {
                 return zero;
+            }
+            if (maximum != null && entryCost(maximum).isLessThanOrEqual(budget)) {
+                return maximum;
             }
 
             Num two = numFactory().two();
@@ -606,9 +611,6 @@ public interface PositionSizer {
                 if (maximum == null) {
                     throw new IllegalStateException(
                             "native futures affordability is unbounded; configure maximumQuantity or maximumNotional");
-                }
-                if (low.isEqual(maximum) || entryCost(maximum).isLessThanOrEqual(budget)) {
-                    return maximum;
                 }
                 high = maximum;
             }

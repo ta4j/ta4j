@@ -390,7 +390,10 @@ public class Position implements Serializable {
         if (futuresContract != null) {
             return FuturesPositionAccounting.profit(this, finalPrice, finalIndex);
         }
-        if (entry != null && entry.getIndex() > finalIndex) {
+        if (entry == null) {
+            return finalPrice.getNumFactory().zero();
+        }
+        if (entry.getIndex() > finalIndex) {
             return entry.getPricePerAsset().getNumFactory().zero();
         }
         Num grossProfit = isOpened() || exit.getIndex() > finalIndex ? openGrossProfit(finalPrice)

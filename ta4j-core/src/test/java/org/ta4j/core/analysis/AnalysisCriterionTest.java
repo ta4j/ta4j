@@ -12,11 +12,14 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.FuturesCashFlow;
 import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradeFill;
+import org.ta4j.core.TradingRecord;
+
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.ReturnRepresentation;
@@ -327,4 +330,52 @@ public class AnalysisCriterionTest {
                     new NetProfitCriterion().calculate(barSeries, record, AnalysisWindow.barRange(2, 2), marked));
         }
     }
+
+    @Test
+    public void markedPartialAggregateDropsCashFlowWithoutResidualOwnership() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 100, 110, 110);
+            Trade entry = Trade.fromFills(TradeType.BUY,
+                    List.of(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 100, 100, List.of()),
+                            FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 100, 100, List.of())),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFill(
+                    FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.SELL, 100, 110, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+            FuturesCashFlow cashFlow = FuturesCashFlow.builder()
+                    .contract(contract)
+                    .type(FuturesCashFlow.Type.FUNDING)
+                    .eventId("funding-between-entry-fills")
+                    .index(1)
+                    .time(FuturesAnalysisTestSupport.T0.plusSeconds(1))
+                    .amount(testFactory.numOf(3))
+                    .settlementAmount(testFactory.numOf(30))
+                    .currency("BTC")
+                    .build();
+            Position aggregate = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel()) {
+                @Override
+                public List<FuturesCashFlow> getCashFlows() {
+                    return List.of(cashFlow);
+                }
+            };
+            TradingRecord record = new BaseTradingRecord() {
+                @Override
+                public FuturesContract getFuturesContract() {
+                    return contract;
+                }
+
+                @Override
+                public List<Position> getPositions() {
+                    return List.of(aggregate);
+                }
+            };
+            AnalysisContext marked = AnalysisContext.defaults()
+                    .withOpenPositionHandling(OpenPositionHandling.MARK_TO_MARKET);
+
+            assertNumEquals(50,
+                    new NetProfitCriterion().calculate(barSeries, record, AnalysisWindow.barRange(0, 2), marked));
+        }
+    }
+
 }

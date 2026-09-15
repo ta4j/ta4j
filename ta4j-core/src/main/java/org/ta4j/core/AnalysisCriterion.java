@@ -647,12 +647,16 @@ public interface AnalysisCriterion {
             for (FuturesCashFlow cashFlow : cashFlowSlices.get(i)) {
                 Num closedPortion = scaleValue(cashFlow.amount(), closedAmount, fillAmount);
                 Num closedSettlement = scaleValue(cashFlow.settlementAmount(), closedAmount, fillAmount);
-                closedCashFlows
-                        .add(cashFlow.toBuilder().amount(closedPortion).settlementAmount(closedSettlement).build());
-                openCashFlows.add(cashFlow.toBuilder()
-                        .amount(cashFlow.amount().minus(closedPortion))
-                        .settlementAmount(cashFlow.settlementAmount().minus(closedSettlement))
-                        .build());
+                if (closedAmount.isPositive()) {
+                    closedCashFlows
+                            .add(cashFlow.toBuilder().amount(closedPortion).settlementAmount(closedSettlement).build());
+                }
+                if (closedAmount.isLessThan(fillAmount)) {
+                    openCashFlows.add(cashFlow.toBuilder()
+                            .amount(cashFlow.amount().minus(closedPortion))
+                            .settlementAmount(cashFlow.settlementAmount().minus(closedSettlement))
+                            .build());
+                }
             }
         }
         boolean allEntryFillsRetained = retainedEntryFills.size() == allEntryFills.size();

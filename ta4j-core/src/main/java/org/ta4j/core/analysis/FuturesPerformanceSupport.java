@@ -419,10 +419,11 @@ final class FuturesPerformanceSupport {
 
         private Num markAt(int index) {
             int seriesEnd = series.getEndIndex();
-            if (seriesEnd < series.getBeginIndex()) {
+            int seriesBegin = series.getBeginIndex();
+            if (seriesEnd < seriesBegin || index < seriesBegin) {
                 return NaN.NaN;
             }
-            int boundedIndex = Math.max(series.getBeginIndex(), Math.min(index, seriesEnd));
+            int boundedIndex = Math.min(index, seriesEnd);
             return toFactory(numFactory, markPrice.getValue(boundedIndex));
         }
     }

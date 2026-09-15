@@ -26,6 +26,7 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.num.NaN;
 import java.util.ArrayList;
 import org.ta4j.core.FuturesContract;
 import org.ta4j.core.TradeFill;
@@ -552,6 +553,27 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
 
         assertNumEquals(200.0, pnl.getValue(2));
         assertNumEquals(300.0, pnl.getValue(3));
+    }
+
+    @Test
+    public void futuresCumulativePnlMarksCutoffBeforeRetainedSeriesAsUnavailable() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            barSeries.setMaximumBarCount(3);
+            BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(contract).build();
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+
+            CumulativePnL markToMarket = new CumulativePnL(barSeries, record, 0, EquityCurveMode.MARK_TO_MARKET,
+                    OpenPositionHandling.MARK_TO_MARKET);
+            CumulativePnL realizedOnly = new CumulativePnL(barSeries, record, 0, EquityCurveMode.REALIZED,
+                    OpenPositionHandling.IGNORE);
+
+            for (int index = barSeries.getBeginIndex(); index <= barSeries.getEndIndex(); index++) {
+                assertNumEquals(NaN.NaN, markToMarket.getValue(index));
+                assertNumEquals(0, realizedOnly.getValue(index));
+            }
+        }
     }
 
 }

@@ -931,4 +931,13 @@ public class PositionTest {
             assertNumEquals(17, closed.getProfit(5, numFactory.numOf(80)));
         }
     }
+
+    @Test
+    public void emptySpotProfitHasNoExposureOrCosts() {
+        for (NumFactory numFactory : factories()) {
+            Position position = new Position(TradeType.BUY, new FixedTransactionCostModel(3),
+                    new LinearBorrowingCostModel(0.01));
+            assertNumEquals(0, position.getProfit(3, numFactory.numOf(80)));
+        }
+    }
 }
