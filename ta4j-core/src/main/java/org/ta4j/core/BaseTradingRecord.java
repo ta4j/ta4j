@@ -609,10 +609,10 @@ public class BaseTradingRecord implements TradingRecord {
         Num totalFees = null;
         for (Position position : positions) {
             Position projectedPosition = trimmedToWindow(position, end);
-            projected.adoptPosition(projectedPosition);
+            projected.adoptPosition(projectedPosition, false);
             totalFees = accumulateRecordedFees(totalFees, projectedPosition);
         }
-        projected.totalFees = totalFees == null ? projected.defaultNumFactory().zero() : totalFees;
+        projected.totalFees = totalFees;
         projected.aggregateProjectedCashFlows(positions, end);
         projected.readOnly = true;
         return projected;
@@ -727,6 +727,10 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     private void adoptPosition(Position position) {
+        adoptPosition(position, true);
+    }
+
+    private void adoptPosition(Position position, boolean validateTimeChronology) {
         Trade entry = position.getEntry();
         Trade exit = position.getExit();
         if (!hasNumFactory()) {
@@ -740,6 +744,9 @@ public class BaseTradingRecord implements TradingRecord {
             throw new IllegalArgumentException("native futures positions require an execution timestamp");
         }
         Position adoptedPosition = normalizeToRecordFactory(position);
+        if (adoptedPosition.getFuturesContract() != null) {
+            validateImportedPositionChronology(adoptedPosition, validateTimeChronology);
+        }
         long entrySequence = nextSequence++;
         long exitSequence = nextSequence++;
         positionBook.adopt(adoptedPosition, entrySequence, exitSequence);
@@ -1414,6 +1421,74 @@ public class BaseTradingRecord implements TradingRecord {
         int timeOrder = time.compareTo(otherTime);
         if (timeOrder < 0 ? index > otherIndex : timeOrder > 0 ? index < otherIndex : index > otherIndex) {
             throw new IllegalArgumentException(message);
+        }
+    }
+
+    private void validateImportedPositionChronology(Position importedPosition, boolean validateTimeChronology) {
+        List<ExposureEvent> events = new ArrayList<>();
+        if (!validateTimeChronology) {
+            for (Position position : closedPositionsSnapshot()) {
+                addExposureEvents(events, position);
+            }
+            for (Position position : openPositionsSnapshot()) {
+                addExposureEvents(events, position);
+            }
+        }
+        addExposureEvents(events, importedPosition);
+
+        events.sort(Comparator.comparingInt(ExposureEvent::index)
+                .thenComparing(ExposureEvent::time, Comparator.nullsFirst(Comparator.naturalOrder()))
+                .thenComparing(event -> event.opens() ? 0 : 1));
+        if (validateTimeChronology) {
+            ExposureEvent previous = null;
+            for (ExposureEvent event : events) {
+                if (previous != null && previous.time() != null && event.time() != null) {
+                    requireEventExecutionIndexOrder(previous.time(), previous.index(), event.time(), event.index(),
+                            "Imported futures fills must be chronological");
+                }
+                previous = event;
+            }
+        }
+
+        Num buyExposure = null;
+        Num sellExposure = null;
+        for (ExposureEvent event : events) {
+            Num exposure = event.side() == ExecutionSide.BUY ? buyExposure : sellExposure;
+            if (event.opens()) {
+                exposure = exposure == null ? event.amount() : exposure.plus(event.amount());
+            } else {
+                if (exposure == null || event.amount().isGreaterThan(exposure)) {
+                    throw new IllegalArgumentException("Imported futures exit exceeds available exposure");
+                }
+                exposure = exposure.minus(event.amount());
+            }
+            if (event.side() == ExecutionSide.BUY) {
+                buyExposure = exposure;
+            } else {
+                sellExposure = exposure;
+            }
+        }
+    }
+
+    private void addExposureEvents(List<ExposureEvent> events, Position position) {
+        addExposureEvents(events, position.getEntry(), true);
+        if (position.getExit() != null) {
+            addExposureEvents(events, position.getExit(), false);
+        }
+    }
+
+    private void addExposureEvents(List<ExposureEvent> events, Trade trade, boolean opens) {
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() < 0) {
+                continue;
+            }
+            Instant time = fill.time() == null ? trade.getTime() : fill.time();
+            ExecutionSide side = sideOf(trade.getType());
+            if (!opens) {
+                side = side == ExecutionSide.BUY ? ExecutionSide.SELL : ExecutionSide.BUY;
+            }
+            Num amount = numFactory.numOf(fill.amount().getDelegate());
+            events.add(new ExposureEvent(fill.index(), time, amount, side, opens));
         }
     }
 
@@ -3493,6 +3568,9 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     private record SequencedTrade(Trade trade, long sequence) {
+    }
+
+    private record ExposureEvent(int index, Instant time, Num amount, ExecutionSide side, boolean opens) {
     }
 
     private record PlannedTradeFill(int index, Trade trade) {

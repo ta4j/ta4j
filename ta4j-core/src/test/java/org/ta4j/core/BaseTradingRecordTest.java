@@ -3242,4 +3242,77 @@ class BaseTradingRecordTest {
             assertNumEquals(3, record.getOpenPositions().getFirst().getProfit(5, numFactory.hundred()));
         }
     }
+
+    @Test
+    public void importedFuturesPositionRejectsExitBeforeEntryChronology() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Trade entry = Trade.fromFill(
+                    fillAtTime(contract, 5, T0.plusSeconds(5), ExecutionSide.BUY, 1, 100, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFill(
+                    fillAtTime(contract, 4, T0.plusSeconds(4), ExecutionSide.SELL, 1, 100, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+            Position imported = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            assertThrows(IllegalArgumentException.class, () -> new BaseTradingRecord(imported));
+        }
+    }
+
+    @Test
+    public void importedFuturesPositionRejectsCumulativeExitOverdraw() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Trade entry = Trade.fromFills(TradeType.BUY,
+                    List.of(fillAtTime(contract, 0, T0, ExecutionSide.BUY, 1, 100, List.of()),
+                            fillAtTime(contract, 2, T0.plusSeconds(2), ExecutionSide.BUY, 1, 100, List.of())),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFill(
+                    fillAtTime(contract, 1, T0.plusSeconds(1), ExecutionSide.SELL, 2, 100, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+            Position imported = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            assertThrows(IllegalArgumentException.class, () -> new BaseTradingRecord(imported));
+        }
+    }
+
+    @Test
+    public void importedFuturesPositionPreservesInterleavedEntryAndExitFills() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Trade entry = Trade.fromFills(TradeType.BUY,
+                    List.of(fillAtTime(contract, 0, T0, ExecutionSide.BUY, 1, 100, List.of()),
+                            fillAtTime(contract, 2, T0.plusSeconds(2), ExecutionSide.BUY, 1, 100, List.of())),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFills(TradeType.SELL,
+                    List.of(fillAtTime(contract, 1, T0.plusSeconds(1), ExecutionSide.SELL, 1, 100, List.of()),
+                            fillAtTime(contract, 3, T0.plusSeconds(3), ExecutionSide.SELL, 1, 100, List.of())),
+                    RecordedTradeCostModel.INSTANCE);
+
+            BaseTradingRecord record = new BaseTradingRecord(
+                    new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+
+            assertEquals(1, record.getPositions().size());
+            assertTrue(record.isClosed());
+        }
+    }
+
+    @Test
+    public void importedFuturesPositionPreservesPartialExitImport() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Trade entry = Trade.fromFills(TradeType.BUY,
+                    List.of(fillAtTime(contract, 0, T0, ExecutionSide.BUY, 1, 100, List.of()),
+                            fillAtTime(contract, 2, T0.plusSeconds(2), ExecutionSide.BUY, 1, 100, List.of())),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFill(
+                    fillAtTime(contract, 1, T0.plusSeconds(1), ExecutionSide.SELL, 1, 100, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+
+            BaseTradingRecord record = new BaseTradingRecord(
+                    new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+
+            assertEquals(1, record.getOpenPositions().size());
+        }
+    }
 }

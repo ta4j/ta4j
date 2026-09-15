@@ -8,6 +8,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.List;
 import org.junit.Test;
+import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ExecutionMatchPolicy;
@@ -27,6 +28,8 @@ import org.ta4j.core.criteria.pnl.NetAverageProfitCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitLossPercentageCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
@@ -376,6 +379,34 @@ public class AnalysisCriterionTest {
             assertNumEquals(50,
                     new NetProfitCriterion().calculate(barSeries, record, AnalysisWindow.barRange(0, 2), marked));
         }
+    }
+
+    @Test
+    public void windowProjectionKeepsDecimalFactoryForEmptyRecordedFeeArithmetic() {
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(decimalFactory);
+        BarSeries barSeries = FuturesAnalysisTestSupport.series(decimalFactory, 100, 105);
+        BaseTradingRecord source = FuturesAnalysisTestSupport.fundedRecord(contract, decimalFactory, 1_000);
+        Num sourceCapital = source.getInitialCapital();
+
+        AnalysisCriterion criterion = new AnalysisCriterion() {
+            @Override
+            public Num calculate(BarSeries series, Position position) {
+                return series.numFactory().zero();
+            }
+
+            @Override
+            public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+                return sourceCapital.plus(tradingRecord.getRecordedTotalFees());
+            }
+
+            @Override
+            public boolean betterThan(Num v1, Num v2) {
+                return v1.isGreaterThan(v2);
+            }
+        };
+
+        assertNumEquals(sourceCapital, criterion.calculate(barSeries, source, AnalysisWindow.barRange(0, 1)));
     }
 
 }
