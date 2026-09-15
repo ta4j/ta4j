@@ -331,4 +331,23 @@ class BaseTradeTest {
 
         assertNumEquals(NUM_FACTORY.numOf(-0.1), trade.getFills().getFirst().fee());
     }
+
+    @Test
+    public void modeledFillFeesNormalizeMixedFactories() {
+        for (NumFactory firstFactory : List.of(NUM_FACTORY, DecimalNumFactory.getInstance())) {
+            NumFactory secondFactory = firstFactory == NUM_FACTORY ? DecimalNumFactory.getInstance() : NUM_FACTORY;
+            TradeFill first = new TradeFill(1, Instant.EPOCH, firstFactory.hundred(), firstFactory.one(),
+                    firstFactory.numOf(0.1), ExecutionSide.BUY, null, null);
+            TradeFill second = new TradeFill(2, Instant.EPOCH, secondFactory.numOf(200), secondFactory.one(),
+                    secondFactory.numOf(0.2), ExecutionSide.BUY, null, null);
+            Trade trade = Trade.fromFills(TradeType.BUY, List.of(first, second), new LinearTransactionCostModel(0.01));
+
+            List<TradeFill> exported = trade.getFills();
+            assertNumEquals(1, exported.getFirst().fee());
+            assertNumEquals(2, exported.getLast().fee());
+            Trade restored = Trade.fromFills(TradeType.BUY, exported, RecordedTradeCostModel.INSTANCE);
+            assertNumEquals(trade.getCost(), restored.getCost());
+            assertNumEquals(trade.getNetPrice(), restored.getNetPrice());
+        }
+    }
 }

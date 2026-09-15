@@ -377,7 +377,8 @@ public class Position implements Serializable {
 
     /**
      * Calculates the net profit of the position. If it is open, calculates the
-     * profit until the final bar. The net profit includes any trading costs.
+     * profit until the final bar. The net profit includes any trading costs and is
+     * zero before the entry executes.
      *
      * @param finalIndex the index of the final bar to be considered (if position is
      *                   open)
@@ -388,6 +389,9 @@ public class Position implements Serializable {
     public Num getProfit(int finalIndex, Num finalPrice) {
         if (futuresContract != null) {
             return FuturesPositionAccounting.profit(this, finalPrice, finalIndex);
+        }
+        if (entry != null && entry.getIndex() > finalIndex) {
+            return entry.getPricePerAsset().getNumFactory().zero();
         }
         Num grossProfit = isOpened() || exit.getIndex() > finalIndex ? openGrossProfit(finalPrice)
                 : getGrossProfit(finalPrice);

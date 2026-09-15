@@ -26,9 +26,10 @@ import org.ta4j.core.num.NumFactory;
  * <p>
  * A native futures position is quoted in contracts, so its cost basis is the
  * entry settlement notional of the remaining contract quantity plus the
- * recorded opening fees. The raw {@code price * contracts} product would mix a
- * per-asset price with a contract count and is therefore never used for
- * futures.
+ * recorded opening fees. Only fills executed through the record end index (or
+ * series end index for a position-level calculation) contribute. The raw
+ * {@code price * contracts} product would mix a per-asset price with a contract
+ * count and is therefore never used for futures.
  * </p>
  *
  * @since 0.22.2
@@ -41,7 +42,7 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
         if (position.getFuturesContract() == null && !position.isOpened()) {
             return factory.zero();
         }
-        return toSeriesNum(factory, costBasis(series, position));
+        return toSeriesNum(factory, costBasis(series, position, series.getEndIndex()));
     }
 
     @Override
@@ -51,7 +52,7 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
         if (current.getFuturesContract() == null && !current.isOpened()) {
             return factory.zero();
         }
-        return toSeriesNum(factory, costBasis(series, current));
+        return toSeriesNum(factory, costBasis(series, current, tradingRecord.getEndIndex(series)));
     }
 
     @Override
@@ -59,13 +60,13 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
         return v1.isLessThan(v2);
     }
 
-    private Num costBasis(BarSeries series, Position position) {
+    private Num costBasis(BarSeries series, Position position, int finalIndex) {
         Trade entry = position.getEntry();
         FuturesContract contract = position.getFuturesContract();
         if (contract != null) {
             List<TradeFill> entryFills = Trade.executionFillsOf(entry)
                     .stream()
-                    .filter(fill -> fill.index() >= 0 && fill.index() <= series.getEndIndex())
+                    .filter(fill -> fill.index() >= 0 && fill.index() <= finalIndex)
                     .toList();
             if (entryFills.isEmpty()) {
                 return series.numFactory().zero();
@@ -73,7 +74,7 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
             List<TradeFill> exitFills = position.getExit() == null ? List.of()
                     : Trade.executionFillsOf(position.getExit())
                             .stream()
-                            .filter(fill -> fill.index() >= 0 && fill.index() <= series.getEndIndex())
+                            .filter(fill -> fill.index() >= 0 && fill.index() <= finalIndex)
                             .toList();
             NumFactory contractFactory = contract.contractSize().getNumFactory();
             Num totalEntryQuantity = contractFactory.zero();

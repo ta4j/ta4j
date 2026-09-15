@@ -1,4 +1,5 @@
 ## Unreleased
+- **Futures review round 45**: modeled fill fees normalize mixed numeric factories, partially exited futures remain marked to market, spot as-of profit is zero before entry execution, and open futures cost basis excludes fills beyond the record horizon.
 - **Futures review round 44**: affordability honors actual tiered fees; futures imports require execution timestamps and preserve event-time exposure; equal-time cash flows precede fills; windowed criteria exclude future entry basis and retain exposure between separated exits. Cash-flow storage is bounded by retained bars, and empty return series report zero size.
 - **Futures review round 43**: no-argument gross profit excludes deferred exit prices, partially exited futures retain only residual stop-loss risk, imported positions reject over-closing executed exits, and maximum-notional caps remain binding when their quantity bound underflows.
 - **Futures review round 42**: partial futures positions retain residual cost basis and unrealized profit, no-argument futures profit stops at the executed exit horizon, and rejected cash flows no longer apply scheduled funding first.

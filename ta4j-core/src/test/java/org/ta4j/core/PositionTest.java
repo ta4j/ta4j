@@ -915,4 +915,20 @@ public class PositionTest {
             }
         }
     }
+
+    @Test
+    public void spotProfitIsZeroBeforeEntryExecution() {
+        for (NumFactory numFactory : factories()) {
+            CostModel tradingCost = new FixedTransactionCostModel(3);
+            CostModel holdingCost = new LinearBorrowingCostModel(0.01);
+            Trade entry = Trade.sellAt(5, numFactory.hundred(), numFactory.one(), tradingCost);
+            Trade exit = Trade.buyAt(7, numFactory.numOf(90), numFactory.one(), tradingCost);
+            Position open = new Position(entry, tradingCost, holdingCost);
+            Position closed = new Position(entry, exit, tradingCost, holdingCost);
+
+            assertNumEquals(0, open.getProfit(3, numFactory.numOf(80)));
+            assertNumEquals(0, closed.getProfit(3, numFactory.numOf(80)));
+            assertNumEquals(17, closed.getProfit(5, numFactory.numOf(80)));
+        }
+    }
 }

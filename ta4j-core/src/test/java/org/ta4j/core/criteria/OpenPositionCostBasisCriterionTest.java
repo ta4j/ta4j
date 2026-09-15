@@ -195,4 +195,34 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
         // allocated opening fees.
         assertNumEquals(numFactory.numOf(51), getCriterion().calculate(series, position), 1e-12);
     }
+
+    @Test
+    public void futuresCostBasisBoundsEntryAndExitFillsByHorizon() {
+        FuturesContract contract = linearBtcPerpetual();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 120, 140, 160, 180, 200, 220, 240)
+                .build();
+        Trade entry = Trade.fromFills(TradeType.BUY, List.of(futuresFill(contract, 4, ExecutionSide.BUY, 100, 100, 0),
+                futuresFill(contract, 7, ExecutionSide.BUY, 200, 200, 0)), RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFills(TradeType.SELL, List.of(futuresFill(contract, 5, ExecutionSide.SELL, 50, 300, 0),
+                futuresFill(contract, 7, ExecutionSide.SELL, 50, 400, 0)), RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        // The positional overload uses the series horizon and includes all fills: 200
+        // contracts at the
+        // merged 166.666... USD basis, less 100 exited contracts.
+        assertNumEquals(numFactory.numOf(333.3333333333333), getCriterion().calculate(series, position), 1e-12);
+
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, null, 5, RecordedTradeCostModel.INSTANCE,
+                new ZeroCostModel()) {
+            @Override
+            public Position getCurrentPosition() {
+                return position;
+            }
+        };
+
+        // The record horizon includes only the index-4 entry and index-5 exit: 50
+        // contracts at 100 USD.
+        assertNumEquals(numFactory.numOf(50), getCriterion().calculate(series, record), 1e-12);
+    }
 }

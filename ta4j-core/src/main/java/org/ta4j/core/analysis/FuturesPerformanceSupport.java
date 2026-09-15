@@ -391,8 +391,13 @@ final class FuturesPerformanceSupport {
          */
         private static boolean isSettled(Position position, int effectiveIndex) {
             Trade exit = position.getExit();
-            if (exit == null || !allFillsExecuted(exit, effectiveIndex)
-                    || !allFillsExecuted(position.getEntry(), effectiveIndex)) {
+            Trade entry = position.getEntry();
+            if (exit == null || !allFillsExecuted(exit, effectiveIndex) || !allFillsExecuted(entry, effectiveIndex)) {
+                return false;
+            }
+            Num entryAmount = entry.getAmount();
+            Num exitAmount = entryAmount.getNumFactory().numOf(exit.getAmount().getDelegate());
+            if (exitAmount.isLessThan(entryAmount)) {
                 return false;
             }
             for (FuturesCashFlow cashFlow : position.getCashFlows()) {

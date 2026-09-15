@@ -711,7 +711,8 @@ public class BaseTrade implements Trade {
             Num feeShare = i == fills.size() - 1 ? remainingFee
                     : residualFee.multipliedBy(fillWeight(fill)).dividedBy(totalWeight);
             remainingFee = remainingFee.minus(feeShare);
-            adjustedFills.add(copyWithFee(fill, fill.fee().plus(feeShare)));
+            adjustedFills
+                    .add(copyWithFee(fill, fill.fee().plus(fill.fee().getNumFactory().numOf(feeShare.getDelegate()))));
         }
         return List.copyOf(adjustedFills);
     }
@@ -725,7 +726,8 @@ public class BaseTrade implements Trade {
     }
 
     private Num fillWeight(TradeFill fill) {
-        return fill.price().multipliedBy(fill.amount());
+        NumFactory numFactory = pricePerAsset.getNumFactory();
+        return numFactory.numOf(fill.price().getDelegate()).multipliedBy(numFactory.numOf(fill.amount().getDelegate()));
     }
 
     private TradeFill copyWithFee(TradeFill fill, Num fee) {

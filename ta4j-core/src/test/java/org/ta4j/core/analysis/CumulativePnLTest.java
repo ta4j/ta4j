@@ -523,4 +523,35 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         }
     }
 
+    @Test
+    public void futuresCursorKeepsResidualExposureAfterPartialExit() {
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        BarSeries barSeries = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 110, 120);
+        RecordedTradeCostModel costModel = RecordedTradeCostModel.INSTANCE;
+        Trade entry = Trade.fromFills(TradeType.BUY,
+                List.of(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()),
+                        FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.BUY, 1_000, 100, List.of())),
+                costModel);
+        Trade exit = Trade.fromFill(
+                FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.SELL, 1_000, 110, List.of()), costModel);
+        Position partial = new Position(entry, exit, costModel, new ZeroCostModel());
+        BaseTradingRecord record = new BaseTradingRecord() {
+            @Override
+            public FuturesContract getFuturesContract() {
+                return contract;
+            }
+
+            @Override
+            public List<Position> getPositions() {
+                return List.of(partial);
+            }
+        };
+
+        CumulativePnL pnl = new CumulativePnL(barSeries, record, barSeries.getEndIndex(),
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertNumEquals(200.0, pnl.getValue(2));
+        assertNumEquals(300.0, pnl.getValue(3));
+    }
+
 }
