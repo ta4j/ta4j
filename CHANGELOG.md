@@ -1,4 +1,5 @@
 ## Unreleased
+- **Futures review round 43**: no-argument gross profit excludes deferred exit prices, partially exited futures retain only residual stop-loss risk, imported positions reject over-closing executed exits, and maximum-notional caps remain binding when their quantity bound underflows.
 - **Futures review round 42**: partial futures positions retain residual cost basis and unrealized profit, no-argument futures profit stops at the executed exit horizon, and rejected cash flows no longer apply scheduled funding first.
 - **Futures review round 41**: gross-return marks ignore deferred exit fills, processed funding retries compare event provenance, and cross-currency cash-flow allocation preserves the settlement amount's numeric factory.
 - **Futures review round 40**: direct futures events now compare equal-time indexes with scheduled funding before applying cash flows or funding; RoMaD and Monte Carlo drawdown blocks use the last executed exit fill; legacy futures trade fallbacks receive an epoch timestamp when their trade time is absent.

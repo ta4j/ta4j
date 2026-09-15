@@ -64,12 +64,13 @@ public final class StopLossPositionRiskModel implements PositionRiskModel {
      *
      * <p>
      * A native futures position is evaluated through the contract's settlement
-     * economics instead: the loss is the contract profit of the unclosed contracts
-     * between the executed net entry price and the stop price. The executed net
-     * entry price embeds the recorded entry fees for executed fills, so the fees
-     * paid on entry are part of the loss, and inverse price sensitivity and the
-     * contract multiplier are applied by the contract rather than by a quote-price
-     * gap.
+     * economics instead: the loss is the contract profit of the residual executed
+     * entry quantity between the executed net entry price and the stop price. The
+     * executed net entry price embeds the recorded entry fees for executed fills,
+     * so the fees paid on entry are allocated to the residual exposure, and inverse
+     * price sensitivity and the contract multiplier are applied by the contract
+     * rather than by a quote-price gap. Fully exited futures positions retain their
+     * historical initial entry exposure for R-multiple compatibility.
      * </p>
      *
      * <p>
@@ -109,7 +110,8 @@ public final class StopLossPositionRiskModel implements PositionRiskModel {
             Num perUnitRisk = entryPrice.minus(stopPrice).abs();
             return perUnitRisk.multipliedBy(amount.abs());
         }
-        return contract.profit(entry.getType(), amount.abs(), entryPrice, stopPrice).abs();
+        Num residualAmount = residualFuturesAmount(position.getExit(), amount);
+        return contract.profit(entry.getType(), residualAmount.abs(), entryPrice, stopPrice).abs();
     }
 
     private static Trade executedEntryTrade(Trade trade) {
@@ -137,6 +139,23 @@ public final class StopLossPositionRiskModel implements PositionRiskModel {
             return null;
         }
         return Trade.fromFills(trade.getType(), executedFills, trade.getCostModel());
+    }
+
+    private static Num residualFuturesAmount(Trade exit, Num executedEntryAmount) {
+        if (exit == null) {
+            return executedEntryAmount;
+        }
+        Num executedExitAmount = executedEntryAmount.getNumFactory().zero();
+        for (TradeFill fill : Trade.executionFillsOf(exit)) {
+            if (fill.index() >= 0) {
+                executedExitAmount = executedExitAmount
+                        .plus(executedEntryAmount.getNumFactory().numOf(fill.amount().getDelegate()));
+            }
+        }
+        if (executedExitAmount.isPositive() && executedExitAmount.isLessThan(executedEntryAmount)) {
+            return executedEntryAmount.minus(executedExitAmount);
+        }
+        return executedEntryAmount;
     }
 
     /**

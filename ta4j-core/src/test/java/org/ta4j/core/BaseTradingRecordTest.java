@@ -2563,7 +2563,7 @@ class BaseTradingRecordTest {
     }
 
     @Test
-    void fundingAllocationIgnoresDeferredEntryFills() {
+    public void fundingAllocationIgnoresDeferredEntryFills() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = linearBtcPerpetual(numFactory);
             Position openLong = new Position(Trade.fromFills(TradeType.BUY,
@@ -2586,7 +2586,7 @@ class BaseTradingRecordTest {
                             List.of(fillAtTime(contract, -1, T0.plusSeconds(1), ExecutionSide.BUY, 2, 10_000,
                                     List.of()), fillAtTime(contract, 0, T0, ExecutionSide.BUY, 2, 10_000, List.of())),
                             RecordedTradeCostModel.INSTANCE),
-                    Trade.fromFill(fillAtTime(contract, 3, T0.plusSeconds(3), ExecutionSide.SELL, 4, 10_000, List.of()),
+                    Trade.fromFill(fillAtTime(contract, 3, T0.plusSeconds(3), ExecutionSide.SELL, 2, 10_000, List.of()),
                             RecordedTradeCostModel.INSTANCE),
                     RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
             BaseTradingRecord closedRecord = new BaseTradingRecord(closedLong);
@@ -2785,6 +2785,36 @@ class BaseTradingRecordTest {
 
             assertTrue(record.getOpenPositions().isEmpty());
             assertEquals(2, record.getPositions().size());
+        }
+    }
+
+    @Test
+    public void rejectsImportedFuturesPositionWithMoreExecutedExitsThanEntries() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Position overClosed = new Position(
+                    Trade.fromFill(fill(contract, 0, ExecutionSide.BUY, 1, 100, List.of()),
+                            RecordedTradeCostModel.INSTANCE),
+                    Trade.fromFill(fill(contract, 1, ExecutionSide.SELL, 2, 110, List.of()),
+                            RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            assertThrows(IllegalArgumentException.class, () -> new BaseTradingRecord(List.of(overClosed)));
+        }
+    }
+
+    @Test
+    public void rejectsImportedFuturesExitWithoutExecutedEntry() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Position overClosed = new Position(
+                    Trade.fromFill(fillAtTime(contract, -1, T0, ExecutionSide.BUY, 1, 100, List.of()),
+                            RecordedTradeCostModel.INSTANCE),
+                    Trade.fromFill(fill(contract, 1, ExecutionSide.SELL, 1, 110, List.of()),
+                            RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            assertThrows(IllegalArgumentException.class, () -> new BaseTradingRecord(overClosed));
         }
     }
 

@@ -402,6 +402,31 @@ class FuturesExecutionTest {
     }
 
     @Test
+    public void completeFuturesExitRejectsUnderflowedMaximumNotional() {
+        NumFactory numFactory = DoubleNumFactory.getInstance();
+        FuturesContract contract = linearContract(numFactory, 1).toBuilder()
+                .maximumNotional(numFactory.numOf(Double.MIN_VALUE))
+                .build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 100d).build();
+        BaseTradingRecord tradingRecord = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(1_000))
+                .transactionCostModel(new ZeroCostModel())
+                .build();
+        tradingRecord.operate(TradeFill.builder()
+                .futuresContract(contract)
+                .index(0)
+                .time(series.getBar(0).getEndTime())
+                .price(numFactory.hundred())
+                .amount(numFactory.one())
+                .side(ExecutionSide.BUY)
+                .build());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new TradeOnCurrentCloseModel().execute(1, tradingRecord, series, numFactory.one()));
+    }
+
+    @Test
     void futuresQuantityConstraintsRoundDownAndRejectUntradableOrders() {
         for (NumFactory numFactory : factories()) {
             Num price = numFactory.numOf(50_000);
@@ -451,7 +476,7 @@ class FuturesExecutionTest {
     }
 
     @Test
-    void stopLossRiskModelUsesContractSettlementEconomicsForFuturesPositions() {
+    public void stopLossRiskModelUsesContractSettlementEconomicsForFuturesPositions() {
         for (NumFactory numFactory : factories()) {
             BarSeries series = flatSeries(numFactory, 50_000d, 1d);
             Num entryPrice = numFactory.numOf(50_000);
@@ -469,8 +494,9 @@ class FuturesExecutionTest {
             assertNumEquals(numFactory.numOf(1.6326530612244898e-4),
                     riskModel.risk(series, openPosition(inverse, numFactory.numOf(4), entryPrice)), 1e-12);
 
-            // closed futures positions retain their initial entry exposure as risk
-            assertNumEquals(40, riskModel.risk(series, closedPosition(linear, numFactory.numOf(4), entryPrice,
+            // Partial exits leave residual risk; fully exited positions retain historical
+            // initial risk.
+            assertNumEquals(30, riskModel.risk(series, closedPosition(linear, numFactory.numOf(4), entryPrice,
                     numFactory.numOf(1), numFactory.numOf(55_000))));
             assertNumEquals(40, riskModel.risk(series, closedPosition(linear, numFactory.numOf(4), entryPrice,
                     numFactory.numOf(4), numFactory.numOf(55_000))));

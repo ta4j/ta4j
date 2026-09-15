@@ -2247,16 +2247,23 @@ public class BaseTradingRecord implements TradingRecord {
             }
             if (position.isClosed()) {
                 PositionLot adoptedLot = PositionLot.of(position, entrySequence);
+                NumFactory numFactory = numFactoryOf(
+                        adoptedLot == null ? position.getEntry().getPricePerAsset() : adoptedLot.entryPrice());
+                Num executedExitAmount = executedAmount(position.getExit(), numFactory);
+                Num executedEntryAmount = adoptedLot == null ? numFactory.zero() : adoptedLot.amount();
+                if (executedExitAmount != null && executedExitAmount.isGreaterThan(executedEntryAmount)) {
+                    throw new IllegalArgumentException("Executed exit amount " + executedExitAmount
+                            + " exceeds executed entry amount " + executedEntryAmount);
+                }
                 if (adoptedLot == null) {
                     closedPositions.add(new ClosedPosition(position, entrySequence, exitSequence));
                     return;
                 }
-                Num executedExitAmount = executedAmount(position.getExit(), numFactoryOf(adoptedLot.entryPrice()));
                 if (executedExitAmount == null || executedExitAmount.isZero()) {
                     openLots.addLast(adoptedLot);
                     return;
                 }
-                if (!executedExitAmount.isLessThan(adoptedLot.amount())) {
+                if (executedExitAmount.isEqual(adoptedLot.amount())) {
                     closedPositions.add(new ClosedPosition(position, entrySequence, exitSequence));
                     return;
                 }

@@ -493,7 +493,8 @@ public class Position implements Serializable {
 
     /**
      * Calculates the gross profit of the position if it is closed. The gross profit
-     * excludes any trading costs.
+     * excludes any trading costs. For futures with a partial executed exit, the
+     * remaining exposure is marked using executed exit fills, never deferred fills.
      *
      * @return the gross profit of the position
      */
@@ -501,7 +502,7 @@ public class Position implements Serializable {
         if (isOpened()) {
             return zero();
         } else {
-            return getGrossProfit(exit.getPricePerAsset());
+            return getGrossProfit(futuresContract != null ? futuresProfitMarkPrice() : exit.getPricePerAsset());
         }
     }
 

@@ -14,6 +14,7 @@ import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFee;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -144,5 +145,53 @@ public class StopLossPositionRiskModelTest {
         PositionRiskModel model = new StopLossPositionRiskModel(5);
 
         assertNumEquals(5, model.risk(series, position));
+    }
+
+    @Test
+    public void subtractsExecutedFuturesExitFromStopLossRisk() {
+        BarSeries series = new MockBarSeriesBuilder().withData(100, 90).build();
+        NumFactory numFactory = series.numFactory();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("TEST")
+                .symbol("TEST-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .quantityIncrement(numFactory.one())
+                .minimumQuantity(numFactory.one())
+                .build();
+        Trade entry = Trade.fromFill(TradeFill.builder()
+                .index(0)
+                .time(Instant.parse("2025-01-01T00:00:00Z"))
+                .price(numFactory.hundred())
+                .amount(numFactory.two())
+                .side(ExecutionSide.BUY)
+                .futuresContract(contract)
+                .fees(List.of(TradeFee.builder()
+                        .type(TradeFee.Type.COMMISSION)
+                        .amount(numFactory.two())
+                        .currency("USD")
+                        .build()))
+                .build());
+        Trade exit = Trade.fromFill(TradeFill.builder()
+                .index(1)
+                .time(Instant.parse("2025-01-01T00:00:01Z"))
+                .price(numFactory.numOf(110))
+                .amount(numFactory.one())
+                .side(ExecutionSide.SELL)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build());
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        PositionRiskModel model = new StopLossPositionRiskModel(
+                (ignoredSeries, ignoredPosition) -> numFactory.numOf(90));
+
+        // The entry fee is allocated as one quote unit per contract, so the one
+        // remaining contract has a net entry basis of 101 and risks 11.
+        assertNumEquals(11, model.risk(series, position));
     }
 }

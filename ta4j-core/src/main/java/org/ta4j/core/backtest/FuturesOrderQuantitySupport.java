@@ -230,7 +230,13 @@ final class FuturesOrderQuantitySupport {
             return quantity;
         }
         Num notionalBound = quantity.getNumFactory().numOf(maximumNotional.getDelegate()).dividedBy(perContract);
-        if (notionalBound.isNaN() || notionalBound.isNegativeOrZero() || quantity.isLessThanOrEqual(notionalBound)) {
+        if (notionalBound.isNaN()) {
+            return quantity;
+        }
+        if (notionalBound.isNegativeOrZero()) {
+            return quantity.getNumFactory().zero();
+        }
+        if (quantity.isLessThanOrEqual(notionalBound)) {
             return quantity;
         }
         return notionalBound;

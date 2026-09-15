@@ -831,6 +831,7 @@ public class PositionTest {
         Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
 
         assertNumEquals(20, position.getProfit());
+        assertNumEquals(20, position.getGrossProfit());
     }
 
     @Test
@@ -881,6 +882,37 @@ public class PositionTest {
                     new LinearBorrowingCostModel(0.01, LinearBorrowingCostModel.Applicability.BOTH));
 
             assertNumEquals(-40, position.getProfit());
+        }
+    }
+
+    @Test
+    public void singleFillFuturesHoldingCostUsesSettlementCurrency() {
+        for (NumFactory numFactory : factories()) {
+            for (FuturesContract.SettlementType settlement : FuturesContract.SettlementType.values()) {
+                boolean inverse = settlement == FuturesContract.SettlementType.INVERSE;
+                FuturesContract contract = FuturesContract.builder()
+                        .venue("CDE")
+                        .symbol("BTC-PERP")
+                        .productType(FuturesContract.ProductType.PERPETUAL)
+                        .settlementType(settlement)
+                        .baseCurrency("BTC")
+                        .quoteCurrency("USD")
+                        .settlementCurrency(inverse ? "BTC" : "USD")
+                        .contractSize(numFactory.numOf(10))
+                        .build();
+                Trade entry = Trade.fromFill(futuresFill(contract, numFactory, 0, 100, 2, ExecutionSide.SELL),
+                        RecordedTradeCostModel.INSTANCE);
+                Trade exit = Trade.fromFill(futuresFill(contract, numFactory, 2, 100, 2, ExecutionSide.BUY),
+                        RecordedTradeCostModel.INSTANCE);
+                CostModel model = new LinearBorrowingCostModel(0.01);
+                Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, model);
+                double expected = inverse ? 0.004 : 40;
+
+                assertNumEquals(expected, model.calculate(position, 2));
+                assertNumEquals(expected, position.getHoldingCost(2));
+                assertNumEquals(expected, position.getHoldingCost());
+                assertNumEquals(-expected, position.getProfit());
+            }
         }
     }
 }
