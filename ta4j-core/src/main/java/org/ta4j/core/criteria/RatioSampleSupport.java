@@ -95,14 +95,18 @@ final class RatioSampleSupport {
             return null;
         }
         Trade entry = position.getEntry();
-        if (entry == null || entry.getIndex() > finalIndex) {
+        int entryFillIndex = entry == null ? -1 : firstExecutedFillIndex(entry, finalIndex);
+        if (entryFillIndex < 0) {
             return null;
         }
-        int entryIndex = Math.max(entry.getIndex(), beginIndex);
+        int entryIndex = Math.max(entryFillIndex, beginIndex);
         int currentIndex = finalIndex;
         Trade exit = position.getExit();
         if (exit != null) {
-            currentIndex = Math.min(exit.getIndex(), finalIndex);
+            currentIndex = lastExecutedFillIndex(exit, finalIndex);
+            if (currentIndex < 0 && openPositionHandling != OpenPositionHandling.MARK_TO_MARKET) {
+                return null;
+            }
             if (openPositionHandling == OpenPositionHandling.MARK_TO_MARKET
                     && hasResidualFuturesExposure(position, finalIndex)) {
                 currentIndex = finalIndex;
@@ -137,6 +141,26 @@ final class RatioSampleSupport {
             }
         }
         return amount;
+    }
+
+    private static int firstExecutedFillIndex(Trade trade, int finalIndex) {
+        int firstIndex = Integer.MAX_VALUE;
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() >= 0 && fill.index() <= finalIndex) {
+                firstIndex = Math.min(firstIndex, fill.index());
+            }
+        }
+        return firstIndex == Integer.MAX_VALUE ? -1 : firstIndex;
+    }
+
+    private static int lastExecutedFillIndex(Trade trade, int finalIndex) {
+        int lastIndex = -1;
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() >= 0 && fill.index() <= finalIndex) {
+                lastIndex = Math.max(lastIndex, fill.index());
+            }
+        }
+        return lastIndex;
     }
 
     private static Sample toSample(BarSeries series, IndexPair indexPair, ExcessReturns excessReturns) {

@@ -3,11 +3,13 @@
  */
 package org.ta4j.core.analysis;
 
+import java.lang.reflect.Proxy;
 import java.time.Instant;
 import java.time.Duration;
 import java.util.Collections;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import static org.junit.Assert.assertThrows;
@@ -36,6 +38,7 @@ import org.ta4j.core.FuturesContract;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
@@ -905,5 +908,145 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                 assertNumEquals(1, cashFlow.getValue(index));
             }
         }
+    }
+
+    @Test
+    public void boundedSpotCashFlowSnapshotsOnlyRequestedRetainedWindow() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 110d, 120d, 130d, 140d, 150d)
+                .build();
+        source.setMaximumBarCount(3);
+        AtomicBoolean fullBarDataRequested = new AtomicBoolean();
+        BarSeries boundedSource = withoutBarData(source, fullBarDataRequested);
+        TradingRecord record = new BaseTradingRecord(Trade.buyAt(source.getBeginIndex(), source));
+
+        CashFlow cashFlow = new CashFlow(boundedSource, record, 4, 5, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        assertFalse(fullBarDataRequested.get());
+        assertEquals(2, cashFlow.getSize());
+        assertEquals(4, cashFlow.getBarSeries().getBeginIndex());
+        assertNumEquals(140d / 130d, cashFlow.getValue(4));
+        assertNumEquals(150d / 130d, cashFlow.getValue(5));
+    }
+
+    @Test
+    public void boundedFuturesCashFlowSnapshotsOnlyRequestedRetainedWindow() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries source = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            source.setMaximumBarCount(3);
+            AtomicBoolean fullBarDataRequested = new AtomicBoolean();
+            BarSeries boundedSource = withoutBarData(source, fullBarDataRequested);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 500);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 4, ExecutionSide.SELL, 1_000, 110, List.of()));
+
+            CashFlow cashFlow = new CashFlow(boundedSource, record, 3, 4, EquityCurveMode.MARK_TO_MARKET,
+                    OpenPositionHandling.MARK_TO_MARKET);
+
+            assertFalse(fullBarDataRequested.get());
+            assertEquals(2, cashFlow.getSize());
+            assertEquals(3, cashFlow.getBarSeries().getBeginIndex());
+            assertNumEquals(1.06, cashFlow.getValue(3));
+            assertNumEquals(1.2, cashFlow.getValue(4));
+        }
+    }
+
+    @Test
+    public void boundedEmptyCashFlowDoesNotRequestBarData() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        AtomicBoolean fullBarDataRequested = new AtomicBoolean();
+        CashFlow cashFlow = new CashFlow(withoutBarData(source, fullBarDataRequested), new BaseTradingRecord(), 2, 3,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertFalse(fullBarDataRequested.get());
+        assertEquals(0, cashFlow.getSize());
+        assertNumEquals(1, cashFlow.getValue(2));
+    }
+
+    @Test
+    public void boundedFuturesCashFlowAfterRetainedBarsMaterializesNoBars() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries source = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            source.setMaximumBarCount(3);
+            AtomicBoolean fullBarDataRequested = new AtomicBoolean();
+            BarSeries boundedSource = withoutBarData(source, fullBarDataRequested);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 500);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+
+            CashFlow cashFlow = new CashFlow(boundedSource, record, 7, 8, EquityCurveMode.MARK_TO_MARKET,
+                    OpenPositionHandling.MARK_TO_MARKET);
+
+            assertFalse(fullBarDataRequested.get());
+            assertEquals(0, cashFlow.getSize());
+            assertNumEquals(1, cashFlow.getValue(7));
+        }
+    }
+
+    @Test
+    public void boundedCashFlowBeforeRetainedBarsMaterializesOnlyNormalizedRange() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 110d, 120d, 130d, 140d, 150d)
+                .build();
+        source.setMaximumBarCount(3);
+        TradingRecord record = new BaseTradingRecord(Trade.buyAt(3, source));
+        AtomicBoolean fullBarDataRequested = new AtomicBoolean();
+        CashFlow bounded = new CashFlow(withoutBarData(source, fullBarDataRequested), record, 0, 1,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertFalse(fullBarDataRequested.get());
+        assertEquals(1, bounded.getSize());
+        assertEquals(3, bounded.getBarSeries().getBeginIndex());
+        // The window ends before the retained bars, so the clamped index stays neutral.
+        assertNumEquals(1, bounded.getValue(3));
+        assertNumEquals(1, bounded.getValue(2));
+    }
+
+    @Test
+    public void boundedCashFlowAfterRetainedBarsMaterializesNoBars() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 110d, 120d, 130d, 140d, 150d)
+                .build();
+        source.setMaximumBarCount(3);
+        TradingRecord record = new BaseTradingRecord(Trade.buyAt(3, source));
+        AtomicBoolean fullBarDataRequested = new AtomicBoolean();
+        CashFlow bounded = new CashFlow(withoutBarData(source, fullBarDataRequested), record, 7, 8,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertFalse(fullBarDataRequested.get());
+        assertEquals(0, bounded.getSize());
+        assertNumEquals(1, bounded.getValue(3));
+        assertNumEquals(1, bounded.getValue(7));
+    }
+
+    @Test
+    public void boundedCashFlowWithReversedEndpointsKeepsLegacyClampedRange() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 110d, 120d, 130d, 140d, 150d)
+                .build();
+        TradingRecord record = new BaseTradingRecord(Trade.buyAt(3, source));
+        AtomicBoolean fullBarDataRequested = new AtomicBoolean();
+        CashFlow bounded = new CashFlow(withoutBarData(source, fullBarDataRequested), record, 4, 2,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertFalse(fullBarDataRequested.get());
+        assertEquals(1, bounded.getSize());
+        assertEquals(4, bounded.getBarSeries().getBeginIndex());
+        // Legacy clamps the requested end up to the start, so only index 4 is neutral
+        // here.
+        assertNumEquals(1, bounded.getValue(4));
+        assertNumEquals(1, bounded.getValue(5));
+    }
+
+    private static BarSeries withoutBarData(BarSeries delegate, AtomicBoolean requested) {
+        return (BarSeries) Proxy.newProxyInstance(BarSeries.class.getClassLoader(), new Class<?>[] { BarSeries.class },
+                (proxy, method, args) -> {
+                    if (method.getName().equals("getBarData")) {
+                        requested.set(true);
+                    }
+                    return method.invoke(delegate, args);
+                });
     }
 }

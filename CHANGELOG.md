@@ -1,4 +1,5 @@
 ## Unreleased
+- **Futures review round 50**: invested and trade intervals end at the final executed exit fill; nonpositive futures stops return zero risk; bounded cash-flow snapshots retain only their normalized window, including empty and reversed ranges. Regression helper types are explicit.
 - **Futures review round 49**: custom stop-loss models use executed futures entry fills; partially exited aggregate futures retain invested intervals and trade-frequency samples through the mark-to-market horizon.
 - **Futures review round 48**: empty futures projections retain the source numeric factory for recorded fees; imported futures positions reject exits before sufficient entry exposure by index and execution time.
 - **Futures review round 47**: bounded affordability searches the full quantity grid without assuming monotonic fees; normalized contract maxima must remain finite; fully exited futures need no mark for unrealized profit; position-level risk-adjusted ratios retain entry-notional capital fallback; Omega includes genuine retained-head returns but excludes cumulative seeds. Removed duplicate missing-history test execution.

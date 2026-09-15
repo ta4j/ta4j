@@ -75,7 +75,8 @@ public final class StopLossPositionRiskModel implements PositionRiskModel {
      *
      * <p>
      * This method returns zero when the position context is missing or unusable
-     * (missing entry, NaN values, zero amount, or unavailable stop price).
+     * (missing entry, NaN values, zero amount, unavailable stop price, or
+     * nonpositive futures stop price).
      *
      * @param series   the bar series, must not be {@code null}
      * @param position the position to evaluate
@@ -117,6 +118,9 @@ public final class StopLossPositionRiskModel implements PositionRiskModel {
         if (contract == null) {
             Num perUnitRisk = entryPrice.minus(stopPrice).abs();
             return perUnitRisk.multipliedBy(amount.abs());
+        }
+        if (!stopPrice.isPositive()) {
+            return series.numFactory().zero();
         }
         Num residualAmount = residualFuturesAmount(position.getExit(), amount);
         return contract.profit(entry.getType(), residualAmount.abs(), entryPrice, stopPrice).abs();

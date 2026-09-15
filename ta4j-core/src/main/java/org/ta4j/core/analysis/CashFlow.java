@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
@@ -244,14 +245,16 @@ public class CashFlow implements PerformanceIndicator {
         FuturesPerformanceSupport.requireMarkSeries(Objects.requireNonNull(barSeries),
                 Objects.requireNonNull(markPriceIndicator));
         boolean futures = FuturesPerformanceSupport.isFutures(record);
-        this.barSeries = snapshotSeries(barSeries);
+        int seriesBegin = barSeries.getBeginIndex();
+        int seriesEnd = barSeries.getEndIndex();
+        this.valueStartIndex = Math.max(Math.max(0, seriesBegin), startIndex);
+        this.valueEndIndex = seriesEnd < 0 ? -1 : Math.min(Math.max(endIndex, this.valueStartIndex), seriesEnd);
+        this.barSeries = this.valueEndIndex < this.valueStartIndex ? emptyBarSeries(barSeries)
+                : snapshotSeries(barSeries, this.valueStartIndex, this.valueEndIndex);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
         this.markPriceIndicator = markPriceIndicator;
-        int seriesEnd = this.barSeries.getEndIndex();
-        this.valueStartIndex = Math.max(Math.max(0, this.barSeries.getBeginIndex()), startIndex);
-        this.valueEndIndex = seriesEnd < 0 ? -1 : Math.min(Math.max(endIndex, this.valueStartIndex), seriesEnd);
         int size = this.valueEndIndex < this.valueStartIndex ? 0 : this.valueEndIndex - this.valueStartIndex + 1;
-        this.values = new ArrayList<>(Collections.nCopies(size, this.barSeries.numFactory().one()));
+        this.values = new ArrayList<>(Collections.nCopies(size, barSeries.numFactory().one()));
         if (futures) {
             fillFuturesValues(record, finalIndex, handling, fallbackCapital);
             return;
@@ -455,15 +458,41 @@ public class CashFlow implements PerformanceIndicator {
     private static BarSeries snapshotSeries(final BarSeries barSeries) {
         BarSeries series = Objects.requireNonNull(barSeries);
         if (series.getBarCount() == 0) {
-            return new BaseBarSeriesBuilder().withName(series.getName())
-                    .withNumFactory(series.numFactory())
-                    .withMaxBarCount(series.getMaximumBarCount())
-                    .build();
+            return emptyBarSeries(series);
         }
         return new BaseBarSeriesBuilder().withName(series.getName())
                 .withNumFactory(series.numFactory())
                 .withBars(series.getBarData())
                 .withBeginIndex(series.getBeginIndex())
+                .withMaxBarCount(series.getMaximumBarCount())
+                .build();
+    }
+
+    private static BarSeries snapshotSeries(final BarSeries barSeries, int startIndex, int endIndex) {
+        BarSeries series = Objects.requireNonNull(barSeries);
+        int seriesBegin = series.getBeginIndex();
+        int seriesEnd = series.getEndIndex();
+        if (series.getBarCount() == 0 || (startIndex <= seriesBegin && endIndex >= seriesEnd)) {
+            return snapshotSeries(series);
+        }
+
+        int snapshotSize = Math.toIntExact((long) endIndex - startIndex + 1L);
+        List<Bar> bars = new ArrayList<>(snapshotSize);
+        for (long index = startIndex; index <= endIndex; index++) {
+            bars.add(series.getBar((int) index));
+        }
+        return new BaseBarSeriesBuilder().withName(series.getName())
+                .withNumFactory(series.numFactory())
+                .withBars(bars)
+                .withBeginIndex(startIndex)
+                .withMaxBarCount(series.getMaximumBarCount())
+                .build();
+    }
+
+    private static BarSeries emptyBarSeries(final BarSeries barSeries) {
+        BarSeries series = Objects.requireNonNull(barSeries);
+        return new BaseBarSeriesBuilder().withName(series.getName())
+                .withNumFactory(series.numFactory())
                 .withMaxBarCount(series.getMaximumBarCount())
                 .build();
     }

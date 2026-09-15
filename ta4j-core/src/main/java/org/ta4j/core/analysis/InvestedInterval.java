@@ -83,11 +83,23 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
         if (position == null || position.getEntry() == null) {
             return;
         }
-        int entryIndex = position.getEntry().getIndex();
-        int exitIndex = position.isClosed() ? position.getExit().getIndex() : series.getEndIndex();
+        int finalIndex = series.getEndIndex();
+        int entryIndex = firstExecutedFillIndex(position.getEntry(), finalIndex);
+        if (entryIndex < 0) {
+            return;
+        }
+        int exitIndex;
+        if (position.isClosed()) {
+            exitIndex = lastExecutedFillIndex(position.getExit(), finalIndex);
+            if (exitIndex < 0 && openPositionHandling != OpenPositionHandling.MARK_TO_MARKET) {
+                return;
+            }
+        } else {
+            exitIndex = finalIndex;
+        }
         if (openPositionHandling == OpenPositionHandling.MARK_TO_MARKET
-                && hasResidualFuturesExposure(position, series.getEndIndex())) {
-            exitIndex = series.getEndIndex();
+                && hasResidualFuturesExposure(position, finalIndex)) {
+            exitIndex = finalIndex;
         }
         int start = Math.max(entryIndex + 1, series.getBeginIndex() + 1);
         int end = Math.min(exitIndex, invested.length - 1);
@@ -119,6 +131,26 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
             }
         }
         return amount;
+    }
+
+    private static int firstExecutedFillIndex(Trade trade, int finalIndex) {
+        int firstIndex = Integer.MAX_VALUE;
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() >= 0 && fill.index() <= finalIndex) {
+                firstIndex = Math.min(firstIndex, fill.index());
+            }
+        }
+        return firstIndex == Integer.MAX_VALUE ? -1 : firstIndex;
+    }
+
+    private static int lastExecutedFillIndex(Trade trade, int finalIndex) {
+        int lastIndex = -1;
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() >= 0 && fill.index() <= finalIndex) {
+                lastIndex = Math.max(lastIndex, fill.index());
+            }
+        }
+        return lastIndex;
     }
 
     @Override

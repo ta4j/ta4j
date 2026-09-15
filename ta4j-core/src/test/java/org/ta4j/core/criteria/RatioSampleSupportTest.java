@@ -189,6 +189,40 @@ public class RatioSampleSupportTest {
         assertNumEquals(BarSeriesUtils.deltaYears(series, 0, 3), samples.get(0).deltaYears(), 1e-12);
     }
 
+    @Test
+    public void tradeSamplingUsesLastExecutedExitFillForFullyExitedAggregatePosition() {
+        BarSeries series = buildDailySeries("aggregate_futures_exit_sampling_series",
+                new double[] { 100d, 110d, 120d, 130d, 140d, 150d, 160d });
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01d))
+                .build();
+        Trade entry = Trade.fromFills(TradeType.BUY, List.of(fill(contract, 0, ExecutionSide.BUY, 1d, 100d),
+                fill(contract, -1, ExecutionSide.BUY, 1d, 100d)), RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFills(TradeType.SELL, List.of(fill(contract, 3, ExecutionSide.SELL, 1d, 130d),
+                fill(contract, 5, ExecutionSide.SELL, 1d, 150d), fill(contract, 7, ExecutionSide.SELL, 1d, 170d)),
+                RecordedTradeCostModel.INSTANCE);
+        Position aggregatePosition = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        TradingRecord aggregateRecord = new AggregatePositionTradingRecord(aggregatePosition);
+        TradingRecord spotRecord = RatioCriterionTestSupport.alwaysInvested(series);
+        ExcessReturns excessReturns = new ExcessReturns(series, numFactory.zero(),
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, spotRecord, OpenPositionHandling.IGNORE);
+
+        List<Sample> samples = RatioSampleSupport
+                .samples(series, aggregateRecord, SamplingFrequency.TRADE, ZoneOffset.UTC, excessReturns,
+                        OpenPositionHandling.IGNORE)
+                .toList();
+
+        assertEquals(1, samples.size());
+        assertNumEquals(BarSeriesUtils.deltaYears(series, 0, 5), samples.get(0).deltaYears(), 1e-12);
+    }
+
     private TradeFill fill(FuturesContract contract, int index, ExecutionSide side, double amount, double price) {
         return TradeFill.builder()
                 .index(index)
