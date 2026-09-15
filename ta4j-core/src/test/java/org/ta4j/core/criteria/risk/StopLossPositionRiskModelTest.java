@@ -23,6 +23,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.FixedAmountStopLossRule;
+import org.ta4j.core.rules.StopLossRule;
 
 public class StopLossPositionRiskModelTest {
 
@@ -261,5 +262,48 @@ public class StopLossPositionRiskModelTest {
         Position position = new Position(executedEntry, costModel, new ZeroCostModel());
 
         assertNumEquals(5, new StopLossPositionRiskModel(5).risk(series, position));
+    }
+
+    @Test
+    public void derivesInjectedStopLossRuleFromExecutedFuturesEntryFills() {
+        BarSeries series = new MockBarSeriesBuilder().withData(100).build();
+        NumFactory numFactory = series.numFactory();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("TEST")
+                .symbol("TEST-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .quantityIncrement(numFactory.one())
+                .minimumQuantity(numFactory.one())
+                .build();
+        TradeFill executedFill = TradeFill.builder()
+                .index(0)
+                .time(Instant.parse("2025-01-01T00:00:00Z"))
+                .price(numFactory.hundred())
+                .amount(numFactory.one())
+                .side(ExecutionSide.BUY)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+        TradeFill deferredFill = TradeFill.builder()
+                .index(-1)
+                .time(Instant.parse("2025-01-01T00:00:01Z"))
+                .price(numFactory.numOf(200))
+                .amount(numFactory.one())
+                .side(ExecutionSide.BUY)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+        Trade entry = Trade.fromFills(Trade.TradeType.BUY, List.of(executedFill, deferredFill));
+        Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        StopLossRule stopLossRule = new StopLossRule(new ClosePriceIndicator(series), 10);
+        PositionRiskModel model = new StopLossPositionRiskModel(stopLossRule);
+
+        assertNumEquals(10, model.risk(series, position));
     }
 }

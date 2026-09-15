@@ -15,11 +15,18 @@ import org.junit.runners.Parameterized;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.FuturesContract;
+import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.ExcessReturns;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.analysis.frequency.Sample;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -148,4 +155,73 @@ public class RatioSampleSupportTest {
         BarSeries series = new BaseBarSeriesBuilder().withName(name).withNumFactory(numFactory).build();
         return RatioCriterionTestSupport.buildDailySeries(series, closes, Instant.parse("2024-01-01T00:00:00Z"));
     }
+
+    @Test
+    public void tradeSamplingExtendsAggregateFuturesResidualThroughFinalBar() {
+        BarSeries series = buildDailySeries("aggregate_futures_trade_sampling_series",
+                new double[] { 100d, 110d, 99d, 120d });
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01d))
+                .build();
+        Trade entry = Trade.fromFills(TradeType.BUY, List.of(fill(contract, 0, ExecutionSide.BUY, 2d, 100d),
+                fill(contract, -1, ExecutionSide.BUY, 1d, 100d)), RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFills(TradeType.SELL, List.of(fill(contract, 1, ExecutionSide.SELL, 1d, 110d),
+                fill(contract, -1, ExecutionSide.SELL, 1d, 110d)), RecordedTradeCostModel.INSTANCE);
+        Position aggregatePosition = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        TradingRecord aggregateRecord = new AggregatePositionTradingRecord(aggregatePosition);
+        TradingRecord spotRecord = RatioCriterionTestSupport.alwaysInvested(series);
+        ExcessReturns excessReturns = new ExcessReturns(series, numFactory.zero(),
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, spotRecord, OpenPositionHandling.MARK_TO_MARKET);
+
+        List<Sample> samples = RatioSampleSupport
+                .samples(series, aggregateRecord, SamplingFrequency.TRADE, ZoneOffset.UTC, excessReturns,
+                        OpenPositionHandling.MARK_TO_MARKET)
+                .toList();
+
+        assertEquals(1, samples.size());
+        assertNumEquals(BarSeriesUtils.deltaYears(series, 0, 3), samples.get(0).deltaYears(), 1e-12);
+    }
+
+    private TradeFill fill(FuturesContract contract, int index, ExecutionSide side, double amount, double price) {
+        return TradeFill.builder()
+                .index(index)
+                .time(Instant.parse("2024-01-01T00:00:00Z").plusSeconds(index))
+                .price(numFactory.numOf(price))
+                .amount(numFactory.numOf(amount))
+                .side(side)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+    }
+
+    private static final class AggregatePositionTradingRecord extends BaseTradingRecord {
+        private final List<Position> positions;
+
+        private AggregatePositionTradingRecord(Position position) {
+            this.positions = List.of(position);
+        }
+
+        @Override
+        public List<Position> getPositions() {
+            return positions;
+        }
+
+        @Override
+        public Position getCurrentPosition() {
+            return positions.getFirst();
+        }
+
+        @Override
+        public List<Position> getOpenPositions() {
+            return List.of();
+        }
+    }
+
 }

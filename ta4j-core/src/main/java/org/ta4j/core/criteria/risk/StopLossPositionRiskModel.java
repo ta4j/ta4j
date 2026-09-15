@@ -102,7 +102,15 @@ public final class StopLossPositionRiskModel implements PositionRiskModel {
             return series.numFactory().zero();
         }
 
-        Num stopPrice = stopLossModel.stopPrice(series, position);
+        Position stopLossPosition = position;
+        if (effectiveEntry != entry) {
+            Trade exit = position.getExit();
+            stopLossPosition = exit == null
+                    ? new Position(effectiveEntry, position.getTransactionCostModel(), position.getHoldingCostModel())
+                    : new Position(effectiveEntry, exit, position.getTransactionCostModel(),
+                            position.getHoldingCostModel());
+        }
+        Num stopPrice = stopLossModel.stopPrice(series, stopLossPosition);
         if (Num.isNaNOrNull(stopPrice)) {
             return series.numFactory().zero();
         }
