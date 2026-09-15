@@ -859,4 +859,28 @@ public class PositionTest {
         assertNumEquals(1.1, position.getGrossReturn(series));
         assertNumEquals(1.1, new GrossReturnCriterion().calculate(series, position));
     }
+
+    @Test
+    public void noArgumentProfitBoundsPartialFuturesHoldingCost() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.numOf(10))
+                    .build();
+            Trade entry = Trade.fromFills(TradeType.BUY, List.of(futuresFill(contract, 0, 100, 2, ExecutionSide.BUY)),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFills(TradeType.SELL, List.of(futuresFill(contract, 2, 100, 1, ExecutionSide.SELL)),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE,
+                    new LinearBorrowingCostModel(0.01, LinearBorrowingCostModel.Applicability.BOTH));
+
+            assertNumEquals(-40, position.getProfit());
+        }
+    }
 }

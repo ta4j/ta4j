@@ -369,7 +369,7 @@ public class Position implements Serializable {
         if (isOpened()) {
             return zero();
         } else if (futuresContract != null) {
-            return FuturesPositionAccounting.profit(this, futuresProfitMarkPrice(), Integer.MAX_VALUE);
+            return FuturesPositionAccounting.profit(this, futuresProfitMarkPrice(), exitCompletionIndex());
         } else {
             return getGrossProfit(exit.getPricePerAsset()).minus(getPositionCost());
         }

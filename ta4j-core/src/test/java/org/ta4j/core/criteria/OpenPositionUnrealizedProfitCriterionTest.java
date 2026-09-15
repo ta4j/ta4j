@@ -14,11 +14,13 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Position;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.FuturesCashFlow;
 import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradeFee;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -187,5 +189,19 @@ public class OpenPositionUnrealizedProfitCriterionTest extends AbstractCriterion
                 .amount(numFactory.numOf(amount))
                 .currency(contract.settlementCurrency())
                 .build();
+    }
+
+    @Test
+    public void futuresOpenPositionProfitIncludesResidualAfterPartialExit() {
+        FuturesContract contract = linearBtcPerpetual();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120).build();
+        Trade entry = Trade.fromFill(futuresFill(contract, 0, ExecutionSide.BUY, 100, 100, 0),
+                org.ta4j.core.analysis.cost.RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(futuresFill(contract, 1, ExecutionSide.SELL, 50, 120, 0),
+                org.ta4j.core.analysis.cost.RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, org.ta4j.core.analysis.cost.RecordedTradeCostModel.INSTANCE,
+                new ZeroCostModel());
+
+        assertNumEquals(numFactory.numOf(10), getCriterion().calculate(series, position), 1e-12);
     }
 }

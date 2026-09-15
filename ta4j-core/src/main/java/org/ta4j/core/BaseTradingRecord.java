@@ -952,6 +952,7 @@ public class BaseTradingRecord implements TradingRecord {
             requireScheduledCashFlowConflict(cashFlow);
             requireIndexInTimeOrder(cashFlow.time(), cashFlow.eventId(), cashFlow.index(),
                     "Cash flow indices must be nondecreasing in time order");
+            positionBook.requireCashFlowEligibility(cashFlow);
             if (eventHorizon == null || cashFlow.time().isAfter(eventHorizon)) {
                 applyScheduledFunding(cashFlow.time());
             }
@@ -2520,6 +2521,23 @@ public class BaseTradingRecord implements TradingRecord {
                 } else {
                     appendCashFlowToClosedPosition(slice.closedIndex(), portion);
                 }
+            }
+        }
+
+        private void requireCashFlowEligibility(FuturesCashFlow cashFlow) {
+            Num amount = cashFlow.amount();
+            Num settlement = cashFlow.settlementAmount();
+            if (amount.isZero() && settlement.isZero()) {
+                return;
+            }
+            NumFactory factory = amount.getNumFactory();
+            Num totalQuantity = factory.zero();
+            for (CashFlowSlice slice : eligibleSlices(cashFlow.time())) {
+                totalQuantity = totalQuantity.plus(factory.numOf(slice.quantity().getDelegate()));
+            }
+            if (totalQuantity.isZero()) {
+                throw new IllegalArgumentException(
+                        "No eligible futures exposure at " + cashFlow.time() + " for cash flow " + cashFlow.eventId());
             }
         }
 

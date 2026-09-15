@@ -34,7 +34,7 @@ public class OpenPositionUnrealizedProfitCriterion extends AbstractAnalysisCrite
     @Override
     public Num calculate(BarSeries series, Position position) {
         NumFactory factory = series.numFactory();
-        if (!position.isOpened()) {
+        if (position.getFuturesContract() == null && !position.isOpened()) {
             return factory.zero();
         }
         int endIndex = series.getEndIndex();
@@ -49,7 +49,7 @@ public class OpenPositionUnrealizedProfitCriterion extends AbstractAnalysisCrite
         int endIndex = tradingRecord.getEndIndex(series);
         Num closePrice = series.getBar(endIndex).getClosePrice();
         Position current = tradingRecord.getCurrentPosition();
-        if (!current.isOpened()) {
+        if (current.getFuturesContract() == null && !current.isOpened()) {
             return factory.zero();
         }
         Num profit = unrealizedProfit(current, closePrice, endIndex);

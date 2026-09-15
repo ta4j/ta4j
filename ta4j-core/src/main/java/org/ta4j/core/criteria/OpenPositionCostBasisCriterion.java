@@ -38,7 +38,7 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, Position position) {
         NumFactory factory = series.numFactory();
-        if (!position.isOpened()) {
+        if (position.getFuturesContract() == null && !position.isOpened()) {
             return factory.zero();
         }
         return toSeriesNum(factory, costBasis(series, position));
@@ -48,7 +48,7 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         NumFactory factory = series.numFactory();
         Position current = tradingRecord.getCurrentPosition();
-        if (!current.isOpened()) {
+        if (current.getFuturesContract() == null && !current.isOpened()) {
             return factory.zero();
         }
         return toSeriesNum(factory, costBasis(series, current));
@@ -63,24 +63,46 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
         Trade entry = position.getEntry();
         FuturesContract contract = position.getFuturesContract();
         if (contract != null) {
-            List<TradeFill> fills = Trade.executionFillsOf(entry);
-            List<TradeFill> executedFills = fills.stream()
+            List<TradeFill> entryFills = Trade.executionFillsOf(entry)
+                    .stream()
                     .filter(fill -> fill.index() >= 0 && fill.index() <= series.getEndIndex())
                     .toList();
-            if (executedFills.isEmpty()) {
+            if (entryFills.isEmpty()) {
                 return series.numFactory().zero();
             }
-            // Retained fills keep the entry trade's own basis; only an as-of subset that
-            // drops fills is repriced from the fills it retains.
-            Trade executedEntry = executedFills.size() == fills.size() ? entry
-                    : Trade.fromFills(entry.getType(), executedFills, entry.getCostModel());
-            Num notional = contract.settlementNotional(executedEntry.getAmount().abs(),
-                    executedEntry.getPricePerAsset(series));
+            List<TradeFill> exitFills = position.getExit() == null ? List.of()
+                    : Trade.executionFillsOf(position.getExit())
+                            .stream()
+                            .filter(fill -> fill.index() >= 0 && fill.index() <= series.getEndIndex())
+                            .toList();
+            NumFactory contractFactory = contract.contractSize().getNumFactory();
+            Num totalEntryQuantity = contractFactory.zero();
+            for (TradeFill entryFill : entryFills) {
+                totalEntryQuantity = totalEntryQuantity.plus(contractFactory.numOf(entryFill.amount().getDelegate()));
+            }
+            Num totalExitQuantity = contractFactory.zero();
+            for (TradeFill exitFill : exitFills) {
+                totalExitQuantity = totalExitQuantity.plus(contractFactory.numOf(exitFill.amount().getDelegate()));
+            }
+            Num remainingQuantity = totalEntryQuantity.minus(totalExitQuantity);
+            if (!remainingQuantity.isPositive()) {
+                return contractFactory.zero();
+            }
+            List<TradeFill> allEntryFills = Trade.executionFillsOf(entry);
+            Trade executedEntry = entryFills.size() == allEntryFills.size() ? entry
+                    : Trade.fromFills(entry.getType(), entryFills, entry.getCostModel());
+            Num averageEntryPrice = entryFills.size() == allEntryFills.size() ? entry.getPricePerAsset(series)
+                    : executedEntry.getPricePerAsset(series);
+            Num notional = contract.settlementNotional(remainingQuantity,
+                    contractFactory.numOf(averageEntryPrice.getDelegate()));
             Num openingFees = executedEntry.getCost();
             if (openingFees == null || openingFees.isNaN()) {
                 openingFees = notional.getNumFactory().zero();
             } else {
                 openingFees = notional.getNumFactory().numOf(openingFees.getDelegate());
+                Num remaining = notional.getNumFactory().numOf(remainingQuantity.getDelegate());
+                Num total = notional.getNumFactory().numOf(totalEntryQuantity.getDelegate());
+                openingFees = openingFees.multipliedBy(remaining).dividedBy(total);
             }
             return notional.plus(openingFees);
         }

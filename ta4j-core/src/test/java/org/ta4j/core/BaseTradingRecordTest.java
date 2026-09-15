@@ -3014,4 +3014,19 @@ class BaseTradingRecordTest {
         assertEquals(settlement.getNumFactory().getClass(), allocated.getNumFactory().getClass());
         assertEquals(settlement.bigDecimalValue(), allocated.bigDecimalValue());
     }
+
+    @Test
+    public void rejectedCashFlowDoesNotApplyDueScheduledFunding() {
+        FuturesContract contract = linearBtcPerpetual(numFactory);
+        FuturesFunding scheduled = fundingEvent(contract, 1, 0.001, 10_000);
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .fundingSchedule(List.of(scheduled))
+                .build();
+        FuturesCashFlow explicit = cashFlow(contract, FuturesCashFlow.Type.VARIATION_MARGIN, "explicit", 2, 1);
+
+        assertThrows(IllegalArgumentException.class, () -> record.recordCashFlow(explicit));
+
+        assertTrue(record.getCashFlows().isEmpty());
+    }
 }
