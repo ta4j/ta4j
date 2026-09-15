@@ -756,4 +756,12 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
             }
         }
     }
+
+    @Test
+    public void emptySeriesHasNoReturns() {
+        BarSeries emptySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        Returns returns = new Returns(emptySeries, new BaseTradingRecord(), ReturnRepresentation.DECIMAL);
+
+        assertEquals(0, returns.getSize());
+    }
 }

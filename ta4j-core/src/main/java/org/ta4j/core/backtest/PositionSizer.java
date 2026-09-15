@@ -521,30 +521,17 @@ public interface PositionSizer {
             }
 
             FuturesContract contract = futuresContract();
-            Num upperBound;
             if (contract == null) {
-                upperBound = budget.dividedBy(entryPrice);
-            } else {
-                Num one = numFactory().one();
-                Num entryFeePerContract = modeledEntryFee(contract, one);
-                // The bracket includes the one-contract intercept and the marginal
-                // contract cost, so fixed charges and rebates shift the boundary.
-                Num oneContractCost = entryCost(one);
-                Num costPerContract = entryCost(numFactory().two()).minus(oneContractCost);
-                upperBound = costPerContract.isPositive()
-                        ? budget.minus(oneContractCost).plus(costPerContract).dividedBy(costPerContract)
-                        : entryFeePerContract.isPositive() ? budget.dividedBy(entryFeePerContract)
-                                : maximumTradableAmount(contract);
-            }
-            if (!upperBound.isPositive()) {
-                return zero;
-            }
-
-            if (contract == null) {
+                Num upperBound = budget.dividedBy(entryPrice);
+                if (!upperBound.isPositive()) {
+                    return zero;
+                }
                 return entryCost(upperBound).isLessThanOrEqual(budget) ? upperBound
                         : searchLargestAffordable(budget, upperBound);
             }
-            return largestAffordableTradable(contract, upperBound, budget);
+            // A generic cost model need not have an affine cost curve. Probe actual
+            // quantities instead of deriving a bound from the first two quantities.
+            return largestAffordableTradable(contract, maximumTradableAmount(contract), budget);
         }
 
         private Num maximumTradableAmount(FuturesContract contract) {
@@ -560,10 +547,6 @@ public interface PositionSizer {
                 Num notionalBound = maximumNotional.dividedBy(perContractNotional);
                 maximum = maximum == null || notionalBound.isLessThan(maximum) ? notionalBound : maximum;
             }
-            if (maximum == null || !maximum.isPositive()) {
-                throw new IllegalStateException(
-                        "native futures affordability is unbounded; configure maximumQuantity or maximumNotional");
-            }
             return maximum;
         }
 
@@ -571,42 +554,73 @@ public interface PositionSizer {
          * Finds the largest tradable contract count that the budget can afford.
          *
          * <p>
-         * The count is bounded above by the marginal per-contract cost bound, as any
-         * count above it demands at least that much margin and fees per contract. The
-         * search therefore runs as a binary search over the quantity increment grid
-         * between zero and that bound, converging in {@code log2} of the bound instead
-         * of stepping one increment at a time. The result is zero when no tradable
-         * count is affordable, e.g. when the affordable range lies below the minimum
-         * quantity or notional.
+         * The search probes actual entry costs until it finds an unaffordable quantity,
+         * then bisects that bracket. A configured quantity or notional maximum caps
+         * every probe. Without a configured maximum, the search fails explicitly when
+         * no unaffordable quantity is found within the convergence guard.
          * </p>
          *
          * @param contract   contract declaring the quantity constraints
-         * @param upperBound marginal per-contract cost upper bound on the affordable
-         *                   count
+         * @param upperBound configured quantity or notional maximum, or {@code null}
+         *                   when the contract has no maximum
          * @param budget     cash available for entry
          * @return the largest tradable contract count the budget can afford, or zero
          */
         private Num largestAffordableTradable(FuturesContract contract, Num upperBound, Num budget) {
             Num zero = numFactory().zero();
             Num increment = FuturesOrderQuantitySupport.toNum(contract.quantityIncrement(), numFactory());
-            if (increment == null) {
-                Num affordable = entryCost(upperBound).isLessThanOrEqual(budget) ? upperBound
-                        : searchLargestAffordable(budget, upperBound);
-                return FuturesOrderQuantitySupport.largestTradable(contract, affordable, entryPrice);
-            }
-            Num maximum = FuturesOrderQuantitySupport.largestTradable(contract, upperBound, entryPrice);
-            if (!maximum.isPositive()) {
+            Num maximum = upperBound == null ? null
+                    : FuturesOrderQuantitySupport.largestTradable(contract, upperBound, entryPrice);
+            if (maximum != null && !maximum.isPositive()) {
                 return zero;
             }
-            if (entryCost(maximum).isLessThanOrEqual(budget)) {
-                return maximum;
-            }
+
             Num two = numFactory().two();
             Num low = zero;
-            Num high = maximum;
-            while (true) {
-                Num mid = FuturesOrderQuantitySupport.roundDown(contract, low.plus(high.minus(low).dividedBy(two)));
+            Num high = null;
+            Num probe = increment == null ? numFactory().one() : increment;
+            for (int iteration = 0; iteration < AFFORDABILITY_SEARCH_GUARD_ITERATIONS; iteration++) {
+                if (!Num.isFinite(probe)) {
+                    break;
+                }
+                Num candidate = maximum != null && probe.isGreaterThan(maximum) ? maximum : probe;
+                candidate = FuturesOrderQuantitySupport.largestTradable(contract, candidate, entryPrice);
+                if (candidate.isPositive()) {
+                    if (entryCost(candidate).isLessThanOrEqual(budget)) {
+                        low = candidate;
+                    } else {
+                        high = candidate;
+                        break;
+                    }
+                }
+                if (maximum != null && !candidate.isLessThan(maximum)) {
+                    break;
+                }
+                Num next = probe.multipliedBy(two);
+                if (!Num.isFinite(next) || next.isEqual(probe)) {
+                    break;
+                }
+                probe = next;
+            }
+            if (high == null) {
+                if (maximum == null) {
+                    throw new IllegalStateException(
+                            "native futures affordability is unbounded; configure maximumQuantity or maximumNotional");
+                }
+                if (low.isEqual(maximum) || entryCost(maximum).isLessThanOrEqual(budget)) {
+                    return maximum;
+                }
+                high = maximum;
+            }
+
+            boolean converged = false;
+            for (int iteration = 0; iteration < AFFORDABILITY_SEARCH_GUARD_ITERATIONS; iteration++) {
+                Num mid = low.plus(high.minus(low).dividedBy(two));
+                if (increment != null) {
+                    mid = FuturesOrderQuantitySupport.roundDown(contract, mid);
+                }
                 if (mid.isEqual(low) || mid.isEqual(high)) {
+                    converged = true;
                     break;
                 }
                 if (entryCost(mid).isLessThanOrEqual(budget)) {
@@ -615,10 +629,13 @@ public interface PositionSizer {
                     high = mid;
                 }
             }
-            if (!FuturesOrderQuantitySupport.isTradable(contract, low, entryPrice)) {
-                return zero;
+            if (!converged) {
+                throw new IllegalStateException(
+                        "affordability search did not converge within " + AFFORDABILITY_SEARCH_GUARD_ITERATIONS
+                                + " iterations; the search converges for finite-precision Num implementations, e.g."
+                                + " DoubleNum or DecimalNum with a bounded java.math.MathContext");
             }
-            return low;
+            return FuturesOrderQuantitySupport.largestTradable(contract, low, entryPrice);
         }
 
         /**

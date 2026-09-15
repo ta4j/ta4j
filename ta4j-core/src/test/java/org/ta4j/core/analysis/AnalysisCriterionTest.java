@@ -133,8 +133,8 @@ public class AnalysisCriterionTest {
                     RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
 
             assertNumEquals(15, criterion.calculate(barSeries, imported, AnalysisWindow.barRange(2, 4), marked));
-            // A position whose exit only spans the window is not included: no
-            // executed exit fill occurred inside it.
+            // No realized exit belongs to this window, but its residual exposure
+            // still contributes when marked at the window end.
             BaseTradingRecord spanningExit = new BaseTradingRecord(new Position(
                     Trade.fromFills(TradeType.BUY,
                             List.of(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 100, 100,
@@ -145,7 +145,9 @@ public class AnalysisCriterionTest {
                             FuturesAnalysisTestSupport.fill(contract, 6, ExecutionSide.SELL, 50, 125, List.of())),
                             RecordedTradeCostModel.INSTANCE),
                     RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
-            assertNumEquals(0, criterion.calculate(barSeries, spanningExit, AnalysisWindow.barRange(2, 4), marked));
+            assertNumEquals(0, criterion.calculate(barSeries, spanningExit, AnalysisWindow.barRange(2, 4),
+                    AnalysisContext.defaults()));
+            assertNumEquals(10, criterion.calculate(barSeries, spanningExit, AnalysisWindow.barRange(2, 4), marked));
 
             // An exit fill beyond the window end breaks full containment.
             BaseTradingRecord spanning = new BaseTradingRecord(new Position(
@@ -277,6 +279,52 @@ public class AnalysisCriterionTest {
 
             assertNumEquals(10,
                     new NetProfitCriterion().calculate(barSeries, record, AnalysisWindow.barRange(0, 2), marked));
+        }
+    }
+
+    @Test
+    public void markedAverageCostDoesNotUseFutureEntryBasisForClosedSlice() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 100, 100, 110, 200, 130);
+            BaseTradingRecord record = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .matchPolicy(ExecutionMatchPolicy.AVG_COST)
+                    .initialCapital(testFactory.numOf(1_000))
+                    .build();
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1, 100, List.of()));
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.BUY, 1, 200, List.of()));
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 4, ExecutionSide.SELL, 1, 130, List.of()));
+
+            AnalysisContext marked = AnalysisContext.defaults()
+                    .withOpenPositionHandling(OpenPositionHandling.MARK_TO_MARKET);
+
+            assertNumEquals(0.1,
+                    new NetProfitCriterion().calculate(barSeries, record, AnalysisWindow.barRange(0, 2), marked));
+        }
+    }
+
+    @Test
+    public void markedWindowKeepsResidualExposureBetweenSeparatedExitFills() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 100, 100, 110, 115);
+            BaseTradingRecord record = new BaseTradingRecord(new Position(
+                    Trade.fromFills(TradeType.BUY,
+                            List.of(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 100, 100,
+                                    List.of())),
+                            RecordedTradeCostModel.INSTANCE),
+                    Trade.fromFills(TradeType.SELL, List.of(
+                            FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 50, 110, List.of()),
+                            FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 50, 115, List.of())),
+                            RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+
+            AnalysisContext marked = AnalysisContext.defaults()
+                    .withOpenPositionHandling(OpenPositionHandling.MARK_TO_MARKET);
+
+            assertNumEquals(5,
+                    new NetProfitCriterion().calculate(barSeries, record, AnalysisWindow.barRange(2, 2), marked));
         }
     }
 }

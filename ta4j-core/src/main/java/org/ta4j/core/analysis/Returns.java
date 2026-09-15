@@ -468,7 +468,7 @@ public class Returns implements PerformanceIndicator {
      * @return the size of the return series.
      */
     public int getSize() {
-        return firstBarReported ? barSeries.getBarCount() : barSeries.getBarCount() - 1;
+        return firstBarReported ? barSeries.getBarCount() : Math.max(0, barSeries.getBarCount() - 1);
     }
 
     /**

@@ -727,11 +727,17 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     private void adoptPosition(Position position) {
+        Trade entry = position.getEntry();
+        Trade exit = position.getExit();
         if (!hasNumFactory()) {
             Num price = position.getEntry().getPricePerAsset();
             if (price != null && !price.isNaN()) {
                 numFactory = price.getNumFactory();
             }
+        }
+        if (position.getFuturesContract() != null && ((entry.getTime() == null && entry.getFills().isEmpty())
+                || (exit != null && exit.getTime() == null && exit.getFills().isEmpty()))) {
+            throw new IllegalArgumentException("native futures positions require an execution timestamp");
         }
         Position adoptedPosition = normalizeToRecordFactory(position);
         long entrySequence = nextSequence++;
@@ -1140,13 +1146,14 @@ public class BaseTradingRecord implements TradingRecord {
         Objects.requireNonNull(trade, "trade");
         requireMutable("operate(Trade)");
         Objects.requireNonNull(trade.getType(), "trade.type");
-        if (trade.getFuturesContract() != null && trade.getTime() == null) {
+        List<TradeFill> tradeFills = trade.getFills();
+        if (trade.getFuturesContract() != null && trade.getTime() == null && tradeFills.isEmpty()) {
             throw new IllegalArgumentException(
                     "a native futures trade requires a non-null execution timestamp; set the fill time");
         }
         lock.writeLock().lock();
         try {
-            List<TradeFill> fills = Trade.executionFillsOf(trade);
+            List<TradeFill> fills = tradeFills.isEmpty() ? Trade.executionFillsOf(trade) : List.copyOf(tradeFills);
             List<PlannedTradeFill> plannedTradeFills = planTradeFills(trade, fills);
             validatePlannedFillTimes(plannedTradeFills);
             validateSpecificIdBatch(trade.getType(), plannedTradeFills);
@@ -1353,7 +1360,7 @@ public class BaseTradingRecord implements TradingRecord {
         for (Trade trade : tradesSnapshot()) {
             for (TradeFill fill : Trade.executionFillsOf(trade)) {
                 if (fill.index() >= 0 && fill.time() != null) {
-                    requireExecutionIndexOrder(time, index, fill.time(), fill.index(), message);
+                    requireEventExecutionIndexOrder(time, index, fill.time(), fill.index(), message);
                 }
             }
         }
@@ -1398,6 +1405,14 @@ public class BaseTradingRecord implements TradingRecord {
     private static void requireExecutionIndexOrder(Instant time, int index, Instant otherTime, int otherIndex,
             String message) {
         if (time.compareTo(otherTime) < 0 ? index > otherIndex : index < otherIndex) {
+            throw new IllegalArgumentException(message);
+        }
+    }
+
+    private static void requireEventExecutionIndexOrder(Instant time, int index, Instant otherTime, int otherIndex,
+            String message) {
+        int timeOrder = time.compareTo(otherTime);
+        if (timeOrder < 0 ? index > otherIndex : timeOrder > 0 ? index < otherIndex : index > otherIndex) {
             throw new IllegalArgumentException(message);
         }
     }
@@ -2844,8 +2859,9 @@ public class BaseTradingRecord implements TradingRecord {
             Num lotAmount = lot.amount();
             Num entryFeePortion = lot.fee().isZero() ? lot.fee()
                     : lot.fee().multipliedBy(closeAmount).dividedBy(lotAmount);
-            List<FuturesCashFlow> sliceCashFlows = lot.allocateCashFlows(closeAmount);
+            List<TradeFill> originalFills = lot.fills();
             List<TradeFill> entryFills = lot.allocateFills(closeAmount);
+            List<FuturesCashFlow> sliceCashFlows = lot.allocateCashFlows(closeAmount, timeOf(trade), originalFills);
             List<TradeFee> entryComponents = lot.allocateFeeComponents(closeAmount);
             if (closeAmount.isEqual(lotAmount)) {
                 openLots.remove(lot);
@@ -3214,26 +3230,52 @@ public class BaseTradingRecord implements TradingRecord {
              * Allocates the closed portion of the recorded cash flows and retains the
              * remainder on the open lot.
              *
-             * @param portion closed amount
+             * @param portion       closed amount
+             * @param exitTime      exit execution timestamp
+             * @param originalFills fill slices before allocating the closing portion
              * @return cash flows allocated to the closed portion
              */
-            private List<FuturesCashFlow> allocateCashFlows(Num portion) {
+            private List<FuturesCashFlow> allocateCashFlows(Num portion, Instant exitTime,
+                    List<TradeFill> originalFills) {
                 Num remaining = portion;
                 List<FuturesCashFlow> allocated = new ArrayList<>();
+                List<FuturesCashFlow> deferredAfterExit = new ArrayList<>();
+                if (portion.isLessThan(amount) && exitTime != null) {
+                    for (FuturesCashFlow cashFlow : cashFlows) {
+                        if (cashFlow.time().isAfter(exitTime)) {
+                            deferredAfterExit.add(cashFlow);
+                        }
+                    }
+                }
                 List<List<FuturesCashFlow>> retainedSlices = new ArrayList<>();
                 for (int i = 0; i < cashFlowSlices.size(); i++) {
-                    Num sliceAmount = fills.isEmpty() ? amount : fills.get(i).amount();
-                    if (!remaining.isPositive()) {
-                        retainedSlices.add(cashFlowSlices.get(i));
-                        continue;
-                    }
+                    Num sliceAmount = originalFills.isEmpty() ? amount : originalFills.get(i).amount();
                     Num closeAmount = remaining.isLessThan(sliceAmount) ? remaining : sliceAmount;
-                    allocated.addAll(scaleCashFlows(cashFlowSlices.get(i), closeAmount, sliceAmount));
                     Num retainedAmount = sliceAmount.minus(closeAmount);
+                    List<FuturesCashFlow> retainedSlice = new ArrayList<>();
+                    for (FuturesCashFlow cashFlow : cashFlowSlices.get(i)) {
+                        if (!deferredAfterExit.isEmpty() && cashFlow.time().isAfter(exitTime)) {
+                            continue;
+                        }
+                        if (closeAmount.isPositive()) {
+                            allocated.add(scale(cashFlow, closeAmount, sliceAmount));
+                        }
+                        if (retainedAmount.isPositive()) {
+                            retainedSlice.add(
+                                    closeAmount.isZero() ? cashFlow : scale(cashFlow, retainedAmount, sliceAmount));
+                        }
+                    }
                     if (retainedAmount.isPositive()) {
-                        retainedSlices.add(scaleCashFlows(cashFlowSlices.get(i), retainedAmount, sliceAmount));
+                        retainedSlices.add(retainedSlice);
                     }
                     remaining = remaining.minus(closeAmount);
+                }
+                if (!deferredAfterExit.isEmpty()) {
+                    List<List<FuturesCashFlow>> deferredSlices = FuturesPositionAccounting
+                            .allocateCashFlowsByFill(deferredAfterExit, fills, amount.getNumFactory());
+                    for (int i = 0; i < retainedSlices.size(); i++) {
+                        retainedSlices.get(i).addAll(deferredSlices.get(i));
+                    }
                 }
                 cashFlowSlices = copyCashFlowSlices(retainedSlices);
                 cashFlows = flattenCashFlowSlices(cashFlowSlices);

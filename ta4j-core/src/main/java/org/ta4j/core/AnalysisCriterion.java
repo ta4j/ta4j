@@ -454,7 +454,7 @@ public interface AnalysisCriterion {
                 }
             }
             if (context.openPositionHandling() == OpenPositionHandling.MARK_TO_MARKET) {
-                List<Position> positionsToMark = futuresPositionsForMarkToMarket(source, end, inclusionPolicy);
+                List<Position> positionsToMark = futuresPositionsForMarkToMarket(source, start, end, inclusionPolicy);
                 for (Position positionToMark : positionsToMark) {
                     if (positionToMark.isClosed()) {
                         if (inclusionPolicy == PositionInclusionPolicy.FULLY_CONTAINED
@@ -533,16 +533,16 @@ public interface AnalysisCriterion {
         return List.of(currentPosition);
     }
 
-    private static List<Position> futuresPositionsForMarkToMarket(TradingRecord source, int windowEndIndex,
-            PositionInclusionPolicy inclusionPolicy) {
+    private static List<Position> futuresPositionsForMarkToMarket(TradingRecord source, int windowStartIndex,
+            int windowEndIndex, PositionInclusionPolicy inclusionPolicy) {
         List<Position> positions = new ArrayList<>(openPositionsForMarkToMarket(source, windowEndIndex));
         for (Position closedPosition : source.getPositions()) {
             Trade entry = closedPosition.getEntry();
             Trade exit = closedPosition.getExit();
             if (entry == null || exit == null || firstExecutedFillIndex(entry) > windowEndIndex
+                    || lastExecutedFillIndex(exit) <= windowEndIndex
                     || (inclusionPolicy == PositionInclusionPolicy.EXIT_IN_WINDOW
-                            ? firstExecutedFillIndex(exit) <= windowEndIndex
-                            : lastExecutedFillIndex(exit) <= windowEndIndex)) {
+                            && hasExecutedFillInWindow(exit, windowStartIndex, windowEndIndex))) {
                 continue;
             }
             positions.addAll(trimFuturesPositionToWindow(closedPosition, windowEndIndex,
@@ -595,7 +595,7 @@ public interface AnalysisCriterion {
         }
         CostModel transactionCostModel = position.getTransactionCostModel();
         CostModel holdingCostModel = position.getHoldingCostModel();
-        Trade retainedEntry = tradeForRetainedFills(entry, retainedEntryFills);
+        Trade retainedEntry = tradeForRetainedFills(entry, retainedEntryFills, !recomputeBasis);
         if (exit == null || retainedExitFills.isEmpty()) {
             return List
                     .of(new Position(retainedEntry, transactionCostModel, holdingCostModel, position.getCashFlows()));
@@ -656,9 +656,11 @@ public interface AnalysisCriterion {
             }
         }
         boolean allEntryFillsRetained = retainedEntryFills.size() == allEntryFills.size();
-        Position closedPosition = new Position(tradeForRetainedFills(entry, closedEntryFills, allEntryFillsRetained),
-                retainedExit, transactionCostModel, holdingCostModel, closedCashFlows);
-        Position openPosition = new Position(tradeForRetainedFills(entry, openEntryFills, allEntryFillsRetained),
+        Position closedPosition = new Position(
+                tradeForRetainedFills(entry, closedEntryFills, allEntryFillsRetained && !recomputeBasis), retainedExit,
+                transactionCostModel, holdingCostModel, closedCashFlows);
+        Position openPosition = new Position(
+                tradeForRetainedFills(entry, openEntryFills, allEntryFillsRetained && !recomputeBasis),
                 transactionCostModel, holdingCostModel, openCashFlows);
         return List.of(closedPosition, openPosition);
     }

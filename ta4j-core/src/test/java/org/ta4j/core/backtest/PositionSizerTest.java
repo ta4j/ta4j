@@ -15,9 +15,12 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.FuturesContract;
+import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.FuturesTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -210,5 +213,75 @@ class PositionSizerTest {
                 entryOnFirstBar(), flatSeries(numFactory, 100), TradeType.BUY, record, rebate, new ZeroCostModel());
 
         assertNumEquals(numFactory.numOf(2), sizingContext.maxAffordableAmount(numFactory.numOf(19)));
+    }
+
+    @Test
+    public void maxAffordableAmountProbesMonotonicTieredFees() {
+        NumFactory numFactory = DoubleNumFactory.getInstance();
+        FuturesContract contract = linearContract(numFactory);
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf("32.1"))
+                .initialMarginRate(numFactory.numOf(0.1))
+                .build();
+        PositionSizer.Context sizingContext = new PositionSizer.Context(0, 0, numFactory.hundred(), null,
+                entryOnFirstBar(), flatSeries(numFactory, 100), TradeType.BUY, record,
+                new MonotonicTieredFuturesCostModel(), new ZeroCostModel());
+
+        assertNumEquals(numFactory.numOf(3), sizingContext.maxAffordableAmount(numFactory.numOf("32.1")));
+    }
+
+    private static final class MonotonicTieredFuturesCostModel implements CostModel {
+
+        @Override
+        public Num calculate(Position position, int finalIndex) {
+            return position.getEntry().getPricePerAsset().getNumFactory().zero();
+        }
+
+        @Override
+        public Num calculate(Position position) {
+            return position.getEntry().getPricePerAsset().getNumFactory().zero();
+        }
+
+        @Override
+        public Num calculate(Num price, Num amount) {
+            return tieredFee(amount);
+        }
+
+        @Override
+        public Num calculate(TradeFill fill) {
+            return tieredFee(fill.amount());
+        }
+
+        @Override
+        public boolean equals(CostModel otherModel) {
+            return otherModel instanceof MonotonicTieredFuturesCostModel;
+        }
+
+        private Num tieredFee(Num amount) {
+            Num two = amount.getNumFactory().two();
+            if (amount.isLessThanOrEqual(two)) {
+                return amount;
+            }
+            return two.plus(amount.minus(two).multipliedBy(amount.getNumFactory().numOf("0.1")));
+        }
+    }
+
+    @Test
+    public void maxAffordableAmountReturnsZeroForUnderflowedNotionalLimit() {
+        NumFactory numFactory = DoubleNumFactory.getInstance();
+        FuturesContract contract = linearContract(numFactory).toBuilder()
+                .maximumNotional(numFactory.numOf(Double.MIN_VALUE))
+                .build();
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.hundred())
+                .initialMarginRate(numFactory.one())
+                .build();
+        PositionSizer.Context sizingContext = new PositionSizer.Context(0, 0, numFactory.hundred(), null,
+                entryOnFirstBar(), flatSeries(numFactory, 100), TradeType.BUY, record, new ZeroCostModel(),
+                new ZeroCostModel());
+
+        assertNumEquals(numFactory.zero(), sizingContext.maxAffordableAmount(numFactory.hundred()));
     }
 }

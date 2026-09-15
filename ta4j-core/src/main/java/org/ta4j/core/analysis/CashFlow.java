@@ -97,7 +97,7 @@ public class CashFlow implements PerformanceIndicator {
 
     /**
      * Constructor materializing only a bounded logical window on the original
-     * series.
+     * series. Discarded bars are not stored and retain the neutral value of one.
      *
      * @param barSeries            the bar series
      * @param tradingRecord        the trading record
@@ -116,7 +116,8 @@ public class CashFlow implements PerformanceIndicator {
 
     /**
      * Constructor materializing only a bounded logical window on the original
-     * series and valuing open exposure at an explicit mark price.
+     * series and valuing open exposure at an explicit mark price. Discarded bars
+     * are not stored and retain the neutral value of one.
      *
      * @param barSeries            the bar series
      * @param tradingRecord        the trading record
@@ -247,7 +248,7 @@ public class CashFlow implements PerformanceIndicator {
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
         this.markPriceIndicator = markPriceIndicator;
         int seriesEnd = this.barSeries.getEndIndex();
-        this.valueStartIndex = Math.max(0, startIndex);
+        this.valueStartIndex = Math.max(Math.max(0, this.barSeries.getBeginIndex()), startIndex);
         this.valueEndIndex = seriesEnd < 0 ? -1 : Math.min(Math.max(endIndex, this.valueStartIndex), seriesEnd);
         int size = this.valueEndIndex < this.valueStartIndex ? 0 : this.valueEndIndex - this.valueStartIndex + 1;
         this.values = new ArrayList<>(Collections.nCopies(size, this.barSeries.numFactory().one()));

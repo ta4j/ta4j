@@ -1071,7 +1071,7 @@ class BaseTradingRecordTest {
     }
 
     @Test
-    void futuresTradeWithoutAnExecutionTimestampIsRejected() {
+    public void futuresTradeWithoutAnExecutionTimestampIsRejected() {
         CostModel costModel = new ZeroCostModel();
         Trade futuresTrade = new Trade() {
             @Override
@@ -1129,11 +1129,64 @@ class BaseTradingRecordTest {
         BaseTradingRecord record = BaseTradingRecord.builder().build();
         record.operate(Trade.buyAt(1, numFactory.numOf(100), numFactory.one(), new ZeroCostModel()));
 
-        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
-                () -> record.operate(futuresTrade));
-        assertEquals("a native futures trade requires a non-null execution timestamp; set the fill time",
-                failure.getMessage());
+        assertThrows(IllegalArgumentException.class, () -> record.operate(futuresTrade));
+        assertThrows(IllegalArgumentException.class,
+                () -> new BaseTradingRecord(new Position(futuresTrade, new ZeroCostModel(), new ZeroCostModel())));
         assertEquals(1, record.getTrades().size());
+    }
+
+    @Test
+    public void importedLegacyFuturesPositionsRequireExecutionTimestamps() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Trade legacyEntry = legacyFuturesTrade(contract, TradeType.BUY, 0, null, numFactory.numOf(100),
+                    numFactory.one());
+            Position openPosition = new Position(legacyEntry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            assertThrows(IllegalArgumentException.class, () -> new BaseTradingRecord(openPosition));
+
+            Trade timestampedEntry = Trade.fromFill(fillAtTime(contract, 0, T0, ExecutionSide.BUY, 1, 100, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade legacyExit = legacyFuturesTrade(contract, TradeType.SELL, 1, null, numFactory.numOf(110),
+                    numFactory.one());
+            Position closedPosition = new Position(timestampedEntry, legacyExit, RecordedTradeCostModel.INSTANCE,
+                    new ZeroCostModel());
+
+            assertThrows(IllegalArgumentException.class, () -> new BaseTradingRecord(closedPosition));
+        }
+    }
+
+    @Test
+    public void aggregateFuturesTradeWithTimestampedFillsDoesNotRequireTradeTimestamp() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            List<TradeFill> fills = List.of(fillAtTime(contract, 0, T0, ExecutionSide.BUY, 1, 100, List.of()),
+                    fillAtTime(contract, 1, T0.plusSeconds(1), ExecutionSide.BUY, 1, 101, List.of()));
+            Trade aggregate = futuresTradeViewWithFills(contract, TradeType.BUY, fills);
+            BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(contract).build();
+
+            record.operate(aggregate);
+
+            assertEquals(2, record.getOpenPositions().size());
+            assertEquals(2, record.getTrades().size());
+            assertEquals(T0, record.getTrades().get(0).getTime());
+            assertEquals(T0.plusSeconds(1), record.getTrades().get(1).getTime());
+        }
+    }
+
+    @Test
+    public void aggregateFuturesTradeAcceptsExplicitEpochFillTimestamp() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            TradeFill fill = fillAtTime(contract, 0, Instant.EPOCH, ExecutionSide.BUY, 1, 100, List.of());
+            Trade aggregate = futuresTradeViewWithFills(contract, TradeType.BUY, List.of(fill));
+            BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(contract).build();
+
+            record.operate(aggregate);
+
+            assertEquals(Instant.EPOCH, record.getLastTrade().getTime());
+            assertNumEquals(1, record.getLastTrade().getAmount());
+        }
     }
 
     @Test
@@ -1281,6 +1334,71 @@ class BaseTradingRecordTest {
                 .amount(contract.contractSize().getNumFactory().numOf(amount))
                 .currency(contract.settlementCurrency())
                 .build();
+    }
+
+    private static Trade legacyFuturesTrade(FuturesContract contract, TradeType type, int index, Instant time,
+            Num price, Num amount) {
+        return futuresTradeView(contract, type, index, time, price, amount, List.of());
+    }
+
+    private static Trade futuresTradeViewWithFills(FuturesContract contract, TradeType type, List<TradeFill> fills) {
+        TradeFill first = fills.getFirst();
+        return futuresTradeView(contract, type, first.index(), null, first.price(), first.amount(), fills);
+    }
+
+    private static Trade futuresTradeView(FuturesContract contract, TradeType type, int index, Instant time, Num price,
+            Num amount, List<TradeFill> fills) {
+        return new Trade() {
+            @Override
+            public TradeType getType() {
+                return type;
+            }
+
+            @Override
+            public int getIndex() {
+                return index;
+            }
+
+            @Override
+            public Num getPricePerAsset() {
+                return price;
+            }
+
+            @Override
+            public Num getNetPrice() {
+                return price;
+            }
+
+            @Override
+            public Num getAmount() {
+                return amount;
+            }
+
+            @Override
+            public Num getCost() {
+                return price.getNumFactory().zero();
+            }
+
+            @Override
+            public CostModel getCostModel() {
+                return RecordedTradeCostModel.INSTANCE;
+            }
+
+            @Override
+            public Instant getTime() {
+                return time;
+            }
+
+            @Override
+            public FuturesContract getFuturesContract() {
+                return contract;
+            }
+
+            @Override
+            public List<TradeFill> getFills() {
+                return fills;
+            }
+        };
     }
 
     @Test
@@ -2789,6 +2907,49 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    public void importedCashFlowsAfterPartialExitRemainOnResidualLot() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Trade entry = Trade.fromFill(fill(contract, 0, ExecutionSide.BUY, 2, 100, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFill(fill(contract, 1, ExecutionSide.SELL, 1, 110, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+            FuturesCashFlow postExitFunding = cashFlow(contract, FuturesCashFlow.Type.FUNDING, "post-exit", 2, 2);
+            Position importedPosition = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel(),
+                    List.of(postExitFunding));
+
+            BaseTradingRecord record = new BaseTradingRecord(importedPosition);
+
+            assertTrue(record.getPositions().getFirst().getCashFlows().isEmpty());
+            assertEquals(List.of(postExitFunding), record.getOpenPositions().getFirst().getCashFlows());
+        }
+    }
+
+    @Test
+    public void sameTimestampCashFlowBeforeExecutionUsesEventIndexOrder() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(contract).build();
+            record.operate(fillAtTime(contract, 8, T0, ExecutionSide.BUY, 1, 100, List.of()));
+            record.operate(fillAtTime(contract, 10, T0.plusSeconds(9), ExecutionSide.BUY, 1, 101, List.of()));
+            FuturesCashFlow eventBeforeFill = FuturesCashFlow.builder()
+                    .contract(contract)
+                    .type(FuturesCashFlow.Type.VARIATION_MARGIN)
+                    .eventId("before-fill")
+                    .index(9)
+                    .time(T0.plusSeconds(9))
+                    .amount(numFactory.one())
+                    .currency(contract.settlementCurrency())
+                    .build();
+
+            record.recordCashFlow(eventBeforeFill);
+
+            assertEquals(List.of(eventBeforeFill), record.getOpenPositions().getFirst().getCashFlows());
+            assertTrue(record.getOpenPositions().get(1).getCashFlows().isEmpty());
+        }
+    }
+
+    @Test
     public void rejectsImportedFuturesPositionWithMoreExecutedExitsThanEntries() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = linearBtcPerpetual(numFactory);
@@ -3058,5 +3219,27 @@ class BaseTradingRecordTest {
         assertThrows(IllegalArgumentException.class, () -> record.recordCashFlow(explicit));
 
         assertTrue(record.getCashFlows().isEmpty());
+    }
+
+    @Test
+    public void importedPostExitFundingIsDistributedAcrossRemainingFills() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Trade entry = Trade.fromFills(TradeType.BUY,
+                    List.of(fill(contract, 0, ExecutionSide.BUY, 1, 100, List.of()),
+                            fill(contract, 1, ExecutionSide.BUY, 1, 100, List.of()),
+                            fill(contract, 2, ExecutionSide.BUY, 1, 100, List.of())),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFill(fill(contract, 3, ExecutionSide.SELL, 1, 100, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+            FuturesCashFlow funding = cashFlow(contract, FuturesCashFlow.Type.FUNDING, "after-first-exit", 4, 6);
+            BaseTradingRecord record = new BaseTradingRecord(
+                    new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel(), List.of(funding)));
+
+            record.operate(fill(contract, 5, ExecutionSide.SELL, 1, 100, List.of()));
+
+            assertNumEquals(3, record.getPositions().get(1).getProfit());
+            assertNumEquals(3, record.getOpenPositions().getFirst().getProfit(5, numFactory.hundred()));
+        }
     }
 }

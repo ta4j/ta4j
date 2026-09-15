@@ -228,13 +228,18 @@ public interface Trade extends Serializable {
      * <p>
      * Default simulated trades expose a single fill. Aggregated/partial trades may
      * return multiple fills. The default single fill mirrors trade-level metadata
-     * (time, fee, order/correlation ids) when available.
+     * (time, fee, order/correlation ids) when available. A scalar futures trade
+     * without an execution timestamp exposes no fills rather than fabricating a
+     * timestamp; recorders reject that incomplete execution metadata.
      * </p>
      *
      * @return execution fills of this trade
      * @since 0.22.4
      */
     default List<TradeFill> getFills() {
+        if (getFuturesContract() != null && getTime() == null) {
+            return List.of();
+        }
         ExecutionSide side = getType() == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
         return List.of(TradeFill.forTrade(this, side));
     }
