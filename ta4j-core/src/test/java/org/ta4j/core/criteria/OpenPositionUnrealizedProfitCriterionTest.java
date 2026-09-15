@@ -204,4 +204,45 @@ public class OpenPositionUnrealizedProfitCriterionTest extends AbstractCriterion
 
         assertNumEquals(numFactory.numOf(10), getCriterion().calculate(series, position), 1e-12);
     }
+
+    @Test
+    public void fullyExitedFuturesReturnZeroWithoutSeriesMarkForPositionAndRecord() {
+        FuturesContract contract = linearBtcPerpetual();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        Trade entry = Trade.fromFill(futuresFill(contract, 0, ExecutionSide.BUY, 100, 100, 0),
+                org.ta4j.core.analysis.cost.RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(futuresFill(contract, 1, ExecutionSide.SELL, 100, 110, 0),
+                org.ta4j.core.analysis.cost.RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, org.ta4j.core.analysis.cost.RecordedTradeCostModel.INSTANCE,
+                new ZeroCostModel());
+
+        assertNumEquals(numFactory.zero(), getCriterion().calculate(series, position), 1e-12);
+
+        BaseTradingRecord record = futuresRecord(contract, TradeType.BUY);
+        record.operate(futuresFill(contract, 0, ExecutionSide.BUY, 100, 100, 0));
+        record.operate(futuresFill(contract, 1, ExecutionSide.SELL, 100, 110, 0));
+
+        assertNumEquals(numFactory.zero(), getCriterion().calculate(series, record), 1e-12);
+    }
+
+    @Test
+    public void unavailableMarkDoesNotConsumeFutureExits() {
+        FuturesContract contract = linearBtcPerpetual();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
+        series.setMaximumBarCount(1);
+        Trade entry = Trade.fromFill(futuresFill(contract, 0, ExecutionSide.BUY, 100, 100, 0),
+                org.ta4j.core.analysis.cost.RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(futuresFill(contract, 1, ExecutionSide.SELL, 100, 110, 0),
+                org.ta4j.core.analysis.cost.RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, org.ta4j.core.analysis.cost.RecordedTradeCostModel.INSTANCE,
+                new ZeroCostModel());
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, null, 0,
+                org.ta4j.core.analysis.cost.RecordedTradeCostModel.INSTANCE, new ZeroCostModel()) {
+            @Override
+            public Position getCurrentPosition() {
+                return position;
+            }
+        };
+        assertNumEquals(org.ta4j.core.num.NaN.NaN, getCriterion().calculate(series, record));
+    }
 }

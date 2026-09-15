@@ -125,12 +125,14 @@ public final class FuturesContract implements Serializable {
                 "minimumQuantity");
         Num validatedMaximumQuantity = FuturesValidation.requirePositiveFiniteOrNull(builder.maximumQuantity,
                 "maximumQuantity");
-        this.maximumQuantity = normalizeToFactory(validatedMaximumQuantity, this.minimumQuantity);
+        this.maximumQuantity = FuturesValidation.requirePositiveFiniteOrNull(
+                normalizeToFactory(validatedMaximumQuantity, this.minimumQuantity), "maximumQuantity");
         this.minimumNotional = FuturesValidation.requirePositiveFiniteOrNull(builder.minimumNotional,
                 "minimumNotional");
         Num validatedMaximumNotional = FuturesValidation.requirePositiveFiniteOrNull(builder.maximumNotional,
                 "maximumNotional");
-        this.maximumNotional = normalizeToFactory(validatedMaximumNotional, this.minimumNotional);
+        this.maximumNotional = FuturesValidation.requirePositiveFiniteOrNull(
+                normalizeToFactory(validatedMaximumNotional, this.minimumNotional), "maximumNotional");
         this.perpetualStyle = builder.perpetualStyle;
         this.trading24x7 = builder.trading24x7;
         this.nonCrypto = builder.nonCrypto;

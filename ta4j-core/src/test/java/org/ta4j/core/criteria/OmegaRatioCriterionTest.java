@@ -14,7 +14,13 @@ import static org.ta4j.core.criteria.RatioCriterionTestSupport.buildDailySeries;
 import java.time.Instant;
 import java.util.Optional;
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.FuturesContract;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
@@ -213,10 +219,76 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
         return returns;
     }
 
+    @Test
+    public void retainedSingleBarIncludesGenuineFuturesReturn() {
+        BarSeries series = buildSeries("omega_retained_return", new double[] { 100, 100, 110 });
+        series.setMaximumBarCount(1);
+        FuturesContract contract = futuresContract();
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(1000))
+                .build();
+        record.operate(futuresFill(contract, 2, ExecutionSide.BUY, 1000, 100));
+        assertTrue(new OmegaRatioCriterion(0).calculate(series, record).isNaN());
+    }
+
+    @Test
+    public void retainedFuturesHeadExcludesAccumulatedEquitySeed() {
+        BarSeries series = buildSeries("omega_retained_seed", new double[] { 100, 50, 50, 55, 49.5 });
+        series.setMaximumBarCount(3);
+        FuturesContract contract = futuresContract();
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(1000))
+                .build();
+        record.operate(futuresFill(contract, 0, ExecutionSide.BUY, 1000, 100));
+        record.operate(futuresFill(contract, 1, ExecutionSide.SELL, 1000, 50));
+        record.operate(futuresFill(contract, 2, ExecutionSide.BUY, 1000, 50));
+        record.operate(futuresFill(contract, 4, ExecutionSide.SELL, 1000, 49.5));
+        assertNumEquals(numFactory.one(), new OmegaRatioCriterion(0).calculate(series, record), 1e-12);
+    }
+
+    @Test
+    public void futuresPositionUsesEntryNotionalFallback() {
+        BarSeries series = buildSeries("omega_futures_position", new double[] { 100, 120, 90, 99 });
+        FuturesContract contract = futuresContract();
+        BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(contract).build();
+        record.operate(futuresFill(contract, 0, ExecutionSide.BUY, 1000, 100));
+        record.operate(futuresFill(contract, 3, ExecutionSide.SELL, 1000, 99));
+        assertNumEquals(numFactory.numOf(1.2),
+                new OmegaRatioCriterion(0).calculate(series, record.getPositions().getFirst()), 1e-12);
+        assertThrows(IllegalStateException.class, () -> new OmegaRatioCriterion(0).calculate(series, record));
+    }
+
+    private FuturesContract futuresContract() {
+        return FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01))
+                .build();
+    }
+
+    private TradeFill futuresFill(FuturesContract contract, int index, ExecutionSide side, double amount,
+            double price) {
+        return TradeFill.builder()
+                .index(index)
+                .time(Instant.parse("2024-01-01T00:00:00Z").plusSeconds(index))
+                .price(numFactory.numOf(price))
+                .amount(numFactory.numOf(amount))
+                .side(side)
+                .futuresContract(contract)
+                .fees(java.util.List.of())
+                .build();
+    }
+
     private double referenceOmega(double[] returns, double threshold) {
         double upsideExcess = 0d;
         double downsideShortfall = 0d;
-
         for (double value : returns) {
             double excess = value - threshold;
             if (excess > 0d) {
@@ -225,7 +297,6 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
                 downsideShortfall += -excess;
             }
         }
-
         if (downsideShortfall == 0d) {
             return upsideExcess == 0d ? 0d : Double.NaN;
         }

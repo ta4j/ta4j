@@ -5,6 +5,7 @@ package org.ta4j.core.backtest;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.Objects;
 
@@ -498,11 +499,13 @@ public interface PositionSizer {
          * so the result is either zero or a tradable contract count.
          * </p>
          * <p>
-         * The affordability search converges at the precision limit of the record
-         * number factory after about {@code 3.32 * p} iterations, where {@code p} is
-         * the number of significant digits, so the {@code Num} implementation must be
-         * finite-precision, e.g. {@code DoubleNum} or {@code DecimalNum} with a bounded
-         * {@code java.math.MathContext}, up to about 9800 significant digits.
+         * Bounded futures quantities with an increment are searched in descending grid
+         * order, with worst-case work linear in the number of tradable quantities.
+         * Otherwise the cost model must have monotonic affordability. That numerical
+         * search converges at the precision limit of the record number factory after
+         * about {@code 3.32 * p} iterations, where {@code p} is the number of
+         * significant digits. The number factory must have bounded precision, up to
+         * about 9800 significant digits.
          * </p>
          *
          * @param budget cash available for entry price and transaction costs
@@ -555,11 +558,10 @@ public interface PositionSizer {
          * Finds the largest tradable contract count that the budget can afford.
          *
          * <p>
-         * A configured maximum is checked first so a rebate at that limit cannot be
-         * hidden by an earlier fee spike. Otherwise the search probes actual entry
-         * costs until it finds an unaffordable quantity, then bisects that bracket.
-         * Without a configured maximum, the search fails explicitly when no
-         * unaffordable quantity is found within the convergence guard.
+         * A bounded quantity grid is searched from its maximum downward, stopping at
+         * the first affordable quantity. This does not assume monotonic fees.
+         * Continuous or unbounded quantities use the numerical search documented by
+         * {@link #maxAffordableAmount(Num)}.
          * </p>
          *
          * @param contract   contract declaring the quantity constraints
@@ -578,6 +580,22 @@ public interface PositionSizer {
             }
             if (maximum != null && entryCost(maximum).isLessThanOrEqual(budget)) {
                 return maximum;
+            }
+            if (maximum != null && increment != null) {
+                BigDecimal stepSize = increment.bigDecimalValue();
+                BigInteger steps = maximum.bigDecimalValue()
+                        .divide(stepSize, 0, RoundingMode.HALF_UP)
+                        .toBigIntegerExact()
+                        .subtract(BigInteger.ONE);
+                while (steps.signum() > 0) {
+                    Num candidate = numFactory().numOf(stepSize.multiply(new BigDecimal(steps)));
+                    if (FuturesOrderQuantitySupport.isTradable(contract, candidate, entryPrice)
+                            && entryCost(candidate).isLessThanOrEqual(budget)) {
+                        return candidate;
+                    }
+                    steps = steps.subtract(BigInteger.ONE);
+                }
+                return zero;
             }
 
             Num two = numFactory().two();

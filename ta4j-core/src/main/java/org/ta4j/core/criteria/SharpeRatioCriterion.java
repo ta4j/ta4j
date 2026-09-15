@@ -221,7 +221,12 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
             return series.numFactory().zero();
         }
 
-        return calculate(series, new BaseTradingRecord(position));
+        if (position.getFuturesContract() == null) {
+            return calculate(series, new BaseTradingRecord(position));
+        }
+        ExcessReturns excessReturns = new ExcessReturns(series, series.numFactory().numOf(annualRiskFreeRate),
+                cashReturnPolicy, position, equityCurveMode, effectiveOpenPositionHandling());
+        return calculate(series, new BaseTradingRecord(position), excessReturns);
     }
 
     @Override
@@ -236,6 +241,13 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         Num annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
         ExcessReturns excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord,
                 equityCurveMode, effectiveOpenPositionHandling);
+        return calculate(series, tradingRecord, excessReturns);
+    }
+
+    private Num calculate(BarSeries series, TradingRecord tradingRecord, ExcessReturns excessReturns) {
+        NumFactory numFactory = series.numFactory();
+        Num zero = numFactory.zero();
+        OpenPositionHandling effectiveOpenPositionHandling = effectiveOpenPositionHandling();
         Stream<Sample> samples = RatioSampleSupport.samples(series, tradingRecord, samplingFrequency, groupingZoneId,
                 excessReturns, effectiveOpenPositionHandling);
         SampleSummary summary = SampleSummary.fromSamples(samples, numFactory);

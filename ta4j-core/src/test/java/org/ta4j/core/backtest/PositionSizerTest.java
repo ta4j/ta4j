@@ -320,4 +320,28 @@ class PositionSizerTest {
             assertNumEquals(10, sizingContext.maxAffordableAmount(factory.numOf(5)));
         }
     }
+
+    @Test
+    public void maxAffordableAmountFindsInteriorAffordableIslands() {
+        for (NumFactory factory : new NumFactory[] { DoubleNumFactory.getInstance(),
+                DecimalNumFactory.getInstance() }) {
+            FuturesContract contract = linearContract(factory).toBuilder().maximumNotional(factory.numOf(10)).build();
+            BaseTradingRecord record = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .initialCapital(factory.numOf(5))
+                    .initialMarginRate(factory.one())
+                    .build();
+            CostModel fees = new ZeroCostModel() {
+                @Override
+                public Num calculate(TradeFill fill) {
+                    Num amount = fill.amount();
+                    boolean affordable = amount.isEqual(factory.numOf(3)) || amount.isEqual(factory.numOf(5));
+                    return (affordable ? factory.zero() : factory.numOf(11)).minus(amount);
+                }
+            };
+            PositionSizer.Context sizingContext = new PositionSizer.Context(0, 0, factory.one(), null,
+                    entryOnFirstBar(), flatSeries(factory, 1), TradeType.BUY, record, fees, new ZeroCostModel());
+            assertNumEquals(5, sizingContext.maxAffordableAmount(factory.numOf(5)));
+        }
+    }
 }

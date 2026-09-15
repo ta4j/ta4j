@@ -177,6 +177,39 @@ class FuturesContractTest {
     }
 
     @Test
+    public void rejectsMaximumBoundsOutsideReferenceFactoryRange() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> linearBuilder(doubleFactory).minimumQuantity(doubleFactory.one())
+                        .maximumQuantity(decimalFactory.numOf("1e400"))
+                        .build());
+        assertThrows(IllegalArgumentException.class,
+                () -> linearBuilder(doubleFactory).minimumNotional(doubleFactory.one())
+                        .maximumNotional(decimalFactory.numOf("1e400"))
+                        .build());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> linearBuilder(doubleFactory).minimumQuantity(doubleFactory.numOf(Double.MIN_VALUE))
+                        .maximumQuantity(decimalFactory.numOf("1e-400"))
+                        .build());
+        assertThrows(IllegalArgumentException.class,
+                () -> linearBuilder(doubleFactory).minimumNotional(doubleFactory.numOf(Double.MIN_VALUE))
+                        .maximumNotional(decimalFactory.numOf("1e-400"))
+                        .build());
+
+        FuturesContract normalized = linearBuilder(doubleFactory).minimumQuantity(doubleFactory.one())
+                .maximumQuantity(decimalFactory.numOf("2"))
+                .minimumNotional(doubleFactory.one())
+                .maximumNotional(decimalFactory.numOf("2"))
+                .build();
+        assertNumEquals(2, normalized.maximumQuantity());
+        assertNumEquals(2, normalized.maximumNotional());
+        assertEquals(normalized.hashCode(), normalized.toBuilder().build().hashCode());
+    }
+
+    @Test
     void serializesItsDeclaredSpecificationAndChangedTermsAreANewContract() throws Exception {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = FuturesContract.builder()

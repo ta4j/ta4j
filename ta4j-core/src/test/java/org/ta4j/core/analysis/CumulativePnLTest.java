@@ -557,22 +557,20 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
 
     @Test
     public void futuresCumulativePnlMarksCutoffBeforeRetainedSeriesAsUnavailable() {
-        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
-            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
-            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
-            barSeries.setMaximumBarCount(3);
-            BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(contract).build();
-            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(numFactory);
+        barSeries.setMaximumBarCount(3);
+        BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(contract).build();
+        record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
 
-            CumulativePnL markToMarket = new CumulativePnL(barSeries, record, 0, EquityCurveMode.MARK_TO_MARKET,
-                    OpenPositionHandling.MARK_TO_MARKET);
-            CumulativePnL realizedOnly = new CumulativePnL(barSeries, record, 0, EquityCurveMode.REALIZED,
-                    OpenPositionHandling.IGNORE);
+        CumulativePnL markToMarket = new CumulativePnL(barSeries, record, 0, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        CumulativePnL realizedOnly = new CumulativePnL(barSeries, record, 0, EquityCurveMode.REALIZED,
+                OpenPositionHandling.IGNORE);
 
-            for (int index = barSeries.getBeginIndex(); index <= barSeries.getEndIndex(); index++) {
-                assertNumEquals(NaN.NaN, markToMarket.getValue(index));
-                assertNumEquals(0, realizedOnly.getValue(index));
-            }
+        for (int index = barSeries.getBeginIndex(); index <= barSeries.getEndIndex(); index++) {
+            assertNumEquals(NaN.NaN, markToMarket.getValue(index));
+            assertNumEquals(0, realizedOnly.getValue(index));
         }
     }
 

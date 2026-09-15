@@ -13,7 +13,14 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import org.junit.Test;
+import java.util.List;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.FuturesContract;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFill;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
@@ -209,20 +216,55 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
         return annualizedReturn / maximumDrawdown;
     }
 
+    @Test
+    public void returnsFuturesEconomics_whenPositionIsEvaluatedDirectly() {
+        BarSeries series = RatioCriterionTestSupport.buildDailySeries(getBarSeries("futures_calmar"),
+                new double[] { 100d, 100.05d, 100.1d }, Instant.parse("2024-01-01T00:00:00Z"));
+        Position position = futuresPosition(series, 100d, 100.1d);
+        Num actual = ((CalmarRatioCriterion) getCriterion()).calculate(series, position);
+        double expected = Math.pow(1.001d, TimeConstants.SECONDS_PER_YEAR / (2d * 86_400d)) - 1d;
+        assertNumEquals(numFactory.numOf(expected), actual, 1e-12);
+    }
+
+    private Position futuresPosition(BarSeries series, double entryPrice, double exitPrice) {
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01))
+                .build();
+        Trade entry = Trade.fromFill(fill(contract, series.getBeginIndex(), ExecutionSide.BUY, entryPrice),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(fill(contract, series.getEndIndex(), ExecutionSide.SELL, exitPrice),
+                RecordedTradeCostModel.INSTANCE);
+        return new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+    }
+
+    private TradeFill fill(FuturesContract contract, int index, ExecutionSide side, double price) {
+        return TradeFill.builder()
+                .index(index)
+                .time(Instant.parse("2024-01-01T00:00:00Z").plusSeconds(index * 86_400L))
+                .price(numFactory.numOf(price))
+                .amount(numFactory.one())
+                .side(side)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+    }
+
     private double referenceAnnualizedReturn(BarSeries series, double[] closes) {
         int beginIndex = series.getBeginIndex();
         int endIndex = series.getEndIndex();
-        if (endIndex <= beginIndex) {
-            return 0d;
-        }
-
         double elapsedSeconds = Duration
                 .between(series.getBar(beginIndex).getEndTime(), series.getBar(endIndex).getEndTime())
                 .getSeconds();
         if (elapsedSeconds <= 0d) {
             return 0d;
         }
-
         double years = elapsedSeconds / TimeConstants.SECONDS_PER_YEAR;
         double totalReturn = closes[closes.length - 1] / closes[0];
         return Math.pow(totalReturn, 1d / years) - 1d;
