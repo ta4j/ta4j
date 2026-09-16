@@ -347,9 +347,9 @@ public class SortinoRatioCriterionTest extends AbstractCriterionTest {
         Position position = futuresPosition(series, 100d, 110d);
         SortinoRatioCriterion criterion = criterion(SamplingFrequency.BAR, Annualization.PERIOD);
         Num actual = criterion.calculate(series, position);
-        double[] returns = { 0.1d, -1d / 11d, 0.1d };
-        double mean = (returns[0] + returns[1] + returns[2]) / 3d;
-        double downsideDeviation = Math.sqrt((returns[1] * returns[1]) / returns.length);
+        double[] returns = { 0d, 0.1d, -1d / 11d, 0.1d };
+        double mean = (returns[0] + returns[1] + returns[2] + returns[3]) / returns.length;
+        double downsideDeviation = Math.sqrt((returns[2] * returns[2]) / returns.length);
         assertNumEquals(numFactory.numOf(mean / downsideDeviation), actual, 1e-12);
     }
 

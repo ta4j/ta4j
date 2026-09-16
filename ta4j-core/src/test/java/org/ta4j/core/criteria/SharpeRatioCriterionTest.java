@@ -485,10 +485,11 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         Position position = futuresPosition(series, 100d, 110d);
         SharpeRatioCriterion criterion = criterion(SamplingFrequency.BAR, Annualization.PERIOD);
         Num actual = criterion.calculate(series, position);
-        double[] returns = { 0.1d, -1d / 11d, 0.1d };
-        double mean = (returns[0] + returns[1] + returns[2]) / 3d;
+        double[] returns = { 0d, 0.1d, -1d / 11d, 0.1d };
+        double mean = (returns[0] + returns[1] + returns[2] + returns[3]) / returns.length;
         double variance = ((returns[0] - mean) * (returns[0] - mean) + (returns[1] - mean) * (returns[1] - mean)
-                + (returns[2] - mean) * (returns[2] - mean)) / 2d;
+                + (returns[2] - mean) * (returns[2] - mean) + (returns[3] - mean) * (returns[3] - mean))
+                / (returns.length - 1);
         assertNumEquals(numFactory.numOf(mean / Math.sqrt(variance)), actual, 1e-12);
     }
 

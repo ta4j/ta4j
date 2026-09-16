@@ -167,8 +167,8 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
         BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 110, 120, 130, 140, 150, 160);
         FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
         Trade entry = Trade.fromFills(Trade.TradeType.BUY,
-                List.of(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1, 100, List.of()),
-                        FuturesAnalysisTestSupport.fill(contract, -1, ExecutionSide.BUY, 1, 100, List.of())),
+                List.of(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 2, 100, List.of()),
+                        FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1, 100, List.of())),
                 RecordedTradeCostModel.INSTANCE);
         Trade exit = Trade.fromFills(Trade.TradeType.SELL,
                 List.of(FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 1, 130, List.of()),

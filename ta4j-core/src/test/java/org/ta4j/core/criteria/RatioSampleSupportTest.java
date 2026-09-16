@@ -236,8 +236,9 @@ public class RatioSampleSupportTest {
                 .settlementCurrency("USD")
                 .contractSize(numFactory.numOf(0.01d))
                 .build();
-        Trade entry = Trade.fromFills(TradeType.BUY, List.of(fill(contract, 0, ExecutionSide.BUY, 1d, 100d),
-                fill(contract, -1, ExecutionSide.BUY, 1d, 100d)), RecordedTradeCostModel.INSTANCE);
+        Trade entry = Trade.fromFills(TradeType.BUY,
+                List.of(fill(contract, 0, ExecutionSide.BUY, 2d, 100d), fill(contract, 2, ExecutionSide.BUY, 1d, 100d)),
+                RecordedTradeCostModel.INSTANCE);
         Trade exit = Trade.fromFills(TradeType.SELL, List.of(fill(contract, 3, ExecutionSide.SELL, 1d, 130d),
                 fill(contract, 5, ExecutionSide.SELL, 1d, 150d), fill(contract, 7, ExecutionSide.SELL, 1d, 170d)),
                 RecordedTradeCostModel.INSTANCE);
