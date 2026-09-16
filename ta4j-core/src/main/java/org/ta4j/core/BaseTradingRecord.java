@@ -1393,6 +1393,10 @@ public class BaseTradingRecord implements TradingRecord {
         if (recorded == null) {
             return false;
         }
+        if (recorded.type() != FuturesCashFlow.Type.FUNDING) {
+            throw new IllegalArgumentException(
+                    "Cash flow " + funding.eventId() + " is already recorded with a different type");
+        }
         boolean sameEvent = Objects.equals(recorded.time(), funding.time())
                 && FuturesValidation.numEqualsNullable(recorded.rate(), funding.rate())
                 && FuturesValidation.numEqualsNullable(recorded.referencePrice(), funding.referencePrice())

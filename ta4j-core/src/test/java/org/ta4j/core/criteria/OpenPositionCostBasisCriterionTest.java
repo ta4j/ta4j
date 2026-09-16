@@ -146,6 +146,20 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void spotCostBasisIgnoresDeferredEntryFills() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110).build();
+        Instant executionTime = Instant.parse("2025-01-01T00:00:00Z");
+        TradeFill executed = new TradeFill(0, executionTime, numFactory.numOf(100), numFactory.one(), numFactory.one(),
+                ExecutionSide.BUY, null, null);
+        TradeFill deferred = new TradeFill(3, executionTime.plusSeconds(3), numFactory.numOf(200), numFactory.one(),
+                numFactory.numOf(7), ExecutionSide.BUY, null, null);
+        Trade entry = Trade.fromFills(TradeType.BUY, List.of(executed, deferred), RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        assertNumEquals(numFactory.numOf(101), getCriterion().calculate(series, position), 1e-12);
+    }
+
+    @Test
     public void futuresCostBasisIgnoresDeferredEntryFills() {
         FuturesContract contract = linearBtcPerpetual();
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110).build();

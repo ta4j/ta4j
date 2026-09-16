@@ -221,6 +221,20 @@ class FuturesContractTest {
     }
 
     @Test
+    public void rejectsQuantityIncrementsOutsideReferenceFactoryRange() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
+
+        FuturesContract normalized = linearBuilder(doubleFactory).quantityIncrement(decimalFactory.numOf("0.25"))
+                .build();
+        assertNumEquals(doubleFactory.numOf(0.25), normalized.quantityIncrement());
+        assertThrows(IllegalArgumentException.class,
+                () -> linearBuilder(doubleFactory).quantityIncrement(decimalFactory.numOf("1e-400")).build());
+        assertThrows(IllegalArgumentException.class,
+                () -> linearBuilder(doubleFactory).quantityIncrement(decimalFactory.numOf("1e400")).build());
+    }
+
+    @Test
     public void rejectsMaximumBoundsOutsideReferenceFactoryRange() {
         NumFactory doubleFactory = DoubleNumFactory.getInstance();
         NumFactory decimalFactory = DecimalNumFactory.getInstance();

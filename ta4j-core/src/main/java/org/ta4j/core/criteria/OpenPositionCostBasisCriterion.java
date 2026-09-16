@@ -107,8 +107,18 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
             }
             return notional.plus(openingFees);
         }
-        Num entryPrice = entry.getPricePerAsset(series);
-        return entryPrice.multipliedBy(entry.getAmount()).plus(entry.getCost());
+        List<TradeFill> allEntryFills = Trade.executionFillsOf(entry);
+        List<TradeFill> entryFills = allEntryFills.stream()
+                .filter(fill -> fill.index() >= 0 && fill.index() <= finalIndex)
+                .toList();
+        if (entryFills.isEmpty()) {
+            return series.numFactory().zero();
+        }
+        Trade executedEntry = entryFills.size() == allEntryFills.size() ? entry
+                : Trade.fromFills(entry.getType(), entryFills, entry.getCostModel());
+        return executedEntry.getPricePerAsset(series)
+                .multipliedBy(executedEntry.getAmount())
+                .plus(executedEntry.getCost());
     }
 
     private Num toSeriesNum(NumFactory factory, Num value) {

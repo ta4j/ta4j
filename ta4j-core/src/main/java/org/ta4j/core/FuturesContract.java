@@ -126,8 +126,10 @@ public final class FuturesContract implements Serializable {
         this.expiryTimeZone = builder.expiryTimeZone;
         this.tradingDisabledAt = builder.tradingDisabledAt;
         this.priceIncrement = FuturesValidation.requirePositiveFiniteOrNull(builder.priceIncrement, "priceIncrement");
-        this.quantityIncrement = FuturesValidation.requirePositiveFiniteOrNull(builder.quantityIncrement,
+        Num validatedQuantityIncrement = FuturesValidation.requirePositiveFiniteOrNull(builder.quantityIncrement,
                 "quantityIncrement");
+        this.quantityIncrement = FuturesValidation.requirePositiveFiniteOrNull(
+                normalizeToFactory(validatedQuantityIncrement, this.contractSize), "quantityIncrement");
         this.minimumQuantity = FuturesValidation.requirePositiveFiniteOrNull(builder.minimumQuantity,
                 "minimumQuantity");
         Num validatedMaximumQuantity = FuturesValidation.requirePositiveFiniteOrNull(builder.maximumQuantity,

@@ -2835,6 +2835,37 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    public void fundingCannotReuseVariationMarginEventId() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(contract).build();
+            record.operate(fill(contract, 0, ExecutionSide.BUY, 1, 10_000, List.of()));
+            record.recordCashFlow(FuturesCashFlow.builder()
+                    .contract(contract)
+                    .type(FuturesCashFlow.Type.VARIATION_MARGIN)
+                    .eventId("shared-event")
+                    .index(1)
+                    .time(T0.plusSeconds(1))
+                    .amount(numFactory.one())
+                    .currency(contract.settlementCurrency())
+                    .build());
+            FuturesFunding funding = FuturesFunding.builder()
+                    .contract(contract)
+                    .eventId("shared-event")
+                    .index(1)
+                    .time(T0.plusSeconds(1))
+                    .rate(numFactory.numOf(0.001))
+                    .referencePrice(numFactory.numOf(10_000))
+                    .build();
+
+            IllegalArgumentException rejected = assertThrows(IllegalArgumentException.class,
+                    () -> record.recordFunding(funding));
+            assertTrue(rejected.getMessage().contains("different type"));
+            assertEquals(1, record.getCashFlows().size());
+        }
+    }
+
+    @Test
     public void retryingProcessedFundingIgnoresLaterSameTimeScheduleEntry() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = linearBtcPerpetual(numFactory);
