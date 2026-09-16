@@ -505,9 +505,9 @@ public interface PositionSizer {
          * </p>
          * <p>
          * The shipped fixed-context cost models have affine entry costs for a fixed
-         * price and use bounded-precision bisection. Arbitrary or custom models retain
-         * the exhaustive descending grid search, which does not assume monotonic fees.
-         * Other bounded or unbounded ranges use the numerical search documented below.
+         * price and use bounded-precision bisection. Arbitrary or custom models use
+         * exhaustive descending search only when a finite quantity grid is available;
+         * otherwise affordability cannot be established without an unbounded scan.
          * </p>
          *
          * @param budget cash available for entry price and transaction costs
@@ -560,11 +560,10 @@ public interface PositionSizer {
          * Finds the largest tradable contract count that the budget can afford.
          *
          * <p>
-         * The shipped fixed-context cost models have affine entry costs for a fixed
-         * price and use bounded-precision bisection. Arbitrary or custom models retain
-         * the exhaustive descending grid search, which does not assume monotonic fees.
-         * Continuous or unbounded quantities use the numerical search documented by
-         * {@link #maxAffordableAmount(Num)}.
+         * Known affine models use bisection for bounded or unbounded ranges. Custom
+         * models use exhaustive descending search only when a finite quantity grid is
+         * available; unbounded custom searches are rejected. Bounded custom searches do
+         * not assume monotonic fees.
          * </p>
          *
          * @param contract   contract declaring the quantity constraints
@@ -603,7 +602,11 @@ public interface PositionSizer {
                 }
                 return zero;
             }
-            return searchLargestAffordableTradable(contract, maximum, budget, increment);
+            if (usesKnownAffineEntryCostModel()) {
+                return searchLargestAffordableTradable(contract, maximum, budget, increment);
+            }
+            throw new IllegalStateException(
+                    "native futures affordability requires a bounded quantity grid for custom cost models");
         }
 
         private boolean usesKnownAffineEntryCostModel() {

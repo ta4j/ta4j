@@ -216,9 +216,9 @@ class PositionSizerTest {
     }
 
     @Test
-    public void maxAffordableAmountProbesMonotonicTieredFees() {
+    public void maxAffordableAmountExhaustivelyProbesBoundedTieredFees() {
         NumFactory numFactory = DoubleNumFactory.getInstance();
-        FuturesContract contract = linearContract(numFactory);
+        FuturesContract contract = linearContract(numFactory).toBuilder().maximumQuantity(numFactory.numOf(10)).build();
         BaseTradingRecord record = BaseTradingRecord.builder()
                 .futuresContract(contract)
                 .initialCapital(numFactory.numOf("32.1"))
@@ -343,6 +343,27 @@ class PositionSizerTest {
                     entryOnFirstBar(), flatSeries(factory, 1), TradeType.BUY, record, fees, new ZeroCostModel());
             assertNumEquals(5, sizingContext.maxAffordableAmount(factory.numOf(5)));
         }
+    }
+
+    @Test
+    public void maxAffordableAmountRejectsUnboundedCustomCostSearch() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        FuturesContract contract = linearContract(factory);
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(factory.numOf(2))
+                .initialMarginRate(factory.one())
+                .build();
+        CostModel nonMonotonicFees = new ZeroCostModel() {
+            @Override
+            public Num calculate(TradeFill fill) {
+                return fill.amount().isEqual(factory.two()) ? factory.zero() : factory.numOf(11);
+            }
+        };
+        PositionSizer.Context sizingContext = new PositionSizer.Context(0, 0, factory.one(), null, entryOnFirstBar(),
+                flatSeries(factory, 1), TradeType.BUY, record, nonMonotonicFees, new ZeroCostModel());
+
+        assertThrows(IllegalStateException.class, () -> sizingContext.maxAffordableAmount(factory.two()));
     }
 
     @Test
