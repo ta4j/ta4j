@@ -216,6 +216,11 @@ public class StopLossPositionRiskModelTest {
         Trade deferredEntry = new org.ta4j.core.BaseTrade(-1, Trade.TradeType.BUY, numFactory.hundred(),
                 numFactory.one(), costModel) {
             @Override
+            public Instant getTime() {
+                return Instant.parse("2025-01-01T00:00:00Z");
+            }
+
+            @Override
             public FuturesContract getFuturesContract() {
                 return contract;
             }
@@ -249,6 +254,11 @@ public class StopLossPositionRiskModelTest {
         ZeroCostModel costModel = new ZeroCostModel();
         Trade executedEntry = new org.ta4j.core.BaseTrade(0, Trade.TradeType.BUY, numFactory.hundred(),
                 numFactory.one(), costModel) {
+            @Override
+            public Instant getTime() {
+                return Instant.parse("2025-01-01T00:00:00Z");
+            }
+
             @Override
             public FuturesContract getFuturesContract() {
                 return contract;
@@ -357,6 +367,11 @@ public class StopLossPositionRiskModelTest {
         ZeroCostModel costModel = new ZeroCostModel();
         Trade entry = new org.ta4j.core.BaseTrade(0, Trade.TradeType.BUY, numFactory.hundred(), numFactory.one(),
                 costModel) {
+            @Override
+            public Instant getTime() {
+                return Instant.parse("2025-01-01T00:00:00Z");
+            }
+
             @Override
             public FuturesContract getFuturesContract() {
                 return contract;
