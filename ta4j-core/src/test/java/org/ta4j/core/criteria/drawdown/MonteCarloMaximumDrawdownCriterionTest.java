@@ -22,6 +22,7 @@ import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.criteria.Statistics;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.num.Num;
 import java.time.Instant;
 
 public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTest {
@@ -297,6 +298,28 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
                 FirstBlockRandom::new, Statistics.MAX);
 
         Assert.assertTrue(criterion.calculate(series, record).isGreaterThan(numFactory.numOf(0.04)));
+    }
+
+    @Test(timeout = 1000)
+    public void multiFillExitAtMaximumIndexDoesNotOverrunSeries() {
+        org.ta4j.core.FuturesContract contract = futuresContract();
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 100, 100, 100, 90, 100, 100, 100, 100)
+                .build();
+        org.ta4j.core.Position first = futuresPosition(contract, 0, 2, 100, 100, 2, 1, Integer.MAX_VALUE, 90);
+        org.ta4j.core.Position second = futuresPosition(contract, 6, 1, 100, 100, 7, 1, -1, 100);
+        org.ta4j.core.Position third = futuresPosition(contract, 8, 1, 100, 100, 9, 1, -1, 100);
+        BaseTradingRecord delegate = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(2))
+                .build();
+        org.ta4j.core.TradingRecord record = new AggregatePositionRecord(delegate,
+                java.util.List.of(first, second, third));
+
+        MonteCarloMaximumDrawdownCriterion criterion = new MonteCarloMaximumDrawdownCriterion(1, 1,
+                FirstBlockRandom::new, Statistics.MAX);
+
+        Assert.assertTrue(Num.isFinite(criterion.calculate(series, record)));
     }
 
     private org.ta4j.core.FuturesContract futuresContract() {

@@ -401,10 +401,19 @@ public class Position implements Serializable {
         if (entry.getIndex() > finalIndex) {
             return entry.getPricePerAsset().getNumFactory().zero();
         }
-        Num grossProfit = isOpened() || exit.getIndex() > finalIndex ? openGrossProfit(finalPrice)
-                : getGrossProfit(finalPrice);
-        Num tradingCost = isOpened() || exit.getIndex() > finalIndex ? entry.getCost().plus(getHoldingCost(finalIndex))
-                : getPositionCost(finalIndex);
+        boolean exitExecuted = !isOpened() && isExitFullyExecutedThrough(finalIndex);
+        Num grossProfit;
+        Num tradingCost;
+        if (exitExecuted) {
+            grossProfit = getGrossProfit(finalPrice);
+            tradingCost = getPositionCost(finalIndex);
+        } else if (isOpened()) {
+            grossProfit = openGrossProfit(finalPrice);
+            tradingCost = entry.getCost().plus(getHoldingCost(finalIndex));
+        } else {
+            grossProfit = spotGrossProfitAt(finalIndex, finalPrice);
+            tradingCost = entry.getCost().plus(getHoldingCost(finalIndex));
+        }
         return grossProfit.minus(tradingCost);
     }
 
@@ -433,9 +442,12 @@ public class Position implements Serializable {
         if (futuresContract != null) {
             return FuturesPositionAccounting.realizedProfit(this, finalIndex);
         }
-        if (isOpened() || exit.getIndex() > finalIndex) {
+        if (isOpened()) {
             Num realizedSpotCost = getRealizedSpotCost(finalIndex);
             return realizedSpotCost.isZero() ? zero() : realizedSpotCost.negate();
+        }
+        if (!isExitFullyExecutedThrough(finalIndex)) {
+            return spotRealizedGrossProfitAt(finalIndex).minus(getRealizedSpotCost(finalIndex));
         }
         return getProfit(finalIndex, exit.getPricePerAsset());
     }
@@ -472,7 +484,7 @@ public class Position implements Serializable {
         if (futuresContract != null) {
             return FuturesPositionAccounting.unrealizedProfit(this, markPrice, finalIndex);
         }
-        if (isOpened() || exit.getIndex() > finalIndex) {
+        if (isOpened() || !isExitFullyExecutedThrough(finalIndex)) {
             return getProfit(finalIndex, markPrice).minus(getRealizedProfit(finalIndex));
         }
         return zero();
@@ -500,6 +512,7 @@ public class Position implements Serializable {
         FuturesValidation.requirePositiveFinite(initialMargin, "initialMargin");
         Num profit = getProfit(finalIndex, finalPrice);
         Num margin = profit.getNumFactory().numOf(initialMargin.getDelegate());
+        FuturesValidation.requirePositiveFinite(margin, "initialMargin");
         return profit.getNumFactory().one().plus(profit.dividedBy(margin));
     }
 
@@ -553,6 +566,84 @@ public class Position implements Serializable {
     private Num openGrossProfit(Num finalPrice) {
         Num grossProfit = entry.getAmount().multipliedBy(finalPrice).minus(entry.getValue());
         return entry.isSell() ? grossProfit.negate() : grossProfit;
+    }
+
+    private Num spotGrossProfitAt(int finalIndex, Num finalPrice) {
+        return spotProfitAt(finalIndex, finalPrice).grossProfit();
+    }
+
+    private Num spotRealizedGrossProfitAt(int finalIndex) {
+        return spotProfitAt(finalIndex, entry.getPricePerAsset()).realizedGrossProfit();
+    }
+
+    private SpotProfit spotProfitAt(int finalIndex, Num finalPrice) {
+        NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
+        Num normalizedFinalPrice = numFactory.numOf(finalPrice.getDelegate());
+        List<TradeFill> entryFills = executedSpotFills(entry, finalIndex);
+        List<TradeFill> exitFills = exit == null ? List.of() : executedSpotFills(exit, finalIndex);
+        Num entryAmount = numFactory.zero();
+        Num entryValue = numFactory.zero();
+        for (TradeFill entryFill : entryFills) {
+            Num amount = numFactory.numOf(entryFill.amount().getDelegate());
+            entryAmount = entryAmount.plus(amount);
+            entryValue = entryValue.plus(amount.multipliedBy(numFactory.numOf(entryFill.price().getDelegate())));
+        }
+
+        Num matchedAmount = numFactory.zero();
+        Num matchedEntryValue = numFactory.zero();
+        Num matchedExitValue = numFactory.zero();
+        int entryFillIndex = 0;
+        Num remainingEntryAmount = numFactory.zero();
+        Num entryPrice = numFactory.zero();
+        for (TradeFill exitFill : exitFills) {
+            Num remainingExitAmount = numFactory.numOf(exitFill.amount().getDelegate());
+            Num exitPrice = numFactory.numOf(exitFill.price().getDelegate());
+            while (remainingExitAmount.isPositive()) {
+                if (!remainingEntryAmount.isPositive()) {
+                    if (entryFillIndex >= entryFills.size()) {
+                        throw new IllegalArgumentException("Exit amount exceeds executed entry amount");
+                    }
+                    TradeFill entryFill = entryFills.get(entryFillIndex++);
+                    remainingEntryAmount = numFactory.numOf(entryFill.amount().getDelegate());
+                    entryPrice = numFactory.numOf(entryFill.price().getDelegate());
+                }
+                Num matched = remainingExitAmount.isLessThan(remainingEntryAmount) ? remainingExitAmount
+                        : remainingEntryAmount;
+                matchedAmount = matchedAmount.plus(matched);
+                matchedEntryValue = matchedEntryValue.plus(matched.multipliedBy(entryPrice));
+                matchedExitValue = matchedExitValue.plus(matched.multipliedBy(exitPrice));
+                remainingEntryAmount = remainingEntryAmount.minus(matched);
+                remainingExitAmount = remainingExitAmount.minus(matched);
+            }
+        }
+
+        Num residualAmount = entryAmount.minus(matchedAmount);
+        Num grossProfit = matchedExitValue.plus(residualAmount.multipliedBy(normalizedFinalPrice)).minus(entryValue);
+        Num realizedGrossProfit = matchedExitValue.minus(matchedEntryValue);
+        if (entry.isSell()) {
+            grossProfit = grossProfit.negate();
+            realizedGrossProfit = realizedGrossProfit.negate();
+        }
+        return new SpotProfit(grossProfit, realizedGrossProfit);
+    }
+
+    private List<TradeFill> executedSpotFills(Trade trade, int finalIndex) {
+        List<TradeFill> fills = new ArrayList<>(FuturesPositionAccounting.executedFills(trade, finalIndex));
+        if (fills.size() > 1) {
+            fills.sort(EXECUTION_FILL_ORDER);
+        }
+        return fills;
+    }
+
+    private boolean isExitFullyExecutedThrough(int finalIndex) {
+        if (exit == null) {
+            return false;
+        }
+        List<TradeFill> fills = Trade.executionFillsOf(exit);
+        return !fills.isEmpty() && FuturesPositionAccounting.executedFills(exit, finalIndex).size() == fills.size();
+    }
+
+    private record SpotProfit(Num grossProfit, Num realizedGrossProfit) {
     }
 
     /**

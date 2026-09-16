@@ -582,6 +582,35 @@ public class PositionTest {
     }
 
     @Test
+    public void spotProfitAccountsForExitFillsThroughTheFinalIndex() {
+        for (NumFactory numFactory : factories()) {
+            Trade entry = Trade.fromFills(TradeType.BUY,
+                    List.of(new TradeFill(0, numFactory.numOf(100), numFactory.numOf(2))), new ZeroCostModel());
+            Trade exit = Trade.fromFills(TradeType.SELL,
+                    List.of(new TradeFill(1, numFactory.numOf(110), numFactory.one()),
+                            new TradeFill(3, numFactory.numOf(120), numFactory.one())),
+                    new ZeroCostModel());
+            Position position = new Position(entry, exit);
+
+            assertNumEquals(15, position.getProfit(1, numFactory.numOf(105)));
+            assertNumEquals(10, position.getRealizedProfit(1));
+            assertNumEquals(5, position.getUnrealizedProfit(numFactory.numOf(105), 1));
+            assertNumEquals(30, position.getProfit(3, numFactory.numOf(105)));
+        }
+    }
+
+    @Test
+    public void getReturnOnMarginRejectsMarginThatUnderflowsProfitFactory() {
+        Position position = new Position(
+                Trade.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), new ZeroCostModel()),
+                Trade.sellAt(1, DoubleNum.valueOf(110), DoubleNum.valueOf(1), new ZeroCostModel()));
+        Num tinyMargin = DecimalNumFactory.getInstance().numOf("1e-400");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> position.getReturnOnMargin(tinyMargin, DoubleNum.valueOf(110), 1));
+    }
+
+    @Test
     public void futuresHoldingCostAccruesOverEachEntryFillExposure() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = FuturesContract.builder()

@@ -8,6 +8,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
@@ -20,6 +21,7 @@ import org.ta4j.core.FuturesContract;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -162,6 +164,21 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         var resultPercentage = criterionPercentage.calculate(series, position);
         // Rate of return = 5.0, no drawdown, so result = rate of return
         assertNumEquals(5.0, resultPercentage);
+    }
+
+    @Test
+    public void positionReturnClampsTerminalFillToSeriesEnd() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 90, 100).build();
+        Trade entry = Trade.fromFills(Trade.TradeType.BUY,
+                List.of(new TradeFill(0, numFactory.numOf(100), numFactory.numOf(2))), new ZeroCostModel());
+        Trade exit = Trade
+                .fromFills(Trade.TradeType.SELL,
+                        List.of(new TradeFill(1, numFactory.numOf(90), numFactory.one()),
+                                new TradeFill(Integer.MAX_VALUE, numFactory.numOf(90), numFactory.one())),
+                        new ZeroCostModel());
+        Position position = new Position(entry, exit);
+
+        assertNumEquals(-10d / 19d, new ReturnOverMaxDrawdownCriterion().calculate(series, position));
     }
 
     @Test

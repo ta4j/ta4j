@@ -245,7 +245,7 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
                 continue;
             }
             int entryIndex = position.getEntry().getIndex();
-            int exitIndex = lastExecutedIndex(position.getExit());
+            int exitIndex = Math.min(lastExecutedIndex(position.getExit()), series.getEndIndex());
             List<Num> block = new ArrayList<>();
             Num previousEquity = entryIndex > 0 ? cashFlow.getValue(entryIndex - 1) : one;
             for (int i = entryIndex; i <= exitIndex; i++) {

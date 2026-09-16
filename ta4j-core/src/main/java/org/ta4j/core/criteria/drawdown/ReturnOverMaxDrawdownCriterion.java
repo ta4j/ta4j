@@ -185,7 +185,8 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
     private Num calculateNetReturn(BarSeries series, Position position) {
         CashFlow cashFlow = new CashFlow(series, position, equityCurveMode);
         Num one = series.numFactory().one();
-        return cashFlow.getValue(lastExecutedIndex(position.getExit())).minus(one);
+        int finalIndex = Math.min(lastExecutedIndex(position.getExit()), series.getEndIndex());
+        return cashFlow.getValue(finalIndex).minus(one);
     }
 
     private Num calculateNetReturn(BarSeries series, TradingRecord tradingRecord) {

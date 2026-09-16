@@ -143,6 +143,18 @@ class FuturesContractTest {
     }
 
     @Test
+    public void marginRequirementRejectsRateOutsideReferenceFactoryRange() {
+        FuturesContract contract = linearBuilder(DoubleNumFactory.getInstance()).build();
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
+
+        assertThrows(IllegalArgumentException.class, () -> contract.marginRequirement(doubleFactory.one(),
+                doubleFactory.numOf(100), decimalFactory.numOf("1e-400")));
+        assertThrows(IllegalArgumentException.class, () -> contract.marginRequirement(doubleFactory.one(),
+                doubleFactory.numOf(100), decimalFactory.numOf("1e400")));
+    }
+
+    @Test
     void rejectsUnsupportedSettlementConventionsAndInvalidSpecifications() {
         for (NumFactory numFactory : factories()) {
             // quanto and mismatched settlement currencies are not silently converted
