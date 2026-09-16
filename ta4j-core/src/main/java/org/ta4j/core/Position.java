@@ -1036,6 +1036,9 @@ public class Position implements Serializable {
     }
 
     private static Num executedFuturesAmount(Trade trade, NumFactory numFactory) {
+        if (trade.getFills().isEmpty() && trade.getTime() == null) {
+            return trade.getIndex() >= 0 ? numFactory.numOf(trade.getAmount().getDelegate()) : numFactory.zero();
+        }
         Num amount = numFactory.zero();
         for (TradeFill fill : Trade.executionFillsOf(trade)) {
             if (fill.index() >= 0) {
