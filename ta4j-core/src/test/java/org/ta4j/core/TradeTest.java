@@ -380,7 +380,7 @@ public class TradeTest {
     }
 
     @Test
-    public void futuresFallbackAssignsTimestampWhenTradeTimeMissing() {
+    public void futuresFallbackRejectsMissingTimestamp() {
         FuturesContract contract = FuturesContract.builder()
                 .venue("test")
                 .symbol("BTC-PERP")
@@ -403,9 +403,6 @@ public class TradeTest {
             }
         };
 
-        List<TradeFill> fills = Trade.executionFillsOf(trade);
-
-        assertEquals(1, fills.size());
-        assertNotNull(fills.getFirst().time());
+        assertThrows(NullPointerException.class, () -> Trade.executionFillsOf(trade));
     }
 }

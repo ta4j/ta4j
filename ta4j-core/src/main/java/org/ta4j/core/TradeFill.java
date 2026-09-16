@@ -407,10 +407,6 @@ public final class TradeFill implements Serializable {
                     .instrument(trade.getInstrument())
                     .build();
         }
-        Instant time = trade.getTime();
-        if (time == null) {
-            time = Instant.EPOCH;
-        }
         List<TradeFee> components = trade.getFees();
         if (components.isEmpty()) {
             Num cost = trade.getCost();
@@ -422,7 +418,7 @@ public final class TradeFill implements Serializable {
         }
         return TradeFill.builder()
                 .index(trade.getIndex())
-                .time(time)
+                .time(trade.getTime())
                 .price(trade.getPricePerAsset())
                 .amount(trade.getAmount())
                 .side(side)

@@ -174,7 +174,7 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void futuresCostBasisKeepsMergedAverageCostBasis() {
+    public void futuresCostBasisMatchesFifoResidualLotsAndFees() {
         FuturesContract contract = linearBtcPerpetual();
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110).build();
         BaseTradingRecord record = BaseTradingRecord.builder()
@@ -183,16 +183,15 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
                 .initialCapital(numFactory.numOf(1_000))
                 .build();
 
-        record.operate(futuresFill(contract, 0, ExecutionSide.BUY, 100, 100, 0));
-        record.operate(futuresFill(contract, 1, ExecutionSide.BUY, 100, 110, 0));
+        record.operate(futuresFill(contract, 0, ExecutionSide.BUY, 100, 100, 2));
+        record.operate(futuresFill(contract, 1, ExecutionSide.BUY, 100, 110, 7));
         record.operate(futuresFill(contract, 2, ExecutionSide.SELL, 100, 120, 0));
         Position open = record.getCurrentPosition();
 
         assertNumEquals(numFactory.numOf(105), open.getEntry().getPricePerAsset(), 1e-12);
-        // The open remainder keeps the merged basis of 105: 100 contracts x 0.01 BTC
-        // x 105 USD.
-        assertNumEquals(numFactory.numOf(105), getCriterion().calculate(series, open), 1e-12);
-        assertNumEquals(numFactory.numOf(105), getCriterion().calculate(series, record), 1e-12);
+        // FIFO consumes the first 100-contract fill; the residual is the second fill.
+        assertNumEquals(numFactory.numOf(117), getCriterion().calculate(series, open), 1e-12);
+        assertNumEquals(numFactory.numOf(117), getCriterion().calculate(series, record), 1e-12);
     }
 
     @Test
@@ -222,10 +221,9 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
                 futuresFill(contract, 7, ExecutionSide.SELL, 50, 400, 0)), RecordedTradeCostModel.INSTANCE);
         Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
 
-        // The positional overload uses the series horizon and includes all fills: 200
-        // contracts at the
-        // merged 166.666... USD basis, less 100 exited contracts.
-        assertNumEquals(numFactory.numOf(333.3333333333333), getCriterion().calculate(series, position), 1e-12);
+        // FIFO consumes both 50-contract portions from the first entry fill; the
+        // residual is 200 contracts at 200 USD.
+        assertNumEquals(numFactory.numOf(400), getCriterion().calculate(series, position), 1e-12);
 
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, null, 5, RecordedTradeCostModel.INSTANCE,
                 new ZeroCostModel()) {

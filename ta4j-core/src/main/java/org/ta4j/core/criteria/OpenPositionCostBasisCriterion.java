@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.criteria;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.ta4j.core.BarSeries;
@@ -76,36 +77,7 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
                             .stream()
                             .filter(fill -> fill.index() >= 0 && fill.index() <= finalIndex)
                             .toList();
-            NumFactory contractFactory = contract.contractSize().getNumFactory();
-            Num totalEntryQuantity = contractFactory.zero();
-            for (TradeFill entryFill : entryFills) {
-                totalEntryQuantity = totalEntryQuantity.plus(contractFactory.numOf(entryFill.amount().getDelegate()));
-            }
-            Num totalExitQuantity = contractFactory.zero();
-            for (TradeFill exitFill : exitFills) {
-                totalExitQuantity = totalExitQuantity.plus(contractFactory.numOf(exitFill.amount().getDelegate()));
-            }
-            Num remainingQuantity = totalEntryQuantity.minus(totalExitQuantity);
-            if (!remainingQuantity.isPositive()) {
-                return contractFactory.zero();
-            }
-            List<TradeFill> allEntryFills = Trade.executionFillsOf(entry);
-            Trade executedEntry = entryFills.size() == allEntryFills.size() ? entry
-                    : Trade.fromFills(entry.getType(), entryFills, entry.getCostModel());
-            Num averageEntryPrice = entryFills.size() == allEntryFills.size() ? entry.getPricePerAsset(series)
-                    : executedEntry.getPricePerAsset(series);
-            Num notional = contract.settlementNotional(remainingQuantity,
-                    contractFactory.numOf(averageEntryPrice.getDelegate()));
-            Num openingFees = executedEntry.getCost();
-            if (openingFees == null || openingFees.isNaN()) {
-                openingFees = notional.getNumFactory().zero();
-            } else {
-                openingFees = notional.getNumFactory().numOf(openingFees.getDelegate());
-                Num remaining = notional.getNumFactory().numOf(remainingQuantity.getDelegate());
-                Num total = notional.getNumFactory().numOf(totalEntryQuantity.getDelegate());
-                openingFees = openingFees.multipliedBy(remaining).dividedBy(total);
-            }
-            return notional.plus(openingFees);
+            return futuresCostBasis(contract, entry, entryFills, exitFills);
         }
         List<TradeFill> allEntryFills = Trade.executionFillsOf(entry);
         List<TradeFill> entryFills = allEntryFills.stream()
@@ -119,6 +91,54 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
         return executedEntry.getPricePerAsset(series)
                 .multipliedBy(executedEntry.getAmount())
                 .plus(executedEntry.getCost());
+    }
+
+    private Num futuresCostBasis(FuturesContract contract, Trade entry, List<TradeFill> entryFills,
+            List<TradeFill> exitFills) {
+        NumFactory factory = entry.getPricePerAsset().getNumFactory();
+        List<Num> remainingAmounts = new ArrayList<>(entryFills.size());
+        for (TradeFill entryFill : entryFills) {
+            remainingAmounts.add(factory.numOf(entryFill.amount().getDelegate()));
+        }
+
+        int entryFillIndex = 0;
+        for (TradeFill exitFill : exitFills) {
+            Num remainingExitAmount = factory.numOf(exitFill.amount().getDelegate());
+            while (remainingExitAmount.isPositive()) {
+                while (entryFillIndex < remainingAmounts.size() && !remainingAmounts.get(entryFillIndex).isPositive()) {
+                    entryFillIndex++;
+                }
+                if (entryFillIndex >= remainingAmounts.size()) {
+                    throw new IllegalArgumentException("Exit amount exceeds executed entry amount");
+                }
+                Num remainingEntryAmount = remainingAmounts.get(entryFillIndex);
+                Num matchedAmount = remainingExitAmount.isLessThan(remainingEntryAmount) ? remainingExitAmount
+                        : remainingEntryAmount;
+                remainingAmounts.set(entryFillIndex, remainingEntryAmount.minus(matchedAmount));
+                remainingExitAmount = remainingExitAmount.minus(matchedAmount);
+            }
+        }
+
+        Num total = factory.zero();
+        for (int i = 0; i < entryFills.size(); i++) {
+            Num remainingAmount = remainingAmounts.get(i);
+            if (!remainingAmount.isPositive()) {
+                continue;
+            }
+            TradeFill entryFill = entryFills.get(i);
+            Num entryPrice = factory.numOf(entryFill.price().getDelegate());
+            Num notional = contract.settlementNotional(remainingAmount, entryPrice);
+            Num openingFee = openingFee(entry, entryFill, remainingAmount, factory);
+            total = total.plus(notional).plus(openingFee);
+        }
+        return total;
+    }
+
+    private Num openingFee(Trade entry, TradeFill entryFill, Num remainingAmount, NumFactory factory) {
+        Num fillFee = entryFill.hasRecordedFees() ? entryFill.fee() : entry.getCostModel().calculate(entryFill);
+        Num normalizedFee = factory.numOf(fillFee.getDelegate());
+        Num originalAmount = factory.numOf(entryFill.amount().getDelegate());
+        return normalizedFee.multipliedBy(remainingAmount).dividedBy(originalAmount);
     }
 
     private Num toSeriesNum(NumFactory factory, Num value) {

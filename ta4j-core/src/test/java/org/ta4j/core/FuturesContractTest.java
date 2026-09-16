@@ -268,6 +268,27 @@ class FuturesContractTest {
     }
 
     @Test
+    public void normalizesMinimumBoundsAgainstContractFactory() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> linearBuilder(doubleFactory).minimumQuantity(decimalFactory.numOf("1e400")).build());
+        assertThrows(IllegalArgumentException.class,
+                () -> linearBuilder(doubleFactory).minimumQuantity(decimalFactory.numOf("1e-400")).build());
+        assertThrows(IllegalArgumentException.class,
+                () -> linearBuilder(doubleFactory).minimumNotional(decimalFactory.numOf("1e400")).build());
+        assertThrows(IllegalArgumentException.class,
+                () -> linearBuilder(doubleFactory).minimumNotional(decimalFactory.numOf("1e-400")).build());
+
+        FuturesContract normalized = linearBuilder(doubleFactory).minimumQuantity(decimalFactory.numOf("0.25"))
+                .minimumNotional(decimalFactory.numOf("2"))
+                .build();
+        assertNumEquals(doubleFactory.numOf(0.25), normalized.minimumQuantity());
+        assertNumEquals(doubleFactory.numOf(2), normalized.minimumNotional());
+    }
+
+    @Test
     void serializesItsDeclaredSpecificationAndChangedTermsAreANewContract() throws Exception {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = FuturesContract.builder()
