@@ -123,7 +123,7 @@ final class RatioSampleSupport {
                 currentIndex = finalIndex;
             }
             if (openPositionHandling == OpenPositionHandling.MARK_TO_MARKET
-                    && hasResidualFuturesExposure(position, finalIndex)) {
+                    && hasResidualExposure(position, finalIndex)) {
                 currentIndex = finalIndex;
             }
         }
@@ -133,9 +133,8 @@ final class RatioSampleSupport {
         return new IndexPair(entryIndex, currentIndex);
     }
 
-    private static boolean hasResidualFuturesExposure(Position position, int finalIndex) {
-        if (position.getFuturesContract() == null || position.getEntry() == null
-                || position.getEntry().getIndex() > finalIndex) {
+    private static boolean hasResidualExposure(Position position, int finalIndex) {
+        if (position.getEntry() == null || position.getEntry().getIndex() > finalIndex) {
             return false;
         }
         Trade entry = position.getEntry();

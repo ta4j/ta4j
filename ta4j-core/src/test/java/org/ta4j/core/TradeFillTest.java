@@ -106,6 +106,40 @@ public class TradeFillTest {
     }
 
     @Test
+    public void rejectsFuturesFeeThatCannotBeRepresentedByPriceFactory() {
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01))
+                .quantityIncrement(numFactory.one())
+                .minimumQuantity(numFactory.one())
+                .build();
+        TradeFee fee = TradeFee.builder()
+                .type(TradeFee.Type.COMMISSION)
+                .amount(DecimalNumFactory.getInstance().numOf("1e-400"))
+                .currency("USD")
+                .build();
+
+        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                () -> TradeFill.builder()
+                        .index(0)
+                        .time(Instant.EPOCH)
+                        .price(numFactory.numOf(50_000))
+                        .amount(numFactory.numOf(2))
+                        .side(ExecutionSide.BUY)
+                        .futuresContract(contract)
+                        .fees(List.of(fee))
+                        .build());
+
+        assertTrue(failure.getMessage().contains("representable"));
+    }
+
+    @Test
     public void futuresFillWithoutAnExecutionTimestampIsRejected() {
         FuturesContract contract = FuturesContract.builder()
                 .venue("CDE")

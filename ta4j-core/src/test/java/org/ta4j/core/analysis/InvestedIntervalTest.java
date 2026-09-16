@@ -5,6 +5,7 @@ package org.ta4j.core.analysis;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Instant;
 import java.util.List;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -14,6 +15,7 @@ import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -130,6 +132,30 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
         var tradingRecord = new AggregatePositionTradingRecord(position);
 
         var indicator = new InvestedInterval(series, tradingRecord, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertThat(indicator.getValue(1)).isTrue();
+        assertThat(indicator.getValue(2)).isTrue();
+        assertThat(indicator.getValue(3)).isTrue();
+    }
+
+    @Test
+    public void marksPartiallyClosedSpotPositionThroughFinalBar() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 99, 120).build();
+        Trade entry = Trade
+                .fromFills(
+                        Trade.TradeType.BUY, List.of(new TradeFill(0, Instant.EPOCH, numFactory.numOf(100),
+                                numFactory.numOf(2), numFactory.zero(), ExecutionSide.BUY, null, null)),
+                        RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFills(Trade.TradeType.SELL,
+                List.of(new TradeFill(1, Instant.EPOCH.plusSeconds(1), numFactory.numOf(110), numFactory.one(),
+                        numFactory.zero(), ExecutionSide.SELL, null, null),
+                        new TradeFill(-1, Instant.EPOCH.plusSeconds(2), numFactory.numOf(120), numFactory.one(),
+                                numFactory.zero(), ExecutionSide.SELL, null, null)),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        TradingRecord tradingRecord = new AggregatePositionTradingRecord(position);
+
+        InvestedInterval indicator = new InvestedInterval(series, tradingRecord, OpenPositionHandling.MARK_TO_MARKET);
 
         assertThat(indicator.getValue(1)).isTrue();
         assertThat(indicator.getValue(2)).isTrue();

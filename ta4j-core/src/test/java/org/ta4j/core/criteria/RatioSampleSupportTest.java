@@ -194,6 +194,35 @@ public class RatioSampleSupportTest {
     }
 
     @Test
+    public void tradeSamplingExtendsAggregateSpotResidualThroughFinalBar() {
+        BarSeries series = buildDailySeries("aggregate_spot_trade_sampling_series",
+                new double[] { 100d, 110d, 99d, 120d });
+        Instant fillTime = Instant.parse("2024-01-01T00:00:00Z");
+        Trade entry = Trade.fromFills(TradeType.BUY, List.of(new TradeFill(0, fillTime, numFactory.numOf(100),
+                numFactory.numOf(2), numFactory.zero(), ExecutionSide.BUY, null, null)),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFills(TradeType.SELL,
+                List.of(new TradeFill(1, fillTime.plusSeconds(1), numFactory.numOf(110), numFactory.one(),
+                        numFactory.zero(), ExecutionSide.SELL, null, null),
+                        new TradeFill(-1, fillTime.plusSeconds(2), numFactory.numOf(120), numFactory.one(),
+                                numFactory.zero(), ExecutionSide.SELL, null, null)),
+                RecordedTradeCostModel.INSTANCE);
+        Position aggregatePosition = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        TradingRecord aggregateRecord = new AggregatePositionTradingRecord(aggregatePosition);
+        TradingRecord spotRecord = RatioCriterionTestSupport.alwaysInvested(series);
+        ExcessReturns excessReturns = new ExcessReturns(series, numFactory.zero(),
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, spotRecord, OpenPositionHandling.MARK_TO_MARKET);
+
+        List<Sample> samples = RatioSampleSupport
+                .samples(series, aggregateRecord, SamplingFrequency.TRADE, ZoneOffset.UTC, excessReturns,
+                        OpenPositionHandling.MARK_TO_MARKET)
+                .toList();
+
+        assertEquals(1, samples.size());
+        assertNumEquals(BarSeriesUtils.deltaYears(series, 0, 3), samples.get(0).deltaYears(), 1e-12);
+    }
+
+    @Test
     public void tradeSamplingUsesLastExecutedExitFillForFullyExitedAggregatePosition() {
         BarSeries series = buildDailySeries("aggregate_futures_exit_sampling_series",
                 new double[] { 100d, 110d, 120d, 130d, 140d, 150d, 160d });

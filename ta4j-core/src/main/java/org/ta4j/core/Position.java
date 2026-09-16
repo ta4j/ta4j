@@ -464,13 +464,15 @@ public class Position implements Serializable {
         if (fills.size() <= 1) {
             return entry.getCost();
         }
-        NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
-        Num total = numFactory.zero();
-        for (TradeFill fill : executedSpotFills(entry, finalIndex)) {
-            Num fee = getTransactionCostModel().calculate(fill);
-            total = total.plus(numFactory.numOf(fee.getDelegate()));
+        List<TradeFill> executedFills = executedSpotFills(entry, finalIndex);
+        if (executedFills.isEmpty()) {
+            return zero();
         }
-        return total;
+        if (executedFills.size() == fills.size()) {
+            return entry.getCost();
+        }
+        Trade executedEntry = Trade.fromFills(entry.getType(), executedFills, entry.getCostModel());
+        return executedEntry.getCost();
     }
 
     /**

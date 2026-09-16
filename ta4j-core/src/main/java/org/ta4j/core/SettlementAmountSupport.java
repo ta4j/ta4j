@@ -95,7 +95,21 @@ final class SettlementAmountSupport {
             return total;
         }
         for (TradeFee fee : fees) {
-            total = total.plus(numFactory.numOf(fee.settlementAmount().getDelegate()));
+            Num settlementAmount = fee.settlementAmount();
+            Num normalized = numFactory.numOf(settlementAmount.getDelegate());
+            if (!Num.isFinite(normalized)) {
+                throw new IllegalArgumentException(
+                        "fee settlement amount must be finite and representable in fill number factory");
+            }
+            if (!settlementAmount.isZero() && normalized.isZero()) {
+                throw new IllegalArgumentException(
+                        "fee settlement amount must be representable in fill number factory");
+            }
+            Num nextTotal = total.plus(normalized);
+            if (!Num.isFinite(nextTotal)) {
+                throw new IllegalArgumentException("fee settlement total must be finite in fill number factory");
+            }
+            total = nextTotal;
         }
         return total;
     }

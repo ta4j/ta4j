@@ -478,6 +478,24 @@ public class PositionTest {
     }
 
     @Test
+    public void spotAsOfCostUsesOriginalAggregateTradeModel() {
+        for (NumFactory numFactory : factories()) {
+            FixedTransactionCostModel costModel = new FixedTransactionCostModel(3);
+            Trade entry = Trade.fromFills(TradeType.BUY,
+                    List.of(new TradeFill(0, T0, numFactory.numOf(100), numFactory.one(), numFactory.zero(),
+                            ExecutionSide.BUY, null, null),
+                            new TradeFill(1, T0.plusSeconds(1), numFactory.numOf(100), numFactory.one(),
+                                    numFactory.zero(), ExecutionSide.BUY, null, null),
+                            new TradeFill(2, T0.plusSeconds(2), numFactory.numOf(100), numFactory.one(),
+                                    numFactory.zero(), ExecutionSide.BUY, null, null)),
+                    costModel);
+            Position position = new Position(entry, costModel, new ZeroCostModel());
+
+            assertNumEquals(17, position.getProfit(1, numFactory.numOf(110)));
+        }
+    }
+
+    @Test
     public void futuresProfitRejectsExitExposureBeyondEntry() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = FuturesContract.builder()
