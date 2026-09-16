@@ -162,6 +162,21 @@ class FuturesTransactionCostModelTest {
     }
 
     @Test
+    public void rejectsRatesThatUnderflowTheFillNumberFactory() {
+        NumFactory fillFactory = DoubleNumFactory.getInstance();
+        FuturesContract contract = btcPerpetual(fillFactory);
+        TradeFill fill = fill(contract, ExecutionSide.BUY, fillFactory.numOf(50_000), fillFactory.numOf(3),
+                RealtimeBar.Liquidity.TAKER, null);
+        Num tinyRate = DecimalNumFactory.getInstance().numOf("1e-400");
+        FuturesTransactionCostModel model = FuturesTransactionCostModel.builder()
+                .makerRate(tinyRate)
+                .takerRate(tinyRate)
+                .build();
+
+        assertThrows(IllegalArgumentException.class, () -> model.calculateFees(fill));
+    }
+
+    @Test
     void recordedFillFeesWinOverTheModeledSchedule() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = btcPerpetual(numFactory);

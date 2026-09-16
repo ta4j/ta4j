@@ -600,6 +600,23 @@ public class PositionTest {
     }
 
     @Test
+    public void spotAsOfProfitUsesEntryFillsThroughFinalIndex() {
+        for (NumFactory numFactory : factories()) {
+            Trade entry = Trade.fromFills(TradeType.BUY,
+                    List.of(new TradeFill(0, T0, numFactory.numOf(100), numFactory.one(), numFactory.one(),
+                            ExecutionSide.BUY, null, null),
+                            new TradeFill(2, T0.plusSeconds(2), numFactory.numOf(200), numFactory.one(),
+                                    numFactory.numOf(7), ExecutionSide.BUY, null, null)),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            assertNumEquals(9, position.getProfit(1, numFactory.numOf(110)));
+            assertNumEquals(-1, position.getRealizedProfit(1));
+            assertNumEquals(10, position.getUnrealizedProfit(numFactory.numOf(110), 1));
+        }
+    }
+
+    @Test
     public void getReturnOnMarginRejectsMarginThatUnderflowsProfitFactory() {
         Position position = new Position(
                 Trade.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), new ZeroCostModel()),

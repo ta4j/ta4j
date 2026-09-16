@@ -1,4 +1,5 @@
 ## Unreleased
+- **Futures review round 58**: spot as-of profit and entry costs exclude deferred fills, modeled futures rates must remain representable in the fill factory, and processed funding retries tolerate later equal-time schedule entries.
 - **Futures review round 53**: zero-sized dynamic entries are skipped while fixed amounts remain eagerly validated; bounded affine futures affordability avoids quantity-proportional scans; strict contract mismatches identify differing fields and contract diagnostics include descriptive identity. The native futures backtest example shows funded and underfunded sizing results.
 - **Futures review round 54**: gross returns use executed entry notional when deferred entry fills remain queued, and collateral values that underflow during numeric-factory normalization are rejected.
 - **Futures review round 55**: spot profit, realized profit, and unrealized profit honor partially executed exit fills at an as-of index; normalized margin and margin-rate values are revalidated in their active numeric factories; drawdown criteria clamp terminal fills to the analyzed series.

@@ -407,12 +407,9 @@ public class Position implements Serializable {
         if (exitExecuted) {
             grossProfit = getGrossProfit(finalPrice);
             tradingCost = getPositionCost(finalIndex);
-        } else if (isOpened()) {
-            grossProfit = openGrossProfit(finalPrice);
-            tradingCost = entry.getCost().plus(getHoldingCost(finalIndex));
         } else {
             grossProfit = spotGrossProfitAt(finalIndex, finalPrice);
-            tradingCost = entry.getCost().plus(getHoldingCost(finalIndex));
+            tradingCost = spotEntryCostAt(finalIndex).plus(getHoldingCost(finalIndex));
         }
         return grossProfit.minus(tradingCost);
     }
@@ -456,7 +453,24 @@ public class Position implements Serializable {
         if (entry == null || entry.getIndex() > finalIndex) {
             return zero();
         }
-        return entry.getCost().plus(getHoldingCost(finalIndex));
+        return spotEntryCostAt(finalIndex).plus(getHoldingCost(finalIndex));
+    }
+
+    private Num spotEntryCostAt(int finalIndex) {
+        if (entry == null || entry.getIndex() > finalIndex) {
+            return zero();
+        }
+        List<TradeFill> fills = entry.getFills();
+        if (fills.size() <= 1) {
+            return entry.getCost();
+        }
+        NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
+        Num total = numFactory.zero();
+        for (TradeFill fill : executedSpotFills(entry, finalIndex)) {
+            Num fee = getTransactionCostModel().calculate(fill);
+            total = total.plus(numFactory.numOf(fee.getDelegate()));
+        }
+        return total;
     }
 
     /**

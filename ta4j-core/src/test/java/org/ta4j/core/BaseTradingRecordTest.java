@@ -2835,6 +2835,32 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    public void retryingProcessedFundingIgnoresLaterSameTimeScheduleEntry() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Instant boundary = T0.plusSeconds(10);
+            FuturesFunding first = fundingEvent(contract, 1, 0.001, 10_000).toBuilder()
+                    .eventId("funding-a")
+                    .time(boundary)
+                    .build();
+            FuturesFunding second = fundingEvent(contract, 2, 0.001, 10_000).toBuilder()
+                    .eventId("funding-b")
+                    .time(boundary)
+                    .build();
+            BaseTradingRecord record = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .fundingSchedule(List.of(first, second))
+                    .build();
+            record.operate(fillAtTime(contract, 0, T0, ExecutionSide.BUY, 1, 10_000, List.of()));
+            record.advanceTo(boundary);
+
+            assertEquals(2, record.getCashFlows().size());
+            record.recordFunding(first);
+            assertEquals(2, record.getCashFlows().size());
+        }
+    }
+
+    @Test
     void importedAverageCostPositionKeepsMergedEntryBasis() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = linearBtcPerpetual(numFactory);

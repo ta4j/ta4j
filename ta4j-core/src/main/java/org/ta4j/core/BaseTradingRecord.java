@@ -938,7 +938,9 @@ public class BaseTradingRecord implements TradingRecord {
         lock.writeLock().lock();
         try {
             requireScheduledFundingConflict(funding);
-            requireProcessedFundingConflict(funding);
+            if (requireProcessedFundingConflict(funding)) {
+                return;
+            }
             requireIndexInTimeOrder(funding.time(), funding.eventId(), funding.index(),
                     "Funding event indices must be nondecreasing in time order");
             applyScheduledFunding(funding.time());
@@ -1386,10 +1388,10 @@ public class BaseTradingRecord implements TradingRecord {
         }
     }
 
-    private void requireProcessedFundingConflict(FuturesFunding funding) {
+    private boolean requireProcessedFundingConflict(FuturesFunding funding) {
         FuturesCashFlow recorded = processedEvents.get(funding.eventId());
         if (recorded == null) {
-            return;
+            return false;
         }
         boolean sameEvent = Objects.equals(recorded.time(), funding.time())
                 && FuturesValidation.numEqualsNullable(recorded.rate(), funding.rate())
@@ -1399,6 +1401,7 @@ public class BaseTradingRecord implements TradingRecord {
             throw new IllegalArgumentException(
                     "Cash flow " + funding.eventId() + " is already recorded with different values");
         }
+        return true;
     }
 
     private void requireScheduledCashFlowConflict(FuturesCashFlow cashFlow) {

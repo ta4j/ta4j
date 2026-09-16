@@ -121,7 +121,7 @@ public final class FuturesTransactionCostModel implements CostModel {
     public Num calculate(TradeFill fill) {
         Num total = fill.price().getNumFactory().zero();
         for (TradeFee fee : calculateFees(fill)) {
-            total = total.plus(total.getNumFactory().numOf(fee.amount().getDelegate()));
+            total = total.plus(normalizeFor(fee.amount(), total.getNumFactory(), "fee"));
         }
         return total;
     }
@@ -144,11 +144,11 @@ public final class FuturesTransactionCostModel implements CostModel {
             throw new IllegalArgumentException("fee components are only defined for futures fills");
         }
         NumFactory numFactory = fill.price().getNumFactory();
-        Num amount = numFactory.numOf(fill.amount().getDelegate());
+        Num amount = normalizeFor(fill.amount(), numFactory, "amount");
         Num settlementNotional = contract.settlementNotional(fill.amount(), fill.price());
-        Num commission = settlementNotional.multipliedBy(numFactory.numOf(selectedRate(fill).getDelegate()));
+        Num commission = settlementNotional.multipliedBy(normalizeFor(selectedRate(fill), numFactory, "fee rate"));
         if (minimumPerContract != null) {
-            Num floor = amount.multipliedBy(numFactory.numOf(minimumPerContract.getDelegate()));
+            Num floor = amount.multipliedBy(normalizeFor(minimumPerContract, numFactory, "minimumPerContract"));
             if (floor.isGreaterThan(commission)) {
                 commission = floor;
             }
@@ -157,7 +157,7 @@ public final class FuturesTransactionCostModel implements CostModel {
         List<TradeFee> fees = new ArrayList<>(perContractCharges.size() + 1);
         fees.add(component(TradeFee.Type.COMMISSION, commission, contract.settlementCurrency()));
         for (Map.Entry<TradeFee.Type, Num> charge : perContractCharges.entrySet()) {
-            Num chargeAmount = amount.multipliedBy(numFactory.numOf(charge.getValue().getDelegate()));
+            Num chargeAmount = amount.multipliedBy(normalizeFor(charge.getValue(), numFactory, "perContractCharge"));
             fees.add(component(charge.getKey(), chargeAmount, contract.settlementCurrency()));
         }
         return List.copyOf(fees);
@@ -202,6 +202,18 @@ public final class FuturesTransactionCostModel implements CostModel {
         return liquidity == RealtimeBar.Liquidity.MAKER ? makerRate : takerRate;
     }
 
+    private static Num normalizeFor(Num value, NumFactory numFactory, String name) {
+        Objects.requireNonNull(value, name);
+        Num normalized = numFactory.numOf(value.getDelegate());
+        if (!Num.isFinite(normalized)) {
+            throw new IllegalArgumentException(name + " must be finite and representable in the fill number factory");
+        }
+        if (!value.isZero() && normalized.isZero()) {
+            throw new IllegalArgumentException(name + " must be representable in the fill number factory");
+        }
+        return normalized;
+    }
+
     private TradeFee component(TradeFee.Type type, Num amount, String settlementCurrency) {
         return TradeFee.builder()
                 .type(type)
@@ -218,7 +230,7 @@ public final class FuturesTransactionCostModel implements CostModel {
         for (TradeFill fill : Trade.executionFillsOf(trade)) {
             if (fill.index() >= 0 && fill.index() <= currentIndex) {
                 Num fee = fill.hasRecordedFees() ? fill.fee() : calculate(fill);
-                total = total.plus(numFactory.numOf(fee.getDelegate()));
+                total = total.plus(normalizeFor(fee, numFactory, "fee"));
             }
         }
         return total;
