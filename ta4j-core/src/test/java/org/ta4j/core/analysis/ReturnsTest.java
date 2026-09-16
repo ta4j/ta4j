@@ -42,6 +42,7 @@ import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.FuturesContract;
 import org.ta4j.core.TradeFill;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.mocks.MockIndicator;
 import static org.junit.Assert.assertTrue;
@@ -754,6 +755,84 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
             for (int index = 1; index <= barSeries.getEndIndex(); index++) {
                 assertNumEquals(0, returns.getValue(index));
             }
+        }
+    }
+
+    @Test
+    public void deferredOnlyAndHeadFuturesActivityDoNotSeedRetainedFirstBar() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries retained = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            retained.setMaximumBarCount(4);
+            assertEquals(1, retained.getBeginIndex());
+
+            TradeFill deferred = FuturesAnalysisTestSupport.fill(contract, -1, ExecutionSide.BUY, 1_000, 100,
+                    List.of());
+            TradeFill head = FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.BUY, 1_000, 100, List.of());
+            Position deferredOnly = new Position(Trade.fromFill(deferred, RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            Position headPosition = new Position(
+                    Trade.fromFills(TradeType.BUY, List.of(deferred, head), RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            TradingRecord record = new AlternateFuturesRecord(contract, testFactory.numOf(500), List.of(deferredOnly),
+                    headPosition);
+
+            Returns returns = new Returns(retained, record, ReturnRepresentation.DECIMAL);
+
+            assertFalse(returns.hasSeededFirstBarReturn());
+            assertNumEquals(0.04, returns.getValue(1));
+
+            TradeFill preWindow = FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100,
+                    List.of());
+            Position genuinelyPreWindow = new Position(
+                    Trade.fromFills(TradeType.BUY, List.of(deferred, preWindow, head), RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            TradingRecord seededRecord = new AlternateFuturesRecord(contract, testFactory.numOf(500),
+                    List.of(deferredOnly), genuinelyPreWindow);
+
+            assertTrue(new Returns(retained, seededRecord, ReturnRepresentation.DECIMAL).hasSeededFirstBarReturn());
+        }
+    }
+
+    private static final class AlternateFuturesRecord extends BaseTradingRecord {
+
+        private final FuturesContract contract;
+        private final Num initialCapital;
+        private final List<Position> positions;
+        private final Position currentPosition;
+
+        private AlternateFuturesRecord(FuturesContract contract, Num initialCapital, List<Position> positions,
+                Position currentPosition) {
+            super();
+            this.contract = contract;
+            this.initialCapital = initialCapital;
+            this.positions = positions;
+            this.currentPosition = currentPosition;
+        }
+
+        @Override
+        public FuturesContract getFuturesContract() {
+            return contract;
+        }
+
+        @Override
+        public Num getInitialCapital() {
+            return initialCapital;
+        }
+
+        @Override
+        public List<Position> getPositions() {
+            return positions;
+        }
+
+        @Override
+        public Position getCurrentPosition() {
+            return currentPosition;
+        }
+
+        @Override
+        public List<Position> getOpenPositions() {
+            return List.of(currentPosition);
         }
     }
 

@@ -34,6 +34,7 @@ import org.ta4j.core.analysis.frequency.Sample;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.utils.BarSeriesUtils;
 
@@ -240,9 +241,18 @@ public class RatioSampleSupportTest {
 
     private static final class AggregatePositionTradingRecord extends BaseTradingRecord {
         private final List<Position> positions;
+        private final FuturesContract futuresContract;
+        private final Num initialCapital;
 
         private AggregatePositionTradingRecord(Position position) {
-            this.positions = List.of(position);
+            this(List.of(position), null, null);
+        }
+
+        private AggregatePositionTradingRecord(List<Position> positions, FuturesContract futuresContract,
+                Num initialCapital) {
+            this.positions = positions;
+            this.futuresContract = futuresContract;
+            this.initialCapital = initialCapital;
         }
 
         @Override
@@ -258,6 +268,16 @@ public class RatioSampleSupportTest {
         @Override
         public List<Position> getOpenPositions() {
             return List.of();
+        }
+
+        @Override
+        public FuturesContract getFuturesContract() {
+            return futuresContract;
+        }
+
+        @Override
+        public Num getInitialCapital() {
+            return initialCapital;
         }
     }
 
@@ -346,4 +366,109 @@ public class RatioSampleSupportTest {
         assertNumEquals(1.1d / Math.pow(1.05d, years) - 1d, samples.getFirst().value());
     }
 
+    @Test
+    public void tradeSamplingMarksSpotStructuralExitBeyondHorizonAndIgnoresIt() {
+        BarSeries series = buildDailySeries("spot_exit_beyond_horizon", new double[] { 100d, 105d, 110d });
+        Trade entry = Trade.fromFill(spotFill(0, ExecutionSide.BUY, 1d, 100d), RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(spotFill(3, ExecutionSide.SELL, 1d, 120d), RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        BaseTradingRecord record = new BaseTradingRecord(position);
+        ExcessReturns markReturns = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO,
+                record, OpenPositionHandling.MARK_TO_MARKET);
+        ExcessReturns ignoreReturns = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO,
+                record, OpenPositionHandling.IGNORE);
+
+        List<Sample> markSamples = RatioSampleSupport
+                .samples(series, record, SamplingFrequency.TRADE, ZoneOffset.UTC, markReturns,
+                        OpenPositionHandling.MARK_TO_MARKET)
+                .toList();
+        List<Sample> ignoreSamples = RatioSampleSupport
+                .samples(series, record, SamplingFrequency.TRADE, ZoneOffset.UTC, ignoreReturns,
+                        OpenPositionHandling.IGNORE)
+                .toList();
+
+        assertEquals(1, markSamples.size());
+        assertNumEquals(0.1d, markSamples.getFirst().value());
+        assertEquals(0, ignoreSamples.size());
+    }
+
+    @Test
+    public void tradeSamplingIncludesSameBarFuturesEntryFeeInInitialReturn() {
+        BarSeries series = buildDailySeries("same_bar_futures_fee", new double[] { 100d, 100d });
+        FuturesContract contract = futuresContract();
+        Trade entry = Trade.fromFill(
+                fill(contract, 0, ExecutionSide.BUY, 1d, 100d).toBuilder().fees(List.of(commissionFee())).build(),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(fill(contract, 0, ExecutionSide.SELL, 1d, 100d), RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE,
+                new LinearBorrowingCostModel(0d));
+        BaseTradingRecord record = new BaseTradingRecord(position);
+        ExcessReturns returns = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO, position,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        List<Sample> samples = RatioSampleSupport
+                .samples(series, record, SamplingFrequency.TRADE, ZoneOffset.UTC, returns,
+                        OpenPositionHandling.MARK_TO_MARKET)
+                .toList();
+
+        assertEquals(1, samples.size());
+        assertNumEquals(-0.01d, samples.getFirst().value());
+    }
+
+    @Test
+    public void tradeSamplingAnchorsLaterFuturesEntryAtRetainedHeadAfterPreWindowSeed() {
+        BarSeries source = buildDailySeries("retained_futures_trade_anchor",
+                new double[] { 100d, 100d, 100d, 100d, 110d });
+        source.setMaximumBarCount(3);
+        FuturesContract contract = futuresContract();
+        Position preWindow = new Position(
+                Trade.fromFill(fill(contract, 0, ExecutionSide.BUY, 1d, 100d), RecordedTradeCostModel.INSTANCE),
+                Trade.fromFill(fill(contract, 2, ExecutionSide.SELL, 1d, 100d), RecordedTradeCostModel.INSTANCE),
+                RecordedTradeCostModel.INSTANCE, new LinearBorrowingCostModel(0d));
+        Position later = new Position(Trade.fromFill(
+                fill(contract, 3, ExecutionSide.BUY, 1d, 100d).toBuilder().fees(List.of(commissionFee())).build(),
+                RecordedTradeCostModel.INSTANCE),
+                Trade.fromFill(fill(contract, 4, ExecutionSide.SELL, 1d, 110d), RecordedTradeCostModel.INSTANCE),
+                RecordedTradeCostModel.INSTANCE, new LinearBorrowingCostModel(0d));
+        TradingRecord record = new AggregatePositionTradingRecord(List.of(preWindow, later), contract,
+                numFactory.numOf(100d));
+        ExcessReturns returns = new ExcessReturns(source, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO, record,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        List<Sample> samples = RatioSampleSupport
+                .samples(source, record, SamplingFrequency.TRADE, ZoneOffset.UTC, returns,
+                        OpenPositionHandling.MARK_TO_MARKET)
+                .toList();
+
+        assertEquals(2, samples.size());
+        assertNumEquals(0d, samples.get(0).value());
+        assertNumEquals(0.09d, samples.get(1).value());
+    }
+
+    private TradeFee commissionFee() {
+        return TradeFee.builder().type(TradeFee.Type.COMMISSION).amount(numFactory.one()).currency("USD").build();
+    }
+
+    private FuturesContract futuresContract() {
+        return FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .build();
+    }
+
+    private TradeFill spotFill(int index, ExecutionSide side, double amount, double price) {
+        return TradeFill.builder()
+                .index(index)
+                .time(Instant.parse("2024-01-01T00:00:00Z").plusSeconds(index))
+                .price(numFactory.numOf(price))
+                .amount(numFactory.numOf(amount))
+                .side(side)
+                .build();
+    }
 }

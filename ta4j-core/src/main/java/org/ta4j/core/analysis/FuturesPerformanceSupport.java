@@ -67,7 +67,9 @@ final class FuturesPerformanceSupport {
      * Returns whether the record realized exposure or marked open exposure before
      * the retained head of the analysed series. Such a record seeds the first
      * reported value with the equity accumulated before the head, so that value is
-     * a cumulative result rather than a period return.
+     * a cumulative result rather than a period return. Only executed fills with
+     * indices in {@code [0, seriesBegin)} qualify; aggregate trade indices and
+     * deferred fills do not establish pre-window activity.
      *
      * @param record       trading record
      * @param seriesBegin  first stored index of the analysed series
@@ -76,22 +78,48 @@ final class FuturesPerformanceSupport {
      * @since 0.25.1
      */
     static boolean hasPreWindowActivity(TradingRecord record, int seriesBegin, boolean markExposure) {
-        int finalIndex = seriesBegin - 1;
         for (Position position : record.getPositions()) {
-            if (position.getEntry() != null && position.getEntry().getIndex() < seriesBegin) {
-                if (markExposure || !position.getRealizedProfit(finalIndex).isZero()) {
+            if (hasPreWindowExecution(position, seriesBegin)
+                    && (markExposure || !position.getRealizedProfit(seriesBegin - 1).isZero())) {
+                return true;
+            }
+        }
+        List<Position> openPositions = record.getOpenPositions();
+        if (!openPositions.isEmpty()) {
+            for (Position position : openPositions) {
+                if (hasPreWindowExecution(position, seriesBegin)
+                        && (markExposure || !position.getRealizedProfit(seriesBegin - 1).isZero())) {
                     return true;
                 }
             }
+        } else {
+            Position current = record.getCurrentPosition();
+            if (hasPreWindowExecution(current, seriesBegin)
+                    && (markExposure || !current.getRealizedProfit(seriesBegin - 1).isZero())) {
+                return true;
+            }
         }
-        Position current = record.getCurrentPosition();
-        if (current == null || current.getEntry() == null || current.getEntry().getIndex() >= seriesBegin) {
+        return false;
+    }
+
+    private static boolean hasPreWindowExecution(Position position, int seriesBegin) {
+        if (position == null) {
             return false;
         }
-        if (markExposure) {
-            return true;
+        return hasPreWindowExecution(position.getEntry(), seriesBegin)
+                || hasPreWindowExecution(position.getExit(), seriesBegin);
+    }
+
+    private static boolean hasPreWindowExecution(Trade trade, int seriesBegin) {
+        if (trade == null) {
+            return false;
         }
-        return !current.getRealizedProfit(finalIndex).isZero();
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() >= 0 && fill.index() < seriesBegin) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

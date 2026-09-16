@@ -64,15 +64,15 @@ final class RatioSampleSupport {
             ExcessReturns excessReturns, OpenPositionHandling openPositionHandling) {
         int beginIndex = series.getBeginIndex();
         int finalIndex = series.getEndIndex();
-        return tradePairs(tradingRecord, beginIndex, finalIndex, openPositionHandling)
+        return tradePairs(tradingRecord, beginIndex, finalIndex, excessReturns, openPositionHandling)
                 .map(indexPair -> toSample(series, indexPair, excessReturns));
     }
 
     private static Stream<IndexPair> tradePairs(TradingRecord tradingRecord, int beginIndex, int finalIndex,
-            OpenPositionHandling openPositionHandling) {
+            ExcessReturns excessReturns, OpenPositionHandling openPositionHandling) {
         List<Position> positions = tradingRecord.getPositions();
         Stream<IndexPair> closedPairs = positions.stream()
-                .map(position -> toTradePair(position, beginIndex, finalIndex, openPositionHandling))
+                .map(position -> toTradePair(position, beginIndex, finalIndex, excessReturns, openPositionHandling))
                 .filter(Objects::nonNull);
         if (openPositionHandling == OpenPositionHandling.IGNORE) {
             return closedPairs;
@@ -80,7 +80,8 @@ final class RatioSampleSupport {
         Stream<Position> openPositions = openPositions(tradingRecord).stream()
                 .filter(position -> !positions.contains(position));
         return Stream.concat(closedPairs,
-                openPositions.map(position -> toTradePair(position, beginIndex, finalIndex, openPositionHandling))
+                openPositions.map(
+                        position -> toTradePair(position, beginIndex, finalIndex, excessReturns, openPositionHandling))
                         .filter(Objects::nonNull));
     }
 
@@ -96,7 +97,7 @@ final class RatioSampleSupport {
         return List.of();
     }
 
-    private static IndexPair toTradePair(Position position, int beginIndex, int finalIndex,
+    private static IndexPair toTradePair(Position position, int beginIndex, int finalIndex, ExcessReturns excessReturns,
             OpenPositionHandling openPositionHandling) {
         if (position == null) {
             return null;
@@ -107,12 +108,19 @@ final class RatioSampleSupport {
             return null;
         }
         int entryIndex = Math.max(entryFillIndex, beginIndex);
+        if (position.getFuturesContract() != null && entryFillIndex >= beginIndex
+                && (entryFillIndex > beginIndex || excessReturns.hasInitialReturn())) {
+            entryIndex = entryFillIndex - 1;
+        }
         int currentIndex = finalIndex;
         Trade exit = position.getExit();
         if (exit != null) {
             currentIndex = lastExecutedFillIndex(exit, finalIndex);
-            if (currentIndex < 0 && openPositionHandling != OpenPositionHandling.MARK_TO_MARKET) {
-                return null;
+            if (currentIndex < 0) {
+                if (openPositionHandling != OpenPositionHandling.MARK_TO_MARKET) {
+                    return null;
+                }
+                currentIndex = finalIndex;
             }
             if (openPositionHandling == OpenPositionHandling.MARK_TO_MARKET
                     && hasResidualFuturesExposure(position, finalIndex)) {

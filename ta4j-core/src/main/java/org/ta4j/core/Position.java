@@ -8,6 +8,8 @@ import static org.ta4j.core.num.NaN.NaN;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
@@ -37,6 +39,9 @@ import org.ta4j.core.num.NumFactory;
  */
 @SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Every constructor validates trade data and futures contract consistency before an instance is published, so invalid positions are rejected fail-fast instead of escaping partially initialized")
 public class Position implements Serializable {
+
+    private static final Comparator<TradeFill> EXECUTION_FILL_ORDER = Comparator.comparingInt(TradeFill::index)
+            .thenComparing(TradeFill::time, Comparator.nullsFirst(Comparator.naturalOrder()));
 
     @Serial
     private static final long serialVersionUID = -5484709075767220358L;
@@ -701,8 +706,15 @@ public class Position implements Serializable {
         if (Trade.executionFillsOf(entry).size() == 1 && executedEntryFills.size() == 1 && fullyMatchedSingleFill) {
             return model.calculate(this, finalIndex);
         }
-        Deque<TradeFill> closingFills = new ArrayDeque<>(
-                exit == null ? List.of() : FuturesPositionAccounting.executedFills(exit, finalIndex));
+        if (executedEntryFills.size() > 1) {
+            executedEntryFills = new ArrayList<>(executedEntryFills);
+            executedEntryFills.sort(EXECUTION_FILL_ORDER);
+        }
+        if (executedExitFills.size() > 1) {
+            executedExitFills = new ArrayList<>(executedExitFills);
+            executedExitFills.sort(EXECUTION_FILL_ORDER);
+        }
+        Deque<TradeFill> closingFills = new ArrayDeque<>(executedExitFills);
         Deque<Num> closingAmounts = new ArrayDeque<>();
         for (TradeFill closingFill : closingFills) {
             closingAmounts.addLast(numFactory.numOf(closingFill.amount().getDelegate()));

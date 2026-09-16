@@ -667,6 +667,40 @@ public class PositionTest {
         }
     }
 
+    @Test
+    public void futuresHoldingCostMatchesFillsInExecutionOrder() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.one())
+                    .build();
+            TradeFill entryAtZero = futuresFill(contract, 0, 100, 1, ExecutionSide.BUY);
+            TradeFill entryAtFive = futuresFill(contract, 5, 200, 1, ExecutionSide.BUY);
+            TradeFill exitAtTen = futuresFill(contract, 10, 200, 1, ExecutionSide.SELL);
+            TradeFill exitAtSix = futuresFill(contract, 6, 200, 1, ExecutionSide.SELL);
+            LinearBorrowingCostModel holdingCostModel = new LinearBorrowingCostModel(0.01,
+                    LinearBorrowingCostModel.Applicability.BOTH);
+
+            List<List<TradeFill>> entryOrders = List.of(List.of(entryAtZero, entryAtFive),
+                    List.of(entryAtFive, entryAtZero));
+            for (List<TradeFill> entryOrder : entryOrders) {
+                Trade entry = Trade.fromFills(TradeType.BUY, entryOrder, RecordedTradeCostModel.INSTANCE);
+                Trade exit = Trade.fromFills(TradeType.SELL, List.of(exitAtTen, exitAtSix),
+                        RecordedTradeCostModel.INSTANCE);
+                Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, holdingCostModel);
+
+                // 100 x 6 x 0.01 + 200 x 5 x 0.01 = 16.
+                assertNumEquals(16, position.getHoldingCost());
+            }
+        }
+    }
+
     private static FuturesCashFlow variationMargin(FuturesContract contract, int index, double amount) {
         NumFactory numFactory = contract.contractSize().getNumFactory();
         return FuturesCashFlow.builder()
