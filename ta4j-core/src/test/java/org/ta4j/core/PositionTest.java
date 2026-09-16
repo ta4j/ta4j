@@ -512,9 +512,8 @@ public class PositionTest {
                     RecordedTradeCostModel.INSTANCE);
             Trade exit = Trade.fromFill(futuresFill(contract, 1, 100, 2, ExecutionSide.SELL),
                     RecordedTradeCostModel.INSTANCE);
-            Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
-
-            assertThrows(IllegalArgumentException.class, position::getProfit);
+            assertThrows(IllegalArgumentException.class,
+                    () -> new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
         }
     }
 

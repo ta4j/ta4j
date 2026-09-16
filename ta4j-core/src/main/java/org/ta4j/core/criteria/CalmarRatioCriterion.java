@@ -201,7 +201,8 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         if (years.isZero()) {
             return zero;
         }
-        Num startValue = cashFlow.getValue(beginIndex);
+        Num startValue = cashFlow.hasInitialReturn() ? cashFlow.getBarSeries().numFactory().one()
+                : cashFlow.getValue(beginIndex);
         if (startValue.isNaN() || startValue.isZero()) {
             return NaN.NaN;
         }

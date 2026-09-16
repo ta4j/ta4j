@@ -19,6 +19,7 @@ import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradeFill;
+import org.ta4j.core.TradeFee;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.BaseTradingRecord;
@@ -223,6 +224,41 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
         Position position = futuresPosition(series, 100d, 100.1d);
         Num actual = ((CalmarRatioCriterion) getCriterion()).calculate(series, position);
         double expected = Math.pow(1.001d, TimeConstants.SECONDS_PER_YEAR / (2d * 86_400d)) - 1d;
+        assertNumEquals(numFactory.numOf(expected), actual, 1e-12);
+    }
+
+    @Test
+    public void futuresCalmarSeedsNormalizedInitialCapital() {
+        BarSeries series = buildYearlySeries("calmar_futures_initial_fee", new double[] { 100d, 100d, 100d });
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01))
+                .build();
+        TradeFill entryFill = fill(contract, series.getBeginIndex(), ExecutionSide.BUY, 100d).toBuilder()
+                .fees(List.of(TradeFee.builder()
+                        .type(TradeFee.Type.COMMISSION)
+                        .amount(numFactory.numOf(0.1))
+                        .currency("USD")
+                        .build()))
+                .build();
+        Trade entry = Trade.fromFill(entryFill, RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(fill(contract, series.getEndIndex(), ExecutionSide.SELL, 100d),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        Num actual = ((CalmarRatioCriterion) getCriterion()).calculate(series, position);
+        double years = Duration
+                .between(series.getBar(series.getBeginIndex()).getEndTime(),
+                        series.getBar(series.getEndIndex()).getEndTime())
+                .getSeconds() / (double) TimeConstants.SECONDS_PER_YEAR;
+        double expected = (Math.pow(0.8d, 1d / years) - 1d) / 0.2d;
+
         assertNumEquals(numFactory.numOf(expected), actual, 1e-12);
     }
 

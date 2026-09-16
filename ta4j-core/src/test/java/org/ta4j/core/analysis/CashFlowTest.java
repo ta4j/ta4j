@@ -700,6 +700,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
             assertEquals(EquityCurveMode.MARK_TO_MARKET, cashFlow.getEquityCurveMode());
             assertEquals(5, cashFlow.getSize());
+            assertTrue(cashFlow.hasInitialReturn());
             assertNumEquals(1.0, cashFlow.getValue(0));
             assertNumEquals(1.04, cashFlow.getValue(1));
             assertNumEquals(1.1, cashFlow.getValue(2));

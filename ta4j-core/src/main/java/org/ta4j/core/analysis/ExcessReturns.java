@@ -150,8 +150,8 @@ public final class ExcessReturns {
     }
 
     /**
-     * Whether the curve has a nonzero first-bar futures return from initial
-     * capital, rather than cumulative activity before the retained window.
+     * Whether the curve has a first-bar futures return from initial capital, rather
+     * than cumulative activity before the retained window.
      *
      * @return whether sampling should include the capital-to-first-bar move
      * @since 0.25.1

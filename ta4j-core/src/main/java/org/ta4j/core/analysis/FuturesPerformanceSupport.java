@@ -158,6 +158,10 @@ final class FuturesPerformanceSupport {
         }
         Num converted = toFactory(numFactory, capital);
         if (usingFallback && converted.isZero()) {
+            if (!capital.isZero()) {
+                throw new IllegalStateException(
+                        "native futures fallback capital cannot be represented in analysis factory");
+            }
             return converted;
         }
         if (!converted.isPositive() || !Num.isFinite(converted)) {

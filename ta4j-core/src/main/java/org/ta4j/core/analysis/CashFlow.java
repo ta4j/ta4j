@@ -379,8 +379,15 @@ public class CashFlow implements PerformanceIndicator {
         }
     }
 
-    boolean hasInitialReturn() {
-        return initialReturnEligible && !values.getFirst().isEqual(barSeries.numFactory().one());
+    /**
+     * Whether the first retained bar includes a futures return from initial
+     * capital.
+     *
+     * @return whether the cash flow has an initial futures return
+     * @since 0.25.1
+     */
+    public boolean hasInitialReturn() {
+        return initialReturnEligible;
     }
 
     /**

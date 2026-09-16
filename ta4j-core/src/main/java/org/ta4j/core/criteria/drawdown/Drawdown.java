@@ -96,7 +96,7 @@ public final class Drawdown {
     private static Scan scan(BarSeries series, TradingRecord tradingRecord, Indicator<Num> curve, boolean relative) {
         var numFactory = series.numFactory();
         var zero = numFactory.zero();
-        var peak = zero;
+        var peak = curve instanceof CashFlow cashFlow && cashFlow.hasInitialReturn() ? numFactory.one() : zero;
         var peakIndex = series.getBeginIndex();
         var maxDrawdown = zero;
         var maxLength = 0;

@@ -747,6 +747,31 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
+    public void rejectsFallbackCapitalThatUnderflowsAnalysisFactory() {
+        NumFactory sourceFactory = DecimalNumFactory.getInstance();
+        NumFactory analysisFactory = DoubleNumFactory.getInstance();
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(sourceFactory)
+                .toBuilder()
+                .contractSize(sourceFactory.numOf("1e-400"))
+                .build();
+        BarSeries barSeries = FuturesAnalysisTestSupport.series(analysisFactory, 100, 102);
+        Trade scalarFutures = new BaseTrade(0, Instant.EPOCH, sourceFactory.numOf(100), sourceFactory.one(), null,
+                ExecutionSide.BUY, null, null) {
+            @Override
+            public List<TradeFill> getFills() {
+                return List.of();
+            }
+
+            @Override
+            public FuturesContract getFuturesContract() {
+                return contract;
+            }
+        };
+        Position position = new Position(scalarFutures, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        assertThrows(IllegalStateException.class, () -> new Returns(barSeries, position, ReturnRepresentation.DECIMAL));
+    }
+
+    @Test
     public void retainedFuturesReturnsMeasureTheirFirstBarFromCapital() {
         for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
             FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);

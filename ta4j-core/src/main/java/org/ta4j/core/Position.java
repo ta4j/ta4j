@@ -1018,8 +1018,31 @@ public class Position implements Serializable {
             throw new IllegalArgumentException("Trades and the position must incorporate the same trading cost model");
         }
 
+        FuturesContract contract = resolveContract(validatedEntry, validatedExit);
+        if (contract != null) {
+            validateClosedFuturesExposure(validatedEntry, validatedExit);
+        }
         return new ValidatedClosedPosition(validatedEntry, validatedExit, transactionCostModel, holdingCostModel,
-                resolveContract(validatedEntry, validatedExit));
+                contract);
+    }
+
+    private static void validateClosedFuturesExposure(Trade entry, Trade exit) {
+        NumFactory numFactory = entry.getAmount().getNumFactory();
+        Num entryAmount = executedFuturesAmount(entry, numFactory);
+        Num exitAmount = executedFuturesAmount(exit, numFactory);
+        if (exitAmount.isGreaterThan(entryAmount)) {
+            throw new IllegalArgumentException("Exit exposure cannot exceed entry exposure");
+        }
+    }
+
+    private static Num executedFuturesAmount(Trade trade, NumFactory numFactory) {
+        Num amount = numFactory.zero();
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() >= 0) {
+                amount = amount.plus(numFactory.numOf(fill.amount().getDelegate()));
+            }
+        }
+        return amount;
     }
 
     private static ValidatedOpenPosition validateOpenPosition(Trade entry, CostModel transactionCostModel,

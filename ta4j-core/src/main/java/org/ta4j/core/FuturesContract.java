@@ -452,7 +452,9 @@ public final class FuturesContract implements Serializable {
      */
     public Num quoteNotional(Num contracts, Num price) {
         Num sized = contractsPerSize(contracts, price);
-        return settlementType == SettlementType.LINEAR ? sized.multipliedBy(price) : sized;
+        Num notional = settlementType == SettlementType.LINEAR ? sized.multipliedBy(price) : sized;
+        FuturesValidation.requireFinite(notional, "notional");
+        return notional;
     }
 
     /**
@@ -466,7 +468,9 @@ public final class FuturesContract implements Serializable {
      */
     public Num settlementNotional(Num contracts, Num price) {
         Num sized = contractsPerSize(contracts, price);
-        return settlementType == SettlementType.LINEAR ? sized.multipliedBy(price) : sized.dividedBy(price);
+        Num notional = settlementType == SettlementType.LINEAR ? sized.multipliedBy(price) : sized.dividedBy(price);
+        FuturesValidation.requireFinite(notional, "notional");
+        return notional;
     }
 
     /**

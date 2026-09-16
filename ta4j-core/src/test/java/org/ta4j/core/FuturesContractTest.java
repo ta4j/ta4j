@@ -405,4 +405,18 @@ class FuturesContractTest {
                 () -> linearBuilder(doubleFactory).maximumNotional(decimalFactory.numOf("1e-400")).build());
     }
 
+    @Test
+    public void rejectsNonFiniteNotionalResults() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+
+        FuturesContract oversizedLinear = linearBuilder(doubleFactory).contractSize(doubleFactory.numOf("1e200"))
+                .build();
+        assertThrows(IllegalArgumentException.class,
+                () -> oversizedLinear.quoteNotional(doubleFactory.one(), doubleFactory.numOf("1e200")));
+
+        FuturesContract tinyPriceInverse = inverseBuilder(doubleFactory).build();
+        assertThrows(IllegalArgumentException.class,
+                () -> tinyPriceInverse.settlementNotional(doubleFactory.one(), doubleFactory.numOf(Double.MIN_VALUE)));
+    }
+
 }
