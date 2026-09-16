@@ -618,6 +618,21 @@ public class PositionTest {
     }
 
     @Test
+    public void completedSpotProfitExcludesDeferredEntryFills() {
+        for (NumFactory numFactory : factories()) {
+            Trade entry = Trade.fromFills(TradeType.BUY,
+                    List.of(new TradeFill(0, numFactory.numOf(100), numFactory.one()),
+                            new TradeFill(-1, numFactory.numOf(200), numFactory.one())),
+                    new ZeroCostModel());
+            Trade exit = Trade.fromFills(TradeType.SELL,
+                    List.of(new TradeFill(1, numFactory.numOf(110), numFactory.one())), new ZeroCostModel());
+            Position position = new Position(entry, exit);
+
+            assertNumEquals(10, position.getProfit(1, numFactory.numOf(110)));
+        }
+    }
+
+    @Test
     public void spotAsOfProfitUsesEntryFillsThroughFinalIndex() {
         for (NumFactory numFactory : factories()) {
             Trade entry = Trade.fromFills(TradeType.BUY,

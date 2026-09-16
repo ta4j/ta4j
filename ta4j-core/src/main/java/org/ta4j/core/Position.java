@@ -401,7 +401,8 @@ public class Position implements Serializable {
         if (entry.getIndex() > finalIndex) {
             return entry.getPricePerAsset().getNumFactory().zero();
         }
-        boolean exitExecuted = !isOpened() && isExitFullyExecutedThrough(finalIndex);
+        boolean exitExecuted = !isOpened() && isEntryFullyExecutedThrough(finalIndex)
+                && isExitFullyExecutedThrough(finalIndex);
         Num grossProfit;
         Num tradingCost;
         if (exitExecuted) {
@@ -655,12 +656,20 @@ public class Position implements Serializable {
         return fills;
     }
 
+    private boolean isEntryFullyExecutedThrough(int finalIndex) {
+        return isTradeFullyExecutedThrough(entry, finalIndex);
+    }
+
     private boolean isExitFullyExecutedThrough(int finalIndex) {
-        if (exit == null) {
+        return isTradeFullyExecutedThrough(exit, finalIndex);
+    }
+
+    private boolean isTradeFullyExecutedThrough(Trade trade, int finalIndex) {
+        if (trade == null) {
             return false;
         }
-        List<TradeFill> fills = Trade.executionFillsOf(exit);
-        return !fills.isEmpty() && FuturesPositionAccounting.executedFills(exit, finalIndex).size() == fills.size();
+        List<TradeFill> fills = Trade.executionFillsOf(trade);
+        return !fills.isEmpty() && FuturesPositionAccounting.executedFills(trade, finalIndex).size() == fills.size();
     }
 
     private record SpotProfit(Num grossProfit, Num realizedGrossProfit) {
