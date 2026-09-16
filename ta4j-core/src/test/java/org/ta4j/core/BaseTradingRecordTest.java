@@ -2634,6 +2634,23 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    public void importedDeferredFuturesFillRestoresEventHorizon() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Trade entry = Trade.fromFill(
+                    fillAtTime(contract, -1, T0.plusSeconds(5), ExecutionSide.BUY, 1, 10_000, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+            Position imported = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            BaseTradingRecord record = new BaseTradingRecord(imported);
+
+            IllegalArgumentException rejection = assertThrows(IllegalArgumentException.class, () -> record
+                    .operate(fillAtTime(contract, 0, T0.plusSeconds(4), ExecutionSide.BUY, 1, 10_000, List.of())));
+
+            assertTrue(rejection.getMessage().contains("event horizon"));
+        }
+    }
+
+    @Test
     void importedFuturesPositionRecomputesBasisAfterDeferredFills() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = linearBtcPerpetual(numFactory);

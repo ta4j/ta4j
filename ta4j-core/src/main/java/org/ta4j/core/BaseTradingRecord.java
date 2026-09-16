@@ -838,7 +838,7 @@ public class BaseTradingRecord implements TradingRecord {
                 if (fill.index() == Integer.MAX_VALUE) {
                     terminalTradeIndexRecorded = true;
                 }
-                if (futuresContract != null && fill.index() >= 0 && fill.time() != null) {
+                if (futuresContract != null && fill.time() != null) {
                     advanceHorizonThrough(fill.time());
                 }
             }
@@ -2314,6 +2314,7 @@ public class BaseTradingRecord implements TradingRecord {
         private final FuturesContract futuresContract;
         private final Deque<PositionLot> openLots;
         private final List<ClosedPosition> closedPositions;
+        private Instant latestImportedExecutionTime;
 
         private PositionBook(TradeType startingType, ExecutionMatchPolicy matchPolicy, CostModel transactionCostModel,
                 CostModel holdingCostModel, FuturesContract futuresContract) {
@@ -2340,6 +2341,11 @@ public class BaseTradingRecord implements TradingRecord {
                 throw new IllegalArgumentException("Position contract " + positionContract.symbol()
                         + " does not match the record contract " + futuresContract.symbol() + "; "
                         + FuturesContract.describeMismatch(positionContract, futuresContract));
+            }
+            latestImportedExecutionTime = latestTradeTime(latestImportedExecutionTime, position.getEntry());
+            latestImportedExecutionTime = latestTradeTime(latestImportedExecutionTime, position.getExit());
+            for (FuturesCashFlow cashFlow : position.getCashFlows()) {
+                latestImportedExecutionTime = latestTime(latestImportedExecutionTime, cashFlow.time());
             }
             ExecutionSide side = sideOf(position.getEntry().getType());
             for (PositionLot lot : openLots) {
@@ -2494,12 +2500,10 @@ public class BaseTradingRecord implements TradingRecord {
         }
 
         private Instant latestExecutionTime() {
-            Instant latest = null;
+            Instant latest = latestImportedExecutionTime;
             for (PositionLot lot : openLots) {
                 for (TradeFill fill : lot.fills()) {
-                    if (fill.index() >= 0) {
-                        latest = latestTime(latest, fill.time());
-                    }
+                    latest = latestTime(latest, fill.time());
                 }
                 for (FuturesCashFlow cashFlow : lot.cashFlows()) {
                     latest = latestTime(latest, cashFlow.time());
@@ -2523,10 +2527,8 @@ public class BaseTradingRecord implements TradingRecord {
             Instant result = latest;
             boolean hasExecutedFill = false;
             for (TradeFill fill : Trade.executionFillsOf(trade)) {
-                if (fill.index() >= 0) {
-                    hasExecutedFill = true;
-                    result = latestTime(result, fill.time());
-                }
+                hasExecutedFill |= fill.index() >= 0;
+                result = latestTime(result, fill.time());
             }
             return hasExecutedFill ? latestTime(result, trade.getTime()) : result;
         }
