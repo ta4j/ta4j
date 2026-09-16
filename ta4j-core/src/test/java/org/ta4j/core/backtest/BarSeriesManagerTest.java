@@ -16,6 +16,7 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
@@ -736,4 +737,23 @@ public class BarSeriesManagerTest {
         double actual = tradingRecord.getPositions().getFirst().getEntry().getAmount().doubleValue();
         assertEquals(expected, actual, 1e-9);
     }
+
+    @Test
+    public void runOnWindowedSeriesSkipsInaccessibleExtensionIndexes() {
+        BarSeries windowed = new MockBarSeriesBuilder().withNumFactory(numFactory).withMaxBarCount(4).build();
+        for (int i = 0; i < 10; i++) {
+            windowed.barBuilder()
+                    .endTime(Instant.parse("2013-01-01T05:00:00Z").plusSeconds(600L * i))
+                    .closePrice(1d)
+                    .add();
+        }
+        assertEquals(6, windowed.getRemovedBarsCount());
+        assertEquals(9, windowed.getEndIndex());
+
+        Strategy noSignalStrategy = new BaseStrategy(new FixedRule(100), new FixedRule(100));
+        TradingRecord record = new BarSeriesManager(windowed).run(noSignalStrategy);
+
+        assertTrue(record.getPositions().isEmpty());
+    }
+
 }

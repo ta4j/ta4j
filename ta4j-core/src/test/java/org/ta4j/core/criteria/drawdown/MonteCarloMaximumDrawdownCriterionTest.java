@@ -276,4 +276,159 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
 
         return record;
     }
+
+    @Test
+    public void multiFillFuturesBlockUsesLastExecutedIndex() {
+        org.ta4j.core.FuturesContract contract = futuresContract();
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 100, 100, 100, 90, 100, 100, 100, 100)
+                .build();
+        org.ta4j.core.Position first = futuresPosition(contract, 0, 2, 100, 100, 2, 1, 5, 90);
+        org.ta4j.core.Position second = futuresPosition(contract, 6, 1, 100, 100, 7, 1, -1, 100);
+        org.ta4j.core.Position third = futuresPosition(contract, 8, 1, 100, 100, 9, 1, -1, 100);
+        BaseTradingRecord delegate = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(2))
+                .build();
+        org.ta4j.core.TradingRecord record = new AggregatePositionRecord(delegate,
+                java.util.List.of(first, second, third));
+
+        MonteCarloMaximumDrawdownCriterion criterion = new MonteCarloMaximumDrawdownCriterion(1, 1,
+                FirstBlockRandom::new, Statistics.MAX);
+
+        Assert.assertTrue(criterion.calculate(series, record).isGreaterThan(numFactory.numOf(0.04)));
+    }
+
+    private org.ta4j.core.FuturesContract futuresContract() {
+        return org.ta4j.core.FuturesContract.builder()
+                .venue("test")
+                .symbol("BTC-PERP")
+                .productType(org.ta4j.core.FuturesContract.ProductType.PERPETUAL)
+                .settlementType(org.ta4j.core.FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01))
+                .build();
+    }
+
+    private org.ta4j.core.Position futuresPosition(org.ta4j.core.FuturesContract contract, int entryIndex,
+            double entryAmount, double entryPrice, double firstExitPrice, int firstExitIndex, double firstExitAmount,
+            int secondExitIndex, double secondExitPrice) {
+        Trade entry = Trade.fromFill(futuresFill(contract, entryIndex, ExecutionSide.BUY, entryAmount, entryPrice));
+        java.util.List<org.ta4j.core.TradeFill> exits = new java.util.ArrayList<>();
+        exits.add(futuresFill(contract, firstExitIndex, ExecutionSide.SELL, firstExitAmount, firstExitPrice));
+        if (secondExitIndex >= 0) {
+            exits.add(futuresFill(contract, secondExitIndex, ExecutionSide.SELL, entryAmount - firstExitAmount,
+                    secondExitPrice));
+        }
+        Trade exit = Trade.fromFills(Trade.TradeType.SELL, exits);
+        return new org.ta4j.core.Position(entry, exit, org.ta4j.core.analysis.cost.RecordedTradeCostModel.INSTANCE,
+                new ZeroCostModel());
+    }
+
+    private org.ta4j.core.TradeFill futuresFill(org.ta4j.core.FuturesContract contract, int index, ExecutionSide side,
+            double amount, double price) {
+        return org.ta4j.core.TradeFill.builder()
+                .index(index)
+                .time(Instant.EPOCH.plusSeconds(index))
+                .price(numFactory.numOf(price))
+                .amount(numFactory.numOf(amount))
+                .side(side)
+                .futuresContract(contract)
+                .fees(java.util.List.of())
+                .build();
+    }
+
+    private static final class FirstBlockRandom implements RandomGenerator {
+        @Override
+        public long nextLong() {
+            return 0;
+        }
+
+        @Override
+        public int nextInt(int bound) {
+            return 0;
+        }
+    }
+
+    private static final class AggregatePositionRecord implements org.ta4j.core.TradingRecord {
+        private final BaseTradingRecord delegate;
+        private final java.util.List<org.ta4j.core.Position> positions;
+
+        private AggregatePositionRecord(BaseTradingRecord delegate, java.util.List<org.ta4j.core.Position> positions) {
+            this.delegate = delegate;
+            this.positions = positions;
+        }
+
+        @Override
+        public Trade.TradeType getStartingType() {
+            return delegate.getStartingType();
+        }
+
+        @Override
+        public String getName() {
+            return delegate.getName();
+        }
+
+        @Override
+        public void operate(int index, org.ta4j.core.num.Num price, org.ta4j.core.num.Num amount) {
+            delegate.operate(index, price, amount);
+        }
+
+        @Override
+        public boolean enter(int index, org.ta4j.core.num.Num price, org.ta4j.core.num.Num amount) {
+            return delegate.enter(index, price, amount);
+        }
+
+        @Override
+        public boolean exit(int index, org.ta4j.core.num.Num price, org.ta4j.core.num.Num amount) {
+            return delegate.exit(index, price, amount);
+        }
+
+        @Override
+        public org.ta4j.core.analysis.cost.CostModel getTransactionCostModel() {
+            return delegate.getTransactionCostModel();
+        }
+
+        @Override
+        public org.ta4j.core.analysis.cost.CostModel getHoldingCostModel() {
+            return delegate.getHoldingCostModel();
+        }
+
+        @Override
+        public java.util.List<org.ta4j.core.Position> getPositions() {
+            return positions;
+        }
+
+        @Override
+        public org.ta4j.core.Position getCurrentPosition() {
+            return delegate.getCurrentPosition();
+        }
+
+        @Override
+        public java.util.List<Trade> getTrades() {
+            return delegate.getTrades();
+        }
+
+        @Override
+        public Integer getStartIndex() {
+            return delegate.getStartIndex();
+        }
+
+        @Override
+        public Integer getEndIndex() {
+            return delegate.getEndIndex();
+        }
+
+        @Override
+        public org.ta4j.core.FuturesContract getFuturesContract() {
+            return delegate.getFuturesContract();
+        }
+
+        @Override
+        public org.ta4j.core.num.Num getInitialCapital() {
+            return delegate.getInitialCapital();
+        }
+    }
 }

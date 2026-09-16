@@ -378,4 +378,34 @@ public class TradeTest {
         String json = trade.toString();
         assertTrue(json.contains("\"type\":\"BUY\""));
     }
+
+    @Test
+    public void futuresFallbackAssignsTimestampWhenTradeTimeMissing() {
+        FuturesContract contract = FuturesContract.builder()
+                .venue("test")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(DoubleNum.valueOf(0.01))
+                .build();
+        Trade trade = new BaseTrade(0, TradeType.BUY, DoubleNum.valueOf(100), DoubleNum.valueOf(1)) {
+            @Override
+            public List<TradeFill> getFills() {
+                return List.of();
+            }
+
+            @Override
+            public FuturesContract getFuturesContract() {
+                return contract;
+            }
+        };
+
+        List<TradeFill> fills = Trade.executionFillsOf(trade);
+
+        assertEquals(1, fills.size());
+        assertNotNull(fills.getFirst().time());
+    }
 }

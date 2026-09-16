@@ -4,18 +4,26 @@
 package org.ta4j.core.criteria;
 
 import java.time.Instant;
+import java.util.List;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
-import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTrade;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.FuturesContract;
+import org.ta4j.core.Position;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFee;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -76,10 +84,145 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void futuresCostBasisIsEntrySettlementNotionalPlusOpeningFees() {
+        FuturesContract contract = linearBtcPerpetual();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110).build();
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(1_000))
+                .build();
+
+        record.operate(futuresFill(contract, 0, ExecutionSide.BUY, 100, 100, 2));
+        Position position = record.getCurrentPosition();
+
+        // 100 contracts x 0.01 BTC x 100 USD = 100 settlement notional plus 2 opening
+        // fee.
+        assertNumEquals(numFactory.numOf(100),
+                contract.settlementNotional(position.getEntry().getAmount(), numFactory.numOf(100)), 1e-12);
+        assertNumEquals(numFactory.numOf(2), position.getEntry().getCost(), 1e-12);
+        assertNumEquals(numFactory.numOf(102), getCriterion().calculate(series, position), 1e-12);
+        assertNumEquals(numFactory.numOf(102), getCriterion().calculate(series, record), 1e-12);
+    }
+
+    @Test
     public void betterThanPrefersLowerCostBasis() {
         var criterion = getCriterion();
 
         assertTrue(criterion.betterThan(numFactory.one(), numFactory.two()));
         assertFalse(criterion.betterThan(numFactory.two(), numFactory.one()));
+    }
+
+    private FuturesContract linearBtcPerpetual() {
+        return FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01))
+                .build();
+    }
+
+    private TradeFill futuresFill(FuturesContract contract, int index, ExecutionSide side, double amount, double price,
+            double fee) {
+        List<TradeFee> fees = fee == 0 ? List.of()
+                : List.of(TradeFee.builder()
+                        .type(TradeFee.Type.COMMISSION)
+                        .amount(numFactory.numOf(fee))
+                        .currency("USD")
+                        .build());
+        return TradeFill.builder()
+                .index(index)
+                .time(Instant.parse("2025-01-01T00:00:00Z").plusSeconds(index))
+                .price(numFactory.numOf(price))
+                .amount(numFactory.numOf(amount))
+                .side(side)
+                .orderId("order-" + index)
+                .futuresContract(contract)
+                .fees(fees)
+                .build();
+    }
+
+    @Test
+    public void futuresCostBasisIgnoresDeferredEntryFills() {
+        FuturesContract contract = linearBtcPerpetual();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110).build();
+        TradeFill executed = futuresFill(contract, 0, ExecutionSide.BUY, 100, 100, 2);
+        TradeFill deferred = futuresFill(contract, -1, ExecutionSide.BUY, 100, 100, 500);
+        Trade entry = Trade.fromFills(TradeType.BUY, List.of(executed, deferred), RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        // 100 contracts x 0.01 BTC x 100 USD = 100 settlement notional and only the 2
+        // fee of the executed fill.
+        assertNumEquals(numFactory.numOf(102), getCriterion().calculate(series, position), 1e-12);
+    }
+
+    @Test
+    public void futuresCostBasisKeepsMergedAverageCostBasis() {
+        FuturesContract contract = linearBtcPerpetual();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110).build();
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .matchPolicy(ExecutionMatchPolicy.AVG_COST)
+                .initialCapital(numFactory.numOf(1_000))
+                .build();
+
+        record.operate(futuresFill(contract, 0, ExecutionSide.BUY, 100, 100, 0));
+        record.operate(futuresFill(contract, 1, ExecutionSide.BUY, 100, 110, 0));
+        record.operate(futuresFill(contract, 2, ExecutionSide.SELL, 100, 120, 0));
+        Position open = record.getCurrentPosition();
+
+        assertNumEquals(numFactory.numOf(105), open.getEntry().getPricePerAsset(), 1e-12);
+        // The open remainder keeps the merged basis of 105: 100 contracts x 0.01 BTC
+        // x 105 USD.
+        assertNumEquals(numFactory.numOf(105), getCriterion().calculate(series, open), 1e-12);
+        assertNumEquals(numFactory.numOf(105), getCriterion().calculate(series, record), 1e-12);
+    }
+
+    @Test
+    public void futuresCostBasisValuesResidualAfterPartialExit() {
+        FuturesContract contract = linearBtcPerpetual();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120).build();
+        Trade entry = Trade.fromFill(futuresFill(contract, 0, ExecutionSide.BUY, 100, 100, 2),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(futuresFill(contract, 1, ExecutionSide.SELL, 50, 120, 0),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        // One remaining contract block has 50 USD settlement notional and one USD of
+        // allocated opening fees.
+        assertNumEquals(numFactory.numOf(51), getCriterion().calculate(series, position), 1e-12);
+    }
+
+    @Test
+    public void futuresCostBasisBoundsEntryAndExitFillsByHorizon() {
+        FuturesContract contract = linearBtcPerpetual();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 120, 140, 160, 180, 200, 220, 240)
+                .build();
+        Trade entry = Trade.fromFills(TradeType.BUY, List.of(futuresFill(contract, 4, ExecutionSide.BUY, 100, 100, 0),
+                futuresFill(contract, 7, ExecutionSide.BUY, 200, 200, 0)), RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFills(TradeType.SELL, List.of(futuresFill(contract, 5, ExecutionSide.SELL, 50, 300, 0),
+                futuresFill(contract, 7, ExecutionSide.SELL, 50, 400, 0)), RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        // The positional overload uses the series horizon and includes all fills: 200
+        // contracts at the
+        // merged 166.666... USD basis, less 100 exited contracts.
+        assertNumEquals(numFactory.numOf(333.3333333333333), getCriterion().calculate(series, position), 1e-12);
+
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, null, 5, RecordedTradeCostModel.INSTANCE,
+                new ZeroCostModel()) {
+            @Override
+            public Position getCurrentPosition() {
+                return position;
+            }
+        };
+
+        // The record horizon includes only the index-4 entry and index-5 exit: 50
+        // contracts at 100 USD.
+        assertNumEquals(numFactory.numOf(50), getCriterion().calculate(series, record), 1e-12);
     }
 }

@@ -7,12 +7,19 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.List;
 import java.util.Objects;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * A {@code Position} models either a closed entry/exit pair or an open position
@@ -30,7 +37,11 @@ import org.ta4j.core.num.Num;
  * callers can query per-lot and net exposure through one consistent contract.
  * </p>
  */
+@SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Every constructor validates trade data and futures contract consistency before an instance is published, so invalid positions are rejected fail-fast instead of escaping partially initialized")
 public class Position implements Serializable {
+
+    private static final Comparator<TradeFill> EXECUTION_FILL_ORDER = Comparator.comparingInt(TradeFill::index)
+            .thenComparing(TradeFill::time, Comparator.nullsFirst(Comparator.naturalOrder()));
 
     @Serial
     private static final long serialVersionUID = -5484709075767220358L;
@@ -49,6 +60,12 @@ public class Position implements Serializable {
 
     /** The cost model for holding the asset */
     private final transient CostModel holdingCostModel;
+
+    /** The futures contract of the position, or null for spot positions */
+    private FuturesContract futuresContract;
+
+    /** Cash flows allocated to the position, empty for spot positions */
+    private final List<FuturesCashFlow> cashFlows;
 
     /** Constructor with {@link #startingType} = BUY. */
     public Position() {
@@ -84,7 +101,7 @@ public class Position implements Serializable {
      * @param exit  the exit {@link Trade trade}
      */
     public Position(Trade entry, Trade exit) {
-        this(validateClosedPositionWithDefaults(entry, exit));
+        this(validateClosedPositionWithDefaults(entry, exit), List.of());
     }
 
     /**
@@ -96,7 +113,7 @@ public class Position implements Serializable {
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
     public Position(Trade entry, Trade exit, CostModel transactionCostModel, CostModel holdingCostModel) {
-        this(validateClosedPosition(entry, exit, transactionCostModel, holdingCostModel));
+        this(validateClosedPosition(entry, exit, transactionCostModel, holdingCostModel), List.of());
     }
 
     /**
@@ -108,7 +125,7 @@ public class Position implements Serializable {
      * @since 0.22.2
      */
     public Position(Trade entry, CostModel transactionCostModel, CostModel holdingCostModel) {
-        this(validateOpenPosition(entry, transactionCostModel, holdingCostModel));
+        this(validateOpenPosition(entry, transactionCostModel, holdingCostModel), List.of());
     }
 
     /**
@@ -123,6 +140,39 @@ public class Position implements Serializable {
      */
     public Trade getExit() {
         return exit;
+    }
+
+    /**
+     * Returns the futures contract of this position.
+     *
+     * <p>
+     * The contract is taken from the entry trade and the exit trade must reference
+     * the same contract, so a position never spans contracts or mixes spot and
+     * futures exposure.
+     * </p>
+     *
+     * @return the traded contract, or {@code null} for a spot position
+     * @since 0.25.1
+     */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "FuturesContract is a final value type whose instances are shared by reference; copying the immutable contract per accessor would allocate on every read")
+    public FuturesContract getFuturesContract() {
+        return futuresContract;
+    }
+
+    /**
+     * Returns the cash flows allocated to this position.
+     *
+     * <p>
+     * Funding and variation margin events are attributed to the position they
+     * belong to; the list is empty for spot positions and for futures positions
+     * without recorded events.
+     * </p>
+     *
+     * @return an immutable list of allocated cash flows, never {@code null}
+     * @since 0.25.1
+     */
+    public List<FuturesCashFlow> getCashFlows() {
+        return cashFlows == null ? List.of() : cashFlows;
     }
 
     /**
@@ -197,14 +247,15 @@ public class Position implements Serializable {
     public boolean equals(Object obj) {
         if (obj instanceof Position p) {
             return (entry == null ? p.getEntry() == null : entry.equals(p.getEntry()))
-                    && (exit == null ? p.getExit() == null : exit.equals(p.getExit()));
+                    && (exit == null ? p.getExit() == null : exit.equals(p.getExit()))
+                    && getCashFlows().equals(p.getCashFlows());
         }
         return false;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(entry, exit);
+        return Objects.hash(entry, exit, getCashFlows());
     }
 
     /**
@@ -260,10 +311,12 @@ public class Position implements Serializable {
             if (trade.getType() != startingType) {
                 throw new IllegalArgumentException("The first trade type must match the starting type");
             }
+            futuresContract = trade.getFuturesContract();
             entry = trade;
             return trade;
         }
         if (isOpened()) {
+            validateContract(trade.getFuturesContract());
             if (trade.getType() != startingType.complementType()) {
                 throw new IllegalArgumentException("The exit trade type must complement the entry trade type");
             }
@@ -320,6 +373,8 @@ public class Position implements Serializable {
     public Num getProfit() {
         if (isOpened()) {
             return zero();
+        } else if (futuresContract != null) {
+            return FuturesPositionAccounting.profit(this, futuresProfitMarkPrice(), exitCompletionIndex());
         } else {
             return getGrossProfit(exit.getPricePerAsset()).minus(getPositionCost());
         }
@@ -327,7 +382,8 @@ public class Position implements Serializable {
 
     /**
      * Calculates the net profit of the position. If it is open, calculates the
-     * profit until the final bar. The net profit includes any trading costs.
+     * profit until the final bar. The net profit includes any trading costs and is
+     * zero before the entry executes.
      *
      * @param finalIndex the index of the final bar to be considered (if position is
      *                   open)
@@ -336,14 +392,121 @@ public class Position implements Serializable {
      * @return the profit or loss of the position
      */
     public Num getProfit(int finalIndex, Num finalPrice) {
-        Num grossProfit = getGrossProfit(finalPrice);
-        Num tradingCost = getPositionCost(finalIndex);
+        if (futuresContract != null) {
+            return FuturesPositionAccounting.profit(this, finalPrice, finalIndex);
+        }
+        if (entry == null) {
+            return finalPrice.getNumFactory().zero();
+        }
+        if (entry.getIndex() > finalIndex) {
+            return entry.getPricePerAsset().getNumFactory().zero();
+        }
+        Num grossProfit = isOpened() || exit.getIndex() > finalIndex ? openGrossProfit(finalPrice)
+                : getGrossProfit(finalPrice);
+        Num tradingCost = isOpened() || exit.getIndex() > finalIndex ? entry.getCost().plus(getHoldingCost(finalIndex))
+                : getPositionCost(finalIndex);
         return grossProfit.minus(tradingCost);
     }
 
     /**
+     * Calculates the realized profit of the position as of {@code finalIndex}.
+     *
+     * <p>
+     * Executed fills realize their payoff net of fees, funding, and holding cost.
+     * While exposure is still open, only executed fees, funding, holding cost and
+     * paid variation margin are realized; the mark-to-entry part of the exposure
+     * stays unrealized. Realized plus {@link #getUnrealizedProfit(Num, int)} equals
+     * {@link #getProfit(int, Num)}.
+     * </p>
+     *
+     * <p>
+     * Spot positions realize their entry cost while exposure is still open and
+     * their full net profit once the exit has executed at or before
+     * {@code finalIndex}.
+     * </p>
+     *
+     * @param finalIndex the index of the final bar to be considered
+     * @return the realized profit in the settlement currency
+     * @since 0.25.1
+     */
+    public Num getRealizedProfit(int finalIndex) {
+        if (futuresContract != null) {
+            return FuturesPositionAccounting.realizedProfit(this, finalIndex);
+        }
+        if (isOpened() || exit.getIndex() > finalIndex) {
+            Num realizedSpotCost = getRealizedSpotCost(finalIndex);
+            return realizedSpotCost.isZero() ? zero() : realizedSpotCost.negate();
+        }
+        return getProfit(finalIndex, exit.getPricePerAsset());
+    }
+
+    private Num getRealizedSpotCost(int finalIndex) {
+        if (entry == null || entry.getIndex() > finalIndex) {
+            return zero();
+        }
+        return entry.getCost().plus(getHoldingCost(finalIndex));
+    }
+
+    /**
+     * Calculates the unrealized mark-to-entry profit of the open exposure.
+     *
+     * <p>
+     * The value is the raw mark-to-entry profit of the exposure that has not been
+     * closed yet, minus variation margin already settled for it. It is zero once
+     * the exit has executed at or before {@code finalIndex}.
+     * </p>
+     *
+     * <p>
+     * Spot positions value their own open exposure, so the result is the part of
+     * {@link #getProfit(int, Num)} that {@link #getRealizedProfit(int)} has not
+     * realized yet.
+     * </p>
+     *
+     * @param markPrice  the mark price of the open exposure, positive and finite
+     *                   for futures positions
+     * @param finalIndex the index of the final bar to be considered
+     * @return the unrealized profit in the settlement currency
+     * @since 0.25.1
+     */
+    public Num getUnrealizedProfit(Num markPrice, int finalIndex) {
+        if (futuresContract != null) {
+            return FuturesPositionAccounting.unrealizedProfit(this, markPrice, finalIndex);
+        }
+        if (isOpened() || exit.getIndex() > finalIndex) {
+            return getProfit(finalIndex, markPrice).minus(getRealizedProfit(finalIndex));
+        }
+        return zero();
+    }
+
+    /**
+     * Calculates the return of the position on an explicitly supplied margin
+     * amount.
+     *
+     * <p>
+     * The margin is a caller-supplied economic assumption ({@code initialCapital *
+     * initialMarginRate} in a futures record), never a collateral requirement
+     * enforced here.
+     * </p>
+     *
+     * @param initialMargin positive and finite margin in the settlement currency
+     * @param finalPrice    the price of the final bar to be considered
+     * @param finalIndex    the index of the final bar to be considered
+     * @return the return including the base, i.e.
+     *         {@code 1 + profit / initialMargin}
+     * @throws IllegalArgumentException when the margin is not positive and finite
+     * @since 0.25.1
+     */
+    public Num getReturnOnMargin(Num initialMargin, Num finalPrice, int finalIndex) {
+        FuturesValidation.requirePositiveFinite(initialMargin, "initialMargin");
+        Num profit = getProfit(finalIndex, finalPrice);
+        Num margin = profit.getNumFactory().numOf(initialMargin.getDelegate());
+        return profit.getNumFactory().one().plus(profit.dividedBy(margin));
+    }
+
+    /**
      * Calculates the gross profit of the position if it is closed. The gross profit
-     * excludes any trading costs.
+     * excludes any trading costs. For futures with a partial executed exit, the
+     * remaining exposure is marked using executed exit fills, never deferred fills.
      *
      * @return the gross profit of the position
      */
@@ -351,7 +514,7 @@ public class Position implements Serializable {
         if (isOpened()) {
             return zero();
         } else {
-            return getGrossProfit(exit.getPricePerAsset());
+            return getGrossProfit(futuresContract != null ? futuresProfitMarkPrice() : exit.getPricePerAsset());
         }
     }
 
@@ -364,18 +527,32 @@ public class Position implements Serializable {
      * @return the profit or loss of the position
      */
     public Num getGrossProfit(Num finalPrice) {
-        Num grossProfit;
-        if (isOpened()) {
-            grossProfit = entry.getAmount().multipliedBy(finalPrice).minus(entry.getValue());
-        } else {
-            grossProfit = exit.getValue().minus(entry.getValue());
+        if (futuresContract != null) {
+            return FuturesPositionAccounting.payoff(this, finalPrice, Integer.MAX_VALUE);
         }
+        if (isOpened()) {
+            return openGrossProfit(finalPrice);
+        }
+        Num grossProfit = exit.getValue().minus(entry.getValue());
 
         // Profits of long position are losses of short
         if (entry.isSell()) {
             grossProfit = grossProfit.negate();
         }
         return grossProfit;
+    }
+
+    /**
+     * Calculates the gross profit of the outstanding exposure valued at the
+     * supplied price against its entry value. Profits of a long position are losses
+     * of a short.
+     *
+     * @param finalPrice price used to value the outstanding exposure
+     * @return the gross profit of the outstanding exposure
+     */
+    private Num openGrossProfit(Num finalPrice) {
+        Num grossProfit = entry.getAmount().multipliedBy(finalPrice).minus(entry.getValue());
+        return entry.isSell() ? grossProfit.negate() : grossProfit;
     }
 
     /**
@@ -389,7 +566,8 @@ public class Position implements Serializable {
         if (isOpened()) {
             return zero();
         } else {
-            return getGrossReturn(exit.getPricePerAsset());
+            return futuresContract != null ? getGrossReturn(futuresProfitMarkPrice())
+                    : getGrossReturn(exit.getPricePerAsset());
         }
     }
 
@@ -403,6 +581,9 @@ public class Position implements Serializable {
      * @see #getGrossReturn(Num, Num)
      */
     public Num getGrossReturn(Num finalPrice) {
+        if (futuresContract != null) {
+            return FuturesPositionAccounting.grossReturn(this, finalPrice);
+        }
         return getGrossReturn(getEntry().getPricePerAsset(), finalPrice);
     }
 
@@ -419,6 +600,9 @@ public class Position implements Serializable {
     public Num getGrossReturn(BarSeries barSeries) {
         Num entryPrice = getEntry().getPricePerAsset(barSeries);
         Num exitPrice = getExit().getPricePerAsset(barSeries);
+        if (futuresContract != null) {
+            return FuturesPositionAccounting.grossReturn(this, futuresProfitMarkPrice());
+        }
         return getGrossReturn(entryPrice, exitPrice);
     }
 
@@ -439,6 +623,15 @@ public class Position implements Serializable {
      *         (includes the base)
      */
     public Num getGrossReturn(Num entryPrice, Num exitPrice) {
+        if (futuresContract != null) {
+            Num quantity = FuturesPositionAccounting.matchedQuantity(this);
+            if (quantity.isZero()) {
+                return entryPrice.getNumFactory().one();
+            }
+            Num entryNotional = futuresContract.settlementNotional(quantity, entryPrice);
+            Num payoff = futuresContract.profit(getStartingType(), quantity, entryPrice, exitPrice);
+            return entryPrice.getNumFactory().one().plus(payoff.dividedBy(entryNotional));
+        }
         if (getEntry().isBuy()) {
             return exitPrice.dividedBy(entryPrice);
         } else {
@@ -472,23 +665,117 @@ public class Position implements Serializable {
     }
 
     /**
-     * Calculates the holding cost of the closed position.
+     * Calculates the holding cost of the closed position. Entry fills of a native
+     * futures position accrue over their own exposure interval, so a position whose
+     * fills span several executions is charged to its completion index.
      *
      * @return the cost of the position
      */
     public Num getHoldingCost() {
+        if (futuresContract != null && exit != null
+                && (Trade.executionFillsOf(entry).size() > 1 || Trade.executionFillsOf(exit).size() > 1)) {
+            return getHoldingCost(exitCompletionIndex());
+        }
         return holdingCostModel.calculate(this);
     }
 
     /**
-     * Calculates the holding cost of the position.
+     * Calculates the holding cost of the position. For native futures positions,
+     * every executed fill accrues over its own exposure interval: an entry fill is
+     * charged until the closing fill that consumes it, and any remainder until
+     * {@code finalIndex}.
      *
      * @param finalIndex the index of the final bar to be considered (if position is
      *                   open)
      * @return the cost of the position
      */
     public Num getHoldingCost(int finalIndex) {
-        return holdingCostModel.calculate(this, finalIndex);
+        CostModel model = getHoldingCostModel();
+        if (futuresContract == null) {
+            return model.calculate(this, finalIndex);
+        }
+        NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
+        List<TradeFill> executedEntryFills = FuturesPositionAccounting.executedFills(entry, finalIndex);
+        if (executedEntryFills.isEmpty()) {
+            return numFactory.zero();
+        }
+        List<TradeFill> executedExitFills = exit == null ? List.of()
+                : FuturesPositionAccounting.executedFills(exit, finalIndex);
+        boolean fullyMatchedSingleFill = exit == null || (executedExitFills.size() == 1 && FuturesValidation
+                .numEquals(executedEntryFills.getFirst().amount(), executedExitFills.getFirst().amount()));
+        if (Trade.executionFillsOf(entry).size() == 1 && executedEntryFills.size() == 1 && fullyMatchedSingleFill) {
+            return model.calculate(this, finalIndex);
+        }
+        if (executedEntryFills.size() > 1) {
+            executedEntryFills = new ArrayList<>(executedEntryFills);
+            executedEntryFills.sort(EXECUTION_FILL_ORDER);
+        }
+        if (executedExitFills.size() > 1) {
+            executedExitFills = new ArrayList<>(executedExitFills);
+            executedExitFills.sort(EXECUTION_FILL_ORDER);
+        }
+        Deque<TradeFill> closingFills = new ArrayDeque<>(executedExitFills);
+        Deque<Num> closingAmounts = new ArrayDeque<>();
+        for (TradeFill closingFill : closingFills) {
+            closingAmounts.addLast(numFactory.numOf(closingFill.amount().getDelegate()));
+        }
+        Num holdingCost = numFactory.zero();
+        for (TradeFill entryFill : executedEntryFills) {
+            Num openAmount = numFactory.numOf(entryFill.amount().getDelegate());
+            while (openAmount.isPositive() && !closingAmounts.isEmpty()) {
+                TradeFill closingFill = closingFills.removeFirst();
+                Num closingAmount = closingAmounts.removeFirst();
+                Num closeAmount = openAmount.isLessThan(closingAmount) ? openAmount : closingAmount;
+                Num sliceCost = model.calculate(slicePosition(entryFill, closingFill, closeAmount), finalIndex);
+                holdingCost = holdingCost.plus(numFactory.numOf(sliceCost.getDelegate()));
+                openAmount = openAmount.minus(closeAmount);
+                Num retainedAmount = closingAmount.minus(closeAmount);
+                if (retainedAmount.isPositive()) {
+                    closingFills.addFirst(closingFill);
+                    closingAmounts.addFirst(retainedAmount);
+                }
+            }
+            if (openAmount.isPositive()) {
+                Num sliceCost = model.calculate(slicePosition(entryFill, null, openAmount), finalIndex);
+                holdingCost = holdingCost.plus(numFactory.numOf(sliceCost.getDelegate()));
+            }
+        }
+        return holdingCost;
+    }
+
+    /**
+     * Builds the sub-position of a single entry fill matched against a single
+     * closing fill, so a pluggable cost model can charge that exposure slice.
+     *
+     * @param entryFill   entry fill holding the slice
+     * @param closingFill closing fill consuming the slice, or {@code null} when the
+     *                    slice is still open
+     * @param amount      amount of the slice
+     * @return sub-position covering the slice
+     */
+    private Position slicePosition(TradeFill entryFill, TradeFill closingFill, Num amount) {
+        Trade sliceEntry = Trade.fromFills(entry.getType(), List.of(entryFill.toBuilder().amount(amount).build()),
+                getTransactionCostModel());
+        if (closingFill == null) {
+            return new Position(sliceEntry, getTransactionCostModel(), getHoldingCostModel());
+        }
+        Trade sliceExit = Trade.fromFills(exit.getType(), List.of(closingFill.toBuilder().amount(amount).build()),
+                getTransactionCostModel());
+        return new Position(sliceEntry, sliceExit, getTransactionCostModel(), getHoldingCostModel());
+    }
+
+    /**
+     * @return the index of the latest executed closing fill, falling back to the
+     *         recorded index of the exit
+     */
+    private int exitCompletionIndex() {
+        int completionIndex = exit.getIndex();
+        for (TradeFill exitFill : Trade.executionFillsOf(exit)) {
+            if (exitFill.index() >= 0) {
+                completionIndex = Math.max(completionIndex, exitFill.index());
+            }
+        }
+        return completionIndex;
     }
 
     /**
@@ -522,22 +809,56 @@ public class Position implements Serializable {
         this.startingType = config.startingType();
         this.transactionCostModel = config.transactionCostModel();
         this.holdingCostModel = config.holdingCostModel();
+        this.futuresContract = null;
+        this.cashFlows = List.of();
     }
 
-    private Position(ValidatedClosedPosition config) {
+    private Position(ValidatedClosedPosition config, List<FuturesCashFlow> cashFlows) {
         this.startingType = config.entry().getType();
         this.entry = config.entry();
         this.exit = config.exit();
         this.transactionCostModel = config.transactionCostModel();
         this.holdingCostModel = config.holdingCostModel();
+        this.futuresContract = config.contract();
+        this.cashFlows = validateCashFlows(config.contract(), cashFlows);
     }
 
-    private Position(ValidatedOpenPosition config) {
+    private Position(ValidatedOpenPosition config, List<FuturesCashFlow> cashFlows) {
         this.startingType = config.entry().getType();
         this.entry = config.entry();
         this.exit = null;
         this.transactionCostModel = config.transactionCostModel();
         this.holdingCostModel = config.holdingCostModel();
+        this.futuresContract = config.contract();
+        this.cashFlows = validateCashFlows(config.contract(), cashFlows);
+    }
+
+    /**
+     * Constructor for a closed position with explicitly allocated cash flows.
+     *
+     * @param entry                the entry {@link Trade trade}
+     * @param exit                 the exit {@link Trade trade}
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel     the cost model for holding asset
+     * @param cashFlows            cash flows allocated to this position
+     * @since 0.25.1
+     */
+    Position(Trade entry, Trade exit, CostModel transactionCostModel, CostModel holdingCostModel,
+            List<FuturesCashFlow> cashFlows) {
+        this(validateClosedPosition(entry, exit, transactionCostModel, holdingCostModel), cashFlows);
+    }
+
+    /**
+     * Constructor for an open position with explicitly allocated cash flows.
+     *
+     * @param entry                the entry {@link Trade trade}
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel     the cost model for holding asset
+     * @param cashFlows            cash flows allocated to this position
+     * @since 0.25.1
+     */
+    Position(Trade entry, CostModel transactionCostModel, CostModel holdingCostModel, List<FuturesCashFlow> cashFlows) {
+        this(validateOpenPosition(entry, transactionCostModel, holdingCostModel), cashFlows);
     }
 
     private static ValidatedStartingPosition validateStartingPosition(TradeType startingType,
@@ -577,7 +898,8 @@ public class Position implements Serializable {
             throw new IllegalArgumentException("Trades and the position must incorporate the same trading cost model");
         }
 
-        return new ValidatedClosedPosition(validatedEntry, validatedExit, transactionCostModel, holdingCostModel);
+        return new ValidatedClosedPosition(validatedEntry, validatedExit, transactionCostModel, holdingCostModel,
+                resolveContract(validatedEntry, validatedExit));
     }
 
     private static ValidatedOpenPosition validateOpenPosition(Trade entry, CostModel transactionCostModel,
@@ -586,7 +908,45 @@ public class Position implements Serializable {
         if (!(validatedEntry.getCostModel().equals(transactionCostModel))) {
             throw new IllegalArgumentException("Trades and the position must incorporate the same trading cost model");
         }
-        return new ValidatedOpenPosition(validatedEntry, transactionCostModel, holdingCostModel);
+        return new ValidatedOpenPosition(validatedEntry, transactionCostModel, holdingCostModel,
+                resolveContract(validatedEntry, null));
+    }
+
+    private void validateContract(FuturesContract tradeContract) {
+        if (!Objects.equals(futuresContract, tradeContract)) {
+            throw new IllegalArgumentException("Trade futures contract must match the position contract");
+        }
+    }
+
+    private static FuturesContract resolveContract(Trade entry, Trade exit) {
+        FuturesContract contract = entry.getFuturesContract();
+        if (exit == null) {
+            return contract;
+        }
+        FuturesContract exitContract = exit.getFuturesContract();
+        if (contract == null && exitContract == null) {
+            return null;
+        }
+        if (contract == null || !contract.equals(exitContract)) {
+            throw new IllegalArgumentException("Both trades must reference the same futures contract");
+        }
+        return contract;
+    }
+
+    private static List<FuturesCashFlow> validateCashFlows(FuturesContract contract, List<FuturesCashFlow> cashFlows) {
+        if (cashFlows == null || cashFlows.isEmpty()) {
+            return List.of();
+        }
+        if (contract == null) {
+            throw new IllegalArgumentException("Cash flows are only defined for futures positions");
+        }
+        for (FuturesCashFlow cashFlow : cashFlows) {
+            FuturesContract cashFlowContract = Objects.requireNonNull(cashFlow, "cashFlow").contract();
+            if (cashFlowContract != null && !contract.equals(cashFlowContract)) {
+                throw new IllegalArgumentException("Cash flow contract must match the position contract");
+            }
+        }
+        return List.copyOf(cashFlows);
     }
 
     private record ValidatedStartingPosition(TradeType startingType, CostModel transactionCostModel,
@@ -594,10 +954,11 @@ public class Position implements Serializable {
     }
 
     private record ValidatedClosedPosition(Trade entry, Trade exit, CostModel transactionCostModel,
-            CostModel holdingCostModel) {
+            CostModel holdingCostModel, FuturesContract contract) {
     }
 
-    private record ValidatedOpenPosition(Trade entry, CostModel transactionCostModel, CostModel holdingCostModel) {
+    private record ValidatedOpenPosition(Trade entry, CostModel transactionCostModel, CostModel holdingCostModel,
+            FuturesContract contract) {
     }
 
     /**
@@ -610,5 +971,20 @@ public class Position implements Serializable {
     @Override
     public String toString() {
         return "Entry: " + entry + " exit: " + exit;
+    }
+
+    private Num futuresProfitMarkPrice() {
+        if (exit == null) {
+            return null;
+        }
+        List<TradeFill> exitFills = Trade.executionFillsOf(exit);
+        List<TradeFill> executedExitFills = exitFills.stream().filter(fill -> fill.index() >= 0).toList();
+        if (executedExitFills.size() == exitFills.size()) {
+            return exit.getPricePerAsset();
+        }
+        if (executedExitFills.isEmpty()) {
+            return null;
+        }
+        return Trade.fromFills(exit.getType(), executedExitFills, exit.getCostModel()).getPricePerAsset();
     }
 }

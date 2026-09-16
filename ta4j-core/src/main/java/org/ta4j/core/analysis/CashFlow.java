@@ -7,12 +7,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -48,6 +51,13 @@ public class CashFlow implements PerformanceIndicator {
     private final EquityCurveMode equityCurveMode;
 
     /**
+     * The mark price indicator, {@code null} to value open exposure at closes.
+     */
+    private final Indicator<Num> markPriceIndicator;
+
+    private final boolean initialReturnEligible;
+
+    /**
      * Constructor.
      *
      * @param barSeries            the bar series
@@ -60,12 +70,37 @@ public class CashFlow implements PerformanceIndicator {
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex, EquityCurveMode equityCurveMode,
             OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, 0, barSeries.getEndIndex(), finalIndex, equityCurveMode, openPositionHandling);
+        this(barSeries, tradingRecord, new ClosePriceIndicator(barSeries), barSeries.getBeginIndex(),
+                barSeries.getEndIndex(), finalIndex, equityCurveMode, openPositionHandling, null);
+    }
+
+    /**
+     * Constructor valuing open exposure at an explicit mark price.
+     *
+     * <p>
+     * The mark price indicator is validated against the analysed series and is
+     * consumed by native futures records only; closing prices remain the documented
+     * backtest mark proxy otherwise.
+     * </p>
+     *
+     * @param barSeries            the bar series
+     * @param tradingRecord        the trading record
+     * @param markPriceIndicator   mark price indicator on the same series
+     * @param finalIndex           index up until cash flows of open positions are
+     *                             considered
+     * @param equityCurveMode      the calculation mode
+     * @param openPositionHandling how to handle open positions
+     * @since 0.25.1
+     */
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, Indicator<Num> markPriceIndicator, int finalIndex,
+            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+        this(barSeries, tradingRecord, markPriceIndicator, barSeries.getBeginIndex(), barSeries.getEndIndex(),
+                finalIndex, equityCurveMode, openPositionHandling, null);
     }
 
     /**
      * Constructor materializing only a bounded logical window on the original
-     * series.
+     * series. Discarded bars are not stored and retain the neutral value of one.
      *
      * @param barSeries            the bar series
      * @param tradingRecord        the trading record
@@ -78,7 +113,29 @@ public class CashFlow implements PerformanceIndicator {
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int startIndex, int finalIndex,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, startIndex, finalIndex, finalIndex, equityCurveMode, openPositionHandling);
+        this(barSeries, tradingRecord, new ClosePriceIndicator(barSeries), startIndex, finalIndex, equityCurveMode,
+                openPositionHandling);
+    }
+
+    /**
+     * Constructor materializing only a bounded logical window on the original
+     * series and valuing open exposure at an explicit mark price. Discarded bars
+     * are not stored and retain the neutral value of one.
+     *
+     * @param barSeries            the bar series
+     * @param tradingRecord        the trading record
+     * @param markPriceIndicator   mark price indicator on the same series
+     * @param startIndex           first logical bar index to materialize
+     * @param finalIndex           last logical bar index to materialize and to
+     *                             consider for open positions
+     * @param equityCurveMode      the calculation mode
+     * @param openPositionHandling how to handle open positions
+     * @since 0.25.1
+     */
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, Indicator<Num> markPriceIndicator, int startIndex,
+            int finalIndex, EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+        this(barSeries, tradingRecord, markPriceIndicator, startIndex, finalIndex, finalIndex, equityCurveMode,
+                openPositionHandling, null);
     }
 
     /**
@@ -90,7 +147,9 @@ public class CashFlow implements PerformanceIndicator {
      * @since 0.22.2
      */
     public CashFlow(BarSeries barSeries, Position position, EquityCurveMode equityCurveMode) {
-        this(barSeries, new BaseTradingRecord(position), barSeries.getEndIndex(), equityCurveMode);
+        this(barSeries, FuturesPerformanceSupport.analysisRecord(position), new ClosePriceIndicator(barSeries),
+                barSeries.getBeginIndex(), barSeries.getEndIndex(), barSeries.getEndIndex(), equityCurveMode,
+                OpenPositionHandling.MARK_TO_MARKET, FuturesPerformanceSupport.fallbackCapital(position));
     }
 
     /**
@@ -180,16 +239,61 @@ public class CashFlow implements PerformanceIndicator {
                 openPositionHandling);
     }
 
-    private CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int startIndex, int endIndex, int finalIndex,
-            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
-        this.barSeries = snapshotSeries(barSeries);
-        this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        int seriesEnd = this.barSeries.getEndIndex();
-        this.valueStartIndex = Math.max(0, startIndex);
+    private CashFlow(BarSeries barSeries, TradingRecord tradingRecord, Indicator<Num> markPriceIndicator,
+            int startIndex, int endIndex, int finalIndex, EquityCurveMode equityCurveMode,
+            OpenPositionHandling openPositionHandling, Num fallbackCapital) {
+        TradingRecord record = Objects.requireNonNull(tradingRecord);
+        OpenPositionHandling handling = Objects.requireNonNull(openPositionHandling);
+        FuturesPerformanceSupport.requireMarkSeries(Objects.requireNonNull(barSeries),
+                Objects.requireNonNull(markPriceIndicator));
+        boolean futures = FuturesPerformanceSupport.isFutures(record);
+        int seriesBegin = barSeries.getBeginIndex();
+        int seriesEnd = barSeries.getEndIndex();
+        this.valueStartIndex = Math.max(Math.max(0, seriesBegin), startIndex);
         this.valueEndIndex = seriesEnd < 0 ? -1 : Math.min(Math.max(endIndex, this.valueStartIndex), seriesEnd);
+        this.barSeries = this.valueEndIndex < this.valueStartIndex ? emptyBarSeries(barSeries)
+                : snapshotSeries(barSeries, this.valueStartIndex, this.valueEndIndex);
+        this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
+        this.markPriceIndicator = markPriceIndicator;
         int size = this.valueEndIndex < this.valueStartIndex ? 0 : this.valueEndIndex - this.valueStartIndex + 1;
-        this.values = new ArrayList<>(Collections.nCopies(size, this.barSeries.numFactory().one()));
-        calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
+        this.values = new ArrayList<>(Collections.nCopies(size, barSeries.numFactory().one()));
+        this.initialReturnEligible = futures && size > 0 && !FuturesPerformanceSupport.hasPreWindowActivity(record,
+                this.valueStartIndex, FuturesPerformanceSupport.includesExposure(handling, equityCurveMode));
+        if (futures) {
+            fillFuturesValues(record, finalIndex, handling, fallbackCapital);
+            return;
+        }
+        calculate(record, finalIndex, handling);
+    }
+
+    /**
+     * Fills the curve with the account-normalized equity of a native futures
+     * record.
+     *
+     * @param tradingRecord   the futures trading record
+     * @param finalIndex      index up until open position P&amp;L is considered
+     * @param handling        how to handle open positions
+     * @param fallbackCapital capital used for unlevered single position analysis
+     */
+    private void fillFuturesValues(TradingRecord tradingRecord, int finalIndex, OpenPositionHandling handling,
+            Num fallbackCapital) {
+        NumFactory numFactory = barSeries.numFactory();
+        Num capital = FuturesPerformanceSupport.accountCapital(numFactory, tradingRecord, fallbackCapital);
+        if (capital.isZero()) {
+            return;
+        }
+        boolean markExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
+        int seriesEnd = barSeries.getEndIndex();
+        int effectiveFinalIndex = Math.min(Objects.requireNonNull(tradingRecord).getEndIndex(barSeries), finalIndex);
+        FuturesPerformanceSupport.Cursor cursor = FuturesPerformanceSupport.cursor(barSeries, tradingRecord,
+                Math.min(effectiveFinalIndex, seriesEnd), markExposure, markPriceIndicator);
+        int windowEndIndex = Math.min(valueEndIndex, seriesEnd);
+        int windowStartIndex = Math.max(valueStartIndex, barSeries.getBeginIndex());
+        for (long barIndex = windowStartIndex; barIndex <= windowEndIndex; barIndex++) {
+            int index = (int) barIndex;
+            Num pnl = cursor.pnlAt(index);
+            setValue(index, capital.plus(pnl).dividedBy(capital));
+        }
     }
 
     /**
@@ -245,8 +349,10 @@ public class CashFlow implements PerformanceIndicator {
                 multiplyValue(windowStartIndex, windowStartRatio);
                 windowStartSeeded = true;
             }
-            int start = Math.max(Math.max(entryIndex + 1, seriesBegin + 1), windowStartIndex + 1);
-            for (int barIndex = start; barIndex < endIndex && barIndex <= windowEndIndex; barIndex++) {
+            long start = Math.max(Math.max((long) entryIndex + 1L, (long) seriesBegin + 1L),
+                    (long) windowStartIndex + 1L);
+            for (long index = start; index < endIndex && index <= windowEndIndex; index++) {
+                int barIndex = (int) index;
                 Num closePrice = barSeries.getBar(barIndex).getClosePrice();
                 Num intermediateNetPrice = addCost(closePrice, averageHoldingCostPerPeriod, isLongTrade);
                 Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
@@ -258,7 +364,9 @@ public class CashFlow implements PerformanceIndicator {
             if (ratioIndex <= windowEndIndex && !(windowStartSeeded && ratioIndex == windowStartIndex)) {
                 multiplyValue(ratioIndex, ratio);
             }
-            multiplyRange(ratioIndex + 1, windowEndIndex, ratio);
+            if (ratioIndex < windowEndIndex) {
+                multiplyRange(ratioIndex + 1, windowEndIndex, ratio);
+            }
             return;
         }
 
@@ -269,6 +377,10 @@ public class CashFlow implements PerformanceIndicator {
             Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
             multiplyRange(Math.max(ratioIndex, windowStartIndex), windowEndIndex, ratio);
         }
+    }
+
+    boolean hasInitialReturn() {
+        return initialReturnEligible && !values.getFirst().isEqual(barSeries.numFactory().one());
     }
 
     /**
@@ -314,6 +426,13 @@ public class CashFlow implements PerformanceIndicator {
         values.set(valueIndex, values.get(valueIndex).multipliedBy(ratio));
     }
 
+    private void setValue(int index, Num value) {
+        if (!containsIndex(index)) {
+            return;
+        }
+        values.set(toValueIndex(index), value);
+    }
+
     private void multiplyRange(int startIndex, int endIndex, Num ratio) {
         if (values.isEmpty()) {
             return;
@@ -334,6 +453,9 @@ public class CashFlow implements PerformanceIndicator {
     }
 
     private Num getStoredValue(int index) {
+        if (!containsIndex(index)) {
+            return barSeries.numFactory().one();
+        }
         return values.get(toValueIndex(index));
     }
 
@@ -343,9 +465,42 @@ public class CashFlow implements PerformanceIndicator {
 
     private static BarSeries snapshotSeries(final BarSeries barSeries) {
         BarSeries series = Objects.requireNonNull(barSeries);
+        if (series.getBarCount() == 0) {
+            return emptyBarSeries(series);
+        }
         return new BaseBarSeriesBuilder().withName(series.getName())
                 .withNumFactory(series.numFactory())
                 .withBars(series.getBarData())
+                .withBeginIndex(series.getBeginIndex())
+                .withMaxBarCount(series.getMaximumBarCount())
+                .build();
+    }
+
+    private static BarSeries snapshotSeries(final BarSeries barSeries, int startIndex, int endIndex) {
+        BarSeries series = Objects.requireNonNull(barSeries);
+        int seriesBegin = series.getBeginIndex();
+        int seriesEnd = series.getEndIndex();
+        if (series.getBarCount() == 0 || (startIndex <= seriesBegin && endIndex >= seriesEnd)) {
+            return snapshotSeries(series);
+        }
+
+        int snapshotSize = Math.toIntExact((long) endIndex - startIndex + 1L);
+        List<Bar> bars = new ArrayList<>(snapshotSize);
+        for (long index = startIndex; index <= endIndex; index++) {
+            bars.add(series.getBar((int) index));
+        }
+        return new BaseBarSeriesBuilder().withName(series.getName())
+                .withNumFactory(series.numFactory())
+                .withBars(bars)
+                .withBeginIndex(startIndex)
+                .withMaxBarCount(series.getMaximumBarCount())
+                .build();
+    }
+
+    private static BarSeries emptyBarSeries(final BarSeries barSeries) {
+        BarSeries series = Objects.requireNonNull(barSeries);
+        return new BaseBarSeriesBuilder().withName(series.getName())
+                .withNumFactory(series.numFactory())
                 .withMaxBarCount(series.getMaximumBarCount())
                 .build();
     }

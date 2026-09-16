@@ -27,6 +27,7 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.FixedRule;
+import static org.junit.Assert.assertNull;
 
 public class ProcessCapabilityPositionSizerTest {
 
@@ -836,7 +837,26 @@ public class ProcessCapabilityPositionSizerTest {
     private PositionSizer.Context context(BarSeries series, int signalIndex, int entryIndex) {
         Strategy strategy = new BaseStrategy(new FixedRule(), new FixedRule());
         TradingRecord tradingRecord = new BaseTradingRecord();
-        return new PositionSizer.Context(signalIndex, entryIndex, numOf(1), strategy, series, TradeType.BUY,
+        return new PositionSizer.Context(signalIndex, entryIndex, numOf(1), null, strategy, series, TradeType.BUY,
                 tradingRecord, new ZeroCostModel(), new ZeroCostModel());
+    }
+
+    @Test
+    public void nineArgumentContextConstructorMatchesNullFillTime() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule());
+        TradingRecord tradingRecord = new BaseTradingRecord();
+        Num entryPrice = numFactory.numOf(100);
+
+        PositionSizer.Context nineArgument = new PositionSizer.Context(0, 0, entryPrice, strategy, series,
+                TradeType.BUY, tradingRecord, new ZeroCostModel(), new ZeroCostModel());
+        PositionSizer.Context canonical = new PositionSizer.Context(0, 0, entryPrice, null, strategy, series,
+                TradeType.BUY, tradingRecord, new ZeroCostModel(), new ZeroCostModel());
+
+        assertNull(nineArgument.fillTime());
+        assertEquals(canonical.signalIndex(), nineArgument.signalIndex());
+        assertEquals(canonical.entryIndex(), nineArgument.entryIndex());
+        assertEquals(canonical.entryPrice(), nineArgument.entryPrice());
+        assertEquals(canonical.tradeType(), nineArgument.tradeType());
     }
 }

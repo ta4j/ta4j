@@ -7,7 +7,13 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.util.List;
 import java.util.Random;
+
+import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.FuturesContract;
+import org.ta4j.core.TradeFill;
+import org.ta4j.core.TradeFee;
 
 import org.junit.Test;
 import org.ta4j.core.Position;
@@ -73,5 +79,73 @@ public class FixedTransactionCostModelTest {
 
         assertTrue(equality);
         assertFalse(inequality);
+    }
+
+    @Test
+    public void calculateUsesRecordedFeeWhenFixedRateIsZero() {
+        FixedTransactionCostModel model = new FixedTransactionCostModel(0);
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(DoubleNum.valueOf(1))
+                .build();
+        TradeFill fill = TradeFill.builder()
+                .index(0)
+                .time(java.time.Instant.EPOCH)
+                .price(PRICE)
+                .amount(AMOUNT)
+                .side(ExecutionSide.BUY)
+                .futuresContract(contract)
+                .fees(List.of(TradeFee.builder()
+                        .type(TradeFee.Type.COMMISSION)
+                        .amount(DoubleNum.valueOf(3))
+                        .currency("USD")
+                        .build()))
+                .build();
+        Position position = new Position(Trade.fromFill(fill, model), model, model);
+
+        assertNumEquals(3, model.calculate(position, 0));
+    }
+
+    @Test
+    public void calculatePerPositionNormalizesMixedFillFactories() {
+        org.ta4j.core.num.NumFactory doubleFactory = org.ta4j.core.num.DoubleNumFactory.getInstance();
+        org.ta4j.core.num.NumFactory decimalFactory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        FixedTransactionCostModel model = new FixedTransactionCostModel(1);
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(doubleFactory.one())
+                .build();
+        TradeFill entryFill = TradeFill.builder()
+                .index(0)
+                .time(java.time.Instant.EPOCH)
+                .price(doubleFactory.numOf(100))
+                .amount(doubleFactory.one())
+                .side(ExecutionSide.BUY)
+                .futuresContract(contract)
+                .build();
+        TradeFill exitFill = TradeFill.builder()
+                .index(1)
+                .time(java.time.Instant.EPOCH.plusSeconds(1))
+                .price(decimalFactory.numOf(110))
+                .amount(decimalFactory.one())
+                .side(ExecutionSide.SELL)
+                .futuresContract(contract)
+                .build();
+        Position position = new Position(Trade.fromFill(entryFill, model), Trade.fromFill(exitFill, model), model,
+                model);
+
+        assertNumEquals(2, model.calculate(position, 1));
     }
 }

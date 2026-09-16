@@ -139,6 +139,38 @@ public interface Trade extends Serializable {
     }
 
     /**
+     * Returns the futures contract this trade was executed under.
+     *
+     * <p>
+     * A trade is either a spot trade or a futures trade: this returns {@code null}
+     * for spot trades and for every existing implementation that does not model
+     * contracts natively.
+     * </p>
+     *
+     * @return the traded contract, or {@code null} for a spot trade
+     * @since 0.25.1
+     */
+    default FuturesContract getFuturesContract() {
+        return null;
+    }
+
+    /**
+     * Returns the resolved fee components of this trade in the contract settlement
+     * currency.
+     *
+     * <p>
+     * Spot trades and implementations without native fee components return an empty
+     * list; their recorded scalar cost stays available through {@link #getCost()}.
+     * </p>
+     *
+     * @return immutable fee components, empty for spot trades
+     * @since 0.25.1
+     */
+    default List<TradeFee> getFees() {
+        return List.of();
+    }
+
+    /**
      * @return originating order id if available, otherwise {@code null}
      * @since 0.22.2
      */
@@ -169,9 +201,24 @@ public interface Trade extends Serializable {
     }
 
     /**
+     * Returns the settlement notional of this trade without transaction cost.
+     *
+     * <p>
+     * Spot trades keep the historic {@code price * amount} contract. Futures trades
+     * return the contract's settlement notional in the settlement currency:
+     * {@code amount * contractSize * price} for a linear contract and
+     * {@code amount * contractSize / price} for an inverse contract. The amount is
+     * always a contract count for futures.
+     * </p>
+     *
      * @return the value of a trade (without transaction cost)
+     * @since 0.25.1
      */
     default Num getValue() {
+        FuturesContract contract = getFuturesContract();
+        if (contract != null) {
+            return contract.settlementNotional(getAmount(), getPricePerAsset());
+        }
         return getPricePerAsset().multipliedBy(getAmount());
     }
 
@@ -181,16 +228,20 @@ public interface Trade extends Serializable {
      * <p>
      * Default simulated trades expose a single fill. Aggregated/partial trades may
      * return multiple fills. The default single fill mirrors trade-level metadata
-     * (time, fee, order/correlation ids) when available.
+     * (time, fee, order/correlation ids) when available. A scalar futures trade
+     * without an execution timestamp exposes no fills rather than fabricating a
+     * timestamp; recorders reject that incomplete execution metadata.
      * </p>
      *
      * @return execution fills of this trade
      * @since 0.22.4
      */
     default List<TradeFill> getFills() {
+        if (getFuturesContract() != null && getTime() == null) {
+            return List.of();
+        }
         ExecutionSide side = getType() == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
-        return List.of(new TradeFill(getIndex(), getTime(), getPricePerAsset(), getAmount(), getCost(), side,
-                getOrderId(), getCorrelationId()));
+        return List.of(TradeFill.forTrade(this, side));
     }
 
     /**
@@ -213,8 +264,7 @@ public interface Trade extends Serializable {
             return fills;
         }
         ExecutionSide side = trade.getType() == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
-        return List.of(new TradeFill(trade.getIndex(), trade.getTime(), trade.getPricePerAsset(), trade.getAmount(),
-                trade.getCost(), side, trade.getOrderId(), trade.getCorrelationId()));
+        return List.of(TradeFill.forTrade(trade, side));
     }
 
     /**
