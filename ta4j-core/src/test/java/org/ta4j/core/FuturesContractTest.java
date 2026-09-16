@@ -376,4 +376,20 @@ class FuturesContractTest {
             return (FuturesContract) in.readObject();
         }
     }
+
+    @Test
+    public void rejectsMaximumBoundsWithoutMinimumBounds() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> linearBuilder(doubleFactory).maximumQuantity(decimalFactory.numOf("1e400")).build());
+        assertThrows(IllegalArgumentException.class,
+                () -> linearBuilder(doubleFactory).maximumQuantity(decimalFactory.numOf("1e-400")).build());
+        assertThrows(IllegalArgumentException.class,
+                () -> linearBuilder(doubleFactory).maximumNotional(decimalFactory.numOf("1e400")).build());
+        assertThrows(IllegalArgumentException.class,
+                () -> linearBuilder(doubleFactory).maximumNotional(decimalFactory.numOf("1e-400")).build());
+    }
+
 }

@@ -843,4 +843,30 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         assertEquals(0, returns.getSize());
     }
+
+    @Test
+    public void flatExecutedFuturesExposureDoesNotRequireMarkPrice() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            TradeFill executedEntry = FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100,
+                    List.of());
+            TradeFill laterEntry = FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1_000, 100,
+                    List.of());
+            Trade entry = Trade.fromFills(TradeType.BUY, List.of(executedEntry, laterEntry),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFill(
+                    FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1_000, 110, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            TradingRecord record = new AlternateFuturesRecord(contract, testFactory.numOf(1_000), List.of(position),
+                    position);
+            Indicator<Num> unavailableMark = new MockIndicator(barSeries, List.of(testFactory.numOf(100), NaN.NaN,
+                    testFactory.numOf(105), testFactory.numOf(103), testFactory.numOf(110)));
+            Returns returns = new Returns(barSeries, record, unavailableMark, 1, ReturnRepresentation.DECIMAL,
+                    EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+            assertNumEquals(0.1, returns.getValue(1));
+        }
+    }
 }

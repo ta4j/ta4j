@@ -1065,4 +1065,25 @@ public class PositionTest {
             assertNumEquals(0, position.getProfit(3, numFactory.numOf(80)));
         }
     }
+
+    @Test
+    public void partialSpotProfitIncludesExecutedExitFees() {
+        for (NumFactory numFactory : factories()) {
+            Trade entry = Trade
+                    .fromFill(
+                            new TradeFill(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.numOf(100),
+                                    numFactory.numOf(2), numFactory.zero(), ExecutionSide.BUY, null, null),
+                            RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFills(TradeType.SELL,
+                    List.of(new TradeFill(1, Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110),
+                            numFactory.one(), numFactory.numOf(3), ExecutionSide.SELL, null, null),
+                            new TradeFill(5, Instant.parse("2025-01-01T00:00:05Z"), numFactory.numOf(120),
+                                    numFactory.one(), numFactory.numOf(4), ExecutionSide.SELL, null, null)),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            assertNumEquals(12, position.getProfit(1, numFactory.numOf(105)));
+            assertNumEquals(7, position.getRealizedProfit(1));
+        }
+    }
 }

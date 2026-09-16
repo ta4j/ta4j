@@ -370,7 +370,14 @@ final class FuturesPerformanceSupport {
                 activeCount++;
             }
             settle(effectiveIndex);
-            Num mark = markExposure && activeCount > 0 ? markAt(effectiveIndex) : null;
+            boolean hasResidualExposure = false;
+            for (int i = 0; i < activeCount; i++) {
+                if (!settledPositions[i] && hasResidualExposure(positions.get(i), effectiveIndex)) {
+                    hasResidualExposure = true;
+                    break;
+                }
+            }
+            Num mark = markExposure && hasResidualExposure ? markAt(effectiveIndex) : null;
             Num total = settledRealized;
             for (int i = 0; i < activeCount; i++) {
                 if (settledPositions[i]) {
@@ -386,6 +393,31 @@ final class FuturesPerformanceSupport {
                 }
             }
             return total;
+        }
+
+        private static boolean hasResidualExposure(Position position, int finalIndex) {
+            Trade entry = position.getEntry();
+            NumFactory numFactory = entry.getAmount().getNumFactory();
+            Num executedEntryAmount = executedAmountAt(entry, finalIndex, numFactory);
+            if (!executedEntryAmount.isPositive()) {
+                return false;
+            }
+            Trade exit = position.getExit();
+            if (exit == null) {
+                return true;
+            }
+            Num executedExitAmount = executedAmountAt(exit, finalIndex, numFactory);
+            return executedEntryAmount.isGreaterThan(executedExitAmount);
+        }
+
+        private static Num executedAmountAt(Trade trade, int finalIndex, NumFactory numFactory) {
+            Num amount = numFactory.zero();
+            for (TradeFill fill : trade.getFills()) {
+                if (fill.index() >= 0 && fill.index() <= finalIndex) {
+                    amount = amount.plus(numFactory.numOf(fill.amount().getDelegate()));
+                }
+            }
+            return amount;
         }
 
         /**

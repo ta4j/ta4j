@@ -618,10 +618,39 @@ public class BaseTrade implements Trade {
         for (TradeFill fill : fills) {
             Num fillFee = fill.fee();
             if (fillFee != null && !fillFee.isNaN()) {
-                totalFee = totalFee.plus(zero.getNumFactory().numOf(fillFee.getDelegate()));
+                Num normalizedFee = normalizeFillValue(fillFee, zero.getNumFactory(), "fill fee");
+                totalFee = requireFiniteAggregate(totalFee.plus(normalizedFee), "total fill fees");
             }
         }
         return totalFee;
+    }
+
+    private static Num normalizeFillValue(Num value, NumFactory numFactory, String name) {
+        Num normalized = numFactory.numOf(value.getDelegate());
+        if (!Num.isFinite(normalized) || (!value.isZero() && normalized.isZero())) {
+            throw new IllegalArgumentException(name + " cannot be represented by the target numeric factory");
+        }
+        return normalized;
+    }
+
+    private static Num requireFiniteAggregate(Num value, String name) {
+        return FuturesValidation.requireFinite(value, name);
+    }
+
+    private static Num multiplyFillValues(Num left, Num right, String name) {
+        Num product = left.multipliedBy(right);
+        if (!left.isZero() && !right.isZero() && product.isZero()) {
+            throw new IllegalArgumentException(name + " cannot be represented by the target numeric factory");
+        }
+        return requireFiniteAggregate(product, name);
+    }
+
+    private static Num divideFillValues(Num numerator, Num denominator, String name) {
+        Num quotient = numerator.dividedBy(denominator);
+        if (!numerator.isZero() && !denominator.isZero() && quotient.isZero()) {
+            throw new IllegalArgumentException(name + " cannot be represented by the target numeric factory");
+        }
+        return requireFiniteAggregate(quotient, name);
     }
 
     private static FillSummary summarizeFills(Trade.TradeType tradeType, List<TradeFill> fills) {
@@ -649,17 +678,22 @@ public class BaseTrade implements Trade {
             if (fill.index() >= 0 && (earliestFill == null || fill.index() < earliestFill.index())) {
                 earliestFill = fill;
             }
-            Num amount = numFactory.numOf(fill.amount().getDelegate());
-            Num price = numFactory.numOf(fill.price().getDelegate());
-            totalAmount = totalAmount.plus(amount);
-            quoteWeightedPrice = quoteWeightedPrice.plus(price.multipliedBy(amount));
+            Num amount = normalizeFillValue(fill.amount(), numFactory, "fill amount");
+            Num price = normalizeFillValue(fill.price(), numFactory, "fill price");
+            totalAmount = requireFiniteAggregate(totalAmount.plus(amount), "total fill amount");
+            quoteWeightedPrice = requireFiniteAggregate(
+                    quoteWeightedPrice.plus(multiplyFillValues(price, amount, "weighted fill price")),
+                    "total weighted fill price");
             if (contract != null && contract.settlementType() == FuturesContract.SettlementType.INVERSE) {
-                quotePriceSum = quotePriceSum.plus(amount.dividedBy(price));
+                quotePriceSum = requireFiniteAggregate(
+                        quotePriceSum.plus(divideFillValues(amount, price, "inverse fill price")),
+                        "total inverse fill price");
             }
         }
         Num aggregatedPrice = contract != null && contract.settlementType() == FuturesContract.SettlementType.INVERSE
-                ? totalAmount.dividedBy(quotePriceSum)
-                : quoteWeightedPrice.dividedBy(totalAmount);
+                ? divideFillValues(totalAmount, quotePriceSum, "aggregated fill price")
+                : divideFillValues(quoteWeightedPrice, totalAmount, "aggregated fill price");
+        requireFiniteAggregate(aggregatedPrice, "aggregated fill price");
         return new FillSummary(List.copyOf(fills), earliestFill == null ? fills.getFirst() : earliestFill, totalAmount,
                 aggregatedPrice);
     }

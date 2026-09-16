@@ -409,7 +409,7 @@ public class Position implements Serializable {
             tradingCost = getPositionCost(finalIndex);
         } else {
             grossProfit = spotGrossProfitAt(finalIndex, finalPrice);
-            tradingCost = spotEntryCostAt(finalIndex).plus(getHoldingCost(finalIndex));
+            tradingCost = spotEntryCostAt(finalIndex).plus(spotExitCostAt(finalIndex)).plus(getHoldingCost(finalIndex));
         }
         return grossProfit.minus(tradingCost);
     }
@@ -453,26 +453,30 @@ public class Position implements Serializable {
         if (entry == null || entry.getIndex() > finalIndex) {
             return zero();
         }
-        return spotEntryCostAt(finalIndex).plus(getHoldingCost(finalIndex));
+        return spotEntryCostAt(finalIndex).plus(spotExitCostAt(finalIndex)).plus(getHoldingCost(finalIndex));
     }
 
     private Num spotEntryCostAt(int finalIndex) {
-        if (entry == null || entry.getIndex() > finalIndex) {
+        return spotTradeCostAt(entry, finalIndex);
+    }
+
+    private Num spotExitCostAt(int finalIndex) {
+        return spotTradeCostAt(exit, finalIndex);
+    }
+
+    private Num spotTradeCostAt(Trade trade, int finalIndex) {
+        if (trade == null || trade.getIndex() > finalIndex) {
             return zero();
         }
-        List<TradeFill> fills = entry.getFills();
-        if (fills.size() <= 1) {
-            return entry.getCost();
-        }
-        List<TradeFill> executedFills = executedSpotFills(entry, finalIndex);
+        List<TradeFill> fills = trade.getFills();
+        List<TradeFill> executedFills = executedSpotFills(trade, finalIndex);
         if (executedFills.isEmpty()) {
             return zero();
         }
         if (executedFills.size() == fills.size()) {
-            return entry.getCost();
+            return trade.getCost();
         }
-        Trade executedEntry = Trade.fromFills(entry.getType(), executedFills, entry.getCostModel());
-        return executedEntry.getCost();
+        return Trade.fromFills(trade.getType(), executedFills, trade.getCostModel()).getCost();
     }
 
     /**
