@@ -521,6 +521,7 @@ public interface PositionSizer {
             validateFiniteNum(budget, "budget");
             validatePositiveNum(entryPrice, "entryPrice");
             budget = numFactory().numOf(budget.getDelegate());
+            validateFiniteNum(budget, "budget");
             Num zero = numFactory().zero();
             if (!budget.isPositive()) {
                 return zero;

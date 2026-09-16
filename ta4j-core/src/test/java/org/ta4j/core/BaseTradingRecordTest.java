@@ -3379,4 +3379,15 @@ class BaseTradingRecordTest {
             assertEquals(1, record.getOpenPositions().size());
         }
     }
+
+    @Test
+    public void proportionalCashFlowAllocationAvoidsIntermediateOverflow() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+
+        Num proportional = FuturesPositionAccounting.proportional(factory.numOf("1E200"), factory.numOf("1E200"),
+                factory.numOf("1E300"));
+
+        assertTrue(Num.isFinite(proportional));
+        assertEquals(1.0, proportional.doubleValue() / 1E100, 1E-14);
+    }
 }

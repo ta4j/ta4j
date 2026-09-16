@@ -385,4 +385,12 @@ class PositionSizerTest {
             assertNumEquals(factory.zero(), sizingContext.maxAffordableAmount(factory.one()));
         }
     }
+
+    @Test
+    public void maxAffordableAmountRejectsBudgetThatOverflowsContextFactory() {
+        PositionSizer.Context sizingContext = context(DoubleNumFactory.getInstance(), spotRecord());
+        Num budget = DecimalNumFactory.getInstance().numOf("1E400");
+
+        assertThrows(IllegalArgumentException.class, () -> sizingContext.maxAffordableAmount(budget));
+    }
 }

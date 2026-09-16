@@ -461,7 +461,11 @@ final class FuturesPositionAccounting {
      * @since 0.25.1
      */
     static Num proportional(Num value, Num portion, Num total) {
-        return value.multipliedBy(portion).dividedBy(total);
+        Num result = value.dividedBy(total).multipliedBy(portion);
+        if (Num.isFinite(result) && (!result.isZero() || value.isZero() || portion.isZero())) {
+            return result;
+        }
+        return portion.dividedBy(total).multipliedBy(value);
     }
 
     private static Num sumFillFees(Trade trade, int finalIndex, NumFactory numFactory) {
