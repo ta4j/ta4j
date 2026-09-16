@@ -482,6 +482,7 @@ public final class FuturesContract implements Serializable {
         FuturesValidation.requirePositiveFinite(exitPrice, "exitPrice");
         NumFactory numFactory = entryPrice.getNumFactory();
         Num exit = numFactory.numOf(exitPrice.getDelegate());
+        FuturesValidation.requirePositiveFinite(exit, "exitPrice");
         Num sized = contractsPerSize(contracts, entryPrice);
         Num payoff = settlementType == SettlementType.LINEAR ? exit.minus(entryPrice)
                 : numFactory.one().dividedBy(entryPrice).minus(numFactory.one().dividedBy(exit));
@@ -507,7 +508,12 @@ public final class FuturesContract implements Serializable {
         FuturesValidation.requireFinite(signedContracts, "signedContracts");
         FuturesValidation.requireFinite(fundingRate, "fundingRate");
         Num notional = settlementNotional(signedContracts.abs(), referencePrice);
-        Num magnitude = notional.multipliedBy(notional.getNumFactory().numOf(fundingRate.getDelegate()));
+        Num normalizedFundingRate = notional.getNumFactory().numOf(fundingRate.getDelegate());
+        FuturesValidation.requireFinite(normalizedFundingRate, "fundingRate");
+        if (!fundingRate.isZero() && normalizedFundingRate.isZero()) {
+            throw new IllegalArgumentException("fundingRate must be representable in reference number factory");
+        }
+        Num magnitude = notional.multipliedBy(normalizedFundingRate);
         return signedContracts.isNegative() ? magnitude : magnitude.negate();
     }
 
@@ -652,7 +658,16 @@ public final class FuturesContract implements Serializable {
         FuturesValidation.requireNonNegativeFinite(contracts, "contracts");
         FuturesValidation.requirePositiveFinite(price, "price");
         NumFactory numFactory = price.getNumFactory();
-        return numFactory.numOf(contracts.getDelegate()).multipliedBy(numFactory.numOf(contractSize.getDelegate()));
+        Num normalizedContracts = numFactory.numOf(contracts.getDelegate());
+        FuturesValidation.requireNonNegativeFinite(normalizedContracts, "contracts");
+        if (contracts.isPositive() && normalizedContracts.isZero()) {
+            throw new IllegalArgumentException("contracts must be representable in price number factory");
+        }
+        Num normalizedContractSize = numFactory.numOf(contractSize.getDelegate());
+        FuturesValidation.requirePositiveFinite(normalizedContractSize, "contractSize");
+        Num sized = normalizedContracts.multipliedBy(normalizedContractSize);
+        FuturesValidation.requireNonNegativeFinite(sized, "contracts");
+        return sized;
     }
 
     @Override

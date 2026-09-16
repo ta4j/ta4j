@@ -155,6 +155,24 @@ class FuturesContractTest {
     }
 
     @Test
+    public void rejectsUnrepresentableCrossFactoryValuesBeforeArithmetic() {
+        FuturesContract contract = linearBuilder(DoubleNumFactory.getInstance()).build();
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
+
+        assertThrows(IllegalArgumentException.class, () -> contract.profit(TradeType.BUY, doubleFactory.one(),
+                doubleFactory.numOf(100), decimalFactory.numOf("1e-400")));
+        assertThrows(IllegalArgumentException.class, () -> contract.profit(TradeType.BUY, doubleFactory.one(),
+                doubleFactory.numOf(100), decimalFactory.numOf("1e400")));
+        assertThrows(IllegalArgumentException.class,
+                () -> contract.baseQuantity(decimalFactory.numOf("1e400"), doubleFactory.numOf(100)));
+        assertThrows(IllegalArgumentException.class, () -> contract.fundingCashFlow(doubleFactory.one(),
+                doubleFactory.numOf(100), decimalFactory.numOf("1e-400")));
+        assertThrows(IllegalArgumentException.class, () -> contract.fundingCashFlow(doubleFactory.one(),
+                doubleFactory.numOf(100), decimalFactory.numOf("1e400")));
+    }
+
+    @Test
     void rejectsUnsupportedSettlementConventionsAndInvalidSpecifications() {
         for (NumFactory numFactory : factories()) {
             // quanto and mismatched settlement currencies are not silently converted

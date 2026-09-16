@@ -762,7 +762,7 @@ public class BarSeriesManagerTest {
     }
 
     @Test
-    public void runOnWindowedSeriesSkipsInaccessibleExtensionIndexes() {
+    public void runOnWindowedSeriesPreservesRetainedIndexes() {
         BarSeries windowed = new MockBarSeriesBuilder().withNumFactory(numFactory).withMaxBarCount(4).build();
         for (int i = 0; i < 10; i++) {
             windowed.barBuilder()
@@ -773,10 +773,14 @@ public class BarSeriesManagerTest {
         assertEquals(6, windowed.getRemovedBarsCount());
         assertEquals(9, windowed.getEndIndex());
 
-        Strategy noSignalStrategy = new BaseStrategy(new FixedRule(100), new FixedRule(100));
-        TradingRecord record = new BarSeriesManager(windowed).run(noSignalStrategy);
+        Strategy retainedIndexStrategy = new BaseStrategy(new FixedRule(6), new FixedRule(8));
+        TradingRecord record = new BarSeriesManager(windowed, new TradeOnCurrentCloseModel()).run(retainedIndexStrategy,
+                6, 9);
 
-        assertTrue(record.getPositions().isEmpty());
+        assertEquals(1, record.getPositionCount());
+        Position position = record.getPositions().getFirst();
+        assertEquals(6, position.getEntry().getIndex());
+        assertEquals(8, position.getExit().getIndex());
     }
 
 }

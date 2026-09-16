@@ -917,7 +917,7 @@ public class PositionTest {
                         futuresFill(contract, numFactory, -1, 200, 1, ExecutionSide.SELL)),
                 RecordedTradeCostModel.INSTANCE);
         Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 150).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 150).build();
 
         assertNumEquals(1.1, position.getGrossReturn());
         assertNumEquals(1.1, position.getGrossReturn(series));
