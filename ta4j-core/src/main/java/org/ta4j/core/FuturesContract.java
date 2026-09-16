@@ -546,6 +546,7 @@ public final class FuturesContract implements Serializable {
     public Num effectiveLeverage(Num contracts, Num referencePrice, Num collateral) {
         FuturesValidation.requirePositiveFinite(collateral, "collateral");
         Num normalizedCollateral = referencePrice.getNumFactory().numOf(collateral.getDelegate());
+        FuturesValidation.requirePositiveFinite(normalizedCollateral, "collateral");
         return settlementNotional(contracts, referencePrice).dividedBy(normalizedCollateral);
     }
 

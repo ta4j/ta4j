@@ -896,6 +896,33 @@ public class PositionTest {
     }
 
     @Test
+    public void grossReturnUsesExecutedEntryNotionalForDeferredEntryFill() {
+        NumFactory numFactory = DoubleNumFactory.getInstance();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .build();
+        Trade entry = Trade.fromFills(TradeType.BUY,
+                List.of(futuresFill(contract, numFactory, 0, 100, 1, ExecutionSide.BUY),
+                        futuresFill(contract, numFactory, -1, 200, 1, ExecutionSide.BUY)),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(futuresFill(contract, numFactory, 1, 110, 1, ExecutionSide.SELL),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
+
+        assertNumEquals(1.1, position.getGrossReturn());
+        assertNumEquals(1.1, position.getGrossReturn(series));
+        assertNumEquals(1.1, new GrossReturnCriterion().calculate(series, position));
+    }
+
+    @Test
     public void noArgumentProfitBoundsPartialFuturesHoldingCost() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = FuturesContract.builder()

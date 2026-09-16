@@ -131,6 +131,18 @@ class FuturesContractTest {
     }
 
     @Test
+    public void effectiveLeverageRejectsCollateralThatUnderflowsReferenceFactory() {
+        FuturesContract contract = linearBuilder(DoubleNumFactory.getInstance()).build();
+        Num tinyCollateral = DecimalNumFactory.getInstance().numOf("1e-400");
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> contract.effectiveLeverage(DoubleNumFactory.getInstance().one(),
+                        DoubleNumFactory.getInstance().numOf(100), tinyCollateral));
+
+        assertEquals("collateral must be positive and finite", exception.getMessage());
+    }
+
+    @Test
     void rejectsUnsupportedSettlementConventionsAndInvalidSpecifications() {
         for (NumFactory numFactory : factories()) {
             // quanto and mismatched settlement currencies are not silently converted

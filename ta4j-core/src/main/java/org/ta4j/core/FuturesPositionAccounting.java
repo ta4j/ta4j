@@ -271,7 +271,7 @@ final class FuturesPositionAccounting {
      *
      * <p>
      * The denominator is the settlement notional of the matched quantity at the
-     * original entry price, never the margin posted for it.
+     * executed entry basis, never the margin posted for it.
      * </p>
      *
      * @param position   futures position
@@ -286,9 +286,12 @@ final class FuturesPositionAccounting {
         if (quantity.isZero()) {
             return entry.getPricePerAsset().getNumFactory().one();
         }
-        Num entryNotional = requireContract(position).settlementNotional(quantity, entry.getPricePerAsset());
+        FuturesContract contract = requireContract(position);
+        NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
+        Num executedEntryBasis = entryBasis(entry, contract, numFactory, executedFills(entry, Integer.MAX_VALUE));
+        Num entryNotional = contract.settlementNotional(quantity, executedEntryBasis);
         Num payoff = payoff(position, finalPrice);
-        return entry.getPricePerAsset().getNumFactory().one().plus(payoff.dividedBy(entryNotional));
+        return numFactory.one().plus(payoff.dividedBy(entryNotional));
     }
 
     /**
