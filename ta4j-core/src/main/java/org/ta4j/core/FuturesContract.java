@@ -668,6 +668,10 @@ public final class FuturesContract implements Serializable {
         Num normalizedContractSize = numFactory.numOf(contractSize.getDelegate());
         FuturesValidation.requirePositiveFinite(normalizedContractSize, "contractSize");
         Num sized = normalizedContracts.multipliedBy(normalizedContractSize);
+        if (normalizedContracts.isPositive() && normalizedContractSize.isPositive() && sized.isZero()) {
+            throw new IllegalArgumentException(
+                    "contracts * contractSize cannot be represented in price number factory");
+        }
         FuturesValidation.requireNonNegativeFinite(sized, "contracts");
         return sized;
     }

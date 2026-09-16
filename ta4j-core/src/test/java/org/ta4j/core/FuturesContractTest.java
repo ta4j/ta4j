@@ -289,6 +289,19 @@ class FuturesContractTest {
     }
 
     @Test
+    public void rejectsContractSizeProductThatUnderflowsReferenceFactory() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        FuturesContract contract = linearBuilder(doubleFactory).contractSize(doubleFactory.numOf(Double.MIN_VALUE))
+                .build();
+        Num decimalContracts = DecimalNumFactory.getInstance().numOf("0.1");
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> contract.baseQuantity(decimalContracts, doubleFactory.one()));
+
+        assertEquals("contracts * contractSize cannot be represented in price number factory", exception.getMessage());
+    }
+
+    @Test
     void serializesItsDeclaredSpecificationAndChangedTermsAreANewContract() throws Exception {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = FuturesContract.builder()

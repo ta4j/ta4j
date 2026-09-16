@@ -195,6 +195,20 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void futuresCostBasisSortsEntryFillsBeforeFifoMatching() {
+        FuturesContract contract = linearBtcPerpetual();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 120).build();
+        Trade entry = Trade.fromFills(TradeType.BUY, List.of(futuresFill(contract, 1, ExecutionSide.BUY, 100, 110, 7),
+                futuresFill(contract, 0, ExecutionSide.BUY, 100, 100, 2)), RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(futuresFill(contract, 2, ExecutionSide.SELL, 100, 120, 0),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        // FIFO consumes the earlier 100-contract fill; the residual is the later fill.
+        assertNumEquals(numFactory.numOf(117), getCriterion().calculate(series, position), 1e-12);
+    }
+
+    @Test
     public void futuresCostBasisValuesResidualAfterPartialExit() {
         FuturesContract contract = linearBtcPerpetual();
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120).build();

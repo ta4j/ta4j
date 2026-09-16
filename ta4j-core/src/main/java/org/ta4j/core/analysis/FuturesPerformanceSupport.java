@@ -412,7 +412,7 @@ final class FuturesPerformanceSupport {
 
         private static Num executedAmountAt(Trade trade, int finalIndex, NumFactory numFactory) {
             Num amount = numFactory.zero();
-            for (TradeFill fill : trade.getFills()) {
+            for (TradeFill fill : Trade.executionFillsOf(trade)) {
                 if (fill.index() >= 0 && fill.index() <= finalIndex) {
                     amount = amount.plus(numFactory.numOf(fill.amount().getDelegate()));
                 }

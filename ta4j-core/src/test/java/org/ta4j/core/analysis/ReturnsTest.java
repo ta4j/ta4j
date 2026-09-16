@@ -721,6 +721,32 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
+    public void scalarFuturesReturnsUseFallbackExecutionFills() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 100, 102);
+            Trade scalarFutures = new BaseTrade(0, Instant.EPOCH, testFactory.numOf(100), testFactory.numOf(1_000),
+                    null, ExecutionSide.BUY, null, null) {
+                @Override
+                public List<TradeFill> getFills() {
+                    return List.of();
+                }
+
+                @Override
+                public FuturesContract getFuturesContract() {
+                    return contract;
+                }
+            };
+            Position position = new Position(scalarFutures, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            TradingRecord record = new AlternateFuturesRecord(contract, testFactory.numOf(1_000), List.of(), position);
+
+            Returns returns = new Returns(barSeries, record, ReturnRepresentation.DECIMAL);
+
+            assertNumEquals(0.02, returns.getValue(1));
+        }
+    }
+
+    @Test
     public void retainedFuturesReturnsMeasureTheirFirstBarFromCapital() {
         for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
             FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);

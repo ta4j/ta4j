@@ -4,6 +4,7 @@
 package org.ta4j.core.criteria;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import org.ta4j.core.BarSeries;
@@ -36,6 +37,8 @@ import org.ta4j.core.num.NumFactory;
  * @since 0.22.2
  */
 public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
+    private static final Comparator<TradeFill> EXECUTION_FILL_ORDER = Comparator.comparingInt(TradeFill::index)
+            .thenComparing(TradeFill::time, Comparator.nullsFirst(Comparator.naturalOrder()));
 
     @Override
     public Num calculate(BarSeries series, Position position) {
@@ -68,6 +71,7 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
             List<TradeFill> entryFills = Trade.executionFillsOf(entry)
                     .stream()
                     .filter(fill -> fill.index() >= 0 && fill.index() <= finalIndex)
+                    .sorted(EXECUTION_FILL_ORDER)
                     .toList();
             if (entryFills.isEmpty()) {
                 return series.numFactory().zero();
@@ -76,6 +80,7 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
                     : Trade.executionFillsOf(position.getExit())
                             .stream()
                             .filter(fill -> fill.index() >= 0 && fill.index() <= finalIndex)
+                            .sorted(EXECUTION_FILL_ORDER)
                             .toList();
             return futuresCostBasis(contract, entry, entryFills, exitFills);
         }
