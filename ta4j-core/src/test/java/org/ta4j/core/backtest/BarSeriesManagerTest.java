@@ -136,7 +136,22 @@ public class BarSeriesManagerTest {
     }
 
     @Test
-    public void runWithPositionSizerRejectsNonPositiveAndNonFiniteAmounts() {
+    public void runWithPositionSizerSkipsZeroEntryAndContinues() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30, 40, 50).build();
+        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        Strategy twoSignalStrategy = new BaseStrategy(new FixedRule(1, 3), new FixedRule(2, 4));
+        PositionSizer positionSizer = context -> context.signalIndex() == 1 ? numFactory.zero() : numFactory.one();
+
+        TradingRecord tradingRecord = localManager.run(twoSignalStrategy, TradeType.BUY, positionSizer);
+
+        assertEquals(1, tradingRecord.getPositionCount());
+        Position position = tradingRecord.getPositions().getFirst();
+        assertEquals(3, position.getEntry().getIndex());
+        assertEquals(4, position.getExit().getIndex());
+    }
+
+    @Test
+    public void runWithPositionSizerRejectsNullNegativeAndNonFiniteAmounts() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30, 40).build();
         BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
         Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(2));
@@ -144,13 +159,21 @@ public class BarSeriesManagerTest {
         assertThrows(IllegalArgumentException.class,
                 () -> localManager.run(oneTradeStrategy, TradeType.BUY, context -> null));
         assertThrows(IllegalArgumentException.class,
-                () -> localManager.run(oneTradeStrategy, TradeType.BUY, context -> numFactory.zero()));
-        assertThrows(IllegalArgumentException.class,
                 () -> localManager.run(oneTradeStrategy, TradeType.BUY, context -> DoubleNum.valueOf(-1)));
         assertThrows(IllegalArgumentException.class,
                 () -> localManager.run(oneTradeStrategy, TradeType.BUY, context -> DoubleNum.valueOf(Double.NaN)));
         assertThrows(IllegalArgumentException.class, () -> localManager.run(oneTradeStrategy, TradeType.BUY,
                 context -> DoubleNum.valueOf(Double.POSITIVE_INFINITY)));
+    }
+
+    @Test
+    public void runWithFixedAmountRejectsInvalidAmountBeforeStrategyEvaluation() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30).build();
+        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        Strategy noSignalStrategy = new BaseStrategy(new FixedRule(), new FixedRule());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> localManager.run(noSignalStrategy, TradeType.BUY, numFactory.zero()));
     }
 
     @Test

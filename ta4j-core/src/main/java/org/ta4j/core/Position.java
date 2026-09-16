@@ -914,7 +914,8 @@ public class Position implements Serializable {
 
     private void validateContract(FuturesContract tradeContract) {
         if (!Objects.equals(futuresContract, tradeContract)) {
-            throw new IllegalArgumentException("Trade futures contract must match the position contract");
+            throw new IllegalArgumentException("Trade futures contract must match the position contract; "
+                    + FuturesContract.describeMismatch(futuresContract, tradeContract));
         }
     }
 
@@ -928,7 +929,8 @@ public class Position implements Serializable {
             return null;
         }
         if (contract == null || !contract.equals(exitContract)) {
-            throw new IllegalArgumentException("Both trades must reference the same futures contract");
+            throw new IllegalArgumentException("Both trades must reference the same futures contract; "
+                    + FuturesContract.describeMismatch(contract, exitContract));
         }
         return contract;
     }
@@ -943,7 +945,8 @@ public class Position implements Serializable {
         for (FuturesCashFlow cashFlow : cashFlows) {
             FuturesContract cashFlowContract = Objects.requireNonNull(cashFlow, "cashFlow").contract();
             if (cashFlowContract != null && !contract.equals(cashFlowContract)) {
-                throw new IllegalArgumentException("Cash flow contract must match the position contract");
+                throw new IllegalArgumentException("Cash flow contract must match the position contract; "
+                        + FuturesContract.describeMismatch(contract, cashFlowContract));
             }
         }
         return List.copyOf(cashFlows);

@@ -6,6 +6,8 @@ package org.ta4j.core;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.io.ByteArrayInputStream;
@@ -263,6 +265,16 @@ class FuturesContractTest {
             assertNumEquals(0.1, resized.contractSize());
             assertEquals(contract.productId(), resized.productId());
         }
+    }
+
+    @Test
+    void includesDescriptiveIdentityFieldsInContractDiagnostics() {
+        FuturesContract contract = linearBuilder(DoubleNumFactory.getInstance()).displayName("BTC Perpetual")
+                .attributes(Map.of("status", "online"))
+                .build();
+
+        assertTrue(contract.toString().contains("displayName=BTC Perpetual"));
+        assertTrue(contract.toString().contains("attributes={status=online}"));
     }
 
     @Test

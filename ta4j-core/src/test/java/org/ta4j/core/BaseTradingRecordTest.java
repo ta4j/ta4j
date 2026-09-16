@@ -1616,6 +1616,13 @@ class BaseTradingRecordTest {
                     () -> new BaseTradingRecord(futuresTrade, otherTrade));
             assertTrue(mixedTrades.getMessage().contains("All trades must reference the same futures contract"));
 
+            FuturesContract descriptiveContract = contract.toBuilder().displayName("BTC Perpetual").build();
+            Trade descriptiveTrade = Trade.fromFill(fill(descriptiveContract, 1, ExecutionSide.BUY, 1, 3_000,
+                    List.of(commission(numFactory, 0.1, "USD"))), RecordedTradeCostModel.INSTANCE);
+            IllegalArgumentException descriptiveMismatch = assertThrows(IllegalArgumentException.class,
+                    () -> new BaseTradingRecord(futuresTrade, descriptiveTrade));
+            assertTrue(descriptiveMismatch.getMessage().contains("displayName"));
+
             Position futuresPosition = openPosition(contract, 0, 1, 50_000,
                     List.of(commission(numFactory, 0.1, "USD")));
             Trade spotEntry = new BaseTrade(0, T0, numFactory.numOf(100), numFactory.one(), numFactory.zero(),

@@ -344,4 +344,24 @@ class PositionSizerTest {
             assertNumEquals(5, sizingContext.maxAffordableAmount(factory.numOf(5)));
         }
     }
+
+    @Test
+    public void maxAffordableAmountHandlesLargeBoundedAffineRange() {
+        for (NumFactory factory : new NumFactory[] { DoubleNumFactory.getInstance(),
+                DecimalNumFactory.getInstance() }) {
+            FuturesContract contract = linearContract(factory).toBuilder()
+                    .maximumQuantity(factory.numOf(1_000_000))
+                    .build();
+            BaseTradingRecord record = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .initialCapital(factory.one())
+                    .initialMarginRate(factory.one())
+                    .build();
+            PositionSizer.Context sizingContext = new PositionSizer.Context(0, 0, factory.one(), null,
+                    entryOnFirstBar(), flatSeries(factory, 1), TradeType.BUY, record,
+                    new FixedTransactionCostModel(1.0), new ZeroCostModel());
+
+            assertNumEquals(factory.zero(), sizingContext.maxAffordableAmount(factory.one()));
+        }
+    }
 }

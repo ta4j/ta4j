@@ -125,13 +125,15 @@ public final class TradeFill implements Serializable {
 
     private void requireSnapshotContract(FuturesMarketSnapshot snapshot, String name) {
         if (snapshot != null && !snapshot.contract().equals(futuresContract)) {
-            throw new IllegalArgumentException(name + " must describe the fill contract " + futuresContract.symbol());
+            throw new IllegalArgumentException(name + " must describe the fill contract " + futuresContract.symbol()
+                    + "; " + FuturesContract.describeMismatch(futuresContract, snapshot.contract()));
         }
     }
 
     private void requireSnapshotContract(FuturesPositionSnapshot snapshot, String name) {
         if (snapshot != null && !snapshot.contract().equals(futuresContract)) {
-            throw new IllegalArgumentException(name + " must describe the fill contract " + futuresContract.symbol());
+            throw new IllegalArgumentException(name + " must describe the fill contract " + futuresContract.symbol()
+                    + "; " + FuturesContract.describeMismatch(futuresContract, snapshot.contract()));
         }
     }
 

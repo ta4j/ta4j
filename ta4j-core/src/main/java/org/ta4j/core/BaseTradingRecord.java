@@ -257,7 +257,8 @@ public class BaseTradingRecord implements TradingRecord {
             for (FuturesFunding funding : fundingSchedule) {
                 Objects.requireNonNull(funding, "fundingSchedule entry");
                 if (!futuresContract.equals(funding.contract())) {
-                    throw new IllegalArgumentException("Funding schedule contract must match the record contract");
+                    throw new IllegalArgumentException("Funding schedule contract must match the record contract; "
+                            + FuturesContract.describeMismatch(futuresContract, funding.contract()));
                 }
                 if (!eventIds.add(funding.eventId())) {
                     throw new IllegalArgumentException("Funding schedule event id is not unique: " + funding.eventId());
@@ -520,7 +521,8 @@ public class BaseTradingRecord implements TradingRecord {
             if (contract == null) {
                 contract = positionContract;
             } else if (!contract.equals(positionContract)) {
-                throw new IllegalArgumentException("All positions must reference the same futures contract");
+                throw new IllegalArgumentException("All positions must reference the same futures contract; "
+                        + FuturesContract.describeMismatch(contract, positionContract));
             }
         }
         return contract;
@@ -886,7 +888,8 @@ public class BaseTradingRecord implements TradingRecord {
             if (contract == null) {
                 contract = tradeContract;
             } else if (!contract.equals(tradeContract)) {
-                throw new IllegalArgumentException("All trades must reference the same futures contract");
+                throw new IllegalArgumentException("All trades must reference the same futures contract; "
+                        + FuturesContract.describeMismatch(contract, tradeContract));
             }
         }
         return contract;
@@ -1330,7 +1333,8 @@ public class BaseTradingRecord implements TradingRecord {
         Objects.requireNonNull(contract, label + " contract");
         if (!futuresContract.equals(contract)) {
             throw new IllegalArgumentException(label + " contract " + contract.symbol()
-                    + " does not match the record contract " + futuresContract.symbol());
+                    + " does not match the record contract " + futuresContract.symbol() + "; "
+                    + FuturesContract.describeMismatch(futuresContract, contract));
         }
     }
 
@@ -1738,7 +1742,8 @@ public class BaseTradingRecord implements TradingRecord {
         }
         if (!futuresContract.equals(fill.futuresContract())) {
             throw new IllegalArgumentException("Fill contract " + fill.futuresContract().symbol()
-                    + " does not match the record contract " + futuresContract.symbol());
+                    + " does not match the record contract " + futuresContract.symbol() + "; "
+                    + FuturesContract.describeMismatch(futuresContract, fill.futuresContract()));
         }
     }
 
@@ -2326,7 +2331,8 @@ public class BaseTradingRecord implements TradingRecord {
             }
             if (!positionContract.equals(futuresContract)) {
                 throw new IllegalArgumentException("Position contract " + positionContract.symbol()
-                        + " does not match the record contract " + futuresContract.symbol());
+                        + " does not match the record contract " + futuresContract.symbol() + "; "
+                        + FuturesContract.describeMismatch(positionContract, futuresContract));
             }
             ExecutionSide side = sideOf(position.getEntry().getType());
             for (PositionLot lot : openLots) {
@@ -3380,7 +3386,8 @@ public class BaseTradingRecord implements TradingRecord {
                     throw new IllegalArgumentException("cannot merge lots with different sides");
                 }
                 if (!Objects.equals(futuresContract, other.futuresContract)) {
-                    throw new IllegalArgumentException("cannot merge lots with different futures contracts");
+                    throw new IllegalArgumentException("cannot merge lots with different futures contracts; "
+                            + FuturesContract.describeMismatch(futuresContract, other.futuresContract));
                 }
                 Num totalAmount = amount.plus(other.amount);
                 Num mergedPrice = mergedEntryPrice(totalAmount, other);

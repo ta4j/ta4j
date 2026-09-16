@@ -1,4 +1,5 @@
 ## Unreleased
+- **Futures review round 53**: zero-sized dynamic entries are skipped while fixed amounts remain eagerly validated; bounded affine futures affordability avoids quantity-proportional scans; strict contract mismatches identify differing fields and contract diagnostics include descriptive identity.
 - **Futures review round 52**: trade samples include futures entry-bar returns and mark spot positions through truncated horizons; deferred fills do not seed pre-window equity; aggregate futures holding costs match entry and exit fills in execution order.
 - **Futures review round 51**: time-based Sharpe and Sortino samples include nonzero initial futures equity moves from capital, with first-bar risk-free duration and calendar grouping; cumulative pre-window seeds remain excluded.
 - **Futures review round 50**: invested and trade intervals end at the final executed exit fill; nonpositive futures stops return zero risk; bounded cash-flow snapshots retain only their normalized window, including empty and reversed ranges. Regression helper types are explicit.

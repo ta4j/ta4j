@@ -520,8 +520,8 @@ public class BaseTrade implements Trade {
             } else if (contract == null) {
                 contract = fillContract;
             } else if (!contract.equals(fillContract)) {
-                throw new IllegalArgumentException(
-                        "fills must share one contract, found " + contract + " and " + fillContract);
+                throw new IllegalArgumentException("fills must share one contract, found " + contract + " and "
+                        + fillContract + "; " + FuturesContract.describeMismatch(contract, fillContract));
             }
         }
         if (contract != null && hasSpotFill) {

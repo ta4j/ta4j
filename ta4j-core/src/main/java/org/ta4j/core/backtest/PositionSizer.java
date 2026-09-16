@@ -21,7 +21,11 @@ import org.ta4j.core.TradeFee;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
+import org.ta4j.core.analysis.cost.FuturesTransactionCostModel;
+import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -29,8 +33,9 @@ import org.ta4j.core.num.NumFactory;
  * Sizes new backtest entries from the current execution context.
  *
  * <p>
- * Implementations return the amount used to open a new position. Exits close
- * the currently open amount and do not call the sizer again.
+ * Implementations return the amount used to open a new position. A zero amount
+ * means that the current entry signal is skipped. Exits close the currently
+ * open amount and do not call the sizer again.
  * </p>
  * <p>
  * When used with {@link BacktestExecutor} methods that evaluate strategies in
@@ -44,11 +49,11 @@ import org.ta4j.core.num.NumFactory;
 public interface PositionSizer {
 
     /**
-     * Returns the amount used to open a new position.
+     * Returns the amount used to open a new position, or zero to skip the entry.
      *
      * <p>
-     * Implementations must return a positive, finite {@link Num} compatible with
-     * {@link Context#numFactory()}. Factory-created sizers validate their
+     * Implementations must return a non-negative, finite {@link Num} compatible
+     * with {@link Context#numFactory()}. Factory-created sizers validate their
      * constructor inputs eagerly; custom implementations are responsible for
      * honoring this contract when they are called.
      * </p>
@@ -499,13 +504,10 @@ public interface PositionSizer {
          * so the result is either zero or a tradable contract count.
          * </p>
          * <p>
-         * Bounded futures quantities with an increment are searched in descending grid
-         * order, with worst-case work linear in the number of tradable quantities.
-         * Otherwise the cost model must have monotonic affordability. That numerical
-         * search converges at the precision limit of the record number factory after
-         * about {@code 3.32 * p} iterations, where {@code p} is the number of
-         * significant digits. The number factory must have bounded precision, up to
-         * about 9800 significant digits.
+         * The shipped fixed-context cost models have affine entry costs for a fixed
+         * price and use bounded-precision bisection. Arbitrary or custom models retain
+         * the exhaustive descending grid search, which does not assume monotonic fees.
+         * Other bounded or unbounded ranges use the numerical search documented below.
          * </p>
          *
          * @param budget cash available for entry price and transaction costs
@@ -558,8 +560,9 @@ public interface PositionSizer {
          * Finds the largest tradable contract count that the budget can afford.
          *
          * <p>
-         * A bounded quantity grid is searched from its maximum downward, stopping at
-         * the first affordable quantity. This does not assume monotonic fees.
+         * The shipped fixed-context cost models have affine entry costs for a fixed
+         * price and use bounded-precision bisection. Arbitrary or custom models retain
+         * the exhaustive descending grid search, which does not assume monotonic fees.
          * Continuous or unbounded quantities use the numerical search documented by
          * {@link #maxAffordableAmount(Num)}.
          * </p>
@@ -581,6 +584,9 @@ public interface PositionSizer {
             if (maximum != null && entryCost(maximum).isLessThanOrEqual(budget)) {
                 return maximum;
             }
+            if (maximum != null && usesKnownAffineEntryCostModel()) {
+                return searchLargestAffordableTradable(contract, maximum, budget, increment);
+            }
             if (maximum != null && increment != null) {
                 BigDecimal stepSize = increment.bigDecimalValue();
                 BigInteger steps = maximum.bigDecimalValue()
@@ -597,7 +603,18 @@ public interface PositionSizer {
                 }
                 return zero;
             }
+            return searchLargestAffordableTradable(contract, maximum, budget, increment);
+        }
 
+        private boolean usesKnownAffineEntryCostModel() {
+            Class<?> modelClass = transactionCostModel.getClass();
+            return modelClass == FixedTransactionCostModel.class || modelClass == FuturesTransactionCostModel.class
+                    || modelClass == LinearTransactionCostModel.class || modelClass == RecordedTradeCostModel.class
+                    || modelClass == ZeroCostModel.class;
+        }
+
+        private Num searchLargestAffordableTradable(FuturesContract contract, Num maximum, Num budget, Num increment) {
+            Num zero = numFactory().zero();
             Num two = numFactory().two();
             Num low = zero;
             Num high = null;

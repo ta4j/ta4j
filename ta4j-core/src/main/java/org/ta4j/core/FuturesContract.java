@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Map;
 import java.util.Objects;
+import java.util.StringJoiner;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -22,12 +23,18 @@ import org.ta4j.core.num.NumFactory;
  * and settles in the base currency. Other combinations, including quanto
  * products, are rejected: similar currency names never imply a conversion.
  * </p>
- *
  * <p>
  * A record binds exactly one specification. Changed economic terms require a
  * new contract value rather than reinterpreting historical fills, while mutable
  * market and risk observations belong in {@link FuturesMarketSnapshot} and
  * {@link FuturesPositionSnapshot}.
+ * </p>
+ *
+ * <p>
+ * Equality is a full structural comparison, including descriptive metadata and
+ * attributes. Accounting boundaries report differing fields; adapters must
+ * reuse one canonical contract snapshot rather than reconstructing one with
+ * changed metadata.
  * </p>
  *
  * @since 0.25.1
@@ -542,6 +549,99 @@ public final class FuturesContract implements Serializable {
         return settlementNotional(contracts, referencePrice).dividedBy(normalizedCollateral);
     }
 
+    static String describeMismatch(FuturesContract expected, FuturesContract actual) {
+        if (expected == null || actual == null) {
+            return "contract presence";
+        }
+        StringJoiner differences = new StringJoiner(", ");
+        if (!expected.venue.equals(actual.venue)) {
+            differences.add("venue");
+        }
+        if (!expected.symbol.equals(actual.symbol)) {
+            differences.add("symbol");
+        }
+        if (expected.productType != actual.productType) {
+            differences.add("productType");
+        }
+        if (expected.settlementType != actual.settlementType) {
+            differences.add("settlementType");
+        }
+        if (!expected.baseCurrency.equals(actual.baseCurrency)) {
+            differences.add("baseCurrency");
+        }
+        if (!expected.quoteCurrency.equals(actual.quoteCurrency)) {
+            differences.add("quoteCurrency");
+        }
+        if (!expected.settlementCurrency.equals(actual.settlementCurrency)) {
+            differences.add("settlementCurrency");
+        }
+        if (!FuturesValidation.numEquals(expected.contractSize, actual.contractSize)) {
+            differences.add("contractSize");
+        }
+        if (!Objects.equals(expected.productId, actual.productId)) {
+            differences.add("productId");
+        }
+        if (!Objects.equals(expected.contractCode, actual.contractCode)) {
+            differences.add("contractCode");
+        }
+        if (!Objects.equals(expected.contractRoot, actual.contractRoot)) {
+            differences.add("contractRoot");
+        }
+        if (!Objects.equals(expected.displayName, actual.displayName)) {
+            differences.add("displayName");
+        }
+        if (!Objects.equals(expected.contractExpiryType, actual.contractExpiryType)) {
+            differences.add("contractExpiryType");
+        }
+        if (!Objects.equals(expected.contractRootUnit, actual.contractRootUnit)) {
+            differences.add("contractRootUnit");
+        }
+        if (!Objects.equals(expected.expiry, actual.expiry)) {
+            differences.add("expiry");
+        }
+        if (!Objects.equals(expected.expiryTimeZone, actual.expiryTimeZone)) {
+            differences.add("expiryTimeZone");
+        }
+        if (!Objects.equals(expected.tradingDisabledAt, actual.tradingDisabledAt)) {
+            differences.add("tradingDisabledAt");
+        }
+        if (!FuturesValidation.numEqualsNullable(expected.priceIncrement, actual.priceIncrement)) {
+            differences.add("priceIncrement");
+        }
+        if (!FuturesValidation.numEqualsNullable(expected.quantityIncrement, actual.quantityIncrement)) {
+            differences.add("quantityIncrement");
+        }
+        if (!FuturesValidation.numEqualsNullable(expected.minimumQuantity, actual.minimumQuantity)) {
+            differences.add("minimumQuantity");
+        }
+        if (!FuturesValidation.numEqualsNullable(expected.maximumQuantity, actual.maximumQuantity)) {
+            differences.add("maximumQuantity");
+        }
+        if (!FuturesValidation.numEqualsNullable(expected.minimumNotional, actual.minimumNotional)) {
+            differences.add("minimumNotional");
+        }
+        if (!FuturesValidation.numEqualsNullable(expected.maximumNotional, actual.maximumNotional)) {
+            differences.add("maximumNotional");
+        }
+        if (!Objects.equals(expected.perpetualStyle, actual.perpetualStyle)) {
+            differences.add("perpetualStyle");
+        }
+        if (!Objects.equals(expected.trading24x7, actual.trading24x7)) {
+            differences.add("trading24x7");
+        }
+        if (!Objects.equals(expected.nonCrypto, actual.nonCrypto)) {
+            differences.add("nonCrypto");
+        }
+        if (!Objects.equals(expected.riskManagedBy, actual.riskManagedBy)) {
+            differences.add("riskManagedBy");
+        }
+        if (!expected.attributes.equals(actual.attributes)) {
+            differences.add("attributes");
+        }
+        String description = differences.toString();
+        return description.isEmpty() ? "no differing fields" : "differing fields: " + description;
+    }
+
     private Num contractsPerSize(Num contracts, Num price) {
         FuturesValidation.requireNonNegativeFinite(contracts, "contracts");
         FuturesValidation.requirePositiveFinite(price, "price");
@@ -593,9 +693,10 @@ public final class FuturesContract implements Serializable {
 
     @Override
     public String toString() {
-        return "FuturesContract[venue=" + venue + ", symbol=" + symbol + ", productType=" + productType
-                + ", settlementType=" + settlementType + ", baseCurrency=" + baseCurrency + ", quoteCurrency="
-                + quoteCurrency + ", settlementCurrency=" + settlementCurrency + ", contractSize=" + contractSize + "]";
+        return "FuturesContract[venue=" + venue + ", symbol=" + symbol + ", displayName=" + displayName
+                + ", attributes=" + attributes + ", productType=" + productType + ", settlementType=" + settlementType
+                + ", baseCurrency=" + baseCurrency + ", quoteCurrency=" + quoteCurrency + ", settlementCurrency="
+                + settlementCurrency + ", contractSize=" + contractSize + "]";
     }
 
     /**

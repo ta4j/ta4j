@@ -262,6 +262,7 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, Num amount, int startIndex, int finishIndex) {
+        validatePositiveAmount(amount);
         TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, startIndex, finishIndex);
         return run(strategy, tradingRecord, amount, startIndex, finishIndex);
     }
@@ -384,7 +385,7 @@ public class BarSeriesManager {
      */
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, Num amount, int startIndex,
             int finishIndex) {
-        Objects.requireNonNull(amount, "amount");
+        validatePositiveAmount(amount);
         return run(strategy, tradingRecord, startIndex, finishIndex, index -> amount);
     }
 
@@ -577,7 +578,10 @@ public class BarSeriesManager {
                 tradeExecutionModel.onBar(i, tradingRecord, barSeries);
                 // For each bar between both indexes...
                 if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradeExecutionModel.execute(i, tradingRecord, barSeries, amountResolver.apply(i));
+                    Num amount = amountResolver.apply(i);
+                    if (amount != null) {
+                        tradeExecutionModel.execute(i, tradingRecord, barSeries, amount);
+                    }
                 }
                 advanceToBarEnd(tradingRecord, i);
                 if (i == runEndIndex) {
@@ -602,8 +606,11 @@ public class BarSeriesManager {
                 // For each bar after the end index of this run...
                 // --> Trying to close the last position
                 if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradeExecutionModel.execute(i, tradingRecord, barSeries, amountResolver.apply(i));
-                    operated = true;
+                    Num amount = amountResolver.apply(i);
+                    if (amount != null) {
+                        tradeExecutionModel.execute(i, tradingRecord, barSeries, amount);
+                        operated = true;
+                    }
                 }
                 advanceToBarEnd(tradingRecord, i);
                 if (operated && tradingRecord.isClosed()) {
@@ -673,11 +680,24 @@ public class BarSeriesManager {
             TradeType tradeType) {
         Num amount = positionSizer.amount(positionSizerContext(index, strategy, tradingRecord, tradeType));
         validateAmount(amount);
+        if (amount.isZero()) {
+            if (log.isTraceEnabled()) {
+                log.trace("Skipping entry at index {} because the position sizer returned zero", index);
+            }
+            return null;
+        }
         return amount;
     }
 
     private static void validateAmount(Num amount) {
-        if (amount == null || !Num.isFinite(amount) || amount.isNegativeOrZero()) {
+        if (amount == null || !Num.isFinite(amount) || amount.isNegative()) {
+            throw new IllegalArgumentException("Amount must be non-negative and finite");
+        }
+    }
+
+    private static void validatePositiveAmount(Num amount) {
+        Objects.requireNonNull(amount, "amount");
+        if (!Num.isFinite(amount) || amount.isNegativeOrZero()) {
             throw new IllegalArgumentException("Amount must be positive and finite");
         }
     }
