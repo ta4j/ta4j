@@ -562,25 +562,25 @@ class FuturesExecutionTest {
             FuturesContract contract = linearContract(numFactory, 1);
             BarSeries series = flatSeries(numFactory, 100d, 100d, 100d);
 
+            CapturingCostModel nextOpenFees = new CapturingCostModel(numFactory);
             BaseTradingRecord nextOpenRecord = BaseTradingRecord.builder()
                     .futuresContract(contract)
                     .initialCapital(numFactory.numOf(1_000))
                     .initialMarginRate(numFactory.numOf(0.1))
-                    .transactionCostModel(new ZeroCostModel())
+                    .transactionCostModel(nextOpenFees)
                     .build();
-            CapturingCostModel nextOpenFees = new CapturingCostModel(numFactory);
             new BarSeriesManager(series, nextOpenFees, new ZeroCostModel()).run(entryOnFirstBar(), nextOpenRecord,
                     context -> context.entryCost(numFactory.numOf(2)));
             assertEquals(series.getBar(1).getBeginTime(), nextOpenFees.capturedTime(),
                     "a next-open fill must be fee-calculated at the open-bar begin time");
 
+            CapturingCostModel currentCloseFees = new CapturingCostModel(numFactory);
             BaseTradingRecord currentCloseRecord = BaseTradingRecord.builder()
                     .futuresContract(contract)
                     .initialCapital(numFactory.numOf(1_000))
                     .initialMarginRate(numFactory.numOf(0.1))
-                    .transactionCostModel(new ZeroCostModel())
+                    .transactionCostModel(currentCloseFees)
                     .build();
-            CapturingCostModel currentCloseFees = new CapturingCostModel(numFactory);
             new BarSeriesManager(series, currentCloseFees, new ZeroCostModel(), new TradeOnCurrentCloseModel())
                     .run(entryOnFirstBar(), currentCloseRecord, context -> context.entryCost(numFactory.numOf(2)));
             assertEquals(series.getBar(0).getEndTime(), currentCloseFees.capturedTime(),
