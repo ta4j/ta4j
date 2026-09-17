@@ -146,6 +146,20 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void futuresCostBasisUsesOverflowSafeOpeningFeeAllocation() {
+        FuturesContract contract = linearBtcPerpetual();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100).build();
+        Trade entry = Trade.fromFill(futuresFill(contract, 0, ExecutionSide.BUY, 1E308, 100, 1E307),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        Num result = getCriterion().calculate(series, position);
+
+        assertTrue(Num.isFinite(result));
+        assertNumEquals(numFactory.numOf("1.1E308"), result);
+    }
+
+    @Test
     public void spotCostBasisIgnoresDeferredEntryFills() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110).build();
         Instant executionTime = Instant.parse("2025-01-01T00:00:00Z");

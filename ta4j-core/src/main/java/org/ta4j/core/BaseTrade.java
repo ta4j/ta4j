@@ -770,7 +770,7 @@ public class BaseTrade implements Trade {
         for (int i = 0; i < fills.size(); i++) {
             TradeFill fill = fills.get(i);
             Num feeShare = i == fills.size() - 1 ? remainingFee
-                    : residualFee.multipliedBy(fillWeight(fill)).dividedBy(totalWeight);
+                    : FuturesPositionAccounting.proportional(residualFee, fillWeight(fill), totalWeight);
             remainingFee = remainingFee.minus(feeShare);
             adjustedFills
                     .add(copyWithFee(fill, fill.fee().plus(fill.fee().getNumFactory().numOf(feeShare.getDelegate()))));

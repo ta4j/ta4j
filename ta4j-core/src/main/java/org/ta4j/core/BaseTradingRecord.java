@@ -2660,7 +2660,7 @@ public class BaseTradingRecord implements TradingRecord {
                 }
                 Num closeAmount = remaining.isGreaterThan(lotAmount) ? lotAmount : remaining;
                 Num exitFeePortion = remainingFee.isZero() ? remainingFee
-                        : remainingFee.multipliedBy(closeAmount).dividedBy(remaining);
+                        : FuturesPositionAccounting.proportional(remainingFee, closeAmount, remaining);
                 FeeAllocation exitFeeComponents = allocateFeeComponents(remainingExitComponents, closeAmount,
                         remaining);
                 TradeFill exitFill = Trade.executionFillsOf(trade).getFirst();
@@ -3237,7 +3237,7 @@ public class BaseTradingRecord implements TradingRecord {
                 List<TradeFee> exitComponents, TradeFill exitFill, long exitSequence, boolean deferImportedCashFlows) {
             Num lotAmount = lot.amount();
             Num entryFeePortion = lot.fee().isZero() ? lot.fee()
-                    : lot.fee().multipliedBy(closeAmount).dividedBy(lotAmount);
+                    : FuturesPositionAccounting.proportional(lot.fee(), closeAmount, lotAmount);
             List<TradeFill> originalFills = lot.fills();
             List<TradeFill> entryFills = lot.allocateFills(closeAmount);
             CashFlowAllocation cashFlowAllocation = lot.allocateCashFlows(closeAmount, timeOf(trade), originalFills);
@@ -3443,6 +3443,8 @@ public class BaseTradingRecord implements TradingRecord {
                 Objects.requireNonNull(side, "side");
                 Objects.requireNonNull(amount, "amount");
                 Objects.requireNonNull(fee, "fee");
+                FuturesValidation.requireFinite(amount, "amount");
+                FuturesValidation.requireFinite(fee, "fee");
                 this.entryIndex = entryIndex;
                 this.entrySequence = entrySequence;
                 this.entryTime = entryTime;
@@ -3706,8 +3708,10 @@ public class BaseTradingRecord implements TradingRecord {
                             + FuturesContract.describeMismatch(futuresContract, other.futuresContract));
                 }
                 Num totalAmount = amount.plus(other.amount);
+                FuturesValidation.requireFinite(totalAmount, "amount");
                 Num mergedPrice = mergedEntryPrice(other);
                 Num mergedFee = fee.plus(other.fee);
+                FuturesValidation.requireFinite(mergedFee, "fee");
                 int mergedIndex = Math.min(entryIndex, other.entryIndex);
                 Instant mergedTime;
                 if (entryTime == null || other.entryTime == null) {

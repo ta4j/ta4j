@@ -3526,6 +3526,25 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    public void executedFeesCompensateAcrossFills() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        FuturesContract contract = linearBtcPerpetual(factory);
+        double largeFee = 9_007_199_254_740_992d;
+        Trade entry = Trade.fromFills(TradeType.BUY, List.of(
+                fillAtTime(contract, 0, T0, ExecutionSide.BUY, 1, 100, List.of(commission(factory, largeFee, "USD"))),
+                fillAtTime(contract, 1, T0.plusSeconds(1), ExecutionSide.BUY, 1, 100,
+                        List.of(commission(factory, 1, "USD"))),
+                fillAtTime(contract, 2, T0.plusSeconds(2), ExecutionSide.BUY, 1, 100,
+                        List.of(commission(factory, 1, "USD")))),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        Num total = FuturesPositionAccounting.executedFees(position);
+
+        assertEquals(Math.nextUp(largeFee), total.doubleValue(), 0.0);
+    }
+
+    @Test
     public void failedMultiFillOperationRestoresEarlierFills() {
         FuturesContract contract = linearBtcPerpetual(numFactory);
         FuturesFunding firstFunding = fundingEvent(contract, 1, 0.0, 10_000);
@@ -3579,6 +3598,20 @@ class BaseTradingRecordTest {
         Position current = record.getCurrentPosition();
         assertTrue(Num.isFinite(current.averageEntryPrice()));
         assertNumEquals(numFactory.numOf(1E308), current.averageEntryPrice());
+    }
+
+    @Test
+    public void averageCostRejectsOverflowingMergedAmount() {
+        FuturesContract contract = linearBtcPerpetual(numFactory);
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .matchPolicy(ExecutionMatchPolicy.AVG_COST)
+                .build();
+        record.operate(fill(contract, 0, ExecutionSide.BUY, 1E308, 1, List.of()));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> record.operate(fill(contract, 1, ExecutionSide.BUY, 1E308, 1, List.of())));
+        assertNumEquals(numFactory.numOf(1E308), record.getCurrentPosition().amount());
     }
 
     @Test

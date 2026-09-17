@@ -209,6 +209,13 @@ final class FuturesRecordReturnSupport {
         if (value == null || value.isNaN()) {
             return NaN.NaN;
         }
-        return numFactory.numOf(value.getDelegate());
+        Num normalized = numFactory.numOf(value.getDelegate());
+        if (!Num.isFinite(normalized)) {
+            throw new IllegalArgumentException("futures return value must be finite in series number factory");
+        }
+        if (!value.isZero() && normalized.isZero()) {
+            throw new IllegalArgumentException("futures return value must be representable in series number factory");
+        }
+        return normalized;
     }
 }

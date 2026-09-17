@@ -131,7 +131,7 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
                 continue;
             }
             TradeFill entryFill = entryFills.get(i);
-            Num entryPrice = factory.numOf(entryFill.price().getDelegate());
+            Num entryPrice = toSeriesNum(factory, entryFill.price());
             Num notional = contract.settlementNotional(remainingAmount, entryPrice);
             Num openingFee = openingFee(entry, entryFill, remainingAmount, factory);
             total = total.plus(notional).plus(openingFee);
@@ -141,9 +141,18 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
 
     private Num openingFee(Trade entry, TradeFill entryFill, Num remainingAmount, NumFactory factory) {
         Num fillFee = entryFill.hasRecordedFees() ? entryFill.fee() : entry.getCostModel().calculate(entryFill);
-        Num normalizedFee = factory.numOf(fillFee.getDelegate());
-        Num originalAmount = factory.numOf(entryFill.amount().getDelegate());
-        return normalizedFee.multipliedBy(remainingAmount).dividedBy(originalAmount);
+        Num normalizedFee = toSeriesNum(factory, fillFee);
+        Num originalAmount = toSeriesNum(factory, entryFill.amount());
+        Num projectedFee = normalizedFee.dividedBy(originalAmount).multipliedBy(remainingAmount);
+        if (Num.isFinite(projectedFee)
+                && (!projectedFee.isZero() || normalizedFee.isZero() || remainingAmount.isZero())) {
+            return projectedFee;
+        }
+        Num fallback = remainingAmount.dividedBy(originalAmount).multipliedBy(normalizedFee);
+        if (!Num.isFinite(fallback)) {
+            throw new IllegalArgumentException("opening fee allocation must be finite in series number factory");
+        }
+        return fallback;
     }
 
     private Num toSeriesNum(NumFactory factory, Num value) {
@@ -153,6 +162,13 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
         if (value.isNaN()) {
             return NaN.NaN;
         }
-        return factory.numOf(value.getDelegate());
+        Num normalized = factory.numOf(value.getDelegate());
+        if (!Num.isFinite(normalized)) {
+            throw new IllegalArgumentException("value must be finite and representable in series number factory");
+        }
+        if (!value.isZero() && normalized.isZero()) {
+            throw new IllegalArgumentException("value must be representable in series number factory");
+        }
+        return normalized;
     }
 }

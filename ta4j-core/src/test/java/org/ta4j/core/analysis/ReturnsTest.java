@@ -477,6 +477,25 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(numFactory.zero(), returns.getRawValues().get(BEGIN - 1));
     }
 
+    @Test
+    public void markToMarketReturnsKeepNeutralRetainedHeadWithoutActivity() {
+        FuturesContract contract = linearPerpetual(numFactory);
+        BarSeries windowed = series(numFactory, BEGIN);
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(500))
+                .build();
+        record.operate(fill(contract, 0, ExecutionSide.BUY, 1_000, 90));
+        record.operate(fill(contract, 4, ExecutionSide.SELL, 1_000, 110));
+
+        Returns returns = new Returns(windowed, record, ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        assertFalse(returns.hasFirstBarReturn());
+        assertNumEquals(numFactory.zero(), returns.getRawValues().get(BEGIN));
+        assertNumEquals(1.0 / 30.0, returns.getRawValues().get(BEGIN + 1));
+    }
+
     private static Position spotPosition(NumFactory numFactory, int indexOffset) {
         Num one = numFactory.one();
         Trade entry = Trade.buyAt(1 + indexOffset, numFactory.numOf(CLOSES[1]), one, RecordedTradeCostModel.INSTANCE);
@@ -780,7 +799,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void retainedFuturesReturnsMeasureTheirFirstBarFromCapital() {
+    public void retainedFuturesReturnsKeepNeutralHeadWithoutActivity() {
         for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
             FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
             BarSeries retained = FuturesAnalysisTestSupport.series(testFactory, 10_000, 10_100, 10_100, 10_100, 10_100);
@@ -792,9 +811,8 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
             Returns returns = new Returns(retained, record, ReturnRepresentation.DECIMAL);
 
-            // One contract of 0.01 units earns 1 on the capital of 100 before the
-            // retained head, so the first reported bar grows equity from that capital.
-            assertNumEquals(0.01, returns.getValue(2));
+            assertFalse(returns.hasFirstBarReturn());
+            assertNumEquals(0, returns.getValue(2));
         }
     }
 

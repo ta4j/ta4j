@@ -776,6 +776,49 @@ public class NetReturnCriterionTest extends AbstractPnlCriterionTest {
     }
 
     @Test
+    public void futuresRecordReturnRejectsFiniteProfitLostBySeriesFactoryConversion() {
+        NumFactory sourceFactory = DecimalNumFactory.getInstance();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("TINY-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(sourceFactory.numOf("1E-200"))
+                .build();
+        BaseTradingRecord record = fundedRecord(contract, sourceFactory, 1);
+        TradeFill entry = TradeFill.builder()
+                .index(0)
+                .time(T0)
+                .price(sourceFactory.numOf("1E-200"))
+                .amount(sourceFactory.one())
+                .side(ExecutionSide.BUY)
+                .orderId("tiny-entry")
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+        TradeFill exit = TradeFill.builder()
+                .index(1)
+                .time(T0.plusSeconds(1))
+                .price(sourceFactory.numOf("2E-200"))
+                .amount(sourceFactory.one())
+                .side(ExecutionSide.SELL)
+                .orderId("tiny-exit")
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+        record.operate(entry);
+        record.operate(exit);
+
+        BarSeries doubleSeries = series(DoubleNumFactory.getInstance(), 100, 100);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new NetReturnCriterion(ReturnRepresentation.MULTIPLICATIVE).calculate(doubleSeries, record));
+    }
+
+    @Test
     public void futuresPositionReturnStaysUnlevered() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = linearBtcPerpetual(numFactory);

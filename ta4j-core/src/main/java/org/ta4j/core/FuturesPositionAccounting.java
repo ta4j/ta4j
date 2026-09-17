@@ -247,12 +247,14 @@ final class FuturesPositionAccounting {
     static Num executedFees(Position position, int finalIndex) {
         Trade entry = position.getEntry();
         NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
-        Num total = sumFillFees(entry, finalIndex, numFactory);
+        SettlementAmountSupport.CompensatedSum total = new SettlementAmountSupport.CompensatedSum(numFactory,
+                "fee amount", "fee total");
+        sumFillFees(total, entry, finalIndex);
         Trade exit = position.getExit();
         if (exit != null) {
-            total = total.plus(sumFillFees(exit, finalIndex, numFactory));
+            sumFillFees(total, exit, finalIndex);
         }
-        return total;
+        return total.total();
     }
 
     /**
@@ -513,6 +515,13 @@ final class FuturesPositionAccounting {
      * @since 0.25.1
      */
     static Num proportional(Num value, Num portion, Num total) {
+        Num product = value.multipliedBy(portion);
+        if (Num.isFinite(product)) {
+            Num result = product.dividedBy(total);
+            if (Num.isFinite(result) && (!result.isZero() || value.isZero() || portion.isZero())) {
+                return result;
+            }
+        }
         Num result = value.dividedBy(total).multipliedBy(portion);
         if (Num.isFinite(result) && (!result.isZero() || value.isZero() || portion.isZero())) {
             return result;
@@ -520,12 +529,10 @@ final class FuturesPositionAccounting {
         return portion.dividedBy(total).multipliedBy(value);
     }
 
-    private static Num sumFillFees(Trade trade, int finalIndex, NumFactory numFactory) {
-        Num total = numFactory.zero();
+    private static void sumFillFees(SettlementAmountSupport.CompensatedSum total, Trade trade, int finalIndex) {
         for (TradeFill fill : executedFills(trade, finalIndex)) {
-            total = total.plus(numFactory.numOf(fill.fee().getDelegate()));
+            total.add(fill.fee());
         }
-        return total;
     }
 
     private static Num entryBasis(Trade entry, FuturesContract contract, NumFactory numFactory,

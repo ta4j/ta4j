@@ -168,7 +168,8 @@ public class Returns implements PerformanceIndicator {
         returnFactors = new ArrayList<>(Collections.nCopies(Math.max(size, 0), initial));
         rawValues = new ArrayList<>(Collections.nCopies(Math.max(size, 0), zero));
         values = new ArrayList<>(Collections.nCopies(Math.max(size, 0), zero));
-        this.firstBarReported = FuturesPerformanceSupport.isFutures(record) && this.seriesBegin > 0;
+        this.firstBarReported = FuturesPerformanceSupport.isFutures(record) && this.seriesBegin > 0
+                && FuturesPerformanceSupport.hasActivityAtIndex(record, this.seriesBegin);
         this.seededFirstBarReturn = this.firstBarReported && FuturesPerformanceSupport.hasPreWindowActivity(record,
                 this.seriesBegin, FuturesPerformanceSupport.includesExposure(handling, equityCurveMode));
         if (FuturesPerformanceSupport.isFutures(record)) {
@@ -184,9 +185,12 @@ public class Returns implements PerformanceIndicator {
      * normalized by the record account capital.
      *
      * <p>
-     * Bar {@code 0} has no reported return; the first reported return is measured
-     * from the account capital, so the cumulative product of the reported returns
-     * equals the account growth from the initial capital.
+     * Bar {@code 0} has no reported return. For a retained futures series, the head
+     * is reported only when execution or cash-flow activity occurs there; otherwise
+     * it remains a neutral placeholder and the first return starts from head
+     * equity. The first reported return is measured from account capital when it is
+     * reported at the retained head, so cumulative growth covers pre-window
+     * activity.
      * </p>
      *
      * <p>
@@ -218,13 +222,15 @@ public class Returns implements PerformanceIndicator {
         FuturesPerformanceSupport.Cursor cursor = FuturesPerformanceSupport.cursor(barSeries, tradingRecord,
                 Math.min(effectiveFinalIndex, seriesEnd), markExposure, markPrice);
         int firstBar = Math.max(1, seriesBegin);
+        Num previousEquity = capital;
+        if (seriesBegin > 0 && !firstBarReported) {
+            // No activity at the retained head: use its equity as the first prior value.
+            previousEquity = capital.plus(cursor.pnlAt(seriesBegin));
+            firstBar = seriesBegin + 1;
+        }
         if (firstBar > seriesEnd) {
             return;
         }
-        // A retained series reports its head as the first return, and that return is
-        // measured from the account capital so the cumulative product covers every
-        // profit realized before the retained head as well.
-        Num previousEquity = capital;
         for (int barIndex = firstBar;; barIndex++) {
             Num equity = capital.plus(cursor.pnlAt(barIndex));
             returnFactors.set(barIndex - seriesBegin, returnFactor(previousEquity, equity));
@@ -431,10 +437,10 @@ public class Returns implements PerformanceIndicator {
     }
 
     /**
-     * @return whether the first stored bar index reports a return. A windowed
-     *         futures series reports the first bar's return from the account
-     *         capital; every other layout keeps a placeholder value at the first
-     *         stored position.
+     * @return whether the first stored bar index reports a return. A retained
+     *         futures series reports the first bar only when execution or cash-flow
+     *         activity occurs there; otherwise every layout keeps a placeholder at
+     *         the first stored position.
      * @since 0.25.1
      */
     public boolean hasFirstBarReturn() {
