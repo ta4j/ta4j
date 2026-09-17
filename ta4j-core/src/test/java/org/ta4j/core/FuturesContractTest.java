@@ -423,6 +423,14 @@ class FuturesContractTest {
                 doubleFactory.numOf("1e-200"), doubleFactory.numOf("1e-200"), doubleFactory.numOf("2e-200")));
         assertThrows(IllegalArgumentException.class, () -> unitSizeLinear.profit(TradeType.BUY,
                 doubleFactory.numOf("1e200"), doubleFactory.one(), doubleFactory.numOf("1e200")));
+        assertThrows(IllegalArgumentException.class, () -> unitSizeLinear.fundingCashFlow(doubleFactory.numOf("1e-200"),
+                doubleFactory.one(), doubleFactory.numOf("1e-200")));
+        assertThrows(IllegalArgumentException.class, () -> unitSizeLinear.fundingCashFlow(doubleFactory.numOf("1e308"),
+                doubleFactory.one(), doubleFactory.numOf("2")));
+        assertThrows(IllegalArgumentException.class, () -> unitSizeLinear
+                .marginRequirement(doubleFactory.numOf("1e-200"), doubleFactory.one(), doubleFactory.numOf("1e-200")));
+        assertThrows(IllegalArgumentException.class, () -> unitSizeLinear
+                .marginRequirement(doubleFactory.numOf("1e308"), doubleFactory.one(), doubleFactory.numOf("2")));
     }
 
 }

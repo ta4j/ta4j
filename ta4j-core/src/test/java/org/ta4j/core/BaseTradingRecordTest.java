@@ -798,6 +798,10 @@ class BaseTradingRecordTest {
                 startLatch.countDown();
                 for (int i = 0; i < 50; i++) {
                     assertNotNull(record.getOpenPositions());
+                    List<Position> closedPositions = record.getPositions();
+                    if (!closedPositions.isEmpty()) {
+                        record.hasOpenRemainderAfter(closedPositions.getFirst(), i);
+                    }
                 }
             } catch (Throwable ex) {
                 failed.set(true);

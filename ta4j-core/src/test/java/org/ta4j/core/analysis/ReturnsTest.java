@@ -607,6 +607,14 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
+    public void futuresPerformanceRejectsUnrepresentablePnlConversion() {
+        Num decimalPnl = DecimalNumFactory.getInstance().numOf("1e-400");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> FuturesPerformanceSupport.toFactory(DoubleNumFactory.getInstance(), decimalPnl));
+    }
+
+    @Test
     public void singleFuturesPositionReturnsUseEntrySettlementNotional() {
         for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
             FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);

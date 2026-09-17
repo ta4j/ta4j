@@ -156,7 +156,7 @@ final class FuturesPerformanceSupport {
             throw new IllegalStateException(
                     "native futures account analysis requires an explicit initial capital; configure the trading record initial capital or analyse a single position");
         }
-        Num converted = toFactory(numFactory, capital);
+        Num converted = numFactory.numOf(capital.getDelegate());
         if (usingFallback && converted.isZero()) {
             if (!capital.isZero()) {
                 throw new IllegalStateException(
@@ -289,19 +289,28 @@ final class FuturesPerformanceSupport {
 
     /**
      * Converts a value into the analysed factory without round-tripping non-finite
-     * values through a primitive.
+     * values through a primitive or silently losing a finite nonzero value.
      *
      * @param numFactory target factory
      * @param value      value, may be {@code null}
-     * @return the value in the target factory, {@link NaN#NaN} for a missing or NaN
-     *         value
+     * @return the value in the target factory; {@code null} and NaN inputs remain
+     *         unchanged
+     * @throws IllegalArgumentException when the converted value is non-finite or a
+     *                                  finite nonzero value collapses to zero
      * @since 0.25.1
      */
     static Num toFactory(NumFactory numFactory, Num value) {
         if (value == null || value.isNaN()) {
-            return NaN.NaN;
+            return value;
         }
-        return numFactory.numOf(value.getDelegate());
+        Num converted = numFactory.numOf(value.getDelegate());
+        if (!Num.isFinite(converted)) {
+            throw new IllegalArgumentException("value must be finite in analysis number factory");
+        }
+        if (!value.isZero() && converted.isZero()) {
+            throw new IllegalArgumentException("value cannot be represented in analysis number factory");
+        }
+        return converted;
     }
 
     private static void addPosition(List<Position> positions, Position position, int finalIndex) {

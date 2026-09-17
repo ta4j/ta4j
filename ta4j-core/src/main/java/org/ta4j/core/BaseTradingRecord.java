@@ -1279,7 +1279,12 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     boolean hasOpenRemainderAfter(Position position, int endIndex) {
-        return positionBook.hasOpenRemainderAfter(position, endIndex);
+        lock.readLock().lock();
+        try {
+            return positionBook.hasOpenRemainderAfter(position, endIndex);
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     /**

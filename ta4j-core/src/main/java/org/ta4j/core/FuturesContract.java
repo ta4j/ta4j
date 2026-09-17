@@ -524,6 +524,10 @@ public final class FuturesContract implements Serializable {
             throw new IllegalArgumentException("fundingRate must be representable in reference number factory");
         }
         Num magnitude = notional.multipliedBy(normalizedFundingRate);
+        FuturesValidation.requireFinite(magnitude, "funding cash flow");
+        if (!notional.isZero() && !normalizedFundingRate.isZero() && magnitude.isZero()) {
+            throw new IllegalArgumentException("funding cash flow cannot be represented in reference number factory");
+        }
         return signedContracts.isNegative() ? magnitude : magnitude.negate();
     }
 
@@ -550,7 +554,12 @@ public final class FuturesContract implements Serializable {
             throw new IllegalArgumentException(
                     "marginRate must be positive and representable in reference number factory");
         }
-        return notional.multipliedBy(normalizedMarginRate);
+        Num requirement = notional.multipliedBy(normalizedMarginRate);
+        FuturesValidation.requireFinite(requirement, "margin requirement");
+        if (!notional.isZero() && !normalizedMarginRate.isZero() && requirement.isZero()) {
+            throw new IllegalArgumentException("margin requirement cannot be represented in reference number factory");
+        }
+        return requirement;
     }
 
     /**
