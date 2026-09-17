@@ -637,14 +637,6 @@ public class BaseTrade implements Trade {
         return FuturesValidation.requireFinite(value, name);
     }
 
-    private static Num multiplyFillValues(Num left, Num right, String name) {
-        Num product = left.multipliedBy(right);
-        if (!left.isZero() && !right.isZero() && product.isZero()) {
-            throw new IllegalArgumentException(name + " cannot be represented by the target numeric factory");
-        }
-        return requireFiniteAggregate(product, name);
-    }
-
     private static Num divideFillValues(Num numerator, Num denominator, String name) {
         Num quotient = numerator.dividedBy(denominator);
         if (!numerator.isZero() && !denominator.isZero() && quotient.isZero()) {
@@ -660,7 +652,7 @@ public class BaseTrade implements Trade {
         }
         NumFactory numFactory = fills.getFirst().price().getNumFactory();
         Num totalAmount = numFactory.zero();
-        Num quoteWeightedPrice = numFactory.zero();
+        Num maximumFillAmount = numFactory.zero();
         Num quotePriceSum = numFactory.zero();
         FuturesContract contract = singleContract(fills);
         TradeFill earliestFill = null;
@@ -681,9 +673,7 @@ public class BaseTrade implements Trade {
             Num amount = normalizeFillValue(fill.amount(), numFactory, "fill amount");
             Num price = normalizeFillValue(fill.price(), numFactory, "fill price");
             totalAmount = requireFiniteAggregate(totalAmount.plus(amount), "total fill amount");
-            quoteWeightedPrice = requireFiniteAggregate(
-                    quoteWeightedPrice.plus(multiplyFillValues(price, amount, "weighted fill price")),
-                    "total weighted fill price");
+            maximumFillAmount = amount.isGreaterThan(maximumFillAmount) ? amount : maximumFillAmount;
             if (contract != null && contract.settlementType() == FuturesContract.SettlementType.INVERSE) {
                 quotePriceSum = requireFiniteAggregate(
                         quotePriceSum.plus(divideFillValues(amount, price, "inverse fill price")),
@@ -692,10 +682,44 @@ public class BaseTrade implements Trade {
         }
         Num aggregatedPrice = contract != null && contract.settlementType() == FuturesContract.SettlementType.INVERSE
                 ? divideFillValues(totalAmount, quotePriceSum, "aggregated fill price")
-                : divideFillValues(quoteWeightedPrice, totalAmount, "aggregated fill price");
+                : stableWeightedFillPrice(fills, numFactory, totalAmount, maximumFillAmount);
         requireFiniteAggregate(aggregatedPrice, "aggregated fill price");
         return new FillSummary(List.copyOf(fills), earliestFill == null ? fills.getFirst() : earliestFill, totalAmount,
                 aggregatedPrice);
+    }
+
+    private static Num stableWeightedFillPrice(List<TradeFill> fills, NumFactory numFactory, Num totalAmount,
+            Num maximumAmount) {
+        if (maximumAmount.isZero()) {
+            return maximumAmount;
+        }
+        Num weightedPrice = numFactory.zero();
+        boolean rawUsable = true;
+        Num normalizedTotal = numFactory.zero();
+        Num average = null;
+        for (TradeFill fill : fills) {
+            Num amount = normalizeFillValue(fill.amount(), numFactory, "fill amount");
+            Num price = normalizeFillValue(fill.price(), numFactory, "fill price");
+            Num product = price.multipliedBy(amount);
+            if (rawUsable) {
+                if (!Num.isFinite(product) || (!price.isZero() && !amount.isZero() && product.isZero())) {
+                    rawUsable = false;
+                } else {
+                    weightedPrice = weightedPrice.plus(product);
+                    rawUsable = Num.isFinite(weightedPrice);
+                }
+            }
+            Num normalizedAmount = amount.dividedBy(maximumAmount);
+            Num nextTotal = normalizedTotal.plus(normalizedAmount);
+            Num existingShare = normalizedTotal.dividedBy(nextTotal);
+            Num fillShare = normalizedAmount.dividedBy(nextTotal);
+            average = average == null ? price : average.multipliedBy(existingShare).plus(price.multipliedBy(fillShare));
+            normalizedTotal = nextTotal;
+        }
+        if (rawUsable && !totalAmount.isZero()) {
+            return requireFiniteAggregate(weightedPrice.dividedBy(totalAmount), "aggregated fill price");
+        }
+        return requireFiniteAggregate(average, "aggregated fill price");
     }
 
     private static FillMetadata summarizeMetadata(Trade.TradeType tradeType, TradeFill firstFill) {

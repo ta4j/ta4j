@@ -768,7 +768,15 @@ public interface PositionSizer {
                     }
                     settlementAmount = component.amount();
                 }
-                fee = fee.plus(numFactory().numOf(settlementAmount.getDelegate()));
+                Num normalizedAmount = numFactory().numOf(settlementAmount.getDelegate());
+                if (!Num.isFinite(normalizedAmount) || (!settlementAmount.isZero() && normalizedAmount.isZero())) {
+                    throw new IllegalArgumentException(
+                            "modeled futures fee cannot be represented in the sizing number factory");
+                }
+                fee = fee.plus(normalizedAmount);
+                if (!Num.isFinite(fee)) {
+                    throw new IllegalArgumentException("modeled futures fee exceeds the sizing number factory range");
+                }
             }
             return fee;
         }

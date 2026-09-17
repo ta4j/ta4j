@@ -1033,9 +1033,10 @@ public class Position implements Serializable {
         List<FuturesExposureEvent> events = new ArrayList<>();
         addFuturesExposureEvents(events, entry, true, numFactory);
         addFuturesExposureEvents(events, exit, false, numFactory);
+        // At one index, process entries before exits when timestamps are incomplete.
         events.sort(Comparator.comparingInt(FuturesExposureEvent::index)
-                .thenComparing(FuturesExposureEvent::time, Comparator.nullsFirst(Comparator.naturalOrder()))
-                .thenComparing(event -> event.opens() ? 0 : 1));
+                .thenComparing(event -> event.opens() ? 0 : 1)
+                .thenComparing(FuturesExposureEvent::time, Comparator.nullsLast(Comparator.naturalOrder())));
 
         Num availableExposure = numFactory.zero();
         java.time.Instant previousTime = null;

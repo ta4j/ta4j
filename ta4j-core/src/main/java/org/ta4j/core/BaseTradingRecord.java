@@ -1169,8 +1169,14 @@ public class BaseTradingRecord implements TradingRecord {
             List<PlannedTradeFill> plannedTradeFills = planTradeFills(trade, fills);
             validatePlannedFillTimes(plannedTradeFills);
             validateSpecificIdBatch(trade.getType(), plannedTradeFills);
-            for (PlannedTradeFill plannedTradeFill : plannedTradeFills) {
-                applyTradeInternal(plannedTradeFill.index(), plannedTradeFill.trade(), -1L);
+            RecordState state = snapshotState();
+            try {
+                for (PlannedTradeFill plannedTradeFill : plannedTradeFills) {
+                    applyTradeInternal(plannedTradeFill.index(), plannedTradeFill.trade(), -1L);
+                }
+            } catch (RuntimeException | Error failure) {
+                restoreState(state);
+                throw failure;
             }
         } finally {
             lock.writeLock().unlock();
@@ -1811,7 +1817,7 @@ public class BaseTradingRecord implements TradingRecord {
      * the aggregate amount validation of {@link #planTradeFills}.
      * </p>
      *
-     * @param trade        the batch trade
+     * @param tradeType    batch trade type
      * @param plannedFills planned fills in application order
      */
     private void validateSpecificIdBatch(TradeType tradeType, List<PlannedTradeFill> plannedFills) {
@@ -1823,6 +1829,35 @@ public class BaseTradingRecord implements TradingRecord {
             return;
         }
         positionBook.validateExitBatch(plannedFills);
+    }
+
+    private RecordState snapshotState() {
+        return new RecordState(positionBook.snapshotState(), nextTradeIndex, terminalTradeIndexRecorded, tradesCache,
+                tradesCacheVersion, modificationCount, totalFees, numFactory, nextSequence, new ArrayList<>(cashFlows),
+                new LinkedHashMap<>(processedEvents), fundingCursor, eventHorizon);
+    }
+
+    private void restoreState(RecordState state) {
+        positionBook.restoreState(state.positionBookState());
+        nextTradeIndex = state.nextTradeIndex();
+        terminalTradeIndexRecorded = state.terminalTradeIndexRecorded();
+        tradesCache = state.tradesCache();
+        tradesCacheVersion = state.tradesCacheVersion();
+        modificationCount = state.modificationCount();
+        totalFees = state.totalFees();
+        numFactory = state.numFactory();
+        nextSequence = state.nextSequence();
+        cashFlows = new ArrayList<>(state.cashFlows());
+        processedEvents = new LinkedHashMap<>(state.processedEvents());
+        fundingCursor = state.fundingCursor();
+        eventHorizon = state.eventHorizon();
+    }
+
+    private record RecordState(PositionBook.PositionBookState positionBookState, int nextTradeIndex,
+            boolean terminalTradeIndexRecorded, List<Trade> tradesCache, long tradesCacheVersion,
+            long modificationCount, Num totalFees, NumFactory numFactory, long nextSequence,
+            List<FuturesCashFlow> cashFlows, Map<String, FuturesCashFlow> processedEvents, int fundingCursor,
+            Instant eventHorizon) {
     }
 
     private void applyTradeInternal(int index, Trade trade, long sequence) {
@@ -2343,6 +2378,26 @@ public class BaseTradingRecord implements TradingRecord {
             this.closedPositions = new ArrayList<>();
         }
 
+        private PositionBookState snapshotState() {
+            Deque<PositionLot> copiedOpenLots = new ArrayDeque<>();
+            for (PositionLot lot : openLots) {
+                copiedOpenLots.addLast(lot.forMatching());
+            }
+            return new PositionBookState(copiedOpenLots, new ArrayList<>(closedPositions), latestImportedExecutionTime);
+        }
+
+        private void restoreState(PositionBookState state) {
+            openLots.clear();
+            openLots.addAll(state.openLots());
+            closedPositions.clear();
+            closedPositions.addAll(state.closedPositions());
+            latestImportedExecutionTime = state.latestImportedExecutionTime();
+        }
+
+        private record PositionBookState(Deque<PositionLot> openLots, List<ClosedPosition> closedPositions,
+                Instant latestImportedExecutionTime) {
+        }
+
         private void adopt(Position position, long entrySequence, long exitSequence) {
             Objects.requireNonNull(position, "position must not be null");
             FuturesContract positionContract = position.getFuturesContract();
@@ -2860,7 +2915,7 @@ public class BaseTradingRecord implements TradingRecord {
             if (inverseNotional != null && hasUnknownEntryTime) {
                 throw new IllegalStateException("Futures positions require an entry time");
             }
-            Num fee = totalFees == null ? totalCost.getNumFactory().zero() : totalFees;
+            Num fee = totalFees == null ? openLots.peekFirst().entryPrice().getNumFactory().zero() : totalFees;
             Num average = aggregateEntryPrice(totalAmount, totalCost, inverseNotional);
             List<TradeFill> mergedFills = new ArrayList<>();
             for (PositionLot lot : openLots) {
@@ -2873,14 +2928,70 @@ public class BaseTradingRecord implements TradingRecord {
         }
 
         private Num aggregateEntryPrice(Num totalAmount, Num totalCost, Num inverseNotional) {
-            if (inverseNotional != null) {
-                if (!(futuresContract.settlementType() == FuturesContract.SettlementType.INVERSE)) {
-                    return totalAmount == null || totalAmount.isZero() ? totalCost : totalCost.dividedBy(totalAmount);
-                }
-                return inverseNotional.isZero() || totalAmount == null || totalAmount.isZero() ? totalCost
-                        : totalAmount.dividedBy(inverseNotional);
+            boolean inverse = inverseNotional != null && futuresContract != null
+                    && futuresContract.settlementType() == FuturesContract.SettlementType.INVERSE;
+            if (inverse && Num.isFinite(totalAmount) && Num.isFinite(inverseNotional) && !inverseNotional.isZero()) {
+                return totalAmount.dividedBy(inverseNotional);
             }
-            return totalAmount == null || totalAmount.isZero() ? totalCost : totalCost.dividedBy(totalAmount);
+            if (!inverse && Num.isFinite(totalAmount) && Num.isFinite(totalCost) && !totalAmount.isZero()) {
+                return totalCost.dividedBy(totalAmount);
+            }
+            Num maximumWeight = null;
+            for (PositionLot lot : openLots) {
+                Num weight = entryPriceWeight(lot.futuresContract(), lot.amount(), lot.entryPrice());
+                maximumWeight = maximumWeight == null || weight.isGreaterThan(maximumWeight) ? weight : maximumWeight;
+            }
+            if (maximumWeight.isZero()) {
+                return maximumWeight.getNumFactory().zero();
+            }
+            Num normalizedTotal = maximumWeight.getNumFactory().zero();
+            Num average = null;
+            for (PositionLot lot : openLots) {
+                Num normalizedWeight = entryPriceWeight(lot.futuresContract(), lot.amount(), lot.entryPrice())
+                        .dividedBy(maximumWeight);
+                Num nextTotal = normalizedTotal.plus(normalizedWeight);
+                Num existingShare = normalizedTotal.dividedBy(nextTotal);
+                Num lotShare = normalizedWeight.dividedBy(nextTotal);
+                average = average == null ? lot.entryPrice()
+                        : average.multipliedBy(existingShare).plus(lot.entryPrice().multipliedBy(lotShare));
+                normalizedTotal = nextTotal;
+            }
+            return average;
+        }
+
+        private static Num entryPriceWeight(FuturesContract contract, Num amount, Num price) {
+            if (contract != null && contract.settlementType() == FuturesContract.SettlementType.INVERSE) {
+                return contract.settlementNotional(amount, price);
+            }
+            return amount;
+        }
+
+        private static Num weightedAverage(Num firstPrice, Num firstWeight, Num secondPrice, Num secondWeight) {
+            Num totalWeight = firstWeight.plus(secondWeight);
+            Num weightedPrice = firstPrice.multipliedBy(firstWeight).plus(secondPrice.multipliedBy(secondWeight));
+            if (Num.isFinite(totalWeight) && !totalWeight.isZero() && Num.isFinite(weightedPrice)) {
+                return weightedPrice.dividedBy(totalWeight);
+            }
+            Num maximumWeight = firstWeight.isGreaterThan(secondWeight) ? firstWeight : secondWeight;
+            if (maximumWeight.isZero()) {
+                return maximumWeight.getNumFactory().zero();
+            }
+            Num scaledFirstWeight = firstWeight.dividedBy(maximumWeight);
+            Num scaledSecondWeight = secondWeight.dividedBy(maximumWeight);
+            Num scaledTotalWeight = scaledFirstWeight.plus(scaledSecondWeight);
+            Num firstShare = scaledFirstWeight.dividedBy(scaledTotalWeight);
+            Num secondShare = scaledSecondWeight.dividedBy(scaledTotalWeight);
+            return firstPrice.multipliedBy(firstShare).plus(secondPrice.multipliedBy(secondShare));
+        }
+
+        private static Num inverseWeightedAverage(Num firstAmount, Num firstPrice, Num secondAmount, Num secondPrice,
+                Num firstWeight, Num secondWeight) {
+            Num totalAmount = firstAmount.plus(secondAmount);
+            Num inverseNotional = firstAmount.dividedBy(firstPrice).plus(secondAmount.dividedBy(secondPrice));
+            if (Num.isFinite(totalAmount) && Num.isFinite(inverseNotional) && !inverseNotional.isZero()) {
+                return totalAmount.dividedBy(inverseNotional);
+            }
+            return weightedAverage(firstPrice, firstWeight, secondPrice, secondWeight);
         }
 
         private PositionLot nextLot(Trade trade) {
@@ -3411,7 +3522,7 @@ public class BaseTradingRecord implements TradingRecord {
                             + FuturesContract.describeMismatch(futuresContract, other.futuresContract));
                 }
                 Num totalAmount = amount.plus(other.amount);
-                Num mergedPrice = mergedEntryPrice(totalAmount, other);
+                Num mergedPrice = mergedEntryPrice(other);
                 Num mergedFee = fee.plus(other.fee);
                 int mergedIndex = Math.min(entryIndex, other.entryIndex);
                 Instant mergedTime;
@@ -3427,16 +3538,15 @@ public class BaseTradingRecord implements TradingRecord {
                         mergeCashFlowSlices(other));
             }
 
-            private Num mergedEntryPrice(Num totalAmount, PositionLot other) {
+            private Num mergedEntryPrice(PositionLot other) {
+                Num firstWeight = entryPriceWeight(futuresContract, amount, entryPrice);
+                Num otherWeight = entryPriceWeight(other.futuresContract(), other.amount(), other.entryPrice());
                 if (futuresContract != null
                         && futuresContract.settlementType() == FuturesContract.SettlementType.INVERSE) {
-                    Num inverseNotional = amount.dividedBy(entryPrice).plus(other.amount.dividedBy(other.entryPrice));
-                    return inverseNotional.isZero() ? totalAmount.getNumFactory().zero()
-                            : totalAmount.dividedBy(inverseNotional);
+                    return inverseWeightedAverage(amount, entryPrice, other.amount(), other.entryPrice(), firstWeight,
+                            otherWeight);
                 }
-                return entryPrice.multipliedBy(amount)
-                        .plus(other.entryPrice.multipliedBy(other.amount))
-                        .dividedBy(totalAmount);
+                return weightedAverage(entryPrice, firstWeight, other.entryPrice(), otherWeight);
             }
 
             private List<TradeFee> mergeComponents(PositionLot other) {

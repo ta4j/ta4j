@@ -446,4 +446,15 @@ class FuturesContractTest {
                 doubleFactory.numOf("1e200"), doubleFactory.numOf("1e-200")));
     }
 
+    @Test
+    public void rejectsNotionalResultsThatUnderflowToZero() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        FuturesContract linear = linearBuilder(factory).contractSize(factory.numOf(Double.MIN_VALUE)).build();
+        assertThrows(IllegalArgumentException.class, () -> linear.quoteNotional(factory.one(), factory.numOf(0.5)));
+
+        FuturesContract inverse = inverseBuilder(factory).contractSize(factory.one()).build();
+        assertThrows(IllegalArgumentException.class,
+                () -> inverse.settlementNotional(factory.numOf(Double.MIN_VALUE), factory.numOf(Double.MAX_VALUE)));
+    }
+
 }

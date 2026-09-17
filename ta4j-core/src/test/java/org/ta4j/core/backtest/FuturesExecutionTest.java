@@ -712,6 +712,19 @@ class FuturesExecutionTest {
     }
 
     @Test
+    public void simulatedFuturesFillsCarryRecordedFeeComponents() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearContract(numFactory, 1);
+            BaseTradingRecord record = futuresRecord(contract, RecordedTradeCostModel.INSTANCE);
+            BarSeries series = flatSeries(numFactory, 100, 1);
+
+            new TradeOnCurrentCloseModel().execute(0, record, series, numFactory.one());
+
+            assertTrue(record.getLastTrade().getFills().getFirst().hasRecordedFees());
+        }
+    }
+
+    @Test
     void largestTradableStepsBelowAToleranceRoundedNotionalCap() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = linearContract(numFactory, 1).toBuilder()

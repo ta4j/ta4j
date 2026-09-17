@@ -461,7 +461,10 @@ public final class FuturesContract implements Serializable {
     public Num quoteNotional(Num contracts, Num price) {
         Num sized = contractsPerSize(contracts, price);
         Num notional = settlementType == SettlementType.LINEAR ? sized.multipliedBy(price) : sized;
-        FuturesValidation.requireFinite(notional, "notional");
+        FuturesValidation.requireFinite(notional, "quote notional");
+        if (!sized.isZero() && notional.isZero()) {
+            throw new IllegalArgumentException("quote notional underflowed to zero");
+        }
         return notional;
     }
 
@@ -477,8 +480,21 @@ public final class FuturesContract implements Serializable {
     public Num settlementNotional(Num contracts, Num price) {
         Num sized = contractsPerSize(contracts, price);
         Num notional = settlementType == SettlementType.LINEAR ? sized.multipliedBy(price) : sized.dividedBy(price);
-        FuturesValidation.requireFinite(notional, "notional");
+        FuturesValidation.requireFinite(notional, "settlement notional");
+        if (!sized.isZero() && notional.isZero()) {
+            throw new IllegalArgumentException("settlement notional underflowed to zero");
+        }
         return notional;
+    }
+
+    /**
+     * Computes a settlement notional without validating the final arithmetic
+     * result. Recovery calculations use this form so they can return a non-finite
+     * value to their decimal fallback while the public notional method rejects it.
+     */
+    Num rawSettlementNotional(Num contracts, Num price) {
+        Num sized = contractsPerSize(contracts, price);
+        return settlementType == SettlementType.LINEAR ? sized.multipliedBy(price) : sized.dividedBy(price);
     }
 
     /**

@@ -1237,4 +1237,76 @@ public class PositionTest {
             assertNumEquals(7, position.getRealizedProfit(1));
         }
     }
+
+    @Test
+    public void sameIndexTimestamplessExitFollowsTimestampedEntry() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(factory.one())
+                .build();
+        Trade entry = futuresTrade(contract, TradeType.BUY,
+                new TradeFill(7, T0, factory.numOf(100), factory.one(), ExecutionSide.BUY));
+        Trade exit = futuresTrade(contract, TradeType.SELL,
+                new TradeFill(7, null, factory.numOf(101), factory.one(), ExecutionSide.SELL));
+
+        Position position = new Position(entry, exit, new ZeroCostModel(), new ZeroCostModel());
+
+        assertTrue(position.isClosed());
+    }
+
+    private static Trade futuresTrade(FuturesContract contract, TradeType type, TradeFill fill) {
+        return new Trade() {
+            @Override
+            public TradeType getType() {
+                return type;
+            }
+
+            @Override
+            public int getIndex() {
+                return fill.index();
+            }
+
+            @Override
+            public Num getPricePerAsset() {
+                return fill.price();
+            }
+
+            @Override
+            public Num getNetPrice() {
+                return fill.price();
+            }
+
+            @Override
+            public Num getAmount() {
+                return fill.amount();
+            }
+
+            @Override
+            public Num getCost() {
+                return fill.price().getNumFactory().zero();
+            }
+
+            @Override
+            public CostModel getCostModel() {
+                return new ZeroCostModel();
+            }
+
+            @Override
+            public FuturesContract getFuturesContract() {
+                return contract;
+            }
+
+            @Override
+            public List<TradeFill> getFills() {
+                return List.of(fill);
+            }
+        };
+    }
 }

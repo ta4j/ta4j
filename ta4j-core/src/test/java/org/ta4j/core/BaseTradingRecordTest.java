@@ -3434,4 +3434,40 @@ class BaseTradingRecordTest {
         assertTrue(Num.isFinite(proportional));
         assertEquals(1.0, proportional.doubleValue() / 1E100, 1E-14);
     }
+
+    @Test
+    public void failedMultiFillOperationRestoresEarlierFills() {
+        FuturesContract contract = linearBtcPerpetual(numFactory);
+        FuturesFunding firstFunding = fundingEvent(contract, 1, 0.0, 10_000);
+        FuturesFunding failingFunding = fundingEvent(contract, 2, Double.MAX_VALUE, Double.MAX_VALUE);
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .fundingSchedule(List.of(firstFunding, failingFunding))
+                .build();
+        record.operate(fill(contract, 0, ExecutionSide.BUY, 1, 10_000, List.of()));
+        Trade batch = Trade.fromFills(TradeType.BUY, List.of(fill(contract, 1, ExecutionSide.BUY, 1, 10_000, List.of()),
+                fill(contract, 2, ExecutionSide.BUY, 1, 10_000, List.of())), RecordedTradeCostModel.INSTANCE);
+
+        assertThrows(IllegalArgumentException.class, () -> record.operate(batch));
+
+        assertEquals(1, record.getOpenPositions().size());
+        assertNumEquals(1, record.getCurrentPosition().amount());
+        assertTrue(record.getCashFlows().isEmpty());
+        assertEquals(0, record.getLastTrade().getIndex());
+    }
+
+    @Test
+    public void averageCostKeepsLargeLinearWeightedPricesFinite() {
+        FuturesContract contract = linearBtcPerpetual(numFactory);
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .matchPolicy(ExecutionMatchPolicy.AVG_COST)
+                .build();
+        record.operate(fill(contract, 0, ExecutionSide.BUY, 1, 1E308, List.of()));
+        record.operate(fill(contract, 1, ExecutionSide.BUY, 1, 1E308, List.of()));
+
+        Position current = record.getCurrentPosition();
+        assertTrue(Num.isFinite(current.averageEntryPrice()));
+        assertNumEquals(numFactory.numOf(1E308), current.averageEntryPrice());
+    }
 }

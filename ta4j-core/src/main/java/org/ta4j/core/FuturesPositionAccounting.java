@@ -289,7 +289,10 @@ final class FuturesPositionAccounting {
         FuturesContract contract = requireContract(position);
         NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
         Num executedEntryBasis = entryBasis(entry, contract, numFactory, executedFills(entry, Integer.MAX_VALUE));
-        Num entryNotional = contract.settlementNotional(quantity, executedEntryBasis);
+        Num entryNotional = contract.rawSettlementNotional(quantity, executedEntryBasis);
+        if (!Num.isFinite(entryNotional) || entryNotional.isZero()) {
+            return org.ta4j.core.num.NaN.NaN;
+        }
         Num positionPayoff = payoff(position, finalPrice);
         return numFactory.one().plus(positionPayoff.dividedBy(entryNotional));
     }

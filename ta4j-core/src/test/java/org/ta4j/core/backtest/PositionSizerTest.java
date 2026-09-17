@@ -9,7 +9,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
+
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
@@ -20,6 +22,7 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.TradeFee;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.FuturesTransactionCostModel;
@@ -398,10 +401,31 @@ class PositionSizerTest {
     }
 
     @Test
-    public void maxAffordableAmountRejectsBudgetThatOverflowsContextFactory() {
-        PositionSizer.Context sizingContext = context(DoubleNumFactory.getInstance(), spotRecord());
-        Num budget = DecimalNumFactory.getInstance().numOf("1E400");
+    public void entryCostRejectsUnrepresentableFuturesFeeComponents() {
+        NumFactory targetFactory = DoubleNumFactory.getInstance();
+        FuturesContract contract = linearContract(targetFactory);
+        for (String feeAmount : List.of("1E-400", "1E400")) {
+            CostModel lossyFees = new ZeroCostModel() {
+                @Override
+                public List<TradeFee> calculateFees(TradeFill fill) {
+                    return List.of(TradeFee.builder()
+                            .type(TradeFee.Type.COMMISSION)
+                            .amount(DecimalNumFactory.getInstance().numOf(feeAmount))
+                            .currency(contract.settlementCurrency())
+                            .build());
+                }
+            };
+            BaseTradingRecord record = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .initialCapital(targetFactory.numOf(1_000))
+                    .initialMarginRate(targetFactory.one())
+                    .transactionCostModel(lossyFees)
+                    .build();
+            PositionSizer.Context context = new PositionSizer.Context(0, 0, targetFactory.one(), null,
+                    entryOnFirstBar(), flatSeries(targetFactory, 1), TradeType.BUY, record, lossyFees,
+                    new ZeroCostModel());
 
-        assertThrows(IllegalArgumentException.class, () -> sizingContext.maxAffordableAmount(budget));
+            assertThrows(IllegalArgumentException.class, () -> context.entryCost(targetFactory.one()));
+        }
     }
 }

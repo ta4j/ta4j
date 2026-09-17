@@ -1,4 +1,5 @@
 ## Unreleased
+- **Futures review round 70**: native futures notionals reject zeroed nonzero results, affordability rejects lossy modeled fee conversions, multi-fill recording rolls back on failure, simulated fills preserve recorded fee components, and linear average-cost prices remain finite under large weighted products.
 - **Futures review round 69**: native futures positions reject exits that overrun cumulative fill exposure, initial return samples require activity on the retained head, and invested intervals follow intermittent fill-level exposure.
 - **Futures review round 65**: futures profit rejects nonrepresentable final products, inverse gross returns value executed exit fills separately from residual marks, and process-capability decimal fallback survives unrepresentable intermediate notionals.
 - **Futures review round 66**: funding and margin products reject nonrepresentable final arithmetic, futures analysis rejects lossy P&L conversion, projection-ledger reads are synchronized with trading-record writes, and inverse quantity/leverage and fee products reject nonrepresentable arithmetic.

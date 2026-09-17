@@ -4,7 +4,11 @@
 package org.ta4j.core.backtest;
 
 import java.time.Instant;
+import java.util.List;
 import org.ta4j.core.Bar;
+import org.ta4j.core.TradeFee;
+import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.FuturesContract;
@@ -112,9 +116,9 @@ final class ExecutionModelSupport {
      * <p>
      * Spot records keep the scalar operate path. Native futures records require a
      * complete fill because the scalar path is spot-only: the record contract, the
-     * executed index and price, the next trade type and the timestamp of the
-     * executed price source. Fees are deliberately left unrecorded so that the
-     * record's configured contextual cost model prices the fill.
+     * executed index and price, the next trade type, timestamp, and fee components
+     * from the selected transaction cost model. Recorded-fee mode receives an
+     * explicit empty component list when no components were supplied.
      * </p>
      *
      * @param tradingRecord target record
@@ -149,14 +153,18 @@ final class ExecutionModelSupport {
             if (!fillAmount.isPositive()) {
                 throw new IllegalArgumentException("complete close exceeds the contract's maximum order limits");
             }
-            tradingRecord.operate(TradeFill.builder()
+            TradeFill fill = TradeFill.builder()
                     .futuresContract(futuresContract)
                     .index(target.index())
                     .time(fillTime)
                     .price(target.price())
                     .amount(fillAmount)
                     .side(tradeType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL)
-                    .build());
+                    .build();
+            CostModel costModel = tradingRecord.getTransactionCostModel();
+            List<TradeFee> fees = costModel instanceof RecordedTradeCostModel ? List.of()
+                    : costModel.calculateFees(fill);
+            tradingRecord.operate(fill.toBuilder().fees(fees).build());
             remainingAmount = remainingAmount.minus(fillAmount);
         }
     }
