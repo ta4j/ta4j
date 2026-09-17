@@ -417,6 +417,12 @@ class FuturesContractTest {
         FuturesContract tinyPriceInverse = inverseBuilder(doubleFactory).build();
         assertThrows(IllegalArgumentException.class,
                 () -> tinyPriceInverse.settlementNotional(doubleFactory.one(), doubleFactory.numOf(Double.MIN_VALUE)));
+
+        FuturesContract unitSizeLinear = linearBuilder(doubleFactory).contractSize(doubleFactory.one()).build();
+        assertThrows(IllegalArgumentException.class, () -> unitSizeLinear.profit(TradeType.BUY,
+                doubleFactory.numOf("1e-200"), doubleFactory.numOf("1e-200"), doubleFactory.numOf("2e-200")));
+        assertThrows(IllegalArgumentException.class, () -> unitSizeLinear.profit(TradeType.BUY,
+                doubleFactory.numOf("1e200"), doubleFactory.one(), doubleFactory.numOf("1e200")));
     }
 
 }

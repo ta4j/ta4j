@@ -289,22 +289,9 @@ final class FuturesPositionAccounting {
         FuturesContract contract = requireContract(position);
         NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
         Num executedEntryBasis = entryBasis(entry, contract, numFactory, executedFills(entry, Integer.MAX_VALUE));
-        if (contract.settlementType() == FuturesContract.SettlementType.INVERSE) {
-            if (finalPrice == null) {
-                Num entryNotional = contract.settlementNotional(quantity, executedEntryBasis);
-                Num realizedPayoff = payoff(position, null);
-                return numFactory.one().plus(realizedPayoff.dividedBy(entryNotional));
-            }
-            Num normalizedFinalPrice = numFactory.numOf(finalPrice.getDelegate());
-            FuturesValidation.requirePositiveFinite(normalizedFinalPrice, "finalPrice");
-            Num priceRatio = executedEntryBasis.dividedBy(normalizedFinalPrice);
-            Num returnDelta = entry.getType() == Trade.TradeType.BUY ? numFactory.one().minus(priceRatio)
-                    : priceRatio.minus(numFactory.one());
-            return numFactory.one().plus(returnDelta);
-        }
         Num entryNotional = contract.settlementNotional(quantity, executedEntryBasis);
-        Num payoff = payoff(position, finalPrice);
-        return numFactory.one().plus(payoff.dividedBy(entryNotional));
+        Num positionPayoff = payoff(position, finalPrice);
+        return numFactory.one().plus(positionPayoff.dividedBy(entryNotional));
     }
 
     /**

@@ -493,6 +493,10 @@ public final class FuturesContract implements Serializable {
         Num payoff = settlementType == SettlementType.LINEAR ? exit.minus(entryPrice)
                 : numFactory.one().dividedBy(entryPrice).minus(numFactory.one().dividedBy(exit));
         Num profit = sized.multipliedBy(payoff);
+        FuturesValidation.requireFinite(profit, "profit");
+        if (!sized.isZero() && !payoff.isZero() && profit.isZero()) {
+            throw new IllegalArgumentException("profit cannot be represented in price number factory");
+        }
         return entryType == Trade.TradeType.BUY ? profit : profit.negate();
     }
 
