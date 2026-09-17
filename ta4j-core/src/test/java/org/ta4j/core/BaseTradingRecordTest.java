@@ -3457,6 +3457,26 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    public void failedSingleFillOperationRestoresEarlierFunding() {
+        FuturesContract contract = linearBtcPerpetual(numFactory);
+        FuturesFunding firstFunding = fundingEvent(contract, 1, 0.001, 10_000);
+        FuturesFunding failingFunding = fundingEvent(contract, 2, Double.MAX_VALUE, Double.MAX_VALUE);
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .fundingSchedule(List.of(firstFunding, failingFunding))
+                .build();
+        record.operate(fill(contract, 0, ExecutionSide.BUY, 1, 10_000, List.of()));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> record.operate(fill(contract, 2, ExecutionSide.BUY, 1, 10_000, List.of())));
+
+        assertEquals(1, record.getOpenPositions().size());
+        assertNumEquals(1, record.getCurrentPosition().amount());
+        assertTrue(record.getCashFlows().isEmpty());
+        assertEquals(0, record.getLastTrade().getIndex());
+    }
+
+    @Test
     public void averageCostKeepsLargeLinearWeightedPricesFinite() {
         FuturesContract contract = linearBtcPerpetual(numFactory);
         BaseTradingRecord record = BaseTradingRecord.builder()

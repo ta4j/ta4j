@@ -112,7 +112,16 @@ public class LinearTransactionCostModel implements CostModel {
             return calculate(fill.price(), fill.amount());
         }
         Num rate = fill.price().getNumFactory().numOf(feePerPosition);
-        return contract.settlementNotional(fill.amount(), fill.price()).multipliedBy(rate);
+        Num settlementNotional = contract.settlementNotional(fill.amount(), fill.price());
+        Num fee = settlementNotional.multipliedBy(rate);
+        if (!Num.isFinite(fee)) {
+            throw new IllegalArgumentException("futures transaction fee must be finite in the fill number factory");
+        }
+        if (!settlementNotional.isZero() && !rate.isZero() && fee.isZero()) {
+            throw new IllegalArgumentException(
+                    "futures transaction fee cannot be represented in the fill number factory");
+        }
+        return fee;
     }
 
     @Override

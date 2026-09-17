@@ -1145,9 +1145,7 @@ public class BaseTradingRecord implements TradingRecord {
                     fill.correlationId(), fill.time());
             validatePlannedFillTimes(plannedTradeFills);
             validateSpecificIdBatch(tradeType, plannedTradeFills);
-            for (PlannedTradeFill plannedTradeFill : plannedTradeFills) {
-                applyTradeInternal(plannedTradeFill.index(), plannedTradeFill.trade(), -1L);
-            }
+            applyPlannedTradeFills(plannedTradeFills);
         } finally {
             lock.writeLock().unlock();
         }
@@ -1169,15 +1167,7 @@ public class BaseTradingRecord implements TradingRecord {
             List<PlannedTradeFill> plannedTradeFills = planTradeFills(trade, fills);
             validatePlannedFillTimes(plannedTradeFills);
             validateSpecificIdBatch(trade.getType(), plannedTradeFills);
-            RecordState state = snapshotState();
-            try {
-                for (PlannedTradeFill plannedTradeFill : plannedTradeFills) {
-                    applyTradeInternal(plannedTradeFill.index(), plannedTradeFill.trade(), -1L);
-                }
-            } catch (RuntimeException | Error failure) {
-                restoreState(state);
-                throw failure;
-            }
+            applyPlannedTradeFills(plannedTradeFills);
         } finally {
             lock.writeLock().unlock();
         }
@@ -1829,6 +1819,18 @@ public class BaseTradingRecord implements TradingRecord {
             return;
         }
         positionBook.validateExitBatch(plannedFills);
+    }
+
+    private void applyPlannedTradeFills(List<PlannedTradeFill> plannedTradeFills) {
+        RecordState state = snapshotState();
+        try {
+            for (PlannedTradeFill plannedTradeFill : plannedTradeFills) {
+                applyTradeInternal(plannedTradeFill.index(), plannedTradeFill.trade(), -1L);
+            }
+        } catch (RuntimeException | Error failure) {
+            restoreState(state);
+            throw failure;
+        }
     }
 
     private RecordState snapshotState() {

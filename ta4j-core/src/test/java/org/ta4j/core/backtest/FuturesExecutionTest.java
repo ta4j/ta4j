@@ -186,6 +186,23 @@ class FuturesExecutionTest {
     }
 
     @Test
+    public void futuresStopLimitWithRecordedFeesUsesExplicitEmptyComponents() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearContract(numFactory, 1);
+            StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(),
+                    numFactory.one(), 1);
+            BaseTradingRecord record = futuresRecord(contract, RecordedTradeCostModel.INSTANCE);
+
+            new BarSeriesManager(flatSeries(numFactory, 100d, 1d, 1d), model).run(entryOnFirstBar(), record,
+                    numFactory.one());
+
+            TradeFill executionFill = record.getLastTrade().getFills().getFirst();
+            assertTrue(executionFill.hasRecordedFees());
+            assertTrue(executionFill.fees().isEmpty());
+        }
+    }
+
+    @Test
     void expiringFuturesOrderKeepsItsBookedFillsWithoutReplayingThem() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = linearContract(numFactory, 1);

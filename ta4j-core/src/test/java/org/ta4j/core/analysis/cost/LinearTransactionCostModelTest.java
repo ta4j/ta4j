@@ -164,6 +164,33 @@ public class LinearTransactionCostModelTest {
     }
 
     @Test
+    public void rejectsUnderflowedFuturesFeeProduct() {
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(DoubleNum.valueOf(1))
+                .build();
+        TradeFill fill = TradeFill.builder()
+                .index(0)
+                .time(Instant.EPOCH)
+                .price(DoubleNum.valueOf(1E-200))
+                .amount(DoubleNum.valueOf(1))
+                .side(ExecutionSide.BUY)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+
+        LinearTransactionCostModel model = new LinearTransactionCostModel(1E-200);
+
+        assertThrows(IllegalArgumentException.class, () -> model.calculate(fill));
+    }
+
+    @Test
     public void testEquality() {
         LinearTransactionCostModel model = new LinearTransactionCostModel(0.1);
         CostModel modelSameClass = new LinearTransactionCostModel(0.2);

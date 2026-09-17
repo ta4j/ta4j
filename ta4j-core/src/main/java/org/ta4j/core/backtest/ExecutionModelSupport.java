@@ -111,6 +111,19 @@ final class ExecutionModelSupport {
     }
 
     /**
+     * Records a generated native futures fill with the fee representation required
+     * by the selected transaction cost model.
+     *
+     * @param tradingRecord target record
+     * @param fill          generated futures fill
+     */
+    static void recordFuturesFill(TradingRecord tradingRecord, TradeFill fill) {
+        CostModel costModel = tradingRecord.getTransactionCostModel();
+        List<TradeFee> fees = costModel instanceof RecordedTradeCostModel ? List.of() : costModel.calculateFees(fill);
+        tradingRecord.operate(fill.toBuilder().fees(fees).build());
+    }
+
+    /**
      * Routes one execution to the trading record.
      *
      * <p>
@@ -161,10 +174,7 @@ final class ExecutionModelSupport {
                     .amount(fillAmount)
                     .side(tradeType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL)
                     .build();
-            CostModel costModel = tradingRecord.getTransactionCostModel();
-            List<TradeFee> fees = costModel instanceof RecordedTradeCostModel ? List.of()
-                    : costModel.calculateFees(fill);
-            tradingRecord.operate(fill.toBuilder().fees(fees).build());
+            recordFuturesFill(tradingRecord, fill);
             remainingAmount = remainingAmount.minus(fillAmount);
         }
     }

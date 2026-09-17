@@ -260,7 +260,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
                 // order, so a rejected fill leaves the pending order unbooked.
                 TradeFill fill = order.toFill(index, bar, order.limitPrice, fillAmount, futuresContract);
                 if (futuresContract != null) {
-                    tradingRecord.operate(fill);
+                    ExecutionModelSupport.recordFuturesFill(tradingRecord, fill);
                 }
                 order.recordFill(fill, fillAmount, futuresContract);
             }
