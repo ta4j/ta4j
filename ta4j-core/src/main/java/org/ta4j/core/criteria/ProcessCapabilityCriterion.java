@@ -201,7 +201,15 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             if (!position.isClosed()) {
                 continue;
             }
-            Num grossReturn = grossReturnCriterion.calculate(series, position);
+            Num grossReturn;
+            try {
+                grossReturn = grossReturnCriterion.calculate(series, position);
+            } catch (IllegalArgumentException exception) {
+                if (!isNumericRepresentationFailure(exception)) {
+                    throw exception;
+                }
+                return calculateDecimalCpk(series, tradingRecord, factory);
+            }
             if (!Num.isFinite(grossReturn) || isUnderflowedGrossReturn(series, position, grossReturn)) {
                 // A finite price ratio overflowed or underflowed the factory's
                 // representation. Recompute the capability entirely in decimal
@@ -491,6 +499,12 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             sum = next;
         }
         return sum.plus(compensation);
+    }
+
+    private static boolean isNumericRepresentationFailure(IllegalArgumentException exception) {
+        String message = exception.getMessage();
+        return "notional must be finite".equals(message) || "profit must be finite".equals(message)
+                || "profit cannot be represented in price number factory".equals(message);
     }
 
     @Override
