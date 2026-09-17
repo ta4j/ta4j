@@ -710,8 +710,8 @@ public interface AnalysisCriterion {
 
     private static Num scaleValue(Num value, Num amount, Num totalAmount) {
         NumFactory factory = value.getNumFactory();
-        Num ratio = factory.numOf(amount.getDelegate()).dividedBy(factory.numOf(totalAmount.getDelegate()));
-        return value.multipliedBy(ratio);
+        return FuturesPositionAccounting.proportional(value, factory.numOf(amount.getDelegate()),
+                factory.numOf(totalAmount.getDelegate()));
     }
 
     private static boolean includeClosedPosition(Position position, int start, int end,

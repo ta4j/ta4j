@@ -1367,6 +1367,28 @@ public class PositionTest {
         assertNumEquals(1, position.getRealizedProfit(7));
     }
 
+    @Test
+    public void futuresProfitNormalizesOverflowingWeightedProducts() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(factory.one())
+                .build();
+        Trade entry = Trade.fromFills(TradeType.BUY,
+                List.of(futuresFill(contract, factory, 0, 1e200, 1e200, ExecutionSide.BUY),
+                        futuresFill(contract, factory, 0, 1e200, 1e200, ExecutionSide.BUY)),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        assertNumEquals(0, position.getProfit(0, factory.numOf(1e200)));
+    }
+
     private static Trade futuresTrade(FuturesContract contract, TradeType type, TradeFill fill) {
         return new Trade() {
             @Override

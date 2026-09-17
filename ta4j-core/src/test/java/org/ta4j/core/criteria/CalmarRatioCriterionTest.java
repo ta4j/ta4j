@@ -258,7 +258,7 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
                 .between(series.getBar(series.getBeginIndex()).getEndTime(),
                         series.getBar(series.getEndIndex()).getEndTime())
                 .getSeconds() / (double) TimeConstants.SECONDS_PER_YEAR;
-        double expected = (Math.pow(0.8d, 1d / years) - 1d) / 0.2d;
+        double expected = Math.pow(0.8d, 1d / years) - 1d;
 
         assertNumEquals(numFactory.numOf(expected), actual, 1e-12);
     }
@@ -290,7 +290,7 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
                 .between(series.getBar(series.getBeginIndex()).getEndTime(),
                         series.getBar(series.getEndIndex()).getEndTime())
                 .getSeconds() / (double) TimeConstants.SECONDS_PER_YEAR;
-        Num expectedMarked = numFactory.numOf((Math.pow(0.9d, 1d / years) - 1d) / 0.1d);
+        Num expectedMarked = numFactory.numOf(Math.pow(0.9d, 1d / years) - 1d);
 
         assertNumEquals(numFactory.zero(), criterion.calculate(series, position), 0d);
         assertNumEquals(expectedMarked, criterion.calculate(series, position, markPrice), 1e-12);

@@ -1,4 +1,5 @@
 ## Unreleased
+- **Futures review round 77**: stable weighted basis and settlement-fee summation, overflow-safe proportional fee slicing, and drawdown peaks seeded at the scanned range.
 - **Futures review round 76**: same-index futures fills use timestamps before side ordering when validating execution chronology.
 - **Futures review round 75**: chronological futures basis resets after flat exposure gaps, sliced position fills scale recorded fees, imported fee normalization rejects underflow, and deferred imported cash flows are reassigned after all entries replay.
 - **Futures review round 74**: BaseTradingRecord rejects a recorded fee total that overflows its number factory before mutating the position book.

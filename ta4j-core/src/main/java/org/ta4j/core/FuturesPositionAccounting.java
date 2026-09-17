@@ -153,7 +153,25 @@ final class FuturesPositionAccounting {
             Num quoteAmount = activeAmount.dividedBy(basis).plus(entryAmount.dividedBy(entryPrice));
             return totalAmount.dividedBy(quoteAmount);
         }
-        return basis.multipliedBy(activeAmount).plus(entryPrice.multipliedBy(entryAmount)).dividedBy(totalAmount);
+        return weightedAverage(basis, activeAmount, entryPrice, entryAmount);
+    }
+
+    private static Num weightedAverage(Num firstPrice, Num firstWeight, Num secondPrice, Num secondWeight) {
+        Num totalWeight = firstWeight.plus(secondWeight);
+        Num weightedPrice = firstPrice.multipliedBy(firstWeight).plus(secondPrice.multipliedBy(secondWeight));
+        if (Num.isFinite(totalWeight) && !totalWeight.isZero() && Num.isFinite(weightedPrice)) {
+            return weightedPrice.dividedBy(totalWeight);
+        }
+        Num maximumWeight = firstWeight.isGreaterThan(secondWeight) ? firstWeight : secondWeight;
+        if (maximumWeight.isZero()) {
+            return maximumWeight.getNumFactory().zero();
+        }
+        Num scaledFirstWeight = firstWeight.dividedBy(maximumWeight);
+        Num scaledSecondWeight = secondWeight.dividedBy(maximumWeight);
+        Num scaledTotalWeight = scaledFirstWeight.plus(scaledSecondWeight);
+        Num firstShare = scaledFirstWeight.dividedBy(scaledTotalWeight);
+        Num secondShare = scaledSecondWeight.dividedBy(scaledTotalWeight);
+        return firstPrice.multipliedBy(firstShare).plus(secondPrice.multipliedBy(secondShare));
     }
 
     /**

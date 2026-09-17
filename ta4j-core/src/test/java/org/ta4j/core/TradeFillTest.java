@@ -6,6 +6,7 @@ package org.ta4j.core;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
@@ -204,5 +205,46 @@ public class TradeFillTest {
         TradeFill mirror = TradeFill.forTrade(trade, ExecutionSide.BUY);
 
         assertEquals("BTC-USD", mirror.instrument());
+    }
+
+    @Test
+    public void preservesSmallSettlementComponentDuringCompensatedSummation() {
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .build();
+        TradeFee largePositive = TradeFee.builder()
+                .type(TradeFee.Type.COMMISSION)
+                .amount(numFactory.numOf(1e308))
+                .currency("USD")
+                .build();
+        TradeFee smallPositive = TradeFee.builder()
+                .type(TradeFee.Type.CLEARING)
+                .amount(numFactory.one())
+                .currency("USD")
+                .build();
+        TradeFee largeNegative = TradeFee.builder()
+                .type(TradeFee.Type.OTHER)
+                .amount(numFactory.numOf(-1e308))
+                .currency("USD")
+                .build();
+
+        TradeFill fill = TradeFill.builder()
+                .index(0)
+                .time(Instant.EPOCH)
+                .price(numFactory.one())
+                .amount(numFactory.one())
+                .side(ExecutionSide.BUY)
+                .futuresContract(contract)
+                .fees(List.of(largePositive, smallPositive, largeNegative))
+                .build();
+
+        assertNumEquals(1, fill.fee());
     }
 }

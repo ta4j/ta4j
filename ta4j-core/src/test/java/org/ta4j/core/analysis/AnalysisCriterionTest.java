@@ -409,4 +409,47 @@ public class AnalysisCriterionTest {
         assertNumEquals(sourceCapital, criterion.calculate(barSeries, source, AnalysisWindow.barRange(0, 1)));
     }
 
+    @Test
+    public void windowProjectionScalesExtremeRecordedFeeWithoutUnderflow() {
+        NumFactory factory = org.ta4j.core.num.DoubleNumFactory.getInstance();
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(factory);
+        BarSeries barSeries = FuturesAnalysisTestSupport.series(factory, 100, 100);
+        Trade entry = Trade.fromFill(
+                FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1e200, 100,
+                        List.of(FuturesAnalysisTestSupport.commission(factory, 1e200))),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(
+                FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1e-124, 100, List.of()),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        TradingRecord record = new BaseTradingRecord() {
+            @Override
+            public FuturesContract getFuturesContract() {
+                return contract;
+            }
+
+            @Override
+            public List<Position> getPositions() {
+                return List.of(position);
+            }
+        };
+        AnalysisCriterion criterion = new AnalysisCriterion() {
+            @Override
+            public Num calculate(BarSeries series, Position position) {
+                return series.numFactory().zero();
+            }
+
+            @Override
+            public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+                return tradingRecord.getRecordedTotalFees();
+            }
+
+            @Override
+            public boolean betterThan(Num v1, Num v2) {
+                return v1.isGreaterThan(v2);
+            }
+        };
+
+        assertNumEquals(factory.numOf(1e-124), criterion.calculate(barSeries, record, AnalysisWindow.barRange(0, 1)));
+    }
 }

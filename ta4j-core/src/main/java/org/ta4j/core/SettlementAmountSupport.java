@@ -90,9 +90,10 @@ final class SettlementAmountSupport {
      * @since 0.25.1
      */
     static Num sumSettlementAmounts(List<TradeFee> fees, NumFactory numFactory) {
-        Num total = numFactory.zero();
+        Num sum = numFactory.zero();
+        Num compensation = numFactory.zero();
         if (fees == null) {
-            return total;
+            return sum;
         }
         for (TradeFee fee : fees) {
             Num settlementAmount = fee.settlementAmount();
@@ -105,11 +106,26 @@ final class SettlementAmountSupport {
                 throw new IllegalArgumentException(
                         "fee settlement amount must be representable in fill number factory");
             }
-            Num nextTotal = total.plus(normalized);
-            if (!Num.isFinite(nextTotal)) {
+            Num nextSum = sum.plus(normalized);
+            if (!Num.isFinite(nextSum)) {
                 throw new IllegalArgumentException("fee settlement total must be finite in fill number factory");
             }
-            total = nextTotal;
+            Num correction;
+            if (sum.abs().isGreaterThanOrEqual(normalized.abs())) {
+                correction = sum.minus(nextSum).plus(normalized);
+            } else {
+                correction = normalized.minus(nextSum).plus(sum);
+            }
+            Num nextCompensation = compensation.plus(correction);
+            if (!Num.isFinite(nextCompensation)) {
+                throw new IllegalArgumentException("fee settlement total must be finite in fill number factory");
+            }
+            sum = nextSum;
+            compensation = nextCompensation;
+        }
+        Num total = sum.plus(compensation);
+        if (!Num.isFinite(total)) {
+            throw new IllegalArgumentException("fee settlement total must be finite in fill number factory");
         }
         return total;
     }
