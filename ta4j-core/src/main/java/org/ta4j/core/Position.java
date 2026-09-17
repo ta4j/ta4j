@@ -1058,10 +1058,9 @@ public class Position implements Serializable {
         List<FuturesExposureEvent> events = new ArrayList<>();
         addFuturesExposureEvents(events, entry, true, numFactory);
         addFuturesExposureEvents(events, exit, false, numFactory);
-        // At one index, process entries before exits when timestamps are incomplete.
+        // At one index, timestamps order known fills; otherwise entries precede exits.
         events.sort(Comparator.comparingInt(FuturesExposureEvent::index)
-                .thenComparing(event -> event.opens() ? 0 : 1)
-                .thenComparing(FuturesExposureEvent::time, Comparator.nullsLast(Comparator.naturalOrder())));
+                .thenComparing(Position::compareFuturesExposureEvents));
 
         Num availableExposure = numFactory.zero();
         java.time.Instant previousTime = null;
@@ -1087,6 +1086,16 @@ public class Position implements Serializable {
         if (exitAmount.isGreaterThan(entryAmount)) {
             throw new IllegalArgumentException("Exit exposure cannot exceed entry exposure");
         }
+    }
+
+    private static int compareFuturesExposureEvents(FuturesExposureEvent first, FuturesExposureEvent second) {
+        if (first.time() != null && second.time() != null) {
+            int timeComparison = first.time().compareTo(second.time());
+            if (timeComparison != 0) {
+                return timeComparison;
+            }
+        }
+        return Integer.compare(first.opens() ? 0 : 1, second.opens() ? 0 : 1);
     }
 
     private static void addFuturesExposureEvents(List<FuturesExposureEvent> events, Trade trade, boolean opens,

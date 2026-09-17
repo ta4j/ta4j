@@ -1343,6 +1343,30 @@ public class PositionTest {
         assertTrue(position.isClosed());
     }
 
+    @Test
+    public void sameIndexFuturesFollowsTimestampsBeforeSide() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(factory.one())
+                .build();
+        Trade entry = Trade.fromFills(TradeType.BUY,
+                List.of(futuresFill(contract, factory, 7, T0, 100, 1, ExecutionSide.BUY),
+                        futuresFill(contract, factory, 7, T0.plusSeconds(2), 100, 1, ExecutionSide.BUY)),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(futuresFill(contract, factory, 7, T0.plusSeconds(1), 101, 1, ExecutionSide.SELL),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        assertNumEquals(1, position.getRealizedProfit(7));
+    }
+
     private static Trade futuresTrade(FuturesContract contract, TradeType type, TradeFill fill) {
         return new Trade() {
             @Override
