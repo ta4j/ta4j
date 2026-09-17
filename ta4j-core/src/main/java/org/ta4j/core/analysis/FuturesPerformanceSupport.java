@@ -300,7 +300,7 @@ final class FuturesPerformanceSupport {
      * @since 0.25.1
      */
     static Num toFactory(NumFactory numFactory, Num value) {
-        if (value == null || value.isNaN()) {
+        if (Num.isNaNOrNull(value)) {
             return value;
         }
         Num converted = numFactory.numOf(value.getDelegate());
