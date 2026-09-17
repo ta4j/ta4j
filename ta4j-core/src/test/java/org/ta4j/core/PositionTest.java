@@ -1009,6 +1009,28 @@ public class PositionTest {
     }
 
     @Test
+    public void inverseGrossReturnLeavesDeferredExitUnrealized() {
+        NumFactory numFactory = DoubleNumFactory.getInstance();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.INVERSE)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("BTC")
+                .contractSize(numFactory.one())
+                .build();
+        Trade entry = Trade.fromFill(futuresFill(contract, numFactory, 0, 100, 1, ExecutionSide.BUY),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(futuresFill(contract, numFactory, -1, 110, 1, ExecutionSide.SELL),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        assertNumEquals(1, position.getGrossReturn());
+    }
+
+    @Test
     public void grossReturnUsesExecutedEntryNotionalForDeferredEntryFill() {
         NumFactory numFactory = DoubleNumFactory.getInstance();
         FuturesContract contract = FuturesContract.builder()

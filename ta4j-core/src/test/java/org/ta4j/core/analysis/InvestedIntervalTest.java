@@ -164,7 +164,7 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
 
     @Test
     public void usesLastExecutedExitFillForFullyExitedAggregatePosition() {
-        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 110, 120, 130, 140, 150, 160);
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 110, 120, 130, 140, 150, 160, 170, 180);
         FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
         Trade entry = Trade.fromFills(Trade.TradeType.BUY,
                 List.of(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 2, 100, List.of()),
@@ -180,10 +180,10 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
 
         InvestedInterval indicator = new InvestedInterval(series, tradingRecord, OpenPositionHandling.IGNORE);
 
-        assertThat(indicator.getValue(3)).isTrue();
-        assertThat(indicator.getValue(4)).isTrue();
         assertThat(indicator.getValue(5)).isTrue();
-        assertThat(indicator.getValue(6)).isFalse();
+        assertThat(indicator.getValue(6)).isTrue();
+        assertThat(indicator.getValue(7)).isTrue();
+        assertThat(indicator.getValue(8)).isFalse();
     }
 
     private static final class AggregatePositionTradingRecord extends BaseTradingRecord {

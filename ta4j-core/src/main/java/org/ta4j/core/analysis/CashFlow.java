@@ -139,6 +139,22 @@ public class CashFlow implements PerformanceIndicator {
     }
 
     /**
+     * Constructor for cash flows of a position using an explicit mark price.
+     *
+     * @param barSeries          the bar series
+     * @param position           a single position
+     * @param markPriceIndicator mark price indicator on the same series
+     * @param equityCurveMode    the calculation mode
+     * @since 0.25.1
+     */
+    public CashFlow(BarSeries barSeries, Position position, Indicator<Num> markPriceIndicator,
+            EquityCurveMode equityCurveMode) {
+        this(barSeries, FuturesPerformanceSupport.analysisRecord(position), markPriceIndicator,
+                barSeries.getBeginIndex(), barSeries.getEndIndex(), barSeries.getEndIndex(), equityCurveMode,
+                OpenPositionHandling.MARK_TO_MARKET, FuturesPerformanceSupport.fallbackCapital(position));
+    }
+
+    /**
      * Constructor for cash flows of a closed position.
      *
      * @param barSeries       the bar series
@@ -147,9 +163,7 @@ public class CashFlow implements PerformanceIndicator {
      * @since 0.22.2
      */
     public CashFlow(BarSeries barSeries, Position position, EquityCurveMode equityCurveMode) {
-        this(barSeries, FuturesPerformanceSupport.analysisRecord(position), new ClosePriceIndicator(barSeries),
-                barSeries.getBeginIndex(), barSeries.getEndIndex(), barSeries.getEndIndex(), equityCurveMode,
-                OpenPositionHandling.MARK_TO_MARKET, FuturesPerformanceSupport.fallbackCapital(position));
+        this(barSeries, position, new ClosePriceIndicator(barSeries), equityCurveMode);
     }
 
     /**

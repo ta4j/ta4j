@@ -3,21 +3,23 @@
  */
 package org.ta4j.core.criteria;
 
+import java.util.Objects;
+import java.util.Optional;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.drawdown.Drawdown;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.utils.BarSeriesUtils;
-
-import java.util.Objects;
-import java.util.Optional;
 
 /**
  * Computes the Calmar ratio.
@@ -142,25 +144,58 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         if (position == null || position.getEntry() == null) {
             return numFactory.zero();
         }
+        return calculate(series, position, new ClosePriceIndicator(series));
+    }
+
+    /**
+     * Calculates the Calmar ratio for a position using an explicit mark price.
+     *
+     * @param series             the bar series
+     * @param position           the position to evaluate
+     * @param markPriceIndicator mark price indicator on the same series
+     * @return the Calmar ratio
+     * @since 0.25.1
+     */
+    public Num calculate(BarSeries series, Position position, Indicator<Num> markPriceIndicator) {
+        NumFactory numFactory = series.numFactory();
+        if (position == null || position.getEntry() == null) {
+            return numFactory.zero();
+        }
+        Objects.requireNonNull(markPriceIndicator, "markPriceIndicator");
         if (position.getFuturesContract() == null) {
-            return calculate(series, new BaseTradingRecord(position));
+            return calculate(series, new BaseTradingRecord(position), markPriceIndicator);
         }
         if (series.isEmpty() || series.getEndIndex() <= series.getBeginIndex()) {
             return numFactory.zero();
         }
         EquityCurveMode mode = openPositionHandling == OpenPositionHandling.IGNORE ? EquityCurveMode.REALIZED
                 : equityCurveMode;
-        CashFlow cashFlow = new CashFlow(series, position, mode);
+        CashFlow cashFlow = new CashFlow(series, position, markPriceIndicator, mode);
         return calculate(cashFlow, null, series.getBeginIndex(), series.getEndIndex());
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        return calculate(series, tradingRecord, new ClosePriceIndicator(series));
+    }
+
+    /**
+     * Calculates the Calmar ratio for a trading record using an explicit mark
+     * price.
+     *
+     * @param series             the bar series
+     * @param tradingRecord      the trading record to evaluate
+     * @param markPriceIndicator mark price indicator on the same series
+     * @return the Calmar ratio
+     * @since 0.25.1
+     */
+    public Num calculate(BarSeries series, TradingRecord tradingRecord, Indicator<Num> markPriceIndicator) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
         if (tradingRecord == null || series.isEmpty()) {
             return zero;
         }
+        Objects.requireNonNull(markPriceIndicator, "markPriceIndicator");
 
         int beginIndex = tradingRecord.getStartIndex(series);
         int endIndex = tradingRecord.getEndIndex(series);
@@ -168,7 +203,8 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
             return zero;
         }
 
-        CashFlow cashFlow = new CashFlow(series, tradingRecord, endIndex, equityCurveMode, openPositionHandling);
+        CashFlow cashFlow = new CashFlow(series, tradingRecord, markPriceIndicator, endIndex, equityCurveMode,
+                openPositionHandling);
         return calculate(cashFlow, tradingRecord, beginIndex, endIndex);
     }
 

@@ -27,6 +27,7 @@ import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.utils.TimeConstants;
@@ -260,6 +261,41 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
         double expected = (Math.pow(0.8d, 1d / years) - 1d) / 0.2d;
 
         assertNumEquals(numFactory.numOf(expected), actual, 1e-12);
+    }
+
+    @Test
+    public void explicitMarkPriceValuesFuturesForPositionAndRecord() {
+        BarSeries series = buildYearlySeries("calmar_explicit_mark", new double[] { 100d, 100d });
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01))
+                .build();
+        TradeFill positionEntryFill = fill(contract, series.getBeginIndex(), ExecutionSide.BUY, 100d);
+        Position position = new Position(Trade.fromFill(positionEntryFill, RecordedTradeCostModel.INSTANCE),
+                RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        BaseTradingRecord tradingRecord = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.one())
+                .build();
+        tradingRecord.operate(fill(contract, series.getBeginIndex(), ExecutionSide.BUY, 100d));
+        ConstantIndicator<Num> markPrice = new ConstantIndicator<>(series, numFactory.numOf(90d));
+        CalmarRatioCriterion criterion = (CalmarRatioCriterion) getCriterion();
+        double years = Duration
+                .between(series.getBar(series.getBeginIndex()).getEndTime(),
+                        series.getBar(series.getEndIndex()).getEndTime())
+                .getSeconds() / (double) TimeConstants.SECONDS_PER_YEAR;
+        Num expectedMarked = numFactory.numOf((Math.pow(0.9d, 1d / years) - 1d) / 0.1d);
+
+        assertNumEquals(numFactory.zero(), criterion.calculate(series, position), 0d);
+        assertNumEquals(expectedMarked, criterion.calculate(series, position, markPrice), 1e-12);
+        assertNumEquals(numFactory.zero(), criterion.calculate(series, tradingRecord), 0d);
+        assertNumEquals(expectedMarked, criterion.calculate(series, tradingRecord, markPrice), 1e-12);
     }
 
     private Position futuresPosition(BarSeries series, double entryPrice, double exitPrice) {
