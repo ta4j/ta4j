@@ -3124,6 +3124,28 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    public void importedPartialExitUsesOnlyEarlierEntryBasis() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Trade entry = Trade.fromFills(TradeType.BUY,
+                    List.of(fillAtTime(contract, 1, T0.plusSeconds(1), ExecutionSide.BUY, 2, 100, List.of()),
+                            fillAtTime(contract, 10, T0.plusSeconds(10), ExecutionSide.BUY, 1, 200, List.of())),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFill(
+                    fillAtTime(contract, 5, T0.plusSeconds(5), ExecutionSide.SELL, 1, 150, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+            Position importedPosition = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            BaseTradingRecord record = new BaseTradingRecord(List.of(importedPosition));
+
+            Position closed = record.getPositions().getFirst();
+            assertNumEquals(100, closed.getEntry().getPricePerAsset());
+            assertNumEquals(0.5, closed.getProfit());
+            assertEquals(2, record.getOpenPositions().size());
+        }
+    }
+
+    @Test
     public void importedPartialExitPreservesEachExecutedExitFill() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = linearBtcPerpetual(numFactory);
