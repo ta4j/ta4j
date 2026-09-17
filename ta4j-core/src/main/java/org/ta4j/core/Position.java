@@ -876,14 +876,39 @@ public class Position implements Serializable {
      * @return sub-position covering the slice
      */
     private Position slicePosition(TradeFill entryFill, TradeFill closingFill, Num amount) {
-        Trade sliceEntry = Trade.fromFills(entry.getType(), List.of(entryFill.toBuilder().amount(amount).build()),
+        Trade sliceEntry = Trade.fromFills(entry.getType(), List.of(sliceFill(entryFill, amount)),
                 getTransactionCostModel());
         if (closingFill == null) {
             return new Position(sliceEntry, getTransactionCostModel(), getHoldingCostModel());
         }
-        Trade sliceExit = Trade.fromFills(exit.getType(), List.of(closingFill.toBuilder().amount(amount).build()),
+        Trade sliceExit = Trade.fromFills(exit.getType(), List.of(sliceFill(closingFill, amount)),
                 getTransactionCostModel());
         return new Position(sliceEntry, sliceExit, getTransactionCostModel(), getHoldingCostModel());
+    }
+
+    private static TradeFill sliceFill(TradeFill fill, Num amount) {
+        TradeFill.Builder builder = fill.toBuilder().amount(amount);
+        if (fill.hasRecordedFees()) {
+            List<TradeFee> scaledFees = new ArrayList<>(fill.fees().size());
+            for (TradeFee fee : fill.fees()) {
+                TradeFee.Builder feeBuilder = fee.toBuilder()
+                        .amount(scaleFillValue(fee.amount(), amount, fill.amount()));
+                if (fee.settlementAmount() != null) {
+                    feeBuilder.settlementAmount(scaleFillValue(fee.settlementAmount(), amount, fill.amount()));
+                }
+                scaledFees.add(feeBuilder.build());
+            }
+            builder.fees(List.copyOf(scaledFees));
+        } else if (fill.futuresContract() == null) {
+            builder.fee(scaleFillValue(fill.fee(), amount, fill.amount()));
+        }
+        return builder.build();
+    }
+
+    private static Num scaleFillValue(Num value, Num amount, Num fillAmount) {
+        NumFactory valueFactory = value.getNumFactory();
+        return FuturesPositionAccounting.proportional(value, valueFactory.numOf(amount.getDelegate()),
+                valueFactory.numOf(fillAmount.getDelegate()));
     }
 
     /**

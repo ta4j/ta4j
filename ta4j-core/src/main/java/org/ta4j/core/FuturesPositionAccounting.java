@@ -6,6 +6,7 @@ package org.ta4j.core;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.num.Num;
@@ -83,9 +84,9 @@ final class FuturesPositionAccounting {
      * settlement payoff of the matched quantity.
      *
      * <p>
-     * Every executed entry fill is valued at the retained entry basis. When
-     * finalIndex includes all entry fills, this is the trade's merged basis;
-     * otherwise it is recomputed from the fills executed by finalIndex.
+     * The open exposure maintains its chronological average entry basis. The basis
+     * is reset when an exit reduces exposure to zero, so a later entry cannot
+     * change the payoff of an earlier flat exposure interval.
      * </p>
      *
      * @param entry           entry trade carrying the basis
@@ -100,29 +101,59 @@ final class FuturesPositionAccounting {
     private static Num matchedPayoff(Trade entry, FuturesContract contract, NumFactory numFactory,
             ArrayDeque<FillSlice> exits, int finalIndex, Num unexecutedPrice) {
         List<TradeFill> entryFills = executedFills(entry, finalIndex);
-        Num basis = entryBasis(entry, contract, numFactory, entryFills);
-        Num total = numFactory.zero();
+        List<ExposureEvent> events = new ArrayList<>(entryFills.size() + exits.size());
+        boolean useTradeBasis = entryFills.size() == 1 && entryFills.size() == Trade.executionFillsOf(entry).size();
         for (TradeFill entryFill : entryFills) {
             FillSlice entrySlice = fillSlice(entryFill, numFactory);
-            Num remainingEntry = entrySlice.amount();
-            while (remainingEntry.isPositive() && !exits.isEmpty()) {
-                FillSlice exitFill = exits.removeFirst();
-                Num matched = remainingEntry.isLessThan(exitFill.amount()) ? remainingEntry : exitFill.amount();
-                total = total.plus(contract.profit(entry.getType(), matched, basis, exitFill.price()));
-                remainingEntry = remainingEntry.minus(matched);
-                Num remainingExit = exitFill.amount().minus(matched);
-                if (remainingExit.isPositive()) {
-                    exits.addFirst(new FillSlice(exitFill.price(), remainingExit));
-                }
+            if (useTradeBasis) {
+                entrySlice = new FillSlice(numFactory.numOf(entry.getPricePerAsset().getDelegate()),
+                        entrySlice.amount(), entrySlice.index(), entrySlice.time());
             }
-            if (unexecutedPrice != null && remainingEntry.isPositive()) {
-                total = total.plus(contract.profit(entry.getType(), remainingEntry, basis, unexecutedPrice));
+            events.add(new ExposureEvent(entrySlice, true));
+        }
+        while (!exits.isEmpty()) {
+            events.add(new ExposureEvent(exits.removeFirst(), false));
+        }
+        events.sort(Comparator.comparingInt((ExposureEvent event) -> event.slice().index())
+                .thenComparing(event -> event.slice().time(), Comparator.nullsFirst(Comparator.naturalOrder()))
+                .thenComparing(ExposureEvent::entry, Comparator.reverseOrder()));
+
+        Num activeAmount = numFactory.zero();
+        Num basis = null;
+        Num total = numFactory.zero();
+        for (ExposureEvent event : events) {
+            FillSlice fill = event.slice();
+            if (event.entry()) {
+                basis = combinedBasis(contract, basis, activeAmount, fill.price(), fill.amount());
+                activeAmount = activeAmount.plus(fill.amount());
+                continue;
+            }
+            if (basis == null || fill.amount().isGreaterThan(activeAmount)) {
+                throw new IllegalArgumentException("futures exit amount exceeds executed entry amount");
+            }
+            total = total.plus(contract.profit(entry.getType(), fill.amount(), basis, fill.price()));
+            activeAmount = activeAmount.minus(fill.amount());
+            if (activeAmount.isZero()) {
+                basis = null;
             }
         }
-        if (!exits.isEmpty()) {
-            throw new IllegalArgumentException("futures exit amount exceeds executed entry amount");
+        if (unexecutedPrice != null && activeAmount.isPositive()) {
+            total = total.plus(contract.profit(entry.getType(), activeAmount, basis, unexecutedPrice));
         }
         return total;
+    }
+
+    private static Num combinedBasis(FuturesContract contract, Num basis, Num activeAmount, Num entryPrice,
+            Num entryAmount) {
+        if (basis == null || activeAmount.isZero()) {
+            return entryPrice;
+        }
+        Num totalAmount = activeAmount.plus(entryAmount);
+        if (contract.settlementType() == FuturesContract.SettlementType.INVERSE) {
+            Num quoteAmount = activeAmount.dividedBy(basis).plus(entryAmount.dividedBy(entryPrice));
+            return totalAmount.dividedBy(quoteAmount);
+        }
+        return basis.multipliedBy(activeAmount).plus(entryPrice.multipliedBy(entryAmount)).dividedBy(totalAmount);
     }
 
     /**
@@ -503,10 +534,13 @@ final class FuturesPositionAccounting {
 
     private static FillSlice fillSlice(TradeFill fill, NumFactory numFactory) {
         return new FillSlice(numFactory.numOf(fill.price().getDelegate()),
-                numFactory.numOf(fill.amount().getDelegate()));
+                numFactory.numOf(fill.amount().getDelegate()), fill.index(), fill.time());
     }
 
-    private record FillSlice(Num price, Num amount) {
+    private record ExposureEvent(FillSlice slice, boolean entry) {
+    }
+
+    private record FillSlice(Num price, Num amount, int index, Instant time) {
     }
 
     private static Num sum(Position position, FuturesCashFlow.Type type, int finalIndex) {

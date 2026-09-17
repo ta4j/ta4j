@@ -3105,6 +3105,46 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    public void rejectsImportedFeePrecisionLostDuringNormalization() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
+        FuturesContract doubleContract = linearBtcPerpetual(doubleFactory);
+        FuturesContract decimalContract = linearBtcPerpetual(decimalFactory);
+        Position existing = new Position(Trade.fromFill(fill(doubleContract, 0, ExecutionSide.BUY, 1, 100, List.of()),
+                RecordedTradeCostModel.INSTANCE), RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        List<TradeFee> fees = List.of(
+                TradeFee.builder()
+                        .type(TradeFee.Type.COMMISSION)
+                        .amount(decimalFactory.numOf("1e-400"))
+                        .currency("USD")
+                        .build(),
+                TradeFee.builder()
+                        .type(TradeFee.Type.OTHER)
+                        .amount(decimalFactory.one())
+                        .currency("BTC")
+                        .settlementAmount(decimalFactory.numOf("1e-400"))
+                        .build());
+
+        for (TradeFee fee : fees) {
+            TradeFill importedFill = TradeFill.builder()
+                    .index(1)
+                    .time(T0.plusSeconds(1))
+                    .price(decimalFactory.numOf(100))
+                    .amount(decimalFactory.one())
+                    .side(ExecutionSide.BUY)
+                    .futuresContract(decimalContract)
+                    .fees(List.of(fee))
+                    .build();
+            Position imported = new Position(Trade.fromFill(importedFill, RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                    () -> new BaseTradingRecord(List.of(existing, imported)));
+            assertTrue(failure.getMessage().contains("represent"));
+        }
+    }
+
+    @Test
     public void importedPartiallyExecutedExitKeepsDeferredRemainderOpen() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = linearBtcPerpetual(numFactory);
@@ -3345,6 +3385,34 @@ class BaseTradingRecordTest {
 
             assertNumEquals(3, record.getPositions().get(1).getProfit());
             assertNumEquals(3, record.getOpenPositions().getFirst().getProfit(5, numFactory.hundred()));
+        }
+    }
+
+    @Test
+    public void importedDeferredFundingMovesToReopenedExposure() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            Trade entry = Trade
+                    .fromFills(TradeType.BUY,
+                            List.of(fill(contract, 0, ExecutionSide.BUY, 1, 100, List.of()),
+                                    fill(contract, 2, ExecutionSide.BUY, 1, 120, List.of())),
+                            RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFill(fill(contract, 1, ExecutionSide.SELL, 1, 110, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+            FuturesCashFlow funding = cashFlow(contract, FuturesCashFlow.Type.FUNDING, "reopened-exposure", 3, 6);
+            Position imported = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel(),
+                    List.of(funding));
+
+            BaseTradingRecord record = new BaseTradingRecord(List.of(imported));
+
+            assertEquals(1, record.getPositions().size());
+            assertTrue(record.getPositions().getFirst().getCashFlows().isEmpty());
+            List<FuturesCashFlow> openCashFlows = record.getOpenPositions().getFirst().getCashFlows();
+            Num openFunding = numFactory.zero();
+            for (FuturesCashFlow openCashFlow : openCashFlows) {
+                openFunding = openFunding.plus(openCashFlow.amount());
+            }
+            assertNumEquals(6, openFunding);
         }
     }
 

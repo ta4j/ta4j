@@ -15,6 +15,7 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
@@ -970,6 +971,87 @@ public class PositionTest {
             Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
 
             assertNumEquals(10, position.getProfit(1, numFactory.numOf(110)));
+        }
+    }
+
+    @Test
+    public void futuresProfitResetsBasisAfterFlatExposureGap() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.one())
+                    .build();
+            Trade entry = Trade.fromFills(TradeType.BUY, List.of(futuresFill(contract, 0, 100, 1, ExecutionSide.BUY),
+                    futuresFill(contract, 2, 120, 1, ExecutionSide.BUY)), RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFill(futuresFill(contract, 1, 110, 1, ExecutionSide.SELL),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            assertNumEquals(10, position.getRealizedProfit(2));
+            assertNumEquals(0, position.getUnrealizedProfit(numFactory.numOf(120), 2));
+        }
+    }
+
+    @Test
+    public void futuresHoldingCostScalesFeesWhenSplittingFills() {
+        NumFactory numFactory = DoubleNumFactory.getInstance();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .build();
+        TradeFee entryFee = TradeFee.builder()
+                .type(TradeFee.Type.COMMISSION)
+                .amount(numFactory.numOf(10))
+                .currency("USD")
+                .build();
+        TradeFill entryFill = futuresFill(contract, 0, 100, 2, ExecutionSide.BUY).toBuilder()
+                .fees(List.of(entryFee))
+                .build();
+        Trade entry = Trade.fromFill(entryFill, RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFills(TradeType.SELL, List.of(futuresFill(contract, 1, 110, 1, ExecutionSide.SELL),
+                futuresFill(contract, 2, 110, 1, ExecutionSide.SELL)), RecordedTradeCostModel.INSTANCE);
+        List<Num> observedEntryFees = new ArrayList<>();
+        CostModel holdingCostModel = new CostModel() {
+            @Override
+            public Num calculate(Position position, int finalIndex) {
+                observedEntryFees.add(position.getEntry().getFills().getFirst().fees().getFirst().amount());
+                return position.getEntry().getPricePerAsset().getNumFactory().zero();
+            }
+
+            @Override
+            public Num calculate(Position position) {
+                return calculate(position, Integer.MAX_VALUE);
+            }
+
+            @Override
+            public Num calculate(Num price, Num amount) {
+                return price.getNumFactory().zero();
+            }
+
+            @Override
+            public boolean equals(CostModel otherModel) {
+                return this == otherModel;
+            }
+        };
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, holdingCostModel);
+
+        position.getHoldingCost(2);
+
+        assertEquals(2, observedEntryFees.size());
+        for (Num observedEntryFee : observedEntryFees) {
+            assertNumEquals(5, observedEntryFee);
         }
     }
 
