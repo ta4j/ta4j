@@ -1,4 +1,5 @@
 ## Unreleased
+- **Futures review round 74**: BaseTradingRecord rejects a recorded fee total that overflows its number factory before mutating the position book.
 - **Futures review round 73**: native futures affordability rejects modeled fee totals when a nonzero converted component is lost by finite-precision addition, and weighted fill-price fallback skips normalized weights that underflow to zero.
 - **Futures review round 72**: imported partial futures positions replay entry and exit fills in chronology so an exit cannot use a later entry's basis, while post-exit cash flows remain with surviving exposure.
 - **Futures review round 71**: direct futures fill recording rolls back funding-ledger mutations on failure, linear futures fee underflow is rejected, and stop-limit recorded-fee executions carry explicit empty components.

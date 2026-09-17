@@ -3512,4 +3512,21 @@ class BaseTradingRecordTest {
         assertTrue(Num.isFinite(current.averageEntryPrice()));
         assertNumEquals(numFactory.numOf(1E308), current.averageEntryPrice());
     }
+
+    @Test
+    public void rejectsOverflowingRecordedFeeTotal() {
+        FuturesContract contract = linearBtcPerpetual(numFactory);
+        Num maximumFee = numFactory.numOf(Double.MAX_VALUE);
+        List<TradeFee> fees = List.of(commission(numFactory, Double.MAX_VALUE, "USD"));
+        BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(contract).build();
+
+        record.operate(fill(contract, 0, ExecutionSide.BUY, 1, 10_000, fees));
+
+        assertNumEquals(maximumFee, record.getTotalFees());
+        assertThrows(IllegalArgumentException.class,
+                () -> record.operate(fill(contract, 1, ExecutionSide.BUY, 1, 10_000, fees)));
+        assertNumEquals(maximumFee, record.getTotalFees());
+        assertEquals(1, record.getTrades().size());
+        assertEquals(1, record.getOpenPositions().size());
+    }
 }

@@ -1870,6 +1870,13 @@ public class BaseTradingRecord implements TradingRecord {
         validateFill(trade);
         Num fee = feeOf(trade);
         Num price = trade.getPricePerAsset();
+        NumFactory feeFactory = hasNumFactory() ? numFactory
+                : price != null && !price.isNaN() ? price.getNumFactory() : defaultNumFactory();
+        Num currentTotalFees = totalFees == null ? feeFactory.zero() : totalFees;
+        Num nextTotalFees = currentTotalFees.plus(fee);
+        if (!Num.isFinite(nextTotalFees) && !Num.isNaNOrNull(nextTotalFees)) {
+            throw new IllegalArgumentException("recorded fee total exceeds the record number factory range");
+        }
         lock.writeLock().lock();
         try {
             advanceForFill(trade);
@@ -1893,10 +1900,7 @@ public class BaseTradingRecord implements TradingRecord {
             if (!hasNumFactory() && price != null && !price.isNaN()) {
                 numFactory = price.getNumFactory();
             }
-            if (totalFees == null) {
-                totalFees = defaultNumFactory().zero();
-            }
-            totalFees = totalFees.plus(fee);
+            totalFees = nextTotalFees;
             modificationCount++;
             tradesCache = null;
         } finally {
