@@ -350,4 +350,18 @@ class BaseTradeTest {
             assertNumEquals(trade.getNetPrice(), restored.getNetPrice());
         }
     }
+
+    @Test
+    public void fromFillsSkipsUnderflowedNormalizedAmount() {
+        Num tinyAmount = NUM_FACTORY.numOf(Double.MIN_VALUE);
+        Num maximumAmount = NUM_FACTORY.numOf(Double.MAX_VALUE);
+        TradeFill tinyFill = new TradeFill(1, Instant.EPOCH, NUM_FACTORY.one(), tinyAmount, NUM_FACTORY.zero(),
+                ExecutionSide.BUY, null, null);
+        TradeFill maximumFill = new TradeFill(2, Instant.EPOCH, maximumAmount, maximumAmount, NUM_FACTORY.zero(),
+                ExecutionSide.BUY, null, null);
+
+        Trade trade = Trade.fromFills(TradeType.BUY, List.of(tinyFill, maximumFill), RecordedTradeCostModel.INSTANCE);
+
+        assertNumEquals(maximumAmount, trade.getPricePerAsset());
+    }
 }

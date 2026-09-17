@@ -710,6 +710,9 @@ public class BaseTrade implements Trade {
                 }
             }
             Num normalizedAmount = amount.dividedBy(maximumAmount);
+            if (normalizedAmount.isZero()) {
+                continue;
+            }
             Num nextTotal = normalizedTotal.plus(normalizedAmount);
             Num existingShare = normalizedTotal.dividedBy(nextTotal);
             Num fillShare = normalizedAmount.dividedBy(nextTotal);

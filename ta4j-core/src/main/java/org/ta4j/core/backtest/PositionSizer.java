@@ -773,10 +773,11 @@ public interface PositionSizer {
                     throw new IllegalArgumentException(
                             "modeled futures fee cannot be represented in the sizing number factory");
                 }
-                fee = fee.plus(normalizedAmount);
-                if (!Num.isFinite(fee)) {
+                Num nextFee = fee.plus(normalizedAmount);
+                if (!Num.isFinite(nextFee) || (!normalizedAmount.isZero() && nextFee.isEqual(fee))) {
                     throw new IllegalArgumentException("modeled futures fee exceeds the sizing number factory range");
                 }
+                fee = nextFee;
             }
             return fee;
         }

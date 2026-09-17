@@ -428,4 +428,36 @@ class PositionSizerTest {
             assertThrows(IllegalArgumentException.class, () -> context.entryCost(targetFactory.one()));
         }
     }
+
+    @Test
+    public void maxAffordableAmountRejectsFeeTotalThatLosesComponent() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        FuturesContract contract = linearContract(factory).toBuilder().maximumQuantity(factory.one()).build();
+        CostModel lossyFees = new ZeroCostModel() {
+            @Override
+            public List<TradeFee> calculateFees(TradeFill fill) {
+                return List.of(
+                        TradeFee.builder()
+                                .type(TradeFee.Type.COMMISSION)
+                                .amount(DecimalNumFactory.getInstance().numOf("1E308"))
+                                .currency(contract.settlementCurrency())
+                                .build(),
+                        TradeFee.builder()
+                                .type(TradeFee.Type.EXCHANGE)
+                                .amount(DecimalNumFactory.getInstance().one())
+                                .currency(contract.settlementCurrency())
+                                .build());
+            }
+        };
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(factory.numOf("1E308"))
+                .initialMarginRate(factory.one())
+                .transactionCostModel(lossyFees)
+                .build();
+        PositionSizer.Context sizingContext = new PositionSizer.Context(0, 0, factory.one(), null, entryOnFirstBar(),
+                flatSeries(factory, 1), TradeType.BUY, record, lossyFees, new ZeroCostModel());
+
+        assertThrows(IllegalArgumentException.class, () -> sizingContext.maxAffordableAmount(factory.numOf("1E308")));
+    }
 }
