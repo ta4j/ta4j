@@ -146,9 +146,13 @@ public final class FuturesTransactionCostModel implements CostModel {
         NumFactory numFactory = fill.price().getNumFactory();
         Num amount = normalizeFor(fill.amount(), numFactory, "amount");
         Num settlementNotional = contract.settlementNotional(fill.amount(), fill.price());
-        Num commission = settlementNotional.multipliedBy(normalizeFor(selectedRate(fill), numFactory, "fee rate"));
+        Num feeRate = normalizeFor(selectedRate(fill), numFactory, "fee rate");
+        Num commission = requireRepresentableProduct(settlementNotional, feeRate,
+                settlementNotional.multipliedBy(feeRate), "commission");
         if (minimumPerContract != null) {
-            Num floor = amount.multipliedBy(normalizeFor(minimumPerContract, numFactory, "minimumPerContract"));
+            Num minimumRate = normalizeFor(minimumPerContract, numFactory, "minimumPerContract");
+            Num floor = requireRepresentableProduct(amount, minimumRate, amount.multipliedBy(minimumRate),
+                    "minimum commission");
             if (floor.isGreaterThan(commission)) {
                 commission = floor;
             }
@@ -157,7 +161,9 @@ public final class FuturesTransactionCostModel implements CostModel {
         List<TradeFee> fees = new ArrayList<>(perContractCharges.size() + 1);
         fees.add(component(TradeFee.Type.COMMISSION, commission, contract.settlementCurrency()));
         for (Map.Entry<TradeFee.Type, Num> charge : perContractCharges.entrySet()) {
-            Num chargeAmount = amount.multipliedBy(normalizeFor(charge.getValue(), numFactory, "perContractCharge"));
+            Num chargeRate = normalizeFor(charge.getValue(), numFactory, "perContractCharge");
+            Num chargeAmount = requireRepresentableProduct(amount, chargeRate, amount.multipliedBy(chargeRate),
+                    "per-contract charge");
             fees.add(component(charge.getKey(), chargeAmount, contract.settlementCurrency()));
         }
         return List.copyOf(fees);
@@ -212,6 +218,16 @@ public final class FuturesTransactionCostModel implements CostModel {
             throw new IllegalArgumentException(name + " must be representable in the fill number factory");
         }
         return normalized;
+    }
+
+    private static Num requireRepresentableProduct(Num left, Num right, Num product, String name) {
+        if (!Num.isFinite(product)) {
+            throw new IllegalArgumentException(name + " must be finite in the fill number factory");
+        }
+        if (!left.isZero() && !right.isZero() && product.isZero()) {
+            throw new IllegalArgumentException(name + " cannot be represented in the fill number factory");
+        }
+        return product;
     }
 
     private TradeFee component(TradeFee.Type type, Num amount, String settlementCurrency) {

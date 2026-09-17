@@ -438,7 +438,15 @@ public final class FuturesContract implements Serializable {
      */
     public Num baseQuantity(Num contracts, Num price) {
         Num sized = contractsPerSize(contracts, price);
-        return settlementType == SettlementType.LINEAR ? sized : sized.dividedBy(price);
+        if (settlementType == SettlementType.LINEAR) {
+            return sized;
+        }
+        Num baseQuantity = sized.dividedBy(price);
+        FuturesValidation.requireFinite(baseQuantity, "base quantity");
+        if (!sized.isZero() && !price.isZero() && baseQuantity.isZero()) {
+            throw new IllegalArgumentException("base quantity cannot be represented in price number factory");
+        }
+        return baseQuantity;
     }
 
     /**
@@ -577,7 +585,13 @@ public final class FuturesContract implements Serializable {
         FuturesValidation.requirePositiveFinite(collateral, "collateral");
         Num normalizedCollateral = referencePrice.getNumFactory().numOf(collateral.getDelegate());
         FuturesValidation.requirePositiveFinite(normalizedCollateral, "collateral");
-        return settlementNotional(contracts, referencePrice).dividedBy(normalizedCollateral);
+        Num notional = settlementNotional(contracts, referencePrice);
+        Num leverage = notional.dividedBy(normalizedCollateral);
+        FuturesValidation.requireFinite(leverage, "effective leverage");
+        if (!notional.isZero() && !normalizedCollateral.isZero() && leverage.isZero()) {
+            throw new IllegalArgumentException("effective leverage cannot be represented in reference number factory");
+        }
+        return leverage;
     }
 
     static String describeMismatch(FuturesContract expected, FuturesContract actual) {

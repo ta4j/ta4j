@@ -504,7 +504,8 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
     private static boolean isNumericRepresentationFailure(IllegalArgumentException exception) {
         String message = exception.getMessage();
         return "notional must be finite".equals(message) || "profit must be finite".equals(message)
-                || "profit cannot be represented in price number factory".equals(message);
+                || "profit cannot be represented in price number factory".equals(message)
+                || "contracts * contractSize cannot be represented in price number factory".equals(message);
     }
 
     @Override

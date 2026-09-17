@@ -431,6 +431,19 @@ class FuturesContractTest {
                 .marginRequirement(doubleFactory.numOf("1e-200"), doubleFactory.one(), doubleFactory.numOf("1e-200")));
         assertThrows(IllegalArgumentException.class, () -> unitSizeLinear
                 .marginRequirement(doubleFactory.numOf("1e308"), doubleFactory.one(), doubleFactory.numOf("2")));
+
+        FuturesContract tinyBaseInverse = inverseBuilder(doubleFactory).contractSize(doubleFactory.numOf("1e-200"))
+                .build();
+        assertThrows(IllegalArgumentException.class,
+                () -> tinyBaseInverse.baseQuantity(doubleFactory.one(), doubleFactory.numOf("1e200")));
+        FuturesContract hugeBaseInverse = inverseBuilder(doubleFactory).contractSize(doubleFactory.numOf("1e200"))
+                .build();
+        assertThrows(IllegalArgumentException.class,
+                () -> hugeBaseInverse.baseQuantity(doubleFactory.one(), doubleFactory.numOf("1e-200")));
+        assertThrows(IllegalArgumentException.class, () -> unitSizeLinear.effectiveLeverage(doubleFactory.one(),
+                doubleFactory.numOf("1e-200"), doubleFactory.numOf("1e200")));
+        assertThrows(IllegalArgumentException.class, () -> unitSizeLinear.effectiveLeverage(doubleFactory.one(),
+                doubleFactory.numOf("1e200"), doubleFactory.numOf("1e-200")));
     }
 
 }

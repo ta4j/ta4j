@@ -770,6 +770,22 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
         assertNumEquals(numFactory.numOf(1), cpk.calculate(series, record), 1e-12);
     }
 
+    @Test
+    public void fractionalQuantityWithSubnormalContractSizeUsesDecimalFallback() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 100, 110).build();
+        FuturesContract linear = linearBtcPerpetual().toBuilder()
+                .contractSize(numFactory.numOf(Double.MIN_VALUE))
+                .build();
+        BaseTradingRecord record = futuresRecord(linear, TradeType.BUY);
+        record.operate(futuresFill(linear, 0, ExecutionSide.BUY, 100, 0.5));
+        record.operate(futuresFill(linear, 1, ExecutionSide.SELL, 120, 0.5));
+        record.operate(futuresFill(linear, 2, ExecutionSide.BUY, 100, 0.5));
+        record.operate(futuresFill(linear, 3, ExecutionSide.SELL, 110, 0.5));
+
+        AnalysisCriterion cpk = getCriterion(0.7, 1.3);
+        assertNumEquals(numFactory.numOf(1), cpk.calculate(series, record), 1e-12);
+    }
+
     private FuturesContract linearBtcPerpetual() {
         return FuturesContract.builder()
                 .venue("CDE")
@@ -805,11 +821,16 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
     }
 
     private TradeFill futuresFill(FuturesContract contract, int index, ExecutionSide side, double price) {
+        return futuresFill(contract, index, side, price, 1);
+    }
+
+    private TradeFill futuresFill(FuturesContract contract, int index, ExecutionSide side, double price,
+            double amount) {
         return TradeFill.builder()
                 .index(index)
                 .time(Instant.parse("2025-01-01T00:00:00Z").plusSeconds(index))
                 .price(numFactory.numOf(price))
-                .amount(numFactory.numOf(1))
+                .amount(numFactory.numOf(amount))
                 .side(side)
                 .orderId("order-" + index)
                 .futuresContract(contract)
