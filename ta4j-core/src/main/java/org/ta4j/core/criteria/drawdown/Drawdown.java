@@ -103,8 +103,10 @@ public final class Drawdown {
             return new Scan(zero, 0);
         }
 
-        var peak = curve.getValue(begin);
-        var peakIndex = begin;
+        var initialCapitalBaseline = curve instanceof CashFlow cashFlow && cashFlow.hasInitialReturn()
+                && begin == series.getBeginIndex();
+        var peak = initialCapitalBaseline ? numFactory.one() : curve.getValue(begin);
+        var peakIndex = initialCapitalBaseline ? begin - 1 : begin;
         var maxDrawdown = zero;
         var maxLength = 0;
 
