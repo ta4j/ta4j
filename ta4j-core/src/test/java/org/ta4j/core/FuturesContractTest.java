@@ -457,4 +457,15 @@ class FuturesContractTest {
                 () -> inverse.settlementNotional(factory.numOf(Double.MIN_VALUE), factory.numOf(Double.MAX_VALUE)));
     }
 
+    @Test
+    public void inverseProfitPreservesRepresentableClosePriceLoss() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        FuturesContract contract = inverseBuilder(factory).contractSize(factory.numOf("1e300")).build();
+        Num entryPrice = factory.numOf("1e300");
+        Num exitPrice = factory.numOf(Math.nextDown(1e300));
+
+        Num profit = contract.profit(TradeType.BUY, factory.one(), entryPrice, exitPrice);
+
+        assertEquals(-1.487016908477783E-16, profit.doubleValue(), 1e-30);
+    }
 }

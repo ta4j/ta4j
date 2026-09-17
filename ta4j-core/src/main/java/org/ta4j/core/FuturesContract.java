@@ -514,14 +514,33 @@ public final class FuturesContract implements Serializable {
         Num exit = numFactory.numOf(exitPrice.getDelegate());
         FuturesValidation.requirePositiveFinite(exit, "exitPrice");
         Num sized = contractsPerSize(contracts, entryPrice);
-        Num payoff = settlementType == SettlementType.LINEAR ? exit.minus(entryPrice)
-                : numFactory.one().dividedBy(entryPrice).minus(numFactory.one().dividedBy(exit));
-        Num profit = sized.multipliedBy(payoff);
+        Num priceChange = exit.minus(entryPrice);
+        Num profit;
+        if (settlementType == SettlementType.LINEAR) {
+            profit = sized.multipliedBy(priceChange);
+        } else {
+            boolean priceIncreased = exit.isGreaterThan(entryPrice);
+            Num normalizedPriceChange = priceChange.dividedBy(priceIncreased ? exit : entryPrice);
+            Num scalingPrice = priceIncreased ? entryPrice : exit;
+            profit = scaleByRatio(sized, normalizedPriceChange, scalingPrice);
+        }
         FuturesValidation.requireFinite(profit, "profit");
-        if (!sized.isZero() && !payoff.isZero() && profit.isZero()) {
+        if (!sized.isZero() && !priceChange.isZero() && profit.isZero()) {
             throw new IllegalArgumentException("profit cannot be represented in price number factory");
         }
         return entryType == Trade.TradeType.BUY ? profit : profit.negate();
+    }
+
+    private static Num scaleByRatio(Num value, Num ratio, Num denominator) {
+        Num result = value.dividedBy(denominator).multipliedBy(ratio);
+        if (Num.isFinite(result) && (!result.isZero() || value.isZero() || ratio.isZero())) {
+            return result;
+        }
+        result = ratio.dividedBy(denominator).multipliedBy(value);
+        if (Num.isFinite(result) && (!result.isZero() || value.isZero() || ratio.isZero())) {
+            return result;
+        }
+        return value.multipliedBy(ratio).dividedBy(denominator);
     }
 
     /**

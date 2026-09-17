@@ -1,4 +1,5 @@
 ## Unreleased
+- **Futures review round 78**: inverse futures profit uses cancellation-resistant relative price changes so representable close-price P&L is retained.
 - **Futures review round 77**: range-aware weighted basis, settlement-fee summation, overflow-safe proportional fee slicing, and initial-capital-aware drawdown baselines.
 - **Futures review round 76**: same-index futures fills use timestamps before side ordering when validating execution chronology.
 - **Futures review round 75**: chronological futures basis resets after flat exposure gaps, sliced position fills scale recorded fees, imported fee normalization rejects underflow, and deferred imported cash flows are reassigned after all entries replay.
