@@ -13,6 +13,7 @@ import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import org.junit.Before;
@@ -628,6 +629,40 @@ public class PositionTest {
             Position position = new Position(entry, exit);
 
             assertNumEquals(10, position.getProfit(1, numFactory.numOf(110)));
+            assertNumEquals(10, position.getProfit());
+            assertNumEquals(10, position.getGrossProfit());
+        }
+    }
+
+    @Test
+    public void rejectsUnrepresentableCashFlowSettlement() {
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(DoubleNumFactory.getInstance().one())
+                .build();
+        Trade entry = Trade.fromFills(TradeType.BUY, List.of(futuresFill(contract, 0, 100, 1, ExecutionSide.BUY)),
+                RecordedTradeCostModel.INSTANCE);
+        for (String amountText : List.of("1e-400", "1e400")) {
+            Num amount = DecimalNumFactory.getInstance().numOf(new BigDecimal(amountText));
+            FuturesCashFlow cashFlow = FuturesCashFlow.builder()
+                    .contract(contract)
+                    .type(FuturesCashFlow.Type.VARIATION_MARGIN)
+                    .eventId("vm-" + amountText)
+                    .index(1)
+                    .time(T0.plusSeconds(1))
+                    .amount(amount)
+                    .currency(contract.settlementCurrency())
+                    .build();
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel(),
+                    List.of(cashFlow));
+
+            assertThrows(IllegalArgumentException.class, () -> position.getRealizedProfit(1));
         }
     }
 

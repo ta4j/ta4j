@@ -651,6 +651,19 @@ public class BarSeriesManagerTest {
     }
 
     @Test
+    public void runWithProvidedRecordPositionSizerUsesRecordCostModels() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20).build();
+        BarSeriesManager localManager = new BarSeriesManager(series, new FixedTransactionCostModel(5),
+                new ZeroCostModel(), new TradeOnCurrentCloseModel());
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        TradingRecord providedRecord = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel());
+
+        localManager.run(oneTradeStrategy, providedRecord, PositionSizer.balance(100));
+
+        assertEquals(numFactory.numOf(10), providedRecord.getPositions().getFirst().getEntry().getAmount());
+    }
+
+    @Test
     public void runWithProvidedBaseTradingRecordSupportsLiveBacktestStack() {
         BaseTradingRecord liveRecord = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
                 new ZeroCostModel(), new ZeroCostModel(), 0, 8);

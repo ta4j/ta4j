@@ -99,6 +99,7 @@ public interface PositionSizer {
         Number fixedAmount = snapshotNumber(amount, "amount");
         return context -> {
             Num resolved = context.numOf(fixedAmount);
+            validatePositiveNum(resolved, "amount");
             FuturesOrderQuantitySupport.requireTradable(context.futuresContract(), resolved, context.entryPrice());
             return resolved;
         };
@@ -127,6 +128,7 @@ public interface PositionSizer {
         validatePositiveNum(amount, "amount");
         return context -> {
             Num resolved = context.numOf(amount.getDelegate());
+            validatePositiveNum(resolved, "amount");
             FuturesOrderQuantitySupport.requireTradable(context.futuresContract(), resolved, context.entryPrice());
             return resolved;
         };

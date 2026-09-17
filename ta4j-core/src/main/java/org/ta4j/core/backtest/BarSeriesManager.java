@@ -714,7 +714,7 @@ public class BarSeriesManager {
             TradeType tradeType) {
         ExecutionTarget target = estimateEntryTarget(index, tradeType);
         return new PositionSizer.Context(index, target.index(), target.price(), target.time(), strategy, barSeries,
-                tradeType, tradingRecord, transactionCostModel, holdingCostModel);
+                tradeType, tradingRecord, tradingRecord.getTransactionCostModel(), tradingRecord.getHoldingCostModel());
     }
 
     private ExecutionTarget estimateEntryTarget(int index, TradeType tradeType) {

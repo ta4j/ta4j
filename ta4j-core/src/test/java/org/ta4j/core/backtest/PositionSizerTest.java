@@ -177,6 +177,17 @@ class PositionSizerTest {
     }
 
     @Test
+    void fixedRejectsAmountThatCannotBeRepresentedByContextFactory() {
+        NumFactory contextFactory = DoubleNumFactory.getInstance();
+        PositionSizer numberSizer = PositionSizer.fixed(new BigDecimal("1E-400"));
+        PositionSizer numSizer = PositionSizer.fixed(DecimalNumFactory.getInstance().numOf("1E-400"));
+        PositionSizer.Context sizingContext = context(contextFactory, spotRecord());
+
+        assertThrows(IllegalArgumentException.class, () -> numberSizer.amount(sizingContext));
+        assertThrows(IllegalArgumentException.class, () -> numSizer.amount(sizingContext));
+    }
+
+    @Test
     void maxAffordableAmountHonorsPerContractRebates() {
         NumFactory numFactory = DoubleNumFactory.getInstance();
         FuturesContract contract = linearContract(numFactory);

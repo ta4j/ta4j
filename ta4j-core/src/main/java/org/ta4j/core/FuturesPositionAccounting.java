@@ -522,7 +522,15 @@ final class FuturesPositionAccounting {
                 continue;
             }
             Num amount = cashFlow.settlementAmount() == null ? cashFlow.amount() : cashFlow.settlementAmount();
-            total = total.plus(total.getNumFactory().numOf(amount.getDelegate()));
+            Num normalizedAmount = total.getNumFactory().numOf(amount.getDelegate());
+            FuturesValidation.requireFinite(normalizedAmount, "cash flow settlement amount");
+            if (normalizedAmount.isZero() && !amount.isZero()) {
+                throw new IllegalArgumentException(
+                        "cash flow settlement amount cannot be represented in position number factory");
+            }
+            Num nextTotal = total.plus(normalizedAmount);
+            FuturesValidation.requireFinite(nextTotal, "cash flow settlement total");
+            total = nextTotal;
         }
         return total;
     }
