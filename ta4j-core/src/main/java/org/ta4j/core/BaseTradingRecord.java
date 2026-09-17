@@ -1683,6 +1683,13 @@ public class BaseTradingRecord implements TradingRecord {
         Position netOpenPosition = positionBook.netOpenPosition();
         NumFactory fillFactory = numFactory == null ? fills.getFirst().price().getNumFactory() : numFactory;
         int plannedNextIndex = nextTradeIndex;
+        if (openSide == null || tradeSide == openSide) {
+            for (TradeFill fill : fills) {
+                if (fill.reduceOnly()) {
+                    throw new IllegalArgumentException("Reduce-only fill requires existing opposite-side exposure");
+                }
+            }
+        }
         Num totalAmount = fillFactory.zero();
         List<PlannedTradeFill> plannedTradeFills = new ArrayList<>(fills.size());
         for (TradeFill fill : fills) {

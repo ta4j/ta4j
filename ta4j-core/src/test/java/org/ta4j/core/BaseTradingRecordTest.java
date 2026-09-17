@@ -3400,6 +3400,32 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    public void reduceOnlyFillsRequireOppositeExposure() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = linearBtcPerpetual(numFactory);
+            TradeFill reduceOnlyBuy = fill(contract, 0, ExecutionSide.BUY, 1, 100, List.of()).toBuilder()
+                    .reduceOnly(true)
+                    .build();
+
+            BaseTradingRecord flatRecord = BaseTradingRecord.builder().futuresContract(contract).build();
+            assertThrows(IllegalArgumentException.class, () -> flatRecord.operate(reduceOnlyBuy));
+            assertTrue(flatRecord.getPositions().isEmpty());
+
+            BaseTradingRecord longRecord = BaseTradingRecord.builder().futuresContract(contract).build();
+            longRecord.operate(fill(contract, 0, ExecutionSide.BUY, 1, 100, List.of()));
+            assertThrows(IllegalArgumentException.class,
+                    () -> longRecord.operate(reduceOnlyBuy.toBuilder().index(1).build()));
+            assertNumEquals(1, longRecord.getCurrentPosition().amount());
+
+            TradeFill reduceOnlySell = fill(contract, 1, ExecutionSide.SELL, 1, 100, List.of()).toBuilder()
+                    .reduceOnly(true)
+                    .build();
+            longRecord.operate(reduceOnlySell);
+            assertTrue(longRecord.getOpenPositions().isEmpty());
+        }
+    }
+
+    @Test
     public void proportionalCashFlowAllocationAvoidsIntermediateOverflow() {
         NumFactory factory = DoubleNumFactory.getInstance();
 
