@@ -841,6 +841,53 @@ public class PositionTest {
                 .build();
     }
 
+    private static TradeFill futuresFill(FuturesContract contract, NumFactory fillFactory, int index, Instant time,
+            double price, double amount, ExecutionSide side) {
+        return TradeFill.builder()
+                .index(index)
+                .time(time)
+                .price(fillFactory.numOf(price))
+                .amount(fillFactory.numOf(amount))
+                .side(side)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+    }
+
+    @Test
+    public void futuresClosedPositionsRequireChronologicalTrades() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.one())
+                    .build();
+
+            Trade entryWithLaterIndex = Trade.fromFill(
+                    futuresFill(contract, numFactory, 5, T0.plusSeconds(1), 100, 1, ExecutionSide.BUY),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exitWithEarlierIndex = Trade.fromFill(
+                    futuresFill(contract, numFactory, 1, T0.plusSeconds(2), 110, 1, ExecutionSide.SELL),
+                    RecordedTradeCostModel.INSTANCE);
+            assertThrows(IllegalArgumentException.class, () -> new Position(entryWithLaterIndex, exitWithEarlierIndex,
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+
+            Trade entryWithLaterTime = Trade.fromFill(
+                    futuresFill(contract, numFactory, 1, T0.plusSeconds(5), 100, 1, ExecutionSide.BUY),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exitWithEarlierTime = Trade.fromFill(
+                    futuresFill(contract, numFactory, 5, T0.plusSeconds(1), 110, 1, ExecutionSide.SELL),
+                    RecordedTradeCostModel.INSTANCE);
+            assertThrows(IllegalArgumentException.class, () -> new Position(entryWithLaterTime, exitWithEarlierTime,
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+        }
+    }
+
     @Test
     public void positionsWithDifferentCashFlowsAreNotEqual() {
         for (NumFactory numFactory : factories()) {

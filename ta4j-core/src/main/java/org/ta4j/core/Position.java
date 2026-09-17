@@ -1029,6 +1029,15 @@ public class Position implements Serializable {
     }
 
     private static void validateClosedFuturesExposure(Trade entry, Trade exit) {
+        if (entry.getIndex() >= 0 && exit.getIndex() >= 0) {
+            if (entry.getIndex() > exit.getIndex()) {
+                throw new IllegalArgumentException("Entry execution cannot occur after exit execution");
+            }
+            if (entry.getTime() != null && exit.getTime() != null && entry.getTime().isAfter(exit.getTime())) {
+                throw new IllegalArgumentException("Entry timestamp cannot occur after exit timestamp");
+            }
+        }
+
         NumFactory numFactory = entry.getAmount().getNumFactory();
         Num entryAmount = executedFuturesAmount(entry, numFactory);
         Num exitAmount = executedFuturesAmount(exit, numFactory);

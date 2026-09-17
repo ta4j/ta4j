@@ -3327,7 +3327,7 @@ class BaseTradingRecordTest {
     }
 
     @Test
-    public void importedFuturesPositionRejectsExitBeforeEntryChronology() {
+    public void futuresPositionRejectsExitBeforeEntryChronology() {
         for (NumFactory numFactory : factories()) {
             FuturesContract contract = linearBtcPerpetual(numFactory);
             Trade entry = Trade.fromFill(
@@ -3336,9 +3336,9 @@ class BaseTradingRecordTest {
             Trade exit = Trade.fromFill(
                     fillAtTime(contract, 4, T0.plusSeconds(4), ExecutionSide.SELL, 1, 100, List.of()),
                     RecordedTradeCostModel.INSTANCE);
-            Position imported = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
 
-            assertThrows(IllegalArgumentException.class, () -> new BaseTradingRecord(imported));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
         }
     }
 

@@ -25,7 +25,7 @@ import org.ta4j.core.num.NumFactory;
 
 final class FuturesAnalysisTestSupport {
 
-    static final Instant T0 = Instant.parse("2025-01-01T00:00:00Z");
+    static final Instant T0 = Instant.parse("1960-01-01T00:00:00Z");
 
     private FuturesAnalysisTestSupport() {
     }
