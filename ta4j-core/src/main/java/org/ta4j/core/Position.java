@@ -1029,21 +1029,58 @@ public class Position implements Serializable {
     }
 
     private static void validateClosedFuturesExposure(Trade entry, Trade exit) {
-        if (entry.getIndex() >= 0 && exit.getIndex() >= 0) {
-            if (entry.getIndex() > exit.getIndex()) {
-                throw new IllegalArgumentException("Entry execution cannot occur after exit execution");
+        NumFactory numFactory = entry.getAmount().getNumFactory();
+        List<FuturesExposureEvent> events = new ArrayList<>();
+        addFuturesExposureEvents(events, entry, true, numFactory);
+        addFuturesExposureEvents(events, exit, false, numFactory);
+        events.sort(Comparator.comparingInt(FuturesExposureEvent::index)
+                .thenComparing(FuturesExposureEvent::time, Comparator.nullsFirst(Comparator.naturalOrder()))
+                .thenComparing(event -> event.opens() ? 0 : 1));
+
+        Num availableExposure = numFactory.zero();
+        java.time.Instant previousTime = null;
+        for (FuturesExposureEvent event : events) {
+            if (event.time() != null) {
+                if (previousTime != null && previousTime.isAfter(event.time())) {
+                    throw new IllegalArgumentException("Futures execution timestamps must be chronological");
+                }
+                previousTime = event.time();
             }
-            if (entry.getTime() != null && exit.getTime() != null && entry.getTime().isAfter(exit.getTime())) {
-                throw new IllegalArgumentException("Entry timestamp cannot occur after exit timestamp");
+            if (event.opens()) {
+                availableExposure = availableExposure.plus(event.amount());
+            } else {
+                if (event.amount().isGreaterThan(availableExposure)) {
+                    throw new IllegalArgumentException("Exit exposure cannot exceed entry exposure");
+                }
+                availableExposure = availableExposure.minus(event.amount());
             }
         }
 
-        NumFactory numFactory = entry.getAmount().getNumFactory();
         Num entryAmount = executedFuturesAmount(entry, numFactory);
         Num exitAmount = executedFuturesAmount(exit, numFactory);
         if (exitAmount.isGreaterThan(entryAmount)) {
             throw new IllegalArgumentException("Exit exposure cannot exceed entry exposure");
         }
+    }
+
+    private static void addFuturesExposureEvents(List<FuturesExposureEvent> events, Trade trade, boolean opens,
+            NumFactory numFactory) {
+        if (trade.getFills().isEmpty() && trade.getTime() == null) {
+            if (trade.getIndex() >= 0) {
+                events.add(new FuturesExposureEvent(trade.getIndex(), trade.getTime(),
+                        numFactory.numOf(trade.getAmount().getDelegate()), opens));
+            }
+            return;
+        }
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() >= 0) {
+                events.add(new FuturesExposureEvent(fill.index(), fill.time(),
+                        numFactory.numOf(fill.amount().getDelegate()), opens));
+            }
+        }
+    }
+
+    private record FuturesExposureEvent(int index, java.time.Instant time, Num amount, boolean opens) {
     }
 
     private static Num executedFuturesAmount(Trade trade, NumFactory numFactory) {

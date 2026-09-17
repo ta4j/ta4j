@@ -1,4 +1,5 @@
 ## Unreleased
+- **Futures review round 69**: native futures positions reject exits that overrun cumulative fill exposure, initial return samples require activity on the retained head, and invested intervals follow intermittent fill-level exposure.
 - **Futures review round 65**: futures profit rejects nonrepresentable final products, inverse gross returns value executed exit fills separately from residual marks, and process-capability decimal fallback survives unrepresentable intermediate notionals.
 - **Futures review round 66**: funding and margin products reject nonrepresentable final arithmetic, futures analysis rejects lossy P&L conversion, projection-ledger reads are synchronized with trading-record writes, and inverse quantity/leverage and fee products reject nonrepresentable arithmetic.
 - **Futures review round 67**: reduce-only futures fills are rejected when they would open or increase exposure and remain valid for opposite-side position reduction.

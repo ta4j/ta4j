@@ -79,27 +79,97 @@ final class FuturesPerformanceSupport {
      */
     static boolean hasPreWindowActivity(TradingRecord record, int seriesBegin, boolean markExposure) {
         for (Position position : record.getPositions()) {
-            if (hasPreWindowExecution(position, seriesBegin)
-                    && (markExposure || !position.getRealizedProfit(seriesBegin - 1).isZero())) {
+            if (hasPreWindowActivity(position, seriesBegin, markExposure)) {
                 return true;
             }
         }
         List<Position> openPositions = record.getOpenPositions();
         if (!openPositions.isEmpty()) {
             for (Position position : openPositions) {
-                if (hasPreWindowExecution(position, seriesBegin)
-                        && (markExposure || !position.getRealizedProfit(seriesBegin - 1).isZero())) {
+                if (hasPreWindowActivity(position, seriesBegin, markExposure)) {
                     return true;
                 }
             }
         } else {
             Position current = record.getCurrentPosition();
-            if (hasPreWindowExecution(current, seriesBegin)
-                    && (markExposure || !current.getRealizedProfit(seriesBegin - 1).isZero())) {
+            if (hasPreWindowActivity(current, seriesBegin, markExposure)) {
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * Returns whether the record has an execution or cash flow at the retained head
+     * of the analysed series.
+     *
+     * @param record trading record
+     * @param index  retained series head
+     * @return {@code true} when activity occurs at {@code index}
+     * @since 0.25.1
+     */
+    static boolean hasActivityAtIndex(TradingRecord record, int index) {
+        for (Position position : record.getPositions()) {
+            if (hasActivityAtIndex(position, index)) {
+                return true;
+            }
+        }
+        List<Position> openPositions = record.getOpenPositions();
+        if (!openPositions.isEmpty()) {
+            for (Position position : openPositions) {
+                if (hasActivityAtIndex(position, index)) {
+                    return true;
+                }
+            }
+        } else if (hasActivityAtIndex(record.getCurrentPosition(), index)) {
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean hasPreWindowActivity(Position position, int seriesBegin, boolean markExposure) {
+        if (position == null) {
+            return false;
+        }
+        return (hasPreWindowExecution(position, seriesBegin)
+                && (markExposure || !position.getRealizedProfit(seriesBegin - 1).isZero()))
+                || hasPreWindowCashFlow(position, seriesBegin);
+    }
+
+    private static boolean hasActivityAtIndex(Position position, int index) {
+        if (position == null) {
+            return false;
+        }
+        if (hasActivityAtIndex(position.getEntry(), index) || hasActivityAtIndex(position.getExit(), index)) {
+            return true;
+        }
+        for (FuturesCashFlow cashFlow : position.getCashFlows()) {
+            if (cashFlow.index() == index) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasPreWindowCashFlow(Position position, int seriesBegin) {
+        for (FuturesCashFlow cashFlow : position.getCashFlows()) {
+            if (cashFlow.index() >= 0 && cashFlow.index() < seriesBegin) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean hasActivityAtIndex(Trade trade, int index) {
+        if (trade == null) {
+            return false;
+        }
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() == index) {
+                return true;
+            }
+        }
+        return trade.getFills().isEmpty() && trade.getTime() == null && trade.getIndex() == index;
     }
 
     private static boolean hasPreWindowExecution(Position position, int seriesBegin) {

@@ -139,6 +139,29 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
     }
 
     @Test
+    public void marksOnlyNonzeroExposureForAggregateFuturesPosition() {
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 110, 105, 100, 95, 120, 125);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        Trade entry = Trade.fromFills(Trade.TradeType.BUY,
+                List.of(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1, 100, List.of()),
+                        FuturesAnalysisTestSupport.fill(contract, 5, ExecutionSide.BUY, 1, 120, List.of())),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1, 110, List.of()),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        TradingRecord tradingRecord = new AggregatePositionTradingRecord(position);
+
+        InvestedInterval indicator = new InvestedInterval(series, tradingRecord, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertThat(indicator.getValue(1)).isTrue();
+        assertThat(indicator.getValue(2)).isFalse();
+        assertThat(indicator.getValue(3)).isFalse();
+        assertThat(indicator.getValue(4)).isFalse();
+        assertThat(indicator.getValue(5)).isFalse();
+        assertThat(indicator.getValue(6)).isTrue();
+    }
+
+    @Test
     public void marksPartiallyClosedSpotPositionThroughFinalBar() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 99, 120).build();
         Trade entry = Trade

@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.analysis;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import org.ta4j.core.BarSeries;
@@ -84,6 +86,10 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
             return;
         }
         int finalIndex = series.getEndIndex();
+        if (FuturesPerformanceSupport.isFutures(position)) {
+            markFuturesInvestedIntervals(position, invested, openPositionHandling, finalIndex, series.getBeginIndex());
+            return;
+        }
         int entryIndex = firstExecutedFillIndex(position.getEntry(), finalIndex);
         if (entryIndex < 0) {
             return;
@@ -105,6 +111,65 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
         for (int i = start; i <= end; i++) {
             invested[i] = true;
         }
+    }
+
+    private static void markFuturesInvestedIntervals(Position position, boolean[] invested,
+            OpenPositionHandling openPositionHandling, int finalIndex, int seriesBegin) {
+        if (openPositionHandling != OpenPositionHandling.MARK_TO_MARKET && !position.isClosed()) {
+            return;
+        }
+        List<TradeFill> entryFills = executedFills(position.getEntry(), finalIndex);
+        if (entryFills.isEmpty()) {
+            return;
+        }
+        List<TradeFill> exitFills = executedFills(position.getExit(), finalIndex);
+        int lastIndex = finalIndex;
+        if (openPositionHandling != OpenPositionHandling.MARK_TO_MARKET) {
+            if (exitFills.isEmpty()) {
+                return;
+            }
+            lastIndex = exitFills.get(exitFills.size() - 1).index();
+        }
+
+        int start = Math.max(seriesBegin + 1, 1);
+        int end = Math.min(lastIndex, invested.length - 1);
+        if (start > end) {
+            return;
+        }
+
+        NumFactory numFactory = position.getEntry().getAmount().getNumFactory();
+        Num exposure = numFactory.zero();
+        int entryCursor = 0;
+        int exitCursor = 0;
+        for (int intervalIndex = start; intervalIndex <= end; intervalIndex++) {
+            int barIndex = intervalIndex - 1;
+            while (entryCursor < entryFills.size() && entryFills.get(entryCursor).index() <= barIndex) {
+                TradeFill fill = entryFills.get(entryCursor++);
+                exposure = exposure.plus(numFactory.numOf(fill.amount().getDelegate()));
+            }
+            while (exitCursor < exitFills.size() && exitFills.get(exitCursor).index() <= barIndex) {
+                TradeFill fill = exitFills.get(exitCursor++);
+                exposure = exposure.minus(numFactory.numOf(fill.amount().getDelegate()));
+            }
+            if (exposure.isPositive()) {
+                invested[intervalIndex] = true;
+            }
+        }
+    }
+
+    private static List<TradeFill> executedFills(Trade trade, int finalIndex) {
+        List<TradeFill> fills = new ArrayList<>();
+        if (trade == null) {
+            return fills;
+        }
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() >= 0 && fill.index() <= finalIndex) {
+                fills.add(fill);
+            }
+        }
+        fills.sort(Comparator.comparingInt(TradeFill::index)
+                .thenComparing(TradeFill::time, Comparator.nullsFirst(Comparator.naturalOrder())));
+        return fills;
     }
 
     private static boolean hasResidualExposure(Position position, int finalIndex) {

@@ -3353,9 +3353,8 @@ class BaseTradingRecordTest {
             Trade exit = Trade.fromFill(
                     fillAtTime(contract, 1, T0.plusSeconds(1), ExecutionSide.SELL, 2, 100, List.of()),
                     RecordedTradeCostModel.INSTANCE);
-            Position imported = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
-
-            assertThrows(IllegalArgumentException.class, () -> new BaseTradingRecord(imported));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
         }
     }
 

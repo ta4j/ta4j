@@ -885,6 +885,15 @@ public class PositionTest {
                     RecordedTradeCostModel.INSTANCE);
             assertThrows(IllegalArgumentException.class, () -> new Position(entryWithLaterTime, exitWithEarlierTime,
                     RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+
+            Trade entryWithLaterFill = Trade.fromFills(TradeType.BUY,
+                    List.of(futuresFill(contract, numFactory, 1, 100, 1, ExecutionSide.BUY),
+                            futuresFill(contract, numFactory, 10, 100, 1, ExecutionSide.BUY)),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exitBeforeLaterEntry = Trade.fromFill(
+                    futuresFill(contract, numFactory, 2, 110, 2, ExecutionSide.SELL), RecordedTradeCostModel.INSTANCE);
+            assertThrows(IllegalArgumentException.class, () -> new Position(entryWithLaterFill, exitBeforeLaterEntry,
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
         }
     }
 
