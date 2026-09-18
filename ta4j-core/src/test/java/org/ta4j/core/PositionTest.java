@@ -1437,4 +1437,85 @@ public class PositionTest {
             }
         };
     }
+
+    private static Trade futuresTradeWithFills(FuturesContract contract, TradeType type, List<TradeFill> fills) {
+        TradeFill firstFill = fills.getFirst();
+        Num amount = firstFill.price().getNumFactory().zero();
+        for (TradeFill fill : fills) {
+            amount = amount.plus(fill.amount());
+        }
+        Num totalAmount = amount;
+        return new Trade() {
+            @Override
+            public TradeType getType() {
+                return type;
+            }
+
+            @Override
+            public int getIndex() {
+                return firstFill.index();
+            }
+
+            @Override
+            public Num getPricePerAsset() {
+                return firstFill.price();
+            }
+
+            @Override
+            public Num getNetPrice() {
+                return firstFill.price();
+            }
+
+            @Override
+            public Num getAmount() {
+                return totalAmount;
+            }
+
+            @Override
+            public Num getCost() {
+                return firstFill.price().getNumFactory().zero();
+            }
+
+            @Override
+            public CostModel getCostModel() {
+                return RecordedTradeCostModel.INSTANCE;
+            }
+
+            @Override
+            public FuturesContract getFuturesContract() {
+                return contract;
+            }
+
+            @Override
+            public List<TradeFill> getFills() {
+                return fills;
+            }
+        };
+    }
+
+    @Test
+    public void futuresExposureEventsWithMissingTimesUseConsistentOrdering() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.one())
+                    .build();
+            Trade entry = futuresTradeWithFills(contract, TradeType.BUY,
+                    List.of(futuresFill(contract, numFactory, 0, T0.plusSeconds(3), 100, 1, ExecutionSide.BUY),
+                            new TradeFill(0, null, numFactory.numOf(100), numFactory.one(), ExecutionSide.BUY)));
+            Trade exit = Trade.fromFill(
+                    futuresFill(contract, numFactory, 0, T0.plusSeconds(2), 101, 1, ExecutionSide.SELL),
+                    RecordedTradeCostModel.INSTANCE);
+
+            Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            assertTrue(position.isClosed());
+        }
+    }
 }

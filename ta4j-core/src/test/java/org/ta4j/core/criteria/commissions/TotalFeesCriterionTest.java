@@ -277,4 +277,20 @@ public class TotalFeesCriterionTest extends AbstractCriterionTest {
             return delegate.getEndIndex();
         }
     }
+
+    @Test
+    public void futuresRecordCompensatesPerFillAndPositionFeeTotals() {
+        FuturesContract contract = linearBtcPerpetual();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 100, 100, 100).build();
+        BaseTradingRecord record = futuresRecord(contract);
+        double largeFee = Math.scalb(1d, 53);
+
+        record.operate(futuresFill(contract, 0, ExecutionSide.BUY, 1, 100, largeFee));
+        record.operate(futuresFill(contract, 1, ExecutionSide.BUY, 1, 100, 1));
+        record.operate(futuresFill(contract, 2, ExecutionSide.SELL, 2, 100, 1));
+        record.operate(futuresFill(contract, 3, ExecutionSide.BUY, 1, 100, 1));
+
+        Num expected = numFactory.numOf(largeFee).plus(numFactory.numOf(3));
+        assertNumEquals(expected, getCriterion().calculate(series, record));
+    }
 }

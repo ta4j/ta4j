@@ -529,20 +529,24 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     private static RecordConfig futuresPositionsConfig(FuturesContract contract, List<Position> positions) {
-        Trade entry = positions.getFirst().getEntry();
-        if (entry == null) {
-            throw new IllegalArgumentException("Position entry must not be null");
-        }
-        CostModel holdingCostModel = holdingCostModelOf(positions);
-        CostModel transactionCostModel = transactionCostModelOf(positions);
+        List<Position> chronologicalPositions = positions.stream().sorted(Comparator.comparingInt(position -> {
+            Trade positionEntry = position.getEntry();
+            if (positionEntry == null) {
+                throw new IllegalArgumentException("Position entry must not be null");
+            }
+            return positionEntry.getIndex();
+        })).toList();
+        Trade entry = chronologicalPositions.getFirst().getEntry();
+        CostModel holdingCostModel = holdingCostModelOf(chronologicalPositions);
+        CostModel transactionCostModel = transactionCostModelOf(chronologicalPositions);
         BaseTradingRecord initialized = new BaseTradingRecord(recordConfig(entry.getType(), ExecutionMatchPolicy.FIFO,
                 transactionCostModel, holdingCostModel, null, null, contract, null, null, List.of()));
         Num totalFees = null;
-        for (Position position : positions) {
+        for (Position position : chronologicalPositions) {
             initialized.adoptPosition(position);
             totalFees = accumulateRecordedFees(totalFees, position);
         }
-        initialized.aggregateProjectedCashFlows(positions, Integer.MAX_VALUE);
+        initialized.aggregateProjectedCashFlows(chronologicalPositions, Integer.MAX_VALUE);
         initialized.totalFees = totalFees == null ? initialized.defaultNumFactory().zero() : totalFees;
         return initialized.toRecordConfig();
     }

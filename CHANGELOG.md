@@ -1,4 +1,5 @@
 ## Unreleased
+- **Futures review round 80**: futures exposure ordering is a total order when timestamps are absent, imported positions adopt FIFO lots by entry chronology, recorded fee totals retain small components through nested aggregation, and proportional fee scaling rejects non-finite representable results.
 - **Futures review round 79**: merged position lots reject non-finite aggregate quantities and fees, fill-fee totals use compensated summation, proportional fee projections avoid intermediate overflow, cross-factory futures returns reject lossy values, and retained return heads require activity before reporting an initial sample.
 - **Futures review round 78**: inverse futures profit uses cancellation-resistant relative price changes so representable close-price P&L is retained.
 - **Futures review round 77**: range-aware weighted basis, settlement-fee summation, overflow-safe proportional fee slicing, and initial-capital-aware drawdown baselines.

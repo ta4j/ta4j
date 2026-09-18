@@ -3630,4 +3630,25 @@ class BaseTradingRecordTest {
         assertEquals(1, record.getTrades().size());
         assertEquals(1, record.getOpenPositions().size());
     }
+
+    @Test
+    public void importedOpenPositionsAreAdoptedInEntryOrder() {
+        FuturesContract contract = linearBtcPerpetual(numFactory);
+        Position later = openPosition(contract, 10, 1, 100, List.of());
+        Position earlier = openPosition(contract, 5, 1, 100, List.of());
+        BaseTradingRecord record = new BaseTradingRecord(List.of(later, earlier));
+
+        record.operate(fill(contract, 11, ExecutionSide.SELL, 1, 110, List.of()));
+
+        assertEquals(1, record.getOpenPositions().size());
+        assertEquals(10, record.getOpenPositions().getFirst().getEntry().getIndex());
+        assertEquals(5, record.getPositions().getFirst().getEntry().getIndex());
+    }
+
+    @Test
+    public void proportionalRejectsNonFiniteResult() {
+        assertThrows(IllegalArgumentException.class,
+                () -> FuturesPositionAccounting.proportional(numFactory.numOf(Double.MAX_VALUE),
+                        numFactory.numOf(Double.MAX_VALUE), numFactory.one()));
+    }
 }

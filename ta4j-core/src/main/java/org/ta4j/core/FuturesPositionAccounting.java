@@ -515,6 +515,9 @@ final class FuturesPositionAccounting {
      * @since 0.25.1
      */
     static Num proportional(Num value, Num portion, Num total) {
+        if (value.isNaN()) {
+            return value;
+        }
         Num product = value.multipliedBy(portion);
         if (Num.isFinite(product)) {
             Num result = product.dividedBy(total);
@@ -526,7 +529,11 @@ final class FuturesPositionAccounting {
         if (Num.isFinite(result) && (!result.isZero() || value.isZero() || portion.isZero())) {
             return result;
         }
-        return portion.dividedBy(total).multipliedBy(value);
+        Num fallback = portion.dividedBy(total).multipliedBy(value);
+        if (!Num.isFinite(fallback) || (fallback.isZero() && !value.isZero() && !portion.isZero())) {
+            throw new IllegalArgumentException("proportional result must be finite and representable");
+        }
+        return fallback;
     }
 
     private static void sumFillFees(SettlementAmountSupport.CompensatedSum total, Trade trade, int finalIndex) {

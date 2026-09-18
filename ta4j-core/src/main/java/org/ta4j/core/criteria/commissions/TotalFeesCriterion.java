@@ -93,22 +93,22 @@ public class TotalFeesCriterion extends AbstractAnalysisCriterion {
     }
 
     private Num executedFees(NumFactory factory, TradingRecord tradingRecord, int openFinalIndex) {
-        Num total = factory.zero();
+        CompensatedSum total = new CompensatedSum(factory);
         for (Position position : tradingRecord.getPositions()) {
-            total = total.plus(executedFees(factory, position, Integer.MAX_VALUE));
+            addExecutedFees(total, position, Integer.MAX_VALUE);
         }
         List<Position> openPositions = tradingRecord.getOpenPositions();
         if (openPositions.isEmpty()) {
             Position current = tradingRecord.getCurrentPosition();
             if (current != null && current.isOpened()) {
-                return total.plus(executedFees(factory, current, openFinalIndex));
+                addExecutedFees(total, current, openFinalIndex);
             }
-            return total;
+            return total.total();
         }
         for (Position position : openPositions) {
-            total = total.plus(executedFees(factory, position, openFinalIndex));
+            addExecutedFees(total, position, openFinalIndex);
         }
-        return total;
+        return total.total();
     }
 
     private int lastExecutedIndex(TradingRecord tradingRecord) {
@@ -124,26 +124,72 @@ public class TotalFeesCriterion extends AbstractAnalysisCriterion {
     }
 
     private Num executedFees(NumFactory factory, Position position, int finalIndex) {
-        Num total = factory.zero();
+        CompensatedSum total = new CompensatedSum(factory);
+        addExecutedFees(total, position, finalIndex);
+        return total.total();
+    }
+
+    private void addExecutedFees(CompensatedSum total, Position position, int finalIndex) {
         Trade entry = position.getEntry();
         if (entry != null && entry.getIndex() <= finalIndex) {
-            total = total.plus(fee(factory, entry, finalIndex));
+            addFee(total, entry, finalIndex);
         }
         Trade exit = position.getExit();
         if (exit != null && exit.getIndex() <= finalIndex) {
-            total = total.plus(fee(factory, exit, finalIndex));
+            addFee(total, exit, finalIndex);
         }
-        return total;
     }
 
-    private Num fee(NumFactory factory, Trade trade, int finalIndex) {
-        Num total = factory.zero();
+    private void addFee(CompensatedSum total, Trade trade, int finalIndex) {
         for (TradeFill fill : Trade.executionFillsOf(trade)) {
             if (fill.index() >= 0 && fill.index() <= finalIndex && fill.fee() != null && !fill.fee().isNaN()) {
-                total = total.plus(factory.numOf(fill.fee().getDelegate()));
+                total.add(fill.fee());
             }
         }
-        return total;
+    }
+
+    private static final class CompensatedSum {
+
+        private final NumFactory factory;
+        private Num sum;
+        private Num compensation;
+
+        private CompensatedSum(NumFactory factory) {
+            this.factory = factory;
+            this.sum = factory.zero();
+            this.compensation = factory.zero();
+        }
+
+        private void add(Num value) {
+            Num normalized = factory.numOf(value.getDelegate());
+            if (!Num.isFinite(normalized) || (!value.isZero() && normalized.isZero())) {
+                throw new IllegalArgumentException("Fee must be finite and representable in series number factory");
+            }
+            Num nextSum = sum.plus(normalized);
+            if (!Num.isFinite(nextSum)) {
+                throw new IllegalArgumentException("Fee total must be finite in series number factory");
+            }
+            Num correction;
+            if (sum.abs().isGreaterThanOrEqual(normalized.abs())) {
+                correction = sum.minus(nextSum).plus(normalized);
+            } else {
+                correction = normalized.minus(nextSum).plus(sum);
+            }
+            Num nextCompensation = compensation.plus(correction);
+            if (!Num.isFinite(nextCompensation)) {
+                throw new IllegalArgumentException("Fee total must be finite in series number factory");
+            }
+            sum = nextSum;
+            compensation = nextCompensation;
+        }
+
+        private Num total() {
+            Num total = sum.plus(compensation);
+            if (!Num.isFinite(total)) {
+                throw new IllegalArgumentException("Fee total must be finite in series number factory");
+            }
+            return total;
+        }
     }
 
     private Num toSeriesNum(NumFactory factory, Num value) {

@@ -1058,7 +1058,8 @@ public class Position implements Serializable {
         List<FuturesExposureEvent> events = new ArrayList<>();
         addFuturesExposureEvents(events, entry, true, numFactory);
         addFuturesExposureEvents(events, exit, false, numFactory);
-        // At one index, timestamps order known fills; otherwise entries precede exits.
+        // Missing opening times sort first and missing closing times sort last around
+        // known times.
         events.sort(Comparator.comparingInt(FuturesExposureEvent::index)
                 .thenComparing(Position::compareFuturesExposureEvents));
 
@@ -1089,6 +1090,16 @@ public class Position implements Serializable {
     }
 
     private static int compareFuturesExposureEvents(FuturesExposureEvent first, FuturesExposureEvent second) {
+        int indexComparison = Integer.compare(first.index(), second.index());
+        if (indexComparison != 0) {
+            return indexComparison;
+        }
+        int firstTimeOrder = first.time() == null ? (first.opens() ? -1 : 1) : 0;
+        int secondTimeOrder = second.time() == null ? (second.opens() ? -1 : 1) : 0;
+        int missingTimeComparison = Integer.compare(firstTimeOrder, secondTimeOrder);
+        if (missingTimeComparison != 0) {
+            return missingTimeComparison;
+        }
         if (first.time() != null && second.time() != null) {
             int timeComparison = first.time().compareTo(second.time());
             if (timeComparison != 0) {
