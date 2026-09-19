@@ -3,11 +3,13 @@
  */
 package org.ta4j.core.backtest;
 
+import java.time.Instant;
 import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
@@ -260,6 +262,7 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, Num amount, int startIndex, int finishIndex) {
+        validatePositiveAmount(amount);
         TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, startIndex, finishIndex);
         return run(strategy, tradingRecord, amount, startIndex, finishIndex);
     }
@@ -382,7 +385,7 @@ public class BarSeriesManager {
      */
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, Num amount, int startIndex,
             int finishIndex) {
-        Objects.requireNonNull(amount, "amount");
+        validatePositiveAmount(amount);
         return run(strategy, tradingRecord, startIndex, finishIndex, index -> amount);
     }
 
@@ -571,11 +574,16 @@ public class BarSeriesManager {
         if (runBeginIndex <= runEndIndex) {
             for (int i = runBeginIndex;; i++) {
                 lastProcessedIndex = i;
+                advanceToBarBegin(tradingRecord, i);
                 tradeExecutionModel.onBar(i, tradingRecord, barSeries);
                 // For each bar between both indexes...
                 if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradeExecutionModel.execute(i, tradingRecord, barSeries, amountResolver.apply(i));
+                    Num amount = amountResolver.apply(i);
+                    if (amount != null) {
+                        tradeExecutionModel.execute(i, tradingRecord, barSeries, amount);
+                    }
                 }
+                advanceToBarEnd(tradingRecord, i);
                 if (i == runEndIndex) {
                     break;
                 }
@@ -589,11 +597,23 @@ public class BarSeriesManager {
             int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
             for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
                 lastProcessedIndex = i;
+                advanceToBarBegin(tradingRecord, i);
                 tradeExecutionModel.onBar(i, tradingRecord, barSeries);
+                if (tradingRecord.isClosed()) {
+                    break;
+                }
+                boolean operated = false;
                 // For each bar after the end index of this run...
                 // --> Trying to close the last position
                 if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradeExecutionModel.execute(i, tradingRecord, barSeries, amountResolver.apply(i));
+                    Num amount = amountResolver.apply(i);
+                    if (amount != null) {
+                        tradeExecutionModel.execute(i, tradingRecord, barSeries, amount);
+                        operated = true;
+                    }
+                }
+                advanceToBarEnd(tradingRecord, i);
+                if (operated && tradingRecord.isClosed()) {
                     break;
                 }
             }
@@ -603,19 +623,81 @@ public class BarSeriesManager {
         return tradingRecord;
     }
 
+    /**
+     * Advances the record's event horizon to the begin of a processed bar.
+     *
+     * @param tradingRecord record being run
+     * @param index         processed bar index
+     */
+    private void advanceToBarBegin(TradingRecord tradingRecord, int index) {
+        advanceToBarBoundary(tradingRecord, index, false);
+    }
+
+    /**
+     * Advances the record's event horizon to the end of a processed bar.
+     *
+     * @param tradingRecord record being run
+     * @param index         processed bar index
+     */
+    private void advanceToBarEnd(TradingRecord tradingRecord, int index) {
+        advanceToBarBoundary(tradingRecord, index, true);
+    }
+
+    /**
+     * Advances the record's event horizon to a bar boundary.
+     *
+     * <p>
+     * Bars outside the raw data range and bars without timestamps are skipped, so a
+     * run over a partially timestamped series stays runnable. Accessible extension
+     * bars whose raw data reach beyond the logical end index still advance the
+     * horizon, so a closeout executed on them is timestamp-checked against the bars
+     * actually available. The advance is a no-op for spot records and whenever the
+     * boundary is already behind the horizon, which keeps next-open fills from
+     * moving the horizon backwards.
+     * </p>
+     *
+     * @param tradingRecord record being run
+     * @param index         processed bar index
+     * @param barEnd        {@code true} for the bar end, {@code false} for its
+     *                      begin
+     */
+    private void advanceToBarBoundary(TradingRecord tradingRecord, int index, boolean barEnd) {
+        if (index < barSeries.getBeginIndex()) {
+            return;
+        }
+        if (index > barSeries.getEndIndex()
+                && index - barSeries.getRemovedBarsCount() >= barSeries.getBarData().size()) {
+            return;
+        }
+        Bar bar = barSeries.getBar(index);
+        Instant time = barEnd ? bar.getEndTime() : bar.getBeginTime();
+        if (time != null) {
+            tradingRecord.advanceTo(time);
+        }
+    }
+
     private Num amountForIndex(PositionSizer positionSizer, int index, Strategy strategy, TradingRecord tradingRecord,
             TradeType tradeType) {
         Num amount = positionSizer.amount(positionSizerContext(index, strategy, tradingRecord, tradeType));
         validateAmount(amount);
+        if (amount.isZero()) {
+            if (log.isTraceEnabled()) {
+                log.trace("Skipping entry at index {} because the position sizer returned zero", index);
+            }
+            return null;
+        }
         return amount;
     }
 
     private static void validateAmount(Num amount) {
-        if (amount == null || amount.isNaN()) {
-            throw new IllegalArgumentException("Amount must be positive and finite");
+        if (amount == null || !Num.isFinite(amount) || amount.isNegative()) {
+            throw new IllegalArgumentException("Amount must be non-negative and finite");
         }
+    }
 
-        if (amount.isNegativeOrZero() || !Double.isFinite(amount.doubleValue())) {
+    private static void validatePositiveAmount(Num amount) {
+        Objects.requireNonNull(amount, "amount");
+        if (!Num.isFinite(amount) || amount.isNegativeOrZero()) {
             throw new IllegalArgumentException("Amount must be positive and finite");
         }
     }
@@ -631,8 +713,8 @@ public class BarSeriesManager {
     private PositionSizer.Context positionSizerContext(int index, Strategy strategy, TradingRecord tradingRecord,
             TradeType tradeType) {
         ExecutionTarget target = estimateEntryTarget(index, tradeType);
-        return new PositionSizer.Context(index, target.index(), target.price(), strategy, barSeries, tradeType,
-                tradingRecord, transactionCostModel, holdingCostModel);
+        return new PositionSizer.Context(index, target.index(), target.price(), target.time(), strategy, barSeries,
+                tradeType, tradingRecord, tradingRecord.getTransactionCostModel(), tradingRecord.getHoldingCostModel());
     }
 
     private ExecutionTarget estimateEntryTarget(int index, TradeType tradeType) {
@@ -655,7 +737,8 @@ public class BarSeriesManager {
         } else if (fallbackIndex > safeEnd) {
             fallbackIndex = safeEnd;
         }
-        return new ExecutionTarget(fallbackIndex, barSeries.getBar(fallbackIndex).getClosePrice());
+        Bar bar = barSeries.getBar(fallbackIndex);
+        return new ExecutionTarget(fallbackIndex, bar.getClosePrice(), bar.getEndTime());
     }
 
     private static BarSeries snapshotSeries(BarSeries barSeries) {
@@ -663,6 +746,7 @@ public class BarSeriesManager {
         return new BaseBarSeriesBuilder().withName(series.getName())
                 .withNumFactory(series.numFactory())
                 .withBars(series.getBarData())
+                .withBeginIndex(Math.max(0, series.getBeginIndex()))
                 .withMaxBarCount(series.getMaximumBarCount())
                 .build();
     }

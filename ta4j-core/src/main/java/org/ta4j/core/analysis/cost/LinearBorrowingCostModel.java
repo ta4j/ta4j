@@ -100,7 +100,9 @@ public class LinearBorrowingCostModel implements CostModel {
     }
 
     /**
-     * @return the borrowing cost of the {@code position}
+     * @return the borrowing cost of the {@code position} as of
+     *         {@code currentIndex}; closed positions count periods only up to the
+     *         observation index
      */
     @Override
     public Num calculate(Position position, int currentIndex) {
@@ -109,11 +111,14 @@ public class LinearBorrowingCostModel implements CostModel {
         Num borrowingCost = position.getEntry().getNetPrice().getNumFactory().zero();
 
         if (entryTrade != null && entryTrade.getAmount() != null && appliesTo(entryTrade.getType())) {
-            int tradingPeriods = 0;
+            int tradingPeriods;
             if (position.isClosed()) {
-                tradingPeriods = exitTrade.getIndex() - entryTrade.getIndex();
-            } else if (position.isOpened()) {
+                tradingPeriods = Math.min(exitTrade.getIndex(), currentIndex) - entryTrade.getIndex();
+            } else {
                 tradingPeriods = currentIndex - entryTrade.getIndex();
+            }
+            if (tradingPeriods < 0) {
+                tradingPeriods = 0;
             }
             borrowingCost = getHoldingCostForPeriods(tradingPeriods, position.getEntry().getValue());
         }

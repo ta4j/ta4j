@@ -185,7 +185,8 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
     private Num calculateNetReturn(BarSeries series, Position position) {
         CashFlow cashFlow = new CashFlow(series, position, equityCurveMode);
         Num one = series.numFactory().one();
-        return cashFlow.getValue(position.getExit().getIndex()).minus(one);
+        int finalIndex = Math.min(lastExecutedIndex(position.getExit()), series.getEndIndex());
+        return cashFlow.getValue(finalIndex).minus(one);
     }
 
     private Num calculateNetReturn(BarSeries series, TradingRecord tradingRecord) {
@@ -207,5 +208,13 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
         }
         Num rawRatio = netReturn.dividedBy(maxDrawdown);
         return returnRepresentation.toRepresentationFromRateOfReturn(rawRatio);
+    }
+
+    private static int lastExecutedIndex(org.ta4j.core.Trade trade) {
+        int lastIndex = trade.getIndex();
+        for (org.ta4j.core.TradeFill fill : org.ta4j.core.Trade.executionFillsOf(trade)) {
+            lastIndex = Math.max(lastIndex, fill.index());
+        }
+        return lastIndex;
     }
 }
