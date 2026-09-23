@@ -17,10 +17,10 @@ import org.ta4j.core.num.Num;
  * signal-to-noise ratio of an indicator, which can be beneficial for various
  * trading strategies and analysis.
  * <p>
- * The filter initializes at the first index with a finite measurement and usable
- * process and measurement noise. Earlier unavailable inputs do not contribute a
- * zero-valued observation. After initialization, unavailable inputs preserve the
- * last usable state for later recovery.
+ * The filter initializes at the first index with a finite measurement and
+ * usable process and measurement noise. Earlier unavailable inputs do not
+ * contribute a zero-valued observation. After initialization, unavailable
+ * inputs preserve the last usable state for later recovery.
  *
  * @since 0.17
  */

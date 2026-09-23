@@ -176,11 +176,11 @@ public class KinematicKalmanForecastStateIndicatorTest
     public void unavailableNoiseAtRetainedHeadInitializesFromFirstUsableObservation() {
         BarSeries series = series(1, 2, 3, 4, 100, 110);
         series.setMaximumBarCount(4);
-        KalmanNoiseIndicator processNoise = new KalmanNoiseIndicator(new FixedIndicator<>(series,
-                numOf(PROCESS_NOISE), numOf(PROCESS_NOISE), NaN.NaN, numFactory.zero(), numOf(PROCESS_NOISE),
-                numOf(PROCESS_NOISE)));
+        KalmanNoiseIndicator processNoise = new KalmanNoiseIndicator(new FixedIndicator<>(series, numOf(PROCESS_NOISE),
+                numOf(PROCESS_NOISE), NaN.NaN, numFactory.zero(), numOf(PROCESS_NOISE), numOf(PROCESS_NOISE)));
         KinematicKalmanForecastStateIndicator subject = new KinematicKalmanForecastStateIndicator(
-                new ClosePriceIndicator(series), processNoise, KalmanNoiseIndicator.constant(series, MEASUREMENT_NOISE));
+                new ClosePriceIndicator(series), processNoise,
+                KalmanNoiseIndicator.constant(series, MEASUREMENT_NOISE));
         subject.getValue(series.getEndIndex());
 
         assertFalse(subject.getValue(series.getBeginIndex()).isStable());

@@ -160,7 +160,9 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void unavailableNoisePrefixMatchesValidHistoryForBothNoiseInputs() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 100, 101, 102).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 20, 100, 101, 102)
+                .build();
         BarSeries comparisonSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 101, 102)
                 .build();
@@ -170,8 +172,10 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
             Num noise = numOf(delayedProcessNoise ? 0.01 : 1);
             KalmanNoiseIndicator delayed = new KalmanNoiseIndicator(
                     new FixedIndicator<>(series, NaN.NaN, numFactory.zero(), noise, noise, noise));
-            KalmanNoiseIndicator processNoise = delayedProcessNoise ? delayed : KalmanNoiseIndicator.constant(series, 0.01);
-            KalmanNoiseIndicator measurementNoise = delayedProcessNoise ? KalmanNoiseIndicator.constant(series, 1) : delayed;
+            KalmanNoiseIndicator processNoise = delayedProcessNoise ? delayed
+                    : KalmanNoiseIndicator.constant(series, 0.01);
+            KalmanNoiseIndicator measurementNoise = delayedProcessNoise ? KalmanNoiseIndicator.constant(series, 1)
+                    : delayed;
             KalmanFilterIndicator subject = new KalmanFilterIndicator(new ClosePriceIndicator(series), processNoise,
                     measurementNoise);
 
