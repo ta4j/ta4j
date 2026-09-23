@@ -68,6 +68,13 @@ public class MonteCarloPriceForecastIndicatorTest
                 List.of(0.0, 0.5, 1.0));
 
         assertEquivalent(expected, prediction);
+        // Independent of Forecast.ofSamples: the two paths terminate at exactly
+        // price * e^-1 and price * e^1, so the extremes and mean follow directly.
+        Num lowerPrice = price.multipliedBy(numOf(-1).exp());
+        Num upperPrice = price.multipliedBy(numOf(1).exp());
+        assertNumEquals(lowerPrice, prediction.quantile(0.0));
+        assertNumEquals(upperPrice, prediction.quantile(1.0));
+        assertNumEquals(lowerPrice.plus(upperPrice).dividedBy(numOf(2)), prediction.mean());
     }
 
     @Test
