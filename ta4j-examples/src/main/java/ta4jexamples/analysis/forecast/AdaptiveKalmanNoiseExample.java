@@ -100,8 +100,7 @@ public final class AdaptiveKalmanNoiseExample {
 
     static List<Model> createModels(BarSeries series, int atrWindow, int volumeWindow, boolean lagNoise) {
         ClosePriceIndicator close = new ClosePriceIndicator(series);
-        NoiseInputs noise = createNoise(new ATRIndicator(series, atrWindow), new VolumeIndicator(series),
-                volumeWindow);
+        NoiseInputs noise = createNoise(new ATRIndicator(series, atrWindow), new VolumeIndicator(series), volumeWindow);
         KalmanNoiseIndicator fixedQ = KalmanNoiseIndicator.constant(series, PROCESS_SCALE);
         KalmanNoiseIndicator fixedR = KalmanNoiseIndicator.constant(series, MEASUREMENT_SCALE);
         KalmanNoiseIndicator dynamicQ = atDecisionTime(noise.processNoise(), lagNoise);
@@ -174,7 +173,8 @@ public final class AdaptiveKalmanNoiseExample {
     }
 
     // The only custom policy: missing volume is neutral, actual zero volume is not.
-    // Keep this example-specific choice out of KalmanNoiseIndicator and core defaults.
+    // Keep this example-specific choice out of KalmanNoiseIndicator and core
+    // defaults.
     private static final class RelativeVolumeIndicator extends AbstractIndicator<Num> {
 
         private final Indicator<Num> volume;

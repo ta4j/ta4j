@@ -56,8 +56,8 @@ class AdaptiveKalmanNoiseExampleTest {
             BarSeries series = flatSeries(factory, 5);
             FixedIndicator<Num> volume = new FixedIndicator<>(series, factory.zero(), factory.zero(), NaN.NaN,
                     factory.numOf(10), factory.numOf(-1));
-            AdaptiveKalmanNoiseExample.NoiseInputs noise = AdaptiveKalmanNoiseExample.createNoise(
-                    values(series, 2, 2, 2, 2, 2), volume, 2);
+            AdaptiveKalmanNoiseExample.NoiseInputs noise = AdaptiveKalmanNoiseExample
+                    .createNoise(values(series, 2, 2, 2, 2, 2), volume, 2);
 
             for (int index = 0; index < 4; index++) {
                 assertEquals(1, noise.relativeVolume().getValue(index).doubleValue(), 1e-12);
@@ -153,9 +153,8 @@ class AdaptiveKalmanNoiseExampleTest {
             assertTrue(score.rootMeanSquaredError().isNaN());
         }
         assertThrows(IllegalArgumentException.class, () -> AdaptiveKalmanNoiseExample.evaluate(models, close, 0));
-        assertThrows(IllegalArgumentException.class,
-                () -> AdaptiveKalmanNoiseExample.createNoise(new ATRIndicator(series, 2),
-                        new VolumeIndicator(series), 0));
+        assertThrows(IllegalArgumentException.class, () -> AdaptiveKalmanNoiseExample
+                .createNoise(new ATRIndicator(series, 2), new VolumeIndicator(series), 0));
     }
 
     private static FixedIndicator<Num> values(BarSeries series, double... values) {
