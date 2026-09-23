@@ -28,6 +28,7 @@ import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.serialization.IndicatorSerialization;
@@ -127,6 +128,70 @@ public class KinematicKalmanForecastStateIndicatorTest
                 new ClosePriceIndicator(comparisonSeries), PROCESS_NOISE, MEASUREMENT_NOISE).getValue(1);
         assertEquals(expected.position().doubleValue(), recovered.position().doubleValue(), 1e-12);
         assertEquals(expected.velocity().doubleValue(), recovered.velocity().doubleValue(), 1e-12);
+    }
+
+    @Test
+    public void unavailableInputPrefixesMatchReferenceInitializationAndCovariance() {
+        double[] observations = { 100, 101, 102 };
+        for (int unavailableInput = 0; unavailableInput < 3; unavailableInput++) {
+            BarSeries series = series(10, 20, 100, 101, 102);
+            Indicator<Num> source = new ClosePriceIndicator(series);
+            KalmanNoiseIndicator processNoise = KalmanNoiseIndicator.constant(series, PROCESS_NOISE);
+            KalmanNoiseIndicator measurementNoise = KalmanNoiseIndicator.constant(series, MEASUREMENT_NOISE);
+            if (unavailableInput == 0) {
+                source = new FixedIndicator<>(series, NaN.NaN, NaN.NaN, numOf(100), numOf(101), numOf(102));
+            } else {
+                Num noise = numOf(unavailableInput == 1 ? PROCESS_NOISE : MEASUREMENT_NOISE);
+                KalmanNoiseIndicator delayed = new KalmanNoiseIndicator(
+                        new FixedIndicator<>(series, NaN.NaN, numFactory.zero(), noise, noise, noise));
+                if (unavailableInput == 1) {
+                    processNoise = delayed;
+                } else {
+                    measurementNoise = delayed;
+                }
+            }
+            KinematicKalmanForecastStateIndicator subject = new KinematicKalmanForecastStateIndicator(source,
+                    processNoise, measurementNoise);
+
+            // Populate recursively before inspecting the unavailable prefix and seed.
+            subject.getValue(series.getEndIndex());
+            for (int index = 0; index < 2; index++) {
+                assertFalse(subject.getValue(index).isStable());
+                assertEquals(0, subject.getValue(index).observationCount());
+            }
+            assertEquals(numOf(100), subject.getValue(2).position());
+            assertEquals(numFactory.zero(), subject.getValue(2).velocity());
+            KalmanFilter reference = referenceFilter(observations[0]);
+            for (int index = 0; index < observations.length; index++) {
+                if (index > 0) {
+                    reference.predict();
+                }
+                reference.correct(new double[] { observations[index] });
+                assertStateEquals(reference, subject.getValue(index + 2), index + 1);
+            }
+        }
+    }
+
+    @Test
+    public void unavailableNoiseAtRetainedHeadInitializesFromFirstUsableObservation() {
+        BarSeries series = series(1, 2, 3, 4, 100, 110);
+        series.setMaximumBarCount(4);
+        KalmanNoiseIndicator processNoise = new KalmanNoiseIndicator(new FixedIndicator<>(series,
+                numOf(PROCESS_NOISE), numOf(PROCESS_NOISE), NaN.NaN, numFactory.zero(), numOf(PROCESS_NOISE),
+                numOf(PROCESS_NOISE)));
+        KinematicKalmanForecastStateIndicator subject = new KinematicKalmanForecastStateIndicator(
+                new ClosePriceIndicator(series), processNoise, KalmanNoiseIndicator.constant(series, MEASUREMENT_NOISE));
+        subject.getValue(series.getEndIndex());
+
+        assertFalse(subject.getValue(series.getBeginIndex()).isStable());
+        assertFalse(subject.getValue(3).isStable());
+        assertEquals(0, subject.getValue(3).observationCount());
+        KalmanFilter reference = referenceFilter(100);
+        reference.correct(new double[] { 100 });
+        assertStateEquals(reference, subject.getValue(4), 1);
+        reference.predict();
+        reference.correct(new double[] { 110 });
+        assertStateEquals(reference, subject.getValue(5), 2);
     }
 
     @Test
