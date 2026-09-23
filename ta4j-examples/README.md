@@ -90,6 +90,7 @@ raw machine hostname.
 
 - `ta4jexamples.analysis.forecast.RollingConformalForecastExample`
 - `ta4jexamples.analysis.forecast.KinematicKalmanForecastExample`
+- `ta4jexamples.analysis.forecast.AdaptiveKalmanNoiseExample`
 - `ta4jexamples.analysis.forecast.CorrentropyKalmanExample`
 
 Run the ossified BTC daily analog and rolling-conformal walkthrough:
@@ -113,6 +114,14 @@ measurement-variance regime, shares one cached state across one-, four-, and
 thirteen-week forecasts, and applies rolling conformal calibration to the
 four-week interval. The bundled Yahoo Finance snapshot is fixed through July
 30, 2026; its final July 27 weekly aggregate is an as-of partial week.
+
+For an opt-in ATR/relative-volume noise recipe and a common-sample one-step
+comparison against fixed-noise and last-close baselines, run
+`ta4jexamples.analysis.forecast.AdaptiveKalmanNoiseExample`. Add
+`-Dexec.args="--lag-noise"` to use prior-bar dynamic noise. This example excludes
+the snapshot's incomplete terminal week from scoring and does not fit parameters
+or claim automatic calibration. The [adaptive Kalman noise walkthrough](adaptive-kalman-noise.md)
+explains units, warm-up, missing versus zero volume, clipping, and evaluation.
 
 Run the robust correntropy Kalman walkthrough over the same ossified S&P 500
 weekly series:
