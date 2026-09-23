@@ -25,6 +25,9 @@ import java.util.Objects;
  */
 public record PlanDecline(boolean permanent, int retryFromIndex, String detail) {
 
+    private static final PlanDecline UNCLAIMED = new PlanDecline(true, -1,
+            "calculation is not recognized by this planner");
+
     /**
      * Validates a decline.
      *
@@ -49,6 +52,20 @@ public record PlanDecline(boolean permanent, int retryFromIndex, String detail) 
      */
     public static PlanDecline unsupported(String detail) {
         return new PlanDecline(true, -1, detail);
+    }
+
+    /**
+     * Returns the permanent decline for a calculation the planner does not
+     * recognize at all. The runtime never reports it as the reason a recognized
+     * calculation stayed scalar; a planner that recognizes a calculation but cannot
+     * lower it should decline with {@link #unsupported(String)} and a specific,
+     * actionable reason instead.
+     *
+     * @return shared unclaimed decline
+     * @since 0.25.1
+     */
+    public static PlanDecline unclaimed() {
+        return UNCLAIMED;
     }
 
     /**

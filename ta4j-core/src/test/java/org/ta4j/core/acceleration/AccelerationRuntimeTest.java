@@ -13,21 +13,28 @@ import static org.ta4j.core.acceleration.AccelerationRuntime.open;
 import static org.ta4j.core.acceleration.AccelerationRuntime.useProvidersForTests;
 
 import java.io.InputStream;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.NoSuchElementException;
+import java.util.ServiceConfigurationError;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.jar.Manifest;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
@@ -71,6 +78,7 @@ class AccelerationRuntimeTest {
     void resetRuntime() {
         System.clearProperty(AccelerationRuntime.PROPERTY);
         System.clearProperty(AccelerationRuntime.MAX_DEVICE_BYTES_PROPERTY);
+        System.clearProperty("ta4j.forecast.rngVersion");
         AccelerationRuntime.resetProvidersForTests();
     }
 
@@ -119,38 +127,47 @@ class AccelerationRuntimeTest {
         assertEquals(2, record.getPositions().getFirst().getExit().getIndex());
     }
 
-    @Test
-    void malformedOutputQuarantinesAndFallsBackToScalar() {
+    @ParameterizedTest
+    @EnumSource(ProviderFault.class)
+    void faultyBestRankedProviderQuarantinesAndFallsBackToHealthySibling(ProviderFault fault) {
         BarSeries series = series();
-        ScopeAwareIndicator indicator = new ScopeAwareIndicator(series);
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
-        MalformedProvider provider = new MalformedProvider();
-        AccelerationRuntime.useProvidersForTests(List.of(provider));
+        EchoProvider faulty = new EchoProvider(Backend.METAL, "a-device", 1L, 1_000L) {
+            @Override
+            public KernelResult execute(KernelRequest request) {
+                executions.incrementAndGet();
+                return switch (fault) {
+                case THROWS -> throw new IllegalStateException("native launch failed");
+                case MALFORMED -> new KernelResult(new double[] { 1d }, false, 1L);
+                case NULL_RESULT -> null;
+                case NON_FINITE -> {
+                    double[] markers = request.inputs().getFirst();
+                    double[] outputs = new double[request.expectedOutputLength()];
+                    for (int row = 0; row < request.size(); row++) {
+                        outputs[row] = 100 + markers[row];
+                    }
+                    outputs[0] = Double.NaN;
+                    yield new KernelResult(outputs, false, 0L);
+                }
+                };
+            }
+        };
+        EchoProvider healthy = new EchoProvider(Backend.CPU, "z-device", 10L, 1_000L);
+        useProvidersForTests(List.of(faulty, healthy));
+        ScopeAwareIndicator first = new ScopeAwareIndicator(series);
+        ScopeAwareIndicator second = new ScopeAwareIndicator(series);
 
-        try (AccelerationRuntime.Scope ignored = AccelerationRuntime.open(series, 0, series.getEndIndex())) {
-            assertEquals(series.numFactory().numOf(1), indicator.getValue(1));
-            assertEquals(series.numFactory().numOf(2), indicator.getValue(2));
-            assertEquals(DiagnosticCode.INVALID_RESULT, AccelerationRuntime.lastDiagnostic().orElseThrow().code());
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            assertEquals(series.numFactory().numOf(101), first.getValue(1));
+            assertEquals(DiagnosticCode.ACCELERATED, AccelerationRuntime.lastDiagnostic().orElseThrow().code());
+            assertEquals(series.numFactory().numOf(102), second.getValue(2));
+            assertEquals(DiagnosticCode.ACCELERATED, AccelerationRuntime.lastDiagnostic().orElseThrow().code());
         }
 
-        assertEquals(1, provider.executions.get());
-    }
-
-    @Test
-    void throwingProviderQuarantinesAndFallsBackToScalar() {
-        BarSeries series = series();
-        ScopeAwareIndicator indicator = new ScopeAwareIndicator(series);
-        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
-        ThrowingProvider provider = new ThrowingProvider();
-        AccelerationRuntime.useProvidersForTests(List.of(provider));
-
-        try (AccelerationRuntime.Scope ignored = AccelerationRuntime.open(series, 0, series.getEndIndex())) {
-            assertEquals(series.numFactory().numOf(0), indicator.getValue(0));
-            assertEquals(series.numFactory().numOf(3), indicator.getValue(3));
-            assertEquals(DiagnosticCode.PROVIDER_FAILURE, AccelerationRuntime.lastDiagnostic().orElseThrow().code());
-        }
-
-        assertEquals(1, provider.executions.get());
+        // Quarantine must keep the second evaluation from relaunching the faulty
+        // provider, while the healthy sibling executes once per attempt.
+        assertEquals(1, faulty.executions.get());
+        assertEquals(2, healthy.executions.get());
     }
 
     @ParameterizedTest
@@ -209,7 +226,8 @@ class AccelerationRuntimeTest {
         BarSeries scopedSeries = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 102, 101, 104, 103, 105, 106, 104, 108, 109)
                 .build();
-        MonteCarloPriceForecastIndicator forecast = MonteCarloPriceForecastIndicator
+        System.setProperty("ta4j.forecast.rngVersion", "1");
+        MonteCarloPriceForecastIndicator reference = MonteCarloPriceForecastIndicator
                 .builder(new ClosePriceIndicator(indicatorSeries),
                         new EwmaReturnForecastStateIndicator(new LogReturnIndicator(indicatorSeries), 3, 0.94d))
                 .horizon(2)
@@ -217,18 +235,25 @@ class AccelerationRuntimeTest {
                 .lookbackBarCount(3)
                 .seed(11L)
                 .build();
-        Forecast scalar = forecast.getValue(8);
+        Forecast scalar = reference.getValue(8);
         assertTrue(scalar.isStable());
+        // Fresh instance: a pre-scope read caches the scalar value, so the scoped
+        // read must run on its own indicator to consult the runtime at all.
+        MonteCarloPriceForecastIndicator scoped = MonteCarloPriceForecastIndicator
+                .builder(new ClosePriceIndicator(indicatorSeries),
+                        new EwmaReturnForecastStateIndicator(new LogReturnIndicator(indicatorSeries), 3, 0.94d))
+                .horizon(2)
+                .iterationCount(4)
+                .lookbackBarCount(3)
+                .seed(11L)
+                .build();
         EchoProvider provider = new EchoProvider(Backend.CPU, "cpu", 1L, 1_000L);
         useProvidersForTests(List.of(provider));
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
-        System.setProperty("ta4j.forecast.rngVersion", "1");
         try (Scope ignored = open(scopedSeries, 8, 8)) {
-            Forecast actual = forecast.getValue(8);
+            Forecast actual = scoped.getValue(8);
             assertEquals(scalar.mean(), actual.mean());
             assertEquals(0, provider.executions.get());
-        } finally {
-            System.clearProperty("ta4j.forecast.rngVersion");
         }
     }
 
@@ -239,43 +264,51 @@ class AccelerationRuntimeTest {
                 .withData(100, 102, 101, 104, 103, 105, 106, 104, 108, 109)
                 .build();
         System.setProperty("ta4j.forecast.rngVersion", "1");
-        try {
-            MonteCarloPriceForecastIndicator.Builder builder = MonteCarloPriceForecastIndicator
-                    .builder(new ClosePriceIndicator(series),
-                            new EwmaReturnForecastStateIndicator(new LogReturnIndicator(series), 3, 0.94d))
-                    .horizon(2)
-                    .iterationCount(4)
-                    .lookbackBarCount(3)
-                    .seed(11L);
-            MonteCarloPriceForecastIndicator first = builder.build();
-            MonteCarloPriceForecastIndicator second = builder.build();
-            Forecast expectedFirst = first.getValue(8);
-            Forecast expectedSecond = second.getValue(9);
-            assertTrue(expectedFirst.isStable());
-            assertTrue(expectedSecond.isStable());
-            EchoProvider provider = new EchoProvider(Backend.CPU, "cpu", 1L, 1_000L) {
-                @Override
-                public KernelResult execute(KernelRequest request) {
-                    double[] outputs = super.execute(request).outputs();
-                    outputs[0] = invalidValue;
-                    return new KernelResult(outputs, false, 0L);
-                }
-            };
-            useProvidersForTests(List.of(provider));
-            System.setProperty(AccelerationRuntime.PROPERTY, "auto");
-            try (Scope ignored = open(series, 8, 9)) {
-                Forecast actualFirst = first.getValue(8);
-                Forecast actualSecond = second.getValue(9);
-                assertTrue(actualFirst.isStable());
-                assertTrue(actualSecond.isStable());
-                assertEquals(expectedFirst.mean(), actualFirst.mean());
-                assertEquals(expectedSecond.mean(), actualSecond.mean());
-                assertEquals(1, provider.executions.get());
-                assertEquals(DiagnosticCode.INVALID_RESULT, AccelerationRuntime.lastDiagnostic().orElseThrow().code());
+        MonteCarloPriceForecastIndicator.Builder builder = MonteCarloPriceForecastIndicator
+                .builder(new ClosePriceIndicator(series),
+                        new EwmaReturnForecastStateIndicator(new LogReturnIndicator(series), 3, 0.94d))
+                .horizon(2)
+                .iterationCount(4)
+                .lookbackBarCount(3)
+                .seed(11L);
+        MonteCarloPriceForecastIndicator firstReference = builder.build();
+        MonteCarloPriceForecastIndicator secondReference = builder.build();
+        Forecast expectedFirst = firstReference.getValue(8);
+        Forecast expectedSecond = secondReference.getValue(9);
+        assertTrue(expectedFirst.isStable());
+        assertTrue(expectedSecond.isStable());
+        EchoProvider provider = new EchoProvider(Backend.CPU, "cpu", 1L, 1_000L) {
+            @Override
+            public KernelResult execute(KernelRequest request) {
+                double[] outputs = super.execute(request).outputs();
+                outputs[0] = invalidValue;
+                return new KernelResult(outputs, false, 0L);
             }
-        } finally {
-            System.clearProperty("ta4j.forecast.rngVersion");
+        };
+        useProvidersForTests(List.of(provider));
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        // Fresh instances: pre-scope reads would be cached and never reach the
+        // runtime, so the scoped reads run on their own indicators.
+        MonteCarloPriceForecastIndicator first = builder.build();
+        MonteCarloPriceForecastIndicator second = builder.build();
+        try (Scope ignored = open(series, 8, 9)) {
+            Forecast actualFirst = first.getValue(8);
+            assertTrue(actualFirst.isStable());
+            assertEquals(expectedFirst.mean(), actualFirst.mean());
+            assertEquals(DiagnosticCode.INVALID_RESULT, AccelerationRuntime.lastDiagnostic().orElseThrow().code());
+
+            // The quarantined provider is not relaunched for the second indicator;
+            // every eligible provider is quarantined in this scope now.
+            Forecast actualSecond = second.getValue(9);
+            assertTrue(actualSecond.isStable());
+            assertEquals(expectedSecond.mean(), actualSecond.mean());
+            Diagnostic quarantined = AccelerationRuntime.lastDiagnostic().orElseThrow();
+            assertEquals(DiagnosticCode.PROVIDER_FAILURE, quarantined.code());
+            assertEquals("none", quarantined.providerId());
+            assertTrue(quarantined.detail().contains("quarantined"));
         }
+
+        assertEquals(1, provider.executions.get());
     }
 
     @Test
@@ -511,25 +544,51 @@ class AccelerationRuntimeTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = { "cpu", "metal", "cuda", "hybrid", "required" })
+    @ValueSource(strings = { "cpu", "metal", "cuda", "hybrid", "required", "gpu" })
     void removedAndUnknownModesAreRejectedBeforeExecution(String mode) {
         System.setProperty(AccelerationRuntime.PROPERTY, mode);
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> AccelerationRuntime.open(series(), 0, 1));
 
-        assertTrue(exception.getMessage().contains("'off' or 'auto'"));
+        assertTrue(exception.getMessage().contains("'auto', 'true', 'off' or 'false'"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "auto", "true", "Auto", "TRUE" })
+    void booleanAndCaseVariantsEnableAcceleration(String mode) {
+        EchoProvider provider = new EchoProvider(Backend.METAL, "gpu-0", 10L, 1_000L);
+        useProvidersForTests(List.of(provider));
+        System.setProperty(AccelerationRuntime.PROPERTY, mode);
+        BarSeries series = series();
+
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            assertEquals(series.numFactory().numOf(100), new ScopeAwareIndicator(series).getValue(0));
+        }
+
+        assertEquals(1, provider.executions.get());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "off", "false", "OFF", "False" })
+    void booleanAndCaseVariantsDisableAcceleration(String mode) {
+        EchoProvider provider = new EchoProvider(Backend.METAL, "gpu-0", 10L, 1_000L);
+        useProvidersForTests(List.of(provider));
+        System.setProperty(AccelerationRuntime.PROPERTY, mode);
+        BarSeries series = series();
+
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            assertEquals(series.numFactory().numOf(2), new ScopeAwareIndicator(series).getValue(2));
+        }
+
+        assertEquals(0, provider.executions.get());
     }
 
     @Test
     void monteCarloShockPathsDecodeThroughOwningFactory() {
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
         System.setProperty("ta4j.forecast.rngVersion", "1");
-        try {
-            monteCarloDecode();
-        } finally {
-            System.clearProperty("ta4j.forecast.rngVersion");
-        }
+        monteCarloDecode();
     }
 
     private static void monteCarloDecode() {
@@ -595,23 +654,20 @@ class AccelerationRuntimeTest {
     void accelerationKeepsTheScalarStabilityBoundary() {
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
         System.setProperty("ta4j.forecast.rngVersion", "1");
-        try {
-            BarSeries series = longSeries();
-            MonteCarloPriceForecastIndicator scalar = longForecast(series);
-            assertEquals(252, scalar.getCountOfUnstableBars());
-            assertFalse(scalar.getValue(251).isStable());
-            assertTrue(scalar.getValue(252).isStable());
+        BarSeries series = longSeries();
+        MonteCarloPriceForecastIndicator scalar = longForecast(series);
+        assertEquals(252, scalar.getCountOfUnstableBars());
+        assertFalse(scalar.getValue(251).isStable());
+        assertTrue(scalar.getValue(252).isStable());
 
-            KernelProvider kernel = new KernelProvider();
-            useProvidersForTests(List.of(kernel));
-            MonteCarloPriceForecastIndicator accelerated = longForecast(series);
-            try (Scope ignored = open(series, 0, series.getEndIndex())) {
-                assertFalse(accelerated.getValue(251).isStable());
-                assertEquals(252, kernel.requests.getFirst().fromInclusive());
-                assertTrue(accelerated.getValue(252).isStable());
-            }
-        } finally {
-            System.clearProperty("ta4j.forecast.rngVersion");
+        KernelProvider kernel = new KernelProvider();
+        useProvidersForTests(List.of(kernel));
+        // Fresh instance: the scalar instance's reads are already cached.
+        MonteCarloPriceForecastIndicator accelerated = longForecast(series);
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            assertFalse(accelerated.getValue(251).isStable());
+            assertEquals(252, kernel.requests.getFirst().fromInclusive());
+            assertTrue(accelerated.getValue(252).isStable());
         }
     }
 
@@ -619,23 +675,19 @@ class AccelerationRuntimeTest {
     void warmUpReadsStayScalarWithoutDisablingLaterAcceleration() {
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
         System.setProperty("ta4j.forecast.rngVersion", "1");
-        try {
-            BarSeries series = longSeries();
-            KernelProvider kernel = new KernelProvider();
-            useProvidersForTests(List.of(kernel));
-            MonteCarloPriceForecastIndicator forecast = longForecast(series);
+        BarSeries series = longSeries();
+        KernelProvider kernel = new KernelProvider();
+        useProvidersForTests(List.of(kernel));
+        MonteCarloPriceForecastIndicator forecast = longForecast(series);
 
-            try (Scope ignored = open(series, 0, series.getEndIndex())) {
-                assertFalse(forecast.getValue(0).isStable());
-                assertFalse(forecast.getValue(100).isStable());
-                assertFalse(forecast.getValue(251).isStable());
-                assertEquals(1, kernel.executions.get());
-                assertTrue(forecast.getValue(252).isStable());
-                assertTrue(forecast.getValue(299).isStable());
-                assertEquals(1, kernel.executions.get());
-            }
-        } finally {
-            System.clearProperty("ta4j.forecast.rngVersion");
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            assertFalse(forecast.getValue(0).isStable());
+            assertFalse(forecast.getValue(100).isStable());
+            assertFalse(forecast.getValue(251).isStable());
+            assertEquals(1, kernel.executions.get());
+            assertTrue(forecast.getValue(252).isStable());
+            assertTrue(forecast.getValue(299).isStable());
+            assertEquals(1, kernel.executions.get());
         }
     }
 
@@ -643,21 +695,79 @@ class AccelerationRuntimeTest {
     void defaultStrategyJourneyAcceleratesAfterTheForecastWarmUp() {
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
         System.setProperty("ta4j.forecast.rngVersion", "1");
-        try {
-            BarSeries series = longSeries();
-            KernelProvider kernel = new KernelProvider();
-            useProvidersForTests(List.of(kernel));
-            MonteCarloPriceForecastIndicator forecast = longForecast(series);
-            Strategy strategy = new BaseStrategy(new ForecastRule(forecast, 260), new IndexRule(series.getEndIndex()));
+        BarSeries series = longSeries();
+        KernelProvider kernel = new KernelProvider();
+        useProvidersForTests(List.of(kernel));
+        MonteCarloPriceForecastIndicator forecast = longForecast(series);
+        Strategy strategy = new BaseStrategy(new ForecastRule(forecast, 260), new IndexRule(series.getEndIndex()));
 
-            TradingRecord record = new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(strategy,
-                    TradeType.BUY, series.numFactory().one());
+        TradingRecord record = new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(strategy, TradeType.BUY,
+                series.numFactory().one());
 
-            assertEquals(1, record.getPositions().size());
-            assertEquals(260, record.getPositions().getFirst().getEntry().getIndex());
-            assertEquals(1, kernel.executions.get());
-        } finally {
-            System.clearProperty("ta4j.forecast.rngVersion");
+        assertEquals(1, record.getPositions().size());
+        assertEquals(260, record.getPositions().getFirst().getEntry().getIndex());
+        assertEquals(1, kernel.executions.get());
+    }
+
+    @Test
+    void acceleratedForecastCachesAcrossRunsAndMatchesTheScalarRecord() {
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        System.setProperty("ta4j.forecast.rngVersion", "1");
+        BarSeries series = longSeries();
+        KernelProvider kernel = new KernelProvider();
+        useProvidersForTests(List.of(kernel));
+        MonteCarloPriceForecastIndicator forecast = longForecast(series);
+        Strategy strategy = new BaseStrategy(new ForecastRule(forecast, 260), new IndexRule(series.getEndIndex()));
+        BarSeriesManager manager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+
+        TradingRecord firstRun = manager.run(strategy, TradeType.BUY, series.numFactory().one());
+        TradingRecord secondRun = manager.run(strategy, TradeType.BUY, series.numFactory().one());
+
+        // Accelerated values populate the indicator cache, so the second run must
+        // not contact the provider again.
+        assertEquals(1, kernel.executions.get());
+
+        System.setProperty(AccelerationRuntime.PROPERTY, "off");
+        MonteCarloPriceForecastIndicator scalarForecast = longForecast(series);
+        Strategy scalarStrategy = new BaseStrategy(new ForecastRule(scalarForecast, 260),
+                new IndexRule(series.getEndIndex()));
+        TradingRecord scalarRun = new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(scalarStrategy,
+                TradeType.BUY, series.numFactory().one());
+
+        assertSameTradingRecord(scalarRun, firstRun);
+        assertSameTradingRecord(scalarRun, secondRun);
+    }
+
+    @Test
+    void lastDiagnosticSurvivesBarSeriesManagerAndNamesTheUnsupportedFactory() {
+        double[] prices = new double[300];
+        for (int i = 0; i < prices.length; i++) {
+            prices[i] = 100 + i;
+        }
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
+                .withData(prices)
+                .build();
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        System.setProperty("ta4j.forecast.rngVersion", "1");
+        MonteCarloPriceForecastIndicator forecast = longForecast(series);
+        Strategy strategy = new BaseStrategy(new ForecastRule(forecast, 260), new IndexRule(series.getEndIndex()));
+
+        new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(strategy, TradeType.BUY,
+                series.numFactory().one());
+
+        assertTrue(AccelerationRuntime.lastDiagnostic().isPresent());
+        Diagnostic diagnostic = AccelerationRuntime.lastDiagnostic().orElseThrow();
+        assertEquals(DiagnosticCode.UNSUPPORTED, diagnostic.code());
+        assertTrue(diagnostic.detail().contains("DoubleNum"), diagnostic.detail());
+    }
+
+    private static void assertSameTradingRecord(TradingRecord expected, TradingRecord actual) {
+        assertEquals(expected.getPositionCount(), actual.getPositionCount());
+        for (int position = 0; position < expected.getPositionCount(); position++) {
+            assertEquals(expected.getPositions().get(position).getEntry().getIndex(),
+                    actual.getPositions().get(position).getEntry().getIndex(), "entry of position " + position);
+            assertEquals(expected.getPositions().get(position).getExit().getIndex(),
+                    actual.getPositions().get(position).getExit().getIndex(), "exit of position " + position);
         }
     }
 
@@ -680,6 +790,174 @@ class AccelerationRuntimeTest {
             assertEquals(1, provider.executions.get());
             assertEquals(series.numFactory().numOf(117), indicator.getValue(7));
             assertEquals(2, provider.executions.get());
+        }
+    }
+
+    @Test
+    void recognizedPlannerDeclineReachesLastDiagnosticUnchanged() {
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        BarSeries series = series();
+
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            assertEquals(series.numFactory().numOf(1), new DecliningIndicator(series).getValue(1));
+            Diagnostic recognized = AccelerationRuntime.lastDiagnostic().orElseThrow();
+            assertEquals(DiagnosticCode.UNSUPPORTED, recognized.code());
+            assertEquals("none", recognized.providerId());
+            assertEquals("test planner cannot lower the declining indicator", recognized.detail());
+
+            assertEquals(series.numFactory().numOf(2), new UnclaimedIndicator(series).getValue(2));
+            Diagnostic unclaimed = AccelerationRuntime.lastDiagnostic().orElseThrow();
+            assertEquals(DiagnosticCode.UNSUPPORTED, unclaimed.code());
+            assertEquals("no operation planner claims UnclaimedIndicator", unclaimed.detail());
+        }
+    }
+
+    @Test
+    void chunkedBatchesContinueAcrossTheBatchEnd() {
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        BarSeries series = series();
+        RecordingEchoProvider provider = new RecordingEchoProvider();
+        useProvidersForTests(List.of(provider));
+        ChunkedIndicator indicator = new ChunkedIndicator(series, 2);
+
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            for (int index = 0; index <= series.getEndIndex(); index++) {
+                assertEquals(series.numFactory().numOf(100 + index), indicator.getValue(index), "index " + index);
+            }
+            // A read before the cached batch start stays scalar without re-planning.
+            assertEquals(series.numFactory().numOf(0), indicator.getValue(0));
+        }
+
+        assertEquals(2, provider.executions.get());
+        assertEquals(0, provider.requests.get(0).fromInclusive());
+        assertEquals(1, provider.requests.get(0).toInclusive());
+        assertEquals(2, provider.requests.get(1).fromInclusive());
+        assertEquals(3, provider.requests.get(1).toInclusive());
+    }
+
+    @Test
+    void allQuarantinedCandidatesReportProviderFailure() {
+        BarSeries series = series();
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        EchoProvider failing = new EchoProvider(Backend.METAL, "a-device", 1L, 1_000L) {
+            @Override
+            public KernelResult execute(KernelRequest request) {
+                executions.incrementAndGet();
+                throw new IllegalStateException("native launch failed");
+            }
+        };
+        EchoProvider sibling = new EchoProvider(Backend.CPU, "z-device", 10L, 1_000L) {
+            private boolean declinedOnce;
+
+            @Override
+            public Assessment assess(KernelRequest request) {
+                if (declinedOnce) {
+                    return Assessment.unsupported(Backend.CPU, "z-device", DiagnosticCode.UNSUPPORTED, "z-device",
+                            "retired after the first batch");
+                }
+                declinedOnce = true;
+                return super.assess(request);
+            }
+        };
+        useProvidersForTests(List.of(failing, sibling));
+        ScopeAwareIndicator first = new ScopeAwareIndicator(series);
+        ScopeAwareIndicator second = new ScopeAwareIndicator(series);
+
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            assertEquals(series.numFactory().numOf(100), first.getValue(0));
+            assertEquals(DiagnosticCode.ACCELERATED, AccelerationRuntime.lastDiagnostic().orElseThrow().code());
+
+            assertEquals(series.numFactory().numOf(1), second.getValue(1));
+            Diagnostic diagnostic = AccelerationRuntime.lastDiagnostic().orElseThrow();
+            assertEquals(DiagnosticCode.PROVIDER_FAILURE, diagnostic.code());
+            assertEquals("none", diagnostic.providerId());
+            assertTrue(diagnostic.detail().contains("quarantined"));
+        }
+
+        assertEquals(1, failing.executions.get());
+    }
+
+    @Test
+    void discoverySkipsBrokenEntriesAndAbortsRepeatedFailures() {
+        Provider valid = new EchoProvider(Backend.CPU, "cpu", 1L, 1_000L);
+        Iterator<Provider> brokenThenValid = new Iterator<>() {
+
+            private int stage;
+
+            @Override
+            public boolean hasNext() {
+                if (stage == 0) {
+                    stage = 1;
+                    throw new ServiceConfigurationError("provider class not found: broken.Provider");
+                }
+                return stage == 1;
+            }
+
+            @Override
+            public Provider next() {
+                if (stage != 1) {
+                    throw new NoSuchElementException("no further provider");
+                }
+                stage = 2;
+                return valid;
+            }
+        };
+
+        assertEquals(List.of(valid), AccelerationRuntime.loadProviders(brokenThenValid));
+
+        // An iterator that keeps failing must terminate with an empty list.
+        assertEquals(List.of(), AccelerationRuntime.loadProviders(new Iterator<>() {
+
+            @Override
+            public boolean hasNext() {
+                throw new ServiceConfigurationError("provider class not found: broken.Provider");
+            }
+
+            @Override
+            public Provider next() {
+                throw new ServiceConfigurationError("provider class not found: broken.Provider");
+            }
+        }));
+    }
+
+    @Test
+    void discoveryResultIsCachedAcrossEvaluations(@TempDir Path tempDir) throws Exception {
+        Path firstServices = tempDir.resolve("first/META-INF/services");
+        Path secondServices = tempDir.resolve("second/META-INF/services");
+        Files.createDirectories(firstServices);
+        Files.createDirectories(secondServices);
+        String serviceName = Provider.class.getName();
+        Files.writeString(firstServices.resolve(serviceName),
+                "does.not.exist.Provider\n" + FirstDiscoveryProvider.class.getName() + "\n");
+        Files.writeString(secondServices.resolve(serviceName), SecondDiscoveryProvider.class.getName() + "\n");
+        ClassLoader originalLoader = Thread.currentThread().getContextClassLoader();
+        URLClassLoader firstLoader = new URLClassLoader(new URL[] { tempDir.resolve("first").toUri().toURL() },
+                AccelerationRuntimeTest.class.getClassLoader());
+        URLClassLoader secondLoader = new URLClassLoader(new URL[] { tempDir.resolve("second").toUri().toURL() },
+                AccelerationRuntimeTest.class.getClassLoader());
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        AccelerationRuntime.resetProvidersForTests();
+        BarSeries series = series();
+        try {
+            Thread.currentThread().setContextClassLoader(firstLoader);
+            try (Scope ignored = open(series, 0, series.getEndIndex())) {
+                assertEquals(series.numFactory().numOf(100), new ScopeAwareIndicator(series).getValue(0));
+            }
+            assertEquals(1, FirstDiscoveryProvider.EXECUTIONS.get());
+            assertEquals(0, SecondDiscoveryProvider.EXECUTIONS.get());
+
+            // A second evaluation must reuse the cached discovery result instead of
+            // rescanning under the new discovery configuration.
+            Thread.currentThread().setContextClassLoader(secondLoader);
+            try (Scope ignored = open(series, 0, series.getEndIndex())) {
+                assertEquals(series.numFactory().numOf(100), new ScopeAwareIndicator(series).getValue(0));
+            }
+            assertEquals(2, FirstDiscoveryProvider.EXECUTIONS.get());
+            assertEquals(0, SecondDiscoveryProvider.EXECUTIONS.get());
+        } finally {
+            Thread.currentThread().setContextClassLoader(originalLoader);
+            firstLoader.close();
+            secondLoader.close();
         }
     }
 
@@ -811,18 +1089,27 @@ class AccelerationRuntimeTest {
         @Override
         public PlanAttempt plan(Indicator<?> indicator, int fromInclusive, int toInclusive, NumFactory factory,
                 long memoryLimitBytes) {
-            SeriesValueIndicator seriesValue = indicator instanceof SeriesValueIndicator value ? value : null;
-            if (!(indicator instanceof ScopeAwareIndicator) && seriesValue == null) {
-                return PlanAttempt.declined(PlanDecline.unsupported("test planner claims scope-aware indicators only"));
+            if (indicator instanceof DecliningIndicator) {
+                return PlanAttempt
+                        .declined(PlanDecline.unsupported("test planner cannot lower the declining indicator"));
             }
-            int size = toInclusive - fromInclusive + 1;
+            if (indicator instanceof UnclaimedIndicator) {
+                return PlanAttempt.declined(PlanDecline.unclaimed());
+            }
+            SeriesValueIndicator seriesValue = indicator instanceof SeriesValueIndicator value ? value : null;
+            ChunkedIndicator chunked = indicator instanceof ChunkedIndicator value ? value : null;
+            if (!(indicator instanceof ScopeAwareIndicator) && seriesValue == null && chunked == null) {
+                return PlanAttempt.declined(PlanDecline.unclaimed());
+            }
+            int end = chunked != null ? Math.min(toInclusive, fromInclusive + chunked.chunkSize() - 1) : toInclusive;
+            int size = end - fromInclusive + 1;
             double[] markers = new double[size];
             for (int row = 0; row < size; row++) {
                 int index = fromInclusive + row;
                 markers[row] = seriesValue == null ? index : seriesValue.markerAt(index);
             }
             KernelRequest request = new KernelRequest(AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1,
-                    fromInclusive, toInclusive, 1, AccelerationRuntime.NumericEncoding.FLOAT64,
+                    fromInclusive, end, 1, AccelerationRuntime.NumericEncoding.FLOAT64,
                     AccelerationRuntime.Determinism.BITWISE_IDENTICAL, 7L, Double.NaN,
                     new double[] { 1d, 0d, 1d, 8d, 4d, 0.94d }, List.of(markers), 1_000_000L, 1_000_000L);
             if (seriesValue != null) {
@@ -841,6 +1128,79 @@ class AccelerationRuntimeTest {
     private static final class ScopeAwareIndicator extends CachedIndicator<Num> {
 
         private ScopeAwareIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        public Num getValue(int index) {
+            return AccelerationRuntime.value(this, index).orElseGet(() -> super.getValue(index));
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            return getBarSeries().numFactory().numOf(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    private static final class ChunkedIndicator extends CachedIndicator<Num> {
+
+        private final int chunkSize;
+
+        private ChunkedIndicator(BarSeries series, int chunkSize) {
+            super(series);
+            this.chunkSize = chunkSize;
+        }
+
+        private int chunkSize() {
+            return chunkSize;
+        }
+
+        @Override
+        public Num getValue(int index) {
+            return AccelerationRuntime.value(this, index).orElseGet(() -> super.getValue(index));
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            return getBarSeries().numFactory().numOf(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    private static final class DecliningIndicator extends CachedIndicator<Num> {
+
+        private DecliningIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        public Num getValue(int index) {
+            return AccelerationRuntime.value(this, index).orElseGet(() -> super.getValue(index));
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            return getBarSeries().numFactory().numOf(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    private static final class UnclaimedIndicator extends CachedIndicator<Num> {
+
+        private UnclaimedIndicator(BarSeries series) {
             super(series);
         }
 
@@ -956,6 +1316,28 @@ class AccelerationRuntimeTest {
         }
     }
 
+    /**
+     * Faults injected into the best-ranked provider of the execute-failure matrix.
+     */
+    private enum ProviderFault {
+        THROWS, MALFORMED, NULL_RESULT, NON_FINITE
+    }
+
+    private static final class RecordingEchoProvider extends EchoProvider {
+
+        final List<KernelRequest> requests = new ArrayList<>();
+
+        private RecordingEchoProvider() {
+            super(Backend.CPU, "cpu", 1L, 1_000L);
+        }
+
+        @Override
+        public KernelResult execute(KernelRequest request) {
+            requests.add(request);
+            return super.execute(request);
+        }
+    }
+
     private static class EchoProvider implements Provider {
 
         final Backend backend;
@@ -995,29 +1377,61 @@ class AccelerationRuntimeTest {
         }
     }
 
-    private static final class MalformedProvider extends EchoProvider {
+    /**
+     * ServiceLoader-instantiated test provider; must be public with a public no-arg
+     * constructor for discovery.
+     */
+    public static final class FirstDiscoveryProvider implements Provider {
 
-        private MalformedProvider() {
-            super(Backend.METAL, "gpu-0", 10L, 1_000L);
+        static final AtomicInteger EXECUTIONS = new AtomicInteger();
+
+        @Override
+        public String providerId() {
+            return "discovery-first";
+        }
+
+        @Override
+        public Assessment assess(KernelRequest request) {
+            return Assessment.supported(Backend.CPU, "cpu", 1L, 1_000L, true);
         }
 
         @Override
         public KernelResult execute(KernelRequest request) {
-            super.executions.incrementAndGet();
-            return new KernelResult(new double[] { 1d }, false, 1L);
+            EXECUTIONS.incrementAndGet();
+            double[] outputs = new double[request.expectedOutputLength()];
+            for (int row = 0; row < request.size(); row++) {
+                outputs[row] = 100 + request.fromInclusive() + row;
+            }
+            return new KernelResult(outputs, false, 1L);
         }
     }
 
-    private static final class ThrowingProvider extends EchoProvider {
+    /**
+     * ServiceLoader-instantiated test provider; must be public with a public no-arg
+     * constructor for discovery.
+     */
+    public static final class SecondDiscoveryProvider implements Provider {
 
-        private ThrowingProvider() {
-            super(Backend.METAL, "gpu-0", 10L, 1_000L);
+        static final AtomicInteger EXECUTIONS = new AtomicInteger();
+
+        @Override
+        public String providerId() {
+            return "discovery-second";
+        }
+
+        @Override
+        public Assessment assess(KernelRequest request) {
+            return Assessment.supported(Backend.CPU, "cpu", 1L, 1_000L, true);
         }
 
         @Override
         public KernelResult execute(KernelRequest request) {
-            super.executions.incrementAndGet();
-            throw new IllegalStateException("native launch failed");
+            EXECUTIONS.incrementAndGet();
+            double[] outputs = new double[request.expectedOutputLength()];
+            for (int row = 0; row < request.size(); row++) {
+                outputs[row] = 100 + request.fromInclusive() + row;
+            }
+            return new KernelResult(outputs, false, 1L);
         }
     }
 

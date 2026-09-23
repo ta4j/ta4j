@@ -29,12 +29,13 @@ package org.ta4j.core.indicators.forecast;
  * </ol>
  *
  * <p>
- * Request parameters, in order: stable shock-model code, stable volatility-mode
- * code, horizon in bars, iteration count, lookback bar count, EWMA decay
- * factor. The base seed travels in the request seed field. Output is row-major
- * terminal prices ({@code [n][iterationCount]}). A non-finite output marks its
- * decision index unstable; the core decoder maps such slices to unstable
- * forecasts, matching the scalar lane.
+ * Request parameters are indexed by the {@code PARAM_*} constants: shock-model
+ * code ({@code SHOCK_*}), volatility-mode code ({@code VOLATILITY_*}), horizon
+ * in bars, iteration count, lookback bar count, EWMA decay factor. The base
+ * seed travels in the request seed field. Output is row-major terminal prices
+ * ({@code [n][iterationCount]}). A non-finite or zero output marks its decision
+ * index unstable; the core decoder maps such slices to unstable forecasts,
+ * matching the scalar lane.
  *
  * <p>
  * Per-path stream (RNG version 1): path {@code p} of decision index {@code i}
@@ -45,10 +46,11 @@ package org.ta4j.core.indicators.forecast;
  * {@link #toUnitDouble(long)} for uniforms, {@link #gaussian(double, double)}
  * for standard normals, and the {@code nextInt} rejection loop of the scalar
  * lane for bootstrap selection. Shock model and volatility update mode use the
- * explicit stable codes defined by the planner (historical bootstrap,
- * standardized empirical, smoothed empirical, normal; constant, EWMA), not enum
- * declaration ordinals. Terminal prices apply the scalar guard: cumulative
- * log-returns whose magnitude exceeds {@code 700} map to non-finite output.
+ * stable {@code SHOCK_*} and {@code VOLATILITY_*} codes below, never enum
+ * declaration ordinals. Terminal prices apply the scalar guards: cumulative
+ * log-returns whose magnitude exceeds {@link #MAX_EXPONENT} map to non-finite
+ * output, and a terminal price that underflows to zero marks the decision index
+ * unstable.
  *
  * @since 0.25.1
  */
@@ -71,6 +73,45 @@ public final class MonteCarloKernel {
 
     /** Number of input buffers. */
     public static final int INPUT_COUNT = 5;
+
+    /** Shock-model code: bootstrap historical log returns. */
+    public static final int SHOCK_HISTORICAL_BOOTSTRAP = 0;
+
+    /** Shock-model code: bootstrap standardized historical returns. */
+    public static final int SHOCK_STANDARDIZED_EMPIRICAL = 1;
+
+    /** Shock-model code: kernel-smoothed standardized historical returns. */
+    public static final int SHOCK_SMOOTHED_EMPIRICAL = 2;
+
+    /** Shock-model code: standard normal shocks. */
+    public static final int SHOCK_NORMAL = 3;
+
+    /** Volatility-mode code: constant volatility along each path. */
+    public static final int VOLATILITY_CONSTANT = 0;
+
+    /** Volatility-mode code: EWMA volatility updates along each path. */
+    public static final int VOLATILITY_EWMA = 1;
+
+    /** Parameter index: shock-model code. */
+    public static final int PARAM_SHOCK_MODEL = 0;
+
+    /** Parameter index: volatility-mode code. */
+    public static final int PARAM_VOLATILITY_MODE = 1;
+
+    /** Parameter index: horizon in bars. */
+    public static final int PARAM_HORIZON = 2;
+
+    /** Parameter index: simulated paths per decision index. */
+    public static final int PARAM_ITERATIONS = 3;
+
+    /** Parameter index: historical lookback bar count. */
+    public static final int PARAM_LOOKBACK = 4;
+
+    /** Parameter index: EWMA decay factor. */
+    public static final int PARAM_DECAY = 5;
+
+    /** Number of request parameters. */
+    public static final int PARAM_COUNT = 6;
 
     /**
      * Cumulative log-return magnitude above which terminal prices are non-finite.

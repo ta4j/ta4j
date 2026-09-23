@@ -37,11 +37,18 @@ import org.ta4j.core.num.NumFactory;
  * @param perPathRandoms       optional engine-provided factory of independent
  *                             per-path streams; {@code null} selects the shared
  *                             sequential stream in {@code random}
+ * @since 0.24.2
  */
 public record MonteCarloContext(int index, int horizon, int iterationCount, List<Num> historicalLogReturns,
         ReturnMoments moments, RandomGenerator random, NumFactory numFactory,
         IntFunction<RandomGenerator> perPathRandoms) {
 
+    /**
+     * Validates a context. The eight-component form carrying {@code perPathRandoms}
+     * is canonical since 0.25.1.
+     *
+     * @since 0.25.1
+     */
     public MonteCarloContext {
         if (index < 0) {
             throw new IllegalArgumentException("index must be >= 0");
@@ -68,7 +75,7 @@ public record MonteCarloContext(int index, int horizon, int iterationCount, List
      *                             {@code index}
      * @param random               deterministic seeded random generator
      * @param numFactory           number factory of the underlying bar series
-     * @since 0.25.1
+     * @since 0.24.2
      */
     public MonteCarloContext(int index, int horizon, int iterationCount, List<Num> historicalLogReturns,
             ReturnMoments moments, RandomGenerator random, NumFactory numFactory) {

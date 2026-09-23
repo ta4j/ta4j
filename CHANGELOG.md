@@ -2,8 +2,7 @@
 
 ### Added
 
-- **Transparent forecast acceleration preserves existing backtest APIs (`CF-336`)**: `BarSeriesManager` can batch eligible `DoubleNum` Monte Carlo price forecasts through the optional, ServiceLoader-based `org.ta4j.core.acceleration.AccelerationRuntime` SPI while preserving `Indicator#getValue(int)`, strategy, executor, and trading-record contracts. Acceleration is strictly opt-in and always falls back to complete scalar results for unsupported work, stale data, memory limits, or provider failures.
-- **Acceleration snapshots have an independent host-memory bound**: the Monte Carlo planner accounts for overlapping input copies and output staging before allocating arrays, declining batches above a quarter of the JVM maximum heap even when they fit the device-memory limit.
+- **Transparent Monte Carlo forecast acceleration (`CF-336`)**: with `-Dta4j.acceleration.enabled=auto` (or `true`) and `-Dta4j.forecast.rngVersion=1`, `BarSeriesManager` batches eligible `DoubleNum` `MonteCarloPriceForecastIndicator` values through optional ServiceLoader providers of the `org.ta4j.core.acceleration.AccelerationRuntime` SPI while keeping `Indicator#getValue(int)`, strategy, executor, and trading-record contracts. Accelerated values are cached like scalar ones, warm-up prefixes stay scalar, oversized ranges run in memory-bounded chunks, and unsupported work, stale data, or provider failures fall back to complete scalar results; `AccelerationRuntime.lastDiagnostic()` explains why a run stayed on CPU even after it returns. RNG version `1` selects a deterministic per-path stream (seeded forecast values differ from the default stream) and adds `MonteCarloContext#randomForPath(int)` plus the `perPathRandoms` component for custom methods.
 - **Experimental Elliott topology analysis (`CF-525`)**: Added package-private pivot history, confirmation tracking, and grammar analysis under `org.ta4j.core.analysis.elliott` for `MOTIVE_5`, `CORRECTIVE_3`, and `CYCLE_5_3`. Outcomes distinguish insufficient history, no match, forming, complete, ambiguous, and invalidated candidates; four selectable relationship rules emit structured evidence. Deterministic internal study tooling includes `StudyRunner`, `StudyReport`, and `DetectorRobustnessMatrix`.
 - **Runtime-reported backtests**: Added `BacktestExecutor.executeWithRuntimeReport` overloads for fixed amounts and `PositionSizer` entries. A platform-worker cap avoids nested parallel streams for constrained ForkJoin callers.
 
@@ -16,7 +15,6 @@
 
 ### Fixed
 
-- **Acceleration eligibility, publication, and diagnostics stay truthful (`CF-336`)**: a forecast read before the scalar first-stable index now lowers only the eligible suffix instead of disabling acceleration for the rest of the scope, decoded batches are revalidated against the captured series revision before publication, and a provider's own decline message (accuracy opt-in, missing library, memory) reaches the scope diagnostic instead of a generic no-provider code.
 - Realtime bars now publish retained-series invalidation when side or liquidity aggregation fails after a partial trade.
 - Bootstrap logarithms no longer construct out-of-domain scales for bounded numeric factories.
 

@@ -44,7 +44,9 @@ final class MonteCarloSimulation {
     /**
      * Selects the forecast RNG stream. Version {@code 0} (default) restores the
      * historical shared stream per decision index; version {@code 1} selects the
-     * deterministic per-path stream used for native parity and acceleration.
+     * deterministic per-path stream used for native parity and acceleration. The
+     * property is read once when a simulation is built, so one indicator never
+     * mixes streams in its cache and invalid values fail at construction.
      */
     static final String RNG_VERSION_PROPERTY = "ta4j.forecast.rngVersion";
 
@@ -52,6 +54,7 @@ final class MonteCarloSimulation {
     private final ReturnIndicator returnIndicator;
     private final MonteCarloSettings settings;
     private final MonteCarloMethod method;
+    private final boolean perPathRng;
 
     MonteCarloSimulation(ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator,
             MonteCarloSettings settings, MonteCarloMethod method) {
@@ -59,6 +62,7 @@ final class MonteCarloSimulation {
         this.returnIndicator = this.stateIndicator.getReturnIndicator();
         this.settings = Objects.requireNonNull(settings, "settings must not be null");
         this.method = Objects.requireNonNull(method, "method must not be null");
+        this.perPathRng = perPathRngConfigured();
         IndicatorUtils.requireSameSeries(returnIndicator, this.stateIndicator);
     }
 
@@ -93,8 +97,9 @@ final class MonteCarloSimulation {
         }
 
         RandomGenerator random = new SplittableRandom(mixSeed(settings.seed(), index, settings.horizon()));
-        IntFunction<RandomGenerator> perPathRandoms = legacyStreamRequested() ? null
-                : path -> DeterministicRandom.forPath(settings.seed(), index, settings.horizon(), path);
+        IntFunction<RandomGenerator> perPathRandoms = perPathRng
+                ? path -> DeterministicRandom.forPath(settings.seed(), index, settings.horizon(), path)
+                : null;
         List<Num> terminalSamples = method.terminalReturns(new MonteCarloContext(index, settings.horizon(),
                 settings.iterationCount(), historicalReturns, moments, random, numFactory, perPathRandoms));
         if (terminalSamples == null || terminalSamples.size() != settings.iterationCount()) {
@@ -131,27 +136,27 @@ final class MonteCarloSimulation {
         return settings.horizon();
     }
 
-    private static boolean legacyStreamRequested() {
+    /**
+     * Whether this simulation draws from the explicit per-path stream selected by
+     * {@code -Dta4j.forecast.rngVersion=1} when it was built. Accelerated
+     * evaluation may only run in this mode because it relies on
+     * path-order-independent reproducibility.
+     */
+    boolean usesPerPathRng() {
+        return perPathRng;
+    }
+
+    private static boolean perPathRngConfigured() {
         String configured = System.getProperty(RNG_VERSION_PROPERTY);
         if (configured == null || configured.isBlank()) {
-            return true;
+            return false;
         }
         return switch (configured.trim()) {
-        case "0" -> true;
-        case "1" -> false;
+        case "0" -> false;
+        case "1" -> true;
         default -> throw new IllegalArgumentException(
                 RNG_VERSION_PROPERTY + " must be '0' or '1', but was '" + configured + "'");
         };
-    }
-
-    /**
-     * Whether the explicit per-path stream was selected via
-     * {@code -Dta4j.forecast.rngVersion=1}. Accelerated evaluation may only run
-     * when this mode is active because it relies on path-order-independent
-     * reproducibility.
-     */
-    static boolean isPerPathRngSelected() {
-        return !legacyStreamRequested();
     }
 
     private List<Num> historicalReturns(int index, NumFactory numFactory) {
@@ -254,7 +259,9 @@ final class MonteCarloSimulation {
 
         @Override
         public float nextFloat() {
-            return (float) nextDouble();
+            // 24 random mantissa bits keep the result strictly below 1.0f; narrowing
+            // nextDouble() would round draws near 1 up to exactly 1.0f.
+            return (nextLong() >>> 40) * 0x1.0p-24f;
         }
 
         @Override
