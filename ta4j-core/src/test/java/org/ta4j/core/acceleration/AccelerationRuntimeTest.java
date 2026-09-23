@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
@@ -38,6 +39,7 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.acceleration.AccelerationRuntime.Assessment;
 import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
+import org.ta4j.core.acceleration.AccelerationRuntime.Diagnostic;
 import org.ta4j.core.acceleration.AccelerationRuntime.DiagnosticCode;
 import org.ta4j.core.acceleration.AccelerationRuntime.KernelRequest;
 import org.ta4j.core.acceleration.AccelerationRuntime.KernelResult;
@@ -334,7 +336,10 @@ class AccelerationRuntimeTest {
 
         try (AccelerationRuntime.Scope ignored = AccelerationRuntime.open(series, 0, series.getEndIndex())) {
             assertEquals(series.numFactory().numOf(1), indicator.getValue(1));
-            assertEquals(DiagnosticCode.NO_PROVIDER, AccelerationRuntime.lastDiagnostic().orElseThrow().code());
+            Diagnostic diagnostic = AccelerationRuntime.lastDiagnostic().orElseThrow();
+            assertEquals(DiagnosticCode.UNSUPPORTED, diagnostic.code());
+            assertEquals("metal-echo", diagnostic.providerId());
+            assertTrue(diagnostic.detail().contains("BITWISE_IDENTICAL"));
         }
 
         assertEquals(0, lax.executions.get());
@@ -544,40 +549,209 @@ class AccelerationRuntimeTest {
                 .lookbackBarCount(5)
                 .seed(11L)
                 .build();
-        AtomicInteger executions = new AtomicInteger();
-        Provider kernel = new Provider() {
-            @Override
-            public String providerId() {
-                return "mc-kernel";
-            }
-
-            @Override
-            public Assessment assess(KernelRequest probe) {
-                return Assessment.supported(Backend.CPU, "cpu", 1L, 1_000_000L, true);
-            }
-
-            @Override
-            public KernelResult execute(KernelRequest request) {
-                executions.incrementAndGet();
-                int rows = request.toInclusive() - request.fromInclusive() + 1;
-                double[] outputs = new double[rows * request.outputsPerIndex()];
-                for (int row = 0; row < rows; row++) {
-                    double base = row * request.outputsPerIndex();
-                    for (int path = 0; path < request.outputsPerIndex(); path++) {
-                        outputs[(int) base + path] = path % 2 == 0 ? 90d : 110d;
-                    }
-                }
-                return new KernelResult(outputs, false, 1L);
-            }
-        };
+        KernelProvider kernel = new KernelProvider();
         useProvidersForTests(List.of(kernel));
         try (Scope scope = open(series, 10, 12)) {
             Forecast value = forecast.getValue(11);
             assertTrue(value.isStable());
             assertEquals(11, value.decisionIndex());
             assertEquals(100d, value.mean().doubleValue(), 1e-9);
-            assertEquals(1, executions.get());
+            assertEquals(1, kernel.executions.get());
         }
+    }
+
+    private static final class KernelProvider implements Provider {
+
+        final AtomicInteger executions = new AtomicInteger();
+        final List<KernelRequest> requests = new ArrayList<>();
+
+        @Override
+        public String providerId() {
+            return "mc-kernel";
+        }
+
+        @Override
+        public Assessment assess(KernelRequest request) {
+            return Assessment.supported(Backend.CPU, "cpu", 1L, 1_000_000L, true);
+        }
+
+        @Override
+        public KernelResult execute(KernelRequest request) {
+            executions.incrementAndGet();
+            requests.add(request);
+            int rows = request.toInclusive() - request.fromInclusive() + 1;
+            double[] outputs = new double[rows * request.outputsPerIndex()];
+            for (int row = 0; row < rows; row++) {
+                double base = row * request.outputsPerIndex();
+                for (int path = 0; path < request.outputsPerIndex(); path++) {
+                    outputs[(int) base + path] = path % 2 == 0 ? 90d : 110d;
+                }
+            }
+            return new KernelResult(outputs, false, 1L);
+        }
+    }
+
+    @Test
+    void accelerationKeepsTheScalarStabilityBoundary() {
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        System.setProperty("ta4j.forecast.rngVersion", "1");
+        try {
+            BarSeries series = longSeries();
+            MonteCarloPriceForecastIndicator scalar = longForecast(series);
+            assertEquals(252, scalar.getCountOfUnstableBars());
+            assertFalse(scalar.getValue(251).isStable());
+            assertTrue(scalar.getValue(252).isStable());
+
+            KernelProvider kernel = new KernelProvider();
+            useProvidersForTests(List.of(kernel));
+            MonteCarloPriceForecastIndicator accelerated = longForecast(series);
+            try (Scope ignored = open(series, 0, series.getEndIndex())) {
+                assertFalse(accelerated.getValue(251).isStable());
+                assertEquals(252, kernel.requests.getFirst().fromInclusive());
+                assertTrue(accelerated.getValue(252).isStable());
+            }
+        } finally {
+            System.clearProperty("ta4j.forecast.rngVersion");
+        }
+    }
+
+    @Test
+    void warmUpReadsStayScalarWithoutDisablingLaterAcceleration() {
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        System.setProperty("ta4j.forecast.rngVersion", "1");
+        try {
+            BarSeries series = longSeries();
+            KernelProvider kernel = new KernelProvider();
+            useProvidersForTests(List.of(kernel));
+            MonteCarloPriceForecastIndicator forecast = longForecast(series);
+
+            try (Scope ignored = open(series, 0, series.getEndIndex())) {
+                assertFalse(forecast.getValue(0).isStable());
+                assertFalse(forecast.getValue(100).isStable());
+                assertFalse(forecast.getValue(251).isStable());
+                assertEquals(1, kernel.executions.get());
+                assertTrue(forecast.getValue(252).isStable());
+                assertTrue(forecast.getValue(299).isStable());
+                assertEquals(1, kernel.executions.get());
+            }
+        } finally {
+            System.clearProperty("ta4j.forecast.rngVersion");
+        }
+    }
+
+    @Test
+    void defaultStrategyJourneyAcceleratesAfterTheForecastWarmUp() {
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        System.setProperty("ta4j.forecast.rngVersion", "1");
+        try {
+            BarSeries series = longSeries();
+            KernelProvider kernel = new KernelProvider();
+            useProvidersForTests(List.of(kernel));
+            MonteCarloPriceForecastIndicator forecast = longForecast(series);
+            Strategy strategy = new BaseStrategy(new ForecastRule(forecast, 260), new IndexRule(series.getEndIndex()));
+
+            TradingRecord record = new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(strategy,
+                    TradeType.BUY, series.numFactory().one());
+
+            assertEquals(1, record.getPositions().size());
+            assertEquals(260, record.getPositions().getFirst().getEntry().getIndex());
+            assertEquals(1, kernel.executions.get());
+        } finally {
+            System.clearProperty("ta4j.forecast.rngVersion");
+        }
+    }
+
+    @Test
+    void mutationDuringDecodingIsNotPublished() {
+        BarSeries series = new MockBarSeriesBuilder().withData(10, 11, 12, 13, 14, 15, 16, 17, 18, 19).build();
+        EchoProvider provider = new EchoProvider(Backend.METAL, "gpu-0", 10L, 1_000L);
+        useProvidersForTests(List.of(provider));
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        AtomicInteger decodes = new AtomicInteger();
+        SeriesValueIndicator indicator = new SeriesValueIndicator(series, null, () -> {
+            if (decodes.incrementAndGet() == 1) {
+                replaceLastBarWithClose(series, 42d);
+            }
+        });
+
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            assertEquals(series.numFactory().numOf(15), indicator.getValue(5));
+            assertEquals(DiagnosticCode.STALE_SERIES, AccelerationRuntime.lastDiagnostic().orElseThrow().code());
+            assertEquals(1, provider.executions.get());
+            assertEquals(series.numFactory().numOf(117), indicator.getValue(7));
+            assertEquals(2, provider.executions.get());
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "PROVIDER_UNAVAILABLE, metal-kernel, set -Dta4j.acceleration.approximateTolerance=1e-3 to allow approximate execution",
+            "PROVIDER_UNAVAILABLE, metal-kernel, the native classifier library is missing",
+            "UNSUPPORTED, metal-kernel, the request needs more memory than the device budget allows" })
+    void providerDeclineKeepsItsActionableDiagnostic(DiagnosticCode code, String providerId, String detail) {
+        BarSeries series = series();
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        Provider declining = new Provider() {
+            @Override
+            public String providerId() {
+                return "declining";
+            }
+
+            @Override
+            public Assessment assess(KernelRequest request) {
+                return Assessment.unsupported(Backend.METAL, "gpu-0", code, providerId, detail);
+            }
+
+            @Override
+            public KernelResult execute(KernelRequest request) {
+                throw new AssertionError("declining provider must not execute");
+            }
+        };
+        useProvidersForTests(List.of(declining));
+
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            assertEquals(series.numFactory().numOf(1), new ScopeAwareIndicator(series).getValue(1));
+            Diagnostic diagnostic = AccelerationRuntime.lastDiagnostic().orElseThrow();
+            assertEquals(code, diagnostic.code());
+            assertEquals(providerId, diagnostic.providerId());
+            assertEquals(detail, diagnostic.detail());
+        }
+    }
+
+    @Test
+    void zeroProvidersReportNoProviderDiscovered() {
+        BarSeries series = series();
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        useProvidersForTests(List.of());
+
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            assertEquals(series.numFactory().numOf(1), new ScopeAwareIndicator(series).getValue(1));
+            Diagnostic diagnostic = AccelerationRuntime.lastDiagnostic().orElseThrow();
+            assertEquals(DiagnosticCode.NO_PROVIDER, diagnostic.code());
+            assertEquals("none", diagnostic.providerId());
+        }
+    }
+
+    @Test
+    void failingProviderBeforeSuccessfulSiblingStillAccelerates() {
+        BarSeries series = series();
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        EchoProvider failing = new EchoProvider(Backend.METAL, "a-device", 10L, 1_000L) {
+            @Override
+            public Assessment assess(KernelRequest request) {
+                super.assessments.incrementAndGet();
+                throw new IllegalStateException("native probe failed");
+            }
+        };
+        EchoProvider healthy = new EchoProvider(Backend.CPU, "z-device", 10L, 1_000L);
+        useProvidersForTests(List.of(failing, healthy));
+
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            assertEquals(series.numFactory().numOf(101), new ScopeAwareIndicator(series).getValue(1));
+            assertEquals(DiagnosticCode.ACCELERATED, AccelerationRuntime.lastDiagnostic().orElseThrow().code());
+        }
+
+        assertEquals(1, healthy.executions.get());
     }
 
     private static TradingRecord run(BarSeries series, ScopeAwareIndicator indicator) {
@@ -613,14 +787,33 @@ class AccelerationRuntimeTest {
         return new RevisionFreeSeries("revision-free", bars);
     }
 
+    private static BarSeries longSeries() {
+        double[] prices = new double[300];
+        for (int i = 0; i < prices.length; i++) {
+            prices[i] = 100 + i;
+        }
+        return new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance()).withData(prices).build();
+    }
+
+    private static MonteCarloPriceForecastIndicator longForecast(BarSeries series) {
+        LogReturnIndicator returns = new LogReturnIndicator(series);
+        EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns, 5, 0.94d);
+        return MonteCarloPriceForecastIndicator.builder(new ClosePriceIndicator(series), state)
+                .horizon(1)
+                .iterationCount(2)
+                .lookbackBarCount(252)
+                .seed(11L)
+                .build();
+    }
+
     private static final class TestPlanner implements OperationPlanner {
 
         @Override
-        public PlannedOperation plan(Indicator<?> indicator, int fromInclusive, int toInclusive, NumFactory factory,
+        public PlanAttempt plan(Indicator<?> indicator, int fromInclusive, int toInclusive, NumFactory factory,
                 long memoryLimitBytes) {
             SeriesValueIndicator seriesValue = indicator instanceof SeriesValueIndicator value ? value : null;
             if (!(indicator instanceof ScopeAwareIndicator) && seriesValue == null) {
-                return null;
+                return PlanAttempt.declined(PlanDecline.unsupported("test planner claims scope-aware indicators only"));
             }
             int size = toInclusive - fromInclusive + 1;
             double[] markers = new double[size];
@@ -635,7 +828,13 @@ class AccelerationRuntimeTest {
             if (seriesValue != null) {
                 seriesValue.runAfterPlanning();
             }
-            return new PlannedOperation(request, (slice, index, decodingFactory) -> decodingFactory.numOf(slice[0]));
+            return PlanAttempt.planned(new PlannedOperation(request, (slice, index, decodingFactory) -> {
+                Num decoded = decodingFactory.numOf(slice[0]);
+                if (seriesValue != null) {
+                    seriesValue.runAfterDecoding();
+                }
+                return decoded;
+            }));
         }
     }
 
@@ -664,10 +863,16 @@ class AccelerationRuntimeTest {
     private static final class SeriesValueIndicator extends CachedIndicator<Num> {
 
         private final Runnable afterPlanning;
+        private final Runnable afterDecoding;
 
         private SeriesValueIndicator(BarSeries series, Runnable afterPlanning) {
+            this(series, afterPlanning, null);
+        }
+
+        private SeriesValueIndicator(BarSeries series, Runnable afterPlanning, Runnable afterDecoding) {
             super(series);
             this.afterPlanning = afterPlanning;
+            this.afterDecoding = afterDecoding;
         }
 
         @Override
@@ -692,6 +897,12 @@ class AccelerationRuntimeTest {
         private void runAfterPlanning() {
             if (afterPlanning != null) {
                 afterPlanning.run();
+            }
+        }
+
+        private void runAfterDecoding() {
+            if (afterDecoding != null) {
+                afterDecoding.run();
             }
         }
     }
@@ -724,6 +935,24 @@ class AccelerationRuntimeTest {
         @Override
         public boolean isSatisfied(int index, TradingRecord tradingRecord) {
             return index == satisfiedIndex;
+        }
+    }
+
+    private static final class ForecastRule extends AbstractRule {
+
+        private final MonteCarloPriceForecastIndicator forecast;
+        private final int indexToEnter;
+
+        private ForecastRule(MonteCarloPriceForecastIndicator forecast, int indexToEnter) {
+            this.forecast = forecast;
+            this.indexToEnter = indexToEnter;
+        }
+
+        @Override
+        public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+            Forecast value = forecast.getValue(index);
+            return index == indexToEnter && value.isStable()
+                    && value.mean().isGreaterThan(value.mean().getNumFactory().zero());
         }
     }
 

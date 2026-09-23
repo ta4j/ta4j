@@ -16,6 +16,7 @@
 
 ### Fixed
 
+- **Acceleration eligibility, publication, and diagnostics stay truthful (`CF-336`)**: a forecast read before the scalar first-stable index now lowers only the eligible suffix instead of disabling acceleration for the rest of the scope, decoded batches are revalidated against the captured series revision before publication, and a provider's own decline message (accuracy opt-in, missing library, memory) reaches the scope diagnostic instead of a generic no-provider code.
 - Realtime bars now publish retained-series invalidation when side or liquidity aggregation fails after a partial trade.
 - Bootstrap logarithms no longer construct out-of-domain scales for bounded numeric factories.
 
