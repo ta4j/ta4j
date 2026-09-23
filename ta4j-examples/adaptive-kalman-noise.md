@@ -52,10 +52,10 @@ variance either. Moreover, using `R = volume` directly gives high-volume bars
 The existing wrapper deliberately validates numeric shape, not economic units.
 
 The implementation reuses `NumericIndicator.squared/max/min/dividedBy`,
-`UnaryOperationIndicator.pow`, `SMAIndicator`, and `KalmanNoiseIndicator` rather
-than teaching the Kalman engine about ATR or volume. The small private relative-
-volume indicator exists only to express the example's missing-data policy; it
-is not a new public core API or a serialization contract.
+`UnaryOperationIndicator.pow`, `SMAIndicator`, `LowestValueIndicator`, and
+`KalmanNoiseIndicator` rather than teaching the Kalman engine about ATR or volume.
+The small private relative-volume indicator exists only to express the example's
+missing-data policy; it is not a new public core API or a serialization contract.
 
 ## Volume policy
 
@@ -69,12 +69,16 @@ be a rolling sum, so it is not used as the denominator.
 | Volume window still warming up | 1: neutral confidence |
 | Missing/non-finite current volume or mean | 1: neutral confidence |
 | Zero or nonpositive mean | 1: neutral confidence |
-| Actual zero current volume with a positive mean | 0, subsequently clipped to 0.25 |
+| Negative historical volume remains in the averaging window | 1: neutral confidence until it leaves the window |
+| Actual zero current volume with a usable positive mean | 0, subsequently clipped to 0.25 |
 | Negative current volume | Unavailable, not silently repaired |
 
 The helper waits for the SMA's declared full-window boundary even though the
 underlying SMA can expose partial-window values. It reports zero unstable bars
 because its neutral fallback is intentionally defined during that warm-up.
+A rolling minimum detects negative historical volume: a later valid observation
+must not gain confidence from an artificially depressed average. Adaptation
+resumes once the corrupt value leaves the window.
 The ATR variance still stays unavailable during ATR warm-up: the variance floor
 does **not** replace an unavailable ATR with a valid number.
 
@@ -152,6 +156,7 @@ simultaneously changing R.
 `AdaptiveKalmanNoiseExampleTest` uses small synthetic fixtures and exercises
 both `DoubleNumFactory` and `DecimalNumFactory` for the numerical behavior. It
 covers noise units/formulas, clipping, warm-up, missing versus zero volume,
-negative-volume unavailability, the variance floor, first-observation seeding,
-prior-bar timing, common-origin scoring, next-bar targets, and empty evaluations.
-It does not assert that an uncalibrated adaptive recipe must beat a benchmark.
+negative-volume unavailability and subsequent rolling-window recovery, the
+variance floor, first-observation seeding, prior-bar timing, common-origin
+scoring, next-bar targets, and empty evaluations. It does not assert that an
+uncalibrated adaptive recipe must beat a benchmark.

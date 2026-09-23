@@ -21,6 +21,7 @@ import org.ta4j.core.indicators.forecast.KinematicKalmanPriceForecastIndicator;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.forecast.state.KinematicKalmanForecastState;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
@@ -179,6 +180,7 @@ public final class AdaptiveKalmanNoiseExample {
 
         private final Indicator<Num> volume;
         private final SMAIndicator averageVolume;
+        private final LowestValueIndicator lowestVolume;
 
         private RelativeVolumeIndicator(Indicator<Num> volume, int volumeWindow) {
             super(volume.getBarSeries());
@@ -187,6 +189,7 @@ public final class AdaptiveKalmanNoiseExample {
             }
             this.volume = volume;
             this.averageVolume = new SMAIndicator(volume, volumeWindow);
+            this.lowestVolume = new LowestValueIndicator(volume, volumeWindow);
         }
 
         @Override
@@ -201,7 +204,8 @@ public final class AdaptiveKalmanNoiseExample {
                 return getBarSeries().numFactory().one();
             }
             Num average = averageVolume.getValue(index);
-            if (!Num.isFinite(average) || !average.isPositive()) {
+            // A corrupt historical volume invalidates confidence until it ages out.
+            if (!Num.isFinite(average) || !average.isPositive() || lowestVolume.getValue(index).isNegative()) {
                 return getBarSeries().numFactory().one();
             }
             return current.dividedBy(average);
@@ -209,7 +213,7 @@ public final class AdaptiveKalmanNoiseExample {
 
         @Override
         public List<Indicator<?>> getDependencies() {
-            return List.of(volume, averageVolume);
+            return List.of(volume, averageVolume, lowestVolume);
         }
 
         @Override

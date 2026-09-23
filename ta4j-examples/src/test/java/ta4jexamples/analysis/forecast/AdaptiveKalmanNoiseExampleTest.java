@@ -69,6 +69,22 @@ class AdaptiveKalmanNoiseExampleTest {
     }
 
     @Test
+    void negativeHistoricalVolumeUsesNeutralConfidenceUntilItLeavesTheWindow() {
+        for (NumFactory factory : FACTORIES) {
+            BarSeries series = flatSeries(factory, 4);
+            AdaptiveKalmanNoiseExample.NoiseInputs noise = AdaptiveKalmanNoiseExample
+                    .createNoise(values(series, 2, 2, 2, 2), values(series, 10, -1, 10, 30), 2);
+
+            // A cold tail read and reverse reads must follow the same window policy.
+            assertEquals(1.5, noise.relativeVolume().getValue(3).doubleValue(), 1e-12);
+            assertEquals(4 / Math.sqrt(1.5), noise.measurementNoise().getValue(3).doubleValue(), 1e-12);
+            assertEquals(1, noise.relativeVolume().getValue(2).doubleValue(), 1e-12);
+            assertEquals(4, noise.measurementNoise().getValue(2).doubleValue(), 1e-12);
+            assertTrue(noise.measurementNoise().getValue(1).isNaN());
+        }
+    }
+
+    @Test
     void varianceFloorDoesNotReplaceUnavailableAtr() {
         for (NumFactory factory : FACTORIES) {
             BarSeries series = flatSeries(factory, 3);
