@@ -937,6 +937,8 @@ class AccelerationRuntimeTest {
                 AccelerationRuntimeTest.class.getClassLoader());
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
         AccelerationRuntime.resetProvidersForTests();
+        FirstDiscoveryProvider.EXECUTIONS.set(0);
+        SecondDiscoveryProvider.EXECUTIONS.set(0);
         BarSeries series = series();
         try {
             Thread.currentThread().setContextClassLoader(firstLoader);

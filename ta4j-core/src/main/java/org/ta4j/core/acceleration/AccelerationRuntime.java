@@ -214,6 +214,7 @@ public final class AccelerationRuntime {
     static synchronized void resetProvidersForTests() {
         discoveredProviders = null;
         CURRENT.remove();
+        LAST_CLOSED_DIAGNOSTIC.remove();
     }
 
     private static boolean enabled() {
