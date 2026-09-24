@@ -1443,7 +1443,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
 
     @Test
     public void testDeleteCacheFilesWithNonExistentDirectory() throws IOException {
-        String cacheDir = "temp/non-existent-cache-dir";
+        String cacheDir = "temp/yahoo-non-existent-cache-dir";
         Path cacheDirPath = Paths.get(cacheDir);
         try {
             YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(cacheDir);

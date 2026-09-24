@@ -11,11 +11,13 @@
 - **Bar mutation ownership**: `BaseBar` uses lazy ownership for unretained bars, compact state for one retaining series, and a weak map for shared bars. Partial price-update failures and subclass mutations that omit superclass publication now invalidate every retaining series.
 - **Concurrent retained-bar handling**: `ConcurrentBarSeries.withWriteLock` defers invalidation callbacks until the outermost lease, preventing cross-series deadlocks; surviving aliases are revalidated after head eviction.
 - **Fractal replay and observation**: Replay uses one exact-class mutation-tracking policy, while observation captures revision, bounds, and bar state under one read lease.
+- **Faster test gate**: Surefire runs test classes across four bounded JVM forks (`ta4j.test.forkCount`); the benchmark and analysis-demo lanes pin one fork so their timings and shared outputs stay isolated.
 
 ### Fixed
 
 - Realtime bars now publish retained-series invalidation when side or liquidity aggregation fails after a partial trade.
 - Bootstrap logarithms no longer construct out-of-domain scales for bounded numeric factories.
+- Rule copies (`BaseStrategy#getEntryRule`/`getExitRule`, composite rule accessors, and position-sizing strategy snapshots) no longer walk the logging backend's JVM-wide logger registry while locating a rule's bar series, removing a per-copy cost that grew with every logger created in the JVM.
 
 ## 0.25.0 (2026-09-07)
 
