@@ -1,4 +1,9 @@
 /mvnw.cmd text eol=crlf
+ta4j-examples/src/main/resources/TradingView-INDEX_BTCUSD-PT1D-20091005_20260306.json -text
+ta4j-examples/src/main/resources/Coinbase-ETH-USD-PT1D-20160517_20251028.json -text
+ta4j-core/src/test/resources/TradingView-INDEX_BTCUSD-PT1D-20091005_20260306.json -text
+ta4j-core/src/test/resources/Coinbase-ETH-USD-PT1D-20160517_20251028.json -text
+ta4j-core/src/test/resources/org/ta4j/core/analysis/elliott/cf525-study-protocol-v1.json -text
 # Shell scripts must keep LF endings on every platform: CRLF breaks
 # bash (`set -o pipefail\r` -> invalid option) under Git Bash/MSYS on Windows.
 *.sh text eol=lf

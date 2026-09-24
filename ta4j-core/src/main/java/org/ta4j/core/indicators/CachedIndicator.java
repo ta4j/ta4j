@@ -143,7 +143,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     private CachedIndicator(Config config, Indicator<?>[] sourceIndicators) {
         super(config.series());
-        BarSeriesChangeSnapshot snapshot = config.snapshot();
+        final BarSeriesChangeSnapshot snapshot = config.snapshot();
         this.cache = CachedBuffer.of(snapshot.maximumBarCount());
         this.lastBarWaitTimeoutMs = config.lastBarWaitTimeoutMs();
         this.observedSeriesSnapshot = new AtomicReference<>(snapshot);
@@ -155,7 +155,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         if (lastBarWaitTimeoutMs <= 0) {
             throw new IllegalArgumentException("Last-bar wait timeout must be positive");
         }
-        BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(-1L);
+        final BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(-1L);
         if (snapshot.maximumBarCount() <= 0) {
             throw new IllegalArgumentException("Maximum bar count must be strictly positive");
         }

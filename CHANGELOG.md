@@ -1,10 +1,26 @@
 ## Unreleased
 
+### Added
+
 - **CLI workflows and optional acceleration (`CF-336`)**: Added the `ta4j-cli` module for bounded local strategy, indicator, rule, forecast, and performance workflows. Optional ServiceLoader native providers lower eligible Monte Carlo shock-path work through the versioned kernel ABI, assess before native initialization, preserve exact scalar semantics by default, and surface provider fallback diagnostics.
 - CLI walk-forward runs rebuild serialized strategy state for the full backtest and each fold. Scanner work limits include extrema, ranks and statistical windows; repeated invocations reconfigure human/JSON logging without binding diagnostics to a stale stream. Native execution enforces numeric, shape and tolerance eligibility independently of provider selection, and release inventories recognize the optional acceleration classifiers.
 - Native providers honor explicit library overrides, translate OpenCL probe failures, and reject infeasible direct-execution memory limits before initialization. Performance comparisons reject empty experiment grids rather than reporting a false passing gate; Linux validation handoffs preserve checkout ownership and reject unsupported options.
 - **Transparent forecast acceleration preserves existing backtest APIs (`CF-336`)**: `BarSeriesManager` can batch eligible `DoubleNum` Monte Carlo price forecasts through the optional, ServiceLoader-based `org.ta4j.core.acceleration.AccelerationRuntime` SPI while preserving `Indicator#getValue(int)`, strategy, executor, and trading-record contracts. Acceleration is strictly opt-in and always falls back to complete scalar results for unsupported work, stale data, memory limits, or provider failures.
 - **Acceleration snapshots have an independent host-memory bound**: the Monte Carlo planner accounts for overlapping input copies and output staging before allocating arrays, declining batches above a quarter of the JVM maximum heap even when they fit the device-memory limit.
+- **Experimental Elliott topology analysis (`CF-525`)**: Added package-private pivot history, confirmation tracking, and grammar analysis under `org.ta4j.core.analysis.elliott` for `MOTIVE_5`, `CORRECTIVE_3`, and `CYCLE_5_3`. Outcomes distinguish insufficient history, no match, forming, complete, ambiguous, and invalidated candidates; four selectable relationship rules emit structured evidence. Deterministic internal study tooling includes `StudyRunner`, `StudyReport`, and `DetectorRobustnessMatrix`.
+- **Runtime-reported backtests**: Added `BacktestExecutor.executeWithRuntimeReport` overloads for fixed amounts and `PositionSizer` entries. A platform-worker cap avoids nested parallel streams for constrained ForkJoin callers.
+
+### Changed
+
+- **Elliott study evidence (`CF-525`)**: H2 now measures complete-topology bar occupancy; relationship aggregates declare their unique-topology scope; competing grammars share signed-pivot eligibility without duplicate ten-leg comparisons.
+- **Bar mutation ownership**: `BaseBar` uses lazy ownership for unretained bars, compact state for one retaining series, and a weak map for shared bars. Partial price-update failures and subclass mutations that omit superclass publication now invalidate every retaining series.
+- **Concurrent retained-bar handling**: `ConcurrentBarSeries.withWriteLock` defers invalidation callbacks until the outermost lease, preventing cross-series deadlocks; surviving aliases are revalidated after head eviction.
+- **Fractal replay and observation**: Replay uses one exact-class mutation-tracking policy, while observation captures revision, bounds, and bar state under one read lease.
+
+### Fixed
+
+- Realtime bars now publish retained-series invalidation when side or liquidity aggregation fails after a partial trade.
+- Bootstrap logarithms no longer construct out-of-domain scales for bounded numeric factories.
 
 ## 0.25.0 (2026-09-07)
 
