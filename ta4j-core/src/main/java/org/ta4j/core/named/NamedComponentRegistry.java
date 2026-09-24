@@ -29,9 +29,15 @@ import java.util.jar.JarFile;
 import java.util.stream.Stream;
 
 /**
- * Shared registry infrastructure for components reconstructed from compact name
- * tokens, such as {@link org.ta4j.core.rules.named.NamedRule} and
- * {@link org.ta4j.core.strategy.named.NamedStrategy}.
+ * Registration and package-scanning support shared by the
+ * {@link org.ta4j.core.rules.named.NamedRule} and
+ * {@link org.ta4j.core.strategy.named.NamedStrategy} facades.
+ *
+ * <p>
+ * This type is public only because the two facades live in different packages;
+ * it is not an extension point. Register, look up, and label components through
+ * the facades instead of constructing registries.
+ * </p>
  *
  * <p>
  * Each component family owns one registry instance, configured with its
@@ -46,9 +52,12 @@ import java.util.stream.Stream;
  *
  * <p>
  * Registrations are validated against the compact-label convention: component
- * class names must be non-blank simple names without the underscore delimiter,
- * and scanned classes that fail validation or conflict with an existing
- * registration are skipped with a debug log instead of aborting the scan.
+ * class names must be non-blank simple names without the underscore delimiter.
+ * Scanned classes that fail validation are skipped with a debug log. Two
+ * scanned classes sharing a simple name fail the scan with an
+ * {@link IllegalStateException}, because a label could otherwise rebuild a
+ * different class depending on classpath order; the failed package is scanned
+ * again, and fails again, on the next initialization.
  * </p>
  *
  * @param <T> named component base type owned by this registry
@@ -265,7 +274,12 @@ public final class NamedComponentRegistry<T> {
                 if (normalized.isEmpty() || !scannedPackages.add(normalized)) {
                     continue;
                 }
-                scanPackage(normalized, loader);
+                try {
+                    scanPackage(normalized, loader);
+                } catch (RuntimeException ex) {
+                    scannedPackages.remove(normalized);
+                    throw ex;
+                }
             }
         }
     }
@@ -374,8 +388,8 @@ public final class NamedComponentRegistry<T> {
             }
         } catch (ClassNotFoundException | LinkageError ex) {
             LOGGER.debug("Unable to inspect named {} class {}", componentNoun, className, ex);
-        } catch (IllegalArgumentException | IllegalStateException ex) {
-            LOGGER.debug("Skipping invalid or conflicting named {} class {}", componentNoun, className, ex);
+        } catch (IllegalArgumentException ex) {
+            LOGGER.debug("Skipping invalid named {} class {}", componentNoun, className, ex);
         }
     }
 }

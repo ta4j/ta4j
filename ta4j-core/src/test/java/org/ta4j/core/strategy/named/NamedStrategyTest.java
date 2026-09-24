@@ -7,6 +7,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.named.conflict.ConflictingStrategies;
 import org.ta4j.core.rules.FixedRule;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -70,6 +71,21 @@ class NamedStrategyTest {
     void tearDown() {
         // Clean up test fixtures after each test
         NamedStrategy.unregisterImplementation(TestUnregisterStrategy.class);
+        NamedStrategy.unregisterImplementation(ConflictingStrategies.First.ConflictingStrategy.class);
+        NamedStrategy.unregisterImplementation(ConflictingStrategies.Second.ConflictingStrategy.class);
+    }
+
+    @Test
+    void packageScanFailsOnSimpleNameConflictsEveryTime() {
+        String conflictPackage = "org.ta4j.core.named.conflict";
+
+        IllegalStateException first = assertThrows(IllegalStateException.class,
+                () -> NamedStrategy.initializeRegistry(conflictPackage));
+        IllegalStateException retry = assertThrows(IllegalStateException.class,
+                () -> NamedStrategy.initializeRegistry(conflictPackage));
+
+        assertTrue(first.getMessage().contains("ConflictingStrategy"));
+        assertTrue(retry.getMessage().contains("ConflictingStrategy"));
     }
 
     @Test
