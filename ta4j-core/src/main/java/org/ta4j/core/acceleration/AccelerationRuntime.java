@@ -75,15 +75,24 @@ public final class AccelerationRuntime {
      */
     public static final String MAX_DEVICE_BYTES_PROPERTY = "ta4j.acceleration.maxDeviceBytes";
 
+    /**
+     * System property opting execution into a finite positive approximate tolerance
+     * that providers must meet against the scalar oracle. Unset (or invalid) leaves
+     * exact, bitwise-identical execution as the only mode.
+     */
+    public static final String APPROXIMATE_TOLERANCE_PROPERTY = "ta4j.acceleration.approximateTolerance";
+
     private static final Logger LOG = LoggerFactory.getLogger(AccelerationRuntime.class);
 
     private static final long DEFAULT_MAX_DEVICE_BYTES = 1L << 30;
 
     /**
-     * Safety margin applied to the CPU-crossover comparison: the best accelerator
-     * must beat the scalar baseline by more than this fraction.
+     * Minimum predicted end-to-end speedup over the scalar baseline before
+     * automatic selection engages a provider: its predicted total cost must be at
+     * most the scalar estimate divided by this factor. Smaller predicted gains stay
+     * scalar with a {@link DiagnosticCode#CPU_FASTER} diagnostic.
      */
-    private static final double CPU_SAFETY_MARGIN = 0.10;
+    static final double MIN_PREDICTED_SPEEDUP = 1.5d;
 
     private static final ThreadLocal<Context> CURRENT = new ThreadLocal<>();
 
@@ -205,6 +214,43 @@ public final class AccelerationRuntime {
                     DEFAULT_MAX_DEVICE_BYTES);
             return DEFAULT_MAX_DEVICE_BYTES;
         }
+    }
+
+    /**
+     * Returns the opted-in approximate tolerance, or {@code NaN} when exact,
+     * bitwise-identical execution is requested.
+     *
+     * <p>
+     * The property controls the determinism contract core planners emit: a finite
+     * positive value selects {@link Determinism#APPROXIMATE} with that tolerance,
+     * while anything else — unset, blank, non-numeric, or non-positive — keeps
+     * {@link Determinism#BITWISE_IDENTICAL} with {@code NaN} tolerance. Invalid
+     * configuration never silently widens accuracy; it degrades to exact.
+     *
+     * @return finite positive approximate tolerance, or {@code NaN} for exact
+     * @since 0.25.1
+     */
+    public static double approximateTolerance() {
+        String configured = System.getProperty(APPROXIMATE_TOLERANCE_PROPERTY);
+        if (configured == null || configured.isBlank()) {
+            return Double.NaN;
+        }
+        double tolerance;
+        try {
+            tolerance = Double.parseDouble(configured.trim());
+        } catch (NumberFormatException exception) {
+            LOG.warn("Invalid {}='{}'; using exact execution", APPROXIMATE_TOLERANCE_PROPERTY, configured);
+            return Double.NaN;
+        }
+        if (Double.isNaN(tolerance)) {
+            return Double.NaN;
+        }
+        if (!Double.isFinite(tolerance) || tolerance <= 0d) {
+            LOG.warn("{} must be a finite positive tolerance, was '{}'; using exact execution",
+                    APPROXIMATE_TOLERANCE_PROPERTY, configured);
+            return Double.NaN;
+        }
+        return tolerance;
     }
 
     static synchronized void useProvidersForTests(List<Provider> providers) {
@@ -345,7 +391,16 @@ public final class AccelerationRuntime {
         /**
          * Bitwise identical to the scalar oracle for the same request inputs.
          */
-        BITWISE_IDENTICAL
+        BITWISE_IDENTICAL,
+
+        /**
+         * Within an explicitly requested numeric tolerance of the scalar oracle. Using
+         * this contract requires a finite positive kernel-request tolerance. Providers
+         * are responsible for qualifying this accuracy contract against the scalar
+         * oracle. The runtime validates output shape, finiteness and series freshness;
+         * it does not replay the scalar workload on every execution.
+         */
+        APPROXIMATE
     }
 
     /** Effective execution backend. */
@@ -423,8 +478,10 @@ public final class AccelerationRuntime {
      * @param determinism             determinism contract the kernel must satisfy
      * @param seed                    base seed; per-index mixing is defined by the
      *                                operation contract
-     * @param tolerance               numeric tolerance for validation, NaN when
-     *                                exact
+     * @param tolerance               finite positive tolerance for
+     *                                {@link Determinism#APPROXIMATE} requests;
+     *                                {@code NaN} for
+     *                                {@link Determinism#BITWISE_IDENTICAL}
      * @param params                  operation parameters (ordinals, counts,
      *                                factors) defined by the operation contract
      * @param inputs                  read-only primitive input buffers
@@ -432,6 +489,8 @@ public final class AccelerationRuntime {
      *                                crossover comparison, non-positive when
      *                                unknown
      * @param peakDeviceBytesEstimate declared peak device memory in bytes
+     * @throws IllegalArgumentException if the range, output width, peak estimate or
+     *                                  determinism/tolerance pairing is invalid
      * @since 0.25.1
      */
     public record KernelRequest(Operation operation, int fromInclusive, int toInclusive, int outputsPerIndex,
@@ -450,6 +509,12 @@ public final class AccelerationRuntime {
             }
             if (peakDeviceBytesEstimate < 0) {
                 throw new IllegalArgumentException("peakDeviceBytesEstimate must be >= 0");
+            }
+            if (determinism == Determinism.APPROXIMATE ? !(Double.isFinite(tolerance) && tolerance > 0d)
+                    : !Double.isNaN(tolerance)) {
+                throw new IllegalArgumentException(determinism == Determinism.APPROXIMATE
+                        ? "APPROXIMATE requests need a finite positive tolerance, was " + tolerance
+                        : "BITWISE_IDENTICAL requests carry a NaN tolerance, was " + tolerance);
             }
             params = params.clone();
             List<double[]> copies = new ArrayList<>(inputs.size());
@@ -613,6 +678,12 @@ public final class AccelerationRuntime {
 
         /**
          * Executes a request and returns raw primitives.
+         *
+         * <p>
+         * Implementations must enforce the request's numeric and determinism contracts,
+         * including approximate tolerance. Returning finite output alone is not
+         * sufficient conformance. Runtime structural validation is not an independent
+         * numerical-accuracy check.
          *
          * @param request immutable kernel request
          * @return raw kernel output
@@ -837,11 +908,13 @@ public final class AccelerationRuntime {
                     continue;
                 }
                 long baseline = request.estimatedScalarNanos();
-                if (baseline > 0 && (double) assessment.predictedTotalNanos() >= baseline * (1.0 - CPU_SAFETY_MARGIN)) {
+                if (baseline > 0
+                        && (double) assessment.predictedTotalNanos() * MIN_PREDICTED_SPEEDUP > (double) baseline) {
                     cpuFasterObserved = true;
                     cpuFasterProvider = providerId;
                     cpuFasterDetail = "predicted " + assessment.predictedTotalNanos() + "ns vs scalar baseline "
-                            + baseline + "ns";
+                            + baseline + "ns; automatic selection needs a " + MIN_PREDICTED_SPEEDUP
+                            + "x predicted speedup";
                     continue;
                 }
                 candidates.add(new RankedProvider(provider, providerId, assessment));

@@ -9,6 +9,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -333,6 +334,47 @@ public class BarSeriesManagerTest {
         assertEquals(numFactory.one(), unitRecord.getPositions().getFirst().getEntry().getAmount());
         assertEquals(numFactory.numOf(3), numberRecord.getPositions().getFirst().getEntry().getAmount());
         assertEquals(numFactory.two(), numRecord.getPositions().getFirst().getEntry().getAmount());
+    }
+
+    @Test
+    public void positionSizerFixedNumberKeepsBigDecimalPrecisionAndSnapshotsSubclasses() {
+        NumFactory precise = DecimalNumFactory.getInstance(40);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(precise).withData(10, 20, 30).build();
+        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        BigDecimal amount = new BigDecimal("0.1000000000000000000001");
+        MutableDecimal mutable = new MutableDecimal("0.25");
+
+        TradingRecord exact = localManager.run(oneTradeStrategy, TradeType.BUY, PositionSizer.fixed(amount));
+        PositionSizer snapshot = PositionSizer.fixed(mutable);
+        mutable.value = new BigDecimal("999");
+        TradingRecord snapshotted = localManager.run(oneTradeStrategy, TradeType.BUY, snapshot);
+
+        assertEquals(precise.numOf(amount), exact.getPositions().getFirst().getEntry().getAmount());
+        assertEquals(precise.numOf("0.25"), snapshotted.getPositions().getFirst().getEntry().getAmount());
+    }
+
+    /**
+     * A BigDecimal subclass whose observable value can change after construction.
+     */
+    private static final class MutableDecimal extends BigDecimal {
+
+        private BigDecimal value;
+
+        private MutableDecimal(String initial) {
+            super(initial);
+            value = new BigDecimal(initial);
+        }
+
+        @Override
+        public String toString() {
+            return value.toString();
+        }
+
+        @Override
+        public double doubleValue() {
+            return value.doubleValue();
+        }
     }
 
     @Test

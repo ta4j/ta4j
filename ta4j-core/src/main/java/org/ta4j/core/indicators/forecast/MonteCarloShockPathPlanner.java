@@ -202,10 +202,14 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         inputs[MonteCarloKernel.INPUT_DRIFTS] = drifts;
         inputs[MonteCarloKernel.INPUT_VARIANCES] = variances;
         inputs[MonteCarloKernel.INPUT_RETURNS] = returns;
+        double tolerance = AccelerationRuntime.approximateTolerance();
+        AccelerationRuntime.Determinism determinism = Double.isNaN(tolerance)
+                ? AccelerationRuntime.Determinism.BITWISE_IDENTICAL
+                : AccelerationRuntime.Determinism.APPROXIMATE;
         AccelerationRuntime.KernelRequest request = new AccelerationRuntime.KernelRequest(
                 AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1, firstStableIndex, toIndex, iterations,
-                AccelerationRuntime.NumericEncoding.FLOAT64, AccelerationRuntime.Determinism.BITWISE_IDENTICAL,
-                settings.seed(), Double.NaN, params, List.of(inputs), estimatedScalarNanos, peakBytes);
+                AccelerationRuntime.NumericEncoding.FLOAT64, determinism, settings.seed(), tolerance, params,
+                List.of(inputs), estimatedScalarNanos, peakBytes);
         List<Double> quantiles = List.copyOf(settings.quantileProbabilities());
         double[] spotPrices = prices;
         int firstRowIndex = firstStableIndex;

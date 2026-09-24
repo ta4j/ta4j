@@ -185,6 +185,26 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
     }
 
     /**
+     * Returns the configured number of simulated drawdown paths.
+     *
+     * @return the simulation count
+     * @since 0.25.1
+     */
+    public int getIterations() {
+        return iterations;
+    }
+
+    /**
+     * Returns the configured number of sampled trade blocks in each path.
+     *
+     * @return the block count, or {@code null} to use the observed trade count
+     * @since 0.25.1
+     */
+    public Integer getPathBlocks() {
+        return pathBlocks;
+    }
+
+    /**
      * {@inheritDoc}
      *
      * @since 0.19

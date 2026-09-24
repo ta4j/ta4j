@@ -20,6 +20,8 @@ import org.ta4j.core.criteria.OmegaRatioCriterion;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.SharpeRatioCriterion;
 import org.ta4j.core.criteria.custom.CustomPackageCriterion;
+import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
+import org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.num.Num;
@@ -31,6 +33,15 @@ public class AnalysisCriterionSerializationTest {
         AnalysisCriterion criterion = AnalysisCriterion.fromExpression("NetProfit");
 
         assertThat(criterion).isInstanceOf(NetProfitCriterion.class);
+    }
+
+    @Test
+    public void drawdownExpressionsRestoreCurrentImplementations() {
+        AnalysisCriterion maximumDrawdown = AnalysisCriterion.fromExpression("MaximumDrawdown");
+        AnalysisCriterion returnOverMaxDrawdown = AnalysisCriterion.fromExpression("ReturnOverMaxDrawdown");
+
+        assertThat(maximumDrawdown).isExactlyInstanceOf(MaximumDrawdownCriterion.class);
+        assertThat(returnOverMaxDrawdown).isExactlyInstanceOf(ReturnOverMaxDrawdownCriterion.class);
     }
 
     @Test

@@ -122,6 +122,16 @@ Run another example by overriding the configured main class:
 ./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.TradingRecordParityBacktest
 ```
 
+### Run it from the command line
+
+[`ta4j-cli`](ta4j-cli/README.md) runs backtests, walk-forwards, parameter sweeps, indicator and rule tests, and forecasts against a local CSV or JSON file, with JSON output for automation:
+
+```bash
+./mvnw -pl ta4j-cli -am package
+java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar strategy backtest \
+  --data-file ta4j-examples/src/main/resources/AAPL-PT1D-20130102_20131231.csv --strategy 'SMA(7,21)'
+```
+
 ### Use the core API
 
 The essential model is:
@@ -401,6 +411,8 @@ ta4j lets you choose `DecimalNum` for precision-first workflows or `DoubleNum` f
 
 Measure changes on your own workload rather than relying on generic claims. Use the [`BacktestPerformanceTuningHarness`](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java), the [Num guide](https://ta4j.github.io/ta4j-wiki/Num.html), and [Performance Characterization](https://ta4j.github.io/ta4j-wiki/Performance-Characterization.html) for repeatable comparisons.
 
+Eligible `DoubleNum` Monte Carlo forecasts can optionally run on a GPU through the separate `ta4j-acceleration` artifact; it is off unless enabled with `-Dta4j.acceleration.enabled=auto` and always falls back to the scalar result. See the [acceleration guide](https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration).
+
 ## Real-world examples
 
 The `ta4j-examples` module is organized as progressive learning tracks:
@@ -457,8 +469,8 @@ The repository requires Java 25+ and includes Maven Wrapper scripts pinned to Ma
 
 - Standard wrapper: use `./mvnw ...` on macOS/Linux, `mvnw.cmd ...` on Windows, or system Maven 3.9+ intentionally.
 - Canonical quality gate: Use `scripts/run-full-build-quiet.sh` on macOS/Linux/Git Bash/WSL or `scripts/run-full-build-quiet.ps1` on Windows PowerShell; it uses native Maven and WSL preflight when available, with Git Bash as the fallback.
-- Maven-only repair and verification: `./mvnw -B clean license:format spotless:apply verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless`
-- Non-mutating Maven-only validation: `./mvnw -B clean license:check spotless:check verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless`
+- Maven-only repair and verification: `./mvnw -B clean license:format spotless:apply verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-opencl,requires-display,requires-headless`
+- Non-mutating Maven-only validation: `./mvnw -B clean license:check spotless:check verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-cuda,requires-metal,requires-opencl,requires-display,requires-headless`
 - Focused formatting repair: `./mvnw -B license:format spotless:apply`
 - SpotBugs gate: `./mvnw -pl ta4j-core -am clean compile spotbugs:check`
 - JaCoCo gate: `./mvnw -pl ta4j-core -am test jacoco:report jacoco:check`

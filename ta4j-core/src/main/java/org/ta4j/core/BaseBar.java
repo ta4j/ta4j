@@ -301,39 +301,23 @@ public class BaseBar implements Bar {
      *                                  if volume or amount is negative, or if the
      *                                  number of trades is negative
      */
-    @SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Fail-fast validation of bar data is a documented constructor contract: invalid bars "
-            + "are rejected before any partially initialized instance can escape")
     public BaseBar(Duration timePeriod, Instant beginTime, Instant endTime, Num openPrice, Num highPrice, Num lowPrice,
             Num closePrice, Num volume, Num amount, long trades) {
-
-        this(resolvedTimes(timePeriod, beginTime, endTime), openPrice, highPrice, lowPrice, closePrice, volume, amount,
-                trades);
+        this(BarValues.of(timePeriod, beginTime, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount,
+                trades));
     }
 
-    @SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Fail-fast validation of bar data is a documented constructor contract: invalid bars "
-            + "are rejected before any partially initialized instance can escape")
-    private BaseBar(ResolvedTimes times, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume,
-            Num amount, long trades) {
-        validatePrices(openPrice, highPrice, lowPrice, closePrice);
-        if (volume != null && volume.isNegative()) {
-            throw new IllegalArgumentException("Volume cannot be negative, but was " + volume);
-        }
-        if (amount != null && amount.isNegative()) {
-            throw new IllegalArgumentException("Amount cannot be negative, but was " + amount);
-        }
-        if (trades < 0) {
-            throw new IllegalArgumentException("Number of trades cannot be negative, but was " + trades);
-        }
-        this.timePeriod = times.timePeriod();
-        this.beginTime = times.beginTime();
-        this.endTime = times.endTime();
-        this.openPrice = openPrice;
-        this.highPrice = highPrice;
-        this.lowPrice = lowPrice;
-        this.closePrice = closePrice;
-        this.volume = volume;
-        this.amount = amount;
-        this.trades = trades;
+    private BaseBar(BarValues values) {
+        this.timePeriod = values.timePeriod();
+        this.beginTime = values.beginTime();
+        this.endTime = values.endTime();
+        this.openPrice = values.openPrice();
+        this.highPrice = values.highPrice();
+        this.lowPrice = values.lowPrice();
+        this.closePrice = values.closePrice();
+        this.volume = values.volume();
+        this.amount = values.amount();
+        this.trades = values.trades();
     }
 
     /**
@@ -370,43 +354,67 @@ public class BaseBar implements Bar {
         }
     }
 
-    private static ResolvedTimes resolvedTimes(Duration timePeriod, Instant beginTime, Instant endTime) {
-        final Duration resolvedTimePeriod;
-        if (timePeriod != null) {
-            if (beginTime != null && endTime != null
-                    && timePeriod.compareTo(Duration.between(beginTime, endTime)) != 0) {
-                throw new IllegalArgumentException(
-                        "The calculated timePeriod between beginTime and endTime does not match the given timePeriod.");
+    /**
+     * Validated constructor input. {@link #of} resolves the time span and the
+     * canonical constructor enforces the price, volume, amount and trade
+     * invariants, so an invalid bar is rejected while the arguments of
+     * {@code this(...)} are evaluated, before any {@code BaseBar} instance exists.
+     * A failed construction therefore never leaves a partially initialized bar for
+     * a subclass (or its finalizer) to observe.
+     */
+    private record BarValues(Duration timePeriod, Instant beginTime, Instant endTime, Num openPrice, Num highPrice,
+            Num lowPrice, Num closePrice, Num volume, Num amount, long trades) {
+
+        BarValues {
+            validatePrices(openPrice, highPrice, lowPrice, closePrice);
+            if (volume != null && volume.isNegative()) {
+                throw new IllegalArgumentException("Volume cannot be negative, but was " + volume);
             }
-            resolvedTimePeriod = timePeriod;
-        } else if (beginTime != null && endTime != null) {
-            resolvedTimePeriod = Duration.between(beginTime, endTime);
-        } else {
-            throw new NullPointerException("Time period cannot be null");
+            if (amount != null && amount.isNegative()) {
+                throw new IllegalArgumentException("Amount cannot be negative, but was " + amount);
+            }
+            if (trades < 0) {
+                throw new IllegalArgumentException("Number of trades cannot be negative, but was " + trades);
+            }
         }
 
-        final Instant resolvedBeginTime;
-        if (beginTime == null && endTime != null) {
-            resolvedBeginTime = endTime.minus(resolvedTimePeriod);
-        } else if (beginTime != null) {
-            resolvedBeginTime = beginTime;
-        } else {
-            throw new NullPointerException("Begin time cannot be null");
+        static BarValues of(Duration timePeriod, Instant beginTime, Instant endTime, Num openPrice, Num highPrice,
+                Num lowPrice, Num closePrice, Num volume, Num amount, long trades) {
+            final Duration resolvedTimePeriod;
+            if (timePeriod != null) {
+                if (beginTime != null && endTime != null
+                        && timePeriod.compareTo(Duration.between(beginTime, endTime)) != 0) {
+                    throw new IllegalArgumentException(
+                            "The calculated timePeriod between beginTime and endTime does not match the given timePeriod.");
+                }
+                resolvedTimePeriod = timePeriod;
+            } else if (beginTime != null && endTime != null) {
+                resolvedTimePeriod = Duration.between(beginTime, endTime);
+            } else {
+                throw new NullPointerException("Time period cannot be null");
+            }
+
+            final Instant resolvedBeginTime;
+            if (beginTime == null && endTime != null) {
+                resolvedBeginTime = endTime.minus(resolvedTimePeriod);
+            } else if (beginTime != null) {
+                resolvedBeginTime = beginTime;
+            } else {
+                throw new NullPointerException("Begin time cannot be null");
+            }
+
+            final Instant resolvedEndTime;
+            if (beginTime != null && endTime == null) {
+                resolvedEndTime = beginTime.plus(resolvedTimePeriod);
+            } else if (endTime != null) {
+                resolvedEndTime = endTime;
+            } else {
+                throw new NullPointerException("End time cannot be null");
+            }
+
+            return new BarValues(resolvedTimePeriod, resolvedBeginTime, resolvedEndTime, openPrice, highPrice, lowPrice,
+                    closePrice, volume, amount, trades);
         }
-
-        final Instant resolvedEndTime;
-        if (beginTime != null && endTime == null) {
-            resolvedEndTime = beginTime.plus(resolvedTimePeriod);
-        } else if (endTime != null) {
-            resolvedEndTime = endTime;
-        } else {
-            throw new NullPointerException("End time cannot be null");
-        }
-
-        return new ResolvedTimes(resolvedTimePeriod, resolvedBeginTime, resolvedEndTime);
-    }
-
-    private record ResolvedTimes(Duration timePeriod, Instant beginTime, Instant endTime) {
     }
 
     void attachToBarSeries(final BaseBarSeries series, final int index) {

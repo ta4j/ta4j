@@ -9,6 +9,7 @@ import java.util.LinkedList;
 import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
@@ -23,6 +24,51 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
 
     public DurationBarAggregatorTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void rejectsNonintegralFractionalSourcePeriods() {
+        Bar bar = new MockBarBuilder(numFactory).timePeriod(Duration.ofMillis(1500))
+                .endTime(Instant.parse("2026-01-01T00:00:01.500Z"))
+                .closePrice(10)
+                .build();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new DurationBarAggregator(Duration.ofSeconds(2)).aggregate(List.of(bar)));
+    }
+
+    @Test
+    public void aggregatesSubsecondBarsWithoutTruncatingTheirPeriods() {
+        Instant start = Instant.parse("2026-01-01T00:00:00Z");
+        Bar first = new MockBarBuilder(numFactory).timePeriod(Duration.ofMillis(500))
+                .endTime(start.plusMillis(500))
+                .openPrice(10)
+                .highPrice(12)
+                .lowPrice(9)
+                .closePrice(11)
+                .volume(2)
+                .build();
+        Bar second = new MockBarBuilder(numFactory).timePeriod(Duration.ofMillis(500))
+                .endTime(start.plusSeconds(1))
+                .openPrice(11)
+                .highPrice(14)
+                .lowPrice(10)
+                .closePrice(13)
+                .volume(3)
+                .build();
+
+        List<Bar> bars = new DurationBarAggregator(Duration.ofSeconds(1)).aggregate(List.of(first, second));
+
+        assertEquals(1, bars.size());
+        Bar aggregate = bars.getFirst();
+        assertEquals(Duration.ofSeconds(1), aggregate.getTimePeriod());
+        assertEquals(start, aggregate.getBeginTime());
+        assertEquals(start.plusSeconds(1), aggregate.getEndTime());
+        assertNumEquals(10, aggregate.getOpenPrice());
+        assertNumEquals(14, aggregate.getHighPrice());
+        assertNumEquals(9, aggregate.getLowPrice());
+        assertNumEquals(13, aggregate.getClosePrice());
+        assertNumEquals(5, aggregate.getVolume());
     }
 
     private List<Bar> getOneDayBars() {
