@@ -5,6 +5,7 @@ package org.ta4j.core.indicators.forecast;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.acceleration.AccelerationRuntime;
@@ -38,16 +39,9 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
         AccelerationRuntime.registerPlanner(new MonteCarloShockPathPlanner());
     }
 
-    private static final int MAX_EXPONENT = 700;
-
     private final Indicator<Num> priceIndicator;
-    private final ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator;
-    private final MonteCarloSettings settings;
     private final MonteCarloSimulation simulation;
-    private final MonteCarloReturnProjectionIndicator.ShockModel shockModel;
-    private final MonteCarloReturnProjectionIndicator.VolatilityUpdateMode volatilityUpdateMode;
-    private final double volatilityDecayFactor;
-    private final boolean defaultShockPathMethod;
+    private final ShockPathKernelConfig kernelConfig;
 
     /**
      * Creates a one-bar forecast and infers price from {@link LogReturnIndicator}.
@@ -98,15 +92,13 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
 
     private MonteCarloPriceForecastIndicator(Builder builder) {
         super(builder.priceIndicator, builder.stateIndicator);
+        MonteCarloSettings settings = builder.settings();
         this.priceIndicator = builder.priceIndicator;
-        this.stateIndicator = builder.stateIndicator;
-        this.settings = builder.settings();
-        this.shockModel = builder.shockModel;
-        this.volatilityUpdateMode = builder.volatilityUpdateMode;
-        this.volatilityDecayFactor = builder.volatilityDecayFactor;
-        this.defaultShockPathMethod = builder.monteCarloMethod == null;
-        this.simulation = new MonteCarloSimulation(builder.stateIndicator, builder.settings(),
-                builder.methodOrDefault());
+        this.simulation = new MonteCarloSimulation(builder.stateIndicator, settings, builder.methodOrDefault());
+        this.kernelConfig = builder.monteCarloMethod == null
+                ? new ShockPathKernelConfig(builder.priceIndicator, builder.stateIndicator, settings,
+                        builder.shockModel, builder.volatilityUpdateMode, builder.volatilityDecayFactor)
+                : null;
     }
 
     /**
@@ -135,22 +127,39 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
 
     @Override
     protected Forecast calculate(int index) {
+        // An open acceleration scope may hold this index in a validated batch that
+        // is bitwise identical to the scalar lane. Returning it from calculate lets
+        // the indicator cache serve later reads and later runs without re-planning.
+        Optional<Forecast> accelerated = AccelerationRuntime.value(this, index);
+        if (accelerated.isPresent()) {
+            return accelerated.get();
+        }
         Num price = priceIndicator.getValue(index);
         if (!Num.isFinite(price) || !price.isPositive()) {
             return Forecast.unstable(index, getHorizon());
         }
+        Num exponentLimit = price.getNumFactory().numOf(MonteCarloKernel.MAX_EXPONENT);
+        return simulation.project(index, cumulativeReturn -> terminalPrice(price, cumulativeReturn, exponentLimit));
+    }
+
+    /**
+     * Maps one simulated cumulative log-return to its terminal price, shared by the
+     * scalar lane and the accelerated decoder so both apply the same exponential
+     * and guards.
+     *
+     * @return terminal price, or {@code null} when the return exceeds the exponent
+     *         limit, does not survive normalization, or the price underflows
+     */
+    static Num terminalPrice(Num price, Num cumulativeReturn, Num exponentLimit) {
         NumFactory numFactory = price.getNumFactory();
-        Num exponentLimit = numFactory.numOf(MAX_EXPONENT);
-        return simulation.project(index, cumulativeReturn -> {
-            Num normalizedReturn = numFactory.numOf(cumulativeReturn.bigDecimalValue());
-            if (!Num.isFinite(normalizedReturn) || normalizedReturn.isZero() && !cumulativeReturn.isZero()
-                    || normalizedReturn.abs().isGreaterThan(exponentLimit)) {
-                return null;
-            }
-            Num growth = normalizedReturn.exp();
-            Num terminalPrice = price.multipliedBy(growth);
-            return terminalPrice.isZero() && !growth.isZero() ? null : terminalPrice;
-        });
+        Num normalizedReturn = numFactory.numOf(cumulativeReturn.bigDecimalValue());
+        if (!Num.isFinite(normalizedReturn) || normalizedReturn.isZero() && !cumulativeReturn.isZero()
+                || normalizedReturn.abs().isGreaterThan(exponentLimit)) {
+            return null;
+        }
+        Num growth = normalizedReturn.exp();
+        Num terminalPrice = price.multipliedBy(growth);
+        return terminalPrice.isZero() && !growth.isZero() ? null : terminalPrice;
     }
 
     /**
@@ -163,10 +172,7 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
         if (index >= 0 && index < getBarSeries().getRemovedBarsCount()) {
             return Forecast.unstable(index, getHorizon());
         }
-        if (!MonteCarloSimulation.isPerPathRngSelected()) {
-            return super.getValue(index);
-        }
-        return AccelerationRuntime.value(this, index).orElseGet(() -> super.getValue(index));
+        return super.getValue(index);
     }
 
     /**
@@ -187,7 +193,7 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
      * every cached forecast must be discarded and recomputed from the restarted
      * posterior.
      *
-     * @since 0.25.1
+     * @since 0.24.2
      */
     @Override
     protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
@@ -205,67 +211,30 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
     }
 
     /**
-     * Exposes the price source to the core-owned shock-path planner.
-     *
-     * @return price source
-     * @since 0.25.1
+     * Returns the default shock-path inputs the core planner lowers, or
+     * {@code null} when a custom Monte Carlo method replaces the default technique.
      */
-    Indicator<Num> kernelPriceIndicator() {
-        return priceIndicator;
+    ShockPathKernelConfig shockPathKernelConfig() {
+        return kernelConfig;
     }
 
     /**
-     * Exposes the moment state source to the core-owned shock-path planner.
-     *
-     * @return moment state source
-     * @since 0.25.1
+     * Whether this forecast draws from the per-path stream that accelerated
+     * evaluation requires.
      */
-    ReturnForecastStateIndicator<? extends ReturnMomentState> kernelStateIndicator() {
-        return stateIndicator;
+    boolean usesPerPathRng() {
+        return simulation.usesPerPathRng();
     }
 
     /**
-     * Exposes the validated settings to the core-owned shock-path planner.
-     *
-     * @return simulation settings
-     * @since 0.25.1
+     * Default shock-path configuration snapshotted by the core planner into kernel
+     * requests.
      */
-    MonteCarloSettings kernelSettings() {
-        return settings;
-    }
-
-    /**
-     * Exposes the shock model to the core-owned shock-path planner.
-     *
-     * @return shock model
-     * @since 0.25.1
-     */
-    MonteCarloReturnProjectionIndicator.ShockModel kernelShockModel() {
-        return shockModel;
-    }
-
-    /**
-     * Exposes the volatility update mode to the core-owned shock-path planner.
-     *
-     * @return volatility update mode
-     * @since 0.25.1
-     */
-    MonteCarloReturnProjectionIndicator.VolatilityUpdateMode kernelVolatilityUpdateMode() {
-        return volatilityUpdateMode;
-    }
-
-    /**
-     * Exposes the volatility decay factor to the core-owned shock-path planner.
-     *
-     * @return volatility decay factor
-     * @since 0.25.1
-     */
-    double kernelVolatilityDecayFactor() {
-        return volatilityDecayFactor;
-    }
-
-    boolean usesDefaultShockPathMethod() {
-        return defaultShockPathMethod;
+    record ShockPathKernelConfig(Indicator<Num> priceIndicator,
+            ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator, MonteCarloSettings settings,
+            MonteCarloReturnProjectionIndicator.ShockModel shockModel,
+            MonteCarloReturnProjectionIndicator.VolatilityUpdateMode volatilityUpdateMode,
+            double volatilityDecayFactor) {
     }
 
     private static Indicator<Num> sourceIndicator(
@@ -420,7 +389,7 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
          *
          * @param value technique generating terminal samples
          * @return this builder
-         * @since 0.25.1
+         * @since 0.24.2
          */
         public Builder monteCarloMethod(MonteCarloMethod value) {
             monteCarloMethod = Objects.requireNonNull(value, "monteCarloMethod must not be null");

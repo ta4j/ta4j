@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.random.RandomGenerator;
 
+import org.ta4j.core.indicators.forecast.MonteCarloKernel;
 import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.ShockModel;
 import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.VolatilityUpdateMode;
 import org.ta4j.core.indicators.forecast.state.ReturnMoments;
@@ -231,8 +232,7 @@ public final class ShockPathMonteCarloMethod implements MonteCarloMethod {
             if (!Num.isFinite(standardDeviation)) {
                 return numFactory.zero();
             }
-            double multiplier = 1.06d * Math.pow(count, -0.2d);
-            return standardDeviation.multipliedBy(numFactory.numOf(multiplier));
+            return standardDeviation.multipliedBy(numFactory.numOf(MonteCarloKernel.smoothingBandwidthFactor(count)));
         }
     }
 }

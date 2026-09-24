@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -44,13 +45,27 @@ import org.ta4j.core.num.NumFactory;
  * and executed best-first with per-attempt fallback. Failure isolation is keyed
  * by provider, device, and operation version.
  *
+ * <p>
+ * Planner declines are typed. A transient decline (a warm-up prefix, a stale
+ * snapshot, a resource limit a shorter range could satisfy) only defers the
+ * range to its retry index, so an early read cannot disable acceleration for
+ * the rest of the scope; a permanent decline falls back to the scalar lane for
+ * the whole scope. Provider assessment declines are scope-level decisions about
+ * the request shape and are recorded for the scope as well, but their typed
+ * diagnostic — provider id, accuracy or library requirement, memory detail — is
+ * preserved instead of being replaced by a generic code. When no provider can
+ * run a request, the scope diagnostic keeps the first provider-attributed
+ * decline.
+ *
  * @since 0.25.1
  */
 public final class AccelerationRuntime {
 
     /**
-     * System property selecting the scoped acceleration runtime ({@code off},
-     * {@code auto}).
+     * System property selecting the scoped acceleration runtime: {@code auto} or
+     * {@code true} enables it, {@code off} or {@code false} disables it
+     * (case-insensitive). The removed {@code cpu}, {@code metal}, {@code cuda},
+     * {@code hybrid} and {@code required} modes, and any other value, are rejected.
      */
     public static final String PROPERTY = "ta4j.acceleration.enabled";
 
@@ -79,7 +94,22 @@ public final class AccelerationRuntime {
 
     private static final ThreadLocal<Context> CURRENT = new ThreadLocal<>();
 
-    private static final List<OperationPlanner> PLANNERS = new ArrayList<>();
+    /**
+     * Diagnostic of the most recently closed automatic scope on this thread, so
+     * callers can inspect why a finished run stayed on CPU.
+     */
+    private static final ThreadLocal<Diagnostic> LAST_CLOSED_DIAGNOSTIC = new ThreadLocal<>();
+
+    /**
+     * Guard against provider discovery iterators that keep failing: discovery
+     * aborts after this many consecutive broken entries instead of looping.
+     */
+    private static final int MAX_CONSECUTIVE_DISCOVERY_FAILURES = 64;
+
+    /**
+     * Published copy-on-write: readers never take the registration lock.
+     */
+    private static volatile List<OperationPlanner> planners = List.of();
 
     private static volatile List<Provider> discoveredProviders;
 
@@ -100,19 +130,21 @@ public final class AccelerationRuntime {
      */
     public static synchronized void registerPlanner(OperationPlanner planner) {
         Objects.requireNonNull(planner, "planner must not be null");
-        for (OperationPlanner registered : PLANNERS) {
+        for (OperationPlanner registered : planners) {
             if (registered.getClass() == planner.getClass()) {
                 return;
             }
         }
-        PLANNERS.add(planner);
+        List<OperationPlanner> updated = new ArrayList<>(planners);
+        updated.add(planner);
+        planners = List.copyOf(updated);
     }
 
     /**
      * Opens an acceleration scope for a backtest run range and binds it to the
      * current thread.
      *
-     * @param series the backing series
+     * @param series the run's series
      * @param from   inclusive run begin index
      * @param to     inclusive run end index
      * @return scope handle closing back to the enclosing scope
@@ -126,7 +158,7 @@ public final class AccelerationRuntime {
             return () -> CURRENT.set(previous);
         }
         Context previous = CURRENT.get();
-        Context context = new Context(series, from, to, previous);
+        Context context = new Context(from, to, previous);
         CURRENT.set(context);
         return context;
     }
@@ -150,14 +182,21 @@ public final class AccelerationRuntime {
     }
 
     /**
-     * Returns the latest diagnostic of the current scope, if a scope is open.
+     * Returns the diagnostic of the currently open scope, or the diagnostic of the
+     * most recently closed automatic scope on this thread when no scope is open —
+     * for example after {@code BarSeriesManager} has returned.
      *
-     * @return current diagnostic, or empty without an open scope
+     * @return current or last-closed diagnostic, or empty when no automatic scope
+     *         was ever closed on this thread
      * @since 0.25.1
      */
     public static Optional<Diagnostic> lastDiagnostic() {
         Context context = CURRENT.get();
-        return context == null ? Optional.empty() : Optional.of(context.diagnostic);
+        if (context != null) {
+            return Optional.of(context.diagnostic);
+        }
+        Diagnostic diagnostic = LAST_CLOSED_DIAGNOSTIC.get();
+        return diagnostic == null ? Optional.empty() : Optional.of(diagnostic);
     }
 
     /**
@@ -231,6 +270,7 @@ public final class AccelerationRuntime {
     static synchronized void resetProvidersForTests() {
         discoveredProviders = null;
         CURRENT.remove();
+        LAST_CLOSED_DIAGNOSTIC.remove();
     }
 
     private static boolean enabled() {
@@ -239,10 +279,10 @@ public final class AccelerationRuntime {
             return false;
         }
         return switch (configured.trim().toLowerCase(Locale.ROOT)) {
-        case "off" -> false;
-        case "auto" -> true;
-        default ->
-            throw new IllegalArgumentException(PROPERTY + " must be 'off' or 'auto', but was '" + configured + "'");
+        case "off", "false" -> false;
+        case "auto", "true" -> true;
+        default -> throw new IllegalArgumentException(
+                PROPERTY + " must be 'auto', 'true', 'off' or 'false', but was '" + configured + "'");
         };
     }
 
@@ -254,21 +294,56 @@ public final class AccelerationRuntime {
         synchronized (AccelerationRuntime.class) {
             providers = discoveredProviders;
             if (providers == null) {
-                List<Provider> loaded = new ArrayList<>();
-                ServiceLoader.load(Provider.class).forEach(loaded::add);
-                providers = List.copyOf(loaded);
+                List<Provider> loaded;
+                try {
+                    loaded = loadProviders(ServiceLoader.load(Provider.class).iterator());
+                } catch (LinkageError | RuntimeException exception) {
+                    LOG.warn("Acceleration provider discovery failed: {}", failureMessage(exception));
+                    loaded = List.of();
+                }
+                providers = loaded;
                 discoveredProviders = providers;
             }
         }
         return providers;
     }
 
-    static synchronized void resetProvidersForTests(boolean clearPlanners) {
-        discoveredProviders = null;
-        if (clearPlanners) {
-            PLANNERS.clear();
+    /**
+     * Iterates a provider discovery source, skipping entries that cannot be
+     * instantiated instead of aborting the whole discovery, guarding against an
+     * iterator that keeps failing, and always returning the resulting list so a
+     * failed scan is not repeated per evaluation.
+     *
+     * @param iterator provider discovery iterator, typically from ServiceLoader
+     * @return immutable discovered providers, possibly empty
+     * @since 0.25.1
+     */
+    static List<Provider> loadProviders(Iterator<Provider> iterator) {
+        List<Provider> loaded = new ArrayList<>();
+        int consecutiveFailures = 0;
+        while (true) {
+            Provider provider;
+            try {
+                if (!iterator.hasNext()) {
+                    break;
+                }
+                provider = iterator.next();
+            } catch (ServiceConfigurationError exception) {
+                consecutiveFailures++;
+                if (consecutiveFailures >= MAX_CONSECUTIVE_DISCOVERY_FAILURES) {
+                    LOG.warn("Acceleration provider discovery aborted after {} consecutive failures; last error: {}",
+                            consecutiveFailures, String.valueOf(exception.getMessage()));
+                    break;
+                }
+                LOG.warn("Skipping acceleration provider entry: {}", String.valueOf(exception.getMessage()));
+                continue;
+            }
+            consecutiveFailures = 0;
+            if (provider != null) {
+                loaded.add(provider);
+            }
         }
-        CURRENT.remove();
+        return List.copyOf(loaded);
     }
 
     /**
@@ -619,7 +694,6 @@ public final class AccelerationRuntime {
 
     private static final class Context implements Scope {
 
-        private final BarSeries series;
         private final int fromInclusive;
         private final int toInclusive;
         private final Context previous;
@@ -627,10 +701,11 @@ public final class AccelerationRuntime {
         private final long startedNanos = System.nanoTime();
         private final IdentityHashMap<Indicator<?>, CachedBatch> batches = new IdentityHashMap<>();
         private final Set<Indicator<?>> scalarFallback = Collections.newSetFromMap(new IdentityHashMap<>());
+        private final IdentityHashMap<Indicator<?>, Integer> retries = new IdentityHashMap<>();
         private final Map<String, String> quarantine = new HashMap<>();
 
         private boolean suspended;
-        private boolean providerAttempted;
+        private boolean requested;
         private Backend effectiveBackend = Backend.CPU;
         private String providerInUse = "none";
         private boolean nativeInitialized;
@@ -638,8 +713,7 @@ public final class AccelerationRuntime {
         private Diagnostic diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none",
                 "no eligible acceleration request");
 
-        private Context(BarSeries series, int fromInclusive, int toInclusive, Context previous) {
-            this.series = series;
+        private Context(int fromInclusive, int toInclusive, Context previous) {
             this.fromInclusive = fromInclusive;
             this.toInclusive = toInclusive;
             this.previous = previous;
@@ -651,84 +725,89 @@ public final class AccelerationRuntime {
             Objects.requireNonNull(indicator, "indicator must not be null");
             BarSeries indicatorSeries = indicator.getBarSeries();
             if (index < fromInclusive || index > toInclusive || fromInclusive < indicatorSeries.getBeginIndex()
-                    || toInclusive > indicatorSeries.getEndIndex() || scalarFallback.contains(indicator)) {
+                    || toInclusive > indicatorSeries.getEndIndex() || scalarFallback.contains(indicator)
+                    || retryPending(indicator, index)) {
                 return Optional.empty();
             }
             CachedBatch cached = batches.get(indicator);
-            if (cached != null && !cached.matchesCurrentSeries(indicatorSeries)) {
+            if (cached != null && (!cached.matchesCurrentSeries(indicatorSeries) || index > cached.toInclusive)) {
                 batches.remove(indicator);
+                retries.remove(indicator);
                 cached = null;
             }
             if (cached == null) {
-                cached = evaluate(indicator, index);
-                if (cached == null) {
-                    scalarFallback.add(indicator);
+                Evaluation evaluation = evaluate(indicator, index);
+                if (evaluation.batch() == null) {
+                    if (evaluation.permanent()) {
+                        scalarFallback.add(indicator);
+                    } else {
+                        retries.put(indicator, evaluation.retryFromIndex());
+                    }
                     return Optional.empty();
                 }
-                batches.put(indicator, cached);
+                batches.put(indicator, evaluation.batch());
+                retries.remove(indicator);
+                cached = evaluation.batch();
             }
             Object decoded = cached.value(index);
             return decoded == null ? Optional.empty() : Optional.of((T) decoded);
         }
 
-        private <T> CachedBatch evaluate(Indicator<T> indicator, int index) {
+        private boolean retryPending(Indicator<?> indicator, int index) {
+            Integer retryFromIndex = retries.get(indicator);
+            return retryFromIndex != null && index < retryFromIndex;
+        }
+
+        private <T> Evaluation evaluate(Indicator<T> indicator, int index) {
+            requested = true;
             BarSeries indicatorSeries = indicator.getBarSeries();
             BarSeriesChangeSnapshot beforePlanning = indicatorSeries.getBarSeriesChangeSnapshot(-1L);
             if (indicatorSeries.getBarHistoryRevision() < 0L) {
                 diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none",
                         "series does not track bar-data revisions; accelerated batches cannot be invalidated");
-                return null;
+                return Evaluation.unsupported();
             }
-            PlannedOperation planned;
+            PlanAttempt attempt;
             try {
-                planned = plan(indicator, index);
+                attempt = plan(indicator, index);
             } catch (LinkageError | RuntimeException exception) {
                 diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none", "planner failed for "
                         + indicator.getClass().getSimpleName() + ": " + failureMessage(exception));
-                return null;
+                return Evaluation.unsupported();
             }
-            if (planned == null) {
-                diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none",
-                        "no operation planner claims " + indicator.getClass().getSimpleName());
-                return null;
+            if (!attempt.isPlanned()) {
+                PlanDecline decline = attempt.decline();
+                diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none", decline.detail());
+                return decline.permanent() ? Evaluation.unsupported() : Evaluation.retryFrom(decline.retryFromIndex());
             }
+            PlannedOperation planned = attempt.operation();
             KernelRequest request = planned.request();
             if (request.peakDeviceBytesEstimate() > memoryLimitBytes) {
                 diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none", "peak device estimate "
                         + request.peakDeviceBytesEstimate() + " exceeds budget " + memoryLimitBytes);
-                return null;
+                return Evaluation.unsupported();
             }
-            providerAttempted = true;
-            List<Provider> providers;
-            try {
-                providers = providers();
-            } catch (ServiceConfigurationError | LinkageError | RuntimeException exception) {
-                diagnostic = new Diagnostic(DiagnosticCode.PROVIDER_FAILURE, "service-loader",
-                        failureMessage(exception));
-                return null;
-            }
+            List<Provider> providers = providers();
             if (providers.isEmpty()) {
                 diagnostic = new Diagnostic(DiagnosticCode.NO_PROVIDER, "none",
                         "no acceleration provider was discovered");
-                return null;
+                return Evaluation.unsupported();
             }
             List<RankedProvider> candidates = assess(request, providers);
             if (candidates.isEmpty()) {
-                if (diagnostic.code() != DiagnosticCode.CPU_FASTER
-                        && diagnostic.code() != DiagnosticCode.PROVIDER_FAILURE) {
-                    diagnostic = new Diagnostic(DiagnosticCode.NO_PROVIDER, "none",
-                            "no provider supports " + request.operation());
-                }
-                return null;
+                // assess() already recorded the decisive provider decline.
+                return Evaluation.unsupported();
             }
+            int quarantinedSkipped = 0;
             for (RankedProvider candidate : candidates) {
                 if (quarantine.containsKey(quarantineKey(candidate, request))) {
+                    quarantinedSkipped++;
                     continue;
                 }
                 if (!matchesSeriesState(indicatorSeries, beforePlanning)) {
                     diagnostic = new Diagnostic(DiagnosticCode.STALE_SERIES, candidate.providerId,
                             "series changed after planning and before provider execution");
-                    return null;
+                    return Evaluation.retryFrom(index + 1);
                 }
                 KernelResult result = null;
                 suspended = true;
@@ -749,12 +828,12 @@ public final class AccelerationRuntime {
                 if (!sameSeriesState(beforePlanning, after)) {
                     diagnostic = new Diagnostic(DiagnosticCode.STALE_SERIES, candidate.providerId,
                             "series changed while the provider was evaluating");
-                    return null;
+                    return Evaluation.retryFrom(index + 1);
                 }
                 if (result == null) {
                     continue;
                 }
-                double[] rawOutputs = result.outputs();
+                double[] rawOutputs = result.outputs;
                 if (rawOutputs.length != request.expectedOutputLength() || !allFinite(rawOutputs)) {
                     quarantine.put(quarantineKey(candidate, request), "malformed raw output");
                     diagnostic = new Diagnostic(DiagnosticCode.INVALID_RESULT, candidate.providerId,
@@ -771,18 +850,34 @@ public final class AccelerationRuntime {
                             failureMessage(exception));
                     continue;
                 }
+                // Decoding reconstructs every domain value and may run arbitrary
+                // core-owned code; publishing requires the captured revision to
+                // still be current, so a mutation during decoding cannot leak the
+                // first stale forecast into the trading record.
+                BarSeriesChangeSnapshot published = indicatorSeries.getBarSeriesChangeSnapshot(after.revision());
+                if (!sameSeriesState(after, published)) {
+                    diagnostic = new Diagnostic(DiagnosticCode.STALE_SERIES, candidate.providerId,
+                            "series changed while decoded results were being prepared");
+                    return Evaluation.retryFrom(index + 1);
+                }
                 effectiveBackend = candidate.assessment.backend();
                 providerInUse = candidate.providerId;
                 diagnostic = new Diagnostic(DiagnosticCode.ACCELERATED, providerInUse,
                         candidate.assessment.backend().name().toLowerCase(Locale.ROOT) + "/"
                                 + candidate.assessment.deviceId() + " executed " + request.operation());
-                return new CachedBatch(request.fromInclusive(), decoded, after);
+                return Evaluation.accelerated(
+                        new CachedBatch(request.fromInclusive(), request.toInclusive(), decoded, published));
             }
-            return null;
+            if (quarantinedSkipped == candidates.size()) {
+                diagnostic = new Diagnostic(DiagnosticCode.PROVIDER_FAILURE, "none",
+                        "every eligible provider is quarantined in this scope");
+            }
+            return Evaluation.unsupported();
         }
 
         private List<RankedProvider> assess(KernelRequest request, List<Provider> providers) {
             List<RankedProvider> candidates = new ArrayList<>();
+            Diagnostic decline = null;
             boolean cpuFasterObserved = false;
             String cpuFasterProvider = "none";
             String cpuFasterDetail = "";
@@ -795,15 +890,21 @@ public final class AccelerationRuntime {
                     assessment = provider.assess(request);
                 } catch (LinkageError | RuntimeException exception) {
                     String fallbackId = provider.getClass().getName();
-                    diagnostic = new Diagnostic(DiagnosticCode.PROVIDER_FAILURE, fallbackId, failureMessage(exception));
+                    decline = decline == null
+                            ? new Diagnostic(DiagnosticCode.PROVIDER_FAILURE, fallbackId, failureMessage(exception))
+                            : decline;
                     LOG.debug("Provider {} assessment failed: {}", fallbackId, exception.getMessage());
                     continue;
                 } finally {
                     suspended = false;
                 }
-                if (assessment == null || !assessment.supported() || !assessment.deterministic()
-                        || assessment.predictedTotalNanos() < 0 || Math.max(request.peakDeviceBytesEstimate(),
-                                assessment.peakDeviceBytes()) > memoryLimitBytes) {
+                Diagnostic rejection = assessmentRejection(request, providerId, assessment);
+                if (rejection != null) {
+                    // Keep the first provider-attributed explanation: an installed
+                    // provider's accuracy, memory or qualification message must
+                    // survive to the scope diagnostic instead of collapsing into
+                    // "no provider supports".
+                    decline = decline == null ? rejection : decline;
                     continue;
                 }
                 long baseline = request.estimatedScalarNanos();
@@ -821,34 +922,80 @@ public final class AccelerationRuntime {
                             .thenComparing(candidate -> candidate.assessment.backend().name())
                             .thenComparing(candidate -> candidate.assessment.deviceId())
                             .thenComparing(candidate -> candidate.providerId));
-            if (candidates.isEmpty() && cpuFasterObserved) {
-                diagnostic = new Diagnostic(DiagnosticCode.CPU_FASTER, cpuFasterProvider, cpuFasterDetail);
+            if (candidates.isEmpty()) {
+                if (decline != null) {
+                    diagnostic = decline;
+                } else if (cpuFasterObserved) {
+                    diagnostic = new Diagnostic(DiagnosticCode.CPU_FASTER, cpuFasterProvider, cpuFasterDetail);
+                } else {
+                    diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none",
+                            "no provider accepted " + request.operation());
+                }
             }
             return candidates;
         }
 
-        private <T> PlannedOperation plan(Indicator<T> indicator, int index) {
-            List<OperationPlanner> planners;
-            synchronized (AccelerationRuntime.class) {
-                planners = List.copyOf(PLANNERS);
+        /**
+         * Returns the typed reason a provider declined the request, or {@code null}
+         * when the assessment is supported and within the scope budget.
+         */
+        private Diagnostic assessmentRejection(KernelRequest request, String providerId, Assessment assessment) {
+            if (assessment == null) {
+                return new Diagnostic(DiagnosticCode.INVALID_RESULT, providerId, "provider returned no assessment");
             }
-            for (OperationPlanner planner : planners) {
-                PlannedOperation planned = planner.plan(indicator, index, toInclusive,
-                        indicator.getBarSeries().numFactory(), memoryLimitBytes);
-                if (planned != null) {
-                    return planned;
-                }
+            if (!assessment.supported()) {
+                return assessment.diagnostic();
+            }
+            if (!assessment.deterministic()) {
+                return new Diagnostic(DiagnosticCode.UNSUPPORTED, providerId,
+                        "assessment does not meet the " + request.determinism() + " contract");
+            }
+            if (assessment.predictedTotalNanos() < 0) {
+                return new Diagnostic(DiagnosticCode.INVALID_RESULT, providerId,
+                        "assessment predicted a negative cost");
+            }
+            long peakBytes = Math.max(request.peakDeviceBytesEstimate(), assessment.peakDeviceBytes());
+            if (peakBytes > memoryLimitBytes) {
+                return new Diagnostic(DiagnosticCode.UNSUPPORTED, providerId,
+                        "assessment peak of " + peakBytes + " bytes exceeds the " + memoryLimitBytes + "-byte budget");
             }
             return null;
+        }
+
+        private PlanAttempt plan(Indicator<?> indicator, int index) {
+            List<OperationPlanner> snapshot = planners;
+            PlanDecline retryable = null;
+            PlanDecline permanent = null;
+            for (OperationPlanner planner : snapshot) {
+                PlanAttempt attempt = Objects.requireNonNull(planner.plan(indicator, index, toInclusive,
+                        indicator.getBarSeries().numFactory(), memoryLimitBytes), "planner returned no attempt");
+                if (attempt.isPlanned()) {
+                    return attempt;
+                }
+                PlanDecline decline = attempt.decline();
+                if (!decline.permanent()) {
+                    if (retryable == null || decline.retryFromIndex() < retryable.retryFromIndex()) {
+                        retryable = decline;
+                    }
+                } else if (permanent == null && !decline.equals(PlanDecline.unclaimed())) {
+                    permanent = decline;
+                }
+            }
+            PlanDecline decline = retryable != null ? retryable
+                    : permanent != null ? permanent
+                            : PlanDecline
+                                    .unsupported("no operation planner claims " + indicator.getClass().getSimpleName());
+            return PlanAttempt.declined(decline);
         }
 
         private List<Object> decodeAll(KernelRequest request, double[] rawOutputs, PlannedOperation planned,
                 BarSeries indicatorSeries) {
             NumFactory factory = indicatorSeries.numFactory();
             List<Object> decoded = new ArrayList<>(request.size());
+            // One slice is reused across indexes; decoders must not retain it.
+            double[] slice = new double[request.outputsPerIndex()];
             for (int position = 0; position < request.size(); position++) {
                 int index = request.fromInclusive() + position;
-                double[] slice = new double[request.outputsPerIndex()];
                 System.arraycopy(rawOutputs, position * request.outputsPerIndex(), slice, 0, slice.length);
                 Object value = planned.decoder().decode(slice, index, factory);
                 if (value == null) {
@@ -874,8 +1021,9 @@ public final class AccelerationRuntime {
                     CURRENT.set(previous);
                 }
             }
+            LAST_CLOSED_DIAGNOSTIC.set(diagnostic);
             long scopeNanos = System.nanoTime() - startedNanos;
-            if (providerAttempted) {
+            if (requested) {
                 LOG.debug(
                         "ta4j acceleration requested=auto effectiveBackend={} provider={} code={} nativeInitialized={} providerNanos={} scopeNanos={} range=[{},{}] detail={}",
                         effectiveBackend.name().toLowerCase(Locale.ROOT), diagnostic.providerId(), diagnostic.code(),
@@ -906,7 +1054,27 @@ public final class AccelerationRuntime {
         return sameSeriesState(series.getBarSeriesChangeSnapshot(snapshot.revision()), snapshot);
     }
 
-    private record CachedBatch(int fromInclusive, List<?> values, BarSeriesChangeSnapshot snapshot) {
+    /**
+     * Result of one runtime evaluation attempt: a publishable batch, or the typed
+     * disposition of a decline. A permanent decline sends the indicator to the
+     * scope's scalar lane; a transient one only defers it to a retry index.
+     */
+    private record Evaluation(CachedBatch batch, boolean permanent, int retryFromIndex) {
+
+        private static Evaluation accelerated(CachedBatch batch) {
+            return new Evaluation(batch, false, -1);
+        }
+
+        private static Evaluation unsupported() {
+            return new Evaluation(null, true, -1);
+        }
+
+        private static Evaluation retryFrom(int retryFromIndex) {
+            return new Evaluation(null, false, retryFromIndex);
+        }
+    }
+
+    private record CachedBatch(int fromInclusive, int toInclusive, List<?> values, BarSeriesChangeSnapshot snapshot) {
 
         private CachedBatch {
             values = List.copyOf(values);

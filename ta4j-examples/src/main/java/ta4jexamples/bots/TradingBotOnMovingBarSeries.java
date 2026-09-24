@@ -52,8 +52,6 @@ public class TradingBotOnMovingBarSeries {
      */
     private static Instant LAST_BAR_END_TIME;
 
-    private static Instant LAST_BAR_END_TIME;
-
     /**
      * Builds a moving bar series (i.e. keeping only the maxBarCount last bars)
      *

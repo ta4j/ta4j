@@ -27,7 +27,9 @@ public interface OperationDecoder {
     /**
      * Decodes one decision index slice into its domain value.
      *
-     * @param slice   raw outputs for the index, length {@code outputsPerIndex}
+     * @param slice   raw outputs for the index, length {@code outputsPerIndex}; the
+     *                runtime reuses this array for the next index, so decoders must
+     *                not retain it
      * @param index   decision index the slice belongs to
      * @param factory owning factory for numeric reconstruction
      * @return decoded domain value, never {@code null}

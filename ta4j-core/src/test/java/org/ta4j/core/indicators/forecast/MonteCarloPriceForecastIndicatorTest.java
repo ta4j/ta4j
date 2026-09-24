@@ -28,7 +28,8 @@ import org.ta4j.core.indicators.forecast.projection.ForecastSupport;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.FixedIndicator;
+import org.ta4j.core.indicators.forecast.MonteCarloTestFixtures.FixedReturnIndicator;
+import org.ta4j.core.indicators.forecast.MonteCarloTestFixtures.FixedReturnStateIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -67,6 +68,13 @@ public class MonteCarloPriceForecastIndicatorTest
                 List.of(0.0, 0.5, 1.0));
 
         assertEquivalent(expected, prediction);
+        // Independent of Forecast.ofSamples: the two paths terminate at exactly
+        // price * e^-1 and price * e^1, so the extremes and mean follow directly.
+        Num lowerPrice = price.multipliedBy(numOf(-1).exp());
+        Num upperPrice = price.multipliedBy(numOf(1).exp());
+        assertNumEquals(lowerPrice, prediction.quantile(0.0));
+        assertNumEquals(upperPrice, prediction.quantile(1.0));
+        assertNumEquals(lowerPrice.plus(upperPrice).dividedBy(numOf(2)), prediction.mean());
     }
 
     @Test
@@ -287,55 +295,4 @@ public class MonteCarloPriceForecastIndicatorTest
         }
     }
 
-    private static final class FixedReturnIndicator extends FixedIndicator<Num> implements ReturnIndicator {
-
-        private final ReturnRepresentation representation;
-
-        private FixedReturnIndicator(BarSeries series, ReturnRepresentation representation, Num... values) {
-            super(series, values);
-            this.representation = representation;
-        }
-
-        @Override
-        public ReturnRepresentation getReturnRepresentation() {
-            return representation;
-        }
-    }
-
-    private static final class FixedReturnStateIndicator implements ReturnForecastStateIndicator<ReturnForecastState> {
-
-        private final ReturnIndicator returns;
-        private final ReturnRepresentation representation;
-
-        private FixedReturnStateIndicator(ReturnIndicator returns, ReturnRepresentation representation) {
-            this.returns = returns;
-            this.representation = representation;
-        }
-
-        @Override
-        public ReturnIndicator getReturnIndicator() {
-            return returns;
-        }
-
-        @Override
-        public ReturnRepresentation getReturnRepresentation() {
-            return representation;
-        }
-
-        @Override
-        public ReturnForecastState getValue(int index) {
-            Num zero = getBarSeries().numFactory().zero();
-            return ReturnForecastState.stable(index, index + 1, representation, zero, zero, zero);
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return 0;
-        }
-
-        @Override
-        public BarSeries getBarSeries() {
-            return returns.getBarSeries();
-        }
-    }
 }
