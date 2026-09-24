@@ -7,7 +7,7 @@ import java.util.Arrays;
 
 interface OpenClNativeBridge {
 
-    int ABI_VERSION = 2;
+    int ABI_VERSION = 3;
 
     OpenClProbeResult probe();
 
@@ -19,15 +19,15 @@ record OpenClProbeResult(boolean available, String deviceName, int computeMajor,
 }
 
 record OpenClEvaluationResult(double totalMicros, double transferMicros, double kernelMicros, double reductionMicros,
-        double[] terminalPrices) {
+        double[] logReturns) {
 
     OpenClEvaluationResult {
-        terminalPrices = Arrays.copyOf(terminalPrices, terminalPrices.length);
+        logReturns = Arrays.copyOf(logReturns, logReturns.length);
     }
 
     @Override
-    public double[] terminalPrices() {
-        return Arrays.copyOf(terminalPrices, terminalPrices.length);
+    public double[] logReturns() {
+        return Arrays.copyOf(logReturns, logReturns.length);
     }
 }
 
@@ -75,8 +75,8 @@ final class JniOpenClNativeBridge implements OpenClNativeBridge {
     public OpenClEvaluationResult evaluate(NativeForecastRequest request) {
         double[] payload = nativeEvaluate(ABI_VERSION, request.fromInclusive(), request.decisionCount(),
                 request.horizon(), request.iterationCount(), request.lookbackBarCount(), request.seed(),
-                request.shockModel(), request.volatilityMode(), request.volatilityDecayFactor(), request.stable(),
-                request.prices(), request.means(), request.drifts(), request.variances(), request.historicalReturns());
+                request.shockModel(), request.volatilityMode(), request.volatilityDecayFactor(), request.means(),
+                request.drifts(), request.variances(), request.historicalReturns());
         if (payload == null || payload.length < HEADER_LENGTH) {
             throw new IllegalStateException("OpenCL evaluation returned no result payload");
         }
@@ -88,6 +88,6 @@ final class JniOpenClNativeBridge implements OpenClNativeBridge {
 
     private static native double[] nativeEvaluate(int abiVersion, int fromInclusive, int decisionCount, int horizon,
             int iterationCount, int lookbackBarCount, long seed, int shockModel, int volatilityMode,
-            double volatilityDecayFactor, int[] stable, double[] prices, double[] means, double[] drifts,
-            double[] variances, double[] historicalReturns);
+            double volatilityDecayFactor, double[] means, double[] drifts, double[] variances,
+            double[] historicalReturns);
 }

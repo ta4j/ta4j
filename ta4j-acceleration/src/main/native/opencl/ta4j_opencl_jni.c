@@ -14,7 +14,7 @@
 #include <string.h>
 #include <time.h>
 
-#define ABI_VERSION 2
+#define ABI_VERSION 3
 #define GOLDEN_GAMMA 0x9E3779B97F4A7C15ULL
 #define DOUBLE_UNIT 0x1.0p-53
 #define STATE_ERROR_BUFFER 512
@@ -66,10 +66,10 @@ static const char KERNEL_SOURCE[] =
         "    return radius * cos(2.0 * 3.141592653589793238462643383279502884 * next_double(random));\n"
         "}\n"
         "\n"
-        "__kernel void path_kernel(double price, double mean, double drift, double variance,\n"
+        "__kernel void path_kernel(double mean, double drift, double variance,\n"
         "                          __global const double* historical_returns, int lookback, int decision_index,\n"
         "                          int horizon, int iteration_count, long seed, int shock_model,\n"
-        "                          int volatility_mode, double decay, __global double* samples, __global int* status) {\n"
+        "                          int volatility_mode, double decay, __global double* samples) {\n"
         "    int path_index = get_global_id(0);\n"
         "    if (path_index >= iteration_count) {\n"
         "        return;\n"
@@ -103,15 +103,8 @@ static const char KERNEL_SOURCE[] =
         "            volatility = sqrt(current_variance);\n"
         "        }\n"
         "    }\n"
-        "    double growth = exp(cumulative_return);\n"
-        "    double terminal = price * growth;\n"
-        "    if (!isfinite(cumulative_return) || fabs(cumulative_return) > 700.0 || !isfinite(growth)\n"
-        "            || !isfinite(terminal) || (terminal == 0.0 && growth != 0.0)) {\n"
-        "        atomic_xchg(status, 2);\n"
-        "        samples[path_index] = 0.0;\n"
-        "        return;\n"
-        "    }\n"
-        "    samples[path_index] = terminal;\n"
+        "    // Raw cumulative log-return; core applies exp and the terminal guards.\n"
+        "    samples[path_index] = cumulative_return;\n"
         "}\n"
         "\n"
         "__kernel void moments_kernel(__global const double* samples, int count, __global double* summary,\n"
@@ -436,21 +429,6 @@ static int copy_doubles(JNIEnv* environment, jdoubleArray source, jsize expected
     return 1;
 }
 
-static int copy_ints(JNIEnv* environment, jintArray source, jsize expected, const char* name, int** out, char* error,
-                     size_t error_size) {
-    if (source == NULL || (*environment)->GetArrayLength(environment, source) != expected) {
-        snprintf(error, error_size, "%s length mismatch", name);
-        return 0;
-    }
-    *out = (int*)calloc((size_t)expected > 0 ? (size_t)expected : 1, sizeof(int));
-    if (*out == NULL) {
-        fail(error, error_size, "out of host memory");
-        return 0;
-    }
-    (*environment)->GetIntArrayRegion(environment, source, 0, expected, *out);
-    return 1;
-}
-
 static void throw_java(JNIEnv* environment, const char* message) {
     if ((*environment)->ExceptionCheck(environment)) {
         return;
@@ -502,7 +480,6 @@ static cl_int run_kernel_self_tests(char* error, size_t error_size) {
     cl_int shock_arg = 2;
     cl_int volatility_arg = 0;
     double decay_arg = 0.94;
-    double price_arg = 100.0;
     double zero_arg = 0.0;
     size_t local_sort = 2;
     int use_parallel = STATE.max_work_group_size >= 2;
@@ -556,21 +533,19 @@ static cl_int run_kernel_self_tests(char* error, size_t error_size) {
     CHECK_OPENCL(clEnqueueWriteBuffer(STATE.queue, quantiles, CL_TRUE, 0, sizeof(double), &half, 0, NULL, NULL),
                  "self-test quantile write");
 
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 0, sizeof(double), &price_arg), "self-test arg price");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 1, sizeof(double), &zero_arg), "self-test arg mean");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 2, sizeof(double), &zero_arg), "self-test arg drift");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 3, sizeof(double), &zero_arg), "self-test arg variance");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 4, sizeof(cl_mem), &history), "self-test arg history");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 5, sizeof(cl_int), &lookback_arg), "self-test arg lookback");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 6, sizeof(cl_int), &decision_arg), "self-test arg decision");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 7, sizeof(cl_int), &horizon_arg), "self-test arg horizon");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 8, sizeof(cl_int), &iteration_arg), "self-test arg iterations");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 9, sizeof(cl_long), &seed_arg), "self-test arg seed");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 10, sizeof(cl_int), &shock_arg), "self-test arg shock");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 11, sizeof(cl_int), &volatility_arg), "self-test arg volatility");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 12, sizeof(double), &decay_arg), "self-test arg decay");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 13, sizeof(cl_mem), &samples), "self-test arg samples");
-    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 14, sizeof(cl_mem), &status_buffer), "self-test arg status");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 0, sizeof(double), &zero_arg), "self-test arg mean");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 1, sizeof(double), &zero_arg), "self-test arg drift");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 2, sizeof(double), &zero_arg), "self-test arg variance");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 3, sizeof(cl_mem), &history), "self-test arg history");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 4, sizeof(cl_int), &lookback_arg), "self-test arg lookback");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 5, sizeof(cl_int), &decision_arg), "self-test arg decision");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 6, sizeof(cl_int), &horizon_arg), "self-test arg horizon");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 7, sizeof(cl_int), &iteration_arg), "self-test arg iterations");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 8, sizeof(cl_long), &seed_arg), "self-test arg seed");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 9, sizeof(cl_int), &shock_arg), "self-test arg shock");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 10, sizeof(cl_int), &volatility_arg), "self-test arg volatility");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 11, sizeof(double), &decay_arg), "self-test arg decay");
+    CHECK_OPENCL(clSetKernelArg(STATE.path_kernel, 12, sizeof(cl_mem), &samples), "self-test arg samples");
     CHECK_OPENCL(clEnqueueNDRangeKernel(STATE.queue, STATE.path_kernel, 1, NULL, &two, NULL, 0, NULL, NULL),
                  "self-test path kernel launch");
 
@@ -610,8 +585,9 @@ static cl_int run_kernel_self_tests(char* error, size_t error_size) {
                                      NULL), "self-test status read");
     CHECK_OPENCL(clEnqueueReadBuffer(STATE.queue, summary, CL_TRUE, 0, sizeof(forecast_summary), forecast_summary, 0,
                                      NULL, NULL), "self-test summary read");
-    if (forecast_status != 0 || fabs(forecast_summary[0] - 100.0) > 1e-12 || fabs(forecast_summary[1] - 100.0) > 1e-12
-            || forecast_summary[2] != 0.0 || fabs(forecast_summary[3] - 100.0) > 1e-12) {
+    // Zero variance and drift with normal shocks: every cumulative log-return is 0.
+    if (forecast_status != 0 || forecast_summary[0] != 0.0 || forecast_summary[1] != 0.0
+            || forecast_summary[2] != 0.0 || forecast_summary[3] != 0.0) {
         fail(error, error_size, "forecast kernel self-test mismatch");
         error_status = CL_INVALID_OPERATION;
         goto cleanup;
@@ -953,16 +929,14 @@ JNIEXPORT jdoubleArray JNICALL
 Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvaluate(
         JNIEnv* environment, jclass, jint abi_version, jint from_inclusive, jint decision_count, jint horizon,
         jint iteration_count, jint lookback, jlong seed, jint shock_model, jint volatility_mode, jdouble decay,
-        jintArray stable_array, jdoubleArray prices_array, jdoubleArray means_array,
-        jdoubleArray drifts_array, jdoubleArray variances_array, jdoubleArray historical_returns_array) {
+        jdoubleArray means_array, jdoubleArray drifts_array, jdoubleArray variances_array,
+        jdoubleArray historical_returns_array) {
     char error[STATE_ERROR_BUFFER];
     double total_start = now_micros();
     double transfer_micros = 0.0;
     double kernel_micros = 0.0;
     double reduction_micros = 0.0;
     jdoubleArray result = NULL;
-    int* stable = NULL;
-    double* prices = NULL;
     double* means = NULL;
     double* drifts = NULL;
     double* variances = NULL;
@@ -970,11 +944,9 @@ Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvalua
     double* payload = NULL;
     cl_mem device_samples = NULL;
     cl_mem device_history = NULL;
-    cl_mem device_status = NULL;
     size_t history_count = 0;
     size_t row_length = 0;
     size_t payload_size = 0;
-    int status = -1;
 
     if (pthread_mutex_lock(&STATE_MUTEX) != 0) {
         throw_java(environment, "unable to lock native state");
@@ -993,7 +965,8 @@ Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvalua
         pthread_mutex_unlock(&STATE_MUTEX);
         return NULL;
     }
-    history_count = (size_t)decision_count * (size_t)lookback;
+    // Row r samples the shared returns historical_returns[r .. r + lookback - 1].
+    history_count = (size_t)decision_count + (size_t)lookback - 1U;
     row_length = (size_t)iteration_count;
     payload_size = 4U + (size_t)decision_count * row_length;
     if (history_count > (size_t)INT32_MAX || payload_size > (size_t)INT32_MAX) {
@@ -1002,9 +975,7 @@ Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvalua
         return NULL;
     }
 
-    if (!copy_ints(environment, stable_array, decision_count, "stable", &stable, error, sizeof(error))
-            || !copy_doubles(environment, prices_array, decision_count, "prices", &prices, error, sizeof(error))
-            || !copy_doubles(environment, means_array, decision_count, "means", &means, error, sizeof(error))
+    if (!copy_doubles(environment, means_array, decision_count, "means", &means, error, sizeof(error))
             || !copy_doubles(environment, drifts_array, decision_count, "drifts", &drifts, error, sizeof(error))
             || !copy_doubles(environment, variances_array, decision_count, "variances", &variances, error,
                              sizeof(error))
@@ -1040,34 +1011,17 @@ Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvalua
             throw_java(environment, error);
             goto cleanup;
         }
-        device_status = clCreateBuffer(STATE.context, CL_MEM_READ_WRITE, sizeof(int), NULL, &create_status);
-        if (create_status != CL_SUCCESS || device_status == NULL) {
-            snprintf(error, sizeof(error), "status buffer creation: %s", cl_error_string(create_status));
-            throw_java(environment, error);
-            goto cleanup;
-        }
     }
 
 
     for (int decision = 0; decision < decision_count; ++decision) {
-        if (stable[decision] == 0) {
-            continue;
-        }
         {
             double transfer_start = now_micros();
-            const double* history = historical_returns + (size_t)decision * (size_t)lookback;
+            const double* history = historical_returns + (size_t)decision;
             cl_int write_status = clEnqueueWriteBuffer(STATE.queue, device_history, CL_TRUE, 0,
                                                        (size_t)lookback * sizeof(double), history, 0, NULL, NULL);
             if (write_status != CL_SUCCESS) {
                 snprintf(error, sizeof(error), "historical return transfer: %s", cl_error_string(write_status));
-                throw_java(environment, error);
-                goto cleanup;
-            }
-            int zero = 0;
-            write_status = clEnqueueWriteBuffer(STATE.queue, device_status, CL_TRUE, 0, sizeof(int), &zero, 0, NULL,
-                                                NULL);
-            if (write_status != CL_SUCCESS) {
-                snprintf(error, sizeof(error), "status reset: %s", cl_error_string(write_status));
                 throw_java(environment, error);
                 goto cleanup;
             }
@@ -1076,7 +1030,6 @@ Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvalua
 
         {
             double kernel_start = now_micros();
-            double price = prices[decision];
             double mean = means[decision];
             double drift = drifts[decision];
             double variance = variances[decision];
@@ -1091,48 +1044,42 @@ Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvalua
             size_t global_paths = (size_t)iteration_count;
             cl_int argument_error = CL_SUCCESS;
 
-            argument_error = clSetKernelArg(STATE.path_kernel, 0, sizeof(double), &price);
+            argument_error = clSetKernelArg(STATE.path_kernel, 0, sizeof(double), &mean);
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 1, sizeof(double), &mean);
+                argument_error = clSetKernelArg(STATE.path_kernel, 1, sizeof(double), &drift);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 2, sizeof(double), &drift);
+                argument_error = clSetKernelArg(STATE.path_kernel, 2, sizeof(double), &variance);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 3, sizeof(double), &variance);
+                argument_error = clSetKernelArg(STATE.path_kernel, 3, sizeof(cl_mem), &device_history);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 4, sizeof(cl_mem), &device_history);
+                argument_error = clSetKernelArg(STATE.path_kernel, 4, sizeof(cl_int), &lookback_arg);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 5, sizeof(cl_int), &lookback_arg);
+                argument_error = clSetKernelArg(STATE.path_kernel, 5, sizeof(cl_int), &decision_arg);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 6, sizeof(cl_int), &decision_arg);
+                argument_error = clSetKernelArg(STATE.path_kernel, 6, sizeof(cl_int), &horizon_arg);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 7, sizeof(cl_int), &horizon_arg);
+                argument_error = clSetKernelArg(STATE.path_kernel, 7, sizeof(cl_int), &iteration_arg);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 8, sizeof(cl_int), &iteration_arg);
+                argument_error = clSetKernelArg(STATE.path_kernel, 8, sizeof(cl_long), &seed_arg);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 9, sizeof(cl_long), &seed_arg);
+                argument_error = clSetKernelArg(STATE.path_kernel, 9, sizeof(cl_int), &shock_arg);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 10, sizeof(cl_int), &shock_arg);
+                argument_error = clSetKernelArg(STATE.path_kernel, 10, sizeof(cl_int), &volatility_arg);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 11, sizeof(cl_int), &volatility_arg);
+                argument_error = clSetKernelArg(STATE.path_kernel, 11, sizeof(double), &decay_arg);
             }
             if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 12, sizeof(double), &decay_arg);
-            }
-            if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 13, sizeof(cl_mem), &device_samples);
-            }
-            if (argument_error == CL_SUCCESS) {
-                argument_error = clSetKernelArg(STATE.path_kernel, 14, sizeof(cl_mem), &device_status);
+                argument_error = clSetKernelArg(STATE.path_kernel, 12, sizeof(cl_mem), &device_samples);
             }
             if (argument_error != CL_SUCCESS) {
                 snprintf(error, sizeof(error), "path kernel arguments: %s", cl_error_string(argument_error));
@@ -1162,14 +1109,7 @@ Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvalua
 
         {
             double output_start = now_micros();
-            cl_int read_status = clEnqueueReadBuffer(STATE.queue, device_status, CL_TRUE, 0, sizeof(int), &status, 0,
-                                                     NULL, NULL);
-            if (read_status != CL_SUCCESS) {
-                snprintf(error, sizeof(error), "status transfer: %s", cl_error_string(read_status));
-                throw_java(environment, error);
-                goto cleanup;
-            }
-            read_status = clEnqueueReadBuffer(STATE.queue, device_samples, CL_TRUE, 0,
+            cl_int read_status = clEnqueueReadBuffer(STATE.queue, device_samples, CL_TRUE, 0,
                                               (size_t)iteration_count * sizeof(double),
                                               payload + 4U + (size_t)decision * row_length, 0, NULL, NULL);
             if (read_status != CL_SUCCESS) {
@@ -1178,11 +1118,6 @@ Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvalua
                 goto cleanup;
             }
             transfer_micros += now_micros() - output_start;
-            if (status != 0) {
-                snprintf(error, sizeof(error), "OpenCL forecast kernel produced invalid terminal prices");
-                throw_java(environment, error);
-                goto cleanup;
-            }
         }
     }
 
@@ -1198,7 +1133,6 @@ Java_org_ta4j_acceleration_internal_providers_JniOpenClNativeBridge_nativeEvalua
     (*environment)->SetDoubleArrayRegion(environment, result, 0, (jsize)payload_size, payload);
 
 cleanup:
-    release_mem(&device_status);
     release_mem(&device_history);
     release_mem(&device_samples);
     free(payload);
@@ -1206,8 +1140,6 @@ cleanup:
     free(variances);
     free(drifts);
     free(means);
-    free(prices);
-    free(stable);
     pthread_mutex_unlock(&STATE_MUTEX);
     return result;
 }

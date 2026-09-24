@@ -87,10 +87,12 @@ public final class AccelerationRuntime {
     private static final long DEFAULT_MAX_DEVICE_BYTES = 1L << 30;
 
     /**
-     * Safety margin applied to the CPU-crossover comparison: the best accelerator
-     * must beat the scalar baseline by more than this fraction.
+     * Minimum predicted end-to-end speedup over the scalar baseline before
+     * automatic selection engages a provider: its predicted total cost must be at
+     * most the scalar estimate divided by this factor. Smaller predicted gains stay
+     * scalar with a {@link DiagnosticCode#CPU_FASTER} diagnostic.
      */
-    private static final double CPU_SAFETY_MARGIN = 0.10;
+    static final double MIN_PREDICTED_SPEEDUP = 1.5d;
 
     private static final ThreadLocal<Context> CURRENT = new ThreadLocal<>();
 
@@ -199,19 +201,7 @@ public final class AccelerationRuntime {
         return diagnostic == null ? Optional.empty() : Optional.of(diagnostic);
     }
 
-    /**
-     * Returns the configured global device-memory budget, or its default when unset
-     * or misconfigured.
-     *
-     * <p>
-     * Core planners consult this budget to decline oversized requests before
-     * materializing input snapshots; the runtime re-checks every planned request
-     * against the same budget before provider assessment.
-     *
-     * @return positive device-memory budget in bytes
-     * @since 0.25.1
-     */
-    public static long maxDeviceBytes() {
+    static long maxDeviceBytes() {
         String configured = System.getProperty(MAX_DEVICE_BYTES_PROPERTY);
         if (configured == null || configured.isBlank()) {
             return DEFAULT_MAX_DEVICE_BYTES;
@@ -488,8 +478,10 @@ public final class AccelerationRuntime {
      * @param determinism             determinism contract the kernel must satisfy
      * @param seed                    base seed; per-index mixing is defined by the
      *                                operation contract
-     * @param tolerance               numeric tolerance for validation, NaN when
-     *                                exact
+     * @param tolerance               finite positive tolerance for
+     *                                {@link Determinism#APPROXIMATE} requests;
+     *                                {@code NaN} for
+     *                                {@link Determinism#BITWISE_IDENTICAL}
      * @param params                  operation parameters (ordinals, counts,
      *                                factors) defined by the operation contract
      * @param inputs                  read-only primitive input buffers
@@ -497,6 +489,8 @@ public final class AccelerationRuntime {
      *                                crossover comparison, non-positive when
      *                                unknown
      * @param peakDeviceBytesEstimate declared peak device memory in bytes
+     * @throws IllegalArgumentException if the range, output width, peak estimate or
+     *                                  determinism/tolerance pairing is invalid
      * @since 0.25.1
      */
     public record KernelRequest(Operation operation, int fromInclusive, int toInclusive, int outputsPerIndex,
@@ -515,6 +509,12 @@ public final class AccelerationRuntime {
             }
             if (peakDeviceBytesEstimate < 0) {
                 throw new IllegalArgumentException("peakDeviceBytesEstimate must be >= 0");
+            }
+            if (determinism == Determinism.APPROXIMATE ? !(Double.isFinite(tolerance) && tolerance > 0d)
+                    : !Double.isNaN(tolerance)) {
+                throw new IllegalArgumentException(determinism == Determinism.APPROXIMATE
+                        ? "APPROXIMATE requests need a finite positive tolerance, was " + tolerance
+                        : "BITWISE_IDENTICAL requests carry a NaN tolerance, was " + tolerance);
             }
             params = params.clone();
             List<double[]> copies = new ArrayList<>(inputs.size());
@@ -908,11 +908,13 @@ public final class AccelerationRuntime {
                     continue;
                 }
                 long baseline = request.estimatedScalarNanos();
-                if (baseline > 0 && (double) assessment.predictedTotalNanos() >= baseline * (1.0 - CPU_SAFETY_MARGIN)) {
+                if (baseline > 0
+                        && (double) assessment.predictedTotalNanos() * MIN_PREDICTED_SPEEDUP > (double) baseline) {
                     cpuFasterObserved = true;
                     cpuFasterProvider = providerId;
                     cpuFasterDetail = "predicted " + assessment.predictedTotalNanos() + "ns vs scalar baseline "
-                            + baseline + "ns";
+                            + baseline + "ns; automatic selection needs a " + MIN_PREDICTED_SPEEDUP
+                            + "x predicted speedup";
                     continue;
                 }
                 candidates.add(new RankedProvider(provider, providerId, assessment));

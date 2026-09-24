@@ -3,27 +3,33 @@
  */
 package org.ta4j.acceleration.internal.providers;
 
+import java.util.Locale;
 import java.util.Map;
 
 import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
 
 /**
  * Predicted-total-time qualification for the versioned Monte Carlo shock-path
- * kernel. Each row is keyed by operation version, backend, device family, and
- * resident state, and predicts the full offload cost (context and library load
- * when cold, staging, launch, kernel, synchronization, return, and core-side
- * decode) so the runtime can rank providers against its scalar baseline.
+ * kernel. Each row is keyed by operation version, backend, and device family,
+ * and predicts the full offload cost (context and library load when cold,
+ * staging, launch, kernel, synchronization, return, and core-side decode) so
+ * the runtime can compare providers against its scalar baseline.
  *
  * <p>
- * Coefficient rows are carried from the pre-ABI crossover models (a fixed 25%
- * total-time advantage above a minimum step count on qualified families) and
- * restated in total-time form. Rows without hardware qualification stay absent
- * and predict an unbounded cost, which routes the request to scalar with a
- * {@code CPU_FASTER} diagnostic instead of engaging an unqualified device.
+ * A row may only be added with recorded benchmark evidence: the workload shapes
+ * (decisions, paths, horizon, lookback), cold and warm total timings of the
+ * native lane and of the scalar lane on the same host, and the source revision
+ * measured. Rows without that evidence stay absent and predict an unbounded
+ * cost, which keeps the request scalar with a {@code CPU_FASTER} diagnostic
+ * instead of engaging an unqualified device. No shipped row is qualified yet,
+ * so automatic selection currently keeps every workload scalar.
  *
  * @since 0.25.1
  */
 final class ShockPathQualification {
+
+    /** Qualification with no measured rows: every workload stays scalar. */
+    static final ShockPathQualification QUALIFIED = new ShockPathQualification(Map.of());
 
     /** Workload steps below which no offload can amortize launch costs. */
     static final String MIN_STEPS_PROPERTY_SUFFIX = ".minSteps";
@@ -31,26 +37,41 @@ final class ShockPathQualification {
     /** Device family override, for example {@code m5max}. */
     static final String FAMILY_PROPERTY_SUFFIX = ".family";
 
-    private record Coefficients(long coldBaseNanos, long warmBaseNanos, double nanosPerStep, double nanosPerByte,
+    /**
+     * Measured cost coefficients for one qualified region.
+     *
+     * @param coldBaseNanos fixed cost of a cold (first) execution
+     * @param warmBaseNanos fixed cost of a resident execution
+     * @param nanosPerStep  marginal cost per simulated path step
+     * @param nanosPerByte  marginal cost per staged byte
+     * @param minimumSteps  smallest qualified workload in path steps
+     */
+    record Coefficients(long coldBaseNanos, long warmBaseNanos, double nanosPerStep, double nanosPerByte,
             long minimumSteps) {
     }
 
-    private static final Map<String, Coefficients> ROWS = Map.of(
-            // Metal on Apple M5 Max: the pre-ABI model engaged above 2^24
-            // path steps with a 25% total-time advantage over scalar.
-            key(1, Backend.METAL, "m5max"), new Coefficients(500_000_000L, 200_000L, 37.5d, 0.1d, 16_777_216L));
+    private final Map<String, Coefficients> rows;
 
-    private ShockPathQualification() {
+    private ShockPathQualification(Map<String, Coefficients> rows) {
+        this.rows = Map.copyOf(rows);
+    }
+
+    /**
+     * Returns a qualification holding exactly one row; used to exercise routing
+     * against measured coefficients.
+     */
+    static ShockPathQualification of(Backend backend, int operationVersion, String family, Coefficients coefficients) {
+        return new ShockPathQualification(Map.of(key(operationVersion, backend, family), coefficients));
     }
 
     /**
      * Predicts the total offload cost for a request, or {@link Long#MAX_VALUE} when
      * the backend has no qualified row for the operation version and device family,
-     * or when the workload is below the crossover floor.
+     * or when the workload is below the qualified floor.
      */
-    static long predictedTotalNanos(Backend backend, int operationVersion, String family, long steps, long stagedBytes,
+    long predictedTotalNanos(Backend backend, int operationVersion, String family, long steps, long stagedBytes,
             boolean resident) {
-        Coefficients row = ROWS.get(key(operationVersion, backend, family));
+        Coefficients row = rows.get(key(operationVersion, backend, family));
         if (row == null || steps < minimumSteps(backend, operationVersion, family)) {
             return Long.MAX_VALUE;
         }
@@ -62,24 +83,24 @@ final class ShockPathQualification {
         return Math.max(0L, (long) predicted);
     }
 
-    static String familyProperty(Backend backend) {
-        return "ta4j.acceleration." + backend.name().toLowerCase(java.util.Locale.ROOT) + FAMILY_PROPERTY_SUFFIX;
-    }
-
-    static String minStepsProperty(Backend backend) {
-        return "ta4j.acceleration." + backend.name().toLowerCase(java.util.Locale.ROOT) + MIN_STEPS_PROPERTY_SUFFIX;
-    }
-
     /**
      * Returns the configured minimum step count, defaulting to the qualified row's
-     * floor. Tests and operators use this to move crossover without touching native
-     * code.
+     * floor. Operators use this to move the crossover within a qualified region
+     * without touching native code; it never qualifies a missing row.
      */
-    static long minimumSteps(Backend backend, int operationVersion, String family) {
-        Coefficients row = ROWS.get(key(operationVersion, backend, family));
+    long minimumSteps(Backend backend, int operationVersion, String family) {
+        Coefficients row = rows.get(key(operationVersion, backend, family));
         long fallback = row == null ? Long.MAX_VALUE : row.minimumSteps();
         long configured = Long.getLong(minStepsProperty(backend), fallback);
         return configured < 0L ? fallback : configured;
+    }
+
+    static String familyProperty(Backend backend) {
+        return "ta4j.acceleration." + backend.name().toLowerCase(Locale.ROOT) + FAMILY_PROPERTY_SUFFIX;
+    }
+
+    static String minStepsProperty(Backend backend) {
+        return "ta4j.acceleration." + backend.name().toLowerCase(Locale.ROOT) + MIN_STEPS_PROPERTY_SUFFIX;
     }
 
     private static String key(int operationVersion, Backend backend, String family) {

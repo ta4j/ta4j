@@ -11,57 +11,63 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
 
 class ShockPathQualificationTest {
 
+    private static final ShockPathQualification MEASURED = ShockPathQualification.of(Backend.METAL, 1, "fixture",
+            new ShockPathQualification.Coefficients(500_000_000L, 200_000L, 10d, 0.1d, 1L << 24));
+
     @AfterEach
     void reset() {
         System.clearProperty(ShockPathQualification.minStepsProperty(Backend.METAL));
     }
 
     @Test
-    void unknownFamilyPredictsUnboundedCost() {
-        assertThat(ShockPathQualification.predictedTotalNanos(Backend.METAL, 1, "generic", 1L << 30, 0L, false))
+    void shippedQualificationKeepsEveryBackendScalar() {
+        for (Backend backend : new Backend[] { Backend.METAL, Backend.CUDA, Backend.OPENCL }) {
+            for (String family : new String[] { "generic", "m5max" }) {
+                assertThat(ShockPathQualification.QUALIFIED.predictedTotalNanos(backend, 1, family, 1L << 40, 0L, true))
+                        .as("%s/%s", backend, family)
+                        .isEqualTo(Long.MAX_VALUE);
+            }
+        }
+    }
+
+    @Test
+    void minimumStepsOverrideNeverQualifiesAMissingRow() {
+        System.setProperty(ShockPathQualification.minStepsProperty(Backend.METAL), "1");
+
+        assertThat(ShockPathQualification.QUALIFIED.predictedTotalNanos(Backend.METAL, 1, "m5max", 1L << 30, 0L, true))
                 .isEqualTo(Long.MAX_VALUE);
     }
 
     @Test
-    void unknownVersionPredictsUnboundedCost() {
-        assertThat(ShockPathQualification.predictedTotalNanos(Backend.METAL, 999, "m5max", 1L << 30, 0L, false))
-                .isEqualTo(Long.MAX_VALUE);
-    }
-
-    @Test
-    void belowFloorPredictsUnboundedCost() {
-        assertThat(ShockPathQualification.predictedTotalNanos(Backend.METAL, 1, "m5max", 1024L, 0L, false))
-                .isEqualTo(Long.MAX_VALUE);
-    }
-
-    @Test
-    void qualifiedPredictionCarriesColdAndWarmBases() {
+    void measuredRowPredictsDistinctColdAndWarmTotals() {
         long steps = 1L << 24;
         long staged = 1_000L;
 
-        long cold = ShockPathQualification.predictedTotalNanos(Backend.METAL, 1, "m5max", steps, staged, false);
-        long warm = ShockPathQualification.predictedTotalNanos(Backend.METAL, 1, "m5max", steps, staged, true);
+        long cold = MEASURED.predictedTotalNanos(Backend.METAL, 1, "fixture", steps, staged, false);
+        long warm = MEASURED.predictedTotalNanos(Backend.METAL, 1, "fixture", steps, staged, true);
 
-        assertThat(cold).isEqualTo(500_000_000L + (long) (steps * 37.5d) + (long) (staged * 0.1d));
-        assertThat(warm).isEqualTo(200_000L + (long) (steps * 37.5d) + (long) (staged * 0.1d));
-        assertThat(warm).isLessThan(cold);
+        assertThat(cold).isEqualTo(500_000_000L + steps * 10L + 100L);
+        assertThat(warm).isEqualTo(200_000L + steps * 10L + 100L);
     }
 
     @Test
-    void minimumStepsOverrideMovesCrossover() {
-        assertThat(ShockPathQualification.predictedTotalNanos(Backend.METAL, 1, "m5max", 100L, 0L, true))
+    void measuredRowStaysScalarBelowItsFloorOrForOtherVersionsAndFamilies() {
+        assertThat(MEASURED.predictedTotalNanos(Backend.METAL, 1, "fixture", 1024L, 0L, true))
                 .isEqualTo(Long.MAX_VALUE);
+        assertThat(MEASURED.predictedTotalNanos(Backend.METAL, 2, "fixture", 1L << 30, 0L, true))
+                .isEqualTo(Long.MAX_VALUE);
+        assertThat(MEASURED.predictedTotalNanos(Backend.METAL, 1, "generic", 1L << 30, 0L, true))
+                .isEqualTo(Long.MAX_VALUE);
+    }
 
+    @Test
+    void minimumStepsOverrideMovesTheCrossoverWithinAMeasuredRow() {
         System.setProperty(ShockPathQualification.minStepsProperty(Backend.METAL), "8");
 
-        assertThat(ShockPathQualification.predictedTotalNanos(Backend.METAL, 1, "m5max", 100L, 0L, true))
-                .isEqualTo(200_000L + (long) (100L * 37.5d));
-    }
+        assertThat(MEASURED.predictedTotalNanos(Backend.METAL, 1, "fixture", 100L, 0L, true))
+                .isEqualTo(200_000L + 1_000L);
 
-    @Test
-    void negativeOverrideFallsBackToQualifiedFloor() {
         System.setProperty(ShockPathQualification.minStepsProperty(Backend.METAL), "-1");
-
-        assertThat(ShockPathQualification.minimumSteps(Backend.METAL, 1, "m5max")).isEqualTo(16_777_216L);
+        assertThat(MEASURED.minimumSteps(Backend.METAL, 1, "fixture")).isEqualTo(1L << 24);
     }
 }

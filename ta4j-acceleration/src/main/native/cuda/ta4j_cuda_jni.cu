@@ -5,8 +5,6 @@
 #include <jni.h>
 
 
-#include <thrust/device_ptr.h>
-#include <thrust/sort.h>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -21,7 +19,8 @@
 
 namespace {
 
-constexpr int ABI_VERSION = 2;
+constexpr int ABI_VERSION = 3;
+constexpr int MAX_GRID_Y = 65535;
 constexpr std::uint64_t GOLDEN_GAMMA = 0x9E3779B97F4A7C15ULL;
 constexpr double DOUBLE_UNIT = 0x1.0p-53;
 constexpr int THREADS_PER_BLOCK = 256;
@@ -125,29 +124,38 @@ private:
     std::uint64_t state_{};
 };
 
-__global__ void path_kernel(double price, double mean, double drift, double variance,
-                            const double* historical_returns, int lookback, int decision_index,
+// MONTE_CARLO_SHOCK_PATHS_V1 path simulation (see org.ta4j.core.indicators.forecast.MonteCarloKernel).
+// One thread simulates one path of decision row decision_offset + blockIdx.y and writes its raw
+// cumulative log-return; core applies the exponential and the terminal guards. Row r samples the
+// shared returns buffer at returns[r .. r + lookback - 1].
+__global__ void path_kernel(const double* means, const double* drifts, const double* variances,
+                            const double* returns, int lookback, int decision_offset, int from_inclusive,
                             int horizon, int iteration_count, std::int64_t seed, int shock_model,
-                            int volatility_mode, double decay, double* samples, int* status) {
+                            int volatility_mode, double decay, double* samples) {
     int path_index = blockIdx.x * blockDim.x + threadIdx.x;
     if (path_index >= iteration_count) {
         return;
     }
-    path_random random(seed, decision_index, horizon, path_index);
+    int decision = decision_offset + static_cast<int>(blockIdx.y);
+    const double* history = returns + decision;
+    double mean = means[decision];
+    double drift = drifts[decision];
+    double variance = variances[decision];
+    path_random random(seed, from_inclusive + decision, horizon, path_index);
     double current_mean = mean;
     double current_variance = variance;
-    double volatility = sqrt(variance);
+    double volatility = variance == 0.0 ? 0.0 : sqrt(variance);
     double standardized_mean = mean;
     double standardized_volatility = volatility;
     double cumulative_return = 0.0;
     for (int step = 0; step < horizon; ++step) {
         double shock;
         if (shock_model == 0) {
-            shock = historical_returns[random.next_int(lookback)];
+            shock = history[random.next_int(lookback)];
         } else if (shock_model == 1) {
             shock = standardized_volatility == 0.0
                     ? 0.0
-                    : (historical_returns[random.next_int(lookback)] - standardized_mean) / standardized_volatility;
+                    : (history[random.next_int(lookback)] - standardized_mean) / standardized_volatility;
         } else {
             shock = random.next_gaussian();
         }
@@ -157,70 +165,11 @@ __global__ void path_kernel(double price, double mean, double drift, double vari
             double deviation = step_return - current_mean;
             current_mean = current_mean * decay + step_return * (1.0 - decay);
             current_variance = current_variance * decay + deviation * deviation * (1.0 - decay);
-            volatility = sqrt(current_variance);
+            volatility = current_variance == 0.0 ? 0.0 : sqrt(current_variance);
         }
     }
-    double growth = exp(cumulative_return);
-    double terminal = price * growth;
-    if (!isfinite(cumulative_return) || fabs(cumulative_return) > 700.0 || !isfinite(growth) || !isfinite(terminal)
-            || (terminal == 0.0 && growth != 0.0)) {
-        atomicExch(status, 2);
-        samples[path_index] = 0.0;
-        return;
-    }
-    samples[path_index] = terminal;
-}
-
-
-__global__ void moments_kernel(const double* samples, int count, double* summary, int* status) {
-    if (blockIdx.x != 0 || threadIdx.x != 0 || *status != 0) {
-        return;
-    }
-    double mean = 0.0;
-    double m2 = 0.0;
-    for (int i = 0; i < count; ++i) {
-        double value = samples[i];
-        if (!isfinite(value)) {
-            *status = 2;
-            return;
-        }
-        double delta = value - mean;
-        mean += delta / static_cast<double>(i + 1);
-        m2 += delta * (value - mean);
-    }
-    double variance = m2 / static_cast<double>(count);
-    double standard_deviation = variance <= 0.0 ? 0.0 : sqrt(variance);
-    if (!isfinite(mean) || !isfinite(standard_deviation)) {
-        *status = 2;
-        return;
-    }
-    summary[0] = mean;
-    summary[2] = standard_deviation;
-}
-
-__device__ double percentile(const double* sorted_samples, int count, double probability) {
-    if (count == 1) {
-        return sorted_samples[0];
-    }
-    double position = probability * static_cast<double>(count - 1);
-    int lower = static_cast<int>(floor(position));
-    int upper = static_cast<int>(ceil(position));
-    if (lower == upper) {
-        return sorted_samples[lower];
-    }
-    return sorted_samples[lower] + (sorted_samples[upper] - sorted_samples[lower])
-            * (position - static_cast<double>(lower));
-}
-
-__global__ void quantile_kernel(const double* sorted_samples, int count, const double* probabilities,
-                                int probability_count, double* summary, int* status) {
-    if (blockIdx.x != 0 || threadIdx.x != 0 || *status != 0) {
-        return;
-    }
-    summary[1] = percentile(sorted_samples, count, 0.5);
-    for (int i = 0; i < probability_count; ++i) {
-        summary[3 + i] = percentile(sorted_samples, count, probabilities[i]);
-    }
+    samples[static_cast<std::size_t>(decision) * static_cast<std::size_t>(iteration_count) + path_index]
+            = cumulative_return;
 }
 
 __global__ void rng_self_test_kernel(int* bounded, double* gaussian) {
@@ -261,15 +210,6 @@ std::vector<double> copy_doubles(JNIEnv* environment, jdoubleArray source, jsize
     }
     std::vector<double> values(static_cast<std::size_t>(expected));
     environment->GetDoubleArrayRegion(source, 0, expected, values.data());
-    return values;
-}
-
-std::vector<int> copy_ints(JNIEnv* environment, jintArray source, jsize expected, const char* name) {
-    if (source == nullptr || environment->GetArrayLength(source) != expected) {
-        throw std::invalid_argument(std::string(name) + " length mismatch");
-    }
-    std::vector<int> values(static_cast<std::size_t>(expected));
-    environment->GetIntArrayRegion(source, 0, expected, values.data());
     return values;
 }
 
@@ -315,40 +255,22 @@ Java_org_ta4j_acceleration_internal_providers_JniCudaNativeBridge_nativeProbe(
             throw std::runtime_error("deterministic RNG self-test mismatch");
         }
 
-        device_buffer<double> self_test_history(1);
-        device_buffer<double> self_test_samples(2);
-        device_buffer<double> self_test_quantiles(1);
-        device_buffer<double> self_test_summary(4);
-        device_buffer<int> self_test_status(1);
+        // Forecast self-test: one row with zero variance, drift and normal shocks
+        // must yield a zero cumulative log-return on every path.
         double zero = 0.0;
-        double median_probability = 0.5;
-        check_cuda(cudaMemcpyAsync(self_test_history.get(), &zero, sizeof(double), cudaMemcpyHostToDevice,
-                                   stream.get()), "forecast self-test history copy");
-        check_cuda(cudaMemcpyAsync(self_test_quantiles.get(), &median_probability, sizeof(double),
-                                   cudaMemcpyHostToDevice, stream.get()), "forecast self-test quantile copy");
-        check_cuda(cudaMemsetAsync(self_test_status.get(), 0, sizeof(int), stream.get()),
-                   "forecast self-test status reset");
-        path_kernel<<<1, 2, 0, stream.get()>>>(100.0, 0.0, 0.0, 0.0, self_test_history.get(), 1, 0, 1, 2,
-                                               42, 2, 0, 0.94, self_test_samples.get(), self_test_status.get());
+        device_buffer<double> self_test_state(1);
+        device_buffer<double> self_test_samples(2);
+        check_cuda(cudaMemcpyAsync(self_test_state.get(), &zero, sizeof(double), cudaMemcpyHostToDevice,
+                                   stream.get()), "forecast self-test state copy");
+        path_kernel<<<dim3(1, 1), 2, 0, stream.get()>>>(self_test_state.get(), self_test_state.get(),
+                                                        self_test_state.get(), self_test_state.get(), 1, 0, 0, 1, 2,
+                                                        42, 2, 0, 0.94, self_test_samples.get());
         check_cuda(cudaGetLastError(), "forecast self-test path launch");
-        moments_kernel<<<1, 1, 0, stream.get()>>>(self_test_samples.get(), 2, self_test_summary.get(),
-                                                  self_test_status.get());
-        check_cuda(cudaGetLastError(), "forecast self-test moments launch");
-        thrust::device_ptr<double> self_test_begin(self_test_samples.get());
-        thrust::sort(thrust::cuda::par.on(stream.get()), self_test_begin, self_test_begin + 2);
-        quantile_kernel<<<1, 1, 0, stream.get()>>>(self_test_samples.get(), 2, self_test_quantiles.get(), 1,
-                                                   self_test_summary.get(), self_test_status.get());
-        check_cuda(cudaGetLastError(), "forecast self-test quantile launch");
-        int forecast_status = -1;
-        double forecast_summary[4]{};
-        check_cuda(cudaMemcpyAsync(&forecast_status, self_test_status.get(), sizeof(int), cudaMemcpyDeviceToHost,
-                                   stream.get()), "forecast self-test status copy");
-        check_cuda(cudaMemcpyAsync(forecast_summary, self_test_summary.get(), sizeof(forecast_summary),
-                                   cudaMemcpyDeviceToHost, stream.get()), "forecast self-test summary copy");
+        double forecast_samples[2] = {1.0, 1.0};
+        check_cuda(cudaMemcpyAsync(forecast_samples, self_test_samples.get(), sizeof(forecast_samples),
+                                   cudaMemcpyDeviceToHost, stream.get()), "forecast self-test sample copy");
         check_cuda(cudaStreamSynchronize(stream.get()), "forecast self-test synchronization");
-        if (forecast_status != 0 || std::abs(forecast_summary[0] - 100.0) > 1e-12
-                || std::abs(forecast_summary[1] - 100.0) > 1e-12 || forecast_summary[2] != 0.0
-                || std::abs(forecast_summary[3] - 100.0) > 1e-12) {
+        if (forecast_samples[0] != 0.0 || forecast_samples[1] != 0.0) {
             throw std::runtime_error("forecast kernel self-test mismatch");
         }
         std::ostringstream payload;
@@ -366,77 +288,72 @@ extern "C" JNIEXPORT jdoubleArray JNICALL
 Java_org_ta4j_acceleration_internal_providers_JniCudaNativeBridge_nativeEvaluate(
         JNIEnv* environment, jclass, jint abi_version, jint from_inclusive, jint decision_count, jint horizon,
         jint iteration_count, jint lookback, jlong seed, jint shock_model, jint volatility_mode, jdouble decay,
-        jintArray stable_array, jdoubleArray prices_array, jdoubleArray means_array, jdoubleArray drifts_array,
-        jdoubleArray variances_array, jdoubleArray historical_returns_array) {
+        jdoubleArray means_array, jdoubleArray drifts_array, jdoubleArray variances_array,
+        jdoubleArray historical_returns_array) {
     try {
         std::lock_guard<std::mutex> guard(execution_mutex);
         auto total_start = std::chrono::steady_clock::now();
-        if (abi_version != ABI_VERSION || decision_count < 1 || horizon < 1 || iteration_count < 1 || lookback < 1
-                || shock_model < 0 || shock_model > 2 || volatility_mode < 0 || volatility_mode > 1
-                || !(decay > 0.0 && decay < 1.0)) {
+        if (abi_version != ABI_VERSION || from_inclusive < 0 || decision_count < 1 || horizon < 1
+                || iteration_count < 1 || lookback < 1 || shock_model < 0 || shock_model > 2 || volatility_mode < 0
+                || volatility_mode > 1 || !(decay > 0.0 && decay < 1.0)) {
             throw std::invalid_argument("invalid CUDA ABI or request metadata");
         }
-        std::size_t history_count = static_cast<std::size_t>(decision_count) * static_cast<std::size_t>(lookback);
+        std::size_t history_count = static_cast<std::size_t>(decision_count) + static_cast<std::size_t>(lookback) - 1U;
         std::size_t sample_count = static_cast<std::size_t>(decision_count) * static_cast<std::size_t>(iteration_count);
         if (history_count > static_cast<std::size_t>(std::numeric_limits<jsize>::max())
                 || sample_count > static_cast<std::size_t>(std::numeric_limits<jsize>::max() - 4)) {
             throw std::invalid_argument("CUDA forecast buffers exceed JNI limits");
         }
-        std::vector<int> stable = copy_ints(environment, stable_array, decision_count, "stable");
-        std::vector<double> prices = copy_doubles(environment, prices_array, decision_count, "prices");
         std::vector<double> means = copy_doubles(environment, means_array, decision_count, "means");
         std::vector<double> drifts = copy_doubles(environment, drifts_array, decision_count, "drifts");
         std::vector<double> variances = copy_doubles(environment, variances_array, decision_count, "variances");
         std::vector<double> historical_returns = copy_doubles(environment, historical_returns_array,
                                                               static_cast<jsize>(history_count), "historicalReturns");
         std::vector<double> payload(4U + sample_count, NAN);
-        device_buffer<double> device_samples(static_cast<std::size_t>(iteration_count));
-        device_buffer<double> device_history(static_cast<std::size_t>(lookback));
-        device_buffer<int> device_status(1);
+        std::size_t decisions = static_cast<std::size_t>(decision_count);
+        device_buffer<double> device_means(decisions);
+        device_buffer<double> device_drifts(decisions);
+        device_buffer<double> device_variances(decisions);
+        device_buffer<double> device_history(history_count);
+        device_buffer<double> device_samples(sample_count);
         cuda_stream stream;
-        double transfer_micros = 0.0;
-        double kernel_micros = 0.0;
-        for (int decision = 0; decision < decision_count; ++decision) {
-            if (stable[decision] == 0) {
-                continue;
-            }
-            const double* history = historical_returns.data() + static_cast<std::size_t>(decision) * lookback;
-            auto transfer_start = std::chrono::steady_clock::now();
-            check_cuda(cudaMemcpyAsync(device_history.get(), history, lookback * sizeof(double), cudaMemcpyHostToDevice,
-                                       stream.get()), "historical return transfer");
-            check_cuda(cudaMemsetAsync(device_status.get(), 0, sizeof(int), stream.get()), "status reset");
-            check_cuda(cudaStreamSynchronize(stream.get()), "input synchronization");
-            transfer_micros += std::chrono::duration<double, std::micro>(
-                    std::chrono::steady_clock::now() - transfer_start).count();
 
-            cuda_event kernel_start;
-            cuda_event kernel_finish;
-            check_cuda(cudaEventRecord(kernel_start.get(), stream.get()), "kernel start event");
-            int blocks = (iteration_count + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
-            path_kernel<<<blocks, THREADS_PER_BLOCK, 0, stream.get()>>>(
-                    prices[decision], means[decision], drifts[decision], variances[decision], device_history.get(),
-                    lookback, from_inclusive + decision, horizon, iteration_count, static_cast<std::int64_t>(seed),
-                    shock_model, volatility_mode, decay, device_samples.get(), device_status.get());
+        auto transfer_start = std::chrono::steady_clock::now();
+        check_cuda(cudaMemcpyAsync(device_means.get(), means.data(), decisions * sizeof(double),
+                                   cudaMemcpyHostToDevice, stream.get()), "mean transfer");
+        check_cuda(cudaMemcpyAsync(device_drifts.get(), drifts.data(), decisions * sizeof(double),
+                                   cudaMemcpyHostToDevice, stream.get()), "drift transfer");
+        check_cuda(cudaMemcpyAsync(device_variances.get(), variances.data(), decisions * sizeof(double),
+                                   cudaMemcpyHostToDevice, stream.get()), "variance transfer");
+        check_cuda(cudaMemcpyAsync(device_history.get(), historical_returns.data(), history_count * sizeof(double),
+                                   cudaMemcpyHostToDevice, stream.get()), "historical return transfer");
+        check_cuda(cudaStreamSynchronize(stream.get()), "input synchronization");
+        double transfer_micros = std::chrono::duration<double, std::micro>(
+                std::chrono::steady_clock::now() - transfer_start).count();
+
+        cuda_event kernel_start;
+        cuda_event kernel_finish;
+        check_cuda(cudaEventRecord(kernel_start.get(), stream.get()), "kernel start event");
+        int blocks = (iteration_count + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+        for (int offset = 0; offset < decision_count; offset += MAX_GRID_Y) {
+            int rows = std::min(MAX_GRID_Y, decision_count - offset);
+            path_kernel<<<dim3(static_cast<unsigned>(blocks), static_cast<unsigned>(rows)), THREADS_PER_BLOCK, 0,
+                          stream.get()>>>(device_means.get(), device_drifts.get(), device_variances.get(),
+                                          device_history.get(), lookback, offset, from_inclusive, horizon,
+                                          iteration_count, static_cast<std::int64_t>(seed), shock_model,
+                                          volatility_mode, decay, device_samples.get());
             check_cuda(cudaGetLastError(), "forecast kernel launch");
-            check_cuda(cudaEventRecord(kernel_finish.get(), stream.get()), "kernel finish event");
-            kernel_micros += elapsed_micros(kernel_start, kernel_finish);
-
-            int status = 0;
-            std::vector<double> samples(static_cast<std::size_t>(iteration_count));
-            auto output_start = std::chrono::steady_clock::now();
-            check_cuda(cudaMemcpyAsync(&status, device_status.get(), sizeof(int), cudaMemcpyDeviceToHost, stream.get()),
-                       "status transfer");
-            check_cuda(cudaMemcpyAsync(samples.data(), device_samples.get(), iteration_count * sizeof(double),
-                                       cudaMemcpyDeviceToHost, stream.get()), "sample transfer");
-            check_cuda(cudaStreamSynchronize(stream.get()), "output synchronization");
-            transfer_micros += std::chrono::duration<double, std::micro>(
-                    std::chrono::steady_clock::now() - output_start).count();
-            if (status != 0) {
-                throw std::runtime_error("CUDA forecast kernel produced invalid terminal prices");
-            }
-            std::copy(samples.begin(), samples.end(),
-                      payload.begin() + 4U + static_cast<std::size_t>(decision) * iteration_count);
         }
+        check_cuda(cudaEventRecord(kernel_finish.get(), stream.get()), "kernel finish event");
+        double kernel_micros = elapsed_micros(kernel_start, kernel_finish);
+
+        auto output_start = std::chrono::steady_clock::now();
+        check_cuda(cudaMemcpyAsync(payload.data() + 4U, device_samples.get(), sample_count * sizeof(double),
+                                   cudaMemcpyDeviceToHost, stream.get()), "sample transfer");
+        check_cuda(cudaStreamSynchronize(stream.get()), "output synchronization");
+        transfer_micros += std::chrono::duration<double, std::micro>(
+                std::chrono::steady_clock::now() - output_start).count();
+
         payload[1] = transfer_micros;
         payload[2] = kernel_micros;
         payload[3] = 0.0;

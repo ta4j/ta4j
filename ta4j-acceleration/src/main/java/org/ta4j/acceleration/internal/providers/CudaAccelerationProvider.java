@@ -13,8 +13,9 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
  * NVIDIA CUDA provider for {@code MONTE_CARLO_SHOCK_PATHS_V1}.
  *
  * <p>
- * The native lane returns row-major per-sample terminal prices. Assessment
- * remains lazy; loading and probing happen only when the provider is selected.
+ * The FP64 native lane returns row-major per-sample cumulative log-returns.
+ * Assessment remains lazy; loading and probing happen only when the provider is
+ * selected.
  *
  * @since 0.25.1
  */
@@ -26,7 +27,8 @@ public final class CudaAccelerationProvider extends ShockPathKernelProvider {
     private volatile SampleKernel kernel;
 
     public CudaAccelerationProvider() {
-        super(Backend.CUDA, "cuda", MAX_MEMORY_PROPERTY, DEFAULT_MAX_MEMORY_BYTES, false, true);
+        super(Backend.CUDA, "cuda", MAX_MEMORY_PROPERTY, DEFAULT_MAX_MEMORY_BYTES, false, true,
+                ShockPathErrorBound.Precision.FP64, ShockPathQualification.QUALIFIED);
     }
 
     @Override
@@ -70,17 +72,20 @@ public final class CudaAccelerationProvider extends ShockPathKernelProvider {
                 throw new NativeProviderException("cuda", probe.detail());
             }
             recordProbe(probe.deviceName(), probe.freeMemoryBytes());
-            installed = request -> {
-                CudaEvaluationResult result = nativeBridge.evaluate(request);
-                double[] values = result.terminalPrices();
-                float[] terminalPrices = new float[values.length];
-                for (int i = 0; i < values.length; i++) {
-                    terminalPrices[i] = (float) values[i];
-                }
-                return new SampleKernel.SampleResult(terminalPrices, result.totalMicros());
-            };
+            installed = sampleKernel(nativeBridge);
             kernel = installed;
             return installed;
         }
+    }
+
+    /**
+     * Adapts the CUDA bridge; its FP64 log-returns pass through unchanged, so no
+     * representable value is narrowed, flushed to zero or overflowed.
+     */
+    static SampleKernel sampleKernel(CudaNativeBridge nativeBridge) {
+        return request -> {
+            CudaEvaluationResult result = nativeBridge.evaluate(request);
+            return new SampleKernel.SampleResult(result.logReturns(), result.totalMicros());
+        };
     }
 }

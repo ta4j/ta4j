@@ -20,6 +20,7 @@ import org.ta4j.core.acceleration.AccelerationRuntime.DiagnosticCode;
 import org.ta4j.core.acceleration.AccelerationRuntime.KernelRequest;
 import org.ta4j.core.acceleration.AccelerationRuntime.NumericEncoding;
 import org.ta4j.core.acceleration.AccelerationRuntime.Operation;
+import org.ta4j.core.indicators.forecast.MonteCarloKernel;
 
 class OpenClAccelerationProviderTest {
 
@@ -116,12 +117,15 @@ class OpenClAccelerationProviderTest {
 
     private static KernelRequest request(double tolerance) {
         int decisions = 4;
-        int horizon = 2;
         int iterations = 2;
         int lookback = 4;
-        double[] params = { 0d, 0d, (double) horizon, (double) iterations, (double) lookback, 0.94d };
+        double[] params = new double[MonteCarloKernel.PARAM_COUNT];
+        params[MonteCarloKernel.PARAM_HORIZON] = 2;
+        params[MonteCarloKernel.PARAM_ITERATIONS] = iterations;
+        params[MonteCarloKernel.PARAM_LOOKBACK] = lookback;
+        params[MonteCarloKernel.PARAM_DECAY] = 0.94d;
         List<double[]> inputs = List.of(new double[decisions], new double[decisions], new double[decisions],
-                new double[decisions], new double[decisions * lookback]);
+                new double[decisions], new double[decisions + lookback - 1]);
         Determinism determinism = Double.isNaN(tolerance) ? Determinism.BITWISE_IDENTICAL : Determinism.APPROXIMATE;
         return new KernelRequest(Operation.MONTE_CARLO_SHOCK_PATHS_V1, 10, 13, iterations, NumericEncoding.FLOAT64,
                 determinism, 42L, tolerance, params, inputs, 1_000_000_000L, 1_000_000L);

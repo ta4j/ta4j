@@ -3,6 +3,25 @@
  */
 package org.ta4j.acceleration.internal.providers;
 
+import static org.ta4j.core.indicators.forecast.MonteCarloKernel.INPUT_COUNT;
+import static org.ta4j.core.indicators.forecast.MonteCarloKernel.INPUT_DRIFTS;
+import static org.ta4j.core.indicators.forecast.MonteCarloKernel.INPUT_MEANS;
+import static org.ta4j.core.indicators.forecast.MonteCarloKernel.INPUT_PRICES;
+import static org.ta4j.core.indicators.forecast.MonteCarloKernel.INPUT_RETURNS;
+import static org.ta4j.core.indicators.forecast.MonteCarloKernel.INPUT_VARIANCES;
+import static org.ta4j.core.indicators.forecast.MonteCarloKernel.PARAM_COUNT;
+import static org.ta4j.core.indicators.forecast.MonteCarloKernel.PARAM_DECAY;
+import static org.ta4j.core.indicators.forecast.MonteCarloKernel.PARAM_HORIZON;
+import static org.ta4j.core.indicators.forecast.MonteCarloKernel.PARAM_ITERATIONS;
+import static org.ta4j.core.indicators.forecast.MonteCarloKernel.PARAM_LOOKBACK;
+import static org.ta4j.core.indicators.forecast.MonteCarloKernel.PARAM_SHOCK_MODEL;
+import static org.ta4j.core.indicators.forecast.MonteCarloKernel.PARAM_VOLATILITY_MODE;
+import static org.ta4j.core.indicators.forecast.MonteCarloKernel.SHOCK_HISTORICAL_BOOTSTRAP;
+import static org.ta4j.core.indicators.forecast.MonteCarloKernel.SHOCK_NORMAL;
+import static org.ta4j.core.indicators.forecast.MonteCarloKernel.SHOCK_STANDARDIZED_EMPIRICAL;
+import static org.ta4j.core.indicators.forecast.MonteCarloKernel.VOLATILITY_CONSTANT;
+import static org.ta4j.core.indicators.forecast.MonteCarloKernel.VOLATILITY_EWMA;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -21,37 +40,35 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Provider;
 
 /**
  * Template for sample-output native providers behind the versioned
- * {@link Operation#MONTE_CARLO_SHOCK_PATHS_V1} kernel contract.
+ * {@link Operation#MONTE_CARLO_SHOCK_PATHS_V1} kernel contract (see
+ * {@link org.ta4j.core.indicators.forecast.MonteCarloKernel}).
  *
  * <p>
  * The core owns indicator recognition, eligibility, snapshotting, validation,
  * scalar fallback, and forecast reconstruction. Providers only answer two
  * questions over immutable {@link KernelRequest} primitives: {@link #assess},
  * which predicts the total offload cost without initializing native code, and
- * {@link #execute}, which returns the raw per-sample terminal prices.
+ * {@link #execute}, which returns the raw per-sample cumulative log-returns.
  *
  * <p>
  * Assessment never loads libraries, creates contexts, or allocates request
  * buffers: library presence is answered from configuration and packaged
- * resources, and memory rejection runs on arithmetic alone before any input or
- * output materialization.
+ * resources, memory rejection runs on arithmetic alone before any input or
+ * output materialization, and approximate accuracy is admitted only when
+ * {@link ShockPathErrorBound} certifies the requested tolerance for this lane's
+ * precision.
  *
  * @since 0.25.1
  */
 abstract class ShockPathKernelProvider implements Provider {
 
-    /**
-     * Configured relative-tolerance eligibility floor of the fp32 approximate lane,
-     * per horizon step. Each terminal price compounds {@code horizon} fp32
-     * multiply-adds whose per-operation relative rounding error is bounded by
-     * roughly 2^-24; {@code 1e-6} per step is a conservative headroom bound for
-     * provider selection, not an end-to-end output oracle.
-     */
-    private static final double MIN_CERTIFIED_RELATIVE_TOLERANCE_PER_STEP = 1e-6;
+    /** Native shock-model codes of the kernel ABI. */
+    private static final int NATIVE_BOOTSTRAP = 0;
+    private static final int NATIVE_STANDARDIZED = 1;
+    private static final int NATIVE_NORMAL = 2;
 
-    private static double certifiedRelativeToleranceFloor(int horizon) {
-        return MIN_CERTIFIED_RELATIVE_TOLERANCE_PER_STEP * horizon;
-    }
+    /** Per-path device workspace bytes budgeted by the native lanes. */
+    private static final long WORKSPACE_BYTES_PER_PATH = 68L;
 
     private final Backend backend;
     private final String providerId;
@@ -59,19 +76,24 @@ abstract class ShockPathKernelProvider implements Provider {
     private final long defaultMaxMemoryBytes;
     private final boolean exactCapable;
     private final boolean approximateCapable;
+    private final ShockPathErrorBound.Precision precision;
+    private final ShockPathQualification qualification;
 
     private volatile boolean resident;
     private volatile String probedDevice;
     private volatile long probedCeilingBytes;
 
     ShockPathKernelProvider(Backend backend, String providerId, String maxMemoryProperty, long defaultMaxMemoryBytes,
-            boolean exactCapable, boolean approximateCapable) {
+            boolean exactCapable, boolean approximateCapable, ShockPathErrorBound.Precision precision,
+            ShockPathQualification qualification) {
         this.backend = Objects.requireNonNull(backend, "backend must not be null");
         this.providerId = Objects.requireNonNull(providerId, "providerId must not be null");
         this.maxMemoryProperty = Objects.requireNonNull(maxMemoryProperty, "maxMemoryProperty must not be null");
         this.defaultMaxMemoryBytes = defaultMaxMemoryBytes;
         this.exactCapable = exactCapable;
         this.approximateCapable = approximateCapable;
+        this.precision = Objects.requireNonNull(precision, "precision must not be null");
+        this.qualification = Objects.requireNonNull(qualification, "qualification must not be null");
     }
 
     @Override
@@ -88,13 +110,11 @@ abstract class ShockPathKernelProvider implements Provider {
         if (ceiling <= 0L) {
             return unsupported(DiagnosticCode.PROVIDER_UNAVAILABLE, maxMemoryProperty + " must be > 0");
         }
-        if (dimensions.bytesPerDecision() > ceiling) {
-            return unsupported(DiagnosticCode.PROVIDER_UNAVAILABLE,
-                    providerId + " needs %,d bytes per decision, above the %,d-byte provider ceiling"
-                            .formatted(dimensions.bytesPerDecision(), ceiling));
+        if (dimensions.bytesPerDecision() > ceiling - dimensions.fixedBytes()) {
+            return unsupported(DiagnosticCode.PROVIDER_UNAVAILABLE, perDecisionDetail(dimensions, ceiling));
         }
         String family = deviceFamily();
-        long predicted = ShockPathQualification.predictedTotalNanos(backend, request.operation().version(), family,
+        long predicted = qualification.predictedTotalNanos(backend, request.operation().version(), family,
                 dimensions.steps(), dimensions.stagedBytes(), resident);
         long peak = Math.min(dimensions.peakBytes(), ceiling);
         boolean exact = request.determinism() == Determinism.BITWISE_IDENTICAL;
@@ -108,47 +128,35 @@ abstract class ShockPathKernelProvider implements Provider {
             throw new NativeProviderException(backendName(), validation.detail());
         }
         long started = System.nanoTime();
-        double[] params = validation.params();
         Dimensions dimensions = validation.dimensions();
         long ceiling = memoryCeiling();
         if (ceiling <= 0L) {
             throw new NativeProviderException(backendName(), maxMemoryProperty + " must be > 0");
         }
-        if (dimensions.bytesPerDecision() > ceiling) {
-            throw new NativeProviderException(backendName(),
-                    providerId + " needs %,d bytes per decision, above the %,d-byte provider ceiling"
-                            .formatted(dimensions.bytesPerDecision(), ceiling));
+        if (dimensions.bytesPerDecision() > ceiling - dimensions.fixedBytes()) {
+            throw new NativeProviderException(backendName(), perDecisionDetail(dimensions, ceiling));
         }
         SampleKernel kernel = ensureKernel();
         List<double[]> inputs = request.inputs();
         double[] raw = new double[request.expectedOutputLength()];
-        double totalMicros = 0d;
         int offset = 0;
-        while (true) {
-            int chunk = decisionsPerChunk(dimensions, memoryCeiling());
-            int from = Math.addExact(request.fromInclusive(), offset);
-            int count = Math.min(chunk, dimensions.decisions() - offset);
-            NativeForecastRequest nativeRequest = nativeChunk(request, params, inputs, dimensions, from, count);
+        while (offset < dimensions.decisions()) {
+            int count = Math.min(decisionsPerChunk(dimensions, memoryCeiling()), dimensions.decisions() - offset);
+            NativeForecastRequest nativeRequest = nativeChunk(request, validation, inputs, offset, count);
             SampleKernel.SampleResult chunkResult;
             try {
                 chunkResult = kernel.evaluateSamples(nativeRequest);
             } catch (LinkageError | RuntimeException exception) {
                 throw new NativeProviderException(backendName(), exception);
             }
-            float[] samples = chunkResult.terminalPrices();
+            double[] samples = chunkResult.logReturns();
             int expected = Math.multiplyExact(count, dimensions.iterations());
             if (samples.length != expected) {
                 throw new NativeProviderException(backendName() + " returned " + samples.length + " samples, expected "
                         + expected + " for " + count + " decisions");
             }
-            for (int index = 0; index < samples.length; index++) {
-                raw[offset * dimensions.iterations() + index] = samples[index];
-            }
-            totalMicros += chunkResult.totalMicros();
+            System.arraycopy(samples, 0, raw, offset * dimensions.iterations(), samples.length);
             offset += count;
-            if (offset >= dimensions.decisions()) {
-                break;
-            }
         }
         resident = true;
         return new KernelResult(raw, true, System.nanoTime() - started);
@@ -165,15 +173,25 @@ abstract class ShockPathKernelProvider implements Provider {
                     providerId + " consumes FLOAT64 buffers, not " + request.numeric());
         }
         double[] params = request.params();
-        if (params.length != 6 || (params[0] != 0d && params[0] != 1d && params[0] != 3d)) {
+        if (params.length != PARAM_COUNT) {
             return RequestValidation.unsupported(DiagnosticCode.UNSUPPORTED,
-                    providerId + " supports standardized empirical, historical bootstrap, and normal shocks");
+                    providerId + " expects " + PARAM_COUNT + " kernel params, not " + params.length);
+        }
+        int shockModel = (int) params[PARAM_SHOCK_MODEL];
+        int nativeShockModel = nativeShockModel(shockModel);
+        if (shockModel != params[PARAM_SHOCK_MODEL] || nativeShockModel < 0) {
+            return RequestValidation.unsupported(DiagnosticCode.UNSUPPORTED,
+                    providerId + " supports historical bootstrap, standardized empirical, and normal shocks");
+        }
+        int volatilityMode = (int) params[PARAM_VOLATILITY_MODE];
+        double decay = params[PARAM_DECAY];
+        if (volatilityMode != params[PARAM_VOLATILITY_MODE]
+                || volatilityMode != VOLATILITY_CONSTANT && volatilityMode != VOLATILITY_EWMA
+                || !(decay > 0d && decay < 1d)) {
+            return RequestValidation.unsupported(DiagnosticCode.UNSUPPORTED,
+                    providerId + " needs a constant or EWMA volatility mode with a decay in (0, 1)");
         }
         boolean exact = request.determinism() == Determinism.BITWISE_IDENTICAL;
-        if (!exact && (!Double.isFinite(request.tolerance()) || request.tolerance() <= 0d)) {
-            return RequestValidation.unsupported(DiagnosticCode.UNSUPPORTED,
-                    providerId + " approximate requests require a finite positive tolerance");
-        }
         if (exact ? !exactCapable : !approximateCapable) {
             return RequestValidation.unsupported(DiagnosticCode.PROVIDER_UNAVAILABLE, accuracyDetail(request, exact));
         }
@@ -188,17 +206,55 @@ abstract class ShockPathKernelProvider implements Provider {
             return RequestValidation.unsupported(DiagnosticCode.UNSUPPORTED, providerId + " returns "
                     + dimensions.iterations() + " outputs per index, not " + request.outputsPerIndex());
         }
+        String shapeProblem = inputShapeProblem(request.inputs(), dimensions);
+        if (shapeProblem != null) {
+            return RequestValidation.unsupported(DiagnosticCode.UNSUPPORTED, providerId + " " + shapeProblem);
+        }
         if (!exact) {
-            double floor = certifiedRelativeToleranceFloor(dimensions.horizon());
-            if (request.tolerance() < floor) {
+            String reason = ShockPathErrorBound.uncertifiableReason(precision, shockModel, volatilityMode,
+                    request.inputs());
+            if (reason != null) {
                 return RequestValidation.unsupported(DiagnosticCode.UNSUPPORTED,
-                        providerId + " cannot certify approximate tolerance " + request.tolerance() + " for a "
-                                + dimensions.horizon() + "-step horizon: the fp32 lane's"
-                                + " certified relative-tolerance floor is " + floor + "; raise -D"
+                        providerId + " cannot certify an approximate tolerance: " + reason + "; scalar path");
+            }
+            double bound = ShockPathErrorBound.maxRelativePriceError(precision, shockModel, dimensions.horizon(),
+                    request.inputs());
+            if (!(bound <= request.tolerance())) {
+                return RequestValidation.unsupported(DiagnosticCode.UNSUPPORTED,
+                        providerId + " cannot certify approximate tolerance " + request.tolerance()
+                                + " for these inputs:" + " its " + precision.name().toLowerCase(Locale.ROOT)
+                                + " lane may differ from the scalar price by a relative " + bound + "; raise -D"
                                 + AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY + " or run the scalar path");
             }
         }
-        return RequestValidation.supported(params, dimensions);
+        return RequestValidation.supported(nativeShockModel, volatilityMode, decay, dimensions);
+    }
+
+    private static int nativeShockModel(int shockModel) {
+        return switch (shockModel) {
+        case SHOCK_HISTORICAL_BOOTSTRAP -> NATIVE_BOOTSTRAP;
+        case SHOCK_STANDARDIZED_EMPIRICAL -> NATIVE_STANDARDIZED;
+        case SHOCK_NORMAL -> NATIVE_NORMAL;
+        default -> -1;
+        };
+    }
+
+    private static String inputShapeProblem(List<double[]> inputs, Dimensions dimensions) {
+        if (inputs.size() != INPUT_COUNT) {
+            return "expects " + INPUT_COUNT + " input buffers, not " + inputs.size();
+        }
+        int decisions = dimensions.decisions();
+        for (int buffer : new int[] { INPUT_PRICES, INPUT_MEANS, INPUT_DRIFTS, INPUT_VARIANCES }) {
+            if (inputs.get(buffer).length != decisions) {
+                return "expects " + decisions + " values in input buffer " + buffer + ", not "
+                        + inputs.get(buffer).length;
+            }
+        }
+        long returns = (long) decisions + dimensions.lookback() - 1L;
+        if (inputs.get(INPUT_RETURNS).length != returns) {
+            return "expects a shared returns buffer of " + returns + " values, not " + inputs.get(INPUT_RETURNS).length;
+        }
+        return null;
     }
 
     /**
@@ -248,6 +304,11 @@ abstract class ShockPathKernelProvider implements Provider {
         return Assessment.unsupported(backend, deviceId(), code, providerId, detail);
     }
 
+    private String perDecisionDetail(Dimensions dimensions, long ceiling) {
+        return providerId + " needs %,d bytes per decision plus %,d shared bytes, above the %,d-byte provider ceiling"
+                .formatted(dimensions.bytesPerDecision(), dimensions.fixedBytes(), ceiling);
+    }
+
     /**
      * Explains why a request's accuracy mode is unsupported. Backends whose native
      * lane cannot serve versioned sample output override this.
@@ -270,82 +331,73 @@ abstract class ShockPathKernelProvider implements Provider {
     }
 
     /**
-     * Derives chunking dimensions from request primitives alone. The params layout
-     * is owned by the core shock-path planner: shock model, volatility mode,
-     * horizon, iteration count, lookback, decay factor. No buffers are allocated
-     * here; rejection stays ahead of materialization.
+     * Derives chunking dimensions from request primitives alone. No buffers are
+     * allocated here; rejection stays ahead of materialization. Each decision row
+     * stages three state doubles plus one new shared return, and the
+     * {@code lookback - 1} leading returns are shared by every row of a chunk.
      */
     private Dimensions dimensions(KernelRequest request, double[] params) {
-        int horizon = (int) params[2];
-        int iterations = (int) params[3];
-        int lookback = (int) params[4];
+        int horizon = (int) params[PARAM_HORIZON];
+        int iterations = (int) params[PARAM_ITERATIONS];
+        int lookback = (int) params[PARAM_LOOKBACK];
         if (horizon < 1 || iterations < 1 || lookback < 1) {
             throw new ArithmeticException("kernel params must be positive");
         }
         int decisions = request.size();
         long steps = Math.multiplyExact(Math.multiplyExact((long) decisions, iterations), horizon);
-        long perDecisionInputs = Math.addExact(Math.addExact(5L * Double.BYTES, Integer.BYTES),
-                Math.multiplyExact((long) lookback, Double.BYTES));
-        long stagedBytes = Math.multiplyExact(Math.multiplyExact((long) decisions, perDecisionInputs), 2L);
-        long outputBytes = Math.multiplyExact(Math.multiplyExact((long) decisions, iterations), (long) Float.BYTES);
-        long bytesPerDecision = Math.addExact(perDecisionInputs * 2L, Math.multiplyExact((long) iterations, 68L));
+        long perDecisionInputs = 4L * Double.BYTES;
+        long fixedBytes = Math.multiplyExact(lookback - 1L, 2L * Double.BYTES);
+        long stagedBytes = Math
+                .addExact(Math.multiplyExact(Math.multiplyExact((long) decisions, perDecisionInputs), 2L), fixedBytes);
+        long outputBytes = Math.multiplyExact(Math.multiplyExact((long) decisions, iterations), (long) Double.BYTES);
+        long bytesPerDecision = Math.addExact(perDecisionInputs * 2L,
+                Math.multiplyExact((long) iterations, Double.BYTES + WORKSPACE_BYTES_PER_PATH));
         long peakBytes = Math.addExact(Math.addExact(stagedBytes, outputBytes), 256L);
-        return new Dimensions(decisions, horizon, iterations, lookback, steps, stagedBytes, bytesPerDecision,
-                peakBytes);
+        return new Dimensions(decisions, horizon, iterations, lookback, steps, stagedBytes, fixedBytes,
+                bytesPerDecision, peakBytes);
     }
 
     private int decisionsPerChunk(Dimensions dimensions, long ceiling) {
-        long capacity = ceiling / dimensions.bytesPerDecision();
+        long capacity = (ceiling - dimensions.fixedBytes()) / dimensions.bytesPerDecision();
         long nativeCellCapacity = Integer.MAX_VALUE / (long) dimensions.iterations();
-        long nativeHistoryCapacity = Integer.MAX_VALUE / (long) dimensions.lookback();
+        long nativeHistoryCapacity = Integer.MAX_VALUE - (dimensions.lookback() - 1L);
         capacity = Math.min(capacity, Math.min(nativeCellCapacity, nativeHistoryCapacity));
         if (capacity < 1L) {
-            throw new NativeProviderException(providerId + " needs " + dimensions.bytesPerDecision()
-                    + " bytes per decision, above the " + ceiling + "-byte provider ceiling");
+            throw new NativeProviderException(perDecisionDetail(dimensions, ceiling));
         }
         return (int) Math.min(capacity, Integer.MAX_VALUE);
     }
 
-    private NativeForecastRequest nativeChunk(KernelRequest request, double[] params, List<double[]> inputs,
-            Dimensions dimensions, int from, int count) {
-        double[] prices = inputs.get(0);
-        double[] means = inputs.get(1);
-        double[] drifts = inputs.get(2);
-        double[] variances = inputs.get(3);
-        double[] windows = inputs.get(4);
-        int base = from - request.fromInclusive();
-        int[] stable = new int[count];
-        Arrays.fill(stable, 1);
-        double[] chunkPrices = Arrays.copyOfRange(prices, base, base + count);
-        double[] chunkMeans = Arrays.copyOfRange(means, base, base + count);
-        double[] chunkDrifts = Arrays.copyOfRange(drifts, base, base + count);
-        double[] chunkVariances = Arrays.copyOfRange(variances, base, base + count);
-        double[] chunkWindows = Arrays.copyOfRange(windows, base * dimensions.lookback(),
-                (base + count) * dimensions.lookback());
-        // Historical and empirical codes match; native normal predates the
-        // planner's insertion of the unsupported smoothed-empirical model.
-        int nativeShockModel = switch ((int) params[0]) {
-        case 0, 1 -> (int) params[0];
-        case 3 -> 2; // NORMAL
-        default -> throw new IllegalArgumentException("Unsupported native shock model: " + params[0]);
-        };
-        return new NativeForecastRequest(from, count, dimensions.horizon(), dimensions.iterations(),
-                dimensions.lookback(), request.seed(), nativeShockModel, (int) params[1], params[5], stable,
-                chunkPrices, chunkMeans, chunkDrifts, chunkVariances, chunkWindows);
+    private NativeForecastRequest nativeChunk(KernelRequest request, RequestValidation validation,
+            List<double[]> inputs, int base, int count) {
+        Dimensions dimensions = validation.dimensions();
+        double[] returns = inputs.get(INPUT_RETURNS);
+        // Row r reads returns[r .. r + lookback - 1], so a chunk of rows
+        // [base, base + count) needs the shared slice [base, base + count + lookback -
+        // 1).
+        double[] chunkReturns = Arrays.copyOfRange(returns, base, base + count + dimensions.lookback() - 1);
+        return new NativeForecastRequest(Math.addExact(request.fromInclusive(), base), count, dimensions.horizon(),
+                dimensions.iterations(), dimensions.lookback(), request.seed(), validation.nativeShockModel(),
+                validation.volatilityMode(), validation.decay(),
+                Arrays.copyOfRange(inputs.get(INPUT_MEANS), base, base + count),
+                Arrays.copyOfRange(inputs.get(INPUT_DRIFTS), base, base + count),
+                Arrays.copyOfRange(inputs.get(INPUT_VARIANCES), base, base + count), chunkReturns);
     }
 
     private record Dimensions(int decisions, int horizon, int iterations, int lookback, long steps, long stagedBytes,
-            long bytesPerDecision, long peakBytes) {
+            long fixedBytes, long bytesPerDecision, long peakBytes) {
     }
 
-    private record RequestValidation(double[] params, Dimensions dimensions, DiagnosticCode code, String detail) {
+    private record RequestValidation(int nativeShockModel, int volatilityMode, double decay, Dimensions dimensions,
+            DiagnosticCode code, String detail) {
 
-        static RequestValidation supported(double[] params, Dimensions dimensions) {
-            return new RequestValidation(params, dimensions, null, null);
+        static RequestValidation supported(int nativeShockModel, int volatilityMode, double decay,
+                Dimensions dimensions) {
+            return new RequestValidation(nativeShockModel, volatilityMode, decay, dimensions, null, null);
         }
 
         static RequestValidation unsupported(DiagnosticCode code, String detail) {
-            return new RequestValidation(null, null, code, detail);
+            return new RequestValidation(-1, -1, Double.NaN, null, code, detail);
         }
 
         boolean supported() {

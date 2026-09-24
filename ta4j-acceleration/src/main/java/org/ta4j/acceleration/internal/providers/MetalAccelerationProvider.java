@@ -23,9 +23,10 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
  * exact requests stay scalar with a diagnostic that says so. Approximate
  * requests, which the core planner emits only when
  * {@code -Dta4j.acceleration.approximateTolerance=<value>} is set, engage only
- * on qualified device families above the crossover floor. The public
- * constructor exists solely for {@link java.util.ServiceLoader} and performs no
- * probe or native loading.
+ * when {@link ShockPathErrorBound} certifies the tolerance for single precision
+ * and the device family has a qualified crossover row. The public constructor
+ * exists solely for {@link java.util.ServiceLoader} and performs no probe or
+ * native loading.
  *
  * @since 0.25.1
  */
@@ -48,7 +49,13 @@ public final class MetalAccelerationProvider extends ShockPathKernelProvider {
     }
 
     MetalAccelerationProvider(Supplier<MetalNativeLibrary.LoadResult> libraryLoader, MetalNativeBridge nativeBridge) {
-        super(Backend.METAL, "metal", MAX_MEMORY_PROPERTY, DEFAULT_MAX_MEMORY_BYTES, false, true);
+        this(libraryLoader, nativeBridge, ShockPathQualification.QUALIFIED);
+    }
+
+    MetalAccelerationProvider(Supplier<MetalNativeLibrary.LoadResult> libraryLoader, MetalNativeBridge nativeBridge,
+            ShockPathQualification qualification) {
+        super(Backend.METAL, "metal", MAX_MEMORY_PROPERTY, DEFAULT_MAX_MEMORY_BYTES, false, true,
+                ShockPathErrorBound.Precision.FP32, qualification);
         this.libraryLoader = Objects.requireNonNull(libraryLoader, "libraryLoader must not be null");
         this.nativeBridge = Objects.requireNonNull(nativeBridge, "nativeBridge must not be null");
     }
@@ -128,7 +135,14 @@ public final class MetalAccelerationProvider extends ShockPathKernelProvider {
             recordProbe(probe.deviceName(), Math.max(1L, probe.recommendedMaxWorkingSetBytes() / 2L));
             installed = request -> {
                 MetalEvaluationResult result = nativeBridge.evaluate(request);
-                return new SampleKernel.SampleResult(result.terminalPrices(), result.totalMicros());
+                // The FP32 lane widens at its own boundary; admission already
+                // certified the tolerance for single precision.
+                float[] samples = result.logReturns();
+                double[] logReturns = new double[samples.length];
+                for (int index = 0; index < samples.length; index++) {
+                    logReturns[index] = samples[index];
+                }
+                return new SampleKernel.SampleResult(logReturns, result.totalMicros());
             };
             kernel = installed;
             return installed;

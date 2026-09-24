@@ -8,7 +8,7 @@
 #include <math.h>
 #include <time.h>
 
-static const jint ABI_VERSION = 1;
+static const jint ABI_VERSION = 2;
 static id<MTLDevice> device;
 static id<MTLComputePipelineState> forecastPipeline;
 static id<MTLComputePipelineState> selfTestPipeline;
@@ -52,29 +52,26 @@ static NSString *const kernelSource = @"#include <metal_stdlib>\n"
         "    float radius = sqrt(-2.0f * log(max(0x1.0p-24f, 1.0f - next_unit(state))));\n"
         "    return radius * cos(6.283185307179586f * next_unit(state));\n"
         "}\n"
-        "kernel void forecast_terminal_prices(\n"
-        "        device const int *stable [[buffer(0)]],\n"
-        "        device const float *prices [[buffer(1)]],\n"
-        "        device const float *means [[buffer(2)]],\n"
-        "        device const float *drifts [[buffer(3)]],\n"
-        "        device const float *variances [[buffer(4)]],\n"
-        "        device const float *history [[buffer(5)]],\n"
-        "        device float *output [[buffer(6)]],\n"
-        "        constant uint &fromIndex [[buffer(7)]],\n"
-        "        constant uint &decisionCount [[buffer(8)]],\n"
-        "        constant uint &pathCount [[buffer(9)]],\n"
-        "        constant uint &horizon [[buffer(10)]],\n"
-        "        constant uint &lookback [[buffer(11)]],\n"
-        "        constant ulong &seed [[buffer(12)]],\n"
-        "        constant uint &shockModel [[buffer(13)]],\n"
-        "        constant uint &volatilityMode [[buffer(14)]],\n"
-        "        constant float &decay [[buffer(15)]],\n"
+        "kernel void forecast_log_returns(\n"
+        "        device const float *means [[buffer(0)]],\n"
+        "        device const float *drifts [[buffer(1)]],\n"
+        "        device const float *variances [[buffer(2)]],\n"
+        "        device const float *history [[buffer(3)]],\n"
+        "        device float *output [[buffer(4)]],\n"
+        "        constant uint &fromIndex [[buffer(5)]],\n"
+        "        constant uint &decisionCount [[buffer(6)]],\n"
+        "        constant uint &pathCount [[buffer(7)]],\n"
+        "        constant uint &horizon [[buffer(8)]],\n"
+        "        constant uint &lookback [[buffer(9)]],\n"
+        "        constant ulong &seed [[buffer(10)]],\n"
+        "        constant uint &shockModel [[buffer(11)]],\n"
+        "        constant uint &volatilityMode [[buffer(12)]],\n"
+        "        constant float &decay [[buffer(13)]],\n"
         "        uint position [[thread_position_in_grid]]) {\n"
         "    uint cellCount = decisionCount * pathCount;\n"
         "    if (position >= cellCount) return;\n"
         "    uint decision = position / pathCount;\n"
         "    uint path = position - decision * pathCount;\n"
-        "    if (stable[decision] == 0) { output[position] = NAN; return; }\n"
         "    float mean = means[decision];\n"
         "    float drift = drifts[decision];\n"
         "    float variance = max(0.0f, variances[decision]);\n"
@@ -87,14 +84,15 @@ static NSString *const kernelSource = @"#include <metal_stdlib>\n"
         "        float stepReturn;\n"
         "        if (shockModel == 2u) {\n"
         "            stepReturn = drift + volatility * next_gaussian(state);\n"
+        "        } else if (shockModel == 1u && samplingVolatility == 0.0f) {\n"
+        "            stepReturn = drift;\n"
         "        } else {\n"
         "            uint sample = next_index(state, lookback);\n"
-        "            float historical = history[decision * lookback + sample];\n"
+        "            float historical = history[decision + sample];\n"
         "            if (shockModel == 0u) {\n"
         "                stepReturn = historical;\n"
         "            } else {\n"
-        "                float shock = samplingVolatility == 0.0f ? 0.0f\n"
-        "                        : (historical - samplingMean) / samplingVolatility;\n"
+        "                float shock = (historical - samplingMean) / samplingVolatility;\n"
         "                stepReturn = drift + volatility * shock;\n"
         "            }\n"
         "        }\n"
@@ -106,8 +104,7 @@ static NSString *const kernelSource = @"#include <metal_stdlib>\n"
         "            volatility = sqrt(max(0.0f, variance));\n"
         "        }\n"
         "    }\n"
-        "    float terminalPrice = prices[decision] * exp(cumulative);\n"
-        "    output[position] = isfinite(terminalPrice) && terminalPrice > 0.0f ? terminalPrice : NAN;\n"
+        "    output[position] = cumulative;\n"
         "}\n";
 
 static uint64_t nowNanos(void) {
@@ -129,7 +126,7 @@ static void initializeMetal(void) {
                     stringByAppendingString:error.localizedDescription ?: @"unknown"];
             return;
         }
-        id<MTLFunction> function = [library newFunctionWithName:@"forecast_terminal_prices"];
+        id<MTLFunction> function = [library newFunctionWithName:@"forecast_log_returns"];
         forecastPipeline = [device newComputePipelineStateWithFunction:function error:&error];
         if (forecastPipeline == nil) {
             initializationFailure = [@"metal_pipeline_creation_failed:"
@@ -224,8 +221,8 @@ JNIEXPORT jfloatArray JNICALL
 Java_org_ta4j_acceleration_internal_providers_JniMetalNativeBridge_nativeEvaluate(
         JNIEnv *environment, jclass type, jint abiVersion, jint fromInclusive, jint decisionCount, jint horizon,
         jint iterationCount, jint lookbackBarCount, jlong seed, jint shockModel, jint volatilityMode,
-        jdouble volatilityDecayFactor, jintArray stableArray, jdoubleArray pricesArray, jdoubleArray meansArray,
-        jdoubleArray driftsArray, jdoubleArray variancesArray, jdoubleArray historyArray, jlongArray timingsArray) {
+        jdouble volatilityDecayFactor, jdoubleArray meansArray, jdoubleArray driftsArray, jdoubleArray variancesArray,
+        jdoubleArray historyArray, jlongArray timingsArray) {
     @autoreleasepool {
         (void)type;
         uint64_t totalStarted = nowNanos();
@@ -241,16 +238,15 @@ Java_org_ta4j_acceleration_internal_providers_JniMetalNativeBridge_nativeEvaluat
             throwIllegalState(environment, @"invalid_metal_forecast_request");
             return nil;
         }
-        if (stableArray == nil || pricesArray == nil || meansArray == nil || driftsArray == nil
-                || variancesArray == nil || historyArray == nil || timingsArray == nil) {
+        if (meansArray == nil || driftsArray == nil || variancesArray == nil || historyArray == nil
+                || timingsArray == nil) {
             throwIllegalState(environment, @"metal_forecast_null_input");
             return nil;
         }
         NSUInteger cellCount = (NSUInteger)decisionCount * (NSUInteger)iterationCount;
-        NSUInteger historyCount = (NSUInteger)decisionCount * (NSUInteger)lookbackBarCount;
+        // Row r samples the shared returns history[r .. r + lookback - 1].
+        NSUInteger historyCount = (NSUInteger)decisionCount + (NSUInteger)lookbackBarCount - 1U;
         if (cellCount > INT32_MAX || historyCount > INT32_MAX
-                || (*environment)->GetArrayLength(environment, stableArray) != decisionCount
-                || (*environment)->GetArrayLength(environment, pricesArray) != decisionCount
                 || (*environment)->GetArrayLength(environment, meansArray) != decisionCount
                 || (*environment)->GetArrayLength(environment, driftsArray) != decisionCount
                 || (*environment)->GetArrayLength(environment, variancesArray) != decisionCount
@@ -261,25 +257,18 @@ Java_org_ta4j_acceleration_internal_providers_JniMetalNativeBridge_nativeEvaluat
         }
 
         uint64_t transferStarted = nowNanos();
-        id<MTLBuffer> stableBuffer = [device newBufferWithLength:(NSUInteger)decisionCount * sizeof(jint)
-                options:MTLResourceStorageModeShared];
-        id<MTLBuffer> priceBuffer = floatBuffer(environment, pricesArray, decisionCount);
         id<MTLBuffer> meanBuffer = floatBuffer(environment, meansArray, decisionCount);
         id<MTLBuffer> driftBuffer = floatBuffer(environment, driftsArray, decisionCount);
         id<MTLBuffer> varianceBuffer = floatBuffer(environment, variancesArray, decisionCount);
         id<MTLBuffer> historyBuffer = floatBuffer(environment, historyArray, (jsize)historyCount);
         id<MTLBuffer> outputBuffer = [device newBufferWithLength:cellCount * sizeof(float)
                 options:MTLResourceStorageModeShared];
-        if (stableBuffer == nil || priceBuffer == nil || meanBuffer == nil || driftBuffer == nil
-                || varianceBuffer == nil || historyBuffer == nil || outputBuffer == nil) {
+        if (meanBuffer == nil || driftBuffer == nil || varianceBuffer == nil || historyBuffer == nil
+                || outputBuffer == nil) {
             if ((*environment)->ExceptionCheck(environment)) {
                 return nil;
             }
             throwIllegalState(environment, @"metal_forecast_buffer_allocation_failed");
-            return nil;
-        }
-        (*environment)->GetIntArrayRegion(environment, stableArray, 0, decisionCount, stableBuffer.contents);
-        if ((*environment)->ExceptionCheck(environment)) {
             return nil;
         }
         uint64_t transferNanos = nowNanos() - transferStarted;
@@ -302,22 +291,20 @@ Java_org_ta4j_acceleration_internal_providers_JniMetalNativeBridge_nativeEvaluat
             return nil;
         }
         [encoder setComputePipelineState:forecastPipeline];
-        [encoder setBuffer:stableBuffer offset:0 atIndex:0];
-        [encoder setBuffer:priceBuffer offset:0 atIndex:1];
-        [encoder setBuffer:meanBuffer offset:0 atIndex:2];
-        [encoder setBuffer:driftBuffer offset:0 atIndex:3];
-        [encoder setBuffer:varianceBuffer offset:0 atIndex:4];
-        [encoder setBuffer:historyBuffer offset:0 atIndex:5];
-        [encoder setBuffer:outputBuffer offset:0 atIndex:6];
-        [encoder setBytes:&nativeFrom length:sizeof(nativeFrom) atIndex:7];
-        [encoder setBytes:&nativeDecisions length:sizeof(nativeDecisions) atIndex:8];
-        [encoder setBytes:&nativePaths length:sizeof(nativePaths) atIndex:9];
-        [encoder setBytes:&nativeHorizon length:sizeof(nativeHorizon) atIndex:10];
-        [encoder setBytes:&nativeLookback length:sizeof(nativeLookback) atIndex:11];
-        [encoder setBytes:&nativeSeed length:sizeof(nativeSeed) atIndex:12];
-        [encoder setBytes:&nativeShock length:sizeof(nativeShock) atIndex:13];
-        [encoder setBytes:&nativeVolatility length:sizeof(nativeVolatility) atIndex:14];
-        [encoder setBytes:&nativeDecay length:sizeof(nativeDecay) atIndex:15];
+        [encoder setBuffer:meanBuffer offset:0 atIndex:0];
+        [encoder setBuffer:driftBuffer offset:0 atIndex:1];
+        [encoder setBuffer:varianceBuffer offset:0 atIndex:2];
+        [encoder setBuffer:historyBuffer offset:0 atIndex:3];
+        [encoder setBuffer:outputBuffer offset:0 atIndex:4];
+        [encoder setBytes:&nativeFrom length:sizeof(nativeFrom) atIndex:5];
+        [encoder setBytes:&nativeDecisions length:sizeof(nativeDecisions) atIndex:6];
+        [encoder setBytes:&nativePaths length:sizeof(nativePaths) atIndex:7];
+        [encoder setBytes:&nativeHorizon length:sizeof(nativeHorizon) atIndex:8];
+        [encoder setBytes:&nativeLookback length:sizeof(nativeLookback) atIndex:9];
+        [encoder setBytes:&nativeSeed length:sizeof(nativeSeed) atIndex:10];
+        [encoder setBytes:&nativeShock length:sizeof(nativeShock) atIndex:11];
+        [encoder setBytes:&nativeVolatility length:sizeof(nativeVolatility) atIndex:12];
+        [encoder setBytes:&nativeDecay length:sizeof(nativeDecay) atIndex:13];
         MTLSize grid = MTLSizeMake(cellCount, 1, 1);
         MTLSize threads = MTLSizeMake(MIN(forecastPipeline.maxTotalThreadsPerThreadgroup, cellCount), 1, 1);
         [encoder dispatchThreads:grid threadsPerThreadgroup:threads];

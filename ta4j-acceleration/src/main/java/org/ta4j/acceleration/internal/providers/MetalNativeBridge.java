@@ -7,7 +7,7 @@ import java.util.Arrays;
 
 interface MetalNativeBridge {
 
-    int ABI_VERSION = 1;
+    int ABI_VERSION = 2;
 
     MetalProbeResult probe();
 
@@ -17,7 +17,7 @@ interface MetalNativeBridge {
 record MetalProbeResult(boolean available, String deviceName, long recommendedMaxWorkingSetBytes, String detail) {
 }
 
-record MetalEvaluationResult(double totalMicros, double transferMicros, double kernelMicros, float[] terminalPrices) {
+record MetalEvaluationResult(double totalMicros, double transferMicros, double kernelMicros, float[] logReturns) {
 }
 
 final class JniMetalNativeBridge implements MetalNativeBridge {
@@ -54,21 +54,20 @@ final class JniMetalNativeBridge implements MetalNativeBridge {
     @Override
     public MetalEvaluationResult evaluate(NativeForecastRequest request) {
         long[] timings = new long[HEADER_LENGTH];
-        float[] terminalPrices = nativeEvaluate(ABI_VERSION, request.fromInclusive(), request.decisionCount(),
+        float[] logReturns = nativeEvaluate(ABI_VERSION, request.fromInclusive(), request.decisionCount(),
                 request.horizon(), request.iterationCount(), request.lookbackBarCount(), request.seed(),
-                request.shockModel(), request.volatilityMode(), request.volatilityDecayFactor(), request.stable(),
-                request.prices(), request.means(), request.drifts(), request.variances(), request.historicalReturns(),
-                timings);
-        if (terminalPrices == null) {
+                request.shockModel(), request.volatilityMode(), request.volatilityDecayFactor(), request.means(),
+                request.drifts(), request.variances(), request.historicalReturns(), timings);
+        if (logReturns == null) {
             throw new IllegalStateException("Metal evaluation returned no samples");
         }
-        return new MetalEvaluationResult(timings[0], timings[1], timings[2], terminalPrices);
+        return new MetalEvaluationResult(timings[0], timings[1], timings[2], logReturns);
     }
 
     private static native String nativeProbe(int abiVersion);
 
     private static native float[] nativeEvaluate(int abiVersion, int fromInclusive, int decisionCount, int horizon,
             int iterationCount, int lookbackBarCount, long seed, int shockModel, int volatilityMode,
-            double volatilityDecayFactor, int[] stable, double[] prices, double[] means, double[] drifts,
-            double[] variances, double[] historicalReturns, long[] timings);
+            double volatilityDecayFactor, double[] means, double[] drifts, double[] variances,
+            double[] historicalReturns, long[] timings);
 }

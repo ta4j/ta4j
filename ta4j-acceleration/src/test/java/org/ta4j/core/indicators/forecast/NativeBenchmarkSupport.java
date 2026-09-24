@@ -27,8 +27,7 @@ final class NativeBenchmarkSupport {
     static long evaluate(Provider provider, MonteCarloPriceForecastIndicator forecast, int from, int to) {
         NumFactory factory = forecast.getBarSeries().numFactory();
         long started = System.nanoTime();
-        PlanAttempt attempt = new MonteCarloShockPathPlanner().plan(forecast, from, to, factory,
-                org.ta4j.core.acceleration.AccelerationRuntime.maxDeviceBytes());
+        PlanAttempt attempt = new MonteCarloShockPathPlanner().plan(forecast, from, to, factory, Long.MAX_VALUE);
         assertThat(attempt.isPlanned()).as("planner declined: %s", attempt.decline()).isTrue();
         PlannedOperation planned = attempt.operation();
         KernelRequest request = planned.request();

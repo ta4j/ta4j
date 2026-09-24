@@ -15,8 +15,8 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
  * Khronos OpenCL provider for {@code MONTE_CARLO_SHOCK_PATHS_V1}.
  *
  * <p>
- * The native lane returns row-major per-sample terminal prices and is loaded
- * lazily after assessment selects this provider.
+ * The FP64 native lane returns row-major per-sample cumulative log-returns and
+ * is loaded lazily after assessment selects this provider.
  *
  * @since 0.25.1
  */
@@ -35,7 +35,8 @@ public final class OpenClAccelerationProvider extends ShockPathKernelProvider {
 
     OpenClAccelerationProvider(Supplier<OpenClNativeLibrary.LoadResult> libraryLoader,
             OpenClNativeBridge nativeBridge) {
-        super(Backend.OPENCL, "opencl", MAX_MEMORY_PROPERTY, DEFAULT_MAX_MEMORY_BYTES, false, true);
+        super(Backend.OPENCL, "opencl", MAX_MEMORY_PROPERTY, DEFAULT_MAX_MEMORY_BYTES, false, true,
+                ShockPathErrorBound.Precision.FP64, ShockPathQualification.QUALIFIED);
         this.libraryLoader = Objects.requireNonNull(libraryLoader, "libraryLoader must not be null");
         this.nativeBridge = Objects.requireNonNull(nativeBridge, "nativeBridge must not be null");
     }
@@ -87,12 +88,7 @@ public final class OpenClAccelerationProvider extends ShockPathKernelProvider {
             recordProbe(probe.deviceName(), probe.freeMemoryBytes());
             installed = request -> {
                 OpenClEvaluationResult result = nativeBridge.evaluate(request);
-                double[] values = result.terminalPrices();
-                float[] terminalPrices = new float[values.length];
-                for (int i = 0; i < values.length; i++) {
-                    terminalPrices[i] = (float) values[i];
-                }
-                return new SampleKernel.SampleResult(terminalPrices, result.totalMicros());
+                return new SampleKernel.SampleResult(result.logReturns(), result.totalMicros());
             };
             kernel = installed;
             return installed;
