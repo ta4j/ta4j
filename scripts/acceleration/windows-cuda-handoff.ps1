@@ -10,7 +10,7 @@ $maven = Join-Path $root "mvnw.cmd"
 $library = Join-Path $root "ta4j-acceleration\target\native\cuda\package\META-INF\native\windows-x86_64\ta4j-cuda-accelerator.dll"
 
 Write-Host "CF-336 Windows CUDA root: $root"
-Write-Host "CUDA sample-output provider uses MONTE_CARLO_SHOCK_PATHS_V1 row-major terminal prices with approximate tolerance."
+Write-Host "CUDA provider serves MONTE_CARLO_SHOCK_PATHS_V1 (row-major cumulative log-returns) under an approximate tolerance."
 Write-Host "Implementation record: https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration"
 
 if ([System.Environment]::OSVersion.Platform -ne [System.PlatformID]::Win32NT) {
@@ -42,6 +42,7 @@ if (-not (Test-Path -LiteralPath $library -PathType Leaf)) {
 
 if ($Action -in @("Integration", "All")) {
     & $maven -B -pl ta4j-acceleration -am "-Dtest=CudaNativeIntegrationTest" `
+        "-Dsurefire.failIfNoSpecifiedTests=false" `
         "-Dgroups=requires-cuda" `
         "-Dta4j.excludedTestTags=requires-metal" `
         "-Dta4j.acceleration.cuda.library=$library" test

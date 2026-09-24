@@ -642,6 +642,13 @@ public class BacktestExecutor {
      * Executes walk-forward testing for one strategy using strategy starting type
      * and unit amount.
      *
+     * <p>
+     * This and the other single-strategy walk-forward overloads evaluate the same
+     * strategy instance in every fold, so rule state carries across folds; use the
+     * overload taking a strategy factory for independent folds (see
+     * {@link StrategyWalkForwardExecutor}).
+     * </p>
+     *
      * @param strategy strategy to execute
      * @param config   walk-forward configuration
      * @return walk-forward execution result

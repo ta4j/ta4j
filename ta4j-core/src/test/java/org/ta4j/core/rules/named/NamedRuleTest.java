@@ -42,6 +42,27 @@ class NamedRuleTest {
         NamedRule.unregisterImplementation(FirstRuleHolder.DuplicateRule.class);
         NamedRule.unregisterImplementation(SecondRuleHolder.DuplicateRule.class);
         NamedRule.unregisterImplementation(AutoScanRule.class);
+        NamedRule.unregisterImplementation(ScanOnlyProbeRule.class);
+    }
+
+    @Test
+    void constructorRejectsLabelsThatCannotRebuildTheRule() {
+        assertThrows(NullPointerException.class, () -> new LabelCheckedRule(null));
+        IllegalArgumentException mismatch = assertThrows(IllegalArgumentException.class,
+                () -> new LabelCheckedRule("OtherRule_1"));
+        assertThat(mismatch).hasMessageContaining("LabelCheckedRule");
+
+        assertThat(new LabelCheckedRule("LabelCheckedRule_1").getName()).isEqualTo("LabelCheckedRule_1");
+        assertThat(new LabelCheckedRule("LabelCheckedRule").getName()).isEqualTo("LabelCheckedRule");
+    }
+
+    @Test
+    void lookupResolvesDefaultScannedRulesWithoutPriorInitialization() {
+        NamedRule.unregisterImplementation(ScanOnlyProbeRule.class);
+
+        // lookup is the first registry call after the reset, so only its implicit
+        // default-package scan can register the probe.
+        assertThat(NamedRule.lookup("ScanOnlyProbeRule")).isPresent();
     }
 
     @Test
@@ -61,16 +82,20 @@ class NamedRuleTest {
     }
 
     @Test
-    void buildLabelRejectsBlankTypeNames() {
-        NamedRule anonymous = new NamedRule("placeholder") {
+    void anonymousRulesAreRejectedBecauseTheirLabelsCannotRebuildThem() {
+        assertThrows(IllegalArgumentException.class, () -> new NamedRule("placeholder") {
             @Override
             public boolean isSatisfied(int index, TradingRecord tradingRecord) {
                 return false;
             }
-        };
+        });
+        // buildLabel only reads the simple name, so any anonymous class exercises it.
+        @SuppressWarnings("unchecked")
+        Class<? extends NamedRule> anonymousType = (Class<? extends NamedRule>) (Class<?>) new Object() {
+        }.getClass();
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> NamedRule.buildLabel(anonymous.getClass(), "ABOVE"));
+                () -> NamedRule.buildLabel(anonymousType, "ABOVE"));
 
         assertThat(exception).hasMessageContaining("non-blank simple name");
     }
@@ -225,6 +250,18 @@ class NamedRuleTest {
 
         @Override
         public boolean isSatisfied(int index, org.ta4j.core.TradingRecord tradingRecord) {
+            return false;
+        }
+    }
+
+    private static final class LabelCheckedRule extends NamedRule {
+
+        private LabelCheckedRule(String label) {
+            super(label);
+        }
+
+        @Override
+        public boolean isSatisfied(int index, TradingRecord tradingRecord) {
             return false;
         }
     }

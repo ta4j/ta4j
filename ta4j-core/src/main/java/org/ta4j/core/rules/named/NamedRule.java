@@ -9,6 +9,7 @@ import org.ta4j.core.named.NamedComponentRegistry;
 import org.ta4j.core.rules.AbstractRule;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -58,9 +59,23 @@ public abstract class NamedRule extends AbstractRule {
      *
      * @param label compact label produced by {@link #buildLabel(Class, String...)}
      *              and used for lookup and serialization
+     * @throws NullPointerException     if {@code label} is null
+     * @throws IllegalArgumentException if {@code label} does not start with this
+     *                                  class's simple name, so it could not rebuild
+     *                                  this rule
      * @since 0.25.1
      */
     protected NamedRule(String label) {
+        Objects.requireNonNull(label, "label");
+        String simpleName = getClass().getSimpleName();
+        if (simpleName.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Named rules must be named classes; anonymous classes cannot be rebuilt");
+        }
+        if (!label.equals(simpleName) && !label.startsWith(simpleName + '_')) {
+            throw new IllegalArgumentException(
+                    "Named rule label must start with its class name " + simpleName + ": " + label);
+        }
         this.label = label;
     }
 

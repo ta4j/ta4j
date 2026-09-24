@@ -183,6 +183,66 @@ test_docs_point_to_real_maven_commands() {
   pass "test_docs_point_to_real_maven_commands"
 }
 
+resolve_license_header_template() {
+  # Mirrors license-maven-plugin: ${project.basedir} is the module directory and
+  # ${project.parent.basedir} the repository root. Prints the resolved path.
+  local module="$1"
+  local pom="$ROOT/$module/pom.xml"
+  [[ -f "$pom" ]] || return 1
+  grep -q "license-maven-plugin" "$pom" || return 1
+  local header
+  header="$(sed -n 's:.*<header>\(.*\)</header>.*:\1:p' "$pom" | head -1)"
+  [[ -n "$header" ]] || return 1
+  local base="$ROOT/$module"
+  if [[ "$header" == *'${project.parent.basedir}'* ]]; then
+    base="$ROOT"
+  fi
+  local relative
+  relative="${header//\$\{project.parent.basedir\}/}"
+  relative="${relative//\$\{project.basedir\}/}"
+  relative="${relative#/}"
+  printf '%s/%s' "$base" "$relative"
+}
+
+test_every_module_resolves_license_header() {
+  echo "Running test_every_module_resolves_license_header"
+
+  local modules module template unresolved=""
+  modules="$(sed -n 's:.*<module>\([^<]*\)</module>.*:\1:p' "$ROOT/pom.xml" | sort -u)"
+  [[ -n "$modules" ]] || fail "root pom should declare reactor modules"
+  for module in $modules; do
+    template="$(resolve_license_header_template "$module")" || template=""
+    if [[ -z "$template" || ! -f "$template" ]]; then
+      unresolved="$unresolved $module"
+    fi
+  done
+  [[ -z "$unresolved" ]] || fail "modules without a resolvable license header template:$unresolved"
+
+  pass "test_every_module_resolves_license_header"
+}
+
+test_hosted_tag_workflows_exclude_hardware_tags() {
+  echo "Running test_hosted_tag_workflows_exclude_hardware_tags"
+
+  local workflow excluded tag
+  for workflow in test-tag-integration.yml test-tag-benchmark.yml; do
+    excluded="$(grep -o -- '-Dta4j\.excludedTestTags=[^"'"'"'[:space:]]*' "$ROOT/.github/workflows/$workflow" \
+      | head -1 | cut -d= -f2-)" || true
+    [[ -n "$excluded" ]] || fail "$workflow should pass -Dta4j.excludedTestTags"
+    # Hosted runners have no native GPU libraries, so hardware tests must not run there.
+    for tag in requires-cuda requires-metal requires-opencl; do
+      [[ ",$excluded," == *",$tag,"* ]] || fail "$workflow should exclude $tag"
+    done
+  done
+  excluded="$(grep -o -- '-Dta4j\.excludedTestTags=[^"'"'"'[:space:]]*' "$ROOT/.github/workflows/test-tag-integration.yml" \
+    | head -1 | cut -d= -f2-)"
+  for tag in analysis-demo benchmark requires-display requires-headless; do
+    [[ ",$excluded," == *",$tag,"* ]] || fail "test-tag-integration.yml should keep excluding $tag"
+  done
+
+  pass "test_hosted_tag_workflows_exclude_hardware_tags"
+}
+
 test_parent_declares_quality_defaults
 test_parent_declares_formatting_tooling
 test_parent_manages_quality_plugins_for_verify
@@ -190,6 +250,8 @@ test_modules_opt_in_to_managed_quality_plugins
 test_ci_reuses_canonical_local_gates
 test_maven_wrapper_is_committed_and_pinned
 test_docs_point_to_real_maven_commands
+test_every_module_resolves_license_header
+test_hosted_tag_workflows_exclude_hardware_tags
 
 echo
 echo "All quality scan config tests passed."

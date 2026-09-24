@@ -175,10 +175,17 @@ public interface PositionSizer {
 
     private static Number snapshotNumber(Number value, String name) {
         validatePositiveNumber(value, name);
-        // These immutable Number types retain all principal/fraction digits.
-        // Other Number implementations may be mutable, so snapshot their value.
-        if (value instanceof BigDecimal || value instanceof BigInteger) {
+        // Exact JDK value classes are immutable and keep every digit. BigDecimal and
+        // BigInteger are not final, so a subclass may change its observable value:
+        // snapshot it through its current decimal text. Other Number types may be
+        // mutable too, so snapshot their double value.
+        Class<?> type = value.getClass();
+        if (type == BigDecimal.class || type == BigInteger.class || type == Long.class || type == Integer.class
+                || type == Short.class || type == Byte.class || type == Double.class || type == Float.class) {
             return value;
+        }
+        if (value instanceof BigDecimal || value instanceof BigInteger) {
+            return new BigDecimal(value.toString());
         }
         return Double.valueOf(value.doubleValue());
     }

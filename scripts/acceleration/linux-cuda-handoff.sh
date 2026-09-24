@@ -10,8 +10,7 @@ if [[ ! -d "$root/ta4j-acceleration" ]]; then
 fi
 
 echo "CF-336 Linux CUDA continuation root: $root"
-echo "Implementation plan: https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration#linux-cuda-qualification"
-echo "Frozen Linux handoff: https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration#linux-cuda-qualification"
+echo "Linux CUDA qualification guide: https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration#linux-cuda-qualification"
 echo
 echo "Required preflight and validation commands:"
 printf '  cd -- %q\n' "$root"
@@ -23,7 +22,7 @@ cat <<'COMMANDS'
   cmake --version
   java -version
   ./mvnw -B -pl ta4j-acceleration -am -Pcuda-linux-x86_64 -DskipTests package
-  ./mvnw -B -pl ta4j-acceleration -am -Dtest=CudaNativeIntegrationTest -Dgroups=requires-cuda -Dta4j.excludedTestTags=requires-metal -Dta4j.acceleration.cuda.library="$PWD/ta4j-acceleration/target/native/cuda/package/META-INF/native/linux-x86_64/libta4j-cuda-accelerator.so" test
+  ./mvnw -B -pl ta4j-acceleration -am -Dtest=CudaNativeIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false -Dgroups=requires-cuda -Dta4j.excludedTestTags=requires-metal -Dta4j.acceleration.cuda.library="$PWD/ta4j-acceleration/target/native/cuda/package/META-INF/native/linux-x86_64/libta4j-cuda-accelerator.so" test
   scripts/run-full-build-quiet.sh
 COMMANDS
 
@@ -34,5 +33,3 @@ echo "  2. Validate supported distribution, GCC, glibc, libstdc++, JNI, and CUDA
 echo "  3. Exercise classpath extraction, permissions, checksum, ldd, and wrong-architecture failures."
 echo "  4. Run native sanitizer plus Java integration, concurrency, memory-pressure, and device-loss tests."
 echo "  5. Emit the Linux manifest/report without changing Windows or Metal golden fixtures."
-echo
-echo "Frozen contracts: CUDA ABI 2, RNG version 1, FP64 tolerance 1e-4, shared ta4j_cuda_jni.cu."

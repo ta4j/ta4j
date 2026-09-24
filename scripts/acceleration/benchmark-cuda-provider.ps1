@@ -5,6 +5,16 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+# Windows PowerShell 5.1 turns redirected native stderr into error records, which
+# "Stop" makes fatal (java -version always writes to stderr). Run native tools
+# with a local "Continue" preference and keep their output as plain strings.
+function Invoke-Native {
+    param([scriptblock]$Command)
+    $ErrorActionPreference = "Continue"
+    & $Command 2>&1 | ForEach-Object { "$_" }
+}
+
 $root = (Resolve-Path $RepoRoot).Path
 if ([string]::IsNullOrWhiteSpace($LibraryPath)) {
     $LibraryPath = Join-Path $root "ta4j-acceleration\target\native\cuda\package\META-INF\native\windows-x86_64\ta4j-cuda-accelerator.dll"
@@ -18,35 +28,35 @@ if ([string]::IsNullOrWhiteSpace($OutputPath)) {
 $output = [System.IO.Path]::GetFullPath($OutputPath)
 [System.IO.Directory]::CreateDirectory([System.IO.Path]::GetDirectoryName($output)) | Out-Null
 
-$sourceStatus = & git -C $root status --porcelain 2>&1
+$sourceStatus = & git -C $root status --porcelain
 if ($LASTEXITCODE -ne 0) {
     throw "git status failed with exit code $LASTEXITCODE`: $($sourceStatus -join [Environment]::NewLine)"
 }
 if ($sourceStatus) {
     throw "CUDA benchmark requires a clean source worktree"
 }
-$sourceHead = & git -C $root rev-parse HEAD 2>&1
+$sourceHead = Invoke-Native { git -C $root rev-parse HEAD }
 if ($LASTEXITCODE -ne 0) {
     throw "git rev-parse failed with exit code $LASTEXITCODE`: $($sourceHead -join [Environment]::NewLine)"
 }
-$sourceTree = & git -C $root write-tree 2>&1
+$sourceTree = Invoke-Native { git -C $root write-tree }
 if ($LASTEXITCODE -ne 0) {
     throw "git write-tree failed with exit code $LASTEXITCODE`: $($sourceTree -join [Environment]::NewLine)"
 }
-$gpu = & nvidia-smi --query-gpu=name,driver_version,compute_cap,memory.total --format=csv,noheader 2>&1 |
+$gpu = Invoke-Native { nvidia-smi --query-gpu=name,driver_version,compute_cap,memory.total --format=csv,noheader } |
     Select-Object -First 1
 if ($LASTEXITCODE -ne 0) {
     throw "nvidia-smi failed with exit code $LASTEXITCODE"
 }
-$nvcc = & nvcc --version 2>&1 | Select-Object -Last 1
+$nvcc = Invoke-Native { nvcc --version } | Select-Object -Last 1
 if ($LASTEXITCODE -ne 0) {
     throw "nvcc failed with exit code $LASTEXITCODE"
 }
-$javaOutput = & java -version 2>&1
+$javaOutput = Invoke-Native { java -version }
 if ($LASTEXITCODE -ne 0) {
     throw "java -version failed with exit code $LASTEXITCODE"
 }
-$javaVersion = ($javaOutput | Select-Object -First 1).ToString()
+$javaVersion = $javaOutput | Select-Object -First 1
 
 $workloads = @(
     @{ decisions = 1; paths = 1024; horizon = 8 },
@@ -69,7 +79,8 @@ foreach ($workload in $workloads) {
             "-Dta4j.cuda.benchmark.horizon=$($workload.horizon)",
             "-Dta4j.cuda.benchmark.repetitions=3", "test"
         )
-        $lines = & (Join-Path $root "mvnw.cmd") @arguments 2>&1
+        $mavenWrapper = Join-Path $root "mvnw.cmd"
+        $lines = Invoke-Native { & $mavenWrapper @arguments }
         if ($LASTEXITCODE -ne 0) {
             $lines | ForEach-Object { Write-Host $_ }
             throw "CUDA benchmark Maven process failed with exit code $LASTEXITCODE"

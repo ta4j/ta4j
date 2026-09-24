@@ -122,6 +122,16 @@ Run another example by overriding the configured main class:
 ./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.TradingRecordParityBacktest
 ```
 
+### Run it from the command line
+
+[`ta4j-cli`](ta4j-cli/README.md) runs backtests, walk-forwards, parameter sweeps, indicator and rule tests, and forecasts against a local CSV or JSON file, with JSON output for automation:
+
+```bash
+./mvnw -pl ta4j-cli -am package -DskipTests
+java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar strategy backtest \
+  --data-file ta4j-examples/src/main/resources/AAPL-PT1D-20130102_20131231.csv --strategy 'SMA(7,21)'
+```
+
 ### Use the core API
 
 The essential model is:
@@ -400,6 +410,8 @@ These capabilities are intentionally not expanded into mini-manuals here. Use th
 ta4j lets you choose `DecimalNum` for precision-first workflows or `DoubleNum` for throughput-first workflows with accepted floating-point tradeoffs. Moving series can cap retained history, indicator values are cached, and independent strategy candidates can be evaluated in parallel.
 
 Measure changes on your own workload rather than relying on generic claims. Use the [`BacktestPerformanceTuningHarness`](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java), the [Num guide](https://ta4j.github.io/ta4j-wiki/Num.html), and [Performance Characterization](https://ta4j.github.io/ta4j-wiki/Performance-Characterization.html) for repeatable comparisons.
+
+Eligible `DoubleNum` Monte Carlo forecasts can optionally run on a GPU through the separate `ta4j-acceleration` artifact; it is off unless enabled with `-Dta4j.acceleration.enabled=auto` and always falls back to the scalar result. See the [acceleration guide](https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration).
 
 ## Real-world examples
 

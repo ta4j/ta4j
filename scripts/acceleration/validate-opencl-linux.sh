@@ -4,6 +4,14 @@
 # Exit code is non-zero on any failure.
 set -euo pipefail
 
+usage() {
+    echo "usage: validate-opencl-linux.sh <repo-root> <x86_64|aarch64> [--benchmark]" >&2
+}
+
+if [[ "$#" -lt 2 ]]; then
+    usage
+    exit 2
+fi
 if [[ "$#" -gt 3 ]]; then
     echo "error: expected at most one optional argument (--benchmark)" >&2
     exit 2
@@ -55,6 +63,7 @@ sha256sum "$LIBRARY"
 echo "==> Running OpenClNativeIntegrationTest (native probe self-test)"
 ./mvnw -B -ntp -pl ta4j-acceleration -am \
     -Dtest=OpenClNativeIntegrationTest \
+    -Dsurefire.failIfNoSpecifiedTests=false \
     -Dgroups=requires-opencl \
     -Dta4j.excludedTestTags="$EXCLUDED" \
     -Dta4j.acceleration.opencl.library="$LIBRARY" \

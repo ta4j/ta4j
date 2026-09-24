@@ -10,7 +10,7 @@ grep -q "nvidia-smi" "$TMP/linux-output"
 grep -q "./mvnw -B -pl ta4j-acceleration -am -Pcuda-linux-x86_64" "$TMP/linux-output"
 grep -q "libta4j-cuda-accelerator.so" "$TMP/linux-output"
 grep -q "ta4j-wiki/wiki/Indicator-Acceleration#linux-cuda-qualification" "$TMP/linux-output"
-grep -q "ta4j-wiki/wiki/Indicator-Acceleration" "$TMP/linux-output"
+grep -q -- "-Dtest=CudaNativeIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false" "$TMP/linux-output"
 
 HANDOFF_ROOT="$TMP/root with spaces and 'quotes'"
 mkdir -p "$HANDOFF_ROOT/ta4j-acceleration"
@@ -42,6 +42,18 @@ if [[ "$opencl_status" -ne 2 ]]; then
 fi
 if [[ -e "$TMP/opencl-marker" ]]; then
   echo "OpenCL validation executed platform checks before rejecting its optional argument" >&2
+  exit 1
+fi
+
+if BASH_ENV=/dev/null bash "$ROOT/scripts/acceleration/validate-opencl-linux.sh" "$INVALID_ROOT" \
+    >"$TMP/opencl-missing-arch" 2>&1; then
+  echo "OpenCL validation should reject a missing architecture argument" >&2
+  exit 1
+else
+  opencl_status=$?
+fi
+if [[ "$opencl_status" -ne 2 ]] || ! grep -q "^usage: validate-opencl-linux.sh" "$TMP/opencl-missing-arch"; then
+  echo "OpenCL validation should print usage and exit 2 without an architecture" >&2
   exit 1
 fi
 

@@ -34,6 +34,15 @@ import org.ta4j.core.walkforward.WalkForwardSplitter;
 /**
  * Executes one strategy in walk-forward mode with a backtest-symmetric API.
  *
+ * <p>
+ * Overloads that take a single {@link Strategy} evaluate that same instance in
+ * every fold, so state held by its rules (for example a
+ * {@link org.ta4j.core.rules.JustOnceRule} that already fired) carries from one
+ * fold into the next. Use the overload that takes a
+ * {@code Function<WalkForwardSplit, Strategy>} factory to build an independent
+ * strategy per fold.
+ * </p>
+ *
  * @since 0.22.4
  */
 public class StrategyWalkForwardExecutor {

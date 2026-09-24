@@ -55,7 +55,7 @@ import org.ta4j.core.num.NumFactory;
  * until every configured window is complete and finite. A non-finite return
  * makes each affected rolling window unavailable; later clean windows recover
  * automatically. The emitted horizon variance term structure is bounded at
- * {@value #MAX_HORIZON_VARIANCE_STEPS} steps per state.
+ * 100,000 steps per state.
  *
  * @since 0.23.1
  */
@@ -341,8 +341,7 @@ public final class RoughVolatilityForecastStateIndicator extends CachedIndicator
         /**
          * Sets the number of cumulative variance horizons emitted by each state.
          *
-         * @param value positive horizon count of at most
-         *              {@link RoughVolatilityForecastStateIndicator#MAX_HORIZON_VARIANCE_STEPS}
+         * @param value positive horizon count of at most 100,000
          * @return this builder
          * @since 0.23.1
          */
