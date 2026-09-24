@@ -617,7 +617,7 @@ final class CliCommands {
                     strategyInput.strategyJsonFile, strategyInput.strategies, strategyInput.strategiesJsonFile,
                     unstableBars, series);
             strategyInput.enforceInvalidInputPolicy(resolvedStrategies, err());
-            CliSupport.requireBoundedWalkForwardBatch(resolvedStrategies.strategies(), series, config);
+            CliSupport.requireBoundedWalkForward(resolvedStrategies.strategies(), resolvedCriteria, series, config);
 
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
                     execution.borrowRate, execution.borrowSide);
@@ -1010,6 +1010,7 @@ final class CliCommands {
             CliSupport.ResolvedIndicator resolvedIndicator = CliSupport.resolveIndicator(indicatorJson,
                     indicatorJsonFile, series);
             CliSupport.requireBoundedIndicatorWindowWork(resolvedIndicator.indicator(), series.getBarCount());
+            CliSupport.requireBoundedCriterionWork(resolvedCriteria, series.getBarCount(), 1, 0);
             Strategy strategy = CliSupport.buildIndicatorTestStrategy(resolvedIndicator.indicator(), parsedUnstableBars,
                     entryBelow, entryAbove, exitBelow, exitAbove, series);
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
@@ -1089,7 +1090,7 @@ final class CliCommands {
             WalkForwardConfig config = walkForward.build(series);
             Strategy strategy = CliSupport.buildRuleTestStrategy(entryRuleLabel, entryRuleJsonFile, exitRuleLabel,
                     exitRuleJsonFile, parsedUnstableBars, series);
-            CliSupport.requireBoundedWalkForwardBatch(List.of(strategy), series, config);
+            CliSupport.requireBoundedWalkForward(List.of(strategy), resolvedCriteria, series, config);
             String strategyJson = strategy.toJson();
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
                     execution.borrowRate, execution.borrowSide);

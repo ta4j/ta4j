@@ -58,9 +58,10 @@ final class PerformanceComparison {
      * @return comparison JSON
      * @throws IOException              when artifacts cannot be read or written
      * @throws IllegalArgumentException when {@code maxRegressionPct} is non-finite
-     *                                  or negative, or when {@code outputDir}
-     *                                  refers to {@code baseDir} or
-     *                                  {@code candidateDir} (including symlink
+     *                                  or negative, when {@code candidateDir}
+     *                                  refers to {@code baseDir}, or when
+     *                                  {@code outputDir} refers to {@code baseDir}
+     *                                  or {@code candidateDir} (including symlink
      *                                  aliases)
      * @since 0.25.1
      */
@@ -68,6 +69,11 @@ final class PerformanceComparison {
             throws IOException {
         if (!Double.isFinite(maxRegressionPct) || maxRegressionPct < 0d) {
             throw new IllegalArgumentException("maxRegressionPct must be finite and non-negative");
+        }
+        // Comparing a directory with itself matches every checksum and reports
+        // zero timing deltas, a false passing gate; aliases are rejected too.
+        if (CliSupport.sameFile(baseDir, candidateDir)) {
+            throw new IllegalArgumentException("--candidate-dir must not refer to the --base-dir directory");
         }
         // The comparison artifacts are written at the output directory root,
         // so an output directory aliasing an input directory would overwrite

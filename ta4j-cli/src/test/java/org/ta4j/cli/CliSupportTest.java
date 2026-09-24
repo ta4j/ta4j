@@ -28,11 +28,14 @@ import org.ta4j.core.backtest.PositionSizer;
 import org.ta4j.core.backtest.StrategyWalkForwardExecutionResult;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.criteria.SharpeRatioCriterion;
+import org.ta4j.core.criteria.Statistics;
+import org.ta4j.core.criteria.drawdown.MonteCarloMaximumDrawdownCriterion;
 import org.ta4j.core.criteria.Annualization;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
+import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedBooleanIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
@@ -51,7 +54,10 @@ import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.reports.TradingStatement;
+import org.ta4j.core.rules.AndRule;
 import org.ta4j.core.rules.BooleanRule;
+import org.ta4j.core.rules.CrossedUpIndicatorRule;
+import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.strategy.named.NamedStrategy;
 import org.ta4j.core.walkforward.WalkForwardConfig;
 import org.ta4j.core.walkforward.WalkForwardRunResult;
@@ -611,7 +617,7 @@ class CliSupportTest {
     }
 
     @Test
-    void requireBoundedWalkForwardBatchCountsFoldAndHoldoutTestBars() {
+    void requireBoundedWalkForwardCountsFoldAndHoldoutTestBars() {
         BarSeries series = syntheticSeries(10_100);
         WalkForwardConfig config = CliSupport.buildWalkForwardConfig(series, "100", "1", "1", "0", "0", "9999", null,
                 null, null);
@@ -621,15 +627,15 @@ class CliSupportTest {
             batch.add(strategy);
         }
 
-        CliSupport.requireBoundedWalkForwardBatch(List.of(strategy), series, config);
-        assertThatThrownBy(() -> CliSupport.requireBoundedWalkForwardBatch(batch, series, config))
+        CliSupport.requireBoundedWalkForward(List.of(strategy), List.of(), series, config);
+        assertThatThrownBy(() -> CliSupport.requireBoundedWalkForward(batch, List.of(), series, config))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Strategy batch of 4976 strategies over 20100 bars requires "
                         + "100017600 bar-strategy evaluations; at most 100000000 are supported.");
     }
 
     @Test
-    void requireBoundedWalkForwardBatchBoundsActualSplitWork() {
+    void requireBoundedWalkForwardBoundsActualSplitWork() {
         BarSeries series = syntheticSeries(10_000);
         WalkForwardConfig config = CliSupport.buildWalkForwardConfig(series, "100", "100", "100", "0", "0", "0", null,
                 null, null);
@@ -643,11 +649,57 @@ class CliSupportTest {
             over.add(strategy);
         }
 
-        CliSupport.requireBoundedWalkForwardBatch(within, series, config);
-        assertThatThrownBy(() -> CliSupport.requireBoundedWalkForwardBatch(over, series, config))
+        CliSupport.requireBoundedWalkForward(within, List.of(), series, config);
+        assertThatThrownBy(() -> CliSupport.requireBoundedWalkForward(over, List.of(), series, config))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Strategy batch of 5026 strategies over 19900 bars requires "
                         + "100017400 bar-strategy evaluations; at most 100000000 are supported.");
+    }
+
+    @Test
+    void strategyBatchChargesRollingWindowScansReachableFromSerializedRules() {
+        BarSeries series = syntheticSeries(10);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        Strategy scanner = Strategy.fromJson(series,
+                new BaseStrategy(
+                        new AndRule(BooleanRule.TRUE,
+                                new OverIndicatorRule(new HighestValueIndicator(close, 2_000), close)),
+                        BooleanRule.FALSE).toJson());
+        Strategy crossover = new BaseStrategy(
+                new CrossedUpIndicatorRule(new SMAIndicator(close, 7), new SMAIndicator(close, 21)), BooleanRule.FALSE);
+
+        // (1 evaluation + 2,000 window reads) per bar exceeds the budget at 100k bars
+        // but fits at 40k bars; a non-scanning crossover costs one unit per bar.
+        assertThatThrownBy(() -> CliSupport.requireBoundedStrategyBatch(List.of(scanner), 100_000))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("including rolling-window scans");
+        CliSupport.requireBoundedStrategyBatch(List.of(scanner), 40_000);
+        CliSupport.requireBoundedStrategyBatch(List.of(crossover), 100_000);
+    }
+
+    @Test
+    void walkForwardChargesMonteCarloCriteriaForTheBacktestAndEveryFold() {
+        BarSeries series = syntheticSeries(1_000);
+        WalkForwardConfig config = CliSupport.buildWalkForwardConfig(series, "100", "100", "100", "0", "0", "0", null,
+                null, null);
+        Strategy strategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
+        // Nine 100-bar folds add 9 * 100^2 sampled bars per simulation to the
+        // 1,000^2 of the full backtest.
+        List<CliSupport.CriterionSpec> overBudget = monteCarloCriterion(95);
+        List<CliSupport.CriterionSpec> withinBudget = monteCarloCriterion(90);
+
+        CliSupport.requireBoundedCriterionWork(overBudget, series.getBarCount(), 1, 0);
+        assertThatThrownBy(() -> CliSupport.requireBoundedWalkForward(List.of(strategy), overBudget, series, config))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("sampled-bar evaluations");
+        CliSupport.requireBoundedWalkForward(List.of(strategy), withinBudget, series, config);
+    }
+
+    private static List<CliSupport.CriterionSpec> monteCarloCriterion(int iterations) {
+        MonteCarloMaximumDrawdownCriterion criterion = new MonteCarloMaximumDrawdownCriterion(iterations, null, 42L,
+                Statistics.P95);
+        return List.of(new CliSupport.CriterionSpec("MonteCarloMaximumDrawdown", criterion.getClass().getName(), null,
+                null, criterion));
     }
 
     private static BarSeries syntheticSeries(int barCount) {

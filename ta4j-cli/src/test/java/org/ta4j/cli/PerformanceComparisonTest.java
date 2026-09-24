@@ -400,6 +400,24 @@ class PerformanceComparisonTest {
     }
 
     @Test
+    void comparisonRejectsCandidateDirAliasingBaseDir() throws Exception {
+        Path baseDir = tempDir.resolve("base");
+        writePerformanceJson(baseDir, 10L, 1_000L);
+        Path symlinkAlias = tempDir.resolve("base-alias");
+        Files.createSymbolicLink(symlinkAlias, baseDir);
+        Path outputDir = tempDir.resolve("comparison");
+
+        for (Path candidateDir : List.of(baseDir, tempDir.resolve("other").resolve("..").resolve("base"),
+                symlinkAlias)) {
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                    () -> PerformanceComparison.compare(baseDir, candidateDir, outputDir, 5d));
+
+            assertEquals("--candidate-dir must not refer to the --base-dir directory", exception.getMessage());
+        }
+        assertFalse(Files.exists(outputDir));
+    }
+
+    @Test
     void comparisonAllowsOutputDirNestedInsideBaseDir() throws Exception {
         Path baseDir = tempDir.resolve("base");
         Path candidateDir = tempDir.resolve("candidate");

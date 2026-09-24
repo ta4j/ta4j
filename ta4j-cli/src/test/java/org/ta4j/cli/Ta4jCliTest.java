@@ -9,6 +9,8 @@ import com.google.gson.JsonParser;
 import org.apache.logging.log4j.LogManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
@@ -18,6 +20,8 @@ import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
 import org.ta4j.core.criteria.Annualization;
+import org.ta4j.core.criteria.Statistics;
+import org.ta4j.core.criteria.drawdown.MonteCarloMaximumDrawdownCriterion;
 import org.ta4j.core.criteria.SharpeRatioCriterion;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
@@ -1181,15 +1185,67 @@ class Ta4jCliTest {
         assertThat(result.exitCode()).isEqualTo(2);
     }
 
-    @Test
-    void backtestRejectsMonteCarloReportingBeyondWorkCeiling() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = { "strategy backtest", "strategy walk-forward", "indicator test", "rule test" })
+    void reportingWorkflowsRejectMonteCarloCriteriaBeyondWorkCeilingBeforeScoring(String command) throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        // The default 10,000 simulations over this year of weekly trades exceed the
+        // sampled-bar ceiling for every reporting workflow.
+        List<String> args = new java.util.ArrayList<>(List.of(command.split(" ")));
+        args.addAll(List.of("--data-file", dataFile.toString(), "--criteria",
+                MonteCarloMaximumDrawdownCriterion.class.getName()));
+        args.addAll(switch (command) {
+        case "indicator test" -> List.of("--indicator", "RSI(14)", "--entry-below", "30", "--exit-above", "70");
+        case "rule test" ->
+            List.of("--entry-rule", "RsiThresholdRule_BELOW_14_30", "--exit-rule", "RsiThresholdRule_ABOVE_14_70");
+        default -> List.of("--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY");
+        });
 
-        CliRunResult result = runCliAllowingError("strategy", "backtest", "--data-file", dataFile.toString(),
-                "--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY", "--criteria",
-                "org.ta4j.core.criteria.drawdown.MonteCarloMaximumDrawdownCriterion");
+        CliRunResult result = org.junit.jupiter.api.Assertions.assertTimeoutPreemptively(
+                java.time.Duration.ofSeconds(30), () -> runCliAllowingError(args.toArray(String[]::new)));
 
         assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("sampled-bar evaluations");
+    }
+
+    @Test
+    void walkForwardScoresEachFoldOnceWithinTheCriterionBudget() throws Exception {
+        Path dataFile = firstBars(copyResource("AAPL-PT1D-20130102_20131231.csv"), 60);
+        Path outputFile = tempDir.resolve("walk-forward-monte-carlo.json");
+
+        int exitCode = runCli("strategy", "walk-forward", "--data-file", dataFile.toString(), "--strategy",
+                "DayOfWeekStrategy_MONDAY_FRIDAY", "--criteria", MonteCarloMaximumDrawdownCriterion.class.getName(),
+                "--output", outputFile.toString(), "--min-train-bars", "20", "--test-bars", "10", "--step-bars", "10",
+                "--holdout-bars", "10");
+
+        assertThat(exitCode).isZero();
+        JsonObject walkForward = result(readJson(outputFile)).getAsJsonObject("walkForward");
+        JsonArray folds = walkForward.getAsJsonArray("folds");
+        assertThat(folds.size()).isGreaterThan(1);
+        JsonObject byFold = walkForward.getAsJsonObject("criteria")
+                .entrySet()
+                .iterator()
+                .next()
+                .getValue()
+                .getAsJsonObject()
+                .getAsJsonObject("byFold");
+        for (int index = 0; index < folds.size(); index++) {
+            JsonObject fold = folds.get(index).getAsJsonObject();
+            String foldValue = fold.getAsJsonObject("statement")
+                    .getAsJsonArray("criteria")
+                    .get(0)
+                    .getAsJsonObject()
+                    .get("value")
+                    .getAsString();
+            assertThat(byFold.get(fold.get("foldId").getAsString()).getAsString()).isEqualTo(foldValue);
+        }
+    }
+
+    private Path firstBars(Path csvFile, int barCount) throws IOException {
+        List<String> lines = Files.readAllLines(csvFile, StandardCharsets.UTF_8);
+        Path truncated = tempDir.resolve("first-" + barCount + "-" + csvFile.getFileName());
+        Files.write(truncated, lines.subList(0, barCount + 1), StandardCharsets.UTF_8);
+        return truncated;
     }
 
     @Test

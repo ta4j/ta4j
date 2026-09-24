@@ -116,6 +116,8 @@ import java.io.PrintWriter;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.UncheckedIOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -583,36 +585,55 @@ final class CliSupport {
     }
 
     /**
-     * Rejects a strategy batch whose total bar-strategy evaluations exceed
+     * Rejects a strategy batch whose total work exceeds
      * {@link #MAX_BATCH_STRATEGY_WORK} before execution starts.
      * {@code barEvaluations} is the number of series bars each strategy is
      * evaluated over: a full backtest pass for backtests, or the full pass plus the
-     * summed test-bar counts of every fold and holdout for walk-forwards. The
+     * summed test-bar counts of every fold and holdout for walk-forwards. Each
+     * strategy costs one evaluation per bar plus the per-bar reads of every
+     * rolling-window scanner reachable from its entry and exit rules, so a
+     * serialized strategy cannot hide a large scan behind a single rule. The
      * product is computed exactly so a wide batch over a long series can never
      * overflow into an accepted estimate.
      */
     static void requireBoundedStrategyBatch(List<Strategy> strategies, long barEvaluations) {
-        BigInteger work = BigInteger.valueOf(strategies.size()).multiply(BigInteger.valueOf(barEvaluations));
+        IdentityHashMap<Strategy, Long> scanWorkByStrategy = new IdentityHashMap<>();
+        BigInteger perBarWork = BigInteger.ZERO;
+        long scanWork = 0L;
+        for (Strategy strategy : strategies) {
+            long strategyScanWork = scanWorkByStrategy.computeIfAbsent(strategy, CliSupport::strategyWindowWork);
+            scanWork = saturatingAdd(scanWork, strategyScanWork);
+            perBarWork = perBarWork.add(BigInteger.ONE).add(BigInteger.valueOf(strategyScanWork));
+        }
+        BigInteger work = perBarWork.multiply(BigInteger.valueOf(barEvaluations));
         if (work.compareTo(BigInteger.valueOf(MAX_BATCH_STRATEGY_WORK)) > 0) {
             throw new IllegalArgumentException("Strategy batch of " + strategies.size() + " strategies over "
-                    + barEvaluations + " bars requires " + work + " bar-strategy evaluations; at most "
-                    + MAX_BATCH_STRATEGY_WORK + " are supported.");
+                    + barEvaluations + " bars requires " + work + " bar-strategy evaluations"
+                    + (scanWork == 0L ? "" : " including rolling-window scans") + "; at most " + MAX_BATCH_STRATEGY_WORK
+                    + " are supported.");
         }
     }
 
     /**
-     * Rejects a walk-forward strategy batch whose total bar-strategy evaluations
-     * exceed {@link #MAX_BATCH_STRATEGY_WORK}. A walk-forward evaluates each
-     * strategy once over the full series (the backtest pass) and then once over
-     * each fold's and holdout's test range, so the actual split geometry is derived
-     * from {@code config} instead of estimated from the fold count.
+     * Rejects a walk-forward whose strategy or criterion work exceeds
+     * {@link #MAX_BATCH_STRATEGY_WORK}. Each strategy is evaluated once over the
+     * full series (the backtest pass) and then once over each fold's and holdout's
+     * test range, and every selected criterion is scored once per pass, so the
+     * actual split geometry is derived from {@code config} instead of estimated
+     * from the fold count.
      */
-    static void requireBoundedWalkForwardBatch(List<Strategy> strategies, BarSeries series, WalkForwardConfig config) {
-        long foldBars = 0L;
-        for (WalkForwardSplit split : new AnchoredExpandingWalkForwardSplitter().split(series, config)) {
-            foldBars = Math.addExact(foldBars, split.testBarCount());
+    static void requireBoundedWalkForward(List<Strategy> strategies, List<CriterionSpec> criteria, BarSeries series,
+            WalkForwardConfig config) {
+        List<WalkForwardSplit> splits = new AnchoredExpandingWalkForwardSplitter().split(series, config);
+        List<Long> reportedSpans = new ArrayList<>(splits.size() + 1);
+        reportedSpans.add((long) series.getBarCount());
+        long evaluatedBars = series.getBarCount();
+        for (WalkForwardSplit split : splits) {
+            reportedSpans.add((long) split.testBarCount());
+            evaluatedBars = Math.addExact(evaluatedBars, split.testBarCount());
         }
-        requireBoundedStrategyBatch(strategies, Math.addExact(series.getBarCount(), foldBars));
+        requireBoundedStrategyBatch(strategies, evaluatedBars);
+        requireBoundedCriterionWork(criteria, reportedSpans, strategies.size(), 0L);
     }
 
     /**
@@ -636,25 +657,113 @@ final class CliSupport {
         }
     }
 
+    /**
+     * Rejects criterion scoring whose sampled work exceeds
+     * {@link #MAX_BATCH_STRATEGY_WORK} when every reported result is scored once
+     * over {@code bars}.
+     *
+     * @param reportCount          reported results, each scored by every criterion
+     * @param rankedCandidateCount candidates additionally scored by the primary
+     *                             (ranking) criterion
+     */
     static void requireBoundedCriterionWork(List<CriterionSpec> criteria, long bars, long reportCount,
             long rankedCandidateCount) {
+        requireBoundedCriterionWork(criteria, List.of(bars), reportCount, rankedCandidateCount);
+    }
+
+    /**
+     * Rejects criterion scoring whose sampled work exceeds
+     * {@link #MAX_BATCH_STRATEGY_WORK}. Each of {@code reportCount} results is
+     * scored by every criterion over each span in {@code reportedSpans} (for
+     * example the full backtest plus every walk-forward fold); ranked candidates
+     * are scored by the primary criterion over the first span only.
+     */
+    private static void requireBoundedCriterionWork(List<CriterionSpec> criteria, List<Long> reportedSpans,
+            long reportCount, long rankedCandidateCount) {
         BigInteger work = BigInteger.ZERO;
         for (int index = 0; index < criteria.size(); index++) {
             if (criteria.get(index).criterion() instanceof MonteCarloMaximumDrawdownCriterion monteCarlo) {
-                long evaluations = reportCount + (index == 0 ? rankedCandidateCount : 0L);
-                // Sampling is with replacement. Bound each selected block by the
-                // full history, and the default observed trade count by bar count.
-                long blocks = monteCarlo.getPathBlocks() == null ? bars : Math.max(0, monteCarlo.getPathBlocks());
-                work = work.add(BigInteger.valueOf(evaluations)
-                        .multiply(BigInteger.valueOf(Math.max(0, monteCarlo.getIterations())))
-                        .multiply(BigInteger.valueOf(blocks))
-                        .multiply(BigInteger.valueOf(bars)));
+                BigInteger perResult = BigInteger.ZERO;
+                for (long span : reportedSpans) {
+                    perResult = perResult.add(monteCarloSampledWork(monteCarlo, span));
+                }
+                work = work.add(perResult.multiply(BigInteger.valueOf(reportCount)));
+                if (index == 0) {
+                    work = work.add(monteCarloSampledWork(monteCarlo, reportedSpans.getFirst())
+                            .multiply(BigInteger.valueOf(rankedCandidateCount)));
+                }
             }
         }
         if (work.compareTo(BigInteger.valueOf(MAX_BATCH_STRATEGY_WORK)) > 0) {
             throw new IllegalArgumentException("Monte Carlo criteria require up to " + work
                     + " sampled-bar evaluations; at most " + MAX_BATCH_STRATEGY_WORK + " are supported.");
         }
+    }
+
+    /**
+     * Upper bound of the bars one Monte Carlo drawdown evaluation samples over a
+     * trading record spanning {@code bars}. Sampling is with replacement, so each
+     * selected block is bounded by the full span, and the default observed trade
+     * count is bounded by the bar count.
+     */
+    private static BigInteger monteCarloSampledWork(MonteCarloMaximumDrawdownCriterion monteCarlo, long bars) {
+        long blocks = monteCarlo.getPathBlocks() == null ? bars : Math.max(0, monteCarlo.getPathBlocks());
+        return BigInteger.valueOf(Math.max(0, monteCarlo.getIterations()))
+                .multiply(BigInteger.valueOf(blocks))
+                .multiply(BigInteger.valueOf(bars));
+    }
+
+    /**
+     * Sums the per-bar reads of every rolling-window scanner reachable from a
+     * strategy's entry and exit rules. Rules expose no dependency API, so the rule
+     * graph is walked through its instance fields, the same way rule serialization
+     * discovers components; indicators then follow
+     * {@link Indicator#getDependencies()}. Shared rules and indicators are counted
+     * once, matching per-instance indicator caching.
+     */
+    static long strategyWindowWork(Strategy strategy) {
+        Set<Object> visitedRules = Collections.newSetFromMap(new IdentityHashMap<>());
+        Set<Indicator<?>> visitedIndicators = Collections.newSetFromMap(new IdentityHashMap<>());
+        return saturatingAdd(componentWindowWork(strategy.getEntryRule(), visitedRules, visitedIndicators),
+                componentWindowWork(strategy.getExitRule(), visitedRules, visitedIndicators));
+    }
+
+    private static long componentWindowWork(Object component, Set<Object> visitedRules,
+            Set<Indicator<?>> visitedIndicators) {
+        if (component instanceof Indicator<?> indicator) {
+            return sumRollingWindowBarCounts(indicator, visitedIndicators);
+        }
+        long work = 0L;
+        if (component instanceof Rule) {
+            if (!visitedRules.add(component)) {
+                return 0L;
+            }
+            for (Class<?> type = component.getClass(); type != null
+                    && type != Object.class; type = type.getSuperclass()) {
+                for (Field field : type.getDeclaredFields()) {
+                    if (Modifier.isStatic(field.getModifiers()) || field.getType().isPrimitive()
+                            || !field.trySetAccessible()) {
+                        continue;
+                    }
+                    try {
+                        work = saturatingAdd(work,
+                                componentWindowWork(field.get(component), visitedRules, visitedIndicators));
+                    } catch (IllegalAccessException ignored) {
+                        // trySetAccessible succeeded; an inaccessible field holds no
+                        // component the rule could evaluate.
+                    }
+                }
+            }
+        } else if (component instanceof Object[] array) {
+            for (Object element : array) {
+                work = saturatingAdd(work, componentWindowWork(element, visitedRules, visitedIndicators));
+            }
+        } else if (component instanceof Iterable<?> elements) {
+            for (Object element : elements) {
+                work = saturatingAdd(work, componentWindowWork(element, visitedRules, visitedIndicators));
+            }
+        }
+        return work;
     }
 
     private static long sumRollingWindowBarCounts(Indicator<?> indicator, Set<Indicator<?>> visited) {
@@ -1699,6 +1808,11 @@ final class CliSupport {
 
     static Map<String, Object> statementToMap(BarSeries series, TradingStatement statement,
             List<CriterionSpec> criteria) {
+        return statementToMap(statement, criteria, criterionValues(series, statement.getTradingRecord(), criteria));
+    }
+
+    private static Map<String, Object> statementToMap(TradingStatement statement, List<CriterionSpec> criteria,
+            List<Num> criterionValues) {
         Map<String, Object> result = linkedMap();
         result.put("strategyName", statement.getStrategy().getName());
         result.put("startingType", statement.getStrategy().getStartingType().name());
@@ -1721,7 +1835,7 @@ final class CliSupport {
         positions.put("breakEvenCount", numberString(statsReport.getBreakEvenCount()));
         result.put("positions", positions);
 
-        result.put("criteria", criterionScores(series, statement.getTradingRecord(), criteria));
+        result.put("criteria", criterionScores(criteria, criterionValues));
         return result;
     }
 
@@ -1752,9 +1866,17 @@ final class CliSupport {
         config.put("seed", result.config().seed());
         walkForward.put("config", config);
 
-        List<Map<String, Object>> folds = new ArrayList<>(result.folds().size());
-        for (StrategyWalkForwardExecutionResult.FoldResult fold : result.folds()) {
-            folds.add(foldToMap(series, fold, criteria));
+        // Score every fold once and derive the per-fold, holdout and out-of-sample
+        // aggregates from those values: the work preflight charges exactly one
+        // criterion evaluation per fold, and stochastic criteria report one
+        // consistent value per fold.
+        List<StrategyWalkForwardExecutionResult.FoldResult> foldResults = result.folds();
+        List<List<Num>> foldValues = new ArrayList<>(foldResults.size());
+        List<Map<String, Object>> folds = new ArrayList<>(foldResults.size());
+        for (StrategyWalkForwardExecutionResult.FoldResult fold : foldResults) {
+            List<Num> values = criterionValues(series, fold.tradingRecord(), criteria);
+            foldValues.add(values);
+            folds.add(foldToMap(fold, criteria, values));
         }
         walkForward.put("folds", folds);
 
@@ -1776,16 +1898,22 @@ final class CliSupport {
         walkForward.put("foldFailures", foldFailures);
 
         Map<String, Object> aggregateCriteria = linkedMap();
-        for (CriterionSpec criterion : criteria) {
-            Map<String, Object> values = linkedMap();
+        for (int criterionIndex = 0; criterionIndex < criteria.size(); criterionIndex++) {
             Map<String, String> byFold = new LinkedHashMap<>();
-            result.criterionValuesByFold(criterion.criterion())
-                    .forEach((foldId, value) -> byFold.put(foldId, numberString(value)));
+            List<Num> holdoutValues = new ArrayList<>();
+            for (int foldIndex = 0; foldIndex < foldResults.size(); foldIndex++) {
+                WalkForwardSplit split = foldResults.get(foldIndex).split();
+                Num value = foldValues.get(foldIndex).get(criterionIndex);
+                byFold.put(split.foldId(), numberString(value));
+                if (split.holdout()) {
+                    holdoutValues.add(value);
+                }
+            }
+            Map<String, Object> values = linkedMap();
             values.put("byFold", byFold);
-            values.put("holdout",
-                    result.holdoutCriterionValue(criterion.criterion()).map(CliSupport::numberString).orElse(null));
-            values.put("outOfSampleAverage", average(result.outOfSampleCriterionValues(criterion.criterion())));
-            aggregateCriteria.put(criterion.name(), values);
+            values.put("holdout", holdoutValues.isEmpty() ? null : numberString(holdoutValues.getFirst()));
+            values.put("outOfSampleAverage", average(holdoutValues));
+            aggregateCriteria.put(criteria.get(criterionIndex).name(), values);
         }
         walkForward.put("criteria", aggregateCriteria);
         return walkForward;
@@ -1811,8 +1939,8 @@ final class CliSupport {
         return runtime;
     }
 
-    private static Map<String, Object> foldToMap(BarSeries series, StrategyWalkForwardExecutionResult.FoldResult fold,
-            List<CriterionSpec> criteria) {
+    private static Map<String, Object> foldToMap(StrategyWalkForwardExecutionResult.FoldResult fold,
+            List<CriterionSpec> criteria, List<Num> criterionValues) {
         Map<String, Object> foldMap = linkedMap();
         WalkForwardSplit split = fold.split();
         foldMap.put("foldId", split.foldId());
@@ -1823,7 +1951,7 @@ final class CliSupport {
         foldMap.put("testEnd", split.testEnd());
         foldMap.put("purgeBars", split.purgeBars());
         foldMap.put("embargoBars", split.embargoBars());
-        foldMap.put("statement", statementToMap(series, fold.tradingStatement(), criteria));
+        foldMap.put("statement", statementToMap(fold.tradingStatement(), criteria, criterionValues));
         return foldMap;
     }
 
@@ -1838,12 +1966,20 @@ final class CliSupport {
         return numberString(sum.dividedBy(values.getFirst().getNumFactory().numOf(values.size())));
     }
 
-    private static List<Map<String, Object>> criterionScores(BarSeries series, TradingRecord tradingRecord,
+    private static List<Num> criterionValues(BarSeries series, TradingRecord tradingRecord,
             List<CriterionSpec> criteria) {
-        List<Map<String, Object>> scores = new ArrayList<>(criteria.size());
+        List<Num> values = new ArrayList<>(criteria.size());
         for (CriterionSpec criterion : criteria) {
-            Map<String, Object> score = criterionMetadata(criterion);
-            score.put("value", numberString(criterion.criterion().calculate(series, tradingRecord)));
+            values.add(criterion.criterion().calculate(series, tradingRecord));
+        }
+        return values;
+    }
+
+    private static List<Map<String, Object>> criterionScores(List<CriterionSpec> criteria, List<Num> values) {
+        List<Map<String, Object>> scores = new ArrayList<>(criteria.size());
+        for (int index = 0; index < criteria.size(); index++) {
+            Map<String, Object> score = criterionMetadata(criteria.get(index));
+            score.put("value", numberString(values.get(index)));
             scores.add(score);
         }
         return List.copyOf(scores);
