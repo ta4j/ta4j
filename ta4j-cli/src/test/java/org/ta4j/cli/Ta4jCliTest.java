@@ -35,6 +35,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.RandomAccessFile;
@@ -1596,8 +1597,16 @@ class Ta4jCliTest {
     private CliRunResult runCliAllowingError(InputStream input, String... args) {
         StringWriter stdout = new StringWriter();
         StringWriter stderr = new StringWriter();
-        int exitCode = Ta4jCli.run(args, input, new PrintWriter(stdout, true), new PrintWriter(stderr, true));
-        return new CliRunResult(exitCode, stdout.toString(), stderr.toString());
+        // The CLI routes operational logs to the process stderr, as in production;
+        // keep them out of the build output while the command runs in-process.
+        PrintStream processErr = System.err;
+        System.setErr(new PrintStream(OutputStream.nullOutputStream(), true, StandardCharsets.UTF_8));
+        try {
+            int exitCode = Ta4jCli.run(args, input, new PrintWriter(stdout, true), new PrintWriter(stderr, true));
+            return new CliRunResult(exitCode, stdout.toString(), stderr.toString());
+        } finally {
+            System.setErr(processErr);
+        }
     }
 
     private static String performanceArtifact(long medianNanos) {

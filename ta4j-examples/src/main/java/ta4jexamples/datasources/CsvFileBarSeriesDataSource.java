@@ -270,7 +270,7 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
             throw new UncheckedIOException("Unable to read CSV data from " + filename + ".", ioe);
         } catch (NumberFormatException | java.time.format.DateTimeParseException | ArrayIndexOutOfBoundsException e) {
             LOG.warn("Unable to load bars from CSV {}: row {} is not 'yyyy-MM-dd,open,high,low,close,volume': {}",
-                    filename, row, e.getMessage());
+                    filename, row, e.getMessage() == null ? "invalid number" : e.getMessage());
             return null;
         }
         return series.isEmpty() ? null : series;
