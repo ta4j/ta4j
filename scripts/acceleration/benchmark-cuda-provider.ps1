@@ -80,7 +80,14 @@ foreach ($workload in $workloads) {
             "-Dta4j.cuda.benchmark.repetitions=3", "test"
         )
         $mavenWrapper = Join-Path $root "mvnw.cmd"
-        $lines = Invoke-Native { & $mavenWrapper @arguments }
+        # Maven resolves the reactor from the working directory, so run it from the
+        # repository root even when the caller passes -RepoRoot from elsewhere.
+        Push-Location $root
+        try {
+            $lines = Invoke-Native { & $mavenWrapper @arguments }
+        } finally {
+            Pop-Location
+        }
         if ($LASTEXITCODE -ne 0) {
             $lines | ForEach-Object { Write-Host $_ }
             throw "CUDA benchmark Maven process failed with exit code $LASTEXITCODE"

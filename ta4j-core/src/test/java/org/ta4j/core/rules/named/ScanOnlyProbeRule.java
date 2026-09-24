@@ -16,7 +16,7 @@ import org.ta4j.core.TradingRecord;
 public final class ScanOnlyProbeRule extends NamedRule {
 
     public ScanOnlyProbeRule(BarSeries series, String... params) {
-        super(buildLabel(ScanOnlyProbeRule.class, params));
+        super(ScanOnlyProbeRule.class, params);
         Objects.requireNonNull(series, "series");
     }
 

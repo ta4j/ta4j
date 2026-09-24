@@ -24,7 +24,7 @@ final class NamedRuleFixture extends NamedRule {
     private final Comparison comparison;
 
     NamedRuleFixture(ClosePriceIndicator closePriceIndicator, Num threshold, Comparison comparison) {
-        super(buildLabel(comparison, threshold));
+        super(NamedRuleFixture.class, labelParameters(comparison, threshold));
         this.closePriceIndicator = closePriceIndicator;
         this.threshold = threshold;
         this.comparison = comparison;
@@ -69,8 +69,8 @@ final class NamedRuleFixture extends NamedRule {
         return series.numFactory().numOf(parameters[1]);
     }
 
-    private static String buildLabel(Comparison comparison, Num threshold) {
-        return NamedRule.buildLabel(NamedRuleFixture.class, comparison.name(), threshold.toString());
+    private static String[] labelParameters(Comparison comparison, Num threshold) {
+        return new String[] { comparison.name(), threshold.toString() };
     }
 
     enum Comparison {

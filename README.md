@@ -127,7 +127,7 @@ Run another example by overriding the configured main class:
 [`ta4j-cli`](ta4j-cli/README.md) runs backtests, walk-forwards, parameter sweeps, indicator and rule tests, and forecasts against a local CSV or JSON file, with JSON output for automation:
 
 ```bash
-./mvnw -pl ta4j-cli -am package -DskipTests
+./mvnw -pl ta4j-cli -am package
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar strategy backtest \
   --data-file ta4j-examples/src/main/resources/AAPL-PT1D-20130102_20131231.csv --strategy 'SMA(7,21)'
 ```

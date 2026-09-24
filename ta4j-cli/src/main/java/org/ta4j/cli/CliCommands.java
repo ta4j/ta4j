@@ -651,7 +651,8 @@ final class CliCommands {
                     strategyInput.strategyJsonFile, strategyInput.strategies, strategyInput.strategiesJsonFile,
                     unstableBars, series);
             strategyInput.enforceInvalidInputPolicy(resolvedStrategies, err());
-            CliSupport.requireBoundedWalkForward(resolvedStrategies.strategies(), resolvedCriteria, series, config);
+            int splitCount = CliSupport.requireBoundedWalkForward(resolvedStrategies.strategies(), resolvedCriteria,
+                    series, config);
 
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
                     execution.borrowRate, execution.borrowSide);
@@ -666,7 +667,7 @@ final class CliCommands {
             Map<String, Object> primaryWalkForward = null;
             boolean singleStrategy = resolvedStrategies.strategies().size() == 1;
             Consumer<Integer> progressCallback = singleStrategy
-                    ? CliSupport.progressCallback(artifacts.progress, err(), "strategy walk-forward", 0)
+                    ? CliSupport.progressCallback(artifacts.progress, err(), "strategy walk-forward", splitCount)
                     : null;
             for (int index = 0; index < resolvedStrategies.strategies().size(); index++) {
                 Strategy strategy = resolvedStrategies.strategies().get(index);
@@ -1129,7 +1130,7 @@ final class CliCommands {
             WalkForwardConfig config = walkForward.build(series);
             Strategy strategy = CliSupport.buildRuleTestStrategy(entryRuleLabel, entryRuleJsonFile, exitRuleLabel,
                     exitRuleJsonFile, parsedUnstableBars, series);
-            CliSupport.requireBoundedWalkForward(List.of(strategy), resolvedCriteria, series, config);
+            int splitCount = CliSupport.requireBoundedWalkForward(List.of(strategy), resolvedCriteria, series, config);
             String strategyJson = strategy.toJson();
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
                     execution.borrowRate, execution.borrowSide);
@@ -1140,7 +1141,7 @@ final class CliCommands {
             StrategyWalkForwardExecutionResult walkForwardResult = executor.executeWalkForward(strategy,
                     ignored -> Strategy.fromJson(series, strategyJson), positionSizing.positionSizer(),
                     strategy.getStartingType(), config,
-                    CliSupport.progressCallback(artifacts.progress, err(), "rule test", 0));
+                    CliSupport.progressCallback(artifacts.progress, err(), "rule test", splitCount));
 
             rejectFoldlessGeometry(walkForwardResult, series);
 

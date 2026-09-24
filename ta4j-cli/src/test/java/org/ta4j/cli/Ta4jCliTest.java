@@ -1347,6 +1347,27 @@ class Ta4jCliTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = { "strategy walk-forward", "rule test" })
+    void walkForwardProgressReportsCompletedOfTotalSplits(String command) throws Exception {
+        Path dataFile = firstBars(copyResource("AAPL-PT1D-20130102_20131231.csv"), 60);
+        Path outputFile = tempDir.resolve("walk-forward-progress-" + command.replace(' ', '-') + ".json");
+        List<String> args = new java.util.ArrayList<>(List.of(command.split(" ")));
+        args.addAll(List.of("--data-file", dataFile.toString(), "--output", outputFile.toString(), "--progress",
+                "--min-train-bars", "20", "--test-bars", "10", "--step-bars", "10", "--holdout-bars", "10"));
+        args.addAll(command.equals("rule test")
+                ? List.of("--entry-rule", "RsiThresholdRule_BELOW_14_30", "--exit-rule", "RsiThresholdRule_ABOVE_14_70")
+                : List.of("--strategy", "DayOfWeekStrategy_MONDAY_FRIDAY"));
+
+        CliRunResult result = runCliAllowingError(args.toArray(String[]::new));
+
+        assertThat(result.exitCode()).isZero();
+        int splits = result(readJson(outputFile)).getAsJsonObject("walkForward").getAsJsonArray("folds").size();
+        assertThat(splits).isGreaterThan(1);
+        assertThat(result.stderr()).contains(command + " progress: 1/" + splits,
+                command + " progress: " + splits + "/" + splits);
+    }
+
     private Path firstBars(Path csvFile, int barCount) throws IOException {
         List<String> lines = Files.readAllLines(csvFile, StandardCharsets.UTF_8);
         Path truncated = tempDir.resolve("first-" + barCount + "-" + csvFile.getFileName());

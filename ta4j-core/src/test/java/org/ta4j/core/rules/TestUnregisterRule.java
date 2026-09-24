@@ -15,7 +15,7 @@ public class TestUnregisterRule extends NamedRule {
     private final ClosePredicate closePredicate;
 
     public TestUnregisterRule(ClosePredicate closePredicate) {
-        super(NamedRule.buildLabel(TestUnregisterRule.class, closePredicate.name()));
+        super(TestUnregisterRule.class, closePredicate.name());
         this.closePredicate = closePredicate;
     }
 

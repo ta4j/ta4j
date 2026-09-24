@@ -51,7 +51,7 @@ public final class ClosePriceCrossedMovingAverageRule extends NamedRule {
      */
     public ClosePriceCrossedMovingAverageRule(ClosePriceIndicator closePriceIndicator, int period,
             AverageType averageType, CrossDirection direction) {
-        super(buildLabel(Objects.requireNonNull(direction, "direction"),
+        super(ClosePriceCrossedMovingAverageRule.class, labelParameters(Objects.requireNonNull(direction, "direction"),
                 Objects.requireNonNull(averageType, "averageType"), validatePeriod(period)));
         this.closePriceIndicator = Objects.requireNonNull(closePriceIndicator, "closePriceIndicator");
         this.period = validatePeriod(period);
@@ -115,9 +115,8 @@ public final class ClosePriceCrossedMovingAverageRule extends NamedRule {
         return movingAverageIndicator;
     }
 
-    private static String buildLabel(CrossDirection direction, AverageType averageType, int period) {
-        return NamedRule.buildLabel(ClosePriceCrossedMovingAverageRule.class, direction.name(), averageType.name(),
-                String.valueOf(period));
+    private static String[] labelParameters(CrossDirection direction, AverageType averageType, int period) {
+        return new String[] { direction.name(), averageType.name(), String.valueOf(period) };
     }
 
     private static AverageType parseAverageType(String... params) {

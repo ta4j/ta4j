@@ -3,14 +3,12 @@
  */
 package org.ta4j.core.rules.named;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.named.NamedComponentRegistry;
 import org.ta4j.core.rules.AbstractRule;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -27,10 +25,10 @@ import java.util.Optional;
  * <p>
  * Implementations must provide a {@code (BarSeries, String...)} constructor
  * that parses the compact label parameters and delegates to a strongly typed
- * constructor. The strongly typed constructor should call
- * {@link #NamedRule(String)} with a label generated via
- * {@link #buildLabel(Class, String...)}. Implementations must also register
- * their concrete type in a static initializer with
+ * constructor. The strongly typed constructor validates its arguments while
+ * computing the parameters it passes to {@link #NamedRule(Class, String...)},
+ * so invalid input is rejected before the rule exists. Implementations must
+ * also register their concrete type in a static initializer with
  * {@link #registerImplementation(Class)}.
  * </p>
  *
@@ -56,30 +54,27 @@ public abstract class NamedRule extends AbstractRule {
     private final String label;
 
     /**
-     * Protected constructor that fixes the rule label.
+     * Creates a named rule labelled by its concrete type and parameters, for
+     * example {@code RsiThresholdRule_BELOW_14_30}.
      *
-     * @param label compact label produced by {@link #buildLabel(Class, String...)}
-     *              and used for lookup and serialization
-     * @throws NullPointerException     if {@code label} is null
-     * @throws IllegalArgumentException if {@code label} does not start with this
-     *                                  class's simple name, so it could not rebuild
-     *                                  this rule
+     * <p>
+     * The label is built and validated before the superclass constructor runs, so
+     * an invalid label is rejected before any rule instance exists and never leaves
+     * a partially initialized rule behind.
+     * </p>
+     *
+     * @param type       the concrete rule class; its simple name prefixes the label
+     *                   so {@link #lookup(String)} rebuilds the same type
+     * @param parameters constructor parameters encoded as label tokens
+     * @throws NullPointerException     if {@code type} or a parameter is null
+     * @throws IllegalArgumentException if {@code type} is anonymous, or if its
+     *                                  simple name or a parameter contains the
+     *                                  underscore label delimiter
      * @since 0.25.1
      */
-    @SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Fail-fast label validation is a documented constructor "
-            + "contract: a rule whose label cannot rebuild it is rejected before the instance can escape")
-    protected NamedRule(String label) {
-        Objects.requireNonNull(label, "label");
-        String simpleName = getClass().getSimpleName();
-        if (simpleName.isBlank()) {
-            throw new IllegalArgumentException(
-                    "Named rules must be named classes; anonymous classes cannot be rebuilt");
-        }
-        if (!label.equals(simpleName) && !label.startsWith(simpleName + '_')) {
-            throw new IllegalArgumentException(
-                    "Named rule label must start with its class name " + simpleName + ": " + label);
-        }
-        this.label = label;
+    protected NamedRule(Class<? extends NamedRule> type, String... parameters) {
+        this.label = buildLabel(type, parameters);
+        super();
     }
 
     /**

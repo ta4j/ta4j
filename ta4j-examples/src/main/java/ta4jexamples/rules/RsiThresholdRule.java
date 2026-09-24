@@ -48,7 +48,8 @@ public final class RsiThresholdRule extends NamedRule {
      */
     public RsiThresholdRule(ClosePriceIndicator closePriceIndicator, int period, Num threshold,
             ThresholdDirection direction) {
-        super(buildLabel(Objects.requireNonNull(direction, "direction"), validatePeriod(period),
+        super(RsiThresholdRule.class, labelParameters(Objects.requireNonNull(direction, "direction"),
+                validatePeriod(period),
                 normalizeThreshold(Objects.requireNonNull(closePriceIndicator, "closePriceIndicator"), threshold)));
         this.closePriceIndicator = Objects.requireNonNull(closePriceIndicator, "closePriceIndicator");
         this.period = validatePeriod(period);
@@ -107,9 +108,8 @@ public final class RsiThresholdRule extends NamedRule {
         return rsiIndicator;
     }
 
-    private static String buildLabel(ThresholdDirection direction, int period, Num threshold) {
-        return NamedRule.buildLabel(RsiThresholdRule.class, direction.name(), String.valueOf(period),
-                formatThreshold(threshold));
+    private static String[] labelParameters(ThresholdDirection direction, int period, Num threshold) {
+        return new String[] { direction.name(), String.valueOf(period), formatThreshold(threshold) };
     }
 
     private static int validatePeriod(int period) {

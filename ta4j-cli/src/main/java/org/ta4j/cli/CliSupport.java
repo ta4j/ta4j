@@ -651,8 +651,11 @@ final class CliSupport {
      * test range, and every selected criterion is scored once per pass, so the
      * actual split geometry is derived from {@code config} instead of estimated
      * from the fold count.
+     *
+     * @return the number of walk-forward splits (folds plus holdout), which is also
+     *         the number of per-strategy progress completions
      */
-    static void requireBoundedWalkForward(List<Strategy> strategies, List<CriterionSpec> criteria, BarSeries series,
+    static int requireBoundedWalkForward(List<Strategy> strategies, List<CriterionSpec> criteria, BarSeries series,
             WalkForwardConfig config) {
         List<WalkForwardSplit> splits = new AnchoredExpandingWalkForwardSplitter().split(series, config);
         List<Long> reportedSpans = new ArrayList<>(splits.size() + 1);
@@ -664,6 +667,7 @@ final class CliSupport {
         }
         requireBoundedStrategyBatch(strategies, evaluatedBars);
         requireBoundedCriterionWork(criteria, reportedSpans, strategies.size(), 0L);
+        return splits.size();
     }
 
     /**

@@ -46,14 +46,13 @@ class NamedRuleTest {
     }
 
     @Test
-    void constructorRejectsLabelsThatCannotRebuildTheRule() {
-        assertThrows(NullPointerException.class, () -> new LabelCheckedRule(null));
-        IllegalArgumentException mismatch = assertThrows(IllegalArgumentException.class,
-                () -> new LabelCheckedRule("OtherRule_1"));
-        assertThat(mismatch).hasMessageContaining("LabelCheckedRule");
+    void constructorDerivesTheLabelAndRejectsInvalidParametersBeforeConstruction() {
+        assertThat(new LabelCheckedRule("1", "ABOVE").getName()).isEqualTo("LabelCheckedRule_1_ABOVE");
+        assertThat(new LabelCheckedRule().getName()).isEqualTo("LabelCheckedRule");
 
-        assertThat(new LabelCheckedRule("LabelCheckedRule_1").getName()).isEqualTo("LabelCheckedRule_1");
-        assertThat(new LabelCheckedRule("LabelCheckedRule").getName()).isEqualTo("LabelCheckedRule");
+        assertThrows(NullPointerException.class, () -> new LabelCheckedRule("1", null));
+        assertThrows(IllegalArgumentException.class, () -> new LabelCheckedRule("1_2"));
+        assertThrows(IllegalArgumentException.class, Invalid_Rule::new);
     }
 
     @Test
@@ -82,13 +81,7 @@ class NamedRuleTest {
     }
 
     @Test
-    void anonymousRulesAreRejectedBecauseTheirLabelsCannotRebuildThem() {
-        assertThrows(IllegalArgumentException.class, () -> new NamedRule("placeholder") {
-            @Override
-            public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-                return false;
-            }
-        });
+    void buildLabelRejectsAnonymousTypes() {
         // buildLabel only reads the simple name, so any anonymous class exercises it.
         @SuppressWarnings("unchecked")
         Class<? extends NamedRule> anonymousType = (Class<? extends NamedRule>) (Class<?>) new Object() {
@@ -220,7 +213,7 @@ class NamedRuleTest {
         private abstract static class DuplicateRule extends NamedRule {
 
             private DuplicateRule() {
-                super(NamedRule.buildLabel(DuplicateRule.class));
+                super(DuplicateRule.class);
             }
         }
     }
@@ -230,7 +223,7 @@ class NamedRuleTest {
         private abstract static class DuplicateRule extends NamedRule {
 
             private DuplicateRule() {
-                super(NamedRule.buildLabel(DuplicateRule.class));
+                super(DuplicateRule.class);
             }
         }
     }
@@ -238,14 +231,14 @@ class NamedRuleTest {
     private abstract static class Underscored_Rule extends NamedRule {
 
         private Underscored_Rule() {
-            super("unreachable");
+            super(Underscored_Rule.class);
         }
     }
 
     private static final class Invalid_Rule extends NamedRule {
 
         private Invalid_Rule() {
-            super("unreachable");
+            super(Invalid_Rule.class);
         }
 
         @Override
@@ -256,8 +249,8 @@ class NamedRuleTest {
 
     private static final class LabelCheckedRule extends NamedRule {
 
-        private LabelCheckedRule(String label) {
-            super(label);
+        private LabelCheckedRule(String... parameters) {
+            super(LabelCheckedRule.class, parameters);
         }
 
         @Override
@@ -269,7 +262,7 @@ class NamedRuleTest {
     private static final class AutoScanRule extends NamedRule {
 
         private AutoScanRule() {
-            super(NamedRule.buildLabel(AutoScanRule.class));
+            super(AutoScanRule.class);
         }
 
         @Override
