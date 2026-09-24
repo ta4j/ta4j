@@ -211,10 +211,6 @@ final class CliSupport {
         return GSON.toJson(value);
     }
 
-    static BarSeries loadSeries(String dataFile, String timeframeToken, String fromDateToken, String toDateToken) {
-        return loadSeries(dataFile, null, System.in, timeframeToken, fromDateToken, toDateToken);
-    }
-
     static BarSeries loadSeries(String dataFile, String dataFormat, InputStream input, String timeframeToken,
             String fromDateToken, String toDateToken) {
         Objects.requireNonNull(dataFile, "dataFile");
@@ -229,8 +225,7 @@ final class CliSupport {
             try {
                 temporaryFile = Files.createTempFile("ta4j-cli-stdin-", "." + normalizedFormat);
                 copyBoundedInput(input, temporaryFile, MAX_DATA_FILE_BYTES);
-                return loadSeries(temporaryFile.toString(), null, System.in, timeframeToken, fromDateToken,
-                        toDateToken);
+                return loadSeriesFile(temporaryFile.toString(), "stdin", timeframeToken, fromDateToken, toDateToken);
             } catch (IOException exception) {
                 throw new UncheckedIOException("Unable to read bar data from stdin.", exception);
             } finally {
@@ -243,11 +238,20 @@ final class CliSupport {
                 }
             }
         }
+        return loadSeriesFile(dataFile, dataFile, timeframeToken, fromDateToken, toDateToken);
+    }
 
+    /**
+     * Loads a local data file; {@code source} names the input in messages (the
+     * user's path, or {@code stdin} for a spooled standard-input copy).
+     */
+    private static BarSeries loadSeriesFile(String dataFile, String source, String timeframeToken, String fromDateToken,
+            String toDateToken) {
         String normalizedPath = Path.of(dataFile).toAbsolutePath().normalize().toString();
         BarSeries loadedSeries;
         String lowerCasePath = dataFile.toLowerCase(Locale.ROOT);
-        if (lowerCasePath.endsWith(".csv")) {
+        boolean csv = lowerCasePath.endsWith(".csv");
+        if (csv) {
             requireBoundedDataFile(normalizedPath);
             loadedSeries = CsvFileBarSeriesDataSource.loadCsvSeries(normalizedPath);
         } else if (lowerCasePath.endsWith(".json")) {
@@ -263,18 +267,20 @@ final class CliSupport {
                 // Missing or unreadable market data is an I/O failure, not a
                 // usage error; automation relies on the io category and exit
                 // code 74 to distinguish it from invalid arguments.
-                throw new UncheckedIOException("Unable to read bar data from " + dataFile + ".",
+                throw new UncheckedIOException("Unable to read bar data from " + source + ".",
                         new IOException("Data file does not exist or is not readable."));
             }
             // The file datasources signal mid-read I/O failures with
             // UncheckedIOException and return null only for missing, empty, or
             // unparseable files; a readable file that produced null therefore
             // has unusable content, which is a usage error.
-            throw new IllegalArgumentException("Unable to load bar data from " + dataFile + ".");
+            throw new IllegalArgumentException("Unable to load bar data from " + source + ". " + (csv
+                    ? "CSV input needs a header row followed by daily rows 'yyyy-MM-dd,open,high,low,close,volume'."
+                    : "JSON input must be a serialized bar series."));
         }
-        requireFiniteBars(loadedSeries, dataFile);
-        if (lowerCasePath.endsWith(".json")) {
-            requireCompleteJsonDecode(dataFile, loadedSeries);
+        requireFiniteBars(loadedSeries, source);
+        if (!csv) {
+            requireCompleteJsonDecode(source, loadedSeries);
         }
 
         BarSeries effectiveSeries = loadedSeries;
@@ -289,8 +295,14 @@ final class CliSupport {
             }
         }
         if (timeframeToken != null && !timeframeToken.isBlank()) {
-            requireUniformBarPeriods(effectiveSeries, dataFile);
+            requireUniformBarPeriods(effectiveSeries, source);
             Duration timeframe = parseTimeframe(timeframeToken);
+            Duration sourcePeriod = effectiveSeries.getFirstBar().getTimePeriod();
+            if (timeframe.compareTo(sourcePeriod) < 0) {
+                throw new IllegalArgumentException("--timeframe " + timeframeToken + " is finer than the "
+                        + sourcePeriod + " bars in " + source + "; bars can only be aggregated to a coarser timeframe"
+                        + (csv ? " (CSV input is daily)." : "."));
+            }
             String aggregatedName = loadedSeries.getName() + "-" + normalizeToken(timeframeToken);
             effectiveSeries = new BaseBarSeriesAggregator(new DurationBarAggregator(timeframe, true))
                     .aggregate(effectiveSeries, aggregatedName);
@@ -396,31 +408,49 @@ final class CliSupport {
         return new BacktestExecutor(series, transactionCostModel, holdingCostModel, executionModel);
     }
 
-    static Num resolveAmount(BarSeries series, String capitalToken, String stakeAmountToken) {
-        Double capital = null;
-        if (capitalToken != null && !capitalToken.isBlank()) {
-            capital = parsePositiveDouble(capitalToken, "capital");
+    /**
+     * Resolves the fixed-mode cash stake per trade: {@code --stake-amount}, else
+     * {@code --capital}, or {@code null} when neither is given (one unit per
+     * trade). Both are money amounts, as in balance and Kelly sizing; the stake
+     * must not exceed the capital, compared at the series' numeric precision.
+     */
+    static Num resolveStake(BarSeries series, String capitalToken, String stakeAmountToken) {
+        boolean hasCapital = capitalToken != null && !capitalToken.isBlank();
+        boolean hasStake = stakeAmountToken != null && !stakeAmountToken.isBlank();
+        if (hasCapital) {
+            parsePositiveDouble(capitalToken, "capital");
         }
-        Double stake = null;
-        if (stakeAmountToken != null && !stakeAmountToken.isBlank()) {
-            stake = parsePositiveDouble(stakeAmountToken, "stake-amount");
+        if (hasStake) {
+            parsePositiveDouble(stakeAmountToken, "stake-amount");
         }
+        if (hasCapital && hasStake
+                && series.numFactory().numOf(stakeAmountToken).isGreaterThan(series.numFactory().numOf(capitalToken))) {
+            throw new IllegalArgumentException("--stake-amount must not exceed --capital.");
+        }
+        if (hasStake) {
+            return series.numFactory().numOf(stakeAmountToken);
+        }
+        return hasCapital ? series.numFactory().numOf(capitalToken) : null;
+    }
 
-        String resolved = stakeAmountToken;
-        if (resolved == null || resolved.isBlank()) {
-            resolved = capitalToken;
+    /**
+     * Builds the fixed-mode sizer. Each entry buys as many units as the cash stake
+     * affords at the entry price (including entry costs); with {@code --capital},
+     * the stake is additionally capped by the realized balance, so a depleted
+     * account cannot keep buying. Without either option, each entry buys one unit.
+     */
+    private static PositionSizer fixedCashSizer(BarSeries series, String capitalToken, String stakeAmountToken) {
+        Num stake = resolveStake(series, capitalToken, stakeAmountToken);
+        if (stake == null) {
+            return PositionSizer.fixed();
         }
-        if (resolved == null || resolved.isBlank()) {
-            resolved = "1";
+        Number cash = stake.getDelegate();
+        if (capitalToken == null || capitalToken.isBlank()) {
+            return context -> context.maxAffordableAmount(context.numOf(cash));
         }
-        if (capital != null && stake != null) {
-            Num capitalAmount = series.numFactory().numOf(capitalToken);
-            Num stakeAmount = series.numFactory().numOf(stakeAmountToken);
-            if (stakeAmount.isGreaterThan(capitalAmount)) {
-                throw new IllegalArgumentException("--stake-amount must not exceed --capital.");
-            }
-        }
-        return series.numFactory().numOf(resolved);
+        Number principal = series.numFactory().numOf(capitalToken).getDelegate();
+        return PositionSizer.balance(principal,
+                (context, balance) -> context.maxAffordableAmount(balance.min(context.numOf(cash))));
     }
 
     static PositionSizingSpec resolvePositionSizing(BarSeries series, String modeToken, String capitalToken,
@@ -432,7 +462,7 @@ final class CliSupport {
             rejectOption(payoffRatioToken, "--payoff-ratio", "--position-sizing kelly");
             rejectOption(coefficientToken, "--kelly-coefficient", "--position-sizing kelly");
             yield new PositionSizingSpec(mode, capitalToken, stakeAmountToken, null, null, null,
-                    PositionSizer.fixed(resolveAmount(series, capitalToken, stakeAmountToken)));
+                    fixedCashSizer(series, capitalToken, stakeAmountToken));
         }
         case "balance" -> {
             requireOption(capitalToken, "--capital", "--position-sizing balance");
@@ -947,7 +977,14 @@ final class CliSupport {
                 averageDuration(durations), medianDuration(durations), strategyRuntimes);
     }
 
-    static List<Strategy> buildSweepStrategies(List<String> paramOptions, List<String> gridOptions,
+    /**
+     * Expands the SMA-crossover sweep grid. Combinations whose fast period is not
+     * smaller than the slow period are skipped, so overlapping ranges such as
+     * {@code fast=5,10,20} and {@code slow=10,20,50} sweep their valid pairs; the
+     * grid fails only when no pair is valid. The work bounds apply to the full grid
+     * before expansion.
+     */
+    static SweepCandidates buildSweepStrategies(List<String> paramOptions, List<String> gridOptions,
             Integer unstableBars, BarSeries series) {
         Map<String, String> fixedParams = parseKeyValueOptions(paramOptions, "--param");
         Map<String, List<String>> gridParams = parseGridOptions(gridOptions);
@@ -985,14 +1022,34 @@ final class CliSupport {
                 combinations);
 
         List<Strategy> strategies = new ArrayList<>(combinations.size());
+        int skipped = 0;
         for (Map<String, String> combination : combinations) {
+            int fast = parsePositiveInt(combination.getOrDefault("fast", "5"), "fast");
+            int slow = parsePositiveInt(combination.getOrDefault("slow", "20"), "slow");
+            if (fast >= slow) {
+                skipped++;
+                continue;
+            }
             Strategy strategy = buildSmaCrossoverStrategy(series, combination);
             if (unstableBars != null) {
                 strategy.setUnstableBars(unstableBars);
             }
             strategies.add(strategy);
         }
-        return List.copyOf(strategies);
+        if (strategies.isEmpty()) {
+            throw new IllegalArgumentException("Sweep parameter grid has no valid candidate: every combination has "
+                    + "fast >= slow, and sma-crossover needs fast < slow.");
+        }
+        return new SweepCandidates(List.copyOf(strategies), skipped);
+    }
+
+    /**
+     * Expanded sweep candidates.
+     *
+     * @param strategies   valid candidate strategies in grid order
+     * @param skippedCount combinations skipped because fast was not below slow
+     */
+    record SweepCandidates(List<Strategy> strategies, int skippedCount) {
     }
 
     private static void validateSweepParams(Set<String> fixedKeys, Set<String> gridKeys) {
@@ -1111,17 +1168,24 @@ final class CliSupport {
     static ResolvedIndicator resolveIndicator(String indicatorJson, String indicatorJsonFile, BarSeries series) {
         String input = readSerializedInput("--indicator", indicatorJson, "--indicator-json-file", indicatorJsonFile,
                 INDICATOR_INPUT_GUIDANCE);
+        boolean fromFile = indicatorJsonFile != null && !indicatorJsonFile.isBlank();
         Indicator<?> rawIndicator;
         try {
-            rawIndicator = indicatorJsonFile != null && !indicatorJsonFile.isBlank()
-                    || input.stripLeading().startsWith("{") ? Indicator.fromJson(series, input)
-                            : Indicator.fromExpression(series, input);
+            rawIndicator = fromFile || input.stripLeading().startsWith("{") ? Indicator.fromJson(series, input)
+                    : Indicator.fromExpression(series, input);
         } catch (RuntimeException ex) {
-            throw new IllegalArgumentException("Invalid indicator shorthand or serialized JSON input.", ex);
+            throw new IllegalArgumentException(fromFile ? "Invalid serialized indicator in --indicator-json-file."
+                    : "Invalid indicator shorthand or serialized JSON input '" + abbreviate(input) + "'.", ex);
         }
-
+        // Bound window scans before the numeric-type probe evaluates the indicator.
+        requireBoundedIndicatorWindowWork(rawIndicator, series.getBarCount());
         Indicator<Num> indicator = castNumericIndicator(rawIndicator);
         return new ResolvedIndicator(indicator, indicator.toJson(), indicator.getClass().getName());
+    }
+
+    private static String abbreviate(String input) {
+        String trimmed = input.strip();
+        return trimmed.length() <= 120 ? trimmed : trimmed.substring(0, 117) + "...";
     }
 
     static Strategy buildIndicatorTestStrategy(Indicator<Num> indicator, Integer unstableBars, String entryBelowToken,
@@ -1596,16 +1660,28 @@ final class CliSupport {
         return parsed;
     }
 
-    static Consumer<Integer> progressCallback(boolean enabled, PrintWriter err, String label) {
+    /**
+     * Returns a progress callback printing the first, every 25th and the final
+     * completion, or {@code null} when progress is disabled.
+     *
+     * @param total expected completions, or {@code 0} when unknown
+     */
+    static Consumer<Integer> progressCallback(boolean enabled, PrintWriter err, String label, int total) {
         if (!enabled) {
             return null;
         }
-        return completed -> {
-            if (completed == 1 || completed % 25 == 0) {
+        return completed -> reportProgress(err, label, completed, total);
+    }
+
+    static void reportProgress(PrintWriter err, String label, int completed, int total) {
+        if (completed == 1 || completed % 25 == 0 || completed == total) {
+            if (total > 0) {
+                err.printf("%s progress: %d/%d%n", label, completed, total);
+            } else {
                 err.printf("%s progress: %d%n", label, completed);
-                err.flush();
             }
-        };
+            err.flush();
+        }
     }
 
     static Path resolveOutputPath(String outputToken) throws IOException {

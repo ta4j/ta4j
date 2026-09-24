@@ -10,7 +10,9 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import com.google.gson.Gson;
@@ -44,6 +46,8 @@ final class PerformanceComparison {
     // Must stay in sync with PerformanceExperimentRunner.HostTelemetry, which
     // records this literal when local hostname resolution fails.
     private static final String UNKNOWN_HOST_ID = "unknown";
+    private static final List<String> HOST_FIELDS = List.of("hostId", "osName", "osArch", "osVersion", "javaVersion",
+            "jvmName", "availableProcessors");
 
     private PerformanceComparison() {
     }
@@ -59,10 +63,12 @@ final class PerformanceComparison {
      * @throws IOException              when artifacts cannot be read or written
      * @throws IllegalArgumentException when {@code maxRegressionPct} is non-finite
      *                                  or negative, when {@code candidateDir}
-     *                                  refers to {@code baseDir}, or when
+     *                                  refers to {@code baseDir}, when
      *                                  {@code outputDir} refers to {@code baseDir}
      *                                  or {@code candidateDir} (including symlink
-     *                                  aliases)
+     *                                  aliases), or when the artifacts are
+     *                                  incomparable (different experiment inputs,
+     *                                  host, JVM options or result cells)
      * @since 0.25.1
      */
     public static JsonObject compare(Path baseDir, Path candidateDir, Path outputDir, double maxRegressionPct)
@@ -82,16 +88,11 @@ final class PerformanceComparison {
         requireDistinctOutputDir(candidateDir, "--candidate-dir", outputDir);
         JsonObject base = readPerformanceJson(baseDir);
         JsonObject candidate = readPerformanceJson(candidateDir);
-        Files.createDirectories(outputDir);
 
-        boolean metadataMatch = required(base, "experimentId").getAsString()
-                .equals(required(candidate, "experimentId").getAsString())
-                && required(base, "repetitions").getAsInt() == required(candidate, "repetitions").getAsInt()
-                && required(base, "warmups").getAsInt() == required(candidate, "warmups").getAsInt()
-                && required(base, "barCounts").equals(required(candidate, "barCounts"))
-                && required(base, "scenarioIds").equals(required(candidate, "scenarioIds"));
-        if (!metadataMatch) {
-            throw new IllegalStateException("Cannot compare performance artifacts with different experiment inputs");
+        // Incomparable artifacts are invalid inputs (usage errors), distinct from a
+        // regression verdict; each check names the differing field.
+        for (String field : List.of("experimentId", "repetitions", "warmups", "barCounts", "scenarioIds")) {
+            requireSame("experiment input", field, required(base, field), required(candidate, field));
         }
         JsonObject baseHost = required(base, "host").getAsJsonObject();
         JsonObject candidateHost = required(candidate, "host").getAsJsonObject();
@@ -101,20 +102,18 @@ final class PerformanceComparison {
         // unrelated machines, so an unresolvable host ID is incomparable.
         if (UNKNOWN_HOST_ID.equals(baseHost.get("hostId").getAsString())
                 || UNKNOWN_HOST_ID.equals(candidateHost.get("hostId").getAsString())) {
-            throw new IllegalStateException("Cannot compare performance artifacts when the host ID is unknown");
+            throw new IllegalArgumentException("Cannot compare performance artifacts when the host ID is unknown");
         }
-        if (!baseHost.get("jvmOptionsFingerprint")
-                .getAsString()
-                .equals(candidateHost.get("jvmOptionsFingerprint").getAsString())) {
-            throw new IllegalStateException("Cannot compare performance artifacts captured with different JVM options");
-        }
-        if (!hostTelemetryMatch(baseHost, candidateHost)) {
-            throw new IllegalStateException("Cannot compare performance artifacts from different hosts");
+        requireSame("JVM option", "jvmOptionsFingerprint", baseHost.get("jvmOptionsFingerprint"),
+                candidateHost.get("jvmOptionsFingerprint"));
+        for (String field : HOST_FIELDS) {
+            requireSame("host", field, baseHost.get(field), candidateHost.get(field));
         }
         Map<String, JsonObject> baseResults = resultMap(base);
         Map<String, JsonObject> candidateResults = resultMap(candidate);
         if (!baseResults.keySet().equals(candidateResults.keySet())) {
-            throw new IllegalStateException("Cannot compare performance artifacts with different result cells");
+            throw new IllegalArgumentException("Cannot compare performance artifacts with different result cells: "
+                    + baseResults.keySet() + " vs " + candidateResults.keySet());
         }
         Set<String> declaredCells = declaredCells(required(base, "scenarioIds").getAsJsonArray(),
                 required(base, "barCounts").getAsJsonArray());
@@ -123,9 +122,10 @@ final class PerformanceComparison {
             missing.removeAll(baseResults.keySet());
             Set<String> unexpected = new LinkedHashSet<>(baseResults.keySet());
             unexpected.removeAll(declaredCells);
-            throw new IllegalStateException("Performance artifact does not cover the declared grid; missing cells: "
+            throw new IllegalArgumentException("Performance artifact does not cover the declared grid; missing cells: "
                     + missing + ", unexpected cells: " + unexpected);
         }
+        Files.createDirectories(outputDir);
 
         JsonArray cells = new JsonArray();
         boolean checksumMatch = true;
@@ -180,7 +180,9 @@ final class PerformanceComparison {
         comparison.addProperty("experimentId", base.get("experimentId").getAsString());
         comparison.addProperty("baseRef", base.get("gitRef").getAsString());
         comparison.addProperty("candidateRef", candidate.get("gitRef").getAsString());
-        comparison.addProperty("metadataMatch", metadataMatch);
+        // Incomparable metadata is rejected above, so a written comparison always
+        // matches.
+        comparison.addProperty("metadataMatch", true);
         comparison.addProperty("checksumMatch", checksumMatch);
         comparison.addProperty("maxRegressionPct", maxRegressionPct);
         comparison.addProperty("regressionWithinThreshold", regressionWithinThreshold);
@@ -331,7 +333,7 @@ final class PerformanceComparison {
             String key = result.get("scenarioId").getAsString() + ":" + result.get("barCount").getAsInt();
             JsonObject previous = byCell.putIfAbsent(key, result);
             if (previous != null) {
-                throw new IllegalStateException("Duplicate result cell: " + key);
+                throw new IllegalArgumentException("Duplicate result cell: " + key);
             }
         }
         return byCell;
@@ -351,19 +353,16 @@ final class PerformanceComparison {
     private static JsonElement required(JsonObject artifact, String field) {
         JsonElement value = artifact.get(field);
         if (value == null || value.isJsonNull()) {
-            throw new IllegalStateException("Performance artifact is missing required field: " + field);
+            throw new IllegalArgumentException("Performance artifact is missing required field: " + field);
         }
         return value;
     }
 
-    private static boolean hostTelemetryMatch(JsonObject base, JsonObject candidate) {
-        return base.get("hostId").getAsString().equals(candidate.get("hostId").getAsString())
-                && base.get("osName").getAsString().equals(candidate.get("osName").getAsString())
-                && base.get("osArch").getAsString().equals(candidate.get("osArch").getAsString())
-                && base.get("osVersion").getAsString().equals(candidate.get("osVersion").getAsString())
-                && base.get("javaVersion").getAsString().equals(candidate.get("javaVersion").getAsString())
-                && base.get("jvmName").getAsString().equals(candidate.get("jvmName").getAsString())
-                && base.get("availableProcessors").getAsInt() == candidate.get("availableProcessors").getAsInt();
+    private static void requireSame(String kind, String field, JsonElement base, JsonElement candidate) {
+        if (!Objects.equals(base, candidate)) {
+            throw new IllegalArgumentException("Cannot compare performance artifacts with a different " + kind + ": "
+                    + field + " is " + base + " in --base-dir but " + candidate + " in --candidate-dir");
+        }
     }
 
     private static double percentDelta(long base, long candidate) {

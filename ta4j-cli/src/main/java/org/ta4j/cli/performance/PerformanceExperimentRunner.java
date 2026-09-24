@@ -155,7 +155,8 @@ public final class PerformanceExperimentRunner {
         for (String id : selectedIds) {
             PerformanceScenario scenario = byId.get(id);
             if (scenario == null) {
-                throw new IllegalArgumentException("Unknown scenario for " + experiment.id() + ": " + id);
+                throw new IllegalArgumentException("Unknown scenario for " + experiment.id() + ": " + id
+                        + ". Available scenarios: " + String.join(", ", byId.keySet()) + ".");
             }
             selected.add(scenario);
         }
@@ -164,7 +165,7 @@ public final class PerformanceExperimentRunner {
 
     private static Path defaultOutputDir(String experimentId) {
         String timestamp = Instant.now().toString().replace(':', '-');
-        return Path.of(".agents", "benchmarks", "performance", experimentId, timestamp);
+        return Path.of("ta4j-performance", experimentId, timestamp);
     }
 
     private static JsonArray profileHints(List<PerformanceScenario> scenarios, Path outputDir) {

@@ -51,10 +51,10 @@ class PerformanceComparisonTest {
         writePerformanceJson(baseDir, 16, 10L, 1_000L);
         writePerformanceJson(candidateDir, 32, 10L, 900L);
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> PerformanceComparison.compare(baseDir, candidateDir, tempDir.resolve("comparison"), 5d));
 
-        assertEquals("Cannot compare performance artifacts with different experiment inputs", exception.getMessage());
+        assertTrue(exception.getMessage().contains("different experiment input"), exception.getMessage());
     }
 
     @Test
@@ -68,11 +68,10 @@ class PerformanceComparisonTest {
         root.getAsJsonObject("host").addProperty("jvmOptionsFingerprint", "sha256:other-jvm");
         Files.writeString(candidateFile, GSON.toJson(root), StandardCharsets.UTF_8);
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> PerformanceComparison.compare(baseDir, candidateDir, tempDir.resolve("comparison"), 5d));
 
-        assertEquals("Cannot compare performance artifacts captured with different JVM options",
-                exception.getMessage());
+        assertTrue(exception.getMessage().contains("jvmOptionsFingerprint"), exception.getMessage());
     }
 
     @Test
@@ -151,10 +150,10 @@ class PerformanceComparisonTest {
         candidate.getAsJsonObject("host").addProperty("hostId", "sha256:other-host");
         Files.writeString(candidateArtifact, GSON.toJson(candidate), StandardCharsets.UTF_8);
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> PerformanceComparison.compare(baseDir, candidateDir, tempDir.resolve("comparison"), 5d));
 
-        assertEquals("Cannot compare performance artifacts from different hosts", exception.getMessage());
+        assertTrue(exception.getMessage().contains("different host"), exception.getMessage());
     }
 
     @Test
@@ -168,10 +167,10 @@ class PerformanceComparisonTest {
         candidate.getAsJsonObject("host").addProperty("osVersion", "fixture-version-upgraded");
         Files.writeString(candidateArtifact, GSON.toJson(candidate), StandardCharsets.UTF_8);
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> PerformanceComparison.compare(baseDir, candidateDir, tempDir.resolve("comparison"), 5d));
 
-        assertEquals("Cannot compare performance artifacts from different hosts", exception.getMessage());
+        assertTrue(exception.getMessage().contains("different host"), exception.getMessage());
     }
 
     @Test
@@ -183,7 +182,7 @@ class PerformanceComparisonTest {
         setHostId(baseDir, "unknown");
         setHostId(candidateDir, "unknown");
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> PerformanceComparison.compare(baseDir, candidateDir, tempDir.resolve("comparison"), 5d));
 
         assertEquals("Cannot compare performance artifacts when the host ID is unknown", exception.getMessage());
@@ -197,7 +196,7 @@ class PerformanceComparisonTest {
         writePerformanceJson(candidateDir, 10L, 900L);
         setHostId(candidateDir, "unknown");
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> PerformanceComparison.compare(baseDir, candidateDir, tempDir.resolve("comparison"), 5d));
 
         assertEquals("Cannot compare performance artifacts when the host ID is unknown", exception.getMessage());
@@ -217,7 +216,7 @@ class PerformanceComparisonTest {
         writePerformanceJson(baseDir, 10L, List.of(new ResultFixture(16, 1_000L), new ResultFixture(16, 900L)));
         writePerformanceJson(candidateDir, 10L, List.of(new ResultFixture(16, 1_000L), new ResultFixture(16, 900L)));
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> PerformanceComparison.compare(baseDir, candidateDir, tempDir.resolve("comparison"), 5d));
 
         assertEquals("Duplicate result cell: endOnly:16", exception.getMessage());

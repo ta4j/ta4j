@@ -4,7 +4,9 @@
 package org.ta4j.core;
 
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.apache.logging.log4j.Level;
@@ -17,15 +19,17 @@ import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 
 /**
- * Shared support for capturing trace logs in black-box tests.
+ * Shared support for capturing trace logs in black-box tests. While open, every
+ * root appender (the test configuration's console, or a stderr appender a CLI
+ * run installed) is detached so captured logs never reach build output.
  */
 public final class TraceTestLogger {
 
     private final Set<String> configuredLoggerNames = new HashSet<>();
+    private final List<Appender> detachedAppenders = new ArrayList<>();
     private LoggerContext loggerContext;
     private StringWriter logOutput;
     private Appender appender;
-    private Appender consoleAppender;
     private Level originalLevel;
     private LoggerConfig rootLoggerConfig;
 
@@ -35,9 +39,9 @@ public final class TraceTestLogger {
         rootLoggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
         originalLevel = rootLoggerConfig.getLevel();
 
-        consoleAppender = rootLoggerConfig.getAppenders().get("Console");
-        if (consoleAppender != null) {
-            rootLoggerConfig.removeAppender("Console");
+        detachedAppenders.addAll(rootLoggerConfig.getAppenders().values());
+        for (Appender detached : detachedAppenders) {
+            rootLoggerConfig.removeAppender(detached.getName());
         }
 
         rootLoggerConfig.setLevel(Level.TRACE);
@@ -69,9 +73,10 @@ public final class TraceTestLogger {
         }
         configuredLoggerNames.clear();
 
-        if (consoleAppender != null) {
-            rootLoggerConfig.addAppender(consoleAppender, null, null);
+        for (Appender detached : detachedAppenders) {
+            rootLoggerConfig.addAppender(detached, null, null);
         }
+        detachedAppenders.clear();
 
         if (originalLevel != null) {
             LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);

@@ -82,6 +82,33 @@ final class CliCommands {
         final InputStream in() {
             return ((Ta4jCli) spec.root().userObject()).input();
         }
+
+        /**
+         * Writes the response and returns the exit code. When nothing succeeded and the
+         * response went to {@code --output}, stdout is empty, so the failure is also
+         * reported through the error channel (text line or JSON envelope).
+         */
+        final int completeRun(Map<String, Object> response, Path outputPath, boolean failed, String failure)
+                throws IOException {
+            CliSupport.writeJson(CliSupport.toJson(response), outputPath, out());
+            if (failed && outputPath != null) {
+                throw new WorkflowFailedException(failure + "; details written to " + outputPath + ".");
+            }
+            return failed ? CommandLine.ExitCode.SOFTWARE : 0;
+        }
+    }
+
+    /**
+     * Signals a run that completed without any successful result after its response
+     * was written to {@code --output}.
+     */
+    static final class WorkflowFailedException extends RuntimeException {
+
+        private static final long serialVersionUID = 1L;
+
+        WorkflowFailedException(String message) {
+            super(message);
+        }
     }
 
     @Command
@@ -265,10 +292,10 @@ final class CliCommands {
         @Option(names = "--execution-model", paramLabel = "<model>", description = "Execution model: next-open or current-close.")
         String executionModel;
 
-        @Option(names = "--capital", paramLabel = "<number>", description = "Portfolio size used as the default stake.")
+        @Option(names = "--capital", paramLabel = "<number>", description = "Starting cash; in fixed sizing also the default per-trade stake (without --capital or --stake-amount each trade buys one unit).")
         String capital;
 
-        @Option(names = "--stake-amount", paramLabel = "<number>", description = "Per-trade amount.")
+        @Option(names = "--stake-amount", paramLabel = "<number>", description = "Fixed sizing: cash invested per trade, capped by the realized balance when --capital is set.")
         String stakeAmount;
 
         @Option(names = "--position-sizing", paramLabel = "<mode>", description = "Entry sizing: fixed, balance, or kelly.")
@@ -365,7 +392,7 @@ final class CliCommands {
         @Option(names = "--unstable-bars", paramLabel = "<count>", description = "Override strategy unstable bars.")
         String unstableBars;
 
-        @Option(names = "--param", arity = "1..*", paramLabel = "key=value", description = "Command-specific fixed parameter.")
+        @Option(names = "--param", arity = "1..*", hidden = true, description = "Rejected with guidance; encode parameters in the input.")
         List<String> params = new ArrayList<>();
 
         @Option(names = "--invalid-input", defaultValue = "fail", paramLabel = "<policy>", description = "Invalid batch input policy: fail or skip.")
@@ -508,10 +535,7 @@ final class CliCommands {
             for (int i = 0; i < resolvedStrategyList.size(); i++) {
                 strategyIndex.put(resolvedStrategyList.get(i), i);
             }
-            boolean singleStrategy = resolvedStrategies.strategies().size() == 1;
-            Consumer<Integer> progressCallback = singleStrategy
-                    ? CliSupport.progressCallback(artifacts.progress, err(), "strategy backtest")
-                    : null;
+            int strategyCount = resolvedStrategyList.size();
 
             List<TradingStatement> statements = new ArrayList<>(resolvedStrategies.strategies().size());
             List<BacktestRuntimeReport> runtimeReports = new ArrayList<>(strategyGroups.size());
@@ -521,9 +545,14 @@ final class CliCommands {
             int completedStrategies = 0;
             for (Map.Entry<Trade.TradeType, List<Strategy>> group : strategyGroups.entrySet()) {
                 List<Strategy> groupStrategies = group.getValue();
+                int completedBefore = completedStrategies;
+                Consumer<Integer> groupProgress = artifacts.progress
+                        ? completed -> CliSupport.reportProgress(err(), "strategy backtest",
+                                completedBefore + completed, strategyCount)
+                        : null;
                 try {
                     BacktestExecutionResult result = executor.executeWithRuntimeReport(groupStrategies,
-                            positionSizing.positionSizer(), group.getKey(), progressCallback);
+                            positionSizing.positionSizer(), group.getKey(), groupProgress);
                     statements.addAll(result.tradingStatements());
                     runtimeReports.add(result.runtimeReport());
                     for (BacktestExecutionResult.StrategyFailure failure : result.strategyFailures()) {
@@ -535,10 +564,16 @@ final class CliCommands {
                         indexedFailures.add(new IndexedFailure(strategyIndex.get(strategy),
                                 failureEntry(strategy.getName(), ex.getMessage())));
                     }
+                    if (artifacts.progress) {
+                        CliSupport.reportProgress(err(), "strategy backtest", completedBefore + groupStrategies.size(),
+                                strategyCount);
+                    }
                 }
                 completedStrategies += groupStrategies.size();
-                reportProgress(artifacts.progress && !singleStrategy, err(), "strategy backtest", completedStrategies);
             }
+            // Groups run long and short strategies separately; report in input order.
+            statements.sort(Comparator
+                    .comparingInt(statement -> strategyIndex.getOrDefault(statement.getStrategy(), Integer.MAX_VALUE)));
             List<Map<String, Object>> failedStrategies = indexedFailures.stream()
                     .sorted(Comparator.comparingInt(IndexedFailure::inputIndex))
                     .map(IndexedFailure::failure)
@@ -570,8 +605,7 @@ final class CliCommands {
             if (!failedStrategies.isEmpty()) {
                 response.put("status", statements.isEmpty() ? "error" : "partial");
             }
-            CliSupport.writeJson(CliSupport.toJson(response), outputPath, out());
-            return statements.isEmpty() ? CommandLine.ExitCode.SOFTWARE : 0;
+            return completeRun(response, outputPath, statements.isEmpty(), "every strategy failed");
         }
     }
 
@@ -632,7 +666,7 @@ final class CliCommands {
             Map<String, Object> primaryWalkForward = null;
             boolean singleStrategy = resolvedStrategies.strategies().size() == 1;
             Consumer<Integer> progressCallback = singleStrategy
-                    ? CliSupport.progressCallback(artifacts.progress, err(), "strategy walk-forward")
+                    ? CliSupport.progressCallback(artifacts.progress, err(), "strategy walk-forward", 0)
                     : null;
             for (int index = 0; index < resolvedStrategies.strategies().size(); index++) {
                 Strategy strategy = resolvedStrategies.strategies().get(index);
@@ -646,7 +680,8 @@ final class CliCommands {
                             positionSizing.positionSizer(), backtestStrategy.getStartingType());
                 } catch (RuntimeException ex) {
                     failedStrategies.add(failureEntry(strategy.getName(), ex.getMessage()));
-                    reportProgress(artifacts.progress && !singleStrategy, err(), "strategy walk-forward", index + 1);
+                    reportProgress(artifacts.progress && !singleStrategy, err(), "strategy walk-forward", index + 1,
+                            resolvedStrategies.strategies().size());
                     continue;
                 }
                 try {
@@ -655,7 +690,8 @@ final class CliCommands {
                             strategy.getStartingType(), config, progressCallback);
                 } catch (RuntimeException ex) {
                     failedStrategies.add(failureEntry(strategy.getName(), ex.getMessage()));
-                    reportProgress(artifacts.progress && !singleStrategy, err(), "strategy walk-forward", index + 1);
+                    reportProgress(artifacts.progress && !singleStrategy, err(), "strategy walk-forward", index + 1,
+                            resolvedStrategies.strategies().size());
                     continue;
                 }
 
@@ -669,7 +705,8 @@ final class CliCommands {
                         summary += " (cause: " + cause.getMessage() + ")";
                     }
                     failedStrategies.add(failureEntry(strategy.getName(), summary));
-                    reportProgress(artifacts.progress && !singleStrategy, err(), "strategy walk-forward", index + 1);
+                    reportProgress(artifacts.progress && !singleStrategy, err(), "strategy walk-forward", index + 1,
+                            resolvedStrategies.strategies().size());
                     continue;
                 }
                 TradingStatement statement = backtest.tradingStatements().getFirst();
@@ -693,7 +730,8 @@ final class CliCommands {
                     primaryBacktestRuntime = backtestRuntimeMap;
                     primaryWalkForward = walkForwardMap;
                 }
-                reportProgress(artifacts.progress && !singleStrategy, err(), "strategy walk-forward", index + 1);
+                reportProgress(artifacts.progress && !singleStrategy, err(), "strategy walk-forward", index + 1,
+                        resolvedStrategies.strategies().size());
             }
 
             Path chartPath = primaryStatement == null ? null
@@ -722,8 +760,7 @@ final class CliCommands {
             if (!failedStrategies.isEmpty() || anyFoldFailures) {
                 response.put("status", resultEntries.isEmpty() ? "error" : "partial");
             }
-            CliSupport.writeJson(CliSupport.toJson(response), outputPath, out());
-            return resultEntries.isEmpty() ? CommandLine.ExitCode.SOFTWARE : 0;
+            return completeRun(response, outputPath, resultEntries.isEmpty(), "every strategy failed");
         }
     }
 
@@ -772,7 +809,9 @@ final class CliCommands {
             CliSupport.requireDistinctArtifactPaths(artifactPathMap(data.dataFile, null, null, null, null, null,
                     criteria.criteriaFiles, artifacts.output, artifacts.chart));
             BarSeries series = data.loadSeries(in());
-            List<Strategy> strategies = CliSupport.buildSweepStrategies(params, paramGrids, parsedUnstableBars, series);
+            CliSupport.SweepCandidates candidates = CliSupport.buildSweepStrategies(params, paramGrids,
+                    parsedUnstableBars, series);
+            List<Strategy> strategies = candidates.strategies();
             CliSupport.requireBoundedCriterionWork(resolvedCriteria, series.getBarCount(),
                     Math.min(strategies.size(), topK), strategies.size());
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
@@ -782,7 +821,7 @@ final class CliCommands {
             BacktestExecutionResult sweepResult = executor.executeAndKeepTopK(strategies,
                     positionSizing.positionSizer(), strategies.getFirst().getStartingType(),
                     resolvedCriteria.getFirst().criterion(), topK,
-                    CliSupport.progressCallback(artifacts.progress, err(), "strategy sweep"));
+                    CliSupport.progressCallback(artifacts.progress, err(), "strategy sweep", strategies.size()));
             TradingStatement topStatement = sweepResult.tradingStatements().isEmpty() ? null
                     : sweepResult.tradingStatements().getFirst();
             Path chartPath = topStatement == null ? null : CliSupport.saveChart(artifacts.chart, series, topStatement);
@@ -805,6 +844,7 @@ final class CliCommands {
                     CliSupport.backtestRuntimeToMap(sweepResult.runtimeReport()));
             Map<String, Object> payload = CliSupport.result(response);
             payload.put("candidateCount", strategies.size());
+            payload.put("skippedCandidateCount", candidates.skippedCount());
             payload.put("topK", topK);
             payload.put("failedStrategyCount", failedStrategies.size());
             payload.put("failedStrategies", failedStrategies);
@@ -812,8 +852,7 @@ final class CliCommands {
             if (!failedStrategies.isEmpty()) {
                 response.put("status", topStatement == null ? "error" : "partial");
             }
-            CliSupport.writeJson(CliSupport.toJson(response), outputPath, out());
-            return topStatement == null ? CommandLine.ExitCode.SOFTWARE : 0;
+            return completeRun(response, outputPath, topStatement == null, "every sweep candidate failed");
         }
     }
 
@@ -994,7 +1033,7 @@ final class CliCommands {
         @Option(names = "--exit-above", paramLabel = "<number>", description = "Exit when indicator is above this value.")
         String exitAbove;
 
-        @Option(names = "--param", arity = "1..*", paramLabel = "key=value", description = "Unsupported for indicator inputs.")
+        @Option(names = "--param", arity = "1..*", hidden = true, description = "Rejected with guidance; encode parameters in the input.")
         List<String> params = new ArrayList<>();
 
         @Override
@@ -1007,10 +1046,10 @@ final class CliCommands {
             CliSupport.requireDistinctArtifactPaths(artifactPathMap(data.dataFile, null, null, indicatorJsonFile, null,
                     null, criteria.criteriaFiles, artifacts.output, artifacts.chart));
             BarSeries series = data.loadSeries(in());
+            CliSupport.requireBoundedCriterionWork(resolvedCriteria, series.getBarCount(), 1, 0);
+            // Resolution bounds the indicator's window scans before evaluating it.
             CliSupport.ResolvedIndicator resolvedIndicator = CliSupport.resolveIndicator(indicatorJson,
                     indicatorJsonFile, series);
-            CliSupport.requireBoundedIndicatorWindowWork(resolvedIndicator.indicator(), series.getBarCount());
-            CliSupport.requireBoundedCriterionWork(resolvedCriteria, series.getBarCount(), 1, 0);
             Strategy strategy = CliSupport.buildIndicatorTestStrategy(resolvedIndicator.indicator(), parsedUnstableBars,
                     entryBelow, entryAbove, exitBelow, exitAbove, series);
             BacktestExecutor executor = CliSupport.buildExecutor(series, execution.executionModel, execution.commission,
@@ -1018,7 +1057,7 @@ final class CliCommands {
             CliSupport.PositionSizingSpec positionSizing = execution.resolvePositionSizing(series);
             BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy),
                     positionSizing.positionSizer(), strategy.getStartingType(),
-                    CliSupport.progressCallback(artifacts.progress, err(), "indicator test"));
+                    CliSupport.progressCallback(artifacts.progress, err(), "indicator test", 1));
             TradingStatement statement = result.tradingStatements().getFirst();
             Path chartPath = CliSupport.saveChart(artifacts.chart, series, statement);
             Path outputPath = CliSupport.resolveOutputPath(artifacts.output);
@@ -1075,7 +1114,7 @@ final class CliCommands {
         @Option(names = "--unstable-bars", paramLabel = "<count>", description = "Override strategy unstable bars.")
         String unstableBars;
 
-        @Option(names = "--param", arity = "1..*", paramLabel = "key=value", description = "Unsupported for rule inputs.")
+        @Option(names = "--param", arity = "1..*", hidden = true, description = "Rejected with guidance; encode parameters in the input.")
         List<String> params = new ArrayList<>();
 
         @Override
@@ -1101,7 +1140,7 @@ final class CliCommands {
             StrategyWalkForwardExecutionResult walkForwardResult = executor.executeWalkForward(strategy,
                     ignored -> Strategy.fromJson(series, strategyJson), positionSizing.positionSizer(),
                     strategy.getStartingType(), config,
-                    CliSupport.progressCallback(artifacts.progress, err(), "rule test"));
+                    CliSupport.progressCallback(artifacts.progress, err(), "rule test", 0));
 
             rejectFoldlessGeometry(walkForwardResult, series);
 
@@ -1131,8 +1170,7 @@ final class CliCommands {
                     CliSupport.backtestRuntimeToMap(backtest.runtimeReport()));
             CliSupport.putRunMetadata(response, "walkForwardRuntime",
                     CliSupport.walkForwardRuntimeToMap(walkForwardResult.runtimeReport()));
-            CliSupport.writeJson(CliSupport.toJson(response), outputPath, out());
-            return allFoldsFailed ? CommandLine.ExitCode.SOFTWARE : 0;
+            return completeRun(response, outputPath, allFoldsFailed, "every walk-forward fold failed");
         }
     }
 
@@ -1181,13 +1219,9 @@ final class CliCommands {
         return walkForwardResult.folds().isEmpty() && !walkForwardResult.foldFailures().isEmpty();
     }
 
-    private static void reportProgress(boolean enabled, PrintWriter err, String label, int completed) {
-        if (!enabled) {
-            return;
-        }
-        if (completed == 1 || completed % 25 == 0) {
-            err.printf("%s progress: %d%n", label, completed);
-            err.flush();
+    private static void reportProgress(boolean enabled, PrintWriter err, String label, int completed, int total) {
+        if (enabled) {
+            CliSupport.reportProgress(err, label, completed, total);
         }
     }
 

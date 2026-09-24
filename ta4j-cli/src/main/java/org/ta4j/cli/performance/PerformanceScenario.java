@@ -101,18 +101,5 @@ interface PerformanceScenario {
             }
             counters = counters == null ? Map.of() : Map.copyOf(counters);
         }
-
-        /**
-         * Creates a measurement without extra counters.
-         *
-         * @param operations    logical operation count
-         * @param durationNanos measured runtime in nanoseconds
-         * @param checksum      deterministic checksum
-         * @return measurement instance
-         * @since 0.25.1
-         */
-        public static Measurement of(long operations, long durationNanos, long checksum) {
-            return new Measurement(operations, durationNanos, checksum, Map.of());
-        }
     }
 }

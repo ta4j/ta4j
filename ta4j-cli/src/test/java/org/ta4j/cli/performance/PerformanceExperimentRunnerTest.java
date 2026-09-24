@@ -167,7 +167,9 @@ class PerformanceExperimentRunnerTest {
                 () -> PerformanceExperimentRunner.run(new PerformanceExperimentRunner.RunRequest("kalman-filter",
                         List.of(16), List.of("missing"), 5, 1, Optional.of(tempDir.resolve("unknown")), false)));
 
-        assertEquals("Unknown scenario for kalman-filter: missing", exception.getMessage());
+        assertTrue(
+                exception.getMessage().startsWith("Unknown scenario for kalman-filter: missing. Available scenarios: "),
+                exception.getMessage());
     }
 
     @Test

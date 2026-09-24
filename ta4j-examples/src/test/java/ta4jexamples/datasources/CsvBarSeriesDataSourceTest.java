@@ -336,8 +336,8 @@ public class CsvBarSeriesDataSourceTest {
     }
 
     @Test
-    public void testLoadSeriesPropagatesIoFailureOnReadError() throws Exception {
-        Path tempFile = Files.createTempFile("ta4j-truncated-", ".csv");
+    public void testCorruptedRowIsUnparseableRatherThanTruncatingTheSeries() throws Exception {
+        Path tempFile = Files.createTempFile("ta4j-corrupt-row-", ".csv");
         try {
             Files.writeString(tempFile, """
                     date,open,high,low,close,volume
@@ -346,10 +346,25 @@ public class CsvBarSeriesDataSourceTest {
                     """);
             Files.write(tempFile, new byte[] { (byte) 0xC3, (byte) 0x28 }, StandardOpenOption.APPEND);
 
-            UncheckedIOException failure = assertThrows(UncheckedIOException.class,
-                    () -> CsvFileBarSeriesDataSource.loadCsvSeries(tempFile.toString()));
+            assertNull(CsvFileBarSeriesDataSource.loadCsvSeries(tempFile.toString()));
+        } finally {
+            Files.deleteIfExists(tempFile);
+        }
+    }
 
-            assertNotNull(failure.getMessage(), "I/O failure must explain what could not be read");
+    @Test
+    public void testNonUtf8HeaderBytesAndBlankLinesStillLoad() throws Exception {
+        Path tempFile = Files.createTempFile("ta4j-cp1252-header-", ".csv");
+        try {
+            Files.write(tempFile, new byte[] { 'd', 'a', 't', 'e', (byte) 0xE9, ',', 'o', ',', 'h', ',', 'l', ',', 'c',
+                    ',', 'v', '\n' });
+            Files.writeString(tempFile, "2013-01-02,553.82,555.00,541.63,549.03,20018500\n\n",
+                    StandardOpenOption.APPEND);
+
+            BarSeries series = CsvFileBarSeriesDataSource.loadCsvSeries(tempFile.toString());
+
+            assertNotNull(series);
+            assertEquals(1, series.getBarCount());
         } finally {
             Files.deleteIfExists(tempFile);
         }

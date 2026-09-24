@@ -44,7 +44,8 @@ final class PerformanceExperiments {
         if (KALMAN_FILTER_ID.equals(id)) {
             return new KalmanFilterExperiment();
         }
-        throw new IllegalArgumentException("Unknown experiment: " + id);
+        throw new IllegalArgumentException(
+                "Unknown experiment: " + id + ". Available experiments: " + KALMAN_FILTER_ID + ".");
     }
 
     private static final class KalmanFilterExperiment implements PerformanceExperiment {

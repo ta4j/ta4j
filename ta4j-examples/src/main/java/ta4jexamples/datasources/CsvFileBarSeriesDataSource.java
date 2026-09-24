@@ -18,8 +18,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UncheckedIOException;
-import java.nio.charset.CharsetDecoder;
-import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -185,15 +183,18 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
 
     /**
      * Loads a bar series from a CSV file with the specified filename. The CSV file
-     * is expected to contain stock market data with the following columns: date,
-     * open price, high price, low price, close price, and volume. The date format
-     * is expected to match the predefined DATE_FORMAT.
+     * is expected to contain daily stock market data with the following columns:
+     * date ({@code yyyy-MM-dd}), open price, high price, low price, close price,
+     * and volume. Blank lines are ignored. Bytes that are not valid UTF-8 are
+     * replaced rather than rejected, so a non-UTF-8 header still loads while a
+     * corrupted numeric field fails to parse.
      *
      * @param filename the name of the CSV file to load
      * @return the bar series containing stock data loaded from the specified CSV
-     *         file, or null if the file is not found, empty, or unparseable
-     * @throws UncheckedIOException if the file exists but cannot be read or decoded
-     *                              to completion
+     *         file, or null if the file is not found, empty, or unparseable (the
+     *         first unparseable row is logged at WARN)
+     * @throws UncheckedIOException if the file exists but cannot be read to
+     *                              completion
      */
     public static BarSeries loadCsvSeries(String filename) {
         InputStream stream = null;
@@ -228,17 +229,19 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
         BarSeries series = seriesBuilder.build();
 
         InputStream resolvedStream = stream;
-        CharsetDecoder utf8Decoder = StandardCharsets.UTF_8.newDecoder()
-                .onMalformedInput(CodingErrorAction.REPORT)
-                .onUnmappableCharacter(CodingErrorAction.REPORT);
+        int row = 1;
         try (resolvedStream) {
-            try (InputStreamReader reader = new InputStreamReader(resolvedStream, utf8Decoder)) {
+            try (InputStreamReader reader = new InputStreamReader(resolvedStream, StandardCharsets.UTF_8)) {
                 try (CSVReader csvReader = new CSVReaderBuilder(reader)
                         .withCSVParser(new CSVParserBuilder().withSeparator(',').build())
                         .withSkipLines(1)
                         .build()) {
                     String[] line;
                     while ((line = csvReader.readNext()) != null) {
+                        row++;
+                        if (line.length == 1 && line[0].isBlank()) {
+                            continue;
+                        }
                         Instant date = LocalDate.parse(line[0], DATE_FORMAT).atStartOfDay(ZoneOffset.UTC).toInstant();
                         double open = Double.parseDouble(line[1]);
                         double high = Double.parseDouble(line[2]);
@@ -258,15 +261,16 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
                                 .add();
                     }
                 } catch (CsvException | CsvMalformedLineException e) {
-                    LOG.error("Unable to load bars from CSV. File is not valid csv.", e);
+                    LOG.warn("Unable to load bars from CSV {}: invalid CSV at row {}: {}", filename, row + 1,
+                            e.getMessage());
                     return null;
                 }
             }
         } catch (IOException ioe) {
-            LOG.error("Unable to load bars from CSV", ioe);
             throw new UncheckedIOException("Unable to read CSV data from " + filename + ".", ioe);
         } catch (NumberFormatException | java.time.format.DateTimeParseException | ArrayIndexOutOfBoundsException e) {
-            LOG.error("Error while parsing value", e);
+            LOG.warn("Unable to load bars from CSV {}: row {} is not 'yyyy-MM-dd,open,high,low,close,volume': {}",
+                    filename, row, e.getMessage());
             return null;
         }
         return series.isEmpty() ? null : series;

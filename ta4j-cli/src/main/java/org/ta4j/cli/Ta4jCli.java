@@ -8,8 +8,11 @@ import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.logging.log4j.Level;
@@ -189,14 +192,17 @@ public final class Ta4jCli implements Runnable {
     private static int handleParameterException(ParameterException exception, String[] args) {
         CommandLine commandLine = exception.getCommandLine();
         PrintWriter err = commandLine.getErr();
-        Ta4jCli root = rootCommand(commandLine);
-        if (root.errorFormat == ErrorFormat.JSON) {
+        // picocli stops at the first bad token, so a later --error-format may not
+        // have been applied yet; honor it from the raw arguments as well.
+        if (rootCommand(commandLine).errorFormat == ErrorFormat.JSON || requestsJsonErrorFormat(args)) {
             err.println(CliSupport
                     .toJson(errorPayload(commandLine, "usage", CommandLine.ExitCode.USAGE, exception.getMessage())));
         } else {
             err.println(exception.getMessage());
-            err.println();
-            commandLine.usage(err);
+            if (exception instanceof CommandLine.UnmatchedArgumentException unmatched) {
+                unmatched.printSuggestions(err);
+            }
+            err.println("Try '" + commandLine.getCommandSpec().qualifiedName() + " --help' for more information.");
         }
         err.flush();
         return CommandLine.ExitCode.USAGE;
@@ -209,6 +215,9 @@ public final class Ta4jCli implements Runnable {
         if (exception instanceof IllegalArgumentException) {
             exitCode = CommandLine.ExitCode.USAGE;
             category = "usage";
+        } else if (exception instanceof CliCommands.WorkflowFailedException) {
+            exitCode = CommandLine.ExitCode.SOFTWARE;
+            category = "execution";
         } else if (exception instanceof IOException || exception instanceof UncheckedIOException) {
             exitCode = IO_ERROR_EXIT_CODE;
             category = "io";
@@ -216,9 +225,7 @@ public final class Ta4jCli implements Runnable {
             exitCode = CommandLine.ExitCode.SOFTWARE;
             category = "software";
         }
-        String message = exception.getMessage() == null || exception.getMessage().isBlank()
-                ? exception.getClass().getSimpleName()
-                : exception.getMessage();
+        String message = describe(exception);
         PrintWriter err = commandLine.getErr();
         Ta4jCli root = rootCommand(commandLine);
         if (root.errorFormat == ErrorFormat.JSON) {
@@ -230,6 +237,26 @@ public final class Ta4jCli implements Runnable {
         return exitCode;
     }
 
+    /**
+     * Returns the exception message followed by each distinct cause message, so a
+     * CLI wrapper such as "Invalid indicator ..." still shows core's specific
+     * reason ("Unknown named indicator alias ...").
+     */
+    static String describe(Throwable exception) {
+        StringBuilder message = new StringBuilder(exception.getMessage() == null || exception.getMessage().isBlank()
+                ? exception.getClass().getSimpleName()
+                : exception.getMessage());
+        Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
+        seen.add(exception);
+        for (Throwable cause = exception.getCause(); cause != null && seen.add(cause); cause = cause.getCause()) {
+            String causeMessage = cause.getMessage();
+            if (causeMessage != null && !causeMessage.isBlank() && message.indexOf(causeMessage) < 0) {
+                message.append(message.charAt(message.length() - 1) == '.' ? " " : ": ").append(causeMessage);
+            }
+        }
+        return message.toString();
+    }
+
     private static Ta4jCli rootCommand(CommandLine commandLine) {
         return (Ta4jCli) commandLine.getCommandSpec().root().userObject();
     }
@@ -239,13 +266,25 @@ public final class Ta4jCli implements Runnable {
         Map<String, Object> error = new LinkedHashMap<>();
         error.put("category", category);
         error.put("exitCode", exitCode);
-        error.put("message", message);
+        error.put("message", message.replace("\r\n", "\n"));
 
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("schemaVersion", CliSupport.SCHEMA_VERSION);
         payload.put("status", "error");
-        payload.put("command", commandLine.getCommandSpec().qualifiedName());
+        payload.put("command", commandName(commandLine));
         payload.put("error", error);
         return payload;
+    }
+
+    /**
+     * Returns the subcommand path without the root name, matching the
+     * {@code command} field of success envelopes (for example
+     * {@code strategy backtest}); the root itself reports its own name.
+     */
+    private static String commandName(CommandLine commandLine) {
+        CommandLine.Model.CommandSpec spec = commandLine.getCommandSpec();
+        String rootName = spec.root().name();
+        String qualified = spec.qualifiedName(" ");
+        return qualified.equals(rootName) ? rootName : qualified.substring(rootName.length() + 1);
     }
 }
