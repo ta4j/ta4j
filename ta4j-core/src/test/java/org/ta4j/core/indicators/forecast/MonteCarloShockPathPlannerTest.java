@@ -58,7 +58,8 @@ public class MonteCarloShockPathPlannerTest {
         assertEquals(3, request.toInclusive());
         assertEquals(2, request.outputsPerIndex());
         assertArrayEquals(new double[] { 100d, 100d }, request.inputs().get(MonteCarloKernel.INPUT_PRICES), 0d);
-        assertArrayEquals(new double[] { DOWN, UP, UP, 0d }, request.inputs().get(MonteCarloKernel.INPUT_WINDOWS), 0d);
+        // Rows 2 and 3 share one contiguous buffer: row r reads returns[r .. r + 1].
+        assertArrayEquals(new double[] { DOWN, UP, 0d }, request.inputs().get(MonteCarloKernel.INPUT_RETURNS), 0d);
         double[] params = request.params();
         assertEquals(MonteCarloKernel.PARAM_COUNT, params.length);
         assertEquals(MonteCarloKernel.SHOCK_HISTORICAL_BOOTSTRAP, params[MonteCarloKernel.PARAM_SHOCK_MODEL], 0d);
@@ -66,6 +67,7 @@ public class MonteCarloShockPathPlannerTest {
         assertEquals(1d, params[MonteCarloKernel.PARAM_HORIZON], 0d);
         assertEquals(2d, params[MonteCarloKernel.PARAM_ITERATIONS], 0d);
         assertEquals(2d, params[MonteCarloKernel.PARAM_LOOKBACK], 0d);
+        assertEquals(MonteCarloKernel.smoothingBandwidthFactor(2), params[MonteCarloKernel.PARAM_SMOOTHING_FACTOR], 0d);
         assertTrue(request.estimatedScalarNanos() > 0);
         assertTrue(request.peakDeviceBytesEstimate() > 0);
     }
@@ -77,7 +79,7 @@ public class MonteCarloShockPathPlannerTest {
 
         PlanAttempt attempt = new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 2, factory, Long.MAX_VALUE);
 
-        double[] windows = attempt.operation().request().inputs().get(MonteCarloKernel.INPUT_WINDOWS);
+        double[] windows = attempt.operation().request().inputs().get(MonteCarloKernel.INPUT_RETURNS);
         assertEquals(0L, Double.doubleToRawLongBits(windows[0]));
         assertEquals(UP, windows[1], 0d);
     }
@@ -98,7 +100,7 @@ public class MonteCarloShockPathPlannerTest {
         MonteCarloShockPathPlanner planner = new MonteCarloShockPathPlanner();
         NumFactory factory = fixture.series.numFactory();
 
-        // One row of this fixture stages 208 host bytes.
+        // One row of this fixture stages 184 host bytes plus 24 for the shared return.
         PlanAttempt oneRow = planner.plan(fixture.indicator, 2, 3, factory, Long.MAX_VALUE, 300L);
         assertTrue(oneRow.isPlanned());
         assertEquals(2, oneRow.operation().request().fromInclusive());
@@ -191,20 +193,24 @@ public class MonteCarloShockPathPlannerTest {
     }
 
     @Test
-    public void decodesZeroTerminalPricesAsUnstableLikeTheScalarUnderflowGuard() {
+    public void decodesLogReturnsThroughTheScalarTerminalPriceGuards() {
         Fixture fixture = fixture(DoubleNumFactory.getInstance());
-        PlanAttempt attempt = new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 2,
-                fixture.series.numFactory(), Long.MAX_VALUE);
+        NumFactory factory = fixture.series.numFactory();
+        PlanAttempt attempt = new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 2, factory, Long.MAX_VALUE);
 
-        Forecast underflow = (Forecast) attempt.operation()
+        Forecast nonFinite = (Forecast) attempt.operation()
                 .decoder()
-                .decode(new double[] { 0d, 110d }, 2, fixture.series.numFactory());
-        Forecast finite = (Forecast) attempt.operation()
+                .decode(new double[] { Double.NaN, 0d }, 2, factory);
+        Forecast beyondExponentLimit = (Forecast) attempt.operation()
                 .decoder()
-                .decode(new double[] { 90d, 110d }, 2, fixture.series.numFactory());
+                .decode(new double[] { -701d, 0d }, 2, factory);
+        Forecast finite = (Forecast) attempt.operation().decoder().decode(new double[] { -0.1d, 0.1d }, 2, factory);
 
-        assertFalse(underflow.isStable());
+        assertFalse(nonFinite.isStable());
+        assertFalse(beyondExponentLimit.isStable());
         assertTrue(finite.isStable());
+        assertEquals(factory.numOf(100).multipliedBy(factory.numOf(-0.1d).exp()), finite.quantile(0.0));
+        assertEquals(factory.numOf(100).multipliedBy(factory.numOf(0.1d).exp()), finite.quantile(1.0));
     }
 
     @Test

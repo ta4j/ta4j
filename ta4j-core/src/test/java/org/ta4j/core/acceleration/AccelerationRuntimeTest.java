@@ -56,7 +56,9 @@ import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.MonteCarloKernel;
 import org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator;
+import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
@@ -614,7 +616,9 @@ class AccelerationRuntimeTest {
             Forecast value = forecast.getValue(11);
             assertTrue(value.isStable());
             assertEquals(11, value.decisionIndex());
-            assertEquals(100d, value.mean().doubleValue(), 1e-9);
+            // A flat-path kernel returns zero log-returns, so every terminal price is
+            // the decoded spot price at index 11.
+            assertEquals(111d, value.mean().doubleValue(), 0d);
             assertEquals(1, kernel.executions.get());
         }
     }
@@ -643,10 +647,195 @@ class AccelerationRuntimeTest {
             for (int row = 0; row < rows; row++) {
                 double base = row * request.outputsPerIndex();
                 for (int path = 0; path < request.outputsPerIndex(); path++) {
-                    outputs[(int) base + path] = path % 2 == 0 ? 90d : 110d;
+                    outputs[(int) base + path] = 0d;
                 }
             }
             return new KernelResult(outputs, false, 1L);
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({ "HISTORICAL_BOOTSTRAP, CONSTANT", "HISTORICAL_BOOTSTRAP, EWMA", "STANDARDIZED_EMPIRICAL, CONSTANT",
+            "STANDARDIZED_EMPIRICAL, EWMA", "SMOOTHED_EMPIRICAL, CONSTANT", "SMOOTHED_EMPIRICAL, EWMA",
+            "NORMAL, CONSTANT", "NORMAL, EWMA" })
+    void referenceKernelReproducesTheScalarLaneBitForBit(MonteCarloReturnProjectionIndicator.ShockModel model,
+            MonteCarloReturnProjectionIndicator.VolatilityUpdateMode mode) {
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        System.setProperty("ta4j.forecast.rngVersion", "1");
+        double[] prices = new double[60];
+        for (int i = 0; i < prices.length; i++) {
+            prices[i] = 100d + 5d * Math.sin(i * 0.7d) + 0.3d * i;
+        }
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(prices)
+                .build();
+        EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(new LogReturnIndicator(series), 5,
+                0.94d);
+        MonteCarloPriceForecastIndicator.Builder builder = MonteCarloPriceForecastIndicator
+                .builder(new ClosePriceIndicator(series), state)
+                .horizon(3)
+                .iterationCount(16)
+                .lookbackBarCount(8)
+                .seed(5L)
+                .shockModel(model)
+                .volatilityUpdateMode(mode)
+                .volatilityDecayFactor(0.9d);
+        MonteCarloPriceForecastIndicator scalar = builder.build();
+        MonteCarloPriceForecastIndicator accelerated = builder.build();
+        List<Forecast> expected = new ArrayList<>();
+        for (int index = 0; index <= series.getEndIndex(); index++) {
+            expected.add(scalar.getValue(index));
+        }
+        ReferenceShockPathKernel kernel = new ReferenceShockPathKernel();
+        useProvidersForTests(List.of(kernel));
+
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            for (int index = 0; index <= series.getEndIndex(); index++) {
+                assertSameForecast(expected.get(index), accelerated.getValue(index));
+            }
+        }
+
+        assertEquals(1, kernel.executions.get());
+        assertTrue(expected.get(series.getEndIndex()).isStable());
+    }
+
+    private static void assertSameForecast(Forecast expected, Forecast actual) {
+        assertEquals(expected.isStable(), actual.isStable(), "stability at " + expected.decisionIndex());
+        if (!expected.isStable()) {
+            return;
+        }
+        assertEquals(expected.sampleCount(), actual.sampleCount());
+        assertEquals(expected.mean().doubleValue(), actual.mean().doubleValue(), 0d);
+        assertEquals(expected.median().doubleValue(), actual.median().doubleValue(), 0d);
+        assertEquals(expected.standardDeviation().doubleValue(), actual.standardDeviation().doubleValue(), 0d);
+        for (Double probability : expected.quantiles().keySet()) {
+            assertEquals(expected.quantile(probability).doubleValue(), actual.quantile(probability).doubleValue(), 0d);
+        }
+    }
+
+    /**
+     * Executable reference of the {@code MONTE_CARLO_SHOCK_PATHS_V1} contract: it
+     * computes cumulative log-returns from request primitives only, exactly as a
+     * native provider must.
+     */
+    private static final class ReferenceShockPathKernel implements Provider {
+
+        final AtomicInteger executions = new AtomicInteger();
+
+        @Override
+        public String providerId() {
+            return "reference-kernel";
+        }
+
+        @Override
+        public Assessment assess(KernelRequest request) {
+            return Assessment.supported(Backend.CPU, "reference", 1L, 1L, true);
+        }
+
+        @Override
+        public KernelResult execute(KernelRequest request) {
+            executions.incrementAndGet();
+            double[] params = request.params();
+            int shockModel = (int) params[MonteCarloKernel.PARAM_SHOCK_MODEL];
+            boolean ewma = (int) params[MonteCarloKernel.PARAM_VOLATILITY_MODE] == MonteCarloKernel.VOLATILITY_EWMA;
+            int horizon = (int) params[MonteCarloKernel.PARAM_HORIZON];
+            int iterations = (int) params[MonteCarloKernel.PARAM_ITERATIONS];
+            int lookback = (int) params[MonteCarloKernel.PARAM_LOOKBACK];
+            double decay = params[MonteCarloKernel.PARAM_DECAY];
+            double oneMinusDecay = 1d - decay;
+            List<double[]> inputs = request.inputs();
+            double[] means = inputs.get(MonteCarloKernel.INPUT_MEANS);
+            double[] drifts = inputs.get(MonteCarloKernel.INPUT_DRIFTS);
+            double[] variances = inputs.get(MonteCarloKernel.INPUT_VARIANCES);
+            double[] returns = inputs.get(MonteCarloKernel.INPUT_RETURNS);
+            boolean bootstrap = shockModel == MonteCarloKernel.SHOCK_HISTORICAL_BOOTSTRAP;
+            boolean normal = shockModel == MonteCarloKernel.SHOCK_NORMAL;
+            double[] outputs = new double[request.expectedOutputLength()];
+            for (int row = 0; row < request.size(); row++) {
+                int decisionIndex = request.fromInclusive() + row;
+                double startVolatility = variances[row] == 0d ? 0d : Math.sqrt(variances[row]);
+                boolean zeroShocks = !bootstrap && !normal && startVolatility == 0d;
+                double[] table = new double[lookback];
+                for (int k = 0; k < lookback; k++) {
+                    double value = returns[row + k];
+                    table[k] = bootstrap || zeroShocks ? value : (value - means[row]) / startVolatility;
+                }
+                double bandwidth = shockModel == MonteCarloKernel.SHOCK_SMOOTHED_EMPIRICAL && !zeroShocks
+                        ? bandwidth(table, params[MonteCarloKernel.PARAM_SMOOTHING_FACTOR])
+                        : 0d;
+                for (int path = 0; path < iterations; path++) {
+                    long[] stream = { MonteCarloKernel.initialPathState(request.seed(), decisionIndex, horizon, path) };
+                    double cumulative = 0d;
+                    double mean = means[row];
+                    double variance = variances[row];
+                    double volatility = startVolatility;
+                    for (int step = 0; step < horizon; step++) {
+                        double shock;
+                        if (normal) {
+                            shock = gaussian(stream);
+                        } else if (zeroShocks) {
+                            shock = 0d;
+                        } else {
+                            shock = table[nextInt(stream, lookback)];
+                            if (bandwidth != 0d) {
+                                shock = shock + gaussian(stream) * bandwidth;
+                            }
+                        }
+                        double stepReturn = bootstrap ? shock : drifts[row] + volatility * shock;
+                        cumulative = cumulative + stepReturn;
+                        if (ewma) {
+                            double deviation = stepReturn - mean;
+                            mean = mean * decay + stepReturn * oneMinusDecay;
+                            variance = variance * decay + deviation * deviation * oneMinusDecay;
+                            volatility = variance == 0d ? 0d : Math.sqrt(variance);
+                        }
+                    }
+                    outputs[row * iterations + path] = cumulative;
+                }
+            }
+            return new KernelResult(outputs, false, 1L);
+        }
+
+        private static double bandwidth(double[] shocks, double factor) {
+            if (shocks.length < 2) {
+                return 0d;
+            }
+            double sum = 0d;
+            for (double shock : shocks) {
+                sum = sum + shock;
+            }
+            double mean = sum / shocks.length;
+            double squaredDeviationSum = 0d;
+            for (double shock : shocks) {
+                double deviation = shock - mean;
+                squaredDeviationSum = squaredDeviationSum + deviation * deviation;
+            }
+            double variance = squaredDeviationSum / (shocks.length - 1L);
+            if (!Double.isFinite(variance) || variance <= 0d) {
+                return 0d;
+            }
+            return Math.sqrt(variance) * factor;
+        }
+
+        private static long nextLong(long[] stream) {
+            stream[0] = MonteCarloKernel.advanceState(stream[0]);
+            return MonteCarloKernel.mix64(stream[0]);
+        }
+
+        private static int nextInt(long[] stream, int bound) {
+            long candidate = nextLong(stream) >>> 1;
+            long remainder = candidate % bound;
+            while (candidate - remainder + bound - 1 < 0L) {
+                candidate = nextLong(stream) >>> 1;
+                remainder = candidate % bound;
+            }
+            return (int) remainder;
+        }
+
+        private static double gaussian(long[] stream) {
+            double first = MonteCarloKernel.toUnitDouble(nextLong(stream));
+            double second = MonteCarloKernel.toUnitDouble(nextLong(stream));
+            return MonteCarloKernel.gaussian(first, second);
         }
     }
 

@@ -89,29 +89,37 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         int iterations = settings.iterationCount();
         int lookback = settings.lookbackBarCount();
         int horizon = settings.horizon();
+        // Per decision row: four scalar inputs, one new shared return, the output
+        // paths and a per-step workspace. The lookback - 1 leading returns of the
+        // shared buffer are paid once per batch.
         long rowDeviceBytes;
         long rowHostBytes;
-        long rowOutputBytes;
+        long fixedDeviceBytes;
+        long fixedHostBytes;
         try {
-            long rowInputBytes = Math.multiplyExact(Math.addExact(SCALAR_INPUTS_PER_ROW, lookback), BYTES_PER_ELEMENT);
-            rowOutputBytes = Math.multiplyExact((long) iterations, BYTES_PER_ELEMENT);
+            long rowInputBytes = Math.multiplyExact(SCALAR_INPUTS_PER_ROW + 1L, BYTES_PER_ELEMENT);
+            long rowOutputBytes = Math.multiplyExact((long) iterations, BYTES_PER_ELEMENT);
             long rowWorkspaceBytes = Math.multiplyExact(rowOutputBytes, horizon);
             rowDeviceBytes = Math.addExact(rowInputBytes, Math.addExact(rowOutputBytes, rowWorkspaceBytes));
+            fixedDeviceBytes = Math.multiplyExact(lookback - 1L, BYTES_PER_ELEMENT);
             // Planner snapshots, immutable request copies and provider-accessor
             // copies may overlap. Allow four output buffers for native handoff,
             // result ownership and decoding before any large array is allocated.
             rowHostBytes = Math.addExact(Math.multiplyExact(rowInputBytes, 3L), Math.multiplyExact(rowOutputBytes, 4L));
+            fixedHostBytes = Math.multiplyExact(fixedDeviceBytes, 3L);
         } catch (ArithmeticException exception) {
             return unsupported("one decision index overflows batch dimensions (lookback " + lookback + ", iterations "
                     + iterations + ", horizon " + horizon + ")");
         }
-        // Window and output buffers are int-indexed arrays.
-        long rowsThatFit = Math.min(Math.min(memoryLimitBytes / rowDeviceBytes, hostMemoryLimitBytes / rowHostBytes),
-                Math.min(Integer.MAX_VALUE / lookback, Integer.MAX_VALUE / iterations));
+        // Returns and output buffers are int-indexed arrays.
+        long rowsThatFit = Math.min(
+                Math.min(Math.max(0L, memoryLimitBytes - fixedDeviceBytes) / rowDeviceBytes,
+                        Math.max(0L, hostMemoryLimitBytes - fixedHostBytes) / rowHostBytes),
+                Math.min(Integer.MAX_VALUE - (lookback - 1L), Integer.MAX_VALUE / iterations));
         if (rowsThatFit < 1L) {
-            return unsupported("one decision index needs " + rowDeviceBytes + " device bytes and " + rowHostBytes
-                    + " host bytes, above the " + memoryLimitBytes + "-byte device or " + hostMemoryLimitBytes
-                    + "-byte host budget");
+            return unsupported("one decision index needs " + (fixedDeviceBytes + rowDeviceBytes) + " device bytes and "
+                    + (fixedHostBytes + rowHostBytes) + " host bytes, above the " + memoryLimitBytes
+                    + "-byte device or " + hostMemoryLimitBytes + "-byte host budget");
         }
         // Scalar simulation reports an unstable forecast before its own first
         // stable index, so that prefix must stay on the scalar lane rather than be
@@ -147,7 +155,8 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
                     "index " + firstStableIndex + " has no stable forecast state or positive finite price"));
         }
         rows = stateRows;
-        // Consecutive windows overlap in lookback - 1 returns: read each return once.
+        // Consecutive windows overlap in lookback - 1 returns: read each return once
+        // and ship the shared buffer instead of one window per decision row.
         double[] returns = new double[rows + lookback - 1];
         for (int offset = 0; offset < returns.length; offset++) {
             int barIndex = windowStart + offset;
@@ -172,16 +181,13 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
             means = Arrays.copyOf(means, rows);
             drifts = Arrays.copyOf(drifts, rows);
             variances = Arrays.copyOf(variances, rows);
-        }
-        double[] windows = new double[rows * lookback];
-        for (int row = 0; row < rows; row++) {
-            System.arraycopy(returns, row, windows, row * lookback, lookback);
+            returns = Arrays.copyOf(returns, rows + lookback - 1);
         }
         int toIndex = firstStableIndex + rows - 1;
         long steps = (long) rows * iterations * horizon;
         long estimatedScalarNanos = steps > Long.MAX_VALUE / NANOS_PER_PATH_STEP ? Long.MAX_VALUE
                 : steps * NANOS_PER_PATH_STEP;
-        long peakBytes = rowDeviceBytes * rows;
+        long peakBytes = fixedDeviceBytes + rowDeviceBytes * rows;
         double[] params = new double[MonteCarloKernel.PARAM_COUNT];
         params[MonteCarloKernel.PARAM_SHOCK_MODEL] = shockModelCode(config.shockModel());
         params[MonteCarloKernel.PARAM_VOLATILITY_MODE] = volatilityUpdateModeCode(config.volatilityUpdateMode());
@@ -189,26 +195,41 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         params[MonteCarloKernel.PARAM_ITERATIONS] = iterations;
         params[MonteCarloKernel.PARAM_LOOKBACK] = lookback;
         params[MonteCarloKernel.PARAM_DECAY] = config.volatilityDecayFactor();
+        params[MonteCarloKernel.PARAM_SMOOTHING_FACTOR] = MonteCarloKernel.smoothingBandwidthFactor(lookback);
         double[][] inputs = new double[MonteCarloKernel.INPUT_COUNT][];
         inputs[MonteCarloKernel.INPUT_PRICES] = prices;
         inputs[MonteCarloKernel.INPUT_MEANS] = means;
         inputs[MonteCarloKernel.INPUT_DRIFTS] = drifts;
         inputs[MonteCarloKernel.INPUT_VARIANCES] = variances;
-        inputs[MonteCarloKernel.INPUT_WINDOWS] = windows;
+        inputs[MonteCarloKernel.INPUT_RETURNS] = returns;
         AccelerationRuntime.KernelRequest request = new AccelerationRuntime.KernelRequest(
                 AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1, firstStableIndex, toIndex, iterations,
                 AccelerationRuntime.NumericEncoding.FLOAT64, AccelerationRuntime.Determinism.BITWISE_IDENTICAL,
                 settings.seed(), Double.NaN, params, List.of(inputs), estimatedScalarNanos, peakBytes);
         List<Double> quantiles = List.copyOf(settings.quantileProbabilities());
+        double[] spotPrices = prices;
+        int firstRowIndex = firstStableIndex;
         OperationDecoder decoder = (slice, index, decodingFactory) -> {
+            // Kernels return cumulative log-returns; the scalar lane's own mapping
+            // applies the exponential and every terminal guard.
+            Num price = decodingFactory.numOf(spotPrices[index - firstRowIndex]);
+            Num exponentLimit = decodingFactory.numOf(MonteCarloKernel.MAX_EXPONENT);
             List<Num> samples = new ArrayList<>(slice.length);
             for (double raw : slice) {
-                // A zero terminal price from a positive spot can only be underflow,
-                // which the scalar lane also reports as unstable.
-                if (!Double.isFinite(raw) || raw == 0d) {
+                if (!Double.isFinite(raw)) {
                     return Forecast.unstable(index, horizon);
                 }
-                samples.add(decodingFactory.numOf(raw));
+                Num terminal;
+                try {
+                    terminal = MonteCarloPriceForecastIndicator.terminalPrice(price, decodingFactory.numOf(raw),
+                            exponentLimit);
+                } catch (ArithmeticException exception) {
+                    return Forecast.unstable(index, horizon);
+                }
+                if (!Num.isFinite(terminal)) {
+                    return Forecast.unstable(index, horizon);
+                }
+                samples.add(terminal);
             }
             return Forecast.ofSamples(index, horizon, samples, quantiles);
         };

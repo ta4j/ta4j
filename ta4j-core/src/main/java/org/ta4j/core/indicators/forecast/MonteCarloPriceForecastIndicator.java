@@ -138,18 +138,28 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
         if (!Num.isFinite(price) || !price.isPositive()) {
             return Forecast.unstable(index, getHorizon());
         }
+        Num exponentLimit = price.getNumFactory().numOf(MonteCarloKernel.MAX_EXPONENT);
+        return simulation.project(index, cumulativeReturn -> terminalPrice(price, cumulativeReturn, exponentLimit));
+    }
+
+    /**
+     * Maps one simulated cumulative log-return to its terminal price, shared by the
+     * scalar lane and the accelerated decoder so both apply the same exponential
+     * and guards.
+     *
+     * @return terminal price, or {@code null} when the return exceeds the exponent
+     *         limit, does not survive normalization, or the price underflows
+     */
+    static Num terminalPrice(Num price, Num cumulativeReturn, Num exponentLimit) {
         NumFactory numFactory = price.getNumFactory();
-        Num exponentLimit = numFactory.numOf(MonteCarloKernel.MAX_EXPONENT);
-        return simulation.project(index, cumulativeReturn -> {
-            Num normalizedReturn = numFactory.numOf(cumulativeReturn.bigDecimalValue());
-            if (!Num.isFinite(normalizedReturn) || normalizedReturn.isZero() && !cumulativeReturn.isZero()
-                    || normalizedReturn.abs().isGreaterThan(exponentLimit)) {
-                return null;
-            }
-            Num growth = normalizedReturn.exp();
-            Num terminalPrice = price.multipliedBy(growth);
-            return terminalPrice.isZero() && !growth.isZero() ? null : terminalPrice;
-        });
+        Num normalizedReturn = numFactory.numOf(cumulativeReturn.bigDecimalValue());
+        if (!Num.isFinite(normalizedReturn) || normalizedReturn.isZero() && !cumulativeReturn.isZero()
+                || normalizedReturn.abs().isGreaterThan(exponentLimit)) {
+            return null;
+        }
+        Num growth = normalizedReturn.exp();
+        Num terminalPrice = price.multipliedBy(growth);
+        return terminalPrice.isZero() && !growth.isZero() ? null : terminalPrice;
     }
 
     /**
