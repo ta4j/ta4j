@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.rules.named;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.named.NamedComponentRegistry;
@@ -65,6 +66,8 @@ public abstract class NamedRule extends AbstractRule {
      *                                  this rule
      * @since 0.25.1
      */
+    @SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Fail-fast label validation is a documented constructor "
+            + "contract: a rule whose label cannot rebuild it is rejected before the instance can escape")
     protected NamedRule(String label) {
         Objects.requireNonNull(label, "label");
         String simpleName = getClass().getSimpleName();
