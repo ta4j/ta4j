@@ -23,56 +23,26 @@ Root help exposes the `strategy`, `indicator`, `rule`, `forecast`, and `performa
 
 The package phase produces a runnable fat jar at `ta4j-cli/target/ta4j-cli-<version>-jar-with-dependencies.jar`.
 
-## Optional GPU Acceleration
+## Acceleration
 
-`ta4j-acceleration` owns the optional native providers used transparently by
-ordinary `BarSeriesManager` backtests. It is a thin library artifact: its
-platform classifiers contain provider classes and native resources, not
-`ta4j-core`, examples, picocli, or CLI command classes. Build a provider
-classifier from that module, place it beside one compatible `ta4j-core` on the
-application classpath, and launch with:
-
-```text
--Dta4j.acceleration.enabled=auto
-```
-
-Omitting the property or setting `-Dta4j.acceleration.enabled=off` performs no provider
-discovery or native loading. `auto` accelerates eligible `DoubleNum` Monte Carlo
-price forecasts on qualified native lanes when an explicit tolerance is supplied;
-it falls back to their scalar `getValue(int)` path for every unsupported,
-unavailable, slower, stale, or failed request. CUDA and OpenCL return row-major
-per-sample terminal prices through the versioned operation ABI; they are not
-bitwise-identical lanes, so no exact-mode claim is made. See [the acceleration
-guide](https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration) for
-classifiers, platform status, diagnostics, rollback, and benchmark evidence.
-
-The Metal provider's approximate fp32 execution lane engages only when the
-run opts into a tolerance via `-Dta4j.acceleration.approximateTolerance=<value>`
-(a finite positive number). Without it the core planner emits exact,
-bitwise-identical requests, which Metal cannot serve, so the provider reports
-itself unavailable with a diagnostic naming the property and falls back to
-scalar execution; approximate results are never silently selected. Native
-probe failures surface the native diagnostic detail (for example
-`metal_device_unavailable`) instead of a generic metadata-parse error.
-
-Native lanes implement only the versioned per-path RNG stream (RNG version 1),
-so acceleration engages only when `-Dta4j.forecast.rngVersion=1` is set. An
-unset property or any other version keeps the scalar lane, which serves the
-pre-0.23.1 shared `SplittableRandom` stream, so accelerated values can never
-silently diverge from the values the property promises.
+CLI runs are scalar. Native acceleration is a library feature of the separate
+`ta4j-acceleration` artifact: it batches `DoubleNum` Monte Carlo forecasts inside
+`BarSeriesManager` backtests, while the CLI loads data as `DecimalNum` series. See
+[the acceleration guide](https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration)
+for classifiers, opt-in properties, diagnostics, and benchmark evidence.
 
 ## Canonical Local Input
 
-The canonical MVP input is a local OHLCV file. CSV input should include a header row and these columns in order:
+The canonical input is a local OHLCV file. CSV input holds daily bars: a header row followed by rows with these columns in order (blank lines are ignored):
 
-1. `date`
+1. `date` (`yyyy-MM-dd`)
 2. `open`
 3. `high`
 4. `low`
 5. `close`
 6. `volume`
 
-JSON input may use the existing ta4j example bar-series formats already supported by `JsonFileBarSeriesDataSource`.
+JSON input may use the existing ta4j example bar-series formats already supported by `JsonFileBarSeriesDataSource`; use JSON for intraday data. A malformed CSV row fails the command with the expected row layout, and text-mode logs name the failing row.
 
 All `open`, `high`, `low`, `close`, and `volume` values (plus `amount` when JSON provides it) must be finite: `NaN` or `Infinity` tokens are rejected before any backtest runs.
 
@@ -139,9 +109,9 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 Every workflow response uses a versioned envelope with `schemaVersion`, `status`, `command`, and `result`. Volatile timestamps, resolved paths, artifacts, and timings live under `run`. Add `--reproducible` to omit `run` and make identical executions byte-stable.
 
-`performance compare` exits non-zero when the candidate exceeds `--max-regression-pct` or its checksums diverge, so exit-code-based automation and CI can gate on the result while the comparison artifacts remain inspectable. A failing gate reports envelope `status: "error"` while the nested comparison keeps its own `result.status: "regression"`, so callers can distinguish a gated result from a crash. Batch executions report `status: "partial"` when some strategy inputs or folds failed but others succeeded, and `status: "error"` only when every member failed; per-failure detail is additive in `failedStrategies` / `failedStrategyCount` and `failedFoldCount` / `foldFailures` without dropping healthy results.
+`performance compare` exits non-zero when the candidate exceeds `--max-regression-pct` or its checksums diverge, so exit-code-based automation and CI can gate on the result while the comparison artifacts remain inspectable. A failing gate reports envelope `status: "error"` while the nested comparison keeps its own `result.status: "regression"`, so callers can distinguish a gated result from a crash. Batch executions report `status: "partial"` when some strategy inputs or folds failed but others succeeded, and `status: "error"` only when every member failed; per-failure detail is additive in `failedStrategies` / `failedStrategyCount` and `failedFoldCount` / `foldFailures` without dropping healthy results. When every member failed and the response went to `--output`, the command also reports the failure on stderr (exit 1, category `execution`).
 
-Use `--error-format JSON` for structured error envelopes with usage, I/O, or software categories. `catalog` reports aliases and supported models directly from the live registry, while `completion --shell bash` emits completion usable by Bash and by Zsh through `bashcompinit`.
+Use `--error-format JSON` (anywhere on the command line) for structured error envelopes with `usage` (exit 2), `io` (exit 74), `execution` or `software` (exit 1) categories; the envelope's `command` matches the success envelope's. Error messages keep the offending input and the underlying ta4j reason. `catalog` reports aliases and supported models directly from the live registry, while `completion --shell bash` emits completion usable by Bash and by Zsh through `bashcompinit`.
 
 ```json
 {
@@ -168,21 +138,22 @@ cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv --stra
 
 - `--data-file`: local CSV or JSON file, or `-` for stdin.
 - `--data-format`: required as `csv` or `json` when `--data-file -` is used.
-- `--timeframe`: resample the loaded series to `1m`, `5m`, `15m`, `1h`, `4h`, `1d`, or an ISO-8601 duration such as `PT5M`.
+- `--timeframe`: resample the loaded series to `1m`, `5m`, `15m`, `1h`, `4h`, `1d`, or an ISO-8601 duration such as `PT5M`. Bars can only be aggregated to a coarser timeframe, so daily CSV input accepts `1d` or longer.
 - `--from-date`, `--to-date`: date-only (`YYYY-MM-DD`) or full ISO timestamps used to trim the series before execution.
 - `--execution-model`: `next-open` or `current-close`.
 - `--position-sizing`: `fixed` (default), `balance`, or `kelly` entry sizing.
-- `--capital`: fixed sizing ceiling/default stake, or required starting capital for balance and Kelly sizing.
-- `--stake-amount`: per-trade amount. When both are supplied, it must not exceed `--capital`.
+- `--capital`: starting cash. Required for balance and Kelly sizing; in fixed sizing it is also the default per-trade stake.
+- `--stake-amount`: fixed sizing only: cash invested per trade (units = stake / entry price, net of entry costs). With `--capital`, it must not exceed the capital and each entry is capped by the realized balance. Without either option, fixed sizing buys one unit per trade.
 - `--win-probability`, `--payoff-ratio`, `--kelly-coefficient`: Kelly sizing inputs; the coefficient defaults to `1`.
 - `--commission`: non-negative transaction fee rate.
 - `--borrow-rate`: non-negative holding cost rate.
 - `--borrow-side`: `short` (default when a rate is present), `long`, or `both`.
 - `--criterion` / `--criteria`: one or more named criterion expressions or fully qualified class names.
 - `--criterion-json`, `--criteria-file`: lossless inline or file-based criterion descriptor inputs.
+- Monte Carlo drawdown criteria are bounded before any command runs: simulations × sampled bars across every scored result (each backtest, fold and holdout, plus sweep ranking) must not exceed 100,000,000.
 - `--output`: JSON file path. When omitted, JSON is written to stdout.
 - `--chart`: optional JPEG output path for a trading chart artifact.
-- `--progress`: emit bounded progress messages to stderr during longer runs.
+- `--progress`: emit bounded progress messages (`completed/total` where known, always including the final count) to stderr.
 - Logging: operational diagnostics are written to stderr; stdout carries only the JSON command response.
 - `--reproducible`: omit volatile `run` metadata.
 - `--unstable-bars`: override the strategy unstable-bar count.
@@ -195,17 +166,17 @@ cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv --stra
   - `--strategy-json-file`: path to one serialized ta4j strategy payload.
   - `--strategies-json-file`: path to a JSON file containing an array of one or more serialized ta4j strategy objects.
   - `--invalid-input`: `fail` (default) or explicit partial-execution `skip`.
-  - total evaluation work is bounded before execution: strategies × bars × passes must not exceed 100,000,000 bar-strategy evaluations.
+  - total evaluation work is bounded before execution: strategies × bars must not exceed 100,000,000 bar-strategy evaluations, where each strategy also pays one read per bar for every window a rolling scanner in its rules inspects (for example `HighestValue` over 2,000 bars costs 2,001 per bar).
   - strategy inputs are self-contained, so `strategy backtest` does not accept `--param`.
 - `strategy walk-forward`
   - `--strategy`, `--strategies`, `--strategy-json-file`, `--strategies-json-file`: the same strategy input shapes supported by `strategy backtest`.
   - `--min-train-bars`, `--test-bars`, `--step-bars`, `--purge-bars`, `--embargo-bars`, `--holdout-bars`, `--primary-horizon-bars`, `--optimization-top-k`, `--seed`: walk-forward splitter and ranking controls.
-  - total evaluation work is bounded before execution: strategies × evaluated bars must not exceed 100,000,000 bar-strategy evaluations, counting the full-series backtest pass plus every fold's and holdout's test-bar range.
+  - total evaluation work is bounded before execution: strategies × evaluated bars must not exceed 100,000,000 bar-strategy evaluations (including rolling-scanner reads), counting the full-series backtest pass plus every fold's and holdout's test-bar range.
   - strategy inputs are self-contained, so `strategy walk-forward` does not accept `--param`.
 - `strategy sweep`
   - always evaluates the bounded `sma-crossover` template.
   - `--param key=value`: fixed parameter applied to every candidate.
-  - `--param-grid key=v1,v2,...`: candidate grid dimensions. Only `fast` and `slow` are accepted, the grid must not expand past 10,000 candidate strategies, a key must not appear in both `--param` and `--param-grid`, and repeated keys within either family are rejected.
+  - `--param-grid key=v1,v2,...`: candidate grid dimensions. Only `fast` and `slow` are accepted, the grid must not expand past 10,000 candidate strategies, a key must not appear in both `--param` and `--param-grid`, and repeated keys within either family are rejected. Combinations with `fast >= slow` are skipped and counted in `skippedCandidateCount`; the command fails only when no combination is valid.
   - `--top-k`: number of ranked candidates to keep in the output.
 - `indicator test`
   - `--indicator`: one compact numeric indicator expression or inline `Indicator.toJson()` payload.
@@ -241,14 +212,15 @@ cat bars.csv | ta4j-cli strategy backtest --data-file - --data-format csv --stra
   - `--repetitions`: measured repetitions per scenario/bar-count cell, at most 1,000,000.
   - `--warmups`: warmup repetitions per scenario/bar-count cell, at most 1,000,000.
   - Total work is bounded before any scenario runs: `--bar-counts` × scenarios × (`--warmups` + `--repetitions`) must not exceed 1,000,000,000.
-  - `--output-dir`: artifact directory for `performance.json` and `summary.md`.
+  - `--output-dir`: artifact directory for `performance.json` and `summary.md`; defaults to `./ta4j-performance/<experiment>/<timestamp>`.
   - `--profile`: include profiler hint metadata in `performance.json`.
 - `performance compare`
   - `--base-dir`: baseline experiment artifact directory.
   - `--candidate-dir`: candidate experiment artifact directory.
   - `--output-dir`: comparison artifact directory for `comparison.json` and `summary.md`.
   - `--max-regression-pct`: finite, non-negative allowed median runtime regression percentage.
-  - Both artifacts must carry a resolvable host ID and the same host telemetry; artifacts with an unknown host ID or different hosts are rejected.
+  - `--candidate-dir` must not refer to `--base-dir` (including symlink aliases): comparing an artifact with itself would always pass.
+  - Both artifacts must carry a resolvable host ID and the same experiment inputs, host telemetry and JVM options; incomparable artifacts are usage errors (exit 2) naming the differing field, and no comparison directory is created.
 
 ## Parameter Coverage Examples
 
@@ -486,15 +458,15 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   --bar-counts 1000,5000,10000 \
   --scenarios sequential,endOnly,endThenReverse,sparseAfterHighWatermark \
   --repetitions 5 \
-  --output-dir .agents/benchmarks/performance/kalman-filter/current
+  --output-dir ta4j-performance/kalman-filter/current
 ```
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   performance compare \
-  --base-dir .agents/benchmarks/performance/kalman-filter/base \
-  --candidate-dir .agents/benchmarks/performance/kalman-filter/candidate \
-  --output-dir .agents/benchmarks/performance/kalman-filter/comparison
+  --base-dir ta4j-performance/kalman-filter/base \
+  --candidate-dir ta4j-performance/kalman-filter/candidate \
+  --output-dir ta4j-performance/kalman-filter/comparison
 ```
 
 To compare two git refs in temporary worktrees, run:
@@ -620,7 +592,7 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 - `indicator test` accepts compact expressions or inline serialized numeric indicators, plus serialized JSON files. If you omit threshold options, it defaults to close-price crossovers around the indicator.
 - `rule test` accepts one entry rule and one exit rule, returns both a plain backtest and a walk-forward report, and shares the same walk-forward controls as `strategy walk-forward`.
 - `strategy sweep` ranks bounded SMA crossover candidates deterministically and keeps only the requested top-K output set.
-- `performance run` and `performance compare` write shareable artifacts under caller-selected paths; `.agents/benchmarks/` is the preferred local scratch location.
+- `performance run` and `performance compare` write shareable artifacts under caller-selected paths; `performance run` defaults to `./ta4j-performance/<experiment>/<timestamp>`.
 - `forecast run` reports `Num` values as strings to preserve precision; Monte Carlo output is reproducible for identical data and options because the seed is explicit.
 - `NamedStrategy` labels follow the compact format `<SimpleClassName>_<param1>_<param2>...`, for example `HourOfDayStrategy_9_17` or `DayOfWeekStrategy_MONDAY_FRIDAY`.
 - `NamedRule` labels follow the same compact format, for example `RsiThresholdRule_BELOW_14_30` or `ClosePriceCrossedMovingAverageRule_UP_SMA_20`.

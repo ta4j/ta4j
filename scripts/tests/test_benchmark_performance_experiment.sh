@@ -104,7 +104,28 @@ if [[ -z "$local_repo" ]]; then
 fi
 
 mkdir -p "$local_repo"
-printf '%s\t%s\t%s\n' "$$" "$PWD" "$local_repo" > "$FAKE_MAVEN_LOG_DIR/$PPID-$$.log"
+if [[ -n "${FAKE_MAVEN_LOG_DIR:-}" ]]; then
+  printf '%s\t%s\t%s\n' "$$" "$PWD" "$local_repo" > "$FAKE_MAVEN_LOG_DIR/$PPID-$$.log"
+fi
+
+# Emulate the CLI's artifacts unless the test simulates a skipped exec:java.
+for argument in "$@"; do
+  if [[ "$argument" == -Dexec.args=* && "${FAKE_MAVEN_SKIP_EXEC:-0}" != 1 ]]; then
+    eval "set -- ${argument#-Dexec.args=}"
+    command="$2"
+    while [[ $# -gt 0 ]]; do
+      if [[ "$1" == --output-dir ]]; then
+        mkdir -p "$2"
+        if [[ "$command" == run ]]; then
+          printf '{}\n' > "$2/performance.json"
+        else
+          printf '{}\n' > "$2/comparison.json"
+        fi
+      fi
+      shift
+    done
+  fi
+done
 sleep 0.05
 EOF
   chmod +x "$TMP/bin/mvn"
@@ -246,7 +267,32 @@ test_rejects_unresolvable_ref() {
   pass "test_rejects_unresolvable_ref"
 }
 
+test_fails_when_exec_produces_no_artifacts() {
+  echo "Running test_fails_when_exec_produces_no_artifacts"
+
+  TMP="$(mktemp -d "${TMPDIR:-/tmp}/ta4j-benchmark-script.XXXXXX")"
+  mkdir -p "$TMP/bin" "$TMP/repo"
+  write_fake_date
+  write_fake_git
+  write_fake_maven
+
+  local err="$TMP/skipped-exec.err"
+  if BASH_ENV=/dev/null FAKE_REPO_ROOT="$TMP/repo" FAKE_MAVEN_SKIP_EXEC=1 PATH="$TMP/bin:$PATH" \
+      "$SCRIPT" base-a candidate-a -- --experiment fixture --bar-counts 1 --scenarios endOnly --repetitions 1 \
+      > "$TMP/skipped-exec.out" 2> "$err"; then
+    fail "a run that produced no performance.json should fail"
+  fi
+  grep -q "Expected artifact was not produced: .*performance.json" "$err" \
+    || fail "missing artifact error: $(cat "$err")"
+  ! grep -q "Performance comparison written to" "$TMP/skipped-exec.out" \
+    || fail "a failed run must not report a comparison"
+
+  rm -rf "$TMP"
+  pass "test_fails_when_exec_produces_no_artifacts"
+}
+
 test_requires_explicit_base_ref
+test_fails_when_exec_produces_no_artifacts
 test_rejects_base_ref_without_harness
 test_rejects_unresolvable_ref
 

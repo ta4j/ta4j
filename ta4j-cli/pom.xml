@@ -19,10 +19,6 @@
         </dependency>
         <dependency>
             <groupId>org.ta4j</groupId>
-            <artifactId>ta4j-acceleration</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.ta4j</groupId>
             <artifactId>ta4j-examples</artifactId>
         </dependency>
         <dependency>
@@ -128,6 +124,11 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.6.3</version>
+                <!-- The parent skips exec:java by default; the CLI is runnable. -->
+                <configuration>
+                    <skip>false</skip>
+                    <mainClass>org.ta4j.cli.Ta4jCli</mainClass>
+                </configuration>
             </plugin>
         </plugins>
     </build>

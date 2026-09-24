@@ -133,6 +133,15 @@ join_exec_args() {
   printf '%s' "$exec_args"
 }
 
+require_artifact() {
+  # exec:java exits 0 without running anything when a ref's POM skips it, so an
+  # absent artifact must fail the benchmark instead of reporting success.
+  if [[ ! -s "$1" ]]; then
+    printf 'Expected artifact was not produced: %s\n' "$1" >&2
+    exit 1
+  fi
+}
+
 run_ref() {
   local worktree="$1"
   local run_output="$2"
@@ -146,6 +155,7 @@ run_ref() {
       -Dexec.mainClass=org.ta4j.cli.Ta4jCli \
       -Dexec.args="performance run $exec_args"
   )
+  require_artifact "$run_output/performance.json"
 }
 
 run_ref "$base_worktree" "$base_output"
@@ -158,5 +168,6 @@ comparison_args="$(join_exec_args --base-dir "$base_output" --candidate-dir "$ca
     -Dexec.mainClass=org.ta4j.cli.Ta4jCli \
     -Dexec.args="performance compare $comparison_args"
 )
+require_artifact "$comparison_output/comparison.json"
 
 printf 'Performance comparison written to %s\n' "$comparison_output"
