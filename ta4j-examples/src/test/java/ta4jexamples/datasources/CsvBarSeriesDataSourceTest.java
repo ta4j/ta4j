@@ -10,19 +10,13 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsNull.notNullValue;
@@ -92,54 +86,19 @@ public class CsvBarSeriesDataSourceTest {
         }
 
         Path isolatedDirectory = Files.createTempDirectory("ta4j-csv-precedence-");
+        Path shadow = isolatedDirectory.resolve(bundledFile);
         try {
-            // Run from a private working directory so the test never overwrites or
-            // skips around a caller-owned file in the test JVM's current directory.
-            Path shadow = isolatedDirectory.resolve(bundledFile);
             Files.writeString(shadow, "date,open,high,low,close,volume\n", StandardCharsets.US_ASCII,
                     StandardOpenOption.CREATE_NEW);
 
-            String classPath = Arrays
-                    .stream(System.getProperty("java.class.path").split(Pattern.quote(File.pathSeparator)))
-                    .map(entry -> Path.of(entry).toAbsolutePath().normalize().toString())
-                    .collect(Collectors.joining(File.pathSeparator));
-            String javaCommand = System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("win") ? "java.exe"
-                    : "java";
-            Path javaExecutable = Path.of(System.getProperty("java.home"), "bin", javaCommand);
-            Path probeOutput = isolatedDirectory.resolve("probe-output.txt");
-            ProcessBuilder probe = new ProcessBuilder(javaExecutable.toString(), "-cp", classPath,
-                    ClasspathPrecedenceProbe.class.getName(), bundledFile).directory(isolatedDirectory.toFile())
-                    .redirectErrorStream(true)
-                    .redirectOutput(probeOutput.toFile());
-            Process process = probe.start();
-            boolean completed = process.waitFor(30, TimeUnit.SECONDS);
-            if (!completed) {
-                process.destroyForcibly();
-                boolean terminated = process.waitFor(5, TimeUnit.SECONDS);
-                throw new AssertionError("Classpath precedence probe timed out; terminated=" + terminated);
-            }
-            int exitCode = process.exitValue();
-            String output = Files.readString(probeOutput, StandardCharsets.UTF_8);
-            assertEquals(0, exitCode, "Classpath precedence probe failed: " + output);
+            BarSeries loaded = CsvFileBarSeriesDataSource.loadCsvSeries(bundledFile, isolatedDirectory);
 
-            String markerPrefix = "TA4J_PROBE_BAR_COUNT=";
-            String marker = output.lines()
-                    .filter(line -> line.startsWith(markerPrefix))
-                    .findFirst()
-                    .orElseThrow(() -> new AssertionError("Probe output omitted bar count: " + output));
-            long loadedBarCount = Long.parseLong(marker.substring(markerPrefix.length()));
-            assertEquals(bundledBarCount, loadedBarCount,
+            assertNotNull(loaded, "Bundled classpath data must load despite a same-named local file");
+            assertEquals(bundledBarCount, loaded.getBarCount(),
                     "Bundled classpath data must win over a same-named local file");
         } finally {
-            try (Stream<Path> paths = Files.walk(isolatedDirectory)) {
-                paths.sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
-                    try {
-                        Files.deleteIfExists(path);
-                    } catch (java.io.IOException exception) {
-                        throw new UncheckedIOException(exception);
-                    }
-                });
-            }
+            Files.deleteIfExists(shadow);
+            Files.deleteIfExists(isolatedDirectory);
         }
     }
 
@@ -369,22 +328,4 @@ public class CsvBarSeriesDataSourceTest {
             Files.deleteIfExists(tempFile);
         }
     }
-
-    public static final class ClasspathPrecedenceProbe {
-
-        private ClasspathPrecedenceProbe() {
-        }
-
-        public static void main(String[] args) {
-            if (args.length != 1) {
-                throw new IllegalArgumentException("Expected one CSV filename");
-            }
-            BarSeries series = CsvFileBarSeriesDataSource.loadCsvSeries(args[0]);
-            if (series == null) {
-                throw new IllegalStateException("CSV resource did not load: " + args[0]);
-            }
-            System.out.println("TA4J_PROBE_BAR_COUNT=" + series.getBarCount());
-        }
-    }
-
 }

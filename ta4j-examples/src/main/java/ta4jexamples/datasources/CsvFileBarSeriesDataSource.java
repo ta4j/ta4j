@@ -197,11 +197,19 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
      *                              completion
      */
     public static BarSeries loadCsvSeries(String filename) {
+        return loadCsvSeries(filename, null);
+    }
+
+    /**
+     * Loads a CSV series, resolving a relative local path against
+     * {@code workingDirectory} (the process working directory when null).
+     */
+    static BarSeries loadCsvSeries(String filename, Path workingDirectory) {
         InputStream stream = null;
         String seriesName = filename;
         Path localPath = null;
         try {
-            localPath = Path.of(filename);
+            localPath = workingDirectory == null ? Path.of(filename) : workingDirectory.resolve(filename);
         } catch (InvalidPathException exception) {
             LOG.debug("CSV filename is not a valid local path; trying the classpath: {}", filename, exception);
         }
