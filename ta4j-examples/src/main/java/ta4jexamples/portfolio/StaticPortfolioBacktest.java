@@ -5,89 +5,94 @@ package ta4jexamples.portfolio;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.portfolio.AlignedPortfolioSeries;
+import org.ta4j.core.criteria.EnterAndHoldCriterion;
+import org.ta4j.core.criteria.ReturnRepresentation;
+import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
+import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.portfolio.PortfolioAllocation;
-import org.ta4j.core.portfolio.PortfolioAsset;
 import org.ta4j.core.portfolio.PortfolioExecutionResult;
-import org.ta4j.core.portfolio.PortfolioExecutor;
 import org.ta4j.core.portfolio.PortfolioSeries;
-import org.ta4j.core.portfolio.PortfolioSnapshot;
+import org.ta4j.core.portfolio.PortfolioSeriesManager;
+import org.ta4j.core.portfolio.PortfolioSnapshot.RebalanceStatus;
 import org.ta4j.core.portfolio.RebalancePolicy;
 
 /**
- * Demonstrates the static target-weight portfolio foundation.
+ * Static target-weight portfolio backtest: buy-and-hold versus monthly
+ * rebalancing of a 60% equity / 30% bond / 10% cash allocation.
  *
  * <p>
- * The example uses deterministic synthetic prices so the API flow is easy to
- * inspect: align asset series by common bar end time, choose target weights,
- * rebalance on selected bars, and inspect the resulting portfolio snapshots.
+ * Accounting assumptions: fractional long-only holdings, trades and valuation
+ * at the aligned close, one common quote currency (adjust prices upstream),
+ * uninvested weight held as cash, and strict end-time alignment without
+ * forward fill. Prices are deterministic synthetic data so the output is
+ * reproducible.
  * </p>
  */
 public final class StaticPortfolioBacktest {
+
+    private static final Logger LOG = LogManager.getLogger(StaticPortfolioBacktest.class);
 
     private StaticPortfolioBacktest() {
     }
 
     public static void main(String[] args) {
-        Instant start = Instant.parse("2026-01-01T00:00:00Z");
-        BarSeries equitySeries = series("Equity fund", start, 100, 103, 101, 108, 112);
-        BarSeries bondSeries = series("Bond fund", start, 50, 51, 51.5, 52, 52.5);
-        BarSeries commoditySeries = series("Commodity fund", start, 25, 24, 26, 27, 26.5);
+        PortfolioSeries portfolio = new PortfolioSeries(series("EQUITY", 100, 0.004, 0.08),
+                series("BONDS", 50, 0.0005, 0.01));
+        PortfolioSeriesManager manager = new PortfolioSeriesManager(portfolio, new LinearTransactionCostModel(0.001));
+        Map<String, Double> targetWeights = new LinkedHashMap<>(); // the 10% remainder stays in cash
+        targetWeights.put("EQUITY", 0.6);
+        targetWeights.put("BONDS", 0.3);
+        PortfolioAllocation allocation = new PortfolioAllocation(targetWeights);
+        LOG.info("{}", portfolio);
+        LOG.info("{}", allocation);
 
-        PortfolioAsset equity = PortfolioAsset.of("EQUITY");
-        PortfolioAsset bonds = PortfolioAsset.of("BONDS");
-        PortfolioAsset commodities = PortfolioAsset.of("COMMODITIES");
-        AlignedPortfolioSeries portfolioSeries = AlignedPortfolioSeries
-                .of(List.of(new PortfolioSeries(equity, equitySeries), new PortfolioSeries(bonds, bondSeries),
-                        new PortfolioSeries(commodities, commoditySeries)));
+        // run(...) without a policy is buy-and-hold: invest at the first aligned bar, then hold.
+        PortfolioExecutionResult buyAndHold = manager.run(allocation, 10_000);
+        // A policy schedules every trade, including the initial investment; firstBarOf selects bar 0 too.
+        PortfolioExecutionResult monthly = manager.run(allocation, 10_000,
+                RebalancePolicy.firstBarOf(ChronoUnit.MONTHS, ZoneOffset.UTC));
+        LOG.info("Buy and hold: {}", buyAndHold);
+        LOG.info("Monthly:      {}", monthly);
+        monthly.getSnapshots(RebalanceStatus.COMPLETED)
+                .forEach(snapshot -> LOG.info("Rebalanced {}: turnover={}, cost={}", snapshot.getEndTime(),
+                        snapshot.getTurnover(), snapshot.getTransactionCost()));
 
-        Map<PortfolioAsset, Num> targetWeights = new LinkedHashMap<>();
-        targetWeights.put(equity, equitySeries.numFactory().numOf(0.60));
-        targetWeights.put(bonds, equitySeries.numFactory().numOf(0.30));
-        targetWeights.put(commodities, equitySeries.numFactory().numOf(0.05));
-        PortfolioAllocation allocation = PortfolioAllocation.targetWeights(targetWeights, equitySeries.numFactory());
-
-        PortfolioExecutionResult result = new PortfolioExecutor(portfolioSeries, allocation,
-                equitySeries.numFactory().numOf(10_000), RebalancePolicy.onIndexes(Set.of(0, 3)),
-                new LinearTransactionCostModel(0.001)).run();
-
-        System.out.println("Static target-weight portfolio backtest");
-        System.out.printf("Aligned bars: %d%n", portfolioSeries.getBarCount());
-        System.out.printf("Final value: %.2f%n", result.finalValue().doubleValue());
-        System.out.printf("Total return: %.2f%%%n",
-                result.totalReturn().multipliedBy(equitySeries.numFactory().hundred()).doubleValue());
-        System.out.printf("Transaction costs: %.2f%n", result.totalTransactionCost().doubleValue());
-        System.out.println();
-
-        for (PortfolioSnapshot snapshot : result.snapshots()) {
-            System.out.printf("index=%d value=%.2f cash=%.2f return=%.4f turnover=%.2f%n", snapshot.index(),
-                    snapshot.portfolioValue().doubleValue(), snapshot.cash().doubleValue(),
-                    snapshot.periodReturn().doubleValue(), snapshot.turnover().doubleValue());
-        }
+        // The value series starts at the initial cash, so existing criteria include the initial fees.
+        BarSeries equityCurve = monthly.toPortfolioValueSeries("Monthly 60/30/10");
+        LOG.info("Net return from criteria: {} (result: {})",
+                new EnterAndHoldCriterion(new NetReturnCriterion(ReturnRepresentation.DECIMAL))
+                        .calculate(equityCurve, new BaseTradingRecord()),
+                monthly.getTotalReturn());
+        LOG.info("Maximum drawdown: {}",
+                new EnterAndHoldCriterion(new MaximumDrawdownCriterion()).calculate(equityCurve,
+                        new BaseTradingRecord()));
     }
 
-    private static BarSeries series(String name, Instant start, double... closes) {
+    /** Daily closes following a drifting sine wave over three calendar months. */
+    private static BarSeries series(String name, double start, double dailyDrift, double amplitude) {
         BarSeries series = new BaseBarSeriesBuilder().withName(name).build();
-        Num zero = series.numFactory().zero();
-        for (int i = 0; i < closes.length; i++) {
-            Num close = series.numFactory().numOf(closes[i]);
+        Instant firstEnd = Instant.parse("2026-01-02T00:00:00Z");
+        for (int day = 0; day < 90; day++) {
+            double close = start * (1 + dailyDrift * day + amplitude * Math.sin(day / 9.0));
             series.barBuilder()
                     .timePeriod(Duration.ofDays(1))
-                    .endTime(start.plus(Duration.ofDays(i)))
+                    .endTime(firstEnd.plus(Duration.ofDays(day)))
                     .openPrice(close)
                     .highPrice(close)
                     .lowPrice(close)
                     .closePrice(close)
-                    .volume(zero)
+                    .volume(0)
                     .add();
         }
         return series;
