@@ -67,18 +67,13 @@ public final class PortfolioSnapshot {
     private final Num turnover;
     private final RebalanceStatus rebalanceStatus;
 
-    /**
-     * Takes ownership of {@code prices} and {@code holdings}: callers pass maps
-     * they never modify afterwards, which lets consecutive snapshots share one
-     * holdings map between rebalances.
-     */
     PortfolioSnapshot(int index, Instant endTime, Map<String, Num> prices, Map<String, Num> holdings, Num cash,
             Num portfolioValue, Num periodReturn, Num transactionCost, Num tradedNotional, Num turnover,
             RebalanceStatus rebalanceStatus) {
         this.index = index;
         this.endTime = Objects.requireNonNull(endTime, "endTime");
-        this.prices = Collections.unmodifiableMap(Objects.requireNonNull(prices, "prices"));
-        this.holdings = Collections.unmodifiableMap(Objects.requireNonNull(holdings, "holdings"));
+        this.prices = Collections.unmodifiableMap(new LinkedHashMap<>(Objects.requireNonNull(prices, "prices")));
+        this.holdings = Collections.unmodifiableMap(new LinkedHashMap<>(Objects.requireNonNull(holdings, "holdings")));
         this.cash = Objects.requireNonNull(cash, "cash");
         this.portfolioValue = Objects.requireNonNull(portfolioValue, "portfolioValue");
         this.periodReturn = Objects.requireNonNull(periodReturn, "periodReturn");

@@ -34,6 +34,22 @@ public class PortfolioSnapshotTest {
     }
 
     @Test
+    public void copiesInputMapsSoCallersCannotMutateTheSnapshot() {
+        Map<String, Num> holdings = new LinkedHashMap<>();
+        holdings.put("ALPHA", NUM.numOf(6));
+        Map<String, Num> prices = new LinkedHashMap<>();
+        prices.put("ALPHA", NUM.numOf(100));
+        PortfolioSnapshot snapshot = new PortfolioSnapshot(0, PortfolioFixtures.START, prices, holdings, NUM.numOf(400),
+                NUM.numOf(1000), NUM.zero(), NUM.zero(), NUM.zero(), NUM.zero(), RebalanceStatus.NOT_SCHEDULED);
+
+        holdings.put("ALPHA", NUM.numOf(7));
+        prices.put("ALPHA", NUM.numOf(200));
+
+        assertNumEquals(6, snapshot.getHoldings().get("ALPHA"));
+        assertNumEquals(100, snapshot.getPrices().get("ALPHA"));
+    }
+
+    @Test
     public void zeroValuePortfolioHasZeroWeights() {
         PortfolioSnapshot snapshot = snapshot(NUM.zero(), NUM.zero());
 

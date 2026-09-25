@@ -124,15 +124,12 @@ public final class PortfolioSeries {
         this.numFactory = owned[0].numFactory();
 
         List<Map<Instant, Integer>> indexesByEndTime = new ArrayList<>(owned.length);
-        TreeSet<Instant> commonEndTimes = null;
         for (int position = 0; position < owned.length; position++) {
-            Map<Instant, Integer> currentIndexes = indexesByEndTime(assets.get(position), owned[position]);
-            indexesByEndTime.add(currentIndexes);
-            if (commonEndTimes == null) {
-                commonEndTimes = new TreeSet<>(currentIndexes.keySet());
-            } else {
-                commonEndTimes.retainAll(currentIndexes.keySet());
-            }
+            indexesByEndTime.add(indexesByEndTime(assets.get(position), owned[position]));
+        }
+        TreeSet<Instant> commonEndTimes = new TreeSet<>(indexesByEndTime.getFirst().keySet());
+        for (Map<Instant, Integer> currentIndexes : indexesByEndTime) {
+            commonEndTimes.retainAll(currentIndexes.keySet());
         }
         if (commonEndTimes.isEmpty()) {
             throw new IllegalArgumentException("portfolio series do not share any common bar end times");
