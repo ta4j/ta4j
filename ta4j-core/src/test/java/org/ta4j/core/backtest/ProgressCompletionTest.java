@@ -28,6 +28,25 @@ public class ProgressCompletionTest {
     }
 
     @Test
+    public void autoDetectionLogsUnderTheCallingClass() throws ReflectiveOperationException {
+        TestHelper helper = new TestHelper();
+        MemoryTestHelper memoryHelper = new MemoryTestHelper();
+
+        assertEquals(ProgressCompletionTest.class.getName(), loggerName(ProgressCompletion.logging()));
+        assertEquals(ProgressCompletionTest.class.getName(), loggerName(createCallbackFromNestedMethod()));
+        assertEquals(TestHelper.class.getName(), loggerName(helper.createCallback()));
+        assertEquals(TestHelper.class.getName(), loggerName(helper.createCallbackWithInterval(25)));
+        assertEquals(MemoryTestHelper.class.getName(), loggerName(memoryHelper.createCallback()));
+        assertEquals(MemoryTestHelper.class.getName(), loggerName(memoryHelper.createCallbackWithInterval(25)));
+    }
+
+    private static String loggerName(Consumer<Integer> callback) throws ReflectiveOperationException {
+        java.lang.reflect.Field logger = callback.getClass().getDeclaredField("logger");
+        logger.setAccessible(true);
+        return ((Logger) logger.get(callback)).getName();
+    }
+
+    @Test
     public void loggingWithAutoDetection() {
         Consumer<Integer> callback = ProgressCompletion.logging();
         assertNotNull(callback);
