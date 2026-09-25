@@ -185,7 +185,8 @@ public final class PortfolioAllocation {
         for (WeightedValue<String> weightedAsset : weightedAssets) {
             Objects.requireNonNull(weightedAsset, "weightedAssets must not contain null entries");
             String asset = requireAsset(weightedAsset.value());
-            validatedWeights.add(new WeightedValue<>(asset, normalizeWeight(asset, weightedAsset.weight(), numFactory)));
+            validatedWeights
+                    .add(new WeightedValue<>(asset, normalizeWeight(asset, weightedAsset.weight(), numFactory)));
         }
         Map<String, Num> normalizedWeights = new LinkedHashMap<>();
         for (WeightedValue<String> weightedAsset : WeightedValue.normalizeWeights(validatedWeights, numFactory)) {

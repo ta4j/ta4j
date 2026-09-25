@@ -46,9 +46,9 @@ import org.ta4j.core.portfolio.PortfolioSnapshot.RebalanceStatus;
  * never becomes negative: sells that release cash execute first, sells whose
  * costs consume cash next, and buys are scaled down uniformly when cash cannot
  * cover them. Trades smaller than one part per billion of portfolio value are
- * treated as already at target, so numerical residue never triggers fees.
- * Every snapshot reports whether its rebalance {@link RebalanceStatus completed,
- * was partial, or was skipped}.
+ * treated as already at target, so numerical residue never triggers fees. Every
+ * snapshot reports whether its rebalance {@link RebalanceStatus completed, was
+ * partial, or was skipped}.
  * </p>
  *
  * <p>
@@ -267,8 +267,8 @@ public final class PortfolioSeriesManager {
         }
 
         /**
-         * Costs of trading {@code gross} notional; trades within the no-trade band
-         * are free because they are never executed.
+         * Costs of trading {@code gross} notional; trades within the no-trade band are
+         * free because they are never executed.
          */
         private Num tradeCost(Num price, Num gross, Num noTradeBand) {
             if (gross.isLessThanOrEqual(noTradeBand)) {
@@ -283,8 +283,8 @@ public final class PortfolioSeriesManager {
         }
 
         /**
-         * Bisection midpoint, or {@code null} once the interval is below the
-         * tolerance or numeric precision can no longer split it.
+         * Bisection midpoint, or {@code null} once the interval is below the tolerance
+         * or numeric precision can no longer split it.
          */
         private Num midpoint(Num low, Num high, Num tolerance) {
             if (high.minus(low).isLessThanOrEqual(tolerance)) {
@@ -381,9 +381,9 @@ public final class PortfolioSeriesManager {
 
             /**
              * Largest post-cost portfolio value {@code T} with
-             * {@code T + cost(T) <= preTradeValue}, where {@code cost(T)} is the cost
-             * of trading every asset to {@code weight * T}; {@code null} when no
-             * positive value is feasible, so costs would consume the whole portfolio.
+             * {@code T + cost(T) <= preTradeValue}, where {@code cost(T)} is the cost of
+             * trading every asset to {@code weight * T}; {@code null} when no positive
+             * value is feasible, so costs would consume the whole portfolio.
              */
             private Num postCostTargetValue() {
                 if (rebalanceCost(preTradeValue).isZero()) {
@@ -421,8 +421,8 @@ public final class PortfolioSeriesManager {
             }
 
             /**
-             * Post-cost value at which the current holdings already match the
-             * targets, or {@code null} when holding is not a consistent option.
+             * Post-cost value at which the current holdings already match the targets, or
+             * {@code null} when holding is not a consistent option.
              */
             private Num holdValue() {
                 Num investedValue = zero;
@@ -476,8 +476,8 @@ public final class PortfolioSeriesManager {
             }
 
             /**
-             * Buys every underweight asset, scaling all buys by one common factor when
-             * cash cannot cover them so no asset is favored by its position.
+             * Buys every underweight asset, scaling all buys by one common factor when cash
+             * cannot cover them so no asset is favored by its position.
              */
             private void buy(List<Integer> buys, Num[] deltas) {
                 if (buys.isEmpty()) {
@@ -519,16 +519,15 @@ public final class PortfolioSeriesManager {
             }
 
             /**
-             * Applies a signed notional trade; a complete sale of a zero-target asset
-             * lands exactly on zero units instead of rounding residue.
+             * Applies a signed notional trade; a complete sale of a zero-target asset lands
+             * exactly on zero units instead of rounding residue.
              */
             private void trade(int position, Num signedGross, boolean fullSale) {
                 Num price = prices[position];
                 Num gross = signedGross.abs();
                 Num cost = tradeCost(price, gross, noTradeBand);
                 Num targetUnits = startUnits[position].plus(signedGross.dividedBy(price));
-                units[position] = fullSale && targetWeights[position].isZero() ? zero
-                        : targetUnits;
+                units[position] = fullSale && targetWeights[position].isZero() ? zero : targetUnits;
                 cash = cash.minus(signedGross).minus(cost);
                 transactionCost = transactionCost.plus(cost);
                 tradedNotional = tradedNotional.plus(gross);

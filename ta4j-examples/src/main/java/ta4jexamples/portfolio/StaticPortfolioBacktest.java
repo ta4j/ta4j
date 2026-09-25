@@ -34,9 +34,8 @@ import org.ta4j.core.portfolio.RebalancePolicy;
  * <p>
  * Accounting assumptions: fractional long-only holdings, trades and valuation
  * at the aligned close, one common quote currency (adjust prices upstream),
- * uninvested weight held as cash, and strict end-time alignment without
- * forward fill. Prices are deterministic synthetic data so the output is
- * reproducible.
+ * uninvested weight held as cash, and strict end-time alignment without forward
+ * fill. Prices are deterministic synthetic data so the output is reproducible.
  * </p>
  */
 public final class StaticPortfolioBacktest {
@@ -57,9 +56,11 @@ public final class StaticPortfolioBacktest {
         LOG.info("{}", portfolio);
         LOG.info("{}", allocation);
 
-        // run(...) without a policy is buy-and-hold: invest at the first aligned bar, then hold.
+        // run(...) without a policy is buy-and-hold: invest at the first aligned bar,
+        // then hold.
         PortfolioExecutionResult buyAndHold = manager.run(allocation, 10_000);
-        // A policy schedules every trade, including the initial investment; firstBarOf selects bar 0 too.
+        // A policy schedules every trade, including the initial investment; firstBarOf
+        // selects bar 0 too.
         PortfolioExecutionResult monthly = manager.run(allocation, 10_000,
                 RebalancePolicy.firstBarOf(ChronoUnit.MONTHS, ZoneOffset.UTC));
         LOG.info("Buy and hold: {}", buyAndHold);
@@ -68,15 +69,15 @@ public final class StaticPortfolioBacktest {
                 .forEach(snapshot -> LOG.info("Rebalanced {}: turnover={}, cost={}", snapshot.getEndTime(),
                         snapshot.getTurnover(), snapshot.getTransactionCost()));
 
-        // The value series starts at the initial cash, so existing criteria include the initial fees.
+        // The value series starts at the initial cash, so existing criteria include the
+        // initial fees.
         BarSeries equityCurve = monthly.toPortfolioValueSeries("Monthly 60/30/10");
         LOG.info("Net return from criteria: {} (result: {})",
-                new EnterAndHoldCriterion(new NetReturnCriterion(ReturnRepresentation.DECIMAL))
-                        .calculate(equityCurve, new BaseTradingRecord()),
+                new EnterAndHoldCriterion(new NetReturnCriterion(ReturnRepresentation.DECIMAL)).calculate(equityCurve,
+                        new BaseTradingRecord()),
                 monthly.getTotalReturn());
-        LOG.info("Maximum drawdown: {}",
-                new EnterAndHoldCriterion(new MaximumDrawdownCriterion()).calculate(equityCurve,
-                        new BaseTradingRecord()));
+        LOG.info("Maximum drawdown: {}", new EnterAndHoldCriterion(new MaximumDrawdownCriterion())
+                .calculate(equityCurve, new BaseTradingRecord()));
     }
 
     /** Daily closes following a drifting sine wave over three calendar months. */

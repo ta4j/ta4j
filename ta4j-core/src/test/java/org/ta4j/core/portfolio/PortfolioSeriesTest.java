@@ -47,7 +47,8 @@ public class PortfolioSeriesTest {
         assertEquals(1, portfolio.getSourceIndex("BETA", 1));
         assertNumEquals(120, portfolio.getClosePrice("ALPHA", 1));
         assertNumEquals(60, portfolio.getClosePrice("BETA", 1));
-        assertEquals("PortfolioSeries{assets=[ALPHA, BETA], bars=2, from=2026-01-01T00:00:00Z, to=2026-01-03T00:00:00Z}",
+        assertEquals(
+                "PortfolioSeries{assets=[ALPHA, BETA], bars=2, from=2026-01-01T00:00:00Z, to=2026-01-03T00:00:00Z}",
                 portfolio.toString());
     }
 

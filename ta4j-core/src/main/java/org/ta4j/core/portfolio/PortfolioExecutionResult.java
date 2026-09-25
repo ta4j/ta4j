@@ -149,8 +149,8 @@ public final class PortfolioExecutionResult {
     }
 
     /**
-     * @return cumulative gross notional traded (buys plus sells, excluding
-     *         costs), in currency units
+     * @return cumulative gross notional traded (buys plus sells, excluding costs),
+     *         in currency units
      * @since 0.25.1
      */
     public Num getTotalTradedNotional() {

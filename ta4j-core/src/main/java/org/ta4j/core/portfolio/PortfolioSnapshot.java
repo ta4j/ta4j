@@ -35,22 +35,22 @@ public final class PortfolioSnapshot {
         NOT_SCHEDULED,
 
         /**
-         * Every asset and the cash balance ended at its target weight of the
-         * post-cost portfolio value (possibly without trading when the holdings were
-         * already there).
+         * Every asset and the cash balance ended at its target weight of the post-cost
+         * portfolio value (possibly without trading when the holdings were already
+         * there).
          */
         COMPLETED,
 
         /**
-         * Trades were made, but transaction costs or available cash prevented
-         * reaching every target; the achieved weights differ from the targets.
+         * Trades were made, but transaction costs or available cash prevented reaching
+         * every target; the achieved weights differ from the targets.
          */
         PARTIAL,
 
         /**
-         * The targets could not be reached after transaction costs, so no trades
-         * were made and the holdings are unchanged (for example when a fixed fee
-         * exceeds what the rebalance could achieve).
+         * The targets could not be reached after transaction costs, so no trades were
+         * made and the holdings are unchanged (for example when a fixed fee exceeds
+         * what the rebalance could achieve).
          */
         SKIPPED
     }
@@ -154,8 +154,8 @@ public final class PortfolioSnapshot {
     }
 
     /**
-     * @return gross notional traded at this bar (buys plus sells, excluding
-     *         costs), in currency units
+     * @return gross notional traded at this bar (buys plus sells, excluding costs),
+     *         in currency units
      * @since 0.25.1
      */
     public Num getTradedNotional() {
@@ -163,9 +163,9 @@ public final class PortfolioSnapshot {
     }
 
     /**
-     * Returns the two-sided turnover ratio: {@link #getTradedNotional()} divided
-     * by the portfolio value before trading at this bar. The initial investment of
-     * a fully invested allocation has a turnover of {@code 1}.
+     * Returns the two-sided turnover ratio: {@link #getTradedNotional()} divided by
+     * the portfolio value before trading at this bar. The initial investment of a
+     * fully invested allocation has a turnover of {@code 1}.
      *
      * @return turnover as a fraction of pre-trade portfolio value
      * @since 0.25.1
@@ -247,7 +247,7 @@ public final class PortfolioSnapshot {
     @Override
     public String toString() {
         return "PortfolioSnapshot{index=" + index + ", endTime=" + endTime + ", value=" + portfolioValue + ", cash="
-                + cash + ", periodReturn=" + periodReturn + ", transactionCost=" + transactionCost
-                + ", tradedNotional=" + tradedNotional + ", rebalance=" + rebalanceStatus + '}';
+                + cash + ", periodReturn=" + periodReturn + ", transactionCost=" + transactionCost + ", tradedNotional="
+                + tradedNotional + ", rebalance=" + rebalanceStatus + '}';
     }
 }

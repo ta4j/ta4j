@@ -53,10 +53,9 @@ public class PortfolioAllocationTest {
 
     @Test
     public void fullyInvestedAllocationNormalizesAndCombinesDuplicateAssets() {
-        PortfolioAllocation allocation = new PortfolioAllocation(
-                List.of(new WeightedValue<>("ALPHA", NUM_FACTORY.two()), new WeightedValue<>("ALPHA", NUM_FACTORY.one()),
-                        new WeightedValue<>("BETA", NUM_FACTORY.one())),
-                NUM_FACTORY);
+        PortfolioAllocation allocation = new PortfolioAllocation(List.of(
+                new WeightedValue<>("ALPHA", NUM_FACTORY.two()), new WeightedValue<>("ALPHA", NUM_FACTORY.one()),
+                new WeightedValue<>("BETA", NUM_FACTORY.one())), NUM_FACTORY);
 
         assertNumEquals(0.75, allocation.getTargetWeight("ALPHA"));
         assertNumEquals(0.25, allocation.getTargetWeight("BETA"));
@@ -77,8 +76,7 @@ public class PortfolioAllocationTest {
 
     @Test
     public void rejectsInvalidWeights() {
-        assertThrows(IllegalArgumentException.class,
-                () -> new PortfolioAllocation(Map.of("ALPHA", 0.8, "BETA", 0.4)));
+        assertThrows(IllegalArgumentException.class, () -> new PortfolioAllocation(Map.of("ALPHA", 0.8, "BETA", 0.4)));
         assertThrows(IllegalArgumentException.class, () -> new PortfolioAllocation(Map.of("ALPHA", -0.1)));
         assertThrows(IllegalArgumentException.class, () -> new PortfolioAllocation(Map.of("ALPHA", Double.NaN)));
         assertThrows(IllegalArgumentException.class, () -> new PortfolioAllocation(Map.of(" ", 0.5)));

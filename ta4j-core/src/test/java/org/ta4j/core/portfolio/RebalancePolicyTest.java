@@ -45,11 +45,11 @@ public class RebalancePolicyTest {
 
     @Test
     public void firstBarOfMonthUsesAlignedTimestampsAndMidnightBarEnds() {
-        // Daily bars ending at midnight: the bar ending 2026-02-01T00:00 covers January 31.
+        // Daily bars ending at midnight: the bar ending 2026-02-01T00:00 covers January
+        // 31.
         PortfolioSeries dailyBars = new PortfolioSeries(dailySeries("2026-01-30T00:00:00Z", 5));
 
-        assertEquals(List.of(0, 3),
-                selected(RebalancePolicy.firstBarOf(ChronoUnit.MONTHS, ZoneOffset.UTC), dailyBars));
+        assertEquals(List.of(0, 3), selected(RebalancePolicy.firstBarOf(ChronoUnit.MONTHS, ZoneOffset.UTC), dailyBars));
         assertEquals(List.of(0, 1, 2, 3, 4),
                 selected(RebalancePolicy.firstBarOf(ChronoUnit.DAYS, ZoneOffset.UTC), dailyBars));
         assertEquals(List.of(0, 4), selected(RebalancePolicy.firstBarOf(ChronoUnit.WEEKS, ZoneOffset.UTC), dailyBars));

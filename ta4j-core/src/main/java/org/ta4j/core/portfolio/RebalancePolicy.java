@@ -146,10 +146,10 @@ public interface RebalancePolicy {
      * rebalancing. The first aligned bar always rebalances.
      *
      * <p>
-     * A bar belongs to the period containing the instant just before its end
-     * time, so a daily bar ending exactly at midnight counts toward the day it
-     * covers. Supported units are {@link ChronoUnit#DAYS}, {@link ChronoUnit#WEEKS}
-     * (ISO weeks starting Monday), {@link ChronoUnit#MONTHS},
+     * A bar belongs to the period containing the instant just before its end time,
+     * so a daily bar ending exactly at midnight counts toward the day it covers.
+     * Supported units are {@link ChronoUnit#DAYS}, {@link ChronoUnit#WEEKS} (ISO
+     * weeks starting Monday), {@link ChronoUnit#MONTHS},
      * {@link IsoFields#QUARTER_YEARS}, and {@link ChronoUnit#YEARS}.
      * </p>
      *

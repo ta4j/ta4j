@@ -61,8 +61,8 @@ public class PortfolioExecutionResultTest {
         PortfolioSeriesManager manager = new PortfolioSeriesManager(
                 new PortfolioSeries(series("ALPHA", 100, 200, 200), series("BETA", 100, 50, 50)));
 
-        PortfolioExecutionResult result = manager.run(new PortfolioAllocation(Map.of("ALPHA", 0.5, "BETA", 0.5)),
-                1000, RebalancePolicy.onIndexes(0, 1));
+        PortfolioExecutionResult result = manager.run(new PortfolioAllocation(Map.of("ALPHA", 0.5, "BETA", 0.5)), 1000,
+                RebalancePolicy.onIndexes(0, 1));
 
         assertNumEquals(1750, result.getTotalTradedNotional());
         assertNumEquals(1.6, result.getTotalTurnover());
