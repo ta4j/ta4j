@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.ta4j</groupId>
     <artifactId>ta4j-parent</artifactId>
-    <version>0.23.1-SNAPSHOT</version>
+    <version>0.25.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Ta4j Parent</name>
@@ -67,6 +67,9 @@
         <maven.compiler.release>25</maven.compiler.release>
         <maven.surefire.version>3.5.4</maven.surefire.version>
         <ta4j.excludedTestTags>integration,analysis-demo,benchmark,requires-display,requires-headless</ta4j.excludedTestTags>
+        <!-- Bounded test JVM forks; each test class still runs sequentially inside one JVM.
+             Timing-sensitive lanes (benchmark, analysis-demo) pass -Dta4j.test.forkCount=1. -->
+        <ta4j.test.forkCount>4</ta4j.test.forkCount>
         <spotbugs.version>4.9.8.3</spotbugs.version>
         <jacoco.version>0.8.14</jacoco.version>
         <ta4j.jacoco.line.minimum>0.80</ta4j.jacoco.line.minimum>
@@ -78,7 +81,7 @@
         <gson.version>2.14.0</gson.version>
         <jfreechart.version>1.5.6</jfreechart.version>
         <junit-jupiter.version>6.0.3</junit-jupiter.version>
-        <log4j2.version>2.25.4</log4j2.version>
+        <log4j2.version>2.25.5</log4j2.version>
         <mockito.version>5.23.0</mockito.version>
         <opencsv.version>5.12.0</opencsv.version>
         <poi.version>5.5.1</poi.version>
@@ -174,6 +177,7 @@
             <id>analysis-demo</id>
             <properties>
                 <ta4j.excludedTestTags></ta4j.excludedTestTags>
+                <ta4j.test.forkCount>1</ta4j.test.forkCount>
             </properties>
             <build>
                 <plugins>
@@ -409,6 +413,7 @@
                 <version>${maven.surefire.version}</version>
                 <configuration>
                     <excludedGroups>${ta4j.excludedTestTags}</excludedGroups>
+                    <forkCount>${ta4j.test.forkCount}</forkCount>
                     <useModulePath>false</useModulePath>
                     <argLine>
                         @{argLine}
@@ -437,7 +442,7 @@
             <plugin>
                 <groupId>com.mycila</groupId>
                 <artifactId>license-maven-plugin</artifactId>
-                <version>5.0.0</version>
+                <version>5.1.1</version>
                 <configuration>
                     <licenseSets>
                         <licenseSet>
@@ -452,17 +457,21 @@
 
             <!-- Source formatter -->
             <plugin>
-                <groupId>net.revelc.code.formatter</groupId>
-                <artifactId>formatter-maven-plugin</artifactId>
-                <version>2.29.0</version>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>3.9.0</version>
                 <configuration>
-                    <configFile>${project.basedir}/code-formatter.xml</configFile>
+                    <java>
+                        <eclipse>
+                            <version>4.37</version>
+                            <file>${maven.multiModuleProjectDirectory}/code-formatter.xml</file>
+                        </eclipse>
+                    </java>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
-                <inherited>false</inherited>
                 <configuration>
                     <skip>true</skip>
                 </configuration>

@@ -108,4 +108,23 @@ public class TimeRangeRuleTest extends AbstractIndicatorTest<Object, Object> {
 
         assertThrows(IllegalArgumentException.class, () -> new TimeRangeRule(dateTimeIndicator, from, to));
     }
+
+    @Test
+    public void constructorRejectsInvertedRanges() {
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        var dateTimeIndicator = new DateTimeIndicator(series, Bar::getBeginTime);
+        var inverted = new TimeRangeRule.TimeRange(LocalTime.of(22, 0), LocalTime.of(2, 0));
+
+        assertThrows(IllegalArgumentException.class, () -> new TimeRangeRule(List.of(inverted), dateTimeIndicator));
+    }
+
+    @Test
+    public void constructorWithSecondArraysRejectsInvertedRanges() {
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        var dateTimeIndicator = new DateTimeIndicator(series, Bar::getBeginTime);
+        int[] from = { LocalTime.of(22, 0).toSecondOfDay() };
+        int[] to = { LocalTime.of(2, 0).toSecondOfDay() };
+
+        assertThrows(IllegalArgumentException.class, () -> new TimeRangeRule(dateTimeIndicator, from, to));
+    }
 }

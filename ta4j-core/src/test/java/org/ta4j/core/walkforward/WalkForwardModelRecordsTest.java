@@ -158,6 +158,19 @@ class WalkForwardModelRecordsTest {
     }
 
     @Test
+    void runResultRejectsFailureThatDoesNotMatchSplit() {
+        WalkForwardConfig config = WalkForwardConfig.defaultConfig();
+        WalkForwardSplit split = new WalkForwardSplit("fold-1", 0, 19, 25, 34, 2, 3, false);
+        WalkForwardExperimentManifest manifest = new WalkForwardExperimentManifest("dataset", "candidate",
+                config.configHash(), config.seed(), Map.of());
+        WalkForwardRunResult.FoldFailure invalid = new WalkForwardRunResult.FoldFailure("ghost", 1, "failed",
+                new IllegalStateException("boom"));
+
+        assertThrows(IllegalArgumentException.class, () -> new WalkForwardRunResult<>(config, List.of(split), null,
+                null, null, null, List.of(), WalkForwardRuntimeReport.empty(), manifest, List.of(invalid)));
+    }
+
+    @Test
     void leaderboardAndEntryValidateRequiredValues() {
         WalkForwardConfig config = WalkForwardConfig.defaultConfig();
         WalkForwardExperimentManifest manifest = new WalkForwardExperimentManifest("dataset", "candidate",

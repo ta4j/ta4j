@@ -1734,6 +1734,9 @@ public final class RuleSerialization {
                 context.components.add(labeledDescriptor);
                 break;
             case NUM:
+                if (value instanceof Num num && (Num.isNaNOrNull(num) || !Num.isFinite(num))) {
+                    throw new IllegalArgumentException("Non-finite numeric parameter cannot be serialized: " + name);
+                }
                 context.parameters.put(name, value == null ? null : String.valueOf(value));
                 break;
             case ENUM:

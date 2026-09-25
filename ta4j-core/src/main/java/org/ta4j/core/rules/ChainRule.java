@@ -5,7 +5,9 @@ package org.ta4j.core.rules;
 
 import java.util.LinkedList;
 import java.util.Objects;
+import java.util.Optional;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.rules.helper.ChainLink;
@@ -21,6 +23,9 @@ public class ChainRule extends AbstractRule {
     private final Rule initialRule;
     private final LinkedList<ChainLink> rulesInChain = new LinkedList<>();
 
+    /** The backing series used to resolve the live begin index, or {@code null}. */
+    private final BarSeries series;
+
     /**
      * @param initialRule the first rule that has to be satisfied before
      *                    {@link ChainLink} are evaluated
@@ -33,10 +38,23 @@ public class ChainRule extends AbstractRule {
         for (ChainLink chainLink : chainLinks) {
             this.rulesInChain.add(Objects.requireNonNull(chainLink, "chainLink cannot be null"));
         }
+        this.series = findBarSeries(initialRule, rulesInChain);
+    }
+
+    private static BarSeries findBarSeries(Rule initialRule, LinkedList<ChainLink> rulesInChain) {
+        return RuleCopies.findBarSeries(initialRule)
+                .or(() -> rulesInChain.stream()
+                        .map(chainLink -> RuleCopies.findBarSeries(chainLink.getRule()))
+                        .flatMap(Optional::stream)
+                        .findFirst())
+                .orElse(null);
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+        // Resolve the retained begin index at evaluation time: on a rolling
+        // series the constructor-time value goes stale as bars are evicted.
+        final int beginIndex = series == null ? 0 : series.getBeginIndex();
         int lastRuleWasSatisfiedAfterBars = 0;
         int startIndex = index;
 
@@ -55,7 +73,7 @@ public class ChainRule extends AbstractRule {
 
             for (int i = 0; i <= link.getThreshold(); i++) {
                 int resultingIndex = startIndex - i;
-                if (resultingIndex < 0) {
+                if (resultingIndex < beginIndex) {
                     break;
                 }
 

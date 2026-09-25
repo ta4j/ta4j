@@ -34,7 +34,7 @@ expect_output_value() {
 }
 
 run_test() {
-  TMP="$(mktemp -d)"
+  TMP="$(mktemp -d "${TMPDIR:-/tmp}/ta4j-resolve-tags.XXXXXX")"
   mkdir -p "$TMP/scripts"
   cp "$SCRIPT" "$TMP/scripts/resolve-release-tags.sh"
   chmod +x "$TMP/scripts/resolve-release-tags.sh"

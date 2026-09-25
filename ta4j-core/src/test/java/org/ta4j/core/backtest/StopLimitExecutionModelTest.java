@@ -5,12 +5,23 @@ package org.ta4j.core.backtest;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.Test;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.bars.TimeBarBuilder;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
@@ -188,6 +199,129 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         assertEquals(1, model.getRejectedOrders(tradingRecord).size());
         StopLimitExecutionModel.RejectedOrder rejection = model.getRejectedOrders(tradingRecord).getFirst();
         assertTrue(rejection.reason().contains("Unable to resolve reference bar"));
+    }
+
+    @Test
+    public void currentCloseSignalOnTerminalBarHasNoActivationBar() {
+        // The bar after Integer.MAX_VALUE cannot exist: stop-limit activation
+        // must not wrap to a negative index, which would hand a sizing
+        // context a negative entry index and make sizers that read the entry
+        // bar throw.
+        Bar bar = new TimeBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
+                .endTime(Instant.parse("2024-01-01T00:00:00Z"))
+                .openPrice(100)
+                .highPrice(101)
+                .lowPrice(99)
+                .closePrice(100)
+                .volume(10)
+                .build();
+        BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(List.of(bar))
+                .withBeginIndex(Integer.MAX_VALUE)
+                .build();
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numOf(0.05), numOf(0.06), numOf(0.5), 2,
+                TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+
+        assertNull(model.estimateEntryTarget(Integer.MAX_VALUE, series, Trade.TradeType.BUY));
+
+        TradingRecord tradingRecord = new BaseTradingRecord();
+        model.execute(Integer.MAX_VALUE, tradingRecord, series, numFactory.one());
+        assertEquals(1, model.getRejectedOrders(tradingRecord).size());
+        assertTrue(model.getRejectedOrders(tradingRecord).getFirst().reason().contains("activation bar"));
+    }
+
+    @Test
+    public void stopLimitExpiryDoesNotWrapNearMaxValue() {
+        // When activation happens near Integer.MAX_VALUE, the fillable-bar
+        // window must not wrap the expiry index negative: the order stays
+        // pending past its activation bar and fills on the terminal bar.
+        Bar first = new TimeBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
+                .endTime(Instant.parse("2024-01-01T00:00:00Z"))
+                .openPrice(100)
+                .highPrice(101)
+                .lowPrice(99)
+                .closePrice(100)
+                .volume(10)
+                .build();
+        Bar second = new TimeBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
+                .endTime(Instant.parse("2024-01-02T00:00:00Z"))
+                .openPrice(100)
+                .highPrice(100)
+                .lowPrice(99)
+                .closePrice(100)
+                .volume(10)
+                .build();
+        Bar third = new TimeBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
+                .endTime(Instant.parse("2024-01-03T00:00:00Z"))
+                .openPrice(100)
+                .highPrice(150)
+                .lowPrice(90)
+                .closePrice(120)
+                .volume(10)
+                .build();
+        BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(List.of(first, second, third))
+                .withBeginIndex(Integer.MAX_VALUE - 2)
+                .build();
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numOf(0.05), numOf(0.06), numOf(0.5), 3,
+                TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+
+        TradingRecord tradingRecord = new BaseTradingRecord();
+        model.execute(Integer.MAX_VALUE - 2, tradingRecord, series, numFactory.one());
+        assertTrue(model.getPendingOrder(tradingRecord).isPresent());
+
+        // Activation bar: the stop is not triggered, so the order must
+        // survive instead of expiring through a wrapped expiry index.
+        model.onBar(Integer.MAX_VALUE - 1, tradingRecord, series);
+        assertTrue(model.getPendingOrder(tradingRecord).isPresent());
+        assertTrue(model.getRejectedOrders(tradingRecord).isEmpty());
+
+        // Terminal bar: trigger and limit are both reached; the order fills.
+        model.onBar(Integer.MAX_VALUE, tradingRecord, series);
+        assertTrue(model.getPendingOrder(tradingRecord).isEmpty());
+        assertTrue(model.getRejectedOrders(tradingRecord).isEmpty());
+        assertEquals(1, tradingRecord.getTrades().size());
+    }
+
+    @Test
+    public void stopLimitTtlIsNotClampedToConstrainedSeriesEnd() {
+        // Expiry follows the configured time-to-live, clamped only at
+        // Integer.MAX_VALUE: clamping to a constrained series end instead
+        // would expire orders before tail bars beyond that end could fill.
+        Bar first = new TimeBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
+                .endTime(Instant.parse("2024-01-01T00:00:00Z"))
+                .openPrice(100)
+                .highPrice(101)
+                .lowPrice(99)
+                .closePrice(100)
+                .volume(10)
+                .build();
+        Bar second = new TimeBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
+                .endTime(Instant.parse("2024-01-02T00:00:00Z"))
+                .openPrice(100)
+                .highPrice(101)
+                .lowPrice(99)
+                .closePrice(100)
+                .volume(10)
+                .build();
+        Bar third = new TimeBarBuilder(numFactory).timePeriod(Duration.ofDays(1))
+                .endTime(Instant.parse("2024-01-03T00:00:00Z"))
+                .openPrice(100)
+                .highPrice(101)
+                .lowPrice(99)
+                .closePrice(100)
+                .volume(10)
+                .build();
+        BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(List.of(first, second, third))
+                .build();
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numOf(0.05), numOf(0.06), numOf(0.5), 5,
+                TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+
+        TradingRecord tradingRecord = new BaseTradingRecord();
+        model.execute(0, tradingRecord, series, numFactory.one());
+
+        assertEquals(5, model.getPendingOrder(tradingRecord).orElseThrow().expiryIndex());
     }
 
     @Test
@@ -415,6 +549,89 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
 
         assertEquals(1, tradingRecord.getTrades().size());
         assertEquals(ExecutionSide.SELL, tradingRecord.getTrades().getFirst().getFills().getFirst().side());
+    }
+
+    @Test
+    public void concurrentExecutionsOnSharedModelKeepAllOrders() throws Exception {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(4d).add();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(4d).add();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(4d).add();
+
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(), numOf(0.5),
+                2);
+        int threadCount = 8;
+        int recordsPerThread = 12;
+        int trials = 3;
+
+        for (int trial = 0; trial < trials; trial++) {
+            ExecutorService pool = Executors.newFixedThreadPool(threadCount);
+            CountDownLatch startGate = new CountDownLatch(1);
+            List<Future<List<RecordOutcome>>> futures = new ArrayList<>(threadCount);
+            try {
+                for (int t = 0; t < threadCount; t++) {
+                    futures.add(pool.submit(() -> {
+                        startGate.await();
+                        return driveRecordsOnSharedModel(model, series, recordsPerThread);
+                    }));
+                }
+                startGate.countDown();
+                for (Future<List<RecordOutcome>> future : futures) {
+                    for (RecordOutcome outcome : future.get(30, TimeUnit.SECONDS)) {
+                        // Expiry commits the filled portion as one trade per fill
+                        assertEquals(2, outcome.tradeCount());
+                        assertEquals(numFactory.numOf(4), outcome.totalTradeAmount());
+                        assertEquals(2, outcome.rejectionCount());
+                        assertFalse(outcome.pendingOrderPresent());
+                    }
+                }
+            } finally {
+                pool.shutdown();
+            }
+        }
+    }
+
+    private List<RecordOutcome> driveRecordsOnSharedModel(StopLimitExecutionModel model, BarSeries series,
+            int recordsPerThread) {
+        List<TradingRecord> records = new ArrayList<>(recordsPerThread);
+        for (int r = 0; r < recordsPerThread; r++) {
+            TradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY);
+            records.add(record);
+            model.execute(0, record, series, numFactory.numOf(10));
+        }
+        List<RecordOutcome> outcomes = new ArrayList<>(recordsPerThread);
+        for (TradingRecord record : records) {
+            // Second signal while a pending order exists -> rejection
+            model.execute(0, record, series, numFactory.numOf(10));
+            // First partial fill on the activation bar (no expiry yet)
+            model.onBar(0, record, series);
+            // Second partial fill, then expiry (maxBarsToFill=2) commits the filled
+            // portion as one trade per fill
+            model.onBar(1, record, series);
+            // No pending order left, so this must be a no-op
+            model.onBar(2, record, series);
+            // Still no pending order, so this must be a no-op
+            model.onRunEnd(2, record);
+
+            List<Trade> trades = record.getTrades();
+            Num totalTradeAmount = null;
+            for (Trade trade : trades) {
+                totalTradeAmount = totalTradeAmount == null ? trade.getAmount()
+                        : totalTradeAmount.plus(trade.getAmount());
+            }
+            outcomes.add(new RecordOutcome(trades.size(), totalTradeAmount, model.getRejectedOrders(record).size(),
+                    model.getPendingOrder(record).isPresent()));
+        }
+        return outcomes;
+    }
+
+    /**
+     * Per-record outcome of one concurrent drive: the expiry commits the filled
+     * portion as one trade per fill (2 x 2), two rejections (ignored-while-pending,
+     * expired-partial), and no leftover pending order.
+     */
+    private record RecordOutcome(int tradeCount, Num totalTradeAmount, int rejectionCount,
+            boolean pendingOrderPresent) {
     }
 
     private static final class LegacyTradingRecordWithoutLotExposure implements TradingRecord {

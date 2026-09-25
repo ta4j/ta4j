@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.statistics;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 import java.util.List;
 
@@ -38,6 +39,18 @@ public class CorrelationWindowSupportTest {
         int unstableBars = CorrelationWindowSupport.unstableBars(5, first, second, third);
 
         assertEquals(Integer.MAX_VALUE, unstableBars);
+    }
+
+    @Test
+    public void acceptsBarCountAtSharedCeiling() {
+        assertEquals(10_000_000, CorrelationWindowSupport.validateBarCount(10_000_000));
+    }
+
+    @Test
+    public void rejectsBarCountAboveSharedCeiling() {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> CorrelationWindowSupport.validateBarCount(10_000_001));
+        assertEquals("barCount exceeds the maximum window length", e.getMessage());
     }
 
     private Indicator<Num> indicator(BarSeries series, int unstableBars) {

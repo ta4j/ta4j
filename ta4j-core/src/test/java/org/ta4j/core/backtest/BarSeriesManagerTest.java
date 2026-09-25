@@ -30,8 +30,8 @@ import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
@@ -41,7 +41,11 @@ import org.ta4j.core.walkforward.AnchoredExpandingWalkForwardSplitter;
 import org.ta4j.core.walkforward.WalkForwardConfig;
 import org.ta4j.core.walkforward.WalkForwardSplit;
 
-public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class BarSeriesManagerTest {
+
+    private static final NumFactory DECIMAL_NUM_FACTORY = DecimalNumFactory.getInstance();
+
+    private NumFactory numFactory = DoubleNumFactory.getInstance();
 
     private BarSeries seriesForRun;
 
@@ -49,14 +53,27 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
     private Strategy strategy;
 
-    private final Num HUNDRED = numOf(100);
+    private Num HUNDRED;
 
-    public BarSeriesManagerTest(NumFactory numFactory) {
-        super(numFactory);
+    private Num numOf(Number value) {
+        return numFactory.numOf(value);
+    }
+
+    private void runWithNumFactory(NumFactory factory, Runnable test) {
+        NumFactory previousFactory = numFactory;
+        numFactory = factory;
+        try {
+            setUp();
+            test.run();
+        } finally {
+            numFactory = previousFactory;
+            setUp();
+        }
     }
 
     @Before
     public void setUp() {
+        HUNDRED = numOf(100);
         seriesForRun = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
         seriesForRun.barBuilder().endTime(Instant.parse("2013-01-01T05:00:00Z")).closePrice(1d).add();
@@ -246,6 +263,11 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
+    public void runWithPositionSizerUsesCustomExecutionModelEstimateWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY, this::runWithPositionSizerUsesCustomExecutionModelEstimate);
+    }
+
+    @Test
     public void runWithPositionSizerUnresolvableTargetFallsBackSafely() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d).build();
         TradeExecutionModel model = new TradeExecutionModel() {
@@ -293,6 +315,11 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
+    public void runWithPositionSizerContextEstimatesStopLimitEntryWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY, this::runWithPositionSizerContextEstimatesStopLimitEntry);
+    }
+
+    @Test
     public void positionSizerFixedFactoriesUseDefaultAndCustomAmounts() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30).build();
         BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
@@ -332,6 +359,11 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
+    public void positionSizerBalanceUsesMaxAffordableAmountWithEntryFeesWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY, this::positionSizerBalanceUsesMaxAffordableAmountWithEntryFees);
+    }
+
+    @Test
     public void positionSizerBalanceUsesRealizedBalance() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 40, 20).build();
         BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
@@ -342,6 +374,11 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
         assertEquals(numFactory.numOf(10), positions.get(0).getEntry().getAmount());
         assertEquals(numFactory.numOf(5), positions.get(1).getEntry().getAmount());
+    }
+
+    @Test
+    public void positionSizerBalanceUsesRealizedBalanceWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY, this::positionSizerBalanceUsesRealizedBalance);
     }
 
     @Test
@@ -376,6 +413,11 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
                 PositionSizer.kelly(1000, 0.6, 2, 0.5)));
         assertEntryAmount(48.0, managerWithCosts(10, new ZeroCostModel()).run(oneTradeStrategy, TradeType.BUY,
                 PositionSizer.kelly(1000, 0.6, 2, 1.2)));
+    }
+
+    @Test
+    public void positionSizerKellyUsesCoefficientWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY, this::positionSizerKellyUsesCoefficient);
     }
 
     @Test
@@ -667,6 +709,11 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
                 assertEquals(firstPosition.getEntry().getAmount(), firstPosition.getExit().getAmount());
             }
         }
+    }
+
+    @Test
+    public void runWalkForwardWithPositionSizerUsesDynamicAmountWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY, this::runWalkForwardWithPositionSizerUsesDynamicAmount);
     }
 
     private Trade buyAt(int index, Num price, Num amount) {

@@ -81,6 +81,11 @@ public class FixedAmountStopGainRule extends AbstractRule implements StopGainPri
         Num entryPrice = currentPosition.getEntry().getNetPrice();
         Num currentPrice = priceIndicator.getValue(index);
         boolean buy = currentPosition.getEntry().isBuy();
+        if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice)) {
+            StopRuleTrace.traceDecision(this, index, false, buy, currentPrice, entryPrice, null, "gainAmount",
+                    gainAmount, "priceUnavailable");
+            return false;
+        }
         Num stopPrice = StopGainRule.stopGainPriceFromDistance(entryPrice, gainAmount, buy);
         boolean satisfied = buy ? currentPrice.isGreaterThanOrEqual(stopPrice)
                 : currentPrice.isLessThanOrEqual(stopPrice);

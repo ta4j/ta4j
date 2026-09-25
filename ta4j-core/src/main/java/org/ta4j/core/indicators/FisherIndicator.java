@@ -155,7 +155,8 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
 
             @Override
             protected Num calculate(int index) {
-                if (index <= 0) {
+                if (index <= getBarSeries().getBeginIndex()) {
+                    // A bounded series can discard the preceding recursive value.
                     return numFactory.zero();
                 }
 
@@ -174,13 +175,15 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
             public int getCountOfUnstableBars() {
                 return Math.max(periodHigh.getCountOfUnstableBars(), periodLow.getCountOfUnstableBars());
             }
+
         };
     }
 
     @Override
     protected Num calculate(int index) {
         final var numFactory = getBarSeries().numFactory();
-        if (index <= 0) {
+        if (index <= getBarSeries().getBeginIndex()) {
+            // A bounded series can discard the preceding recursive value.
             return numFactory.zero();
         }
 

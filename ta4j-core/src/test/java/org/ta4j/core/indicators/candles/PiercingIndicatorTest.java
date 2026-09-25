@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.candles;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -15,6 +16,7 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.trend.DownTrendIndicator;
 import org.ta4j.core.mocks.MockBarBuilder;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -147,6 +149,37 @@ public class PiercingIndicatorTest extends AbstractIndicatorTest<Indicator<Boole
 
         var piercing = new PiercingIndicator(series);
         assertTrue(piercing.getValue(18));
+    }
+
+    @Test
+    public void getCountOfUnstableBarsMatchesTrendGateWarmUp() {
+        var piercing = new PiercingIndicator(series);
+        assertEquals(Math.max(1, new DownTrendIndicator(series).getCountOfUnstableBars()),
+                piercing.getCountOfUnstableBars());
+    }
+
+    @Test
+    public void firstStableSignalAppearsAtDeclaredBoundary() {
+        BarSeries boundarySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 10; ++i) {
+            boundarySeries.barBuilder()
+                    .openPrice(46 - 2 * i)
+                    .closePrice(40 - 2 * i)
+                    .highPrice(46 - 2 * i)
+                    .lowPrice(38 - 2 * i)
+                    .add();
+        }
+        // Big bearish first bar at index 10
+        boundarySeries.barBuilder().openPrice(26).closePrice(20).highPrice(26).lowPrice(18).add();
+        // Bullish piercing bar at index 11
+        boundarySeries.barBuilder().openPrice(17).closePrice(23.5).highPrice(24).lowPrice(17).add();
+
+        var piercing = new PiercingIndicator(boundarySeries);
+        int boundary = piercing.getCountOfUnstableBars();
+        for (int i = 0; i < boundary; ++i) {
+            assertFalse(piercing.getValue(i));
+        }
+        assertTrue(piercing.getValue(boundary));
     }
 
 }

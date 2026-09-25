@@ -74,7 +74,7 @@ public class VWMAIndicator extends CachedIndicator<Num> {
     }
 
     private VWMAIndicator(Config config) {
-        super(config.series());
+        super(config.volumeWeightedIndicator());
         this.priceIndicator = config.priceIndicator();
         this.volumeIndicator = config.volumeIndicator();
         this.volumeWeightedIndicator = config.volumeWeightedIndicator();

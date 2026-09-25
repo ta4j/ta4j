@@ -59,6 +59,75 @@ window is not ready or the statistic is undefined.
 | Does knowing one discretized state reduce uncertainty about another? | `MutualInformationIndicator` | Equal-width bins for v1; reports natural-log mutual information in nats |
 | Does correlation only matter inside a trend, volatility, or custom state? | `RegimeSegmentedCorrelationIndicator` | Filters each rolling window with an `Indicator<Boolean>` regime selector |
 
+## Measure lead/lag, shape, and event dependence
+
+Three complementary analyzers under `org.ta4j.core.indicators.statistics` and
+`org.ta4j.core.analysis.event` answer relationship questions the rolling
+indicators leave open:
+
+- **Lead/lag structure over a lag range** —
+  `LeadLagCorrelationIndicator` scans an inclusive lag range as a rolling
+  indicator: `getValue(index)` is the selected lag's signed correlation and
+  `getProfile(index)` returns the full `Profile` (one `Point` per lag,
+  undefined lags retained), every lag tying for the best score, and one
+  deterministic selected lag (smallest absolute, then smallest signed). The
+  lag sign convention matches `LaggedCorrelationIndicator`: positive means
+  the first indicator leads the second. The symmetric convenience
+  constructor searches the normal `[-maximumLag, maximumLag]` range;
+  selection policy picks the maximum signed or maximum absolute correlation,
+  and the selected correlation always keeps its original sign.
+- **Shape similarity under time distortion** —
+  `DynamicTimeWarpingDistanceIndicator` computes the minimum-cost monotonic
+  alignment between two rolling windows. The recommended configuration
+  (`DynamicTimeWarpingDistanceIndicator.Config.shapeComparison(radius)`;
+  see `LeadLagDtwEventAnalysisExample`) compares shapes (z-score
+  normalization, squared local distance) inside a bounded Sakoe–Chiba band
+  with path-length normalization; unconstrained warping is an explicit
+  opt-in. A zero radius forces diagonal pointwise alignment; the reported
+  cost is the sum or mean of the local costs, according to path-cost
+  normalization. Complexity is `O(W * min(W, 2r + 1))` time and `O(W)`
+  memory for window `W` and radius `r`.
+- **Continuous predictor vs sparse current-or-future event** —
+  `EventMutualInformationEvaluator` measures how much a continuous indicator
+  state reduces uncertainty about whether a target event occurs in an
+  explicit `[start, end]` bar window ahead of the sample (offset zero
+  labels the sample's own bar; a positive start offset makes the window
+  future-only). It reports raw MI (nats), target
+  entropy, normalized MI (`MI / H(Y)`), event prevalence, and bin
+  diagnostics. Equal-frequency binning never splits tied predictor values;
+  a non-finite sample makes the result undefined instead of silently
+  dropping data, and target windows never cross the evaluation partition
+  boundary (no look-ahead into validation).
+
+These tools describe association, not causation. The deterministic
+cross-capability demo `ta4jexamples.analysis.LeadLagDtwEventAnalysisExample`
+shows Net Momentum versus close price through all three lenses on a
+committed daily BTC dataset.
+
+## Choose the right parameter search engine
+
+`org.ta4j.core.research.ParameterResearch` runs budget-exact parameter
+searches from one fluent builder: declare typed domains, build a candidate
+per evaluation window, score it with an objective, and rank the top
+candidates against an untouched holdout window. All engines share one
+contract — the evaluation budget is never exceeded, duplicate proposals and
+cache hits are not charged, seeded engines are deterministic, and training
+scores are computed from the training window only. With a holdout window
+configured, `topK` evaluations are reserved from the budget for the holdout
+rebuild, so objective calls across training and holdout stay budget-exact.
+
+| Situation | Engine | Notes |
+| --- | --- | --- |
+| Small, enumerable space that must be covered completely | `SearchPlan.grid(maxEvaluations)` | Lazy Cartesian iteration in deterministic order; reports `SEARCH_SPACE_EXHAUSTED` once every combination has been proposed or processed, including those rejected by the normalizer or validator |
+| Large or mixed integer/decimal/boolean/categorical space | `SearchPlan.genetic(maxEvaluations, seed)` | Tournament selection with domain-aware crossover/mutation and elitism; the seeded run-local RNG keeps runs reproducible |
+| Large numeric-only space | `SearchPlan.particleSwarm(maxEvaluations, seed)` | Global-best swarm with velocity clamping; integer dimensions are rounded deterministically, and boolean/categorical domains are rejected before any evaluation |
+| The objective is noisy, the space is trivial, or a single baseline would do | Do not optimize | Search cannot create predictive value; a hand-picked baseline checked on a holdout window is the cheaper honest answer |
+
+See `ta4jexamples.backtesting.SimpleMovingAverageRangeBacktest` for a
+backtest-scored workflow and
+`ta4jexamples.research.RelationshipObjectiveSearchExample` for an
+event-synchronization (F1) workflow with a one-line grid/GA/PSO switch.
+
 ## Companion user guides
 
 - Backtesting: https://ta4j.github.io/ta4j-wiki/Backtesting.html

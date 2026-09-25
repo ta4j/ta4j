@@ -58,6 +58,20 @@ class WalkForwardConfigAndSplitterTest {
     }
 
     @Test
+    void configHashIsCollisionSafeAndDeterministic() {
+        // These two distinct configurations share the same 32-bit canonical
+        // String.hashCode (1586966012), so the previous truncated hash conflated
+        // their experiment identities; the SHA-256 digest must not.
+        WalkForwardConfig configA = new WalkForwardConfig(80, 21, 49, 0, 4, 0, 5, List.of(3), 2, List.of(1), 7L);
+        WalkForwardConfig configB = new WalkForwardConfig(80, 90, 60, 2, 10, 0, 5, List.of(3), 2, List.of(1), 7L);
+
+        assertThat(configA.configHash()).isNotEqualTo(configB.configHash());
+        assertThat(configA.configHash()).isEqualTo(configA.configHash());
+        assertThat(configA.configHash()).matches("[0-9a-f]{64}");
+        assertThat(configB.configHash()).matches("[0-9a-f]{64}");
+    }
+
+    @Test
     void anchoredSplitterCreatesChronologicalFoldsAndHoldout() {
         BarSeries series = new MockBarSeriesBuilder().withData(prices(400)).build();
         WalkForwardConfig config = new WalkForwardConfig(120, 50, 50, 5, 5, 40, 60, List.of(30, 150), 3, List.of(1, 5),

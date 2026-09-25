@@ -53,10 +53,9 @@ public class MarketFacilitationIndexIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public MarketFacilitationIndexIndicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, Indicator<Num> volume) {
-        super(IndicatorUtils.requireIndicator(highPrice, "highPrice indicator"));
-        IndicatorUtils.requireIndicator(lowPrice, "lowPrice indicator");
-        IndicatorUtils.requireIndicator(volume, "volume indicator");
-        IndicatorUtils.requireSameSeries(highPrice, lowPrice, volume);
+        super(IndicatorUtils.requireIndicator(highPrice, "highPrice indicator"),
+                IndicatorUtils.requireIndicator(lowPrice, "lowPrice indicator"),
+                IndicatorUtils.requireIndicator(volume, "volume indicator"));
         this.highPrice = highPrice;
         this.lowPrice = lowPrice;
         this.volume = volume;

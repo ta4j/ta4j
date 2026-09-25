@@ -50,6 +50,11 @@ if [[ "${1:-}" == "--" ]]; then
   shift
 fi
 
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "Error: required tool 'python3' not found in PATH" >&2
+  exit 1
+fi
+
 default_harness_args=(
   --throughputControl
   --matrixStrategyCounts "250,500,1000"

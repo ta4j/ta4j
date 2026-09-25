@@ -46,6 +46,7 @@ import org.ta4j.core.num.NumFactory;
  * Scenarios:
  * <ul>
  * <li>Bounded cache eviction (hot path for streaming/rolling windows)</li>
+ * <li>Reverse reads across a bounded cache window</li>
  * <li>Concurrent cache-hit reads (contention on read-mostly workloads)</li>
  * <li>Repeated reads of the last bar (common in live feeds where the last bar
  * is queried frequently)</li>
@@ -90,6 +91,11 @@ public class CachedIndicatorBenchmark {
         return benchmarkConcurrentCacheHits(series, threads, readsPerThread);
     }
 
+    ScenarioResult runReverseReadScenario(int barCount, int maximumBarCountHint) {
+        BarSeries series = buildSeries(barCount);
+        return benchmarkReverseReads(series, maximumBarCountHint);
+    }
+
     ScenarioResult runLastBarHotReadsScenario(int barCount, int smaPeriod, int reads) {
         BarSeries series = buildSeries(barCount);
         return benchmarkLastBarHotReads(series, smaPeriod, reads);
@@ -110,6 +116,8 @@ public class CachedIndicatorBenchmark {
         for (int batch = 1; batch <= batches; batch++) {
             runScenario("Bounded eviction (monotonic indices)", batch, statsByScenario,
                     () -> benchmarkBoundedEviction(evictionSeries, maximumBarCountHint));
+            runScenario("Bounded reverse reads", batch, statsByScenario,
+                    () -> benchmarkReverseReads(evictionSeries, maximumBarCountHint));
             runScenario("Concurrent cache hits (same index)", batch, statsByScenario,
                     () -> benchmarkConcurrentCacheHits(cacheHitSeries, threads, cacheHitsPerThread));
             runScenario("Last bar hot reads (SMA)", batch, statsByScenario,
@@ -221,6 +229,28 @@ public class CachedIndicatorBenchmark {
         }
     }
 
+    private ScenarioResult benchmarkReverseReads(BarSeries baseSeries, int maximumBarCountHint) {
+        BarSeries series = new MaxBarCountHintSeries(baseSeries, maximumBarCountHint);
+        Indicator<Integer> indicator = new IndexIndicator(series);
+        int lastStableIndex = series.getEndIndex() - 1;
+        int warmupStartIndex = Math.max(0, lastStableIndex - maximumBarCountHint + 1);
+        for (int index = warmupStartIndex; index <= lastStableIndex; index++) {
+            indicator.getValue(index);
+        }
+
+        int operations = warmupStartIndex;
+        long checksum = 0L;
+        long startNanos = System.nanoTime();
+        for (int index = warmupStartIndex - 1; index >= 0; index--) {
+            checksum += indicator.getValue(index);
+        }
+        long durationNanos = System.nanoTime() - startNanos;
+
+        long expectedChecksum = operations == 0 ? 0L : (long) (operations - 1) * operations / 2L;
+        requireEquals(expectedChecksum, checksum, "Reverse-read checksum mismatch");
+        return new ScenarioResult(operations, durationNanos, checksum);
+    }
+
     private ScenarioResult benchmarkLastBarHotReads(BarSeries baseSeries, int smaPeriod, int reads) {
         BarSeries series = new MaxBarCountHintSeries(baseSeries, Integer.MAX_VALUE);
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
@@ -313,7 +343,7 @@ public class CachedIndicatorBenchmark {
             this.operations = operations;
             this.durationNanos = durationNanos;
             this.checksum = checksum;
-            this.throughputOpsPerSecond = operations / (durationNanos / 1_000_000_000d);
+            this.throughputOpsPerSecond = operations == 0 ? 0.0 : operations / (durationNanos / 1_000_000_000d);
         }
 
         long getOperations() {
@@ -411,6 +441,18 @@ public class CachedIndicatorBenchmark {
         @Override
         public List<Bar> getBarData() {
             return delegate.getBarData();
+        }
+
+        @Override
+        public long getBarHistoryRevision() {
+            return delegate.getBarHistoryRevision();
+        }
+
+        @Override
+        public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long sinceRevision) {
+            BarSeriesChangeSnapshot delegateSnapshot = delegate.getBarSeriesChangeSnapshot(sinceRevision);
+            return new BarSeriesChangeSnapshot(delegateSnapshot.revision(), delegateSnapshot.earliestChangedIndex(),
+                    delegateSnapshot.removedThroughIndex(), maximumBarCountHint, delegateSnapshot.endIndex());
         }
 
         @Override

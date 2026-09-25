@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import org.apache.commons.math3.stat.regression.SimpleRegression;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.ReturnIndicator;
@@ -15,6 +14,7 @@ import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.state.ReturnMoments;
 import org.ta4j.core.indicators.forecast.state.RoughVolatilityForecastState;
+import org.ta4j.core.indicators.statistics.HurstExponentIndicator;
 import org.ta4j.core.indicators.statistics.VarianceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -61,9 +61,7 @@ import org.ta4j.core.num.NumFactory;
 public final class RoughVolatilityForecastStateIndicator extends CachedIndicator<RoughVolatilityForecastState>
         implements ReturnForecastStateIndicator<RoughVolatilityForecastState> {
 
-    private static final int MAX_VARIOGRAM_LAG = 10;
     private static final double PROXY_EPSILON = 1e-8d;
-    private static final double VARIOGRAM_FLOOR = 1e-12d;
     private static final double MIN_HURST = 0.01d;
     private static final double MAX_HURST = 0.49d;
 
@@ -76,6 +74,7 @@ public final class RoughVolatilityForecastStateIndicator extends CachedIndicator
     private final int horizon;
     private final transient EwmaReturnForecastStateIndicator momentIndicator;
     private final transient LogVolatilityProxyIndicator proxyIndicator;
+    private final transient HurstExponentIndicator hurstExponentIndicator;
     private final transient VarianceIndicator proxyVarianceIndicator;
 
     /**
@@ -111,6 +110,7 @@ public final class RoughVolatilityForecastStateIndicator extends CachedIndicator
         this.momentIndicator = new EwmaReturnForecastStateIndicator(returnIndicator, builder.initializationBarCount,
                 builder.decayFactor, builder.driftMode);
         this.proxyIndicator = new LogVolatilityProxyIndicator(returnIndicator);
+        this.hurstExponentIndicator = new HurstExponentIndicator(proxyIndicator, builder.roughnessWindow);
         this.proxyVarianceIndicator = VarianceIndicator.ofPopulation(proxyIndicator, builder.volOfVolWindow);
     }
 
@@ -198,36 +198,13 @@ public final class RoughVolatilityForecastStateIndicator extends CachedIndicator
      */
     @Override
     public int getCountOfUnstableBars() {
-        int roughnessUnstable = proxyIndicator.getCountOfUnstableBars() + roughnessWindow - 1;
-        return Math.max(momentIndicator.getCountOfUnstableBars(),
-                Math.max(roughnessUnstable, proxyVarianceIndicator.getCountOfUnstableBars()));
+        return Math.max(momentIndicator.getCountOfUnstableBars(), Math
+                .max(hurstExponentIndicator.getCountOfUnstableBars(), proxyVarianceIndicator.getCountOfUnstableBars()));
     }
 
     private double estimateHurst(int index) {
-        int firstIndex = index - roughnessWindow + 1;
-        int maximumLag = Math.min(MAX_VARIOGRAM_LAG, roughnessWindow - 1);
-        SimpleRegression regression = new SimpleRegression(true);
-        for (int lag = 1; lag <= maximumLag; lag++) {
-            double squaredDifferenceTotal = 0d;
-            int pairCount = 0;
-            for (int currentIndex = firstIndex + lag; currentIndex <= index; currentIndex++) {
-                double current = finitePrimitive(proxyIndicator.getValue(currentIndex));
-                double previous = finitePrimitive(proxyIndicator.getValue(currentIndex - lag));
-                if (!Double.isFinite(current) || !Double.isFinite(previous)) {
-                    return Double.NaN;
-                }
-                double difference = current - previous;
-                squaredDifferenceTotal += difference * difference;
-                if (!Double.isFinite(squaredDifferenceTotal)) {
-                    return Double.NaN;
-                }
-                pairCount++;
-            }
-            double variogram = squaredDifferenceTotal / pairCount;
-            regression.addData(Math.log(lag), Math.log(Math.max(variogram, VARIOGRAM_FLOOR)));
-        }
-        double slope = regression.getSlope();
-        return Double.isFinite(slope) ? Math.max(MIN_HURST, Math.min(MAX_HURST, slope * 0.5d)) : Double.NaN;
+        double hurst = finitePrimitive(hurstExponentIndicator.getValue(index));
+        return Double.isFinite(hurst) ? Math.max(MIN_HURST, Math.min(MAX_HURST, hurst)) : Double.NaN;
     }
 
     private List<Num> horizonVariances(Num currentVariance, double hurst, NumFactory numFactory) {

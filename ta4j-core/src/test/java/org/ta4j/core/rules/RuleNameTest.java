@@ -155,10 +155,13 @@ public class RuleNameTest {
     public void customNameVisibleAcrossThreadsWithoutExplicitSync() throws Exception {
         CountingRule rule = new CountingRule();
         String customName = "CustomName-" + System.nanoTime();
+        CountDownLatch readerStarted = new CountDownLatch(1);
         CountDownLatch readerDone = new CountDownLatch(1);
         AtomicInteger seenCustom = new AtomicInteger(0);
 
         Thread reader = new Thread(() -> {
+            // Signal that polling has started before the writer publishes the name.
+            readerStarted.countDown();
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
             while (System.nanoTime() < deadline) {
                 if (customName.equals(rule.getName())) {
@@ -171,13 +174,15 @@ public class RuleNameTest {
         }, "custom-name-reader");
 
         reader.start();
-        // Writer thread sets the custom name after a short delay to avoid any implicit
-        // happens-before with reader start.
+        // The latch only orders the start of polling against the write; the writer's
+        // setName() and the reader's subsequent getName() calls are not synchronized,
+        // so the assertion still exercises a genuine cross-thread visibility publish.
         Thread writer = new Thread(() -> {
             try {
-                Thread.sleep(25);
+                readerStarted.await();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+                return;
             }
             rule.setName(customName);
         }, "custom-name-writer");

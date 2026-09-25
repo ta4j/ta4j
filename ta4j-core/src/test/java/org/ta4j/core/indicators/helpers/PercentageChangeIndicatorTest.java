@@ -41,6 +41,14 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
     }
 
     @Test
+    public void defaultPreviousSourceRegistersOnlyCurrentIndicator() {
+        Indicator<Num> source = new ClosePriceIndicator(barSeries);
+        PercentageChangeIndicator indicator = new PercentageChangeIndicator(source);
+
+        assertThat(indicator.getDependencies()).containsExactly(source);
+    }
+
+    @Test
     public void indicatorShouldRetrieveBarPercentageChange() {
         assertThat(priceChangePercentage.getValue(0).isNaN()).isTrue();
         for (int i = 1; i < 10; i++) {
@@ -73,7 +81,7 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
                 .timePeriod(duration)
                 .endTime(endTime)
                 .openPrice(2.8)
-                .highPrice(1)
+                .highPrice(2.9)
                 .lowPrice(1)
                 .closePrice(2.9)
                 .add();
@@ -81,7 +89,7 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
                 .timePeriod(duration)
                 .endTime(endTime.plusSeconds(1))
                 .openPrice(2.5)
-                .highPrice(2)
+                .highPrice(2.5)
                 .lowPrice(2)
                 .closePrice(2.4)
                 .add();
@@ -89,7 +97,7 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
                 .timePeriod(duration)
                 .endTime(endTime.plusSeconds(2))
                 .openPrice(2.0)
-                .highPrice(1)
+                .highPrice(3.0)
                 .lowPrice(1)
                 .closePrice(3.0)
                 .add();
@@ -97,7 +105,7 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
                 .timePeriod(duration)
                 .endTime(endTime.plusSeconds(3))
                 .openPrice(3)
-                .highPrice(3)
+                .highPrice(3.2)
                 .lowPrice(3)
                 .closePrice(3.2)
                 .add();
@@ -106,7 +114,7 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
                 .endTime(endTime.plusSeconds(4))
                 .openPrice(4)
                 .highPrice(4)
-                .lowPrice(4)
+                .lowPrice(3.5)
                 .closePrice(3.5)
                 .add();
 
@@ -123,7 +131,7 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
 
         // index: 2: currentOpenPrice = 2.0, previousClosePrice = 2.4
         // (2.0 - 2.4) / 2.4 * 100 = -16.666666666666664 (precision difference expected)
-        assertNumEquals(numOf(-16.66666666666667), diff.getValue(2));
+        assertNumEquals(numOf(-16.66666666666667), diff.getValue(2), 1e-12);
 
         // index: 3: currentOpenPrice = 3.0, previousClosePrice = 3.0
         // (3.0 - 3.0) / 3.0 * 100 = 0.0
@@ -131,7 +139,7 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
 
         // index: 4: currentOpenPrice = 4.0, previousClosePrice = 3.2
         // (4.0 - 3.2) / 3.2 * 100 = 25.0
-        assertNumEquals(numOf(25.0), diff.getValue(4));
+        assertNumEquals(numOf(25.0), diff.getValue(4), 1e-12);
     }
 
     @Test
@@ -150,7 +158,7 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
         assertNumEquals(numOf(1), indicator.getValue(4));
         assertNumEquals(numOf(3), indicator.getValue(5));
         assertNumEquals(numOf(5), indicator.getValue(6));
-        assertNumEquals(numOf(-1), indicator.getValue(7));
+        assertNumEquals(numOf(-1), indicator.getValue(7), 1e-12);
         assertNumEquals(numOf(1), indicator.getValue(8));
         assertNumEquals(numOf(-6), indicator.getValue(9));
         assertNumEquals(numOf(3), indicator.getValue(10));
@@ -178,7 +186,7 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
         assertNumEquals(numOf(1), indicator.getValue(4));
         assertNumEquals(numOf(3), indicator.getValue(5));
         assertNumEquals(numOf(5), indicator.getValue(6));
-        assertNumEquals(numOf(-1), indicator.getValue(7));
+        assertNumEquals(numOf(-1), indicator.getValue(7), 1e-12);
         assertNumEquals(numOf(1), indicator.getValue(8));
         assertNumEquals(numOf(-6), indicator.getValue(9));
         assertNumEquals(numOf(3), indicator.getValue(10));
@@ -194,11 +202,11 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
 
         assertNumEquals(NaN.NaN, indicator.getValue(0));
         assertNumEquals(numOf(1), indicator.getValue(1));
-        assertNumEquals(numOf(-2), indicator.getValue(2));
-        assertNumEquals(numOf(3.24), indicator.getValue(3));
+        assertNumEquals(numOf(-2), indicator.getValue(2), 1e-12);
+        assertNumEquals(numOf(3.24), indicator.getValue(3), 1e-12);
         assertNumEquals(numOf(-10), indicator.getValue(4));
-        assertNumEquals(numOf(9.3), indicator.getValue(5));
-        assertNumEquals(numOf(1), indicator.getValue(6));
+        assertNumEquals(numOf(9.3), indicator.getValue(5), 1e-12);
+        assertNumEquals(numOf(1), indicator.getValue(6), 1e-12);
     }
 
     @Test

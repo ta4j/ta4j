@@ -36,6 +36,14 @@ import ta4jexamples.datasources.CsvFileBarSeriesDataSource;
  */
 class TrendLineAndSwingPointAnalysisTest {
 
+    private static final int RECENT_ETH_REGRESSION_BARS = 256;
+
+    private static final List<TrendLineAndSwingPointAnalysis.RecentEthSeries> RECENT_ETH_FIXTURES = List
+            .copyOf(new TrendLineAndSwingPointAnalysis().loadRecentEthSeries());
+
+    private static final List<TrendLineAndSwingPointAnalysis.RecentEthSeries> RECENT_ETH_REGRESSION_FIXTURES = List
+            .copyOf(RECENT_ETH_FIXTURES.stream().map(TrendLineAndSwingPointAnalysisTest::latestBars).toList());
+
     @Test
     void analysisHarnessVerifiesHeadroomAndRendersOverlays() {
         TrendLineAndSwingPointAnalysis analysis = new TrendLineAndSwingPointAnalysis();
@@ -78,8 +86,13 @@ class TrendLineAndSwingPointAnalysisTest {
 
     @Test
     void recentEthFixturesExerciseEverySwingMethodAcrossDurations() {
-        TrendLineAndSwingPointAnalysis analysis = new TrendLineAndSwingPointAnalysis();
-        List<TrendLineAndSwingPointAnalysis.RecentEthSeries> seriesByDuration = analysis.loadRecentEthSeries();
+        TrendLineAndSwingPointAnalysis analysis = new TrendLineAndSwingPointAnalysis() {
+            @Override
+            List<TrendLineAndSwingPointAnalysis.RecentEthSeries> loadRecentEthSeries() {
+                return RECENT_ETH_REGRESSION_FIXTURES;
+            }
+        };
+        List<TrendLineAndSwingPointAnalysis.RecentEthSeries> seriesByDuration = RECENT_ETH_REGRESSION_FIXTURES;
 
         assertEquals(
                 List.of(Duration.ofMinutes(5), Duration.ofMinutes(15), Duration.ofHours(1), Duration.ofHours(4),
@@ -106,8 +119,7 @@ class TrendLineAndSwingPointAnalysisTest {
     @Test
     void recentEthHourlyMethodsRecognizeJulyTwentySecondNoonHigh() {
         TrendLineAndSwingPointAnalysis analysis = new TrendLineAndSwingPointAnalysis();
-        BarSeries hourly = analysis.loadRecentEthSeries()
-                .stream()
+        BarSeries hourly = RECENT_ETH_FIXTURES.stream()
                 .filter(data -> data.duration().equals(Duration.ofHours(1)))
                 .findFirst()
                 .orElseThrow()
@@ -123,6 +135,14 @@ class TrendLineAndSwingPointAnalysisTest {
             assertEquals(anchorIndex, pair.highs().getLatestSwingIndex(evaluationIndex),
                     () -> pair.method() + " should report the anchor as the latest confirmed high");
         }
+    }
+
+    private static TrendLineAndSwingPointAnalysis.RecentEthSeries latestBars(
+            TrendLineAndSwingPointAnalysis.RecentEthSeries data) {
+        BarSeries series = data.series();
+        int startIndex = Math.max(series.getBeginIndex(), series.getEndIndex() - RECENT_ETH_REGRESSION_BARS + 1);
+        return new TrendLineAndSwingPointAnalysis.RecentEthSeries(data.duration(),
+                series.getSubSeries(startIndex, series.getEndIndex() + 1));
     }
 
     private int findBarByBeginTime(BarSeries series, Instant beginTime) {

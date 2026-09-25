@@ -5,6 +5,7 @@ package org.ta4j.core.rules;
 
 import java.util.Objects;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
 
@@ -30,6 +31,9 @@ public class OrWithThresholdRule extends AbstractRule {
      */
     private final int threshold;
 
+    /** The backing series, or {@code null} when neither rule exposes one. */
+    private final BarSeries series;
+
     /**
      * Constructor.
      *
@@ -46,6 +50,7 @@ public class OrWithThresholdRule extends AbstractRule {
         this.rule1 = config.rule1();
         this.rule2 = config.rule2();
         this.threshold = config.threshold();
+        this.series = RuleCopies.findBarSeries(rule1).or(() -> RuleCopies.findBarSeries(rule2)).orElse(null);
         setName(createCompositeName(getClass().getSimpleName(), rule1, rule2));
     }
 
@@ -59,17 +64,19 @@ public class OrWithThresholdRule extends AbstractRule {
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        if (index - this.threshold + 1 < 0) {
+        int beginIndex = series == null ? 0 : series.getBeginIndex();
+        int windowStart = index - this.threshold + 1;
+        if (windowStart < beginIndex) {
             if (isTraceEnabled()) {
-                traceIsSatisfied(index, false, traceContext("threshold", threshold, "windowStart", 0, "windowEnd",
-                        index, "reason", "insufficientBars"));
+                traceIsSatisfied(index, false, traceContext("threshold", threshold, "windowStart",
+                        Math.max(beginIndex, windowStart), "windowEnd", index, "reason", "insufficientBars"));
             }
             return false;
         }
 
         boolean isFirstSatisfied = false;
         boolean isSecondSatisfied = false;
-        for (int i = index - this.threshold + 1; i <= index; i++) {
+        for (int i = windowStart; i <= index; i++) {
             if (!isFirstSatisfied) {
                 isFirstSatisfied = evaluateChildRule(rule1, "rule1", i, tradingRecord);
             }
@@ -84,8 +91,8 @@ public class OrWithThresholdRule extends AbstractRule {
         final boolean satisfied = isFirstSatisfied || isSecondSatisfied;
         if (isTraceEnabled()) {
             traceIsSatisfied(index, satisfied,
-                    traceContext("threshold", threshold, "windowStart", index - this.threshold + 1, "windowEnd", index,
-                            "rule1", isFirstSatisfied, "rule2", isSecondSatisfied, "reason",
+                    traceContext("threshold", threshold, "windowStart", windowStart, "windowEnd", index, "rule1",
+                            isFirstSatisfied, "rule2", isSecondSatisfied, "reason",
                             satisfied ? null : "allRulesFalse"));
         }
         return satisfied;

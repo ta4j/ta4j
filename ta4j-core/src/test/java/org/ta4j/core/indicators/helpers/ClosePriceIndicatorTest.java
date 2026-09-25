@@ -5,6 +5,7 @@ package org.ta4j.core.indicators.helpers;
 
 import static junit.framework.TestCase.assertEquals;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -47,7 +48,7 @@ public class ClosePriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         int originalBarCount = firstView.getBarCount();
 
         assertNotSame(barSeries, firstView);
-        assertNotSame(firstView, secondView);
+        assertSame(firstView, secondView);
         assertTrue(IndicatorUtils.isSameSeries(barSeries, firstView));
         assertThrows(UnsupportedOperationException.class, () -> firstView.barBuilder());
         assertThrows(UnsupportedOperationException.class, () -> firstView.addPrice(numFactory.one()));

@@ -43,10 +43,20 @@ public class TRIndicator extends CachedIndicator<Num> {
      */
     public TRIndicator(Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
             Indicator<Num> closePriceIndicator) {
-        super(IndicatorUtils.requireSameSeries(highPriceIndicator, lowPriceIndicator, closePriceIndicator));
+        // Every source is registered: a rebaselining low or close source must
+        // invalidate the whole cache after a series head advance, not just the
+        // high-source unstable band.
+        super(validatedHigh(highPriceIndicator, lowPriceIndicator, closePriceIndicator), lowPriceIndicator,
+                closePriceIndicator);
         this.highPriceIndicator = highPriceIndicator;
         this.lowPriceIndicator = lowPriceIndicator;
         this.closePriceIndicator = closePriceIndicator;
+    }
+
+    private static Indicator<Num> validatedHigh(Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
+            Indicator<Num> closePriceIndicator) {
+        IndicatorUtils.requireSameSeries(highPriceIndicator, lowPriceIndicator, closePriceIndicator);
+        return highPriceIndicator;
     }
 
     @Override
@@ -86,5 +96,27 @@ public class TRIndicator extends CachedIndicator<Num> {
         int closeUnstable = closePriceIndicator.getCountOfUnstableBars();
         int previousCloseUnstable = closeUnstable == 0 ? 0 : closeUnstable + 1;
         return Math.max(highUnstable, Math.max(lowUnstable, previousCloseUnstable));
+    }
+
+    /**
+     * When this indicator declares no unstable bars, the value at the first
+     * retained index was computed with the previous close, which the head advance
+     * removed. That single entry is evicted (values above it depend only on
+     * retained bars), and the floor bump propagates to dependents that would
+     * otherwise treat the stale entry as a valid baseline.
+     *
+     * @param firstRetainedIndex the first series index that remains available
+     * @return {@code firstRetainedIndex + 1} when no unstable bars are declared and
+     *         no source rebaselines beyond its default band, otherwise the default
+     *         floor
+     */
+    @Override
+    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+        int propagatedFloor = super.minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex);
+        if (propagatedFloor != Integer.MAX_VALUE && getCountOfUnstableBars() == 0) {
+            long floor = (long) firstRetainedIndex + 1L;
+            return floor >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) floor;
+        }
+        return propagatedFloor;
     }
 }

@@ -31,6 +31,7 @@ import org.ta4j.core.indicators.helpers.CrossIndicator;
 import org.ta4j.core.indicators.helpers.DateTimeIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.AndRule;
 import org.ta4j.core.rules.AbstractRule;
@@ -41,6 +42,7 @@ import org.ta4j.core.rules.DayOfWeekRule;
 import org.ta4j.core.rules.FixedRule;
 import org.ta4j.core.rules.NotRule;
 import org.ta4j.core.rules.OrRule;
+import org.ta4j.core.rules.InSlopeRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.TrailingFixedAmountStopGainRule;
 import org.ta4j.core.rules.TrailingFixedAmountStopLossRule;
@@ -962,6 +964,15 @@ public class RuleSerializationTest {
         private Number getBarCount() {
             return barCount;
         }
+    }
+
+    @Test
+    public void toDescriptorRejectsNonFiniteNumericParameter() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
+        Rule rule = new InSlopeRule(new ClosePriceIndicator(series), NaN.NaN);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, rule::toDescriptor);
+        assertThat(exception.getMessage()).contains("Non-finite numeric parameter");
     }
 
     private record Fixture(BarSeries series, Rule andRule, Strategy strategy) {

@@ -39,7 +39,7 @@ public class SpearmanRankCorrelationIndicator extends CachedIndicator<Num> {
      * @since 0.22.7
      */
     public SpearmanRankCorrelationIndicator(Indicator<Num> first, Indicator<Num> second, int barCount) {
-        super(first);
+        super(first, second);
         IndicatorUtils.requireSameSeries(first, second);
         this.first = first;
         this.second = second;

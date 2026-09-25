@@ -9,6 +9,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.apache.commons.math3.stat.regression.SimpleRegression;
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -86,6 +87,24 @@ public class SimpleLinearRegressionIndicatorTest extends AbstractIndicatorTest<I
 
         SimpleRegression origReg = buildSimpleRegression(values);
         assertNumEquals(origReg.predict(4), reg.getValue(4));
+    }
+
+    @Test
+    public void anchorsWindowAtBeginIndexAfterRemoval() {
+        // Evict the first four closes (1..4) so beginIndex = 4; the retained closes
+        // [5,6,7,8,9,10] live at absolute indices 4..9 exactly on the line y = x + 1.
+        BarSeries pruned = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+                .withMaxBarCount(6)
+                .build();
+        var reg = new SimpleLinearRegressionIndicator(new ClosePriceIndicator(pruned), 6);
+
+        // Window [4..4] has a single retained observation -> not enough for a line
+        assertTrue(reg.getValue(4).isNaN());
+        // Windows [4..7], [4..8] and [4..9] all lie exactly on y = x + 1
+        assertNumEquals(8, reg.getValue(7));
+        assertNumEquals(9, reg.getValue(8));
+        assertNumEquals(10, reg.getValue(9));
     }
 
     /**

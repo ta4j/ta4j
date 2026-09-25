@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.ta4j</groupId>
         <artifactId>ta4j-parent</artifactId>
-        <version>0.23.1-SNAPSHOT</version>
+        <version>0.25.1-SNAPSHOT</version>
     </parent>
     <artifactId>ta4j-core</artifactId>
 
@@ -62,11 +62,17 @@
             <artifactId>log4j-slf4j2-impl</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.github.spotbugs</groupId>
+            <artifactId>spotbugs-annotations</artifactId>
+            <version>4.9.8</version>
+            <scope>provided</scope>
+        </dependency>
 
     </dependencies>
     <build>
         <plugins>
-            <!-- Override parent: header/config live in parent dir (avoids CWD dependency when building from workspace root) -->
+            <!-- Override parent: header lives in parent dir (avoids CWD dependency when building from workspace root) -->
             <plugin>
                 <groupId>com.mycila</groupId>
                 <artifactId>license-maven-plugin</artifactId>
@@ -79,13 +85,6 @@
                             </includes>
                         </licenseSet>
                     </licenseSets>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>net.revelc.code.formatter</groupId>
-                <artifactId>formatter-maven-plugin</artifactId>
-                <configuration>
-                    <configFile>${project.parent.basedir}/code-formatter.xml</configFile>
                 </configuration>
             </plugin>
             <plugin>

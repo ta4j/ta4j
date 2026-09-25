@@ -111,6 +111,80 @@ public class KlingerVolumeOscillatorIndicatorTest extends AbstractIndicatorTest<
     }
 
     @Test
+    public void rebaselinesTrendAndCumulativeMeasurementWhenSeriesHeadAdvances() {
+        // Bars 3..70 repeat the bar-2 trend basis (high + low + close = 30) with
+        // zero volume, so the equal-basis recursion carries the -1 direction of
+        // the decreasing bars 0..2 across the plateau while every plateau volume
+        // force stays NaN, leaving the short and long EMAs NaN at index 70. Once
+        // the head advances into the plateau the trend base case must return +1
+        // and the cumulative measurement must restart from the retained window;
+        // the first non-zero-volume bars read afterwards reset the EMAs to their
+        // own volume force and expose the re-baselined direction exactly.
+        final BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(10).closePrice(10).highPrice(14).lowPrice(10).volume(1000).add(); // basis 34
+        series.barBuilder().openPrice(9).closePrice(9).highPrice(13).lowPrice(9).volume(1000).add(); // basis 31
+        series.barBuilder().openPrice(9).closePrice(9).highPrice(12).lowPrice(9).volume(1000).add(); // basis 30
+        for (int i = 0; i < 68; i++) {
+            series.barBuilder().openPrice(9).closePrice(9).highPrice(12).lowPrice(9).volume(0).add(); // basis 30
+        }
+        final KlingerVolumeOscillatorIndicator oscillator = new KlingerVolumeOscillatorIndicator(series, 3, 5);
+        assertThat(Num.isNaNOrNull(oscillator.getValue(70))).isTrue();
+
+        series.barBuilder().openPrice(9).closePrice(9).highPrice(12).lowPrice(9).volume(1000).add(); // index 71
+        series.barBuilder().openPrice(9).closePrice(9).highPrice(12).lowPrice(9).volume(1000).add(); // index 72
+        series.setMaximumBarCount(12);
+        assertThat(series.getBeginIndex()).isEqualTo(61);
+
+        // With the re-baselined +1 direction the cumulative measurement restarts
+        // at 3 and grows by 3 per equal-trend bar (33 and 36 at indexes 71 and
+        // 72), so the volume forces are 1000 * 100 * |2*3/33 - 1| = 100000 * 27/33
+        // and 1000 * 100 * |2*3/36 - 1| = 100000 * 30/36. Both EMAs reset to the
+        // index-71 volume force, so the index-72 oscillator is
+        // 100000 * (30/36 - 27/33) / 6 = 100000 / 396.
+        assertNumEquals(numFactory.numOf(100000d / 396d), oscillator.getValue(72), 1e-9);
+    }
+
+    @Test
+    public void rebaselinesDownstreamCachesWhenSeriesHeadAdvances() {
+        // Warm caches computed before the advance must not survive it anywhere
+        // in the downstream chain. Bars 0..2 decrease (basis 34, 31, 30) and
+        // bars 3..70 repeat basis 30 with non-zero volume, so pre-advance reads
+        // cache a negative-direction volume force, both EMAs, and the outer
+        // oscillator across the plateau. Bars 71..72 lift the basis to 34.
+        // After the head advances to index 61 the trend base case flips to +1
+        // and the cumulative measurement rebaselines, so every cached tail
+        // value - volume force, EMAs, and outer oscillator - is stale. A
+        // post-advance read must equal what a cold indicator over the same
+        // retained window computes, not the warm pre-advance value.
+        final BarSeries series = klingerPlateauSeries();
+        final KlingerVolumeOscillatorIndicator oscillator = new KlingerVolumeOscillatorIndicator(series, 3, 5);
+        final Num preAdvanceValue = oscillator.getValue(72);
+        assertThat(Num.isNaNOrNull(preAdvanceValue)).isFalse();
+
+        series.setMaximumBarCount(12);
+        assertThat(series.getBeginIndex()).isEqualTo(61);
+
+        final BarSeries advancedSeries = klingerPlateauSeries();
+        advancedSeries.setMaximumBarCount(12);
+        final KlingerVolumeOscillatorIndicator cold = new KlingerVolumeOscillatorIndicator(advancedSeries, 3, 5);
+
+        final Num postAdvanceValue = oscillator.getValue(72);
+        assertThat(postAdvanceValue).isEqualByComparingTo(cold.getValue(72));
+        assertThat(postAdvanceValue.isEqual(preAdvanceValue)).isFalse();
+    }
+
+    private BarSeries klingerPlateauSeries() {
+        final BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(10).closePrice(10).highPrice(14).lowPrice(10).volume(1000).add(); // basis 34
+        series.barBuilder().openPrice(9).closePrice(9).highPrice(13).lowPrice(9).volume(1000).add(); // basis 31
+        series.barBuilder().openPrice(9).closePrice(9).highPrice(12).lowPrice(9).volume(1000).add(); // basis 30
+        for (int i = 0; i < 70; i++) {
+            series.barBuilder().openPrice(9).closePrice(9).highPrice(12).lowPrice(9).volume(1000).add(); // basis 30
+        }
+        return series;
+    }
+
+    @Test
     public void throwsForInvalidPeriods() {
         final BarSeries series = bullish(numFactory);
 

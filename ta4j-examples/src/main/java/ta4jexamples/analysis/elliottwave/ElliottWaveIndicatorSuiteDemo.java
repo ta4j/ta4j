@@ -50,6 +50,7 @@ import ta4jexamples.charting.builder.ChartPlan;
 import ta4jexamples.datasources.YahooFinanceHttpBarSeriesDataSource;
 import ta4jexamples.datasources.CoinbaseHttpBarSeriesDataSource;
 import ta4jexamples.datasources.BarSeriesDataSource;
+import ta4jexamples.analysis.elliottwave.demo.ElliottWaveDemoSupport;
 import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
 
 /**
@@ -201,7 +202,8 @@ public class ElliottWaveIndicatorSuiteDemo {
             return;
         }
 
-        ElliottDegree degree = explicitDegree == null ? selectRecommendedDegree(series) : explicitDegree;
+        ElliottDegree degree = explicitDegree == null ? ElliottWaveDemoSupport.autoSelectDegree(series)
+                : explicitDegree;
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
         AnalysisResult result = analysis.analyze(series, degree, DEFAULT_FIB_TOLERANCE);
         String json = result.structuredResult().toJson(false);
@@ -505,21 +507,26 @@ public class ElliottWaveIndicatorSuiteDemo {
         if (explicitDegree.isPresent()) {
             return explicitDegree.get();
         }
-        return autoSelectDegree(series);
+        return ElliottWaveDemoSupport.autoSelectDegree(series);
     }
 
     /**
      * Auto-selects an Elliott degree from the bar series duration and history size.
      * <p>
      * This helper is exposed for demo entry points that should default to the same
-     * recommendation logic as this suite.
+     * recommendation logic as this suite. It delegates to
+     * {@link ElliottWaveDemoSupport#autoSelectDegree(BarSeries)}.
      *
      * @param series bar series used for recommendation
      * @return recommended degree, or {@link #DEFAULT_DEGREE} when recommendation
      *         cannot be derived
+     * @since 0.24.2
+     * @deprecated use {@link ElliottWaveDemoSupport#autoSelectDegree(BarSeries)}
+     *             instead
      */
+    @Deprecated(since = "0.24.2", forRemoval = false)
     public static ElliottDegree autoSelectDegree(BarSeries series) {
-        return selectRecommendedDegree(series);
+        return ElliottWaveDemoSupport.autoSelectDegree(series);
     }
 
     /**
@@ -545,39 +552,6 @@ public class ElliottWaveIndicatorSuiteDemo {
         } catch (IllegalArgumentException ex) {
             LOG.warn("Invalid degree '{}', using default: {}", degreeValue, DEFAULT_DEGREE);
             return Optional.of(DEFAULT_DEGREE);
-        }
-    }
-
-    private static ElliottDegree selectRecommendedDegree(BarSeries series) {
-        if (series == null || series.isEmpty()) {
-            LOG.warn("Series unavailable for degree selection, using default: {}", DEFAULT_DEGREE);
-            return DEFAULT_DEGREE;
-        }
-
-        Duration barDuration = series.getFirstBar().getTimePeriod();
-        if (barDuration == null || barDuration.isZero() || barDuration.isNegative()) {
-            LOG.warn("Invalid bar duration '{}' for degree selection, using default: {}", barDuration, DEFAULT_DEGREE);
-            return DEFAULT_DEGREE;
-        }
-
-        int barCount = series.getBarCount();
-        try {
-            List<ElliottDegree> recommendations = ElliottDegree.getRecommendedDegrees(barDuration, barCount);
-            if (recommendations.isEmpty()) {
-                LOG.warn("No recommended degrees for {} bars at {}, using default: {}", barCount, barDuration,
-                        DEFAULT_DEGREE);
-                return DEFAULT_DEGREE;
-            }
-            ElliottDegree selected = recommendations.get(0);
-            String seriesName = series.getName() == null || series.getName().isBlank() ? "<unnamed-series>"
-                    : series.getName();
-            LOG.info("Auto-selected Elliott degree {} for {} {} bars at {}. Candidates: {}", selected, seriesName,
-                    barCount, barDuration, recommendations);
-            return selected;
-        } catch (Exception ex) {
-            LOG.warn("Failed to auto-select degree for {} bars at {}, using default: {}", barCount, barDuration,
-                    DEFAULT_DEGREE, ex);
-            return DEFAULT_DEGREE;
         }
     }
 

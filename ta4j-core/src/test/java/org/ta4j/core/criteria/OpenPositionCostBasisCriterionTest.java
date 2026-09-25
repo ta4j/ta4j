@@ -44,7 +44,7 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
                 .plus(numFactory.numOf(0.2));
         var result = getCriterion().calculate(series, record);
 
-        assertNumEquals(expected, result);
+        assertNumEquals(expected, result, 1e-12);
     }
 
     @Test

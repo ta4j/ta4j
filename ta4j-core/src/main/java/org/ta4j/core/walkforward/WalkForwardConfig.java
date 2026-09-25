@@ -3,7 +3,11 @@
  */
 package org.ta4j.core.walkforward;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -172,7 +176,16 @@ public record WalkForwardConfig(int minTrainBars, int testBars, int stepBars, in
     }
 
     /**
-     * Creates a deterministic configuration hash useful for manifests.
+     * Creates a deterministic, collision-safe configuration hash useful for
+     * manifests.
+     *
+     * <p>
+     * The hash is the lowercase hexadecimal encoding (64 characters) of the SHA-256
+     * digest over the canonical configuration serialization, so semantically-equal
+     * configurations produce equal hashes while distinct configurations are
+     * effectively collision-free. Previously this method returned the 32-bit
+     * {@link String#hashCode()} value truncated to 8 hex characters; callers that
+     * persisted the old format must regenerate their stored identity keys.
      *
      * @return stable hash string for this configuration
      * @since 0.22.4
@@ -181,7 +194,15 @@ public record WalkForwardConfig(int minTrainBars, int testBars, int stepBars, in
         String canonical = minTrainBars + "|" + testBars + "|" + stepBars + "|" + purgeBars + "|" + embargoBars + "|"
                 + holdoutBars + "|" + primaryHorizonBars + "|" + reportingHorizons + "|" + optimizationTopK + "|"
                 + reportingTopKs + "|" + seed;
-        return Integer.toHexString(canonical.hashCode());
+        return HexFormat.of().formatHex(digest(canonical));
+    }
+
+    private static byte[] digest(String canonical) {
+        try {
+            return MessageDigest.getInstance("SHA-256").digest(canonical.getBytes(StandardCharsets.UTF_8));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 digest unavailable", e);
+        }
     }
 
     private WalkForwardConfig(AutoDerivedConfig derived) {

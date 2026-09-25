@@ -182,7 +182,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals("0.5", cashFlow.getValue(3));
         assertNumEquals("0.6", cashFlow.getValue(4));
         assertNumEquals("0.6", cashFlow.getValue(5));
-        assertNumEquals("-2.8", cashFlow.getValue(6));
+        assertNumEquals(numOf(-2.8), cashFlow.getValue(6), 1e-12);
     }
 
     @Test
@@ -381,7 +381,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals("0.75", flow.getValue(5));
         assertNumEquals("0.75", flow.getValue(6));
         assertNumEquals("1.125", flow.getValue(7));
-        assertNumEquals("0.45", flow.getValue(8));
+        assertNumEquals(numOf(0.45), flow.getValue(8), 1e-12);
     }
 
     @Test

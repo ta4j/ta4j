@@ -85,7 +85,7 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
     }
 
     private AbstractPriceClusterIndicator(Config config) {
-        super(config.priceIndicator());
+        super(config.priceIndicator(), config.weightIndicator(), config.weightIndicatorSource());
         this.priceIndicator = config.priceIndicator();
         this.lookbackCount = config.lookbackCount();
         this.tolerance = config.tolerance();

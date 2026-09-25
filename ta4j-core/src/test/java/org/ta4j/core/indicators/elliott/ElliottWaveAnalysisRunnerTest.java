@@ -2932,7 +2932,7 @@ class ElliottWaveAnalysisRunnerTest {
         Instant time = Instant.parse("2024-06-01T00:00:00Z");
         double[][] bars = { { 102, 110, 100, 108 }, { 108, 125, 104, 122 }, { 122, 142, 118, 138 },
                 { 138, 162, 132, 156 }, { 156, 180, 150, 175 }, { 175, 176, 160, 164 }, { 164, 168, 150, 152 },
-                { 152, 162, 140, 145 }, { 145, 188, 160, 182 }, { 182, 210, 190, 205 } };
+                { 152, 162, 140, 145 }, { 160, 188, 160, 182 }, { 190, 210, 190, 205 } };
         for (int index = 0; index < bars.length; index++) {
             series.barBuilder()
                     .timePeriod(period)
@@ -2951,9 +2951,9 @@ class ElliottWaveAnalysisRunnerTest {
         BarSeries series = new MockBarSeriesBuilder().withName("MalformedWaveFive").build();
         Duration period = Duration.ofDays(1);
         Instant time = Instant.parse("2024-07-01T00:00:00Z");
-        double[][] bars = { { 92, 100, 90, 96 }, { 96, 150, 100, 145 }, { 145, 180, 140, 172 }, { 172, 170, 130, 138 },
-                { 138, 150, 120, 128 }, { 128, 200, 150, 192 }, { 192, 230, 180, 225 }, { 225, 250, 210, 240 },
-                { 240, 200, 160, 168 }, { 168, 170, 130, 160 } };
+        double[][] bars = { { 92, 100, 90, 96 }, { 100, 150, 100, 145 }, { 145, 180, 140, 172 }, { 170, 170, 130, 138 },
+                { 138, 150, 120, 128 }, { 150, 200, 150, 192 }, { 192, 230, 180, 225 }, { 225, 250, 210, 240 },
+                { 200, 200, 160, 168 }, { 168, 170, 130, 160 } };
         for (int index = 0; index < bars.length; index++) {
             series.barBuilder()
                     .timePeriod(period)
@@ -2972,7 +2972,7 @@ class ElliottWaveAnalysisRunnerTest {
         BarSeries series = new MockBarSeriesBuilder().withName("WaveFourNormalization").build();
         Duration period = Duration.ofDays(1);
         Instant time = Instant.parse("2024-08-01T00:00:00Z");
-        double[][] bars = { { 92, 98, 90, 96 }, { 96, 118, 95, 116 }, { 116, 140, 110, 136 }, { 136, 132, 116, 120 },
+        double[][] bars = { { 92, 98, 90, 96 }, { 96, 118, 95, 116 }, { 116, 140, 110, 136 }, { 132, 132, 116, 120 },
                 { 120, 126, 108, 112 }, { 112, 180, 110, 172 }, { 172, 224, 164, 218 }, { 218, 248, 210, 240 },
                 { 240, 262, 214, 228 }, { 228, 230, 150, 160 } };
         for (int index = 0; index < bars.length; index++) {

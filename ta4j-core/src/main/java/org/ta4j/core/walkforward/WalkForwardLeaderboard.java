@@ -14,13 +14,28 @@ import org.ta4j.core.num.Num;
  *
  * @param <C>                candidate context type
  * @param entries            ranked entries (best first)
- * @param evaluatedCount     total candidates evaluated
+ * @param evaluatedCount     total candidates evaluated successfully
  * @param keptCount          number of entries retained in ranking output
  * @param primaryHorizonBars optimization horizon used for ranking
+ * @param failedCount        number of candidates whose evaluation failed and
+ *                           were excluded from the ranking
  * @since 0.22.4
  */
 public record WalkForwardLeaderboard<C>(List<Entry<C>> entries, int evaluatedCount, int keptCount,
-        int primaryHorizonBars) {
+        int primaryHorizonBars, int failedCount) {
+
+    /**
+     * Creates a validated leaderboard with no failed candidates.
+     *
+     * @param entries            ranked entries
+     * @param evaluatedCount     total candidates evaluated
+     * @param keptCount          number of entries retained in ranking output
+     * @param primaryHorizonBars optimization horizon used for ranking
+     * @since 0.22.4
+     */
+    public WalkForwardLeaderboard(List<Entry<C>> entries, int evaluatedCount, int keptCount, int primaryHorizonBars) {
+        this(entries, evaluatedCount, keptCount, primaryHorizonBars, 0);
+    }
 
     /**
      * Creates a validated leaderboard.
@@ -32,6 +47,9 @@ public record WalkForwardLeaderboard<C>(List<Entry<C>> entries, int evaluatedCou
         }
         if (keptCount < 0) {
             throw new IllegalArgumentException("keptCount must be >= 0");
+        }
+        if (failedCount < 0) {
+            throw new IllegalArgumentException("failedCount must be >= 0");
         }
         if (primaryHorizonBars <= 0) {
             throw new IllegalArgumentException("primaryHorizonBars must be > 0");

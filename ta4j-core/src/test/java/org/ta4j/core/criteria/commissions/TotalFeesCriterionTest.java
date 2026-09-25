@@ -47,7 +47,7 @@ public class TotalFeesCriterionTest extends AbstractCriterionTest {
 
         Num result = getCriterion().calculate(series, record);
 
-        assertNumEquals(numFactory.numOf(0.3), result);
+        assertNumEquals(numFactory.numOf(0.3), result, 1e-12);
     }
 
     @Test

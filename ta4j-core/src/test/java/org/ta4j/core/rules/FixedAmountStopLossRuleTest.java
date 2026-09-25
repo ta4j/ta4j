@@ -22,8 +22,10 @@ import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.num.NaN;
 
 public class FixedAmountStopLossRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
 
@@ -126,6 +128,21 @@ public class FixedAmountStopLossRuleTest extends AbstractIndicatorTest<BarSeries
                 countingClosePrice.valueCallCount());
         assertFalse("Disabled TRACE should not emit stop diagnostics",
                 ruleTraceTestLogger.getLogOutput().contains("FixedAmountStopLossRule#isSatisfied"));
+    }
+
+    @Test
+    public void traceLoggingReportsUnavailableCurrentPrice() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110).build();
+        var nanClose = new MockIndicator(series, 0, numFactory.numOf(100), NaN.NaN, numFactory.numOf(110));
+        var tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY);
+        tradingRecord.enter(0, numFactory.numOf(100), numFactory.one());
+        var rule = new FixedAmountStopLossRule(nanClose, numFactory.numOf(5));
+
+        ruleTraceTestLogger.clear();
+        assertFalse(rule.isSatisfied(1, tradingRecord));
+
+        assertTrue("Stop trace should report the unavailable current price",
+                ruleTraceTestLogger.getLogOutput().contains("reason=priceUnavailable"));
     }
 
     @Test

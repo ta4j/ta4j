@@ -35,14 +35,14 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         data.barBuilder().openPrice(166.89).highPrice(167.70).lowPrice(166.33).closePrice(167.24).volume(0).add();
         data.barBuilder().openPrice(165.25).highPrice(168.43).lowPrice(165.00).closePrice(168.05).volume(0).add();
         data.barBuilder().openPrice(168.17).highPrice(170.18).lowPrice(167.63).closePrice(169.92).volume(0).add();
-        data.barBuilder().highPrice(170.42).lowPrice(172.15).closePrice(170.06).lowPrice(171.97).volume(0).add();
+        data.barBuilder().openPrice(170.42).highPrice(172.15).lowPrice(170.06).closePrice(171.97).volume(0).add();
         data.barBuilder().openPrice(172.41).highPrice(172.92).lowPrice(171.31).closePrice(172.02).volume(0).add();
         data.barBuilder().openPrice(171.2).highPrice(172.39).lowPrice(169.55).closePrice(170.72).volume(0).add();
         data.barBuilder().openPrice(170.91).highPrice(172.48).lowPrice(169.57).closePrice(172.09).volume(0).add();
         data.barBuilder().openPrice(171.80).highPrice(173.31).lowPrice(170.27).closePrice(173.21).volume(0).add();
         data.barBuilder().openPrice(173.09).highPrice(173.49).lowPrice(170.80).closePrice(170.95).volume(0).add();
         data.barBuilder().openPrice(172.41).highPrice(173.89).lowPrice(172.20).closePrice(173.51).volume(0).add();
-        data.barBuilder().openPrice(173.87).highPrice(174.17).lowPrice(175.00).closePrice(172.96).volume(0).add();
+        data.barBuilder().openPrice(173.87).highPrice(175.00).lowPrice(172.96).closePrice(174.17).volume(0).add();
         data.barBuilder().openPrice(173.00).highPrice(173.17).lowPrice(172.06).closePrice(173.05).volume(0).add();
         data.barBuilder().openPrice(172.26).highPrice(172.28).lowPrice(170.50).closePrice(170.96).volume(0).add();
         data.barBuilder().openPrice(170.88).highPrice(172.34).lowPrice(170.26).closePrice(171.64).volume(0).add();

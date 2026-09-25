@@ -91,7 +91,7 @@ public final class AnalogReturnProjectionIndicator<S extends ReturnMomentState> 
     }
 
     private AnalogReturnProjectionIndicator(Builder<S> builder) {
-        super(validatedSeries(builder));
+        super(validatedSeries(builder), builder.stateIndicator, builder.returnIndicator);
         this.stateIndicator = builder.stateIndicator;
         this.returnIndicator = builder.returnIndicator;
         this.featureExtractor = builder.featureExtractor;
@@ -209,6 +209,21 @@ public final class AnalogReturnProjectionIndicator<S extends ReturnMomentState> 
     @Override
     public int getHorizon() {
         return horizon;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Restarting states (such as online change-point models) rebuild their
+     * estimation after a head advance, so cached analog forecasts must be discarded
+     * and recomputed from the restarted state.
+     *
+     * @since 0.24.2
+     */
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return stateIndicator.restartsAfterHeadAdvance();
     }
 
     /**

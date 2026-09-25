@@ -55,7 +55,7 @@ public class CompareNumTypes {
                     .endTime(date)
                     .openPrice(randoms[i])
                     .closePrice(randoms[i] + 21)
-                    .highPrice(randoms[i] - 21)
+                    .highPrice(randoms[i] + 21)
                     .lowPrice(randoms[i] - 5)
                     .add();
             seriesP.barBuilder()
@@ -63,7 +63,7 @@ public class CompareNumTypes {
                     .endTime(date)
                     .openPrice(randoms[i])
                     .closePrice(randoms[i] + 21)
-                    .highPrice(randoms[i] - 21)
+                    .highPrice(randoms[i] + 21)
                     .lowPrice(randoms[i] - 5)
                     .add();
             seriesPH.barBuilder()
@@ -71,7 +71,7 @@ public class CompareNumTypes {
                     .endTime(date)
                     .openPrice(randoms[i])
                     .closePrice(randoms[i] + 21)
-                    .highPrice(randoms[i] - 21)
+                    .highPrice(randoms[i] + 21)
                     .lowPrice(randoms[i] - 5)
                     .add();
         }
@@ -84,7 +84,7 @@ public class CompareNumTypes {
                 P.minus(standard).dividedBy(standard).multipliedBy(DecimalNum.valueOf(100)));
     }
 
-    public static Num test(BarSeries series) {
+    private static Num test(BarSeries series) {
         final var closePriceIndicator = new ClosePriceIndicator(series);
         final var rsi = new RSIIndicator(closePriceIndicator, 100);
         final var macdIndicator = new MACDIndicator(rsi);

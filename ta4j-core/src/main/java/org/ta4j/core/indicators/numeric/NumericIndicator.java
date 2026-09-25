@@ -21,6 +21,8 @@ import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
+import java.util.List;
+
 /**
  * NumericIndicator is a "fluent decorator" for {@code Indicator<Num>}. It
  * provides methods to create rules and other "lightweight" indicators, using a
@@ -339,6 +341,11 @@ public class NumericIndicator implements Indicator<Num> {
     @Override
     public Num getValue(int index) {
         return delegate.getValue(index);
+    }
+
+    @Override
+    public List<Indicator<?>> getDependencies() {
+        return List.of(delegate);
     }
 
     @Override

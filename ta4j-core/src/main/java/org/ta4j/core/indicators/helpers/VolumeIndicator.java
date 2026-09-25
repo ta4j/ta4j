@@ -52,6 +52,16 @@ public class VolumeIndicator extends RecursiveCachedIndicator<Num> {
         this.barCount = barCount;
     }
 
+    /**
+     * The rolling window reads only retained bars, so every cached value stays
+     * recomputable from the retained window after a head advance: the
+     * unstable-range floor applies instead of keeping every cached value.
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return false;
+    }
+
     @Override
     protected Num calculate(int index) {
         int beginIndex = getBarSeries().getBeginIndex();

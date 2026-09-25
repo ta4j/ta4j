@@ -5,7 +5,7 @@ package org.ta4j.core.indicators.keltner;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.num.Num;
@@ -19,7 +19,7 @@ import static org.ta4j.core.num.NaN.NaN;
  *      "http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels">
  *      http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:keltner_channels</a>
  */
-public class KeltnerChannelMiddleIndicator extends AbstractIndicator<Num> {
+public class KeltnerChannelMiddleIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final transient EMAIndicator emaIndicator;
@@ -42,14 +42,14 @@ public class KeltnerChannelMiddleIndicator extends AbstractIndicator<Num> {
      * @param barCountEMA the bar count for the {@link EMAIndicator}
      */
     public KeltnerChannelMiddleIndicator(Indicator<Num> indicator, int barCountEMA) {
-        super(indicator.getBarSeries());
+        super(indicator);
         this.indicator = indicator;
         this.barCount = barCountEMA;
         this.emaIndicator = new EMAIndicator(indicator, barCountEMA);
     }
 
     @Override
-    public Num getValue(int index) {
+    protected Num calculate(int index) {
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }

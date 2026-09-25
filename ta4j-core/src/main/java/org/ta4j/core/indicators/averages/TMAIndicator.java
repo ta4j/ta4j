@@ -35,7 +35,8 @@ public class TMAIndicator extends CachedIndicator<Num> {
      * @param barCount  the Simple Moving Average time frame
      */
     public TMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator.getBarSeries());
+        super(indicator);
+
         this.indicator = indicator;
         this.barCount = barCount;
         this.sma = new SMAIndicator(indicator, barCount);

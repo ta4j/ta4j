@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -42,11 +43,21 @@ public record WeightedValue<T>(T value, Num weight) {
     /**
      * Normalizes weights so their sum is exactly {@code 1}.
      *
+     * <p>
+     * Weights are converted to the target numeric factory before normalization.
+     * Conversion to a BigDecimal-backed factory preserves full precision.
+     * Conversion to a double-based factory rounds to double precision (the
+     * primitive boundary), and throws when a finite weight cannot be represented at
+     * all (overflow to infinity or underflow to zero).
+     * </p>
+     *
      * @param weightedValues weighted values
      * @param numFactory     target numeric factory
      * @param <T>            value type
      * @return normalized weighted values preserving order
-     * @throws IllegalArgumentException if list is empty or total weight is zero
+     * @throws IllegalArgumentException if list is empty, total weight is zero, or a
+     *                                  weight cannot be represented in the target
+     *                                  numeric factory
      * @since 0.22.4
      */
     public static <T> List<WeightedValue<T>> normalizeWeights(List<WeightedValue<T>> weightedValues,
@@ -82,7 +93,12 @@ public record WeightedValue<T>(T value, Num weight) {
      * Computes weighted sum for resolved values.
      *
      * <p>
-     * Entries with missing or NaN resolved values are skipped.
+     * Entries with missing or NaN resolved values are skipped. Weights and resolved
+     * values are converted to the target numeric factory first: BigDecimal-backed
+     * targets preserve full precision, while double-based targets round to double
+     * precision (the primitive boundary) and throw when a finite value cannot be
+     * represented (overflow to infinity or underflow to zero) instead of silently
+     * collapsing it.
      * </p>
      *
      * @param weightedValues weighted values
@@ -90,6 +106,8 @@ public record WeightedValue<T>(T value, Num weight) {
      * @param numFactory     target numeric factory
      * @param <T>            value type
      * @return weighted sum
+     * @throws IllegalArgumentException if a weight or resolved value cannot be
+     *                                  represented in the target numeric factory
      * @since 0.22.4
      */
     public static <T> Num weightedSum(List<WeightedValue<T>> weightedValues, Function<T, Num> valueResolver,
@@ -126,6 +144,27 @@ public record WeightedValue<T>(T value, Num weight) {
         if (numFactory.produces(value)) {
             return value;
         }
-        return numFactory.numOf(value.doubleValue());
+        if (!Num.isFinite(value)) {
+            throw new IllegalArgumentException(
+                    "value " + value + " is not finite and cannot be converted to the target Num factory");
+        }
+        if (numFactory.one().getDelegate() instanceof BigDecimal) {
+            // BigDecimal-backed target: convert via BigDecimal so mantissa digits and
+            // magnitude are preserved; never round-trip through a primitive double.
+            return numFactory.numOf(value.bigDecimalValue());
+        }
+        // Double-based target: conversion to the primitive double is the unavoidable
+        // precision boundary. Refuse values the double cannot represent at all
+        // instead of silently collapsing them.
+        double converted = value.doubleValue();
+        if (Double.isInfinite(converted)) {
+            throw new IllegalArgumentException("value " + value
+                    + " overflows the double range of the target Num factory; convert via a BigDecimal-backed factory");
+        }
+        if (converted == 0.0d && !value.isZero()) {
+            throw new IllegalArgumentException("value " + value
+                    + " underflows to zero in the target double-based Num factory; convert via a BigDecimal-backed factory");
+        }
+        return numFactory.numOf(converted);
     }
 }

@@ -29,7 +29,8 @@ public class BollingerBandWidthIndicator extends CachedIndicator<Num> {
      */
     public BollingerBandWidthIndicator(BollingerBandsUpperIndicator bbu, BollingerBandsMiddleIndicator bbm,
             BollingerBandsLowerIndicator bbl) {
-        super(bbm.getBarSeries());
+        super(bbu, bbm, bbl);
+
         this.bbu = bbu.copy();
         this.bbm = bbm.copy();
         this.bbl = bbl.copy();

@@ -51,7 +51,7 @@ public class ElliottRatioIndicator extends CachedIndicator<ElliottRatio> {
     }
 
     private ElliottRatioIndicator(final Config config) {
-        super(config.series());
+        super(config.swingIndicator());
         this.swingIndicator = config.swingIndicator();
     }
 

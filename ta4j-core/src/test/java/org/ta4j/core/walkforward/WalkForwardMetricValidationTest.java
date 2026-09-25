@@ -61,6 +61,12 @@ class WalkForwardMetricValidationTest {
     }
 
     @Test
+    void clamp01PassesNanAndNullThroughAsNan() {
+        assertThat(WalkForwardMetric.clamp01(NUM_FACTORY.numOf(Double.NaN)).isNaN()).isTrue();
+        assertThat(WalkForwardMetric.clamp01(null).isNaN()).isTrue();
+    }
+
+    @Test
     void metricsReturnNaNWhenNoEligibleRowsExist() {
         RankedPrediction<String> rankTwo = new RankedPrediction<>("p2", 2, NUM_FACTORY.numOf(0.5),
                 NUM_FACTORY.numOf(0.5), "payload");
