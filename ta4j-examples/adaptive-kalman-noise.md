@@ -26,8 +26,9 @@ The example reuses the offline S&P 500 weekly fixture from
 `KinematicKalmanForecastExample`. Its final July 27, 2026 aggregate is a partial
 week as of July 30; this example excludes that terminal bar rather than treating
 it as a completed one-week target. No market-data download is needed. The output
-reports common sample count, skipped origins, MAE/RMSE, and the latest corrected
-state's Q/R.
+reports common sample count, skipped origins, MAE/RMSE, each model's MAE relative
+to the last-close benchmark (above `1.000x` means worse than repeating the
+current close), and the latest corrected state's Q/R.
 
 ## Recipe and units
 
@@ -51,11 +52,11 @@ variance either. Moreover, using `R = volume` directly gives high-volume bars
 *less* measurement weight, the opposite of this example's confidence hypothesis.
 The existing wrapper deliberately validates numeric shape, not economic units.
 
-The implementation reuses `NumericIndicator.squared/max/min/dividedBy`,
-`UnaryOperationIndicator.pow`, `SMAIndicator`, `LowestValueIndicator`, and
-`KalmanNoiseIndicator` rather than teaching the Kalman engine about ATR or volume.
-The small private relative-volume indicator exists only to express the example's
-missing-data policy; it is not a new public core API or a serialization contract.
+The implementation reuses `NumericIndicator.squared/max/min/pow/dividedBy`,
+`SMAIndicator`, `LowestValueIndicator`, and `KalmanNoiseIndicator` rather than
+teaching the Kalman engine about ATR or volume. The small private relative-volume
+indicator exists only to express the example's missing-data policy; it is not a
+new public core API or a serialization contract.
 
 ## Volume policy
 
@@ -90,18 +91,27 @@ strengthen it, move toward one. The supplied value is 0.5.
 
 ## Construction and timing
 
-The composition ends at the existing constructor boundary:
+The whole recipe is a fluent `NumericIndicator` chain that ends at the existing
+constructor boundary:
 
 ```java
-KalmanNoiseIndicator q = new KalmanNoiseIndicator(processVariance);
-KalmanNoiseIndicator r = new KalmanNoiseIndicator(measurementVariance);
+NumericIndicator variance = NumericIndicator.of(new ATRIndicator(series, 14)).squared().max(1e-8);
+NumericIndicator confidence = NumericIndicator.of(relativeVolume).max(0.25).min(4).pow(0.5);
+KalmanNoiseIndicator q = new KalmanNoiseIndicator(variance, 0.01);
+KalmanNoiseIndicator r = new KalmanNoiseIndicator(variance.dividedBy(confidence));
 KinematicKalmanFilterIndicator filter =
         new KinematicKalmanFilterIndicator(new ClosePriceIndicator(series), q, r);
+Forecast nextClose = filter.forecast().getValue(series.getEndIndex());
 ```
 
-The full executable class shows how to construct both variance sources and
-exposes its intermediate sources through a package-local `NoiseInputs` record
-for focused tests. No new constructor overload or policy enum is necessary.
+`relativeVolume` can be any `Indicator<Num>`. On a clean feed, the plain ratio
+`volume.dividedBy(volume.sma(20))` with
+`NumericIndicator volume = NumericIndicator.of(new VolumeIndicator(series))` is
+enough; it uses partial windows during warm-up and does not neutralize missing
+or corrupt volume. The example's private `RelativeVolumeIndicator` adds the
+policy below, and the package-local `NoiseInputs` record exposes the
+intermediate sources for focused tests. No new constructor overload or policy
+enum is necessary.
 
 Default timing uses the finalized current bar's ATR and volume when correcting
 that same bar's price. This is causal at bar close, but those quantities are not

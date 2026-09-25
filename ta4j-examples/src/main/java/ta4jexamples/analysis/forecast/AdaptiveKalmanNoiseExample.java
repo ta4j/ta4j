@@ -6,6 +6,7 @@ package ta4jexamples.analysis.forecast;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -25,7 +26,6 @@ import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
-import org.ta4j.core.indicators.numeric.UnaryOperationIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -43,12 +43,16 @@ import org.ta4j.core.num.NumFactory;
  */
 public final class AdaptiveKalmanNoiseExample {
 
+    static final int ATR_BAR_COUNT = 14;
+    static final int VOLUME_BAR_COUNT = 20;
+    static final int WALK_FORWARD_DECISIONS = 520;
     static final double MINIMUM_VARIANCE = 1e-8;
     static final double PROCESS_SCALE = 0.01;
     static final double MEASUREMENT_SCALE = 1;
     static final double MINIMUM_RELATIVE_VOLUME = 0.25;
     static final double MAXIMUM_RELATIVE_VOLUME = 4;
     static final double VOLUME_EXPONENT = 0.5;
+    static final String LAST_CLOSE = "Last close";
 
     private static final Logger LOG = LogManager.getLogger(AdaptiveKalmanNoiseExample.class);
 
@@ -67,21 +71,28 @@ public final class AdaptiveKalmanNoiseExample {
         }
         boolean lagNoise = args.length == 1;
         BarSeries snapshot = KinematicKalmanForecastExample.loadSeries();
-        // The bundled snapshot ends with an as-of partial week, not a mature target.
-        BarSeries series = snapshot.getSubSeries(snapshot.getBeginIndex(), snapshot.getEndIndex());
-        List<Model> models = createModels(series, 14, 20, lagNoise);
-        Evaluation evaluation = evaluate(models, new ClosePriceIndicator(series), 520);
+        // The bundled snapshot ends with an as-of partial week; getSubSeries' end
+        // index is exclusive, so only completed weeks remain as forecast targets.
+        BarSeries completedWeeks = snapshot.getSubSeries(snapshot.getBeginIndex(), snapshot.getEndIndex());
+        List<Model> models = createModels(completedWeeks, ATR_BAR_COUNT, VOLUME_BAR_COUNT, lagNoise);
+        Evaluation evaluation = evaluate(models, new ClosePriceIndicator(completedWeeks), WALK_FORWARD_DECISIONS);
 
-        LOG.info("Offline weekly comparison: prior-bar noise={}, common samples={}, skipped origins={}", lagNoise,
-                evaluation.sampleCount(), evaluation.skippedCount());
+        LOG.info("Offline weekly comparison through {}: prior-bar noise={}, common samples={}, skipped origins={}",
+                completedWeeks.getLastBar().getEndTime(), lagNoise, evaluation.sampleCount(),
+                evaluation.skippedCount());
+        Score lastClose = evaluation.scores().getLast();
         for (Score score : evaluation.scores()) {
-            LOG.info("{}: one-step MAE={}, RMSE={}", score.name(), score.meanAbsoluteError(),
-                    score.rootMeanSquaredError());
+            // A ratio above 1 means the model forecast the next close worse than
+            // simply repeating the current close.
+            double relativeMae = score.meanAbsoluteError().doubleValue() / lastClose.meanAbsoluteError().doubleValue();
+            LOG.info("{}: one-step MAE={}, RMSE={}, MAE vs last close={}x", score.name(),
+                    format(score.meanAbsoluteError()), format(score.rootMeanSquaredError()),
+                    String.format(Locale.ROOT, "%.3f", relativeMae));
         }
         for (Model model : models) {
-            KinematicKalmanForecastState state = model.state().getValue(series.getEndIndex());
-            LOG.info("{}: corrected price={}, velocity={}, Q={}, R={}", model.name(), state.position(),
-                    state.velocity(), state.processNoise(), state.measurementNoise());
+            KinematicKalmanForecastState state = model.state().getValue(completedWeeks.getEndIndex());
+            LOG.info("{}: corrected price={}, velocity={}, Q={}, R={}", model.name(), format(state.position()),
+                    format(state.velocity()), format(state.processNoise()), format(state.measurementNoise()));
         }
         LOG.info("Parameters are illustrative and were not fitted. Evaluate other periods before accepting a recipe.");
         LOG.info("Scaling both Q and R by ATR squared does not, by itself, change their ratio.");
@@ -92,10 +103,9 @@ public final class AdaptiveKalmanNoiseExample {
         NumericIndicator relativeVolume = NumericIndicator.of(new RelativeVolumeIndicator(volume, volumeWindow))
                 .max(MINIMUM_RELATIVE_VOLUME)
                 .min(MAXIMUM_RELATIVE_VOLUME);
-        Indicator<Num> volumeConfidence = UnaryOperationIndicator.pow(relativeVolume, VOLUME_EXPONENT);
         KalmanNoiseIndicator processNoise = new KalmanNoiseIndicator(variance, PROCESS_SCALE);
-        KalmanNoiseIndicator measurementNoise = new KalmanNoiseIndicator(variance.dividedBy(volumeConfidence),
-                MEASUREMENT_SCALE);
+        KalmanNoiseIndicator measurementNoise = new KalmanNoiseIndicator(
+                variance.dividedBy(relativeVolume.pow(VOLUME_EXPONENT)), MEASUREMENT_SCALE);
         return new NoiseInputs(variance, relativeVolume, processNoise, measurementNoise);
     }
 
@@ -138,19 +148,15 @@ public final class AdaptiveKalmanNoiseExample {
         int firstOrigin = Math.max(series.getBeginIndex(), series.getEndIndex() - decisionCount);
         for (int origin = firstOrigin; origin < series.getEndIndex(); origin++) {
             Num[] predictions = new Num[baseline + 1];
-            boolean available = true;
-            for (int modelIndex = 0; modelIndex < models.size(); modelIndex++) {
-                Forecast forecast = models.get(modelIndex).forecast().getValue(origin);
-                if (!forecast.isStable()) {
-                    available = false;
-                    continue;
-                }
-                predictions[modelIndex] = forecast.mean();
-                available &= Num.isFinite(predictions[modelIndex]);
-            }
             predictions[baseline] = close.getValue(origin);
             Num realized = close.getValue(origin + 1);
-            if (!available || !Num.isFinite(realized) || !Num.isFinite(predictions[baseline])) {
+            boolean available = Num.isFinite(realized) && Num.isFinite(predictions[baseline]);
+            for (int modelIndex = 0; available && modelIndex < baseline; modelIndex++) {
+                Forecast forecast = models.get(modelIndex).forecast().getValue(origin);
+                predictions[modelIndex] = forecast.mean();
+                available = forecast.isStable() && Num.isFinite(predictions[modelIndex]);
+            }
+            if (!available) {
                 skippedCount++;
                 continue;
             }
@@ -164,13 +170,18 @@ public final class AdaptiveKalmanNoiseExample {
         }
         List<Score> scores = new ArrayList<>();
         for (int modelIndex = 0; modelIndex <= baseline; modelIndex++) {
-            String name = modelIndex == baseline ? "Last close" : models.get(modelIndex).name();
+            String name = modelIndex == baseline ? LAST_CLOSE : models.get(modelIndex).name();
             Num mae = sampleCount == 0 ? NaN.NaN : absoluteErrors[modelIndex].dividedBy(numFactory.numOf(sampleCount));
             Num rmse = sampleCount == 0 ? NaN.NaN
                     : squaredErrors[modelIndex].dividedBy(numFactory.numOf(sampleCount)).sqrt();
             scores.add(new Score(name, mae, rmse));
         }
         return new Evaluation(sampleCount, skippedCount, List.copyOf(scores));
+    }
+
+    private static String format(Num value) {
+        // Display only; the evaluation itself stays in the series' Num precision.
+        return String.format(Locale.ROOT, "%.4f", value.doubleValue());
     }
 
     // The only custom policy: missing volume is neutral, actual zero volume is not.
