@@ -81,6 +81,35 @@ public class PortfolioSeriesManagerTest {
     }
 
     @Test
+    public void driftBandTradesOnlyWhenWeightsLeaveTheBand() {
+        PortfolioSeriesManager manager = manager(new double[] { 100, 101, 110, 111 },
+                new double[] { 100, 100, 100, 100 });
+
+        PortfolioExecutionResult result = manager.run(weights(0.5, 0.5), 1000, RebalancePolicy.whenDriftExceeds(0.02));
+
+        assertEquals(
+                List.of(RebalanceStatus.COMPLETED, RebalanceStatus.NOT_SCHEDULED, RebalanceStatus.COMPLETED,
+                        RebalanceStatus.NOT_SCHEDULED),
+                result.getSnapshots().stream().map(PortfolioSnapshot::getRebalanceStatus).toList());
+        assertNumClose(0.5, result.getSnapshots().get(2).getAssetWeight("ALPHA"), TOLERANCE);
+    }
+
+    @Test
+    public void driftBandAvoidsFixedFeesForNegligibleDrift() {
+        CostModel fixedFee = new FixedTransactionCostModel(50);
+        PortfolioSeriesManager manager = new PortfolioSeriesManager(
+                new PortfolioSeries(series("ALPHA", 100, 101), series("BETA", 100, 100)), fixedFee);
+
+        PortfolioExecutionResult everyBar = manager.run(weights(0.01, 0.99), 1000, RebalancePolicy.everyBar());
+        PortfolioExecutionResult banded = manager.run(weights(0.01, 0.99), 1000,
+                RebalancePolicy.everyBar().and(RebalancePolicy.whenDriftExceeds(0.05)));
+
+        assertNumEquals(200, everyBar.getTotalTransactionCost());
+        assertNumEquals(100, banded.getTotalTransactionCost());
+        assertEquals(RebalanceStatus.NOT_SCHEDULED, banded.getFinalSnapshot().getRebalanceStatus());
+    }
+
+    @Test
     public void singleAssetWithCashSleeveIsABenchmark() {
         PortfolioSeriesManager manager = new PortfolioSeriesManager(new PortfolioSeries(series("SPY", 100, 110)));
 
@@ -182,7 +211,9 @@ public class PortfolioSeriesManagerTest {
         assertNumEquals(ordinary.getAssetWeight("ALPHA"), tiny.getAssetWeight("ALPHA"), 1e-12);
         assertNumEquals(ordinary.getAssetWeight("BETA"), tiny.getAssetWeight("BETA"), 1e-12);
         assertNumEquals(ordinary.getCashWeight(), tiny.getCashWeight(), 1e-12);
-        assertNumClose(0, tiny.getCashWeight(), 1e-12);
+        // Precision is set by the solver's relative tolerance (1e-12 of portfolio
+        // value).
+        assertNumClose(0, tiny.getCashWeight(), 1e-11);
         assertNumEquals(ordinary.getTransactionCost().dividedBy(numFactory.numOf(1000)),
                 tiny.getTransactionCost().dividedBy(numFactory.numOf("1E-13")), 1e-12);
     }

@@ -54,9 +54,11 @@ import org.ta4j.core.portfolio.PortfolioSnapshot.RebalanceStatus;
  * <p>
  * Transaction costs are computed per trade with
  * {@link CostModel#calculate(Num, Num)} (price and units). The post-cost solve
- * is exact for proportional models; for fixed or minimum fees it picks the
- * largest post-cost value found, always considering the option of leaving the
- * current holdings untouched.
+ * is exact for proportional models and converges in a few fixed-point steps;
+ * for fixed or minimum fees it picks the largest post-cost value found, always
+ * considering the option of leaving the current holdings untouched. Pair fixed
+ * fees with {@link RebalancePolicy#whenDriftExceeds(double)} so negligible
+ * drift is not corrected at full fee.
  * </p>
  *
  * @since 0.25.1
@@ -64,6 +66,7 @@ import org.ta4j.core.portfolio.PortfolioSnapshot.RebalanceStatus;
 public final class PortfolioSeriesManager {
 
     private static final int MAX_SOLVER_ITERATIONS = 200;
+    private static final int MAX_FIXED_POINT_ITERATIONS = 32;
 
     private final PortfolioSeries series;
     private final CostModel transactionCostModel;
@@ -214,7 +217,8 @@ public final class PortfolioSeriesManager {
                 Num tradedNotional = zero;
                 RebalanceStatus status = RebalanceStatus.NOT_SCHEDULED;
 
-                if (rebalancePolicy.shouldRebalance(series, index)) {
+                if (rebalancePolicy.shouldRebalance(new RebalancePolicy.Context(series, index, prices, units, cash,
+                        preTradeValue, targetWeights))) {
                     Rebalance rebalance = new Rebalance(prices, units, cash, preTradeValue);
                     rebalance.execute();
                     units = rebalance.units;
@@ -358,8 +362,8 @@ public final class PortfolioSeriesManager {
 
                 buy(buys, deltas);
                 if (cash.isNegative()) {
-                    // Affordability checks keep exact cash >= 0; only summation-order
-                    // rounding can land a hair below zero.
+                    // Affordability checks tolerate rounding noise up to the solver
+                    // tolerance, so cash can only land a hair below zero.
                     if (cash.abs().isGreaterThan(solverTolerance)) {
                         throw new IllegalStateException("rebalance produced negative cash: " + cash);
                     }
@@ -389,6 +393,43 @@ public final class PortfolioSeriesManager {
                 if (rebalanceCost(preTradeValue).isZero()) {
                     return preTradeValue;
                 }
+                Num low = fixedPointTargetValue();
+                if (low == null) {
+                    low = bisectTargetValue();
+                }
+                // Leaving holdings untouched is a feasible candidate that the solvers can
+                // miss when fixed fees make feasibility discontinuous.
+                Num holdValue = holdValue();
+                if (holdValue != null && holdValue.isGreaterThan(low)) {
+                    return holdValue;
+                }
+                return low.isZero() ? null : low;
+            }
+
+            /**
+             * Iterates {@code T = preTradeValue - cost(T)}. Proportional costs make this a
+             * contraction (factor = fee rate), so it converges in a few steps instead of a
+             * full bisection; returns {@code null} when it does not settle on a feasible
+             * value, leaving the general bisection to decide.
+             */
+            private Num fixedPointTargetValue() {
+                Num value = preTradeValue;
+                for (int iteration = 0; iteration < MAX_FIXED_POINT_ITERATIONS; iteration++) {
+                    Num next = preTradeValue.minus(rebalanceCost(value));
+                    if (next.isNegativeOrZero()) {
+                        return null;
+                    }
+                    if (next.minus(value).abs().isLessThanOrEqual(solverTolerance)) {
+                        // Iterates alternate around the root; the smaller one is the feasible side.
+                        Num candidate = next.min(value);
+                        return isFeasible(candidate) ? candidate : null;
+                    }
+                    value = next;
+                }
+                return null;
+            }
+
+            private Num bisectTargetValue() {
                 Num low = zero;
                 Num high = preTradeValue;
                 for (int iteration = 0; iteration < MAX_SOLVER_ITERATIONS; iteration++) {
@@ -396,19 +437,17 @@ public final class PortfolioSeriesManager {
                     if (mid == null) {
                         break;
                     }
-                    if (mid.plus(rebalanceCost(mid)).isLessThanOrEqual(preTradeValue)) {
+                    if (isFeasible(mid)) {
                         low = mid;
                     } else {
                         high = mid;
                     }
                 }
-                // Leaving holdings untouched is a feasible candidate that bisection can
-                // miss when fixed fees make feasibility discontinuous.
-                Num holdValue = holdValue();
-                if (holdValue != null && holdValue.isGreaterThan(low)) {
-                    return holdValue;
-                }
-                return low.isZero() ? null : low;
+                return low;
+            }
+
+            private boolean isFeasible(Num targetValue) {
+                return targetValue.plus(rebalanceCost(targetValue)).isLessThanOrEqual(preTradeValue);
             }
 
             private Num rebalanceCost(Num targetValue) {
@@ -471,8 +510,11 @@ public final class PortfolioSeriesManager {
                 }
             }
 
+            /** Affordable up to rounding noise, which the final cash clamp absorbs. */
             private boolean isSellAffordable(Num price, Num gross) {
-                return cash.plus(gross).minus(tradeCost(price, gross, noTradeBand)).isPositiveOrZero();
+                return cash.plus(gross)
+                        .minus(tradeCost(price, gross, noTradeBand))
+                        .isGreaterThanOrEqual(solverTolerance.negate());
             }
 
             /**
@@ -485,7 +527,8 @@ public final class PortfolioSeriesManager {
                 }
                 Num one = numFactory.one();
                 Num scale = one;
-                if (buyCashNeed(buys, deltas, one).isGreaterThan(cash)) {
+                Num availableCash = cash.plus(solverTolerance);
+                if (buyCashNeed(buys, deltas, one).isGreaterThan(availableCash)) {
                     Num low = zero;
                     Num high = one;
                     for (int iteration = 0; iteration < MAX_SOLVER_ITERATIONS; iteration++) {
@@ -493,7 +536,7 @@ public final class PortfolioSeriesManager {
                         if (mid == null) {
                             break;
                         }
-                        if (buyCashNeed(buys, deltas, mid).isLessThanOrEqual(cash)) {
+                        if (buyCashNeed(buys, deltas, mid).isLessThanOrEqual(availableCash)) {
                             low = mid;
                         } else {
                             high = mid;

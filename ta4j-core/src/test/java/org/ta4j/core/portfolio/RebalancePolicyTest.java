@@ -4,7 +4,10 @@
 package org.ta4j.core.portfolio;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -19,6 +22,8 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class RebalancePolicyTest {
 
@@ -33,6 +38,25 @@ public class RebalancePolicyTest {
         assertEquals(List.of(3, 7), selected(RebalancePolicy.onIndexes(7, 3), TEN_BARS));
         assertEquals(List.of(3), selected(RebalancePolicy.onIndexes(Set.of(3)), TEN_BARS));
         assertEquals(List.of(0, 3), selected(RebalancePolicy.atStart().or(RebalancePolicy.onIndexes(3)), TEN_BARS));
+        assertEquals(List.of(4, 8),
+                selected(RebalancePolicy.everyNthBar(4).and(RebalancePolicy.onIndexes(4, 5, 8)), TEN_BARS));
+    }
+
+    @Test
+    public void driftBandComparesAchievedWithTargetWeightsIncludingCash() {
+        NumFactory num = TEN_BARS.numFactory();
+        // One ALPHA unit at price 1 plus 1 cash: 50% invested against a 60% target.
+        RebalancePolicy.Context context = context(TEN_BARS, 0, num.one(), num.one());
+
+        assertNumEquals(0.5, context.getAssetWeight("ALPHA"));
+        assertNumEquals(0.5, context.getCashWeight());
+        assertNumEquals(0.6, context.getTargetWeight("ALPHA"));
+        assertNumEquals(0.1, context.getMaxDrift());
+        assertTrue(RebalancePolicy.whenDriftExceeds(0.05).shouldRebalance(context));
+        assertFalse(RebalancePolicy.whenDriftExceeds(0.1).shouldRebalance(context));
+        assertThrows(IllegalArgumentException.class, () -> RebalancePolicy.whenDriftExceeds(0));
+        assertThrows(IllegalArgumentException.class, () -> RebalancePolicy.whenDriftExceeds(1));
+        assertThrows(IllegalArgumentException.class, () -> context.getAssetWeight("MISSING"));
     }
 
     @Test
@@ -61,11 +85,19 @@ public class RebalancePolicyTest {
     private static List<Integer> selected(RebalancePolicy policy, PortfolioSeries series) {
         List<Integer> indexes = new ArrayList<>();
         for (int index = 0; index < series.getBarCount(); index++) {
-            if (policy.shouldRebalance(series, index)) {
+            if (policy.shouldRebalance(context(series, index, series.numFactory().one(), series.numFactory().zero()))) {
                 indexes.add(index);
             }
         }
         return indexes;
+    }
+
+    /** ALPHA holds {@code units} at the bar's close price with a 60% target. */
+    private static RebalancePolicy.Context context(PortfolioSeries series, int index, Num units, Num cash) {
+        Num[] prices = { series.getClosePrice(series.getAssets().getFirst(), index) };
+        Num value = cash.plus(prices[0].multipliedBy(units));
+        return new RebalancePolicy.Context(series, index, prices, new Num[] { units }, cash, value,
+                new Num[] { series.numFactory().numOf(0.6) });
     }
 
     private static BarSeries dailySeries(String firstEnd, int bars) {

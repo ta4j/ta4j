@@ -28,8 +28,8 @@ import org.ta4j.core.portfolio.PortfolioSnapshot.RebalanceStatus;
 import org.ta4j.core.portfolio.RebalancePolicy;
 
 /**
- * Static target-weight portfolio backtest: buy-and-hold versus monthly
- * rebalancing of a 60% equity / 30% bond / 10% cash allocation.
+ * Static target-weight portfolio backtest: buy-and-hold versus monthly and
+ * drift-band rebalancing of a 60% equity / 30% bond / 10% cash allocation.
  *
  * <p>
  * Accounting assumptions: fractional long-only holdings, trades and valuation
@@ -63,8 +63,11 @@ public final class StaticPortfolioBacktest {
         // selects bar 0 too.
         PortfolioExecutionResult monthly = manager.run(allocation, 10_000,
                 RebalancePolicy.firstBarOf(ChronoUnit.MONTHS, ZoneOffset.UTC));
+        // Threshold rebalancing: trade only when a weight drifts more than 3 points.
+        PortfolioExecutionResult banded = manager.run(allocation, 10_000, RebalancePolicy.whenDriftExceeds(0.03));
         LOG.info("Buy and hold: {}", buyAndHold);
         LOG.info("Monthly:      {}", monthly);
+        LOG.info("Drift band:   {}", banded);
         monthly.getSnapshots(RebalanceStatus.COMPLETED)
                 .forEach(snapshot -> LOG.info("Rebalanced {}: turnover={}, cost={}", snapshot.getEndTime(),
                         snapshot.getTurnover(), snapshot.getTransactionCost()));
