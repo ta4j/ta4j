@@ -56,6 +56,12 @@ import java.util.Optional;
  */
 public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
 
+    /**
+     * Analyses attempted before giving up on a series that keeps evicting the
+     * window.
+     */
+    private static final int MAX_ATTEMPTS = 8;
+
     private final ReturnRepresentation returnRepresentation;
 
     /**
@@ -150,7 +156,14 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         if (tradingRecord == null) {
             return series.numFactory().zero();
         }
-        return series.withReadLock(() -> calculateTradingRecord(series, tradingRecord));
+        for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            Num value = calculateTradingRecord(series, tradingRecord);
+            if (value != null) {
+                return value;
+            }
+        }
+        throw new IllegalStateException("Bar series '" + series.getName()
+                + "' evicted the analysis window during each of " + MAX_ATTEMPTS + " attempts");
     }
 
     @Override
@@ -163,6 +176,10 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
+    /**
+     * Returns the ratio, or {@code null} when retention evicted the cash flow's
+     * first bar before its time could be read.
+     */
     private Num calculateTradingRecord(BarSeries series, TradingRecord tradingRecord) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
@@ -176,6 +193,9 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         }
 
         Num annualizedReturn = annualizedReturn(series, cashFlow, beginIndex, endIndex);
+        if (annualizedReturn == null) {
+            return null;
+        }
         Num maximumDrawdown = Drawdown.amount(series, tradingRecord, cashFlow);
         if (maximumDrawdown.isZero()) {
             return toRepresentation(annualizedReturn);
@@ -185,7 +205,14 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
 
     private Num annualizedReturn(BarSeries series, CashFlow cashFlow, int beginIndex, int endIndex) {
         Num one = series.numFactory().one();
-        Num years = BarSeriesUtils.deltaYears(series, beginIndex, endIndex);
+        // Bar times are read in a short, bar-only scope while the curve's first bar
+        // is still retained; a series that evicted it meanwhile is analysed again.
+        Num years = series.withReadLock(
+                () -> series.getBeginIndex() <= beginIndex ? BarSeriesUtils.deltaYears(series, beginIndex, endIndex)
+                        : null);
+        if (years == null) {
+            return null;
+        }
         if (years.isZero()) {
             return series.numFactory().zero();
         }

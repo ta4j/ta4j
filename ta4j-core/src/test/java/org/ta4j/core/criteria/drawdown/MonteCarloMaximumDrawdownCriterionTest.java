@@ -22,6 +22,7 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.criteria.Statistics;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import java.time.Instant;
 
@@ -43,6 +44,23 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
 
         assertNumEquals(0.5,
                 new MonteCarloMaximumDrawdownCriterion(1, null, 42L, Statistics.MAX).calculate(series, record));
+    }
+
+    @Test(timeout = 5000)
+    public void blocksStartAtTheCapturedWindowForPreWindowEntries() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 80d).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(Integer.MAX_VALUE - 1)
+                .build();
+        // The entry predates the retained window by ~2^31 bars; only the two
+        // retained bars may become block returns.
+        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(0, numFactory.numOf(100d), numFactory.one()),
+                Trade.sellAt(Integer.MAX_VALUE, series));
+
+        Num drawdown = new MonteCarloMaximumDrawdownCriterion(1, null, 42L, Statistics.MAX).calculate(series, record);
+
+        assertNumEquals(0.2, drawdown);
     }
 
     @Test

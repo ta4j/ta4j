@@ -29,6 +29,8 @@ import org.ta4j.core.reports.BaseTradingStatement;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.FixedRule;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -248,7 +250,7 @@ public class BacktestExecutionResultTest {
                 new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build().getBarData());
         BarSeries untracked = new BaseBarSeries("untracked", bars) {
             @Override
-            public long getBarHistoryRevision() {
+            public synchronized long getBarHistoryRevision() {
                 return -1L;
             }
         };
@@ -261,6 +263,97 @@ public class BacktestExecutionResultTest {
         IllegalStateException change = assertThrows(IllegalStateException.class,
                 () -> BacktestExecutionResult.verifyUnchanged(untracked, baseline));
         assertTrue(change.getMessage(), change.getMessage().contains("bar 1 was replaced or updated"));
+    }
+
+    @Test
+    public void verifyUnchangedComparesCustomBarsWhoseMutationsTheRevisionMisses() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        List<Bar> customBars = new ArrayList<>();
+        for (Bar bar : source.getBarData()) {
+            customBars.add(new MutableCustomBar(bar));
+        }
+        BarSeries series = new BaseBarSeries("custom-bars", customBars);
+        BarSeries baseline = BacktestExecutionResult.snapshot(series);
+        long revision = series.getBarHistoryRevision();
+
+        series.getBar(1).addPrice(numFactory.numOf(25));
+
+        assertEquals("custom bars cannot publish their mutation", revision, series.getBarHistoryRevision());
+        IllegalStateException change = assertThrows(IllegalStateException.class,
+                () -> BacktestExecutionResult.verifyUnchanged(series, baseline));
+        assertTrue(change.getMessage(), change.getMessage().contains("bar 1 was replaced or updated"));
+    }
+
+    /** A custom bar whose in-place price updates the series cannot observe. */
+    private static final class MutableCustomBar implements Bar {
+
+        private final Bar source;
+        private Num closePrice;
+
+        private MutableCustomBar(Bar source) {
+            this.source = source;
+            this.closePrice = source.getClosePrice();
+        }
+
+        @Override
+        public Duration getTimePeriod() {
+            return source.getTimePeriod();
+        }
+
+        @Override
+        public Instant getBeginTime() {
+            return source.getBeginTime();
+        }
+
+        @Override
+        public Instant getEndTime() {
+            return source.getEndTime();
+        }
+
+        @Override
+        public Num getOpenPrice() {
+            return source.getOpenPrice();
+        }
+
+        @Override
+        public Num getHighPrice() {
+            return source.getHighPrice();
+        }
+
+        @Override
+        public Num getLowPrice() {
+            return source.getLowPrice();
+        }
+
+        @Override
+        public Num getClosePrice() {
+            return closePrice;
+        }
+
+        @Override
+        public Num getVolume() {
+            return source.getVolume();
+        }
+
+        @Override
+        public Num getAmount() {
+            return source.getAmount();
+        }
+
+        @Override
+        public long getTrades() {
+            return source.getTrades();
+        }
+
+        @Override
+        public void addTrade(Num tradeVolume, Num tradePrice) {
+            closePrice = tradePrice;
+        }
+
+        @Override
+        public void addPrice(Num price) {
+            closePrice = price;
+        }
     }
 
     private Bar nextBar(BarSeries series, double close) {

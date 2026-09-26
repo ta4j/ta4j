@@ -36,6 +36,10 @@
 - **Analyses respect explicit record bounds**: `CashFlow`, `CumulativePnL` and `Returns` end their captured window at the record's logical end, so Calmar and Omega no longer score the flat tail after an explicitly bounded record, and drawdown uses the curve's own window for every curve type.
 - **Retained and rolling windows stay anchored**: when an entry predates the retained window, the curves mark it once at the first retained close against its entry price (an exit on that bar is counted once); curves keep the window they were materialized against when the live series later rolls; and scans ending at `Integer.MAX_VALUE` iterate in long arithmetic instead of wrapping.
 - Value at Risk and Expected Shortfall return `NaN` when a return in the distribution is undefined, instead of sorting `NaN` into the tail.
+- Analysis curves and the Calmar, Omega and return-over-max-drawdown criteria no longer hold the series read lock while evaluating holding-cost models (user code that may evaluate indicators): the window is captured and the curve built in short, bar-only scopes, with costs evaluated in between.
+- Backtest results also compare custom `Bar` implementations by value, since their in-place mutations do not advance the series revision.
+- `MonteCarloMaximumDrawdownCriterion` builds position blocks only over the cash flow's captured window, instead of iterating from an entry that predates it (which could exhaust memory for terminal-index windows).
+- Omega counts a bounded record's first bar when a position is marked there while still open, not only when one exits there.
 
 ## 0.25.0 (2026-09-07)
 

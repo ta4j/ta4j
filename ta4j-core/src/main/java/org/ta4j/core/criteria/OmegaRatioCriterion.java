@@ -200,7 +200,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         if (tradingRecord == null) {
             return zero;
         }
-        return series.withReadLock(() -> calculateTradingRecord(series, tradingRecord, zero));
+        return calculateTradingRecord(series, tradingRecord, zero);
     }
 
     private Num calculateTradingRecord(BarSeries series, TradingRecord tradingRecord, Num zero) {
@@ -210,8 +210,12 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
 
         Returns returns = new Returns(series, tradingRecord, ReturnRepresentation.DECIMAL, equityCurveMode,
                 openPositionHandling);
-        int beginIndex = tradingRecord.getStartIndex(series);
-        if (tradingRecord.getEndIndex(series) < beginIndex) {
+        // Bounds come from the captured return window, not the live series, so a
+        // series that rolls after materialization cannot shift them.
+        Integer explicitStartIndex = tradingRecord.getStartIndex();
+        int beginIndex = explicitStartIndex == null ? returns.getBeginIndex()
+                : Math.max(explicitStartIndex, returns.getBeginIndex());
+        if (returns.getEndIndex() < beginIndex) {
             return zero;
         }
 
@@ -221,9 +225,10 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
 
         // Returns reports an undefined first retained slot as NaN, which the loop
         // skips. A later recording start only counts its own bar when a position
-        // exited there; otherwise that bar's return is the move into the window.
+        // was last marked there; otherwise that bar's return is the move into the
+        // window.
         long firstRateIndex = beginIndex + 1L;
-        if (beginIndex == returns.getBeginIndex() || exitsAt(tradingRecord, beginIndex)) {
+        if (beginIndex == returns.getBeginIndex() || marksAt(tradingRecord, beginIndex, returns.getEndIndex())) {
             firstRateIndex = beginIndex;
         }
         for (long i = firstRateIndex; i <= returns.getEndIndex(); i++) {
@@ -257,13 +262,25 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         return Optional.of(returnRepresentation);
     }
 
-    private static boolean exitsAt(TradingRecord tradingRecord, int index) {
+    /**
+     * Whether a position's last mark falls on {@code index}: it exits there, or it
+     * is still held when the analysis window ends there (open, or exiting after the
+     * window) and was entered by then.
+     */
+    private static boolean marksAt(TradingRecord tradingRecord, int index, int analysisEndIndex) {
         for (Position position : tradingRecord.getPositions()) {
-            if (position.isClosed() && position.getExit().getIndex() == index) {
+            if (position.getExit() == null) {
+                continue;
+            }
+            int exitIndex = position.getExit().getIndex();
+            if (exitIndex == index || exitIndex > analysisEndIndex && analysisEndIndex == index
+                    && position.getEntry().getIndex() <= index) {
                 return true;
             }
         }
-        return false;
+        Position current = tradingRecord.getCurrentPosition();
+        return current != null && current.isOpened() && analysisEndIndex == index
+                && current.getEntry().getIndex() <= index;
     }
 
     private Num toRepresentation(Num omegaRatio) {

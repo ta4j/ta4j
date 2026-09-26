@@ -54,17 +54,15 @@ public final class CumulativePnL implements PerformanceIndicator {
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
         TradingRecord record = Objects.requireNonNull(tradingRecord);
         OpenPositionHandling handling = Objects.requireNonNull(openPositionHandling);
-        AnalysisPositionSupport.Curve curve = barSeries.withReadLock(() -> {
-            AnalysisPositionSupport.Window captured = AnalysisPositionSupport.captureWindow(this.barSeries, record, 0,
-                    requestedFinalIndex, useRecordEnd, useSeriesEnd, true);
-            Num zero = this.barSeries.numFactory().zero();
-            OffsetNumBuffer buffer = AnalysisPositionSupport.buffer(captured, zero, zero);
-            for (Position position : AnalysisPositionSupport.positionsForAnalysis(record, captured.finalIndex(),
-                    handling, this.equityCurveMode)) {
-                calculatePosition(position, captured.finalIndex(), captured, buffer);
-            }
-            return new AnalysisPositionSupport.Curve(captured, buffer);
-        });
+        AnalysisPositionSupport.Curve curve = AnalysisPositionSupport.materialize(this, barSeries, record, 0,
+                requestedFinalIndex, useRecordEnd, useSeriesEnd, true, handling, (captured, positions, costs) -> {
+                    Num zero = this.barSeries.numFactory().zero();
+                    OffsetNumBuffer buffer = AnalysisPositionSupport.buffer(captured, zero, zero);
+                    for (Position position : positions) {
+                        calculatePosition(position, captured.finalIndex(), captured, buffer, costs.get(position));
+                    }
+                    return new AnalysisPositionSupport.Curve(captured, buffer);
+                });
         this.window = curve.window();
         this.values = curve.values();
     }
@@ -178,11 +176,13 @@ public final class CumulativePnL implements PerformanceIndicator {
      */
     @Override
     public void calculatePosition(Position position, int finalIndex) {
-        calculatePosition(position, finalIndex, window, values);
+        Num holdingCost = position.getEntry() == null ? null
+                : position.getHoldingCost(determineEndIndex(position, finalIndex, window.seriesEndIndex()));
+        calculatePosition(position, finalIndex, window, values, holdingCost);
     }
 
     private void calculatePosition(Position position, int finalIndex, AnalysisPositionSupport.Window captured,
-            OffsetNumBuffer buffer) {
+            OffsetNumBuffer buffer, Num holdingCost) {
         Trade entry = position.getEntry();
         if (entry == null) {
             return;
@@ -201,8 +201,8 @@ public final class CumulativePnL implements PerformanceIndicator {
         boolean isLong = entry.isBuy();
         Num netEntryPrice = entry.getNetPrice();
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
-            Num netExit = AnalysisPositionSupport.markToMarket(this, barSeries, position, endIndex, seriesBegin,
-                    endIndex - 1, (index, netPrice, previousPrice) -> buffer.add(index,
+            Num netExit = AnalysisPositionSupport.markToMarket(this, barSeries, position, holdingCost, endIndex,
+                    seriesBegin, endIndex - 1, (index, netPrice, previousPrice) -> buffer.add(index,
                             isLong ? netPrice.minus(netEntryPrice) : netEntryPrice.minus(netPrice)))
                     .netPrice();
             Num deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
@@ -212,7 +212,6 @@ public final class CumulativePnL implements PerformanceIndicator {
 
         Trade exit = position.getExit();
         if (exit != null && endIndex >= exit.getIndex()) {
-            Num holdingCost = position.getHoldingCost(endIndex);
             Num netExit = addCost(exit.getNetPrice(), holdingCost, isLong);
             Num deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
             buffer.addRange(exit.getIndex(), captured.bufferEndIndex(), deltaExit);

@@ -110,18 +110,16 @@ public class Returns implements PerformanceIndicator {
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
         TradingRecord record = Objects.requireNonNull(tradingRecord);
         OpenPositionHandling handling = Objects.requireNonNull(openPositionHandling);
-        Materialized materialized = barSeries.withReadLock(() -> {
-            AnalysisPositionSupport.Window captured = AnalysisPositionSupport.captureWindow(this.barSeries, record, 0,
-                    finalIndex, useRecordEnd, false, true);
-            Num initial = this.representation == ReturnRepresentation.LOG ? this.barSeries.numFactory().zero()
-                    : this.barSeries.numFactory().one();
-            OffsetNumBuffer factors = AnalysisPositionSupport.buffer(captured, initial, NaN.NaN);
-            for (Position position : AnalysisPositionSupport.positionsForAnalysis(record, captured.finalIndex(),
-                    handling, this.equityCurveMode)) {
-                calculatePosition(position, captured.finalIndex(), captured, factors);
-            }
-            return new Materialized(captured, factors);
-        });
+        Materialized materialized = AnalysisPositionSupport.materialize(this, barSeries, record, 0, finalIndex,
+                useRecordEnd, false, true, handling, (captured, positions, costs) -> {
+                    Num initial = this.representation == ReturnRepresentation.LOG ? this.barSeries.numFactory().zero()
+                            : this.barSeries.numFactory().one();
+                    OffsetNumBuffer factors = AnalysisPositionSupport.buffer(captured, initial, NaN.NaN);
+                    for (Position position : positions) {
+                        calculatePosition(position, captured.finalIndex(), captured, factors, costs.get(position));
+                    }
+                    return new Materialized(captured, factors);
+                });
         this.window = materialized.window();
         this.returnFactors = materialized.factors();
         this.rawValues = new ArrayList<>(returnFactors.size());
@@ -360,11 +358,13 @@ public class Returns implements PerformanceIndicator {
      */
     @Override
     public void calculatePosition(Position position, int finalIndex) {
-        calculatePosition(position, finalIndex, window, returnFactors);
+        Num holdingCost = position.getEntry() == null ? null
+                : position.getHoldingCost(determineEndIndex(position, finalIndex, window.seriesEndIndex()));
+        calculatePosition(position, finalIndex, window, returnFactors, holdingCost);
     }
 
     private void calculatePosition(Position position, int finalIndex, AnalysisPositionSupport.Window captured,
-            OffsetNumBuffer factors) {
+            OffsetNumBuffer factors, Num holdingCost) {
         Trade entry = position.getEntry();
         if (entry == null) {
             return;
@@ -383,7 +383,8 @@ public class Returns implements PerformanceIndicator {
         boolean isLongTrade = entry.isBuy();
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
             AnalysisPositionSupport.ExitMark exit = AnalysisPositionSupport.markToMarket(this, barSeries, position,
-                    endIndex, seriesBegin, endIndex - 1, (index, netPrice, previousPrice) -> combineReturnAtIndex(index,
+                    holdingCost, endIndex, seriesBegin, endIndex - 1,
+                    (index, netPrice, previousPrice) -> combineReturnAtIndex(index,
                             strategyReturn(calculateReturn(netPrice, previousPrice), isLongTrade), captured, factors));
             combineReturnAtIndex(endIndex,
                     strategyReturn(calculateReturn(exit.netPrice(), exit.previousPrice()), isLongTrade), captured,
@@ -393,7 +394,6 @@ public class Returns implements PerformanceIndicator {
 
         Trade exit = position.getExit();
         if (exit != null && endIndex >= exit.getIndex()) {
-            Num holdingCost = position.getHoldingCost(endIndex);
             Num netExit = addCost(exit.getNetPrice(), holdingCost, isLongTrade);
             combineReturnAtIndex(exit.getIndex(),
                     strategyReturn(calculateReturn(netExit, entry.getNetPrice()), isLongTrade), captured, factors);

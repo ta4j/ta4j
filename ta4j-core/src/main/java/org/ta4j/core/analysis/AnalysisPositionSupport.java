@@ -4,7 +4,9 @@
 package org.ta4j.core.analysis;
 
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import org.ta4j.core.*;
 import org.ta4j.core.num.Num;
@@ -69,6 +71,71 @@ final class AnalysisPositionSupport {
     }
 
     /**
+     * Captures attempted before a curve gives up on a series that keeps evicting
+     * its window.
+     */
+    private static final int MAX_MATERIALIZE_ATTEMPTS = 8;
+
+    /**
+     * Builds a curve over a captured window from bar data and precomputed holding
+     * costs.
+     */
+    @FunctionalInterface
+    interface CurveBuilder<T> {
+
+        /**
+         * Runs inside the series read scope, so it must only read bars and trades.
+         *
+         * @param window       the captured window
+         * @param positions    the positions to analyse
+         * @param holdingCosts each analysed position's holding cost through its end
+         *                     index, keyed by identity
+         * @return the built curve
+         */
+        T build(Window window, List<Position> positions, Map<Position, Num> holdingCosts);
+    }
+
+    /**
+     * Materializes a curve without evaluating user code under the series read lock.
+     * The window is captured in one short read scope; holding costs, whose cost
+     * models are user code that may evaluate indicators, are computed with no lock
+     * held; the curve is then built from bar data in a second short read scope
+     * while the window's bars are still retained. Appended bars leave the captured
+     * window valid; if retention evicted part of it in between, capture repeats.
+     *
+     * @throws IllegalStateException if retention evicted the window during every
+     *                               attempt
+     */
+    static <T> T materialize(PerformanceIndicator curve, BarSeries series, TradingRecord record, int startIndex,
+            int requestedFinal, boolean useRecordEnd, boolean useSeriesEnd, boolean padToSeriesEnd,
+            OpenPositionHandling handling, CurveBuilder<T> builder) {
+        for (int attempt = 0; attempt < MAX_MATERIALIZE_ATTEMPTS; attempt++) {
+            Window window = series.withReadLock(() -> captureWindow(series, record, startIndex, requestedFinal,
+                    useRecordEnd, useSeriesEnd, padToSeriesEnd));
+            List<Position> positions = positionsForAnalysis(record, window.finalIndex(), handling,
+                    curve.getEquityCurveMode());
+            Map<Position, Num> holdingCosts = new IdentityHashMap<>();
+            for (Position position : positions) {
+                Trade entry = position.getEntry();
+                if (entry != null && entry.getIndex() <= window.finalIndex()
+                        && entry.getIndex() <= window.seriesEndIndex()) {
+                    int endIndex = curve.determineEndIndex(position, window.finalIndex(), window.seriesEndIndex());
+                    holdingCosts.put(position, position.getHoldingCost(endIndex));
+                }
+            }
+            T built = series.withReadLock(() -> series.getBeginIndex() <= window.beginIndex()
+                    && series.getEndIndex() >= window.seriesEndIndex() ? builder.build(window, positions, holdingCosts)
+                            : null);
+            if (built != null) {
+                return built;
+            }
+        }
+        throw new IllegalStateException(
+                "Bar series '" + series.getName() + "' evicted the analysis window during each of "
+                        + MAX_MATERIALIZE_ATTEMPTS + " attempts; retry once retention is stable");
+    }
+
+    /**
      * Allocates the value buffer for a captured window.
      */
     static OffsetNumBuffer buffer(Window window, Num initialValue, Num neutral) {
@@ -105,19 +172,22 @@ final class AnalysisPositionSupport {
      * @param curve            the curve supplying cost conventions
      * @param series           the analysed series
      * @param position         the position, with an entry
+     * @param holdingCost      the position's holding cost through {@code endIndex}
      * @param endIndex         the exit or final marked index
      * @param windowStartIndex first index that may be marked
      * @param lastMarkIndex    last index that may be marked before the exit
      * @param marks            receives each intermediate mark in index order
      * @return the exit mark
      */
-    static ExitMark markToMarket(PerformanceIndicator curve, BarSeries series, Position position, int endIndex,
-            int windowStartIndex, int lastMarkIndex, MarkConsumer marks) {
+    static ExitMark markToMarket(PerformanceIndicator curve, BarSeries series, Position position, Num holdingCost,
+            int endIndex, int windowStartIndex, int lastMarkIndex, MarkConsumer marks) {
         NumFactory numFactory = series.numFactory();
         Trade entry = position.getEntry();
         boolean isLong = entry.isBuy();
         int entryIndex = entry.getIndex();
-        Num costPerPeriod = curve.averageHoldingCostPerPeriod(position, endIndex, numFactory);
+        long heldPeriods = (long) endIndex - entryIndex;
+        Num costPerPeriod = heldPeriods <= 0L ? numFactory.zero()
+                : holdingCost.dividedBy(numFactory.numOf(heldPeriods));
         Num previousPrice = entry.getNetPrice();
         long firstMarkIndex = Math.max((long) entryIndex + 1L, windowStartIndex);
         for (long index = firstMarkIndex; index < endIndex && index <= lastMarkIndex; index++) {

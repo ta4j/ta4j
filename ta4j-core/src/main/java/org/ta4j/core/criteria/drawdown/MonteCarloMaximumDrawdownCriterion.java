@@ -244,11 +244,16 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
             if (!position.isClosed()) {
                 continue;
             }
-            int entryIndex = position.getEntry().getIndex();
-            int exitIndex = position.getExit().getIndex();
+            // Blocks cover only the cash flow's captured window: bars pruned
+            // before it carry no returns, and bars after it are never priced.
+            int blockStart = Math.max(position.getEntry().getIndex(), cashFlow.getBeginIndex());
+            int blockEnd = Math.min(position.getExit().getIndex(), cashFlow.getEndIndex());
+            if (blockEnd < blockStart) {
+                continue;
+            }
             List<Num> block = new ArrayList<>();
-            Num previousEquity = entryIndex > 0 ? cashFlow.getValue(entryIndex - 1) : one;
-            for (long cursor = entryIndex; cursor <= exitIndex; cursor++) {
+            Num previousEquity = blockStart > 0 ? cashFlow.getValue(blockStart - 1) : one;
+            for (long cursor = blockStart; cursor <= blockEnd; cursor++) {
                 int i = (int) cursor;
                 Num currentEquity = cashFlow.getValue(i);
                 block.add(currentEquity.dividedBy(previousEquity).minus(one));

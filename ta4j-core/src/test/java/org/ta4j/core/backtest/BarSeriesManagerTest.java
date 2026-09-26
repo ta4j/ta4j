@@ -14,7 +14,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import org.ta4j.core.indicators.CachedIndicator;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.Future;
 import java.util.concurrent.Executors;
@@ -929,11 +928,12 @@ public class BarSeriesManagerTest {
         CountDownLatch releaseReader = new CountDownLatch(1);
         CountDownLatch strategyRunning = new CountDownLatch(1);
         CountDownLatch releaseStrategy = new CountDownLatch(1);
-        BlockingCloseIndicator shared = new BlockingCloseIndicator(series, readerHoldsCache, releaseReader);
+        ConstrainedSeriesSupport.PausingCloseIndicator shared = new ConstrainedSeriesSupport.PausingCloseIndicator(
+                series, readerHoldsCache, releaseReader);
         Rule readsSharedIndicator = (index, tradingRecord) -> {
             if (index == 0) {
                 strategyRunning.countDown();
-                awaitLatch(releaseStrategy);
+                ConstrainedSeriesSupport.awaitLatch(releaseStrategy);
                 shared.getValue(2);
             }
             return false;
@@ -949,9 +949,9 @@ public class BarSeriesManagerTest {
         try {
             // A reader computes the shared indicator and holds its cache lock.
             Future<Num> reader = threads.submit(() -> shared.getValue(2));
-            awaitLatch(readerHoldsCache);
+            ConstrainedSeriesSupport.awaitLatch(readerHoldsCache);
             Future<TradingRecord> run = threads.submit(() -> new BarSeriesManager(series).run(strategy));
-            awaitLatch(strategyRunning);
+            ConstrainedSeriesSupport.awaitLatch(strategyRunning);
             // A feed writer arrives while the strategy is mid-run.
             Future<?> writer = threads.submit(() -> {
                 series.addBar(appended);
@@ -974,41 +974,4 @@ public class BarSeriesManagerTest {
         }
     }
 
-    private static void awaitLatch(CountDownLatch latch) {
-        try {
-            assertTrue("latch was not released", latch.await(5, TimeUnit.SECONDS));
-        } catch (InterruptedException interruption) {
-            Thread.currentThread().interrupt();
-            throw new AssertionError(interruption);
-        }
-    }
-
-    /**
-     * Close-price indicator whose first miss pauses while holding its cache lock.
-     */
-    private static final class BlockingCloseIndicator extends CachedIndicator<Num> {
-
-        private final CountDownLatch holdingCache;
-        private final CountDownLatch release;
-
-        private BlockingCloseIndicator(BarSeries series, CountDownLatch holdingCache, CountDownLatch release) {
-            super(series);
-            this.holdingCache = holdingCache;
-            this.release = release;
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            if (holdingCache.getCount() > 0) {
-                holdingCache.countDown();
-                awaitLatch(release);
-            }
-            return getBarSeries().getBar(index).getClosePrice();
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return 0;
-        }
-    }
 }

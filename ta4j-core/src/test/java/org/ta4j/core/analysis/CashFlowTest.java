@@ -4,6 +4,13 @@
 package org.ta4j.core.analysis;
 
 import java.util.List;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Future;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.CountDownLatch;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -12,6 +19,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.ConstrainedSeriesSupport;
@@ -509,6 +517,76 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(1, cashFlow.getValue(0));
         assertNumEquals(98d / 101d, cashFlow.getValue(1));
         assertNumEquals(95d / 101d, cashFlow.getValue(2));
+    }
+
+    @Test
+    public void evaluatesHoldingCostModelsWithoutHoldingTheSeriesLock() throws Exception {
+        ReentrantReadWriteLock seriesLock = new ReentrantReadWriteLock();
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 11d, 12d).build();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source, seriesLock);
+        series.setMaximumBarCount(Integer.MAX_VALUE);
+        CountDownLatch readerHoldsCache = new CountDownLatch(1);
+        CountDownLatch releaseReader = new CountDownLatch(1);
+        CountDownLatch costRequested = new CountDownLatch(1);
+        ConstrainedSeriesSupport.PausingCloseIndicator shared = new ConstrainedSeriesSupport.PausingCloseIndicator(
+                series, readerHoldsCache, releaseReader);
+        // A user cost model that reads the shared indicator.
+        CostModel indicatorBackedCost = new CostModel() {
+            @Override
+            public Num calculate(Position position, int finalIndex) {
+                costRequested.countDown();
+                return shared.getValue(finalIndex).multipliedBy(numFactory.zero());
+            }
+
+            @Override
+            public Num calculate(Position position) {
+                return calculate(position, position.getExit().getIndex());
+            }
+
+            @Override
+            public Num calculate(Num price, Num amount) {
+                return numFactory.zero();
+            }
+
+            @Override
+            public boolean equals(CostModel otherModel) {
+                return otherModel == this;
+            }
+        };
+        Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(2, series), new ZeroCostModel(),
+                indicatorBackedCost);
+        Bar appended = series.barBuilder().timePeriod(Duration.ofDays(1)).closePrice(13d).build();
+        AtomicBoolean writerDone = new AtomicBoolean();
+        ExecutorService threads = Executors.newFixedThreadPool(3, runnable -> {
+            Thread thread = new Thread(runnable, "cash-flow-cost-lock-order");
+            thread.setDaemon(true);
+            return thread;
+        });
+        try {
+            // A reader computes the shared indicator and holds its cache lock.
+            Future<Num> reader = threads.submit(() -> shared.getValue(2));
+            ConstrainedSeriesSupport.awaitLatch(readerHoldsCache);
+            // The analysis reaches the cost model, which waits for that cache lock.
+            Future<CashFlow> analysis = threads.submit(() -> new CashFlow(series, position));
+            ConstrainedSeriesSupport.awaitLatch(costRequested);
+            // A feed writer arrives; it must not queue behind an analysis lease.
+            Future<?> writer = threads.submit(() -> {
+                series.addBar(appended);
+                writerDone.set(true);
+            });
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (!writerDone.get() && !seriesLock.hasQueuedThreads() && System.nanoTime() < deadline) {
+                Thread.onSpinWait();
+            }
+            releaseReader.countDown();
+
+            writer.get(5, TimeUnit.SECONDS);
+            assertNumEquals(12d, reader.get(5, TimeUnit.SECONDS));
+            assertNumEquals(12d / 10d, analysis.get(5, TimeUnit.SECONDS).getValue(2));
+        } finally {
+            releaseReader.countDown();
+            threads.shutdownNow();
+        }
     }
 
     @Test

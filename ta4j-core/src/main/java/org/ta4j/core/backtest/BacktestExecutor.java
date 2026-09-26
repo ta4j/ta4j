@@ -52,7 +52,11 @@ import java.util.stream.IntStream;
  * series type. Bars appended during an execution are outside its window and are
  * ignored. If bars inside the window are replaced, updated, or evicted while
  * strategies run, the execution fails with an {@link IllegalStateException}
- * rather than report results that mixed bar revisions.
+ * rather than report results that mixed bar revisions. Strategies should decide
+ * from values at the evaluated index: whole-series properties such as
+ * {@link BarSeries#getBarCount()} or {@link org.ta4j.core.Indicator#isStable()}
+ * already depend on bars after that index and also reflect bars appended during
+ * the execution.
  * </p>
  */
 public class BacktestExecutor {

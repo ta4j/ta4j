@@ -157,12 +157,12 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
             // neutral value (0 for DECIMAL, 1 for MULTIPLICATIVE) instead of a raw zero.
             return returnRepresentation.toRepresentationFromRateOfReturn(series.numFactory().zero());
         }
-        return series.withReadLock(() -> calculatePosition(series, position));
+        return calculatePosition(series, position);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return series.withReadLock(() -> calculateTradingRecord(series, tradingRecord));
+        return calculateTradingRecord(series, tradingRecord);
     }
 
     @Override

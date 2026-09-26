@@ -6,6 +6,8 @@ package org.ta4j.core;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.function.IntConsumer;
@@ -14,6 +16,8 @@ import java.util.function.Supplier;
 import org.ta4j.core.bars.TimeBarBuilderFactory;
 import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
@@ -201,4 +205,56 @@ public final class ConstrainedSeriesSupport {
         series.setMaximumBarCount(initialSize);
         return series;
     }
+
+    /**
+     * Waits up to five seconds for a latch, failing the test if it is not released.
+     *
+     * @param latch the latch to await
+     */
+    public static void awaitLatch(CountDownLatch latch) {
+        try {
+            if (!latch.await(5, TimeUnit.SECONDS)) {
+                throw new AssertionError("latch was not released");
+            }
+        } catch (InterruptedException interruption) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError(interruption);
+        }
+    }
+
+    /**
+     * Close-price indicator whose first cache miss pauses while holding its cache
+     * lock, so lock-order tests can hold that lock deterministically.
+     */
+    public static final class PausingCloseIndicator extends CachedIndicator<Num> {
+
+        private final CountDownLatch holdingCache;
+        private final CountDownLatch release;
+
+        /**
+         * @param series       the series
+         * @param holdingCache counted down once the first miss holds the cache lock
+         * @param release      awaited before that miss reads its bar
+         */
+        public PausingCloseIndicator(BarSeries series, CountDownLatch holdingCache, CountDownLatch release) {
+            super(series);
+            this.holdingCache = holdingCache;
+            this.release = release;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            if (holdingCache.getCount() > 0) {
+                holdingCache.countDown();
+                awaitLatch(release);
+            }
+            return getBarSeries().getBar(index).getClosePrice();
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
 }

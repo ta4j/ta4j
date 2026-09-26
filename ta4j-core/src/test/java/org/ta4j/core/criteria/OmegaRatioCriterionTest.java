@@ -37,6 +37,20 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void countsAnOpenPositionMarkedOnTheBoundedStartBar() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 100d, 100d).build();
+        BaseTradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY, 1, 1, new ZeroCostModel(),
+                new ZeroCostModel());
+        record.enter(1, numFactory.numOf(90d), numFactory.one());
+
+        Num ratio = new OmegaRatioCriterion(0d).calculate(series, record);
+
+        // The entry at 90 is marked at the bar's 100 close: a gain with no
+        // shortfall (NaN). Skipping the bar would leave no observation (zero).
+        assertTrue(ratio.isNaN());
+    }
+
+    @Test
     public void explicitRecordEndExcludesFlatReturnSuffix() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100d, 90d, 121d, 121d, 121d, 121d)
