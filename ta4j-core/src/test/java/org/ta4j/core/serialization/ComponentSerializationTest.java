@@ -413,4 +413,13 @@ public class ComponentSerializationTest {
         assertThat(parsed.getLabel()).isNull();
         assertThat(parsed.getComponents()).hasSize(1);
     }
+
+    @Test
+    public void typeClassResolvesSimpleNamesInStandardPackagesOnly() {
+        assertThat(ComponentDescriptor.typeOnly("BaseStrategy").getTypeClass())
+                .isEqualTo(org.ta4j.core.BaseStrategy.class);
+        assertThat(ComponentDescriptor.typeOnly("AndRule").getTypeClass()).isEqualTo(org.ta4j.core.rules.AndRule.class);
+        assertThat(ComponentDescriptor.typeOnly(String.class.getName()).getTypeClass()).isEqualTo(String.class);
+        assertThat(ComponentDescriptor.typeOnly("NoSuchComponent").getTypeClass()).isNull();
+    }
 }

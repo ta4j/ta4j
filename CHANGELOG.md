@@ -22,6 +22,7 @@
 - Bootstrap logarithms no longer construct out-of-domain scales for bounded numeric factories.
 - **Kalman filters initialize at the first usable observation**: `KalmanFilterIndicator` and `KinematicKalmanForecastStateIndicator` (and therefore `KinematicKalmanFilterIndicator` and its forecasts) no longer correct a zero-valued placeholder when the source, process noise, or measurement noise is unavailable on the first bars. The first bar with a finite source and finite, positive Q/R now seeds the estimate at the observed value with zero velocity, so dynamic-noise warm-ups such as ATR no longer drag early estimates toward zero or invent velocity. Valid-from-start results and recovery after missing inputs are unchanged.
 - Rule copies (`BaseStrategy#getEntryRule`/`getExitRule`, composite rule accessors, and position-sizing strategy snapshots) no longer walk the logging backend's JVM-wide logger registry while locating a rule's bar series, removing a per-copy cost that grew with every logger created in the JVM.
+- **Security**: `Rule`/`Strategy` deserialization no longer initializes arbitrary classes named by the JSON `type`, and missing vs. non-rule/strategy types now fail with the same `Unknown rule/strategy type` message. `ComponentDescriptor#getTypeClass` now resolves `org.ta4j.core` simple names, and `ProgressCompletion` caller detection uses `StackWalker`.
 
 ## 0.25.0 (2026-09-07)
 
