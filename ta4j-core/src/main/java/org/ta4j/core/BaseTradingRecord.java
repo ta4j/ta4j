@@ -467,7 +467,7 @@ public class BaseTradingRecord implements TradingRecord {
      * reconstructed positions and trades.
      *
      * @return the current modification count
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public long getModificationCount() {
         lock.readLock().lock();

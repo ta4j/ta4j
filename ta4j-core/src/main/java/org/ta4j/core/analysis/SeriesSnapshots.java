@@ -20,7 +20,7 @@ import org.ta4j.core.num.NumFactory;
  * Internal helper that creates detached, deep-copied series snapshots for the
  * equity analysis indicators. Not part of the public API.
  *
- * @since 0.24.2
+ * @since 0.25.1
  */
 final class SeriesSnapshots {
 

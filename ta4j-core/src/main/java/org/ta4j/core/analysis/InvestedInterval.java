@@ -3,10 +3,8 @@
  */
 package org.ta4j.core.analysis;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
@@ -27,7 +25,6 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
     private final boolean[] investedIntervals;
     private volatile BarSeries exposedBarSeries;
     private final int valueStartIndex;
-    private final int valueEndIndex;
 
     /**
      * Creates an indicator that reports invested intervals for the trading record.
@@ -69,7 +66,6 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
         Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
         valueStartIndex = Math.max(0, super.getBarSeries().getBeginIndex());
-        valueEndIndex = super.getBarSeries().getEndIndex();
         investedIntervals = buildInvestedIntervals(tradingRecord, openPositionHandling);
     }
 
@@ -85,19 +81,15 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
     /**
      * Returns the precomputed invested flag for the given absolute bar index:
      * {@code Boolean.TRUE} while a position was held over that bar,
-     * {@code Boolean.FALSE} otherwise — including for indices outside the captured
-     * range {@code [valueStartIndex, valueEndIndex]}, such as bars pruned before
-     * the indicator was created or indices beyond its end.
+     * {@code Boolean.FALSE} otherwise, including for indices outside the series
+     * range captured at construction (bars already pruned, or bars appended later).
      *
-     * @since 0.24.2
+     * @since 0.25.1
      */
     @Override
     public Boolean getValue(int index) {
-        int offset = index - valueStartIndex;
-        if (offset >= 0 && offset < investedIntervals.length) {
-            return investedIntervals[offset];
-        }
-        return Boolean.FALSE;
+        // The flags are fully precomputed, so bypass the indicator cache.
+        return calculate(index);
     }
 
     /**
@@ -107,7 +99,7 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
      * intervals.
      *
      * @return the detached backing series snapshot
-     * @since 0.24.2
+     * @since 0.25.1
      */
     @Override
     public BarSeries getBarSeries() {

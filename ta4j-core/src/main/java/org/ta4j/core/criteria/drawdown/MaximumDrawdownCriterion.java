@@ -93,9 +93,7 @@ public class MaximumDrawdownCriterion extends AbstractEquityCurveSettingsCriteri
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        EquityCurveCache sharedCurves = EquityCurveCache.current(series, tradingRecord);
-        CashFlow cashFlow = sharedCurves != null ? sharedCurves.cashFlow(equityCurveMode, openPositionHandling)
-                : new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
+        CashFlow cashFlow = EquityCurveCache.cashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
         return Drawdown.amount(series, tradingRecord, cashFlow);
     }
 

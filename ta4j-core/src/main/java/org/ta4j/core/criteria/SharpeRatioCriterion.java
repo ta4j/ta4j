@@ -12,7 +12,6 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
-import org.ta4j.core.analysis.EquityCurveCache;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.ExcessReturns;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
@@ -227,10 +226,6 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return calculate(series, tradingRecord, EquityCurveCache.current(series, tradingRecord));
-    }
-
-    private Num calculate(BarSeries series, TradingRecord tradingRecord, EquityCurveCache sharedCurves) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
         if (tradingRecord == null) {
@@ -239,11 +234,8 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
         OpenPositionHandling effectiveOpenPositionHandling = effectiveOpenPositionHandling();
         Num annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
-        ExcessReturns excessReturns = sharedCurves != null
-                ? new ExcessReturns(annualRiskFreeRateNum, cashReturnPolicy, sharedCurves, equityCurveMode,
-                        effectiveOpenPositionHandling)
-                : new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord, equityCurveMode,
-                        effectiveOpenPositionHandling);
+        ExcessReturns excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord,
+                equityCurveMode, effectiveOpenPositionHandling);
         Stream<Sample> samples = RatioSampleSupport.samples(series, tradingRecord, samplingFrequency, groupingZoneId,
                 excessReturns, effectiveOpenPositionHandling);
         SampleSummary summary = SampleSummary.fromSamples(samples, numFactory);

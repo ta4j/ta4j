@@ -7,8 +7,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
@@ -38,7 +36,7 @@ public class CashFlow implements PerformanceIndicator {
      * The (accrued) cash flow sequence (without trading costs).
      */
     private final List<Num> values;
-    private final AtomicBoolean frozen = new AtomicBoolean();
+    private volatile boolean frozen;
 
     /**
      * Whether a sweep already composed positions into {@link #values}. Once data is
@@ -247,12 +245,13 @@ public class CashFlow implements PerformanceIndicator {
      * @param finalIndex           index up until values of open positions are
      *                             considered
      * @param openPositionHandling how to handle open positions
-     * @since 0.24.2
+     * @since 0.25.1
      */
     @Override
     public void calculate(TradingRecord tradingRecord, int finalIndex, OpenPositionHandling openPositionHandling) {
-        if (frozen.get()) {
-            throw new UnsupportedOperationException("equity curves exposed by EquityCurveCache are immutable");
+        if (frozen) {
+            throw new UnsupportedOperationException(
+                    "shared EquityCurveCache curves are read-only; construct a new CashFlow to accumulate positions");
         }
         Objects.requireNonNull(tradingRecord);
         Objects.requireNonNull(openPositionHandling);
@@ -404,13 +403,11 @@ public class CashFlow implements PerformanceIndicator {
      * accumulating operations.
      */
     void freeze() {
-        this.frozen.set(true);
+        this.frozen = true;
     }
 
     /**
-     * Applies the running factor to the bar at {@code index}. Cells before the
-     * current sweep cursor hold only prior factors and are replaced outright; cells
-     * within an already-written segment accumulate multiplicatively.
+     * Composes {@code ratio} multiplicatively into the cell at {@code index}.
      */
     private void setOrMultiply(int index, Num ratio) {
         int valueIndex = toValueIndex(index);
@@ -446,8 +443,9 @@ public class CashFlow implements PerformanceIndicator {
      */
     @Override
     public void calculatePosition(Position position, int finalIndex) {
-        if (frozen.get()) {
-            throw new UnsupportedOperationException("equity curves exposed by EquityCurveCache are immutable");
+        if (frozen) {
+            throw new UnsupportedOperationException(
+                    "shared EquityCurveCache curves are read-only; construct a new CashFlow to accumulate positions");
         }
         Trade entry = position.getEntry();
         if (entry == null) {
@@ -553,6 +551,7 @@ public class CashFlow implements PerformanceIndicator {
      * Returns a stable defensive series snapshot. Mutating this returned series
      * does not alter the series used to calculate the curve.
      */
+    @Override
     public BarSeries getBarSeries() {
         BarSeries snapshot = exposedBarSeries;
         if (snapshot == null) {

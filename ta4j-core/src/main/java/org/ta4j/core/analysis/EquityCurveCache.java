@@ -6,58 +6,69 @@ package org.ta4j.core.analysis;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.BaseBar;
-import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.Bar;
 import org.ta4j.core.analysis.cost.CostModel;
 
 /**
- * Internal shared, lazily computed equity analysis curves for one
- * {@code (BarSeries, TradingRecord)} pair; not part of the public API.
+ * Shares lazily computed equity curves between the criteria evaluated for one
+ * {@code (BarSeries, TradingRecord)} pair.
  *
  * <p>
  * Evaluating several equity-curve-based criteria over the same trading record
- * rebuilds the identical cash flow once per criterion. A bundle computes every
- * distinct curve at most once and hands the same instance to all consumers, so
- * a batch evaluation performs a single sweep per requested
- * ({@link EquityCurveMode}, {@link OpenPositionHandling}) combination instead
- * of one sweep per criterion.
+ * would otherwise rebuild the identical cash flow once per criterion. Inside an
+ * {@link #evaluate(BarSeries, TradingRecord, Supplier) evaluation scope}, every
+ * distinct ({@link EquityCurveMode}, {@link OpenPositionHandling}) curve is
+ * computed at most once and handed to all participating criteria:
+ *
+ * <pre>{@code
+ * List<AnalysisCriterion> criteria = List.of(new SharpeRatioCriterion(), new MaximumDrawdownCriterion(),
+ *         new CalmarRatioCriterion());
+ * Map<AnalysisCriterion, Num> report = EquityCurveCache.evaluate(series, record, () -> {
+ *     Map<AnalysisCriterion, Num> values = new LinkedHashMap<>();
+ *     for (AnalysisCriterion criterion : criteria) {
+ *         values.put(criterion, criterion.calculate(series, record));
+ *     }
+ *     return values;
+ * });
+ * }</pre>
+ *
+ * <p>
+ * Results are identical to evaluating each criterion on its own; the scope only
+ * removes redundant work. {@code BacktestExecutionResult#getTopStrategies} and
+ * {@code TradingStatementExecutionResult#rankTradingStatements} open a scope
+ * automatically. The built-in drawdown, Calmar, RoMaD, Sharpe, and Sortino
+ * criteria participate; a custom {@link AnalysisCriterion} participates by
+ * obtaining its curves through
+ * {@link #cashFlow(BarSeries, TradingRecord, EquityCurveMode, OpenPositionHandling)}
+ * or
+ * {@link #cumulativePnL(BarSeries, TradingRecord, EquityCurveMode, OpenPositionHandling)},
+ * which build a fresh curve when no matching scope is active. Criteria that do
+ * neither simply evaluate as usual.
  * </p>
  *
  * <p>
- * The bundle is created and distributed internally by
- * {@link #evaluate(BarSeries, TradingRecord, Supplier)}: participating criteria
- * call {@link #current(BarSeries, TradingRecord)} from their regular
- * two-argument calculation and fall back to constructing their own curves when
- * no matching scope is active. The curves are memoized by their configuration
- * key; pulling the same key twice returns the identical instance. Cached cash
- * flow and cumulative PnL instances are immutable snapshots: their accumulating
- * operations ({@code calculate}, {@code calculatePosition}) throw
- * {@link UnsupportedOperationException} so a consumer cannot alter data shared
- * with other consumers. The bundle captures its inputs by reference: when bars
- * are appended to or removed from the series or new trades are recorded, every
- * memoized curve is dropped and rebuilt on the next request so consumers never
- * observe stale values.
+ * Curves handed out from a scope are shared, read-only snapshots: their
+ * accumulating operations ({@code calculate}, {@code calculatePosition}) throw
+ * {@link UnsupportedOperationException}. They are computed from a private copy
+ * of the series' bar data, so in-place edits of retained {@link Bar} references
+ * cannot alter them. Editing, appending, or removing bars, recording trades, or
+ * swapping the record's cost models while the scope is open drops every
+ * memoized curve; the next request rebuilds it from current contents. Series
+ * that do not track bar-history revisions
+ * ({@link BarSeries#getBarHistoryRevision()} returns {@code -1}) never reuse
+ * curves.
  * </p>
  *
- * <p>
- * All curves are computed from a private copy of the series' bar data taken
- * when the first curve is requested (and refreshed whenever structural input
- * changes drop the cache), so in-place edits of retained {@link Bar} references
- * can neither alter nor mix already-produced curves. The copy is deferred so
- * scopes that end up evaluating no equity-curve criteria never pay for it.
- * </p>
- *
- * @since 0.24.2
+ * @since 0.25.1
  */
 public final class EquityCurveCache {
 
@@ -79,46 +90,55 @@ public final class EquityCurveCache {
      *
      * @param investedInterval the shared invested-interval indicator
      * @param cashFlow         the shared cash-flow snapshot
-     * @since 0.24.2
      */
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "SharedCurves deliberately hands the cached "
             + "shared curve instances to ExcessReturns so both inputs come from one coherent revision; the curves "
             + "are frozen and immutable once published")
-    public record SharedCurves(InvestedInterval investedInterval, CashFlow cashFlow) {
+    record SharedCurves(InvestedInterval investedInterval, CashFlow cashFlow) {
     }
 
     private final BarSeries series;
     private final TradingRecord tradingRecord;
-    private final Map<CurveKey, CashFlow> cashFlows = new ConcurrentHashMap<>();
-    private final Map<CurveKey, CumulativePnL> cumulativePnLs = new ConcurrentHashMap<>();
-    private final Map<OpenPositionHandling, InvestedInterval> investedIntervals = new ConcurrentHashMap<>();
+    // Guarded by this cache's monitor.
+    private final Map<CurveKey, CashFlow> cashFlows = new HashMap<>();
+    private final Map<CurveKey, CumulativePnL> cumulativePnLs = new HashMap<>();
+    private final Map<OpenPositionHandling, InvestedInterval> investedIntervals = new EnumMap<>(
+            OpenPositionHandling.class);
 
     /**
-     * Active evaluation scopes for this thread; innermost scope first.
+     * Active evaluation scopes for this thread, innermost first; unset while no
+     * scope is open so threads that never evaluate a scope keep no entry.
      */
-    private static final ThreadLocal<ArrayDeque<EquityCurveCache>> ACTIVE_SCOPES = ThreadLocal
-            .withInitial(ArrayDeque::new);
+    private static final ThreadLocal<ArrayDeque<EquityCurveCache>> ACTIVE_SCOPES = new ThreadLocal<>();
 
     /**
-     * Evaluates the given work against one shared curve cache scoped to exactly
-     * this thread and the given inputs. Criteria running inside the work observe
-     * the shared curves via {@link #current(BarSeries, TradingRecord)}; nested
-     * evaluations for different inputs stack and resolve innermost-first.
+     * Runs the given work with one shared curve cache for exactly these inputs on
+     * the current thread. Criteria evaluated inside the work against the same
+     * {@code series} and {@code tradingRecord} instances share their curves; nested
+     * scopes for other inputs stack and resolve innermost-first. A {@code null}
+     * trading record has no curves to share, so the work simply runs without a
+     * scope.
      *
-     * @param series        the bar series all calculations inside the work read,
-     *                      not null
-     * @param tradingRecord the trading record all calculations inside the work
-     *                      analyze, not null
+     * @param series        the bar series the criteria inside the work read, not
+     *                      null
+     * @param tradingRecord the trading record the criteria inside the work analyze;
+     *                      {@code null} runs the work without a scope
      * @param evaluation    the work to run, not null
      * @param <T>           the work's result type
      * @return the work's result
-     * @since 0.24.2
+     * @since 0.25.1
      */
     public static <T> T evaluate(BarSeries series, TradingRecord tradingRecord, Supplier<T> evaluation) {
         Objects.requireNonNull(series, "series cannot be null");
-        Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         Objects.requireNonNull(evaluation, "evaluation cannot be null");
+        if (tradingRecord == null) {
+            return evaluation.get();
+        }
         ArrayDeque<EquityCurveCache> scopes = ACTIVE_SCOPES.get();
+        if (scopes == null) {
+            scopes = new ArrayDeque<>();
+            ACTIVE_SCOPES.set(scopes);
+        }
         scopes.push(new EquityCurveCache(series, tradingRecord));
         try {
             return evaluation.get();
@@ -131,23 +151,58 @@ public final class EquityCurveCache {
     }
 
     /**
-     * Returns the bundle of the innermost active evaluation scope captured for
+     * Returns the scope's shared cash flow when an {@link #evaluate evaluation
+     * scope} for exactly these inputs is active on this thread, otherwise a new
+     * {@link CashFlow} equal to
+     * {@code new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling)}.
+     *
+     * @param series               the bar series, not null
+     * @param tradingRecord        the trading record, not null
+     * @param equityCurveMode      the equity curve calculation mode, not null
+     * @param openPositionHandling how open positions should be handled, not null
+     * @return the shared read-only curve, or a freshly built one outside a scope
+     * @since 0.25.1
+     */
+    public static CashFlow cashFlow(BarSeries series, TradingRecord tradingRecord, EquityCurveMode equityCurveMode,
+            OpenPositionHandling openPositionHandling) {
+        EquityCurveCache cache = current(series, tradingRecord);
+        return cache != null ? cache.cashFlow(equityCurveMode, openPositionHandling)
+                : new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
+    }
+
+    /**
+     * Returns the scope's shared cumulative PnL when an {@link #evaluate evaluation
+     * scope} for exactly these inputs is active on this thread, otherwise a new
+     * {@link CumulativePnL} equal to
+     * {@code new CumulativePnL(series, tradingRecord, equityCurveMode, openPositionHandling)}.
+     *
+     * @param series               the bar series, not null
+     * @param tradingRecord        the trading record, not null
+     * @param equityCurveMode      the equity curve calculation mode, not null
+     * @param openPositionHandling how open positions should be handled, not null
+     * @return the shared read-only curve, or a freshly built one outside a scope
+     * @since 0.25.1
+     */
+    public static CumulativePnL cumulativePnL(BarSeries series, TradingRecord tradingRecord,
+            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+        EquityCurveCache cache = current(series, tradingRecord);
+        return cache != null ? cache.cumulativePnL(equityCurveMode, openPositionHandling)
+                : new CumulativePnL(series, tradingRecord, equityCurveMode, openPositionHandling);
+    }
+
+    /**
+     * Returns the cache of the innermost active evaluation scope captured for
      * exactly the given inputs, or {@code null} when no matching scope is active.
      * The identity check lets callers safely mix shared and locally constructed
      * curves without restating the scope's inputs.
      *
-     * @param series        the bar series to look up, not null
-     * @param tradingRecord the trading record to look up, not null
-     * @return the matching active bundle, or {@code null}
-     * @since 0.24.2
+     * @param series        the bar series to look up
+     * @param tradingRecord the trading record to look up
+     * @return the matching active cache, or {@code null}
      */
-    public static EquityCurveCache current(BarSeries series, TradingRecord tradingRecord) {
+    static EquityCurveCache current(BarSeries series, TradingRecord tradingRecord) {
         ArrayDeque<EquityCurveCache> scopes = ACTIVE_SCOPES.get();
-        if (scopes.isEmpty()) {
-            // Standalone lookups outside evaluate(...) must not leave the
-            // thread-local initializer (and its class loader) parked on
-            // long-lived caller threads.
-            ACTIVE_SCOPES.remove();
+        if (scopes == null) {
             return null;
         }
         for (EquityCurveCache bundle : scopes) {
@@ -294,9 +349,8 @@ public final class EquityCurveCache {
      * @return the shared immutable cash flow snapshot for this key; calling
      *         {@code calculate} or {@code calculatePosition} on it throws
      *         {@link UnsupportedOperationException}
-     * @since 0.24.2
      */
-    public CashFlow cashFlow(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+    CashFlow cashFlow(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
         Objects.requireNonNull(equityCurveMode, "equityCurveMode cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
         synchronized (this) {
@@ -325,9 +379,8 @@ public final class EquityCurveCache {
      * @return the shared immutable cumulative PnL snapshot for this key; calling
      *         {@code calculate} or {@code calculatePosition} on it throws
      *         {@link UnsupportedOperationException}
-     * @since 0.24.2
      */
-    public CumulativePnL cumulativePnL(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+    CumulativePnL cumulativePnL(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
         Objects.requireNonNull(equityCurveMode, "equityCurveMode cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
         synchronized (this) {
@@ -352,9 +405,8 @@ public final class EquityCurveCache {
      *
      * @param openPositionHandling how open positions should be handled, not null
      * @return the shared invested interval instance for this key
-     * @since 0.24.2
      */
-    public InvestedInterval investedInterval(OpenPositionHandling openPositionHandling) {
+    InvestedInterval investedInterval(OpenPositionHandling openPositionHandling) {
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
         synchronized (this) {
             invalidateIfInputsChanged();
@@ -380,9 +432,8 @@ public final class EquityCurveCache {
      * @param equityCurveMode      the equity curve calculation mode, not null
      * @param openPositionHandling how open positions should be handled, not null
      * @return both shared curves captured atomically
-     * @since 0.24.2
      */
-    public SharedCurves sharedCurves(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+    SharedCurves sharedCurves(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
         Objects.requireNonNull(equityCurveMode, "equityCurveMode cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
         synchronized (this) {
@@ -400,11 +451,10 @@ public final class EquityCurveCache {
                 InvestedInterval investedInterval = existingInterval != null ? existingInterval
                         : buildUnderStableInputs(() -> InvestedInterval.overOwnedSnapshot(curveSeries, tradingRecord,
                                 openPositionHandling));
-                CashFlow cashFlow = existingFlow != null ? existingFlow : buildUnderStableInputs(() -> {
-                    CashFlow flow = CashFlow.overOwnedSnapshot(curveSeries, tradingRecord, 0, curveSeries.getEndIndex(),
-                            tradingRecord.getEndIndex(curveSeries), key.equityCurveMode(), key.openPositionHandling());
-                    return flow;
-                });
+                CashFlow cashFlow = existingFlow != null ? existingFlow
+                        : buildUnderStableInputs(() -> CashFlow.overOwnedSnapshot(curveSeries, tradingRecord, 0,
+                                curveSeries.getEndIndex(), tradingRecord.getEndIndex(curveSeries),
+                                key.equityCurveMode(), key.openPositionHandling()));
                 if (currentInputRevision() == revision
                         && tradingRecord.getTransactionCostModel().equals(transactionCostModel)
                         && tradingRecord.getHoldingCostModel().equals(holdingCostModel)) {

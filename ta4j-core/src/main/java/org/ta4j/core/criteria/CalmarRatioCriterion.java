@@ -162,14 +162,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
             return zero;
         }
 
-        EquityCurveCache sharedCurves = EquityCurveCache.current(series, tradingRecord);
-        Num annualizedReturn;
-        if (sharedCurves != null) {
-            annualizedReturn = annualizedReturn(series, sharedCurves.cashFlow(equityCurveMode, openPositionHandling),
-                    beginIndex, endIndex);
-        } else {
-            annualizedReturn = annualizedReturn(series, tradingRecord, beginIndex, endIndex);
-        }
+        Num annualizedReturn = annualizedReturn(series, tradingRecord, beginIndex, endIndex);
 
         Num maximumDrawdown = maximumDrawdownCriterion.calculate(series, tradingRecord);
         if (maximumDrawdown.isZero()) {
@@ -179,32 +172,25 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         return toRepresentation(calmarRatio);
     }
 
-    /** The higher the criterion value, the better. */
-    @Override
-    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-        return criterionValue1.isGreaterThan(criterionValue2);
-    }
-
     @Override
     public Optional<ReturnRepresentation> getReturnRepresentation() {
         return Optional.of(returnRepresentation);
     }
 
-    private Num annualizedReturn(BarSeries series, TradingRecord tradingRecord, int beginIndex, int endIndex) {
-        return annualizedReturn(series,
-                new CashFlow(series, tradingRecord, endIndex, equityCurveMode, openPositionHandling), beginIndex,
-                endIndex);
+    @Override
+    public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+        return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    private Num annualizedReturn(BarSeries series, CashFlow cashFlow, int beginIndex, int endIndex) {
+    private Num annualizedReturn(BarSeries series, TradingRecord tradingRecord, int beginIndex, int endIndex) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
         Num one = numFactory.one();
-
         Num years = BarSeriesUtils.deltaYears(series, beginIndex, endIndex);
         if (years.isZero()) {
             return zero;
         }
+        CashFlow cashFlow = EquityCurveCache.cashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
         Num startValue = cashFlow.getValue(beginIndex);
         if (startValue.isNaN() || startValue.isZero()) {
             return NaN.NaN;

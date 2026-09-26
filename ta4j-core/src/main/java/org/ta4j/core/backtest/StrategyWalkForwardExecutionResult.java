@@ -3,8 +3,6 @@
  */
 package org.ta4j.core.backtest;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import java.time.Duration;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -79,10 +77,8 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
     }
 
     /**
-     * Returns a detached bar-series snapshot backing this result. Each call returns
-     * a fresh copy, so caller-side mutations cannot reach the result's internal
-     * evaluation input; internal ranking and cache scopes bind one instance per
-     * invocation instead of re-reading this accessor.
+     * Returns a detached copy of the bar series backing this result. Each call
+     * returns a fresh copy, so mutating it cannot affect this result.
      */
     @Override
     public BarSeries barSeries() {

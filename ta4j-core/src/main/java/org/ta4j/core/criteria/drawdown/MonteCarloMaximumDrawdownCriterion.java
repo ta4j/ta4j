@@ -200,20 +200,15 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
 
     /**
      * {@inheritDoc}
+     *
+     * @since 0.19
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        EquityCurveCache sharedCurves = EquityCurveCache.current(series, tradingRecord);
-        CashFlow cashFlow = sharedCurves != null ? sharedCurves.cashFlow(equityCurveMode, openPositionHandling) : null;
-        List<List<Num>> blocks = cashFlow != null ? buildBlocks(series, tradingRecord, cashFlow)
-                : buildBlocks(series, tradingRecord);
-        return simulate(series, tradingRecord, blocks, cashFlow);
-    }
-
-    private Num simulate(BarSeries series, TradingRecord tradingRecord, List<List<Num>> blocks, CashFlow cashFlow) {
+        CashFlow cashFlow = EquityCurveCache.cashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
+        List<List<Num>> blocks = buildBlocks(series, tradingRecord, cashFlow);
         if (blocks.size() < 3) {
-            return cashFlow != null ? Drawdown.amount(series, tradingRecord, cashFlow)
-                    : maximumDrawdownCriterion.calculate(series, tradingRecord);
+            return Drawdown.amount(series, tradingRecord, cashFlow);
         }
         int blocksPerPath = pathBlocks != null ? pathBlocks : blocks.size();
         RandomGenerator random = randomSupplier.get();
@@ -241,10 +236,6 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
             maxDrawdowns[iteration] = maxDrawdown;
         }
         return statistics.calculate(numFactory, maxDrawdowns);
-    }
-
-    private List<List<Num>> buildBlocks(BarSeries series, TradingRecord record) {
-        return buildBlocks(series, record, new CashFlow(series, record, equityCurveMode, openPositionHandling));
     }
 
     private List<List<Num>> buildBlocks(BarSeries series, TradingRecord record, CashFlow cashFlow) {

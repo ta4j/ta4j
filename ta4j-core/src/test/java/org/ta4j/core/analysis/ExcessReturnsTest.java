@@ -70,7 +70,7 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
     }
 
     @Test
-    public void bundleDerivedCurvesMatchRecordDerivedCurves() {
+    public void scopedCurvesMatchStandaloneCurves() {
         BarSeries series = getBarSeries("excess_returns_bundle_series");
         Instant start = Instant.parse("2024-01-01T00:00:00Z");
         var closes = new double[] { 100d, 110d, 110d, 121d };
@@ -97,14 +97,14 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
         tradingRecord.exit(3, series.getBar(3).getClosePrice(), one);
 
         Num annualRate = numFactory.numOf(0.05d);
-        EquityCurveCache equityCurveCache = new EquityCurveCache(series, tradingRecord);
 
         for (EquityCurveMode equityCurveMode : EquityCurveMode.values()) {
             ExcessReturns recordBased = new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_ZERO,
                     tradingRecord, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
-            ExcessReturns bundleBased = new ExcessReturns(annualRate, CashReturnPolicy.CASH_EARNS_ZERO,
-                    equityCurveCache, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
-            assertEquals(recordBased.excessReturn(0, 3), bundleBased.excessReturn(0, 3));
+            ExcessReturns shared = EquityCurveCache.evaluate(series, tradingRecord,
+                    () -> new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord,
+                            equityCurveMode, OpenPositionHandling.MARK_TO_MARKET));
+            assertEquals(recordBased.excessReturn(0, 3), shared.excessReturn(0, 3));
         }
     }
 

@@ -109,10 +109,8 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
     }
 
     /**
-     * Returns a detached bar-series snapshot backing this result. Each call returns
-     * a fresh copy, so caller-side mutations cannot reach the result's internal
-     * evaluation input; internal ranking and cache scopes bind one instance per
-     * invocation instead of re-reading this accessor.
+     * Returns a detached copy of the bar series backing this result. Each call
+     * returns a fresh copy, so mutating it cannot affect this result.
      */
     @Override
     public BarSeries barSeries() {
@@ -205,21 +203,14 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
             List<Num> values = new ArrayList<>(criteria.size());
             Map<AnalysisCriterion, Num> scores = new HashMap<>(criteria.size());
             TradingRecord tradingRecord = statement.getTradingRecord();
-            Runnable sweep = () -> {
+            EquityCurveCache.evaluate(barSeries, tradingRecord, () -> {
                 for (AnalysisCriterion criterion : criteria) {
                     Num value = criterion.calculate(barSeries, tradingRecord);
                     values.add(value);
                     scores.put(criterion, value);
                 }
-            };
-            if (tradingRecord == null) {
-                sweep.run();
-            } else {
-                EquityCurveCache.evaluate(barSeries, tradingRecord, () -> {
-                    sweep.run();
-                    return null;
-                });
-            }
+                return null;
+            });
             criterionValuesMap.put(statement, values);
             criterionScoresMap.put(statement, scores);
         }

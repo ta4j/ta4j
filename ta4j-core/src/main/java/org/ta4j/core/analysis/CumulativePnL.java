@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.ta4j.core.*;
 import org.ta4j.core.num.Num;
@@ -37,7 +36,7 @@ public final class CumulativePnL implements PerformanceIndicator {
      */
     private volatile BarSeries exposedBarSeries;
     private final List<Num> values;
-    private final AtomicBoolean frozen = new AtomicBoolean();
+    private volatile boolean frozen;
 
     /**
      * The first logical bar index materialized in {@link #values}; storage is
@@ -212,12 +211,13 @@ public final class CumulativePnL implements PerformanceIndicator {
      * @param finalIndex           index up until values of open positions are
      *                             considered
      * @param openPositionHandling how to handle open positions
-     * @since 0.24.2
+     * @since 0.25.1
      */
     @Override
     public void calculate(TradingRecord tradingRecord, int finalIndex, OpenPositionHandling openPositionHandling) {
-        if (frozen.get()) {
-            throw new UnsupportedOperationException("equity curves exposed by EquityCurveCache are immutable");
+        if (frozen) {
+            throw new UnsupportedOperationException(
+                    "shared EquityCurveCache curves are read-only; construct a new CumulativePnL to accumulate positions");
         }
         Objects.requireNonNull(tradingRecord);
         Objects.requireNonNull(openPositionHandling);
@@ -344,7 +344,7 @@ public final class CumulativePnL implements PerformanceIndicator {
      * accumulating operations.
      */
     void freeze() {
-        this.frozen.set(true);
+        this.frozen = true;
     }
 
     /**
@@ -375,8 +375,9 @@ public final class CumulativePnL implements PerformanceIndicator {
      */
     @Override
     public void calculatePosition(Position position, int finalIndex) {
-        if (frozen.get()) {
-            throw new UnsupportedOperationException("equity curves exposed by EquityCurveCache are immutable");
+        if (frozen) {
+            throw new UnsupportedOperationException(
+                    "shared EquityCurveCache curves are read-only; construct a new CumulativePnL to accumulate positions");
         }
         Trade entry = position.getEntry();
         if (entry == null) {

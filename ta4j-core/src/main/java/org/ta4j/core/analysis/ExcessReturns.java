@@ -117,41 +117,17 @@ public final class ExcessReturns {
         OpenPositionHandling effectiveOpenPositionHandling = equityCurveMode == EquityCurveMode.REALIZED
                 ? OpenPositionHandling.IGNORE
                 : openPositionHandling;
-        this.investedInterval = new InvestedInterval(series, tradingRecord, effectiveOpenPositionHandling);
-        this.cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, effectiveOpenPositionHandling);
-    }
-
-    /**
-     * Creates an excess return calculator that shares already-computed equity
-     * curves from one {@link EquityCurveCache} instead of constructing its own.
-     * Both curves are derived from the same captured series and record, so invested
-     * intervals and equity values are consistent by construction; no defensive copy
-     * or recomputation happens. The bar series providing time deltas and the num
-     * factory is taken from the bundle's captured series.
-     *
-     * @param annualRiskFreeRate   the annual risk-free rate (e.g. 0.05 for 5%)
-     * @param cashReturnPolicy     the policy for flat equity intervals
-     * @param equityCurveCache     the bundle supplying both shared curves, not null
-     * @param equityCurveMode      the cash flow calculation mode, not null
-     * @param openPositionHandling how open positions should be handled, not null
-     * @since 0.24.2
-     */
-    public ExcessReturns(Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy, EquityCurveCache equityCurveCache,
-            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
-        Objects.requireNonNull(equityCurveCache, "equityCurveCache cannot be null");
-        this.series = equityCurveCache.getBarSeries();
-        this.annualRiskFreeRate = Objects.requireNonNull(annualRiskFreeRate, "annualRiskFreeRate cannot be null");
-        this.cashReturnPolicy = Objects.requireNonNull(cashReturnPolicy, "cashReturnPolicy cannot be null");
-        Objects.requireNonNull(equityCurveMode, "equityCurveMode cannot be null");
-        Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
-
-        OpenPositionHandling effectiveOpenPositionHandling = equityCurveMode == EquityCurveMode.REALIZED
-                ? OpenPositionHandling.IGNORE
-                : openPositionHandling;
-        EquityCurveCache.SharedCurves sharedCurves = equityCurveCache.sharedCurves(equityCurveMode,
-                effectiveOpenPositionHandling);
-        this.investedInterval = sharedCurves.investedInterval();
-        this.cashFlow = sharedCurves.cashFlow();
+        EquityCurveCache sharedCurveCache = EquityCurveCache.current(series, tradingRecord);
+        if (sharedCurveCache != null) {
+            // Both curves must come from one coherent input revision of the scope.
+            EquityCurveCache.SharedCurves sharedCurves = sharedCurveCache.sharedCurves(equityCurveMode,
+                    effectiveOpenPositionHandling);
+            this.investedInterval = sharedCurves.investedInterval();
+            this.cashFlow = sharedCurves.cashFlow();
+        } else {
+            this.investedInterval = new InvestedInterval(series, tradingRecord, effectiveOpenPositionHandling);
+            this.cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, effectiveOpenPositionHandling);
+        }
     }
 
     /**

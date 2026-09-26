@@ -144,22 +144,27 @@ public class EquityCurveCacheTest {
     }
 
     @Test
-    public void cachedCurvesAreUnaffectedByInPlaceBarEdits() {
+    public void inPlaceBarEditRebuildsWithoutAlteringPublishedCurve() {
         BarSeries series = series();
         TradingRecord tradingRecord = closedPositionsRecord(series);
         EquityCurveCache equityCurveCache = new EquityCurveCache(series, tradingRecord);
-        CashFlow cashFlow = equityCurveCache.cashFlow(EquityCurveMode.MARK_TO_MARKET,
+        CashFlow published = equityCurveCache.cashFlow(EquityCurveMode.MARK_TO_MARKET,
                 OpenPositionHandling.MARK_TO_MARKET);
-        Num before = cashFlow.getValue(5);
+        Num before = published.getValue(4);
 
-        // Without a structural input change the memoized curve is served as is;
-        // an in-place bar edit can neither corrupt nor replace it.
-        series.getBar(2).addPrice(numFactory.numOf(1000));
+        // Editing a retained bar bumps the series' bar-history revision: the
+        // already-published curve keeps its values, while the next request
+        // rebuilds from the edited bar exactly like a standalone curve would.
+        series.getBar(4).addPrice(numFactory.numOf(1000));
 
-        CashFlow cached = equityCurveCache.cashFlow(EquityCurveMode.MARK_TO_MARKET,
+        CashFlow rebuilt = equityCurveCache.cashFlow(EquityCurveMode.MARK_TO_MARKET,
                 OpenPositionHandling.MARK_TO_MARKET);
-        assertSame(cashFlow, cached);
-        assertNumEquals(before, cached.getValue(5));
+        CashFlow standalone = new CashFlow(series, tradingRecord, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        assertNotSame(published, rebuilt);
+        assertNumEquals(before, published.getValue(4));
+        assertNumEquals(standalone.getValue(4), rebuilt.getValue(4));
+        assertNotEquals(before, rebuilt.getValue(4));
     }
 
     @Test
@@ -435,5 +440,48 @@ public class EquityCurveCacheTest {
         for (int i = pruned.getBeginIndex(); i <= pruned.getEndIndex(); i++) {
             assertNumEquals(direct.getValue(i), bundled.getValue(i));
         }
+    }
+
+    @Test
+    public void curveResolversShareInsideMatchingScopeAndBuildFreshOutside() {
+        BarSeries series = series();
+        TradingRecord tradingRecord = closedPositionsRecord(series);
+        EquityCurveMode mode = EquityCurveMode.MARK_TO_MARKET;
+        OpenPositionHandling handling = OpenPositionHandling.MARK_TO_MARKET;
+
+        CashFlow outside = EquityCurveCache.cashFlow(series, tradingRecord, mode, handling);
+        CashFlow direct = new CashFlow(series, tradingRecord, mode, handling);
+        assertNotSame(outside, EquityCurveCache.cashFlow(series, tradingRecord, mode, handling));
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertNumEquals(direct.getValue(i), outside.getValue(i));
+        }
+        // Outside a scope the resolver hands out an ordinary, caller-owned curve.
+        outside.calculate(tradingRecord, series.getEndIndex(), handling);
+
+        TradingRecord otherRecord = closedPositionsRecord(series);
+        EquityCurveCache.evaluate(series, tradingRecord, () -> {
+            CashFlow sharedCashFlow = EquityCurveCache.cashFlow(series, tradingRecord, mode, handling);
+            assertSame(sharedCashFlow, EquityCurveCache.cashFlow(series, tradingRecord, mode, handling));
+            assertThrows(UnsupportedOperationException.class,
+                    () -> sharedCashFlow.calculate(tradingRecord, series.getEndIndex(), handling));
+            CumulativePnL sharedPnL = EquityCurveCache.cumulativePnL(series, tradingRecord, mode, handling);
+            assertSame(sharedPnL, EquityCurveCache.cumulativePnL(series, tradingRecord, mode, handling));
+            // Other inputs never observe this scope's curves.
+            assertNotSame(EquityCurveCache.cashFlow(series, otherRecord, mode, handling),
+                    EquityCurveCache.cashFlow(series, otherRecord, mode, handling));
+            return null;
+        });
+    }
+
+    @Test
+    public void evaluateRunsWorkWithoutScopeForNullTradingRecord() {
+        BarSeries series = series();
+        TradingRecord tradingRecord = closedPositionsRecord(series);
+        String result = EquityCurveCache.evaluate(series, null, () -> {
+            assertNull(EquityCurveCache.current(series, tradingRecord));
+            return "ran";
+        });
+        assertEquals("ran", result);
+        assertThrows(NullPointerException.class, () -> EquityCurveCache.evaluate(null, tradingRecord, () -> null));
     }
 }
