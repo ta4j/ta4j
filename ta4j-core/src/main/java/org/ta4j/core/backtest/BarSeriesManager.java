@@ -29,9 +29,17 @@ import org.ta4j.core.walkforward.WalkForwardConfig;
  * <p>
  * The manager borrows the caller's {@link BarSeries} without copying it:
  * strategies, indicators, execution models, and position sizing all observe the
- * same instance, so signals and fills always see one coherent price revision.
- * Callers that mutate the series between runs get results consistent with that
- * mutation; the manager itself never modifies the series.
+ * same instance, so signals and fills read the same bars. The manager never
+ * modifies the series.
+ * </p>
+ *
+ * <p>
+ * A run covers the bounds captured when it starts; bars appended while it runs
+ * are not evaluated. The manager holds no lock while strategies run, so a live
+ * {@link org.ta4j.core.ConcurrentBarSeries} keeps accepting writes and reads
+ * from other threads. Bars replaced or evicted inside the run's bounds during a
+ * run are observed as they change; use {@link BacktestExecutor} when a result
+ * must be tied to one unchanged window.
  * </p>
  *
  * <p>
@@ -258,13 +266,8 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, Num amount) {
-        Objects.requireNonNull(amount, "amount");
-        return barSeries.withReadLock(() -> {
-            int startIndex = barSeries.getBeginIndex();
-            int finishIndex = barSeries.getEndIndex();
-            TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, startIndex, finishIndex);
-            return runUnlocked(strategy, tradingRecord, startIndex, finishIndex, index -> amount);
-        });
+        Bounds bounds = currentBounds();
+        return run(strategy, tradeType, amount, bounds.begin(), bounds.end());
     }
 
     /**
@@ -279,11 +282,8 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, Num amount, int startIndex, int finishIndex) {
-        Objects.requireNonNull(amount, "amount");
-        return barSeries.withReadLock(() -> {
-            TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, startIndex, finishIndex);
-            return runUnlocked(strategy, tradingRecord, startIndex, finishIndex, index -> amount);
-        });
+        TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, startIndex, finishIndex);
+        return run(strategy, tradingRecord, amount, startIndex, finishIndex);
     }
 
     /**
@@ -297,13 +297,8 @@ public class BarSeriesManager {
      * @since 0.22.9
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, PositionSizer positionSizer) {
-        Objects.requireNonNull(positionSizer, "positionSizer");
-        return barSeries.withReadLock(() -> {
-            int startIndex = barSeries.getBeginIndex();
-            int finishIndex = barSeries.getEndIndex();
-            TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, startIndex, finishIndex);
-            return runWithPositionSizerUnlocked(strategy, tradingRecord, positionSizer, startIndex, finishIndex);
-        });
+        Bounds bounds = currentBounds();
+        return run(strategy, tradeType, positionSizer, bounds.begin(), bounds.end());
     }
 
     /**
@@ -351,11 +346,8 @@ public class BarSeriesManager {
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, PositionSizer positionSizer, int startIndex,
             int finishIndex) {
-        Objects.requireNonNull(positionSizer, "positionSizer");
-        return barSeries.withReadLock(() -> {
-            TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, startIndex, finishIndex);
-            return runWithPositionSizerUnlocked(strategy, tradingRecord, positionSizer, startIndex, finishIndex);
-        });
+        TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, startIndex, finishIndex);
+        return run(strategy, tradingRecord, positionSizer, startIndex, finishIndex);
     }
 
     /**
@@ -388,12 +380,8 @@ public class BarSeriesManager {
      * @since 0.22.4
      */
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, Num amount) {
-        Objects.requireNonNull(amount, "amount");
-        return barSeries.withReadLock(() -> {
-            int startIndex = barSeries.getBeginIndex();
-            int finishIndex = barSeries.getEndIndex();
-            return runUnlocked(strategy, tradingRecord, startIndex, finishIndex, index -> amount);
-        });
+        Bounds bounds = currentBounds();
+        return run(strategy, tradingRecord, amount, bounds.begin(), bounds.end());
     }
 
     /**
@@ -419,8 +407,7 @@ public class BarSeriesManager {
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, Num amount, int startIndex,
             int finishIndex) {
         Objects.requireNonNull(amount, "amount");
-        return barSeries
-                .withReadLock(() -> runUnlocked(strategy, tradingRecord, startIndex, finishIndex, index -> amount));
+        return run(strategy, tradingRecord, startIndex, finishIndex, index -> amount);
     }
 
     /**
@@ -434,12 +421,8 @@ public class BarSeriesManager {
      * @since 0.22.9
      */
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, PositionSizer positionSizer) {
-        Objects.requireNonNull(positionSizer, "positionSizer");
-        return barSeries.withReadLock(() -> {
-            int startIndex = barSeries.getBeginIndex();
-            int finishIndex = barSeries.getEndIndex();
-            return runWithPositionSizerUnlocked(strategy, tradingRecord, positionSizer, startIndex, finishIndex);
-        });
+        Bounds bounds = currentBounds();
+        return run(strategy, tradingRecord, positionSizer, bounds.begin(), bounds.end());
     }
 
     /**
@@ -457,9 +440,33 @@ public class BarSeriesManager {
      */
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, PositionSizer positionSizer,
             int startIndex, int finishIndex) {
-        Objects.requireNonNull(positionSizer, "positionSizer");
-        return barSeries.withReadLock(
-                () -> runWithPositionSizerUnlocked(strategy, tradingRecord, positionSizer, startIndex, finishIndex));
+        return runWithPositionSizer(strategy, tradingRecord, positionSizer, startIndex, finishIndex);
+    }
+
+    /**
+     * Reads the logical bounds under one read scope so a concurrent eviction or
+     * append cannot pair a begin index with a different revision's end index.
+     */
+    private Bounds currentBounds() {
+        return barSeries.withReadLock(() -> new Bounds(barSeries.getBeginIndex(), barSeries.getEndIndex()));
+    }
+
+    /**
+     * Returns the exclusive raw upper bound for the trailing exit scan, or an empty
+     * range when the run did not end at the logical series end. The bound is
+     * computed in long and clamped to {@code Integer.MAX_VALUE + 1}: bar and
+     * strategy APIs take int indices, so no representable bar exists beyond
+     * {@code Integer.MAX_VALUE}.
+     */
+    private long trailingRawEnd(int runEndIndex) {
+        if (runEndIndex != barSeries.getEndIndex()) {
+            return runEndIndex + 1L;
+        }
+        long rawEnd = (long) barSeries.getRemovedBarsCount() + barSeries.getBarData().size();
+        return Math.min((long) Integer.MAX_VALUE + 1, Math.max(runEndIndex + 1L, rawEnd));
+    }
+
+    private record Bounds(int begin, int end) {
     }
 
     private TradingRecord createDefaultTradingRecord(TradeType tradeType, int startIndex, int finishIndex) {
@@ -589,16 +596,16 @@ public class BarSeriesManager {
         return executor.execute(strategy, tradeType, positionSizer, config, progressCallback);
     }
 
-    private TradingRecord runWithPositionSizerUnlocked(Strategy strategy, TradingRecord tradingRecord,
+    private TradingRecord runWithPositionSizer(Strategy strategy, TradingRecord tradingRecord,
             PositionSizer positionSizer, int startIndex, int finishIndex) {
         Objects.requireNonNull(tradingRecord, "tradingRecord");
         Objects.requireNonNull(positionSizer, "positionSizer");
         TradeType runTradeType = tradingRecord.getStartingType();
-        return runUnlocked(strategy, tradingRecord, startIndex, finishIndex,
+        return run(strategy, tradingRecord, startIndex, finishIndex,
                 index -> amountForNextOperation(positionSizer, index, strategy, tradingRecord, runTradeType));
     }
 
-    private TradingRecord runUnlocked(Strategy strategy, TradingRecord tradingRecord, int startIndex, int finishIndex,
+    private TradingRecord run(Strategy strategy, TradingRecord tradingRecord, int startIndex, int finishIndex,
             IntFunction<Num> amountResolver) {
         Objects.requireNonNull(strategy, "strategy");
         Objects.requireNonNull(tradingRecord, "tradingRecord");
@@ -626,19 +633,13 @@ public class BarSeriesManager {
             }
         }
 
-        if (runEndIndex < Integer.MAX_VALUE && !tradingRecord.isClosed() && runEndIndex == barSeries.getEndIndex()) {
+        if (runEndIndex < Integer.MAX_VALUE && !tradingRecord.isClosed()) {
             // If the last position is still open and there are still bars after the
             // endIndex of the barSeries, then we execute the strategy on these bars
-            // to give an opportunity to close this position.
-            // The raw upper bound (exclusive) is computed in long to avoid int
-            // overflow when removedBarsCount + barData.size() exceeds
-            // Integer.MAX_VALUE (e.g. a trailing bar at Integer.MAX_VALUE).
-            // Clamp it to Integer.MAX_VALUE + 1: bar/strategy APIs take int
-            // indices, so no representable bar exists beyond Integer.MAX_VALUE,
-            // and scanning past it would wrap the long-to-int cast negative.
-            long seriesMaxSize = Math.min((long) Integer.MAX_VALUE + 1, Math.max((long) barSeries.getEndIndex() + 1,
-                    (long) barSeries.getRemovedBarsCount() + barSeries.getBarData().size()));
-            for (long i = runEndIndex + 1L; i < seriesMaxSize; i++) {
+            // to give an opportunity to close this position. Bars appended after
+            // the run started are not part of this run.
+            long trailingEnd = barSeries.withReadLock(() -> trailingRawEnd(runEndIndex));
+            for (long i = runEndIndex + 1L; i < trailingEnd; i++) {
                 int index = (int) i;
                 lastProcessedIndex = index;
                 tradeExecutionModel.onBar(index, tradingRecord, barSeries);

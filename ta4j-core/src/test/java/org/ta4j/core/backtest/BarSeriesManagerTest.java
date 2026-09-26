@@ -14,6 +14,11 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import org.ta4j.core.indicators.CachedIndicator;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.Future;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -818,50 +823,33 @@ public class BarSeriesManagerTest {
     }
 
     @Test
-    public void runThroughReadOnlyIndicatorSeriesHoldsRetentionWindow() throws Exception {
+    public void runThroughReadOnlyIndicatorSeriesKeepsStartBoundsWhileFeedWrites() {
         BarSeries initialSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 11d, 12d).build();
-        CountDownLatch writerAttempted = new CountDownLatch(1);
-        ConcurrentBarSeries concurrentSeries = ConstrainedSeriesSupport.seriesWithWriteAttempt(initialSeries,
-                writerAttempted::countDown);
+        ConcurrentBarSeries concurrentSeries = ConstrainedSeriesSupport.seriesWithReadWriteLock(initialSeries,
+                new ReentrantReadWriteLock());
         ClosePriceIndicator closePrice = new ClosePriceIndicator(concurrentSeries);
         Bar appendedBar = concurrentSeries.barBuilder().timePeriod(Duration.ofMinutes(1)).closePrice(13d).build();
-        AtomicBoolean writerAcquired = new AtomicBoolean();
-        Thread writer = new Thread(() -> {
-            concurrentSeries.withWriteLock(() -> {
-                writerAcquired.set(true);
-                concurrentSeries.addBar(appendedBar);
-            });
-        }, "bar-series-manager-read-only-view-writer");
-        writer.setDaemon(true);
-
-        AtomicBoolean strategyStarted = new AtomicBoolean();
-        Rule queueAppend = (index, tradingRecord) -> {
-            if (strategyStarted.compareAndSet(false, true)) {
-                writer.start();
+        AtomicBoolean appended = new AtomicBoolean();
+        Rule appendFromFeed = (index, tradingRecord) -> {
+            if (appended.compareAndSet(false, true)) {
+                Thread feed = new Thread(() -> concurrentSeries.addBar(appendedBar), "bar-series-manager-feed");
+                feed.setDaemon(true);
+                feed.start();
                 try {
-                    assertTrue("retention writer did not attempt to acquire the lease",
-                            writerAttempted.await(5, TimeUnit.SECONDS));
+                    feed.join(5_000);
                 } catch (InterruptedException interruption) {
                     Thread.currentThread().interrupt();
                     throw new AssertionError(interruption);
                 }
-                assertTrue("retention writer acquired the lease before run completion", !writerAcquired.get());
+                assertTrue("the feed writer was blocked by the run", !feed.isAlive());
             }
-            assertEquals("retention must not advance during the run", 0, concurrentSeries.getBeginIndex());
             return false;
         };
-        Strategy noSignalStrategy = new BaseStrategy(queueAppend, new FixedRule());
         BarSeriesManager localManager = new BarSeriesManager(closePrice.getBarSeries(), new TradeOnCurrentCloseModel());
 
-        TradingRecord tradingRecord;
-        try {
-            tradingRecord = localManager.run(noSignalStrategy);
-        } finally {
-            writer.join(5_000);
-        }
+        TradingRecord tradingRecord = localManager.run(new BaseStrategy(appendFromFeed, new FixedRule()));
 
-        assertTrue("retention writer did not finish", !writer.isAlive());
-        assertTrue("retention writer did not acquire the write lease", writerAcquired.get());
+        assertTrue(appended.get());
         assertEquals(0, tradingRecord.getStartIndex().intValue());
         assertEquals(2, tradingRecord.getEndIndex().intValue());
         assertEquals(1, concurrentSeries.getBeginIndex());
@@ -912,5 +900,97 @@ public class BarSeriesManagerTest {
     private void assertEntryAmount(double expected, TradingRecord tradingRecord) {
         double actual = tradingRecord.getPositions().getFirst().getEntry().getAmount().doubleValue();
         assertEquals(expected, actual, 1e-9);
+    }
+
+    @Test
+    public void runDoesNotHoldSeriesLeaseWhileEvaluatingIndicators() throws Exception {
+        ReentrantReadWriteLock seriesLock = new ReentrantReadWriteLock();
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source, seriesLock);
+        CountDownLatch readerHoldsCache = new CountDownLatch(1);
+        CountDownLatch releaseReader = new CountDownLatch(1);
+        CountDownLatch strategyRunning = new CountDownLatch(1);
+        CountDownLatch releaseStrategy = new CountDownLatch(1);
+        BlockingCloseIndicator shared = new BlockingCloseIndicator(series, readerHoldsCache, releaseReader);
+        Rule readsSharedIndicator = (index, tradingRecord) -> {
+            if (index == 0) {
+                strategyRunning.countDown();
+                awaitLatch(releaseStrategy);
+                shared.getValue(2);
+            }
+            return false;
+        };
+        Strategy strategy = new BaseStrategy(readsSharedIndicator, readsSharedIndicator);
+        Bar appended = series.barBuilder().timePeriod(Duration.ofDays(1)).closePrice(13).build();
+        AtomicBoolean writerDone = new AtomicBoolean();
+        ExecutorService threads = Executors.newFixedThreadPool(3, runnable -> {
+            Thread thread = new Thread(runnable, "manager-lease-order");
+            thread.setDaemon(true);
+            return thread;
+        });
+        try {
+            // A reader computes the shared indicator and holds its cache lock.
+            Future<Num> reader = threads.submit(() -> shared.getValue(2));
+            awaitLatch(readerHoldsCache);
+            Future<TradingRecord> run = threads.submit(() -> new BarSeriesManager(series).run(strategy));
+            awaitLatch(strategyRunning);
+            // A feed writer arrives while the strategy is mid-run.
+            Future<?> writer = threads.submit(() -> {
+                series.addBar(appended);
+                writerDone.set(true);
+            });
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (!writerDone.get() && !seriesLock.hasQueuedThreads() && System.nanoTime() < deadline) {
+                Thread.onSpinWait();
+            }
+            releaseStrategy.countDown();
+            releaseReader.countDown();
+
+            writer.get(5, TimeUnit.SECONDS);
+            assertEquals(numFactory.numOf(12), reader.get(5, TimeUnit.SECONDS));
+            assertTrue(run.get(5, TimeUnit.SECONDS).getPositions().isEmpty());
+        } finally {
+            releaseStrategy.countDown();
+            releaseReader.countDown();
+            threads.shutdownNow();
+        }
+    }
+
+    private static void awaitLatch(CountDownLatch latch) {
+        try {
+            assertTrue("latch was not released", latch.await(5, TimeUnit.SECONDS));
+        } catch (InterruptedException interruption) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError(interruption);
+        }
+    }
+
+    /**
+     * Close-price indicator whose first miss pauses while holding its cache lock.
+     */
+    private static final class BlockingCloseIndicator extends CachedIndicator<Num> {
+
+        private final CountDownLatch holdingCache;
+        private final CountDownLatch release;
+
+        private BlockingCloseIndicator(BarSeries series, CountDownLatch holdingCache, CountDownLatch release) {
+            super(series);
+            this.holdingCache = holdingCache;
+            this.release = release;
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            if (holdingCache.getCount() > 0) {
+                holdingCache.countDown();
+                awaitLatch(release);
+            }
+            return getBarSeries().getBar(index).getClosePrice();
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
     }
 }

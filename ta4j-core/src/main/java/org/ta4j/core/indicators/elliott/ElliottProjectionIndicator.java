@@ -69,11 +69,6 @@ public class ElliottProjectionIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public Num getValue(final int index) {
-        return getBarSeries().withReadLock(() -> super.getValue(index));
-    }
-
-    @Override
     protected Num calculate(final int index) {
         return scenarioIndicator.primaryScenario(index)
                 .map(ElliottScenario::primaryTarget)

@@ -21,6 +21,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
@@ -300,14 +301,15 @@ public class BacktestExecutorTest {
     }
 
     @Test
-    public void boundedExecutionOfConcurrentSeriesStaysOnLeaseOwningThread() {
-        ConcurrentBarSeries series = buildConcurrentSeries(new CountDownLatch(1));
+    public void boundedExecutionOfConcurrentSeriesUsesWorkerThreads() {
+        ConcurrentBarSeries series = buildConcurrentSeries();
         Set<Thread> runnerThreads = ConcurrentHashMap.newKeySet();
         BarSeriesManager manager = new BarSeriesManager(series) {
             @Override
-            public TradingRecord run(Strategy strategy, Trade.TradeType tradeType, Num amount) {
+            public TradingRecord run(Strategy strategy, Trade.TradeType tradeType, Num amount, int startIndex,
+                    int finishIndex) {
                 runnerThreads.add(Thread.currentThread());
-                return super.run(strategy, tradeType, amount);
+                return super.run(strategy, tradeType, amount, startIndex, finishIndex);
             }
         };
         List<Strategy> strategies = List.of(new BaseStrategy(new FixedRule(0), new FixedRule(1)),
@@ -317,42 +319,22 @@ public class BacktestExecutorTest {
                 numFactory.one(), Trade.TradeType.BUY, 2);
 
         assertEquals(2, result.tradingStatements().size());
-        assertEquals(Set.of(Thread.currentThread()), runnerThreads);
+        assertFalse(runnerThreads.isEmpty());
+        assertFalse("bounded workers were bypassed", runnerThreads.contains(Thread.currentThread()));
     }
 
     @Test
-    public void executeWithRuntimeReportHoldsOneRetentionWindowAcrossQueuedAppend() throws Exception {
-        CountDownLatch writerAttempted = new CountDownLatch(1);
-        ConcurrentBarSeries series = buildConcurrentSeries(writerAttempted);
-        Bar appendedBar = buildAppendedBar(series);
-        AtomicBoolean writerAcquired = new AtomicBoolean();
-        Thread writer = new Thread(() -> {
-            series.withWriteLock(() -> {
-                writerAcquired.set(true);
-                series.addBar(appendedBar);
-            });
-        }, "backtest-runtime-report-retention-writer");
-        writer.setDaemon(true);
-        Strategy queuedAppendStrategy = strategyThatQueuesAppend(writer, writerAttempted, writerAcquired);
-        Strategy secondStrategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
-        CountDownLatch firstCompleted = new CountDownLatch(1);
-        BarSeriesManager manager = managerWaitingForFirstCompletion(new ClosePriceIndicator(series).getBarSeries(),
-                secondStrategy, firstCompleted);
-        BacktestExecutionResult result;
-        ExecutorService executionPool = daemonExecutor("backtest-runtime-report-execution");
-        try {
-            Future<BacktestExecutionResult> execution = executionPool.submit(() -> new BacktestExecutor(manager)
-                    .executeWithRuntimeReport(List.of(queuedAppendStrategy, secondStrategy), numFactory.one(),
-                            Trade.TradeType.BUY, completed -> firstCompleted.countDown()));
-            result = execution.get(5, TimeUnit.SECONDS);
-        } finally {
-            executionPool.shutdownNow();
-            writer.join(5_000);
-        }
+    public void executeWithRuntimeReportLetsLiveWritersAppendWhileStrategiesRun() {
+        ConcurrentBarSeries series = buildConcurrentSeries();
+        series.setMaximumBarCount(Integer.MAX_VALUE);
+        Strategy appending = strategyAppendingFromFeedThread(series, buildAppendedBar(series));
+        Strategy other = new BaseStrategy(new FixedRule(0), new FixedRule(2));
 
-        assertFalse("retention writer did not finish", writer.isAlive());
-        assertTrue("retention writer did not append", writerAcquired.get());
-        assertEquals(2, result.tradingStatements().size());
+        BacktestExecutionResult result = new BacktestExecutor(series)
+                .executeWithRuntimeReport(List.of(appending, other), numFactory.one(), Trade.TradeType.BUY);
+
+        assertEquals("the feed append must not fail a strategy", 2, result.tradingStatements().size());
+        assertEquals(3, series.getEndIndex());
         assertEquals(0, result.barSeries().getBeginIndex());
         assertEquals(2, result.barSeries().getEndIndex());
         assertEquals(3, result.barSeries().getBarCount());
@@ -360,55 +342,21 @@ public class BacktestExecutorTest {
             assertEquals(0, statement.getTradingRecord().getStartIndex().intValue());
             assertEquals(2, statement.getTradingRecord().getEndIndex().intValue());
         }
-        assertEquals(1, series.getBeginIndex());
-        assertEquals(3, series.getEndIndex());
-        assertEquals(3, series.getBarCount());
     }
 
     @Test
-    public void executeAndKeepTopKHoldsOneRetentionWindowAcrossQueuedAppend() throws Exception {
-        CountDownLatch writerAttempted = new CountDownLatch(1);
-        ConcurrentBarSeries series = buildConcurrentSeries(writerAttempted);
-        Bar appendedBar = buildAppendedBar(series);
-        AtomicBoolean writerAcquired = new AtomicBoolean();
-        Thread writer = new Thread(() -> {
-            series.withWriteLock(() -> {
-                writerAcquired.set(true);
-                series.addBar(appendedBar);
-            });
-        }, "backtest-top-k-retention-writer");
-        writer.setDaemon(true);
-        Strategy queuedAppendStrategy = strategyThatQueuesAppend(writer, writerAttempted, writerAcquired);
-        Strategy secondStrategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
-        CountDownLatch firstCompleted = new CountDownLatch(1);
-        BarSeriesManager manager = managerWaitingForFirstCompletion(new ClosePriceIndicator(series).getBarSeries(),
-                secondStrategy, firstCompleted);
-        BacktestExecutionResult result;
-        ExecutorService executionPool = daemonExecutor("backtest-top-k-execution");
-        try {
-            Future<BacktestExecutionResult> execution = executionPool
-                    .submit(() -> new BacktestExecutor(manager).executeAndKeepTopK(
-                            List.of(queuedAppendStrategy, secondStrategy), numFactory.one(), Trade.TradeType.BUY,
-                            new NumberOfBarsCriterion(), 2, completed -> firstCompleted.countDown()));
-            result = execution.get(5, TimeUnit.SECONDS);
-        } finally {
-            executionPool.shutdownNow();
-            writer.join(5_000);
-        }
+    public void executeAndKeepTopKFailsWhenLiveWriterEvictsWindowBars() {
+        ConcurrentBarSeries series = buildConcurrentSeries();
+        Strategy appending = strategyAppendingFromFeedThread(series, buildAppendedBar(series));
+        Strategy other = new BaseStrategy(new FixedRule(0), new FixedRule(2));
+        BacktestExecutor executor = new BacktestExecutor(series);
 
-        assertFalse("retention writer did not finish", writer.isAlive());
-        assertTrue("retention writer did not append", writerAcquired.get());
-        assertEquals(2, result.tradingStatements().size());
-        assertEquals(0, result.barSeries().getBeginIndex());
-        assertEquals(2, result.barSeries().getEndIndex());
-        assertEquals(3, result.barSeries().getBarCount());
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> executor.executeAndKeepTopK(List.of(appending, other), numFactory.one(), Trade.TradeType.BUY,
+                        new NumberOfBarsCriterion(), 2, null));
+
+        assertTrue(failure.getMessage(), failure.getMessage().contains("bars before index 1 were evicted"));
         assertEquals(1, series.getBeginIndex());
-        assertEquals(3, series.getEndIndex());
-        assertEquals(3, series.getBarCount());
-        for (TradingStatement statement : result.tradingStatements()) {
-            assertEquals(0, statement.getTradingRecord().getStartIndex().intValue());
-            assertEquals(2, statement.getTradingRecord().getEndIndex().intValue());
-        }
     }
 
     @Test
@@ -971,59 +919,37 @@ public class BacktestExecutorTest {
         assertTrue(executor.getStrategyFailures().isEmpty());
     }
 
-    private ExecutorService daemonExecutor(String threadName) {
-        return Executors.newSingleThreadExecutor(runnable -> {
-            Thread thread = new Thread(runnable, threadName);
-            thread.setDaemon(true);
-            return thread;
-        });
-    }
-
-    private BarSeriesManager managerWaitingForFirstCompletion(BarSeries series, Strategy second,
-            CountDownLatch firstCompleted) {
-        return new BarSeriesManager(series) {
-            @Override
-            public TradingRecord run(Strategy strategy, Trade.TradeType tradeType, Num amount) {
-                if (strategy == second) {
-                    try {
-                        assertTrue("first strategy did not complete", firstCompleted.await(5, TimeUnit.SECONDS));
-                    } catch (InterruptedException interruption) {
-                        Thread.currentThread().interrupt();
-                        throw new AssertionError(interruption);
-                    }
-                }
-                return super.run(strategy, tradeType, amount);
-            }
-        };
-    }
-
-    private ConcurrentBarSeries buildConcurrentSeries(CountDownLatch writerAttempted) {
+    private ConcurrentBarSeries buildConcurrentSeries() {
         BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
-        return ConstrainedSeriesSupport.seriesWithWriteAttempt(source, writerAttempted::countDown);
+        return ConstrainedSeriesSupport.seriesWithReadWriteLock(source, new ReentrantReadWriteLock());
     }
 
     private Bar buildAppendedBar(ConcurrentBarSeries series) {
         return series.barBuilder().timePeriod(Duration.ofMinutes(1)).closePrice(13).build();
     }
 
-    private Strategy strategyThatQueuesAppend(Thread writer, CountDownLatch writerAttempted,
-            AtomicBoolean writerAcquired) {
-        AtomicBoolean started = new AtomicBoolean();
-        Rule queueAppend = (index, tradingRecord) -> {
-            if (started.compareAndSet(false, true)) {
-                writer.start();
+    /**
+     * Strategy whose first evaluation appends a bar from a separate feed thread and
+     * requires that write to complete while the strategy is still running.
+     */
+    private Strategy strategyAppendingFromFeedThread(ConcurrentBarSeries series, Bar appendedBar) {
+        AtomicBoolean appended = new AtomicBoolean();
+        Rule appendOnce = (index, tradingRecord) -> {
+            if (appended.compareAndSet(false, true)) {
+                Thread feed = new Thread(() -> series.addBar(appendedBar), "backtest-live-feed");
+                feed.setDaemon(true);
+                feed.start();
                 try {
-                    assertTrue("retention writer did not attempt to acquire the lease",
-                            writerAttempted.await(5, TimeUnit.SECONDS));
+                    feed.join(5_000);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    throw new IllegalStateException("Interrupted while waiting for the retention writer", e);
+                    throw new IllegalStateException("Interrupted while waiting for the feed writer", e);
                 }
-                assertFalse("retention writer acquired the lease before batch completion", writerAcquired.get());
+                assertFalse("the feed writer was blocked by the running backtest", feed.isAlive());
             }
             return index == 0;
         };
-        return new BaseStrategy(queueAppend, new FixedRule(1));
+        return new BaseStrategy(appendOnce, new FixedRule(1));
     }
 
     /**

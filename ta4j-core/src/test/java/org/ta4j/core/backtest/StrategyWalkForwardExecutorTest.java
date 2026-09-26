@@ -13,6 +13,7 @@ import static org.junit.Assert.assertTrue;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.CountDownLatch;
@@ -22,6 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.ConcurrentBarSeriesBuilder;
@@ -69,46 +71,48 @@ public class StrategyWalkForwardExecutorTest {
     }
 
     @Test
-    public void holdsOneRetentionWindowAcrossSplittingAndEveryFold() throws InterruptedException {
-        CountDownLatch writerAttempted = new CountDownLatch(1);
-        AtomicBoolean writerAcquired = new AtomicBoolean();
-        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithWriteAttempt(buildSeries(48),
-                writerAttempted::countDown);
-        Thread writer = new Thread(() -> series.withWriteLock(() -> {
-            writerAcquired.set(true);
-            series.setMaximumBarCount(2);
-        }));
+    public void splitsTheCapturedWindowWhileAFeedAppends() {
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(buildSeries(48),
+                new ReentrantReadWriteLock());
+        series.setMaximumBarCount(Integer.MAX_VALUE);
+        Bar appended = series.barBuilder().timePeriod(Duration.ofDays(1)).closePrice(200).build();
         StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(
                 new BarSeriesManager(series, new ZeroCostModel(), new ZeroCostModel(), new TradeOnCurrentCloseModel()),
                 new TradingStatementGenerator(), (target, config) -> {
-                    List<WalkForwardSplit> splits = new AnchoredExpandingWalkForwardSplitter().split(target, config);
-                    writer.start();
-                    try {
-                        assertTrue("Retention writer must attempt the write lease",
-                                writerAttempted.await(5, TimeUnit.SECONDS));
-                    } catch (InterruptedException interruption) {
-                        Thread.currentThread().interrupt();
-                        throw new AssertionError(interruption);
-                    }
-                    assertFalse("Retention writer must wait for the complete walk-forward run", writerAcquired.get());
-                    return splits;
+                    series.addBar(appended);
+                    return new AnchoredExpandingWalkForwardSplitter().split(target, config);
                 });
-        StrategyWalkForwardExecutionResult result;
-        try {
-            result = executor.execute(new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE), Trade.TradeType.BUY,
-                    numFactory.one(), walkForwardConfig(), completed -> assertEquals(48, series.getBarCount()));
-        } finally {
-            writer.join(5_000);
-        }
-        assertFalse(writer.isAlive());
-        assertTrue(writerAcquired.get());
-        assertEquals(46, series.getBeginIndex());
-        assertEquals(2, series.getBarCount());
+
+        StrategyWalkForwardExecutionResult result = executor.execute(
+                new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE), Trade.TradeType.BUY, numFactory.one(),
+                walkForwardConfig(), null);
+
+        assertEquals(48, series.getEndIndex());
+        assertEquals(47, result.barSeries().getEndIndex());
         assertFalse(result.folds().isEmpty());
         for (StrategyWalkForwardExecutionResult.FoldResult fold : result.folds()) {
+            assertTrue(fold.split().testEnd() <= 47);
             assertEquals(fold.split().testStart(), fold.tradingRecord().getStartIndex().intValue());
             assertEquals(fold.split().testEnd(), fold.tradingRecord().getEndIndex().intValue());
         }
+    }
+
+    @Test
+    public void failsWhenRetentionEvictsWindowBarsDuringFolds() {
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(buildSeries(48),
+                new ReentrantReadWriteLock());
+        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(
+                new BarSeriesManager(series, new ZeroCostModel(), new ZeroCostModel(), new TradeOnCurrentCloseModel()),
+                new TradingStatementGenerator(), (target, config) -> {
+                    series.setMaximumBarCount(2);
+                    return new AnchoredExpandingWalkForwardSplitter().split(target, config);
+                });
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> executor.execute(new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE), Trade.TradeType.BUY,
+                        numFactory.one(), walkForwardConfig(), null));
+
+        assertTrue(failure.getMessage(), failure.getMessage().contains("bars before index 46 were evicted"));
     }
 
     @Test

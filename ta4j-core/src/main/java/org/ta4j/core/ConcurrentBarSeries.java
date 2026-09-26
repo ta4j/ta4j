@@ -365,17 +365,9 @@ public class ConcurrentBarSeries extends BaseBarSeries {
     }
 
     /**
-     * {@inheritDoc}
-     *
-     * @since 0.25.1
-     */
-    @Override
-    public boolean isConcurrent() {
-        return true;
-    }
-
-    /**
-     * Runs the supplied action while holding the read lock.
+     * Runs the supplied action while holding the read lock. Writers wait until it
+     * returns; see {@link BarSeries#withReadLock(Runnable)} for what is safe to do
+     * inside it.
      *
      * @param action read-only action to execute
      *
@@ -393,7 +385,9 @@ public class ConcurrentBarSeries extends BaseBarSeries {
     }
 
     /**
-     * Runs the supplied action while holding the read lock.
+     * Runs the supplied action while holding the read lock. Writers wait until it
+     * returns; see {@link BarSeries#withReadLock(Runnable)} for what is safe to do
+     * inside it.
      *
      * @param action read-only action to execute
      * @param <T>    return type

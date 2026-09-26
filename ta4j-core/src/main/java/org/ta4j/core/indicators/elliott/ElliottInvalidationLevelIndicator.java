@@ -85,11 +85,6 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
     }
 
     @Override
-    public Num getValue(final int index) {
-        return getBarSeries().withReadLock(() -> super.getValue(index));
-    }
-
-    @Override
     protected Num calculate(final int index) {
         final ElliottScenarioSet scenarioSet = scenarioIndicator.getValue(index);
 

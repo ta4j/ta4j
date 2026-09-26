@@ -285,7 +285,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottSwingIndicator swing() {
-        return series.withReadLock(() -> swingIndicator.copy());
+        return swingIndicator.copy();
     }
 
     /**
@@ -299,7 +299,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottPhaseIndicator phase() {
-        return series.withReadLock(() -> phaseInternal().copy());
+        return phaseInternal().copy();
     }
 
     private ElliottPhaseIndicator phaseInternal() {
@@ -326,7 +326,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottRatioIndicator ratio() {
-        return series.withReadLock(() -> ratioInternal().copy());
+        return ratioInternal().copy();
     }
 
     private ElliottRatioIndicator ratioInternal() {
@@ -341,7 +341,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottChannelIndicator channel() {
-        return series.withReadLock(() -> channelInternal().copy());
+        return channelInternal().copy();
     }
 
     private ElliottChannelIndicator channelInternal() {
@@ -356,7 +356,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottWaveCountIndicator waveCount() {
-        return series.withReadLock(() -> waveCountInternal().copy());
+        return waveCountInternal().copy();
     }
 
     private ElliottWaveCountIndicator waveCountInternal() {
@@ -383,7 +383,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottWaveCountIndicator filteredWaveCount() {
-        return series.withReadLock(() -> filteredWaveCountInternal().copy());
+        return filteredWaveCountInternal().copy();
     }
 
     private ElliottWaveCountIndicator filteredWaveCountInternal() {
@@ -403,7 +403,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottConfluenceIndicator confluence() {
-        return series.withReadLock(() -> confluenceInternal().copy());
+        return confluenceInternal().copy();
     }
 
     private ElliottConfluenceIndicator confluenceInternal() {
@@ -418,7 +418,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottInvalidationIndicator invalidation() {
-        return series.withReadLock(() -> invalidationInternal().copy());
+        return invalidationInternal().copy();
     }
 
     private ElliottInvalidationIndicator invalidationInternal() {
@@ -434,7 +434,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottScenarioIndicator scenarios() {
-        return series.withReadLock(() -> scenariosInternal().copy());
+        return scenariosInternal().copy();
     }
 
     private ElliottScenarioIndicator scenariosInternal() {
@@ -455,7 +455,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottProjectionIndicator projection() {
-        return series.withReadLock(() -> projectionInternal().copy());
+        return projectionInternal().copy();
     }
 
     private ElliottProjectionIndicator projectionInternal() {
@@ -470,7 +470,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottInvalidationLevelIndicator invalidationLevel() {
-        return series.withReadLock(() -> invalidationLevelInternal().copy());
+        return invalidationLevelInternal().copy();
     }
 
     private ElliottInvalidationLevelIndicator invalidationLevelInternal() {
@@ -485,7 +485,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.2
      */
     public ElliottTrendBiasIndicator trendBias() {
-        return series.withReadLock(() -> trendBiasInternal().copy());
+        return trendBiasInternal().copy();
     }
 
     private ElliottTrendBiasIndicator trendBiasInternal() {
@@ -503,7 +503,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public Optional<ElliottScenario> primaryScenario(final int index) {
-        return series.withReadLock(() -> scenariosInternal().primaryScenario(index));
+        return scenariosInternal().primaryScenario(index);
     }
 
     /**
@@ -514,7 +514,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public List<ElliottScenario> alternativeScenarios(final int index) {
-        return series.withReadLock(() -> scenariosInternal().alternatives(index));
+        return scenariosInternal().alternatives(index);
     }
 
     /**
@@ -526,13 +526,11 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public Num confidenceForPhase(final int index, final ElliottPhase phase) {
-        return series.withReadLock(() -> {
-            final ElliottScenarioSet scenarioSet = scenariosInternal().getValue(index);
-            return scenarioSet.byPhase(phase)
-                    .base()
-                    .map(ElliottScenario::confidenceScore)
-                    .orElse(series.numFactory().zero());
-        });
+        final ElliottScenarioSet scenarioSet = scenariosInternal().getValue(index);
+        return scenarioSet.byPhase(phase)
+                .base()
+                .map(ElliottScenario::confidenceScore)
+                .orElse(series.numFactory().zero());
     }
 
     /**
@@ -543,7 +541,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public boolean hasScenarioConsensus(final int index) {
-        return series.withReadLock(() -> scenariosInternal().hasStrongConsensus(index));
+        return scenariosInternal().hasStrongConsensus(index);
     }
 
     /**
@@ -554,7 +552,7 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public ElliottPhase scenarioConsensus(final int index) {
-        return series.withReadLock(() -> scenariosInternal().consensus(index));
+        return scenariosInternal().consensus(index);
     }
 
     /**
@@ -565,7 +563,6 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public String scenarioSummary(final int index) {
-        return series.withReadLock(() -> scenariosInternal().getValue(index).summary());
+        return scenariosInternal().getValue(index).summary();
     }
-
 }

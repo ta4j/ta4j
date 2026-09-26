@@ -32,10 +32,12 @@ import org.ta4j.core.walkforward.WalkForwardSplit;
 import org.ta4j.core.walkforward.WalkForwardSplitter;
 
 /**
- * Executes one strategy in walk-forward mode with a backtest-symmetric API. For
- * a {@link ConcurrentBarSeries}, one read lease covers split creation, every
- * fold and report materialization. Strategy and progress callbacks must not
- * mutate that series while execution is in progress.
+ * Executes one strategy in walk-forward mode with a backtest-symmetric API.
+ * Splits are computed on the series window captured when execution starts, and
+ * folds run without holding any series lock, so a live
+ * {@link ConcurrentBarSeries} keeps accepting writes. Execution fails with an
+ * {@link IllegalStateException} if bars inside that window change before it
+ * completes; appended bars are ignored.
  *
  * @since 0.22.4
  */
@@ -200,10 +202,19 @@ public class StrategyWalkForwardExecutor {
             WalkForwardConfig config, Consumer<Integer> progressCallback) {
         Objects.requireNonNull(strategy, "strategy");
         Objects.requireNonNull(tradeType, "tradeType");
+        return execute(strategy, tradeType, amount, config, progressCallback,
+                BacktestExecutionResult.snapshot(seriesManager.getBarSeries()));
+    }
+
+    /** Executes over a window the caller already captured and shares. */
+    StrategyWalkForwardExecutionResult execute(Strategy strategy, Trade.TradeType tradeType, Num amount,
+            WalkForwardConfig config, Consumer<Integer> progressCallback, BarSeries baseline) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(tradeType, "tradeType");
         Objects.requireNonNull(amount, "amount");
         Objects.requireNonNull(config, "config");
         return execute(strategy, config, progressCallback,
-                split -> seriesManager.run(strategy, tradeType, amount, split.testStart(), split.testEnd()));
+                split -> seriesManager.run(strategy, tradeType, amount, split.testStart(), split.testEnd()), baseline);
     }
 
     /**
@@ -223,26 +234,34 @@ public class StrategyWalkForwardExecutor {
             PositionSizer positionSizer, WalkForwardConfig config, Consumer<Integer> progressCallback) {
         Objects.requireNonNull(strategy, "strategy");
         Objects.requireNonNull(tradeType, "tradeType");
+        return execute(strategy, tradeType, positionSizer, config, progressCallback,
+                BacktestExecutionResult.snapshot(seriesManager.getBarSeries()));
+    }
+
+    /** Executes over a window the caller already captured and shares. */
+    StrategyWalkForwardExecutionResult execute(Strategy strategy, Trade.TradeType tradeType,
+            PositionSizer positionSizer, WalkForwardConfig config, Consumer<Integer> progressCallback,
+            BarSeries baseline) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(tradeType, "tradeType");
         Objects.requireNonNull(positionSizer, "positionSizer");
         Objects.requireNonNull(config, "config");
         return execute(strategy, config, progressCallback,
-                split -> seriesManager.run(strategy, tradeType, positionSizer, split.testStart(), split.testEnd()));
+                split -> seriesManager.run(strategy, tradeType, positionSizer, split.testStart(), split.testEnd()),
+                baseline);
     }
 
+    /**
+     * Splits and reports on the baseline window while folds run against the live
+     * series without holding its lock, then verifies the window did not change.
+     */
     private StrategyWalkForwardExecutionResult execute(Strategy strategy, WalkForwardConfig config,
-            Consumer<Integer> progressCallback, Function<WalkForwardSplit, TradingRecord> foldRecordRunner) {
-        Objects.requireNonNull(foldRecordRunner, "foldRecordRunner");
-
-        BarSeries series = seriesManager.getBarSeries();
-        return series.withReadLock(() -> executeFolds(series, strategy, config, progressCallback, foldRecordRunner));
-    }
-
-    private StrategyWalkForwardExecutionResult executeFolds(BarSeries series, Strategy strategy,
-            WalkForwardConfig config, Consumer<Integer> progressCallback,
-            Function<WalkForwardSplit, TradingRecord> foldRecordRunner) {
-        List<WalkForwardSplit> splits = splitter.split(series, config);
+            Consumer<Integer> progressCallback, Function<WalkForwardSplit, TradingRecord> foldRecordRunner,
+            BarSeries baseline) {
+        List<WalkForwardSplit> splits = splitter.split(baseline, config);
         if (splits.isEmpty()) {
-            return new StrategyWalkForwardExecutionResult(series, strategy, config, List.of(),
+            BacktestExecutionResult.verifyUnchanged(seriesManager.getBarSeries(), baseline);
+            return new StrategyWalkForwardExecutionResult(baseline, strategy, config, List.of(),
                     WalkForwardRuntimeReport.empty());
         }
 
@@ -258,7 +277,7 @@ public class StrategyWalkForwardExecutor {
             long foldStart = System.nanoTime();
             try {
                 TradingRecord foldRecord = foldRecordRunner.apply(split);
-                TradingStatement statement = tradingStatementGenerator.generate(strategy, foldRecord, series);
+                TradingStatement statement = tradingStatementGenerator.generate(strategy, foldRecord, baseline);
                 Duration foldRuntime = Duration.ofNanos(System.nanoTime() - foldStart);
 
                 foldResults.add(
@@ -281,7 +300,8 @@ public class StrategyWalkForwardExecutor {
 
         Duration overallRuntime = Duration.ofNanos(System.nanoTime() - overallStart);
         WalkForwardRuntimeReport runtimeReport = buildRuntimeReport(foldRuntimes, overallRuntime);
-        return new StrategyWalkForwardExecutionResult(series, strategy, config, foldResults, runtimeReport,
+        BacktestExecutionResult.verifyUnchanged(seriesManager.getBarSeries(), baseline);
+        return new StrategyWalkForwardExecutionResult(baseline, strategy, config, foldResults, runtimeReport,
                 foldFailures);
     }
 

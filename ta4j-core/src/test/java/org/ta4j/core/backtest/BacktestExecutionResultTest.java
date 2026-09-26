@@ -7,6 +7,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
@@ -195,6 +196,80 @@ public class BacktestExecutionResultTest {
         BarSeries constrainedView = constrainedResult.barSeries().getSubSeries(0, 3);
         assertEquals(2, constrainedView.getBarCount());
         assertEquals(numFactory.numOf(20), constrainedView.getLastBar().getClosePrice());
+    }
+
+    @Test
+    public void verifyUnchangedAllowsBarsAppendedBeyondTheWindow() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BarSeries baseline = BacktestExecutionResult.snapshot(source);
+
+        source.addBar(nextBar(source, 40d));
+        BacktestExecutionResult.verifyUnchanged(source, baseline);
+        source.addBar(nextBar(source, 41d), true);
+        BacktestExecutionResult.verifyUnchanged(source, baseline);
+
+        assertEquals(2, baseline.getEndIndex());
+    }
+
+    @Test
+    public void verifyUnchangedRejectsReplacedOrUpdatedWindowBars() {
+        BarSeries replaced = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BarSeries replacedBaseline = BacktestExecutionResult.snapshot(replaced);
+        replaced.addBar(nextBar(replaced, 31d), true);
+
+        IllegalStateException replacement = assertThrows(IllegalStateException.class,
+                () -> BacktestExecutionResult.verifyUnchanged(replaced, replacedBaseline));
+        assertTrue(replacement.getMessage(), replacement.getMessage().contains("window [0, 2]"));
+        assertTrue(replacement.getMessage(), replacement.getMessage().contains("bar 2 was replaced or updated"));
+
+        BarSeries updated = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BarSeries updatedBaseline = BacktestExecutionResult.snapshot(updated);
+        updated.addPrice(numFactory.numOf(35));
+
+        assertThrows(IllegalStateException.class,
+                () -> BacktestExecutionResult.verifyUnchanged(updated, updatedBaseline));
+    }
+
+    @Test
+    public void verifyUnchangedRejectsEvictedWindowBars() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        source.setMaximumBarCount(3);
+        BarSeries baseline = BacktestExecutionResult.snapshot(source);
+        source.addBar(nextBar(source, 40d));
+
+        IllegalStateException eviction = assertThrows(IllegalStateException.class,
+                () -> BacktestExecutionResult.verifyUnchanged(source, baseline));
+        assertTrue(eviction.getMessage(), eviction.getMessage().contains("bars before index 1 were evicted"));
+    }
+
+    @Test
+    public void verifyUnchangedComparesBarsWhenTheSeriesDoesNotTrackRevisions() {
+        List<Bar> bars = new ArrayList<>(
+                new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build().getBarData());
+        BarSeries untracked = new BaseBarSeries("untracked", bars) {
+            @Override
+            public long getBarHistoryRevision() {
+                return -1L;
+            }
+        };
+        BarSeries baseline = BacktestExecutionResult.snapshot(untracked);
+
+        untracked.addBar(nextBar(untracked, 40d));
+        BacktestExecutionResult.verifyUnchanged(untracked, baseline);
+        untracked.getBar(1).addPrice(numFactory.numOf(25));
+
+        IllegalStateException change = assertThrows(IllegalStateException.class,
+                () -> BacktestExecutionResult.verifyUnchanged(untracked, baseline));
+        assertTrue(change.getMessage(), change.getMessage().contains("bar 1 was replaced or updated"));
+    }
+
+    private Bar nextBar(BarSeries series, double close) {
+        Bar last = series.getLastBar();
+        return series.barBuilder()
+                .timePeriod(last.getTimePeriod())
+                .endTime(last.getEndTime().plus(last.getTimePeriod()))
+                .closePrice(close)
+                .build();
     }
 
     @Test

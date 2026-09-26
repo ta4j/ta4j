@@ -122,11 +122,6 @@ public abstract class AbstractIndicator<T> implements Indicator<T> {
         }
 
         @Override
-        public boolean isConcurrent() {
-            return delegate.isConcurrent();
-        }
-
-        @Override
         public void withReadLock(Runnable action) {
             delegate.withReadLock(action);
         }

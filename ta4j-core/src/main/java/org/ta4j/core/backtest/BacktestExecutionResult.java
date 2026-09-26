@@ -51,24 +51,44 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
         strategyFailures = List.copyOf(Objects.requireNonNull(strategyFailures, "strategyFailures must not be null"));
     }
 
+    /**
+     * Captures an immutable, index-preserving copy of the source's current window
+     * under one read scope. Executions run against the source bounded to this
+     * window and report it as their result series.
+     */
     static BarSeries snapshot(BarSeries source) {
         return snapshotSeries(Objects.requireNonNull(source, "source must not be null"));
     }
 
-    static BacktestExecutionResult capture(BarSeries source, List<TradingStatement> tradingStatements,
-            BacktestRuntimeReport runtimeReport, List<StrategyFailure> strategyFailures, BarSeries baseline) {
+    /**
+     * Fails when the source changed inside the baseline window after the baseline
+     * was captured. Bars appended beyond the window are allowed; replaced, updated
+     * or evicted bars inside it are not, because strategies that ran before and
+     * after the change observed different data than the baseline reports.
+     *
+     * @throws IllegalStateException if the window changed
+     */
+    static void verifyUnchanged(BarSeries source, BarSeries baseline) {
         if (!(baseline instanceof FrozenBarSeries frozenBaseline)) {
             throw new IllegalArgumentException("baseline must be a frozen result series");
         }
-        return source.withReadLock(
-                () -> captureStable(source, tradingStatements, runtimeReport, strategyFailures, frozenBaseline));
+        String change = source.withReadLock(() -> frozenBaseline.changeSince(source));
+        if (change != null) {
+            throw new IllegalStateException(String.format(
+                    "Bar series '%s' changed inside the backtest window [%d, %d] while strategies were running: %s. "
+                            + "Results would mix bar revisions. Pause writes to the series while backtesting, or "
+                            + "build the strategies on a copy the feed does not update (for example "
+                            + "series.getSubSeries(begin, end), which also leaves out the forming last bar).",
+                    frozenBaseline.getName(), frozenBaseline.getBeginIndex(), frozenBaseline.getEndIndex(), change));
+        }
     }
 
-    private static BacktestExecutionResult captureStable(BarSeries source, List<TradingStatement> tradingStatements,
-            BacktestRuntimeReport runtimeReport, List<StrategyFailure> strategyFailures, FrozenBarSeries baseline) {
-        if (!baseline.matches(source)) {
-            throw new IllegalStateException("Bar series changed during backtest; result ownership is ambiguous");
-        }
+    /**
+     * Verifies the baseline window and builds the result on it.
+     */
+    static BacktestExecutionResult capture(BarSeries source, List<TradingStatement> tradingStatements,
+            BacktestRuntimeReport runtimeReport, List<StrategyFailure> strategyFailures, BarSeries baseline) {
+        verifyUnchanged(source, baseline);
         return new BacktestExecutionResult(baseline, tradingStatements, runtimeReport, strategyFailures);
     }
 
@@ -120,23 +140,40 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
             return numFactory;
         }
 
-        private boolean matches(BarSeries source) {
-            if (!Objects.equals(name, source.getName()) || beginIndex != source.getBeginIndex()
-                    || endIndex != source.getEndIndex() || removedBarsCount != source.getRemovedBarsCount()
-                    || maximumBarCount != source.getMaximumBarCount() || revision != source.getBarHistoryRevision()
-                    || getBarCount() != source.getBarCount()) {
-                return false;
+        /**
+         * Describes the first change the source made to this window since the copy was
+         * taken, or returns {@code null} when the window is unchanged. Tracked
+         * revisions answer in constant time; untracked series fall back to a bar
+         * comparison.
+         */
+        private String changeSince(BarSeries source) {
+            if (source.getRemovedBarsCount() > removedBarsCount) {
+                return "bars before index " + source.getRemovedBarsCount() + " were evicted";
+            }
+            if (source.getBeginIndex() > beginIndex) {
+                return "the series begin moved to index " + source.getBeginIndex();
+            }
+            long rawEndIndex = (long) removedBarsCount + bars.size() - 1L;
+            long sourceRevision = source.getBarHistoryRevision();
+            if (revision >= 0L && sourceRevision >= 0L) {
+                if (sourceRevision == revision) {
+                    return null;
+                }
+                int changedIndex = source.getBarSeriesChangeSnapshot(revision).earliestChangedIndex();
+                return changedIndex >= 0 && changedIndex <= rawEndIndex
+                        ? "bar " + changedIndex + " was replaced or updated"
+                        : null;
             }
             List<Bar> sourceBars = source.getBarData();
-            if (bars.size() != sourceBars.size()) {
-                return false;
+            if ((long) source.getRemovedBarsCount() + sourceBars.size() - 1L < rawEndIndex) {
+                return "bars after index " + (source.getRemovedBarsCount() + sourceBars.size() - 1) + " were removed";
             }
             for (int i = 0; i < bars.size(); i++) {
-                if (!sameBar(bars.get(i), sourceBars.get(i))) {
-                    return false;
+                if (!sameBar(bars.get(i), sourceBars.get(removedBarsCount + i - source.getRemovedBarsCount()))) {
+                    return "bar " + (removedBarsCount + i) + " was replaced or updated";
                 }
             }
-            return true;
+            return null;
         }
 
         private static boolean sameBar(Bar left, Bar right) {

@@ -128,23 +128,20 @@ public interface BarSeries extends Serializable {
     List<Bar> getBarData();
 
     /**
-     * Whether this series synchronizes coherent reads with a thread-owned lock.
-     * Work nested inside its read scope must stay on the scope-owning thread;
-     * dispatching it to workers can deadlock behind a queued writer. Views preserve
-     * their source's answer.
+     * Executes a read-only action within this series' coherent read scope, so
+     * several reads (bounds, bars, revision) describe one state of the series.
+     * Concurrent implementations such as {@link ConcurrentBarSeries} hold their
+     * read lock for the duration of the action; other series run it directly.
+     * Views, such as the series returned by an indicator, delegate the scope to
+     * their source. Scopes nest on the same thread.
      *
-     * @return true for a concurrent, locked series; false for an ordinary series
-     * @since 0.25.1
-     */
-    default boolean isConcurrent() {
-        return false;
-    }
-
-    /**
-     * Executes a read-only action within this series' coherent read scope.
-     * Concurrent implementations hold their read lock; non-concurrent series
-     * execute the action directly. Views must delegate this scope to their source.
-     * Concurrent scopes must support nested read-only actions on the same thread.
+     * <p>
+     * Keep the action short and limited to reading bar data. Do not evaluate
+     * indicators or strategies, invoke callbacks, or wait on other threads inside
+     * it: indicator caches take their own locks and then read bars, so holding the
+     * series lock while taking theirs can deadlock with another reader once a
+     * writer is waiting, and every writer is delayed until the action returns.
+     * </p>
      *
      * @param action read-only action
      * @since 0.25.1
@@ -155,7 +152,7 @@ public interface BarSeries extends Serializable {
 
     /**
      * Executes a read-only computation within this series' coherent read scope. See
-     * {@link #withReadLock(Runnable)} for the synchronization contract.
+     * {@link #withReadLock(Runnable)} for the contract.
      *
      * @param action read-only computation
      * @param <T>    result type
