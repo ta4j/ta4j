@@ -5,6 +5,7 @@ package ta4jexamples.bots;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -43,6 +44,21 @@ public class TradingBotOnMovingBarSeriesTest {
                 TradingBotOnMovingBarSeriesTest::fixtureBar);
 
         assertEquals(13, series.getBarCount());
+    }
+
+    @Test
+    public void generatedBarsRemainChronologicalWhenClockRepeats() throws InterruptedException {
+        BarSeries series = fixtureSeries();
+        final Instant repeatedClockTime = Instant.parse("2024-01-01T00:00:00Z");
+
+        TradingBotOnMovingBarSeries.runSimulation(2, Duration.ZERO, () -> series,
+                () -> TradingBotOnMovingBarSeries.generateRandomBar(() -> repeatedClockTime));
+
+        assertEquals(14, series.getBarCount());
+        Bar firstGeneratedBar = series.getBar(12);
+        Bar secondGeneratedBar = series.getBar(13);
+        assertTrue(firstGeneratedBar.getEndTime().isAfter(series.getBar(11).getEndTime()));
+        assertTrue(secondGeneratedBar.getEndTime().isAfter(firstGeneratedBar.getEndTime()));
     }
 
     private static BarSeries fixtureSeries() {

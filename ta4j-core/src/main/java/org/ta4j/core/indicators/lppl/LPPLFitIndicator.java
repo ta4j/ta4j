@@ -87,8 +87,8 @@ public final class LPPLFitIndicator extends CachedIndicator<LPPLFit> {
     LPPLFitIndicator(Indicator<Num> priceIndicator, int window, double minM, double maxM, int mSteps, double minOmega,
             double maxOmega, int omegaSteps, int minCriticalOffset, int maxCriticalOffset, int criticalOffsetStep,
             int maxEvaluations, double minRSquared) {
-        super(requireSeries(priceIndicator));
-        this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator");
+        super(requirePriceIndicator(priceIndicator));
+        this.priceIndicator = priceIndicator;
         this.profile = new LPPLCalibrationProfile(window, minM, maxM, mSteps, minOmega, maxOmega, omegaSteps,
                 minCriticalOffset, maxCriticalOffset, criticalOffsetStep, maxEvaluations, minRSquared);
         this.window = this.profile.window();
@@ -106,12 +106,12 @@ public final class LPPLFitIndicator extends CachedIndicator<LPPLFit> {
         this.calibrator = new LPPLFitCalibrator(this.profile);
     }
 
-    private static BarSeries requireSeries(Indicator<Num> priceIndicator) {
-        BarSeries series = Objects.requireNonNull(priceIndicator, "priceIndicator").getBarSeries();
-        if (series == null) {
+    private static Indicator<Num> requirePriceIndicator(Indicator<Num> priceIndicator) {
+        Indicator<Num> source = Objects.requireNonNull(priceIndicator, "priceIndicator");
+        if (source.getBarSeries() == null) {
             throw new IllegalArgumentException("priceIndicator must expose a backing BarSeries");
         }
-        return series;
+        return source;
     }
 
     @Override

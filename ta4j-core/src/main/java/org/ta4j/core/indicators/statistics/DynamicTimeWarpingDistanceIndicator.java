@@ -107,7 +107,7 @@ public final class DynamicTimeWarpingDistanceIndicator extends CachedIndicator<N
     DynamicTimeWarpingDistanceIndicator(Indicator<Num> first, Indicator<Num> second, int barCount,
             SequenceNormalization normalization, LocalDistance localDistance, int radius, boolean unconstrained,
             PathCostNormalization pathCostNormalization) {
-        super(first);
+        super(first, second);
         IndicatorUtils.requireSameSeries(first, second);
         this.first = first;
         this.second = second;

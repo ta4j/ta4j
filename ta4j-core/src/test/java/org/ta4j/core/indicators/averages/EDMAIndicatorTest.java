@@ -4,6 +4,10 @@
 package org.ta4j.core.indicators.averages;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -92,6 +96,14 @@ public class EDMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
             assertThat(Double.isNaN(edma.getValue(i).doubleValue())).isFalse();
         }
 
+    }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+
+        return List.of(serializationFixture(series, new EDMAIndicator(close, 7, 2), stableIndexes(series)));
     }
 
 }

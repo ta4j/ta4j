@@ -32,8 +32,8 @@ public class MinusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
     @Test
     public void zeroDirectionalMovement2() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        var yesterdayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(10).lowPrice(8).build();
-        var todayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(6).build();
+        var yesterdayBar = series.barBuilder().openPrice(8).closePrice(10).highPrice(10).lowPrice(8).build();
+        var todayBar = series.barBuilder().openPrice(6).closePrice(12).highPrice(12).lowPrice(6).build();
         series.addBar(yesterdayBar);
         series.addBar(todayBar);
         MinusDMIndicator down = new MinusDMIndicator(series);
@@ -43,8 +43,8 @@ public class MinusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
     @Test
     public void zeroDirectionalMovement3() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        var yesterdayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(6).lowPrice(6).build();
-        var todayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(4).build();
+        var yesterdayBar = series.barBuilder().openPrice(6).closePrice(6).highPrice(6).lowPrice(6).build();
+        var todayBar = series.barBuilder().openPrice(4).closePrice(12).highPrice(12).lowPrice(4).build();
         series.addBar(yesterdayBar);
         series.addBar(todayBar);
         MinusDMIndicator down = new MinusDMIndicator(series);
@@ -54,8 +54,8 @@ public class MinusDMIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
     @Test
     public void positiveDirectionalMovement() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        var yesterdayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(20).lowPrice(20).build();
-        var todayBar = series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(4).build();
+        var yesterdayBar = series.barBuilder().openPrice(20).closePrice(20).highPrice(20).lowPrice(20).build();
+        var todayBar = series.barBuilder().openPrice(4).closePrice(12).highPrice(12).lowPrice(4).build();
         series.addBar(yesterdayBar);
         series.addBar(todayBar);
         MinusDMIndicator down = new MinusDMIndicator(series);

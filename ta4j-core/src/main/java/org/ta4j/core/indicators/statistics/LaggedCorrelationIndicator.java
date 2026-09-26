@@ -48,7 +48,7 @@ public class LaggedCorrelationIndicator extends CachedIndicator<Num> {
      * @since 0.22.7
      */
     public LaggedCorrelationIndicator(Indicator<Num> first, Indicator<Num> second, int barCount, int lag) {
-        super(first);
+        super(first, second);
         IndicatorUtils.requireSameSeries(first, second);
         this.first = first;
         this.second = second;

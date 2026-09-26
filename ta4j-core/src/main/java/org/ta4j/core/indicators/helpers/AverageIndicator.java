@@ -29,7 +29,8 @@ public class AverageIndicator extends CachedIndicator<Num> {
     }
 
     private AverageIndicator(Config config) {
-        super(config.firstIndicator());
+        super(config.firstIndicator(),
+                config.indicators().subList(1, config.indicators().size()).toArray(Indicator<?>[]::new));
         this.indicators = config.indicators();
         this.unstableBars = config.unstableBars();
     }

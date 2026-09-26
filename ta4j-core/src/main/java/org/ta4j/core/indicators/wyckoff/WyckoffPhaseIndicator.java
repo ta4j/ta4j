@@ -454,4 +454,10 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
                     dryUpThreshold);
         }
     }
+
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return true;
+    }
+
 }

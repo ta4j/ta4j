@@ -12,14 +12,26 @@ import org.ta4j.core.num.Num;
 /**
  * Dark cloud candle indicator.
  *
+ * <p>
+ * <strong>Deprecated.</strong> Use {@link DarkCloudCoverIndicator} instead.
+ * This class models a divergent formula retained for backward compatibility: it
+ * measures the gap against the prior <em>close</em> (instead of the prior
+ * high), classifies both bodies with a fixed percentage of the open price
+ * (instead of the shared adaptive long-body baseline), and gates the signal on
+ * a preceding uptrend. Migrating to {@link DarkCloudCoverIndicator} means
+ * adopting that behavior — gap against the prior high, adaptive long-body, no
+ * trend gate — not delegating to it.
+ *
  * @see <a href="https://www.investopedia.com/terms/d/darkcloud.asp">
  *      https://www.investopedia.com/terms/d/darkcloud.asp</a>
  * @since 0.22.2
+ * @deprecated use {@link DarkCloudCoverIndicator} instead
  */
+@Deprecated
 public class DarkCloudIndicator extends CachedIndicator<Boolean> {
 
     private final UpTrendIndicator trendIndicator;
-    private final RealBodyIndicator realBodyIndicator;
+    private final CandleBodyIndicator bodyIndicator;
     private final Num bigBodyThresholdPercentage;
 
     /**
@@ -41,7 +53,7 @@ public class DarkCloudIndicator extends CachedIndicator<Boolean> {
     public DarkCloudIndicator(final BarSeries series, final Num bigBodyThresholdPercentage) {
         super(series);
         this.trendIndicator = new UpTrendIndicator(series);
-        this.realBodyIndicator = new RealBodyIndicator(series);
+        this.bodyIndicator = new CandleBodyIndicator(series);
         this.bigBodyThresholdPercentage = bigBodyThresholdPercentage;
     }
 
@@ -53,8 +65,8 @@ public class DarkCloudIndicator extends CachedIndicator<Boolean> {
 
         Bar firstBar = getBarSeries().getBar(index - 1);
         Bar secondBar = getBarSeries().getBar(index);
-        Num firstBarPercentage = this.realBodyIndicator.getValue(index - 1).abs().dividedBy(firstBar.getOpenPrice());
-        Num secondBarPercentage = this.realBodyIndicator.getValue(index).abs().dividedBy(secondBar.getOpenPrice());
+        Num firstBarPercentage = this.bodyIndicator.getValue(index - 1).dividedBy(firstBar.getOpenPrice());
+        Num secondBarPercentage = this.bodyIndicator.getValue(index).dividedBy(secondBar.getOpenPrice());
         Num firstBarMiddlePoint = firstBar.getClosePrice()
                 .minus(firstBar.getOpenPrice())
                 .dividedBy(getBarSeries().numFactory().numOf(2))

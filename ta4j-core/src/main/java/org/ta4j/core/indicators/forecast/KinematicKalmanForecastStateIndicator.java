@@ -8,7 +8,6 @@ import java.util.Objects;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.KalmanNoiseIndicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.indicators.forecast.state.ForecastStateIndicator;
@@ -25,6 +24,10 @@ import org.ta4j.core.num.NumFactory;
  * noise is diagonal in position and velocity, and measurement noise applies to
  * the observed position. Invalid source or noise values make only that index
  * unavailable; the last usable state remains available for later recovery.
+ * Before the first usable observation, the state remains uninitialized. The
+ * first usable observation seeds position at the measurement and velocity at
+ * zero, using the normal initial covariance update even after an unavailable
+ * prefix.
  *
  * <p>
  * State is cached per index, so late, reverse, and random historical reads do
@@ -76,7 +79,7 @@ public final class KinematicKalmanForecastStateIndicator extends CachedIndicator
      */
     public KinematicKalmanForecastStateIndicator(Indicator<Num> indicator, KalmanNoiseIndicator processNoiseIndicator,
             KalmanNoiseIndicator measurementNoiseIndicator) {
-        super(IndicatorUtils.requireSameSeries(indicator, processNoiseIndicator, measurementNoiseIndicator));
+        super(indicator, processNoiseIndicator, measurementNoiseIndicator);
         this.indicator = indicator;
         this.processNoiseIndicator = processNoiseIndicator;
         this.measurementNoiseIndicator = measurementNoiseIndicator;
@@ -186,7 +189,9 @@ public final class KinematicKalmanForecastStateIndicator extends CachedIndicator
     private final class StateIndicator extends RecursiveCachedIndicator<State> {
 
         private StateIndicator() {
-            super(KinematicKalmanForecastStateIndicator.this.indicator);
+            super(KinematicKalmanForecastStateIndicator.this.indicator,
+                    KinematicKalmanForecastStateIndicator.this.processNoiseIndicator,
+                    KinematicKalmanForecastStateIndicator.this.measurementNoiseIndicator);
         }
 
         @Override
@@ -202,8 +207,9 @@ public final class KinematicKalmanForecastStateIndicator extends CachedIndicator
                     return initialState(measurement, processNoise, measurementNoise);
                 }
                 NumFactory numFactory = getBarSeries().numFactory();
+                // No observation has initialized this placeholder yet.
                 return new State(numFactory.zero(), numFactory.zero(), numFactory.one(), numFactory.zero(),
-                        numFactory.one(), processNoise, measurementNoise, 0, true, false);
+                        numFactory.one(), processNoise, measurementNoise, 0, false, false);
             }
 
             State previous = super.getValue(index - 1);
@@ -222,6 +228,7 @@ public final class KinematicKalmanForecastStateIndicator extends CachedIndicator
         public int getCountOfUnstableBars() {
             return KinematicKalmanForecastStateIndicator.this.getCountOfUnstableBars();
         }
+
     }
 
     private record State(Num position, Num velocity, Num positionVariance, Num positionVelocityCovariance,

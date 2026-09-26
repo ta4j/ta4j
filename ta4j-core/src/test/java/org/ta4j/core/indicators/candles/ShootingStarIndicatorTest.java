@@ -3,92 +3,220 @@
  */
 package org.ta4j.core.indicators.candles;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import java.util.ArrayList;
+import java.time.Duration;
 import java.util.List;
 
-import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.mocks.MockBarBuilder;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.NonFiniteBar;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 public class ShootingStarIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>, Num> {
 
-    private BarSeries downtrendSeries;
-    private BarSeries uptrendSeries;
-
-    public ShootingStarIndicatorTest(final NumFactory numFactory) {
+    public ShootingStarIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
-    @Before
-    public void setUp() {
-        final var downtrend = generateDowntrend();
-        final var uptrend = generateUptrend();
+    @Test
+    public void detectsShootingStarWithDefaults() {
+        // Baseline of five body-10/range-10 candles yields a body threshold of
+        // 0.5 * 10 = 5, a shadow threshold of 2.0 * 10 = 20, and a range threshold
+        // of 0.1 * 10 = 1. Body 1, upper shadow 21, lower shadow 0, and an open
+        // strictly above the prior close 10: shooting star.
+        BarSeries series = shootingStarSeries(5, 1.0, 21, 0, 10.1);
+        ShootingStarIndicator indicator = new ShootingStarIndicator(series);
 
-        final var shootingStar = new MockBarBuilder(numFactory).openPrice(10d)
-                .closePrice(5d)
-                .highPrice(100d)
-                .lowPrice(0d)
-                .build();
-        downtrend.add(shootingStar);
-        uptrend.add(shootingStar);
-
-        this.downtrendSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withBars(downtrend).build();
-        this.uptrendSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withBars(uptrend).build();
+        assertFalse(indicator.getValue(4));
+        assertTrue(indicator.getValue(5));
     }
 
-    private List<Bar> generateDowntrend() {
-        final var bars = new ArrayList<Bar>(26);
-        for (int i = 26; i > 0; --i) {
-            bars.add(new MockBarBuilder(numFactory).openPrice(i).closePrice(i).highPrice(i).lowPrice(i).build());
+    @Test
+    public void bodyBoundaryIsStrict() {
+        assertTrue(new ShootingStarIndicator(shootingStarSeries(5, 4.9, 21, 0, 10.1)).getValue(5));
+        assertFalse(new ShootingStarIndicator(shootingStarSeries(5, 5.0, 21, 0, 10.1)).getValue(5));
+        assertFalse(new ShootingStarIndicator(shootingStarSeries(5, 6.0, 21, 0, 10.1)).getValue(5));
+    }
+
+    @Test
+    public void upperShadowBoundaryIsStrict() {
+        assertTrue(new ShootingStarIndicator(shootingStarSeries(5, 1.0, 21, 0, 10.1)).getValue(5));
+        assertFalse(new ShootingStarIndicator(shootingStarSeries(5, 1.0, 20, 0, 10.1)).getValue(5));
+        assertFalse(new ShootingStarIndicator(shootingStarSeries(5, 1.0, 19, 0, 10.1)).getValue(5));
+    }
+
+    @Test
+    public void lowerShadowBoundaryIsInclusive() {
+        assertTrue(new ShootingStarIndicator(shootingStarSeries(5, 1.0, 21, 1.0, 10.1)).getValue(5));
+        assertFalse(new ShootingStarIndicator(shootingStarSeries(5, 1.0, 21, 1.01, 10.1)).getValue(5));
+    }
+
+    @Test
+    public void gapBoundaryIsStrict() {
+        assertTrue(new ShootingStarIndicator(shootingStarSeries(5, 1.0, 21, 0, 10.1)).getValue(5));
+        assertFalse(new ShootingStarIndicator(shootingStarSeries(5, 1.0, 21, 0, 10.0)).getValue(5));
+        assertFalse(new ShootingStarIndicator(shootingStarSeries(5, 1.0, 21, 0, 9.9)).getValue(5));
+    }
+
+    @Test
+    public void signedZeroOpenAgainstZeroPriorCloseIsNotAGapUp() {
+        // DoubleNum orders 0.0 above -0.0, so a pattern open of +0.0 against a
+        // prior close of -0.0 would misread as a gap up; equal zero prices must
+        // not qualify.
+        BarSeries equalZeros = zeroCloseBaseline();
+        equalZeros.barBuilder().openPrice(0.0).closePrice(-1.0).highPrice(21.0).lowPrice(-1.0).add();
+        assertFalse(new ShootingStarIndicator(equalZeros).getValue(5));
+
+        // Control: a genuinely higher open is the required gap up.
+        BarSeries genuineGap = zeroCloseBaseline();
+        genuineGap.barBuilder().openPrice(0.5).closePrice(-0.5).highPrice(21.5).lowPrice(-0.5).add();
+        assertTrue(new ShootingStarIndicator(genuineGap).getValue(5));
+    }
+
+    @Test
+    public void customAveragePeriodShiftsWarmUpBoundary() {
+        BarSeries series = shootingStarSeries(3, 1.0, 21, 0, 10.1);
+        ShootingStarIndicator indicator = new ShootingStarIndicator(series, 3);
+        assertEquals(3, indicator.getCountOfUnstableBars());
+
+        assertFalse(indicator.getValue(2));
+        assertTrue(indicator.getValue(3));
+    }
+
+    @Test
+    public void rejectsAveragePeriodBelowOne() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+
+        assertThrows(IllegalArgumentException.class, () -> new ShootingStarIndicator(series, 0));
+    }
+
+    @Test
+    public void nonFinitePriorCloseIsNotAShootingStar() {
+        DoubleNumFactory doubleFactory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory).build();
+        for (int i = 0; i < 4; i++) {
+            addBar(series, 10, 0, 0);
         }
+        series.addBar(new NonFiniteBar(series.getBar(series.getEndIndex()).getEndTime().minus(Duration.ofHours(12)),
+                doubleFactory.numOf(0), doubleFactory.numOf(0), doubleFactory.numOf(Double.NEGATIVE_INFINITY),
+                doubleFactory.numOf(Double.NEGATIVE_INFINITY)));
+        addShootingStarBar(series, 1.0, 21, 0, 10.1);
 
-        return bars;
+        assertFalse(new ShootingStarIndicator(series).getValue(5));
+
     }
 
-    private List<Bar> generateUptrend() {
-        final var bars = new ArrayList<Bar>(26);
-        for (int i = 0; i < 26; ++i) {
-            bars.add(new MockBarBuilder(numFactory).openPrice(i).closePrice(i).highPrice(i).lowPrice(i).build());
+    @Test
+    public void contextBeforeBaselineWindowDoesNotChangeResult() {
+        // Pattern candle at index 6 with period 3: the baseline window is [3, 5],
+        // so bars before index 3 must not influence the result.
+        BarSeries control = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 3; i++) {
+            addBar(control, 10, 0, 0);
         }
+        for (int i = 0; i < 3; i++) {
+            addBar(control, 10, 0, 0);
+        }
+        addShootingStarBar(control, 1.0, 21, 0, 10.1);
 
-        return bars;
+        BarSeries varied = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        addBar(varied, 50, 10, 10);
+        addBar(varied, 2, 4, 22);
+        addBar(varied, 99, 2, 9);
+        for (int i = 0; i < 3; i++) {
+            addBar(varied, 10, 0, 0);
+        }
+        addShootingStarBar(varied, 1.0, 21, 0, 10.1);
+
+        ShootingStarIndicator controlIndicator = new ShootingStarIndicator(control, 3);
+        ShootingStarIndicator variedIndicator = new ShootingStarIndicator(varied, 3);
+
+        assertTrue(controlIndicator.getValue(6));
+        assertTrue(variedIndicator.getValue(6));
     }
 
     @Test
-    public void getValueAsShootingStar() {
-        final var shootingStar = new ShootingStarIndicator(this.uptrendSeries);
-        assertTrue(shootingStar.getValue(26));
-    }
+    public void rollingSeriesWithNonzeroBeginIndex() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 10; i++) {
+            addBar(series, 10, 0, 0);
+        }
+        for (int i = 0; i < 5; i++) {
+            addBar(series, 10, 0, 0);
+        }
+        addShootingStarBar(series, 1.0, 21, 0, 10.1);
+        for (int i = 0; i < 4; i++) {
+            addBar(series, 10, 0, 0);
+        }
+        series.setMaximumBarCount(10);
 
-    @Test
-    public void getValueNonShootingStar() {
-        final var shootingStar = new ShootingStarIndicator(this.downtrendSeries);
-        assertFalse(shootingStar.getValue(25));
-    }
+        ShootingStarIndicator indicator = new ShootingStarIndicator(series);
 
-    @Test
-    public void getValueShootingStarInUptrend() {
-        final var shootingStar = new ShootingStarIndicator(this.downtrendSeries);
-        assertFalse(shootingStar.getValue(26));
+        assertEquals(10, series.getBeginIndex());
+        assertFalse(indicator.getValue(14));
+        assertTrue(indicator.getValue(15));
     }
 
     @Override
     protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
         BarSeries series = serializationSeries(numFactory);
-        return List.of(serializationFixture(series, new ShootingStarIndicator(series), stableIndexes(series)));
+        return List.of(serializationFixture(series, new ShootingStarIndicator(series), stableIndexes(series)),
+                serializationFixture(series, new ShootingStarIndicator(series, 5), stableIndexes(series)));
     }
 
+    /**
+     * Builds {@code period} body-10/range-10 baseline candles (prior close 10)
+     * followed by one pattern candle with the given body, upper shadow, lower
+     * shadow, and open price (the pattern candle is bearish: close equals open
+     * minus the body).
+     */
+    private BarSeries shootingStarSeries(int period, double body, double upperShadow, double lowerShadow, double open) {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < period; i++) {
+            addBar(series, 10, 0, 0);
+        }
+        final double close = open - body;
+        final double high = open + upperShadow;
+        final double low = close - lowerShadow;
+        series.barBuilder().openPrice(open).closePrice(close).highPrice(high).lowPrice(low).add();
+        return series;
+    }
+
+    private void addShootingStarBar(BarSeries series, double body, double upperShadow, double lowerShadow,
+            double open) {
+        final double close = open - body;
+        final double high = open + upperShadow;
+        final double low = close - lowerShadow;
+        series.barBuilder().openPrice(open).closePrice(close).highPrice(high).lowPrice(low).add();
+    }
+
+    private void addBar(BarSeries series, double body, double upperShadow, double lowerShadow) {
+        final double open = 0;
+        final double close = body;
+        final double high = close + upperShadow;
+        final double low = open - lowerShadow;
+        series.barBuilder().openPrice(open).closePrice(close).highPrice(high).lowPrice(low).add();
+    }
+
+    /**
+     * Builds five body-10/range-10 baseline candles closing at -0.0.
+     */
+    private BarSeries zeroCloseBaseline() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 5; i++) {
+            series.barBuilder().openPrice(-10).closePrice(-0.0).highPrice(-0.0).lowPrice(-10).add();
+        }
+        return series;
+    }
 }

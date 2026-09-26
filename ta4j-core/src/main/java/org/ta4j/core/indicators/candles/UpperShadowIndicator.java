@@ -13,7 +13,9 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * Provides the (absolute) difference between the high price and the highest
- * price of the candle body. I.e.: high price - max(open price, close price)
+ * price of the candle body. I.e.: high price - max(open price, close price).
+ * The value is the length of the upper wick and is always non-negative for
+ * well-formed OHLC bars.
  *
  * @see <a href=
  *      "http://stockcharts.com/school/doku.php?id=chart_school:chart_analysis:introduction_to_candlesticks#formation">

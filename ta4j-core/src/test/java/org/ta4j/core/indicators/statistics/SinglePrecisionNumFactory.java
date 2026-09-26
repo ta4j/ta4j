@@ -19,16 +19,16 @@ import org.ta4j.core.num.NumFactory;
  * and adds no production API.
  * </p>
  */
-public class FloatNumFactory implements NumFactory {
+public class SinglePrecisionNumFactory implements NumFactory {
 
     private static final long serialVersionUID = 1L;
 
-    private static final FloatNumFactory INSTANCE = new FloatNumFactory();
+    private static final SinglePrecisionNumFactory INSTANCE = new SinglePrecisionNumFactory();
 
-    private FloatNumFactory() {
+    private SinglePrecisionNumFactory() {
     }
 
-    public static FloatNumFactory getInstance() {
+    public static SinglePrecisionNumFactory getInstance() {
         return INSTANCE;
     }
 

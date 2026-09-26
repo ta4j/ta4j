@@ -110,8 +110,8 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
         // the profile. The evaluator clamps its own rounding excursions to
         // the mathematical bound, so the selected correlation settles on
         // exactly 1 while the Point record keeps only metric-precision
-        // slack (FloatNumFactory epsilon is 1e-5).
-        NumFactory floatFactory = FloatNumFactory.getInstance();
+        // slack (SinglePrecisionNumFactory epsilon is 1e-5).
+        NumFactory floatFactory = SinglePrecisionNumFactory.getInstance();
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(floatFactory)
                 .withData(new double[] { 3.3, 1.0, 3.3, 1.0 })
                 .build();
@@ -148,7 +148,7 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
         // the mathematical bound, so the profile reports exactly 1 while the
         // Point record's validation stays at the bare epsilon instead of
         // scaling with the accumulation size.
-        NumFactory floatFactory = FloatNumFactory.getInstance();
+        NumFactory floatFactory = SinglePrecisionNumFactory.getInstance();
         int sampleCount = 10_000;
         double[] seriesData = new double[sampleCount];
         List<Num> firstValues = new ArrayList<>(sampleCount);
@@ -628,7 +628,7 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
         // 1e-5-epsilon factory, whose scaled tolerance reaches about 1.0).
         // The evaluator clamps its own accumulation roundoff, so directly
         // constructed points only get metric-precision slack at any count.
-        NumFactory floatFactory = FloatNumFactory.getInstance();
+        NumFactory floatFactory = SinglePrecisionNumFactory.getInstance();
         assertThrows(IllegalArgumentException.class, () -> new Point(0, floatFactory.numOf(1.9), 100_000));
         assertThrows(IllegalArgumentException.class, () -> new Point(0, floatFactory.numOf(-1.9), 100_000));
         // Metric-precision roundoff stays accepted at the same sample count.

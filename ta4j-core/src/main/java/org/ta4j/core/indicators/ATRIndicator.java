@@ -6,6 +6,7 @@ package org.ta4j.core.indicators;
 import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.averages.AbstractEMAIndicator;
 import org.ta4j.core.indicators.averages.MMAIndicator;
 import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.num.Num;
@@ -15,8 +16,12 @@ import static org.ta4j.core.num.NaN.NaN;
 /**
  * Average true range indicator.
  */
-public class ATRIndicator extends AbstractIndicator<Num> {
+public class ATRIndicator extends CachedIndicator<Num> {
 
+    /**
+     * Logical source retained so descriptor serialization preserves custom price
+     * inputs.
+     */
     private final TRIndicator tr;
     private final transient int trueRangeUnstableBars;
     private final transient MMAIndicator averageTrueRangeIndicator;
@@ -43,7 +48,7 @@ public class ATRIndicator extends AbstractIndicator<Num> {
     }
 
     private ATRIndicator(Config config) {
-        super(config.trueRangeIndicator().getBarSeries());
+        super(config.trueRangeIndicator());
         this.tr = config.trueRangeIndicator();
         this.trueRangeUnstableBars = config.trueRangeUnstableBars();
         this.barCount = config.barCount();
@@ -56,7 +61,7 @@ public class ATRIndicator extends AbstractIndicator<Num> {
     }
 
     @Override
-    public Num getValue(int index) {
+    protected Num calculate(int index) {
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }
@@ -66,6 +71,21 @@ public class ATRIndicator extends AbstractIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return trueRangeUnstableBars + getBarCount();
+    }
+
+    /**
+     * The average true range re-anchors its whole chain on a head advance (see
+     * {@link AbstractEMAIndicator#getValue(int)}'s retained-head reset), so every
+     * cached value in this wrapper was derived from a recurrence that no longer
+     * exists. The re-anchored chain is recomputable from the retained window, but
+     * keeping any pre-advance value would combine the severed chain with the
+     * rebuilt one.
+     *
+     * @return {@code true}
+     */
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
     }
 
     /** @return a true range indicator for this indicator's bar series */

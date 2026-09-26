@@ -47,12 +47,10 @@ public class TradingBotOnMovingBarSeries {
      * Close price of the last bar
      */
     private static Num LAST_BAR_CLOSE_PRICE;
-
     /**
-     * End time of the last generated bar, kept so that simulated bars always
-     * advance monotonically even when the wall clock does not move between ticks.
+     * End time of the last generated bar.
      */
-    private static Instant LAST_BAR_END_TIME = Instant.MIN;
+    private static Instant LAST_BAR_END_TIME;
 
     /**
      * Builds a moving bar series (i.e. keeping only the maxBarCount last bars)
@@ -65,6 +63,7 @@ public class TradingBotOnMovingBarSeries {
         // Limitating the number of bars to maxBarCount
         series.setMaximumBarCount(maxBarCount);
         LAST_BAR_CLOSE_PRICE = series.getBar(series.getEndIndex()).getClosePrice();
+        LAST_BAR_END_TIME = series.getBar(series.getEndIndex()).getEndTime();
         LOG.debug("Initial bar count: {} (limited to {}), close price = {}", series.getBarCount(), maxBarCount,
                 LAST_BAR_CLOSE_PRICE);
         return series;
@@ -108,42 +107,43 @@ public class TradingBotOnMovingBarSeries {
     }
 
     /**
-     * Generates a random bar.
+     * Generates a random bar using the system clock.
      *
      * @return a random bar
      */
     private static Bar generateRandomBar() {
+        return generateRandomBar(Instant::now);
+    }
+
+    /**
+     * Generates a random bar using a supplied clock. Repeated or stale clock values
+     * are advanced by one nanosecond so each generated bar remains appendable to
+     * the series.
+     *
+     * @param timestampSource source of candidate bar end times
+     * @return a random bar
+     */
+    static Bar generateRandomBar(final Supplier<Instant> timestampSource) {
         final Num maxRange = DecimalNum.valueOf("0.03"); // 3.0%
         Num openPrice = LAST_BAR_CLOSE_PRICE;
         Num lowPrice = openPrice.minus(maxRange.multipliedBy(DecimalNum.valueOf(Math.random())));
         Num highPrice = openPrice.plus(maxRange.multipliedBy(DecimalNum.valueOf(Math.random())));
         Num closePrice = randDecimal(lowPrice, highPrice);
         LAST_BAR_CLOSE_PRICE = closePrice;
+        Instant endTime = timestampSource.get();
+        if (LAST_BAR_END_TIME != null && !endTime.isAfter(LAST_BAR_END_TIME)) {
+            endTime = LAST_BAR_END_TIME.plusNanos(1);
+        }
+        LAST_BAR_END_TIME = endTime;
         return new TimeBarBuilder(DecimalNumFactory.getInstance()).amount(1)
                 .volume(1)
                 .timePeriod(Duration.ofDays(1))
-                .endTime(nextBarEndTime())
+                .endTime(endTime)
                 .openPrice(openPrice)
                 .highPrice(highPrice)
                 .lowPrice(lowPrice)
                 .closePrice(closePrice)
                 .build();
-    }
-
-    /**
-     * Returns a strictly increasing end time for a simulated bar: the current time,
-     * or one nanosecond past the previously used end time if the clock has not
-     * advanced yet.
-     *
-     * @return an end time strictly later than every earlier bar's end time
-     */
-    private static Instant nextBarEndTime() {
-        Instant endTime = Instant.now();
-        if (!endTime.isAfter(LAST_BAR_END_TIME)) {
-            endTime = LAST_BAR_END_TIME.plusNanos(1);
-        }
-        LAST_BAR_END_TIME = endTime;
-        return endTime;
     }
 
     public static void main(String[] args) throws InterruptedException {
@@ -167,6 +167,9 @@ public class TradingBotOnMovingBarSeries {
         LOG.debug("********************** Initialization **********************");
         // Getting the bar series
         BarSeries series = seriesSupplier.get();
+        Bar lastBar = series.getBar(series.getEndIndex());
+        LAST_BAR_CLOSE_PRICE = lastBar.getClosePrice();
+        LAST_BAR_END_TIME = lastBar.getEndTime();
 
         // Building the trading strategy
         Strategy strategy = buildStrategy(series);

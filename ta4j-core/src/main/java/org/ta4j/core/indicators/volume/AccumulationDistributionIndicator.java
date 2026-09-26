@@ -44,4 +44,5 @@ public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<
     public int getCountOfUnstableBars() {
         return 0;
     }
+
 }

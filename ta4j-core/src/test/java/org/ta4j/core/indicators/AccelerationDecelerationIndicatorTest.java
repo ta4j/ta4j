@@ -30,11 +30,11 @@ public class AccelerationDecelerationIndicatorTest extends AbstractIndicatorTest
     public void setUp() {
         series = new MockBarSeriesBuilder().build();
 
-        series.barBuilder().openPrice(0).closePrice(0).highPrice(16).lowPrice(8).add();
-        series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(6).add();
-        series.barBuilder().openPrice(0).closePrice(0).highPrice(18).lowPrice(14).add();
-        series.barBuilder().openPrice(0).closePrice(0).highPrice(10).lowPrice(6).add();
-        series.barBuilder().openPrice(0).closePrice(0).highPrice(8).lowPrice(4).add();
+        series.barBuilder().openPrice(8).closePrice(16).highPrice(16).lowPrice(8).add();
+        series.barBuilder().openPrice(6).closePrice(12).highPrice(12).lowPrice(6).add();
+        series.barBuilder().openPrice(14).closePrice(18).highPrice(18).lowPrice(14).add();
+        series.barBuilder().openPrice(6).closePrice(10).highPrice(10).lowPrice(6).add();
+        series.barBuilder().openPrice(4).closePrice(8).highPrice(8).lowPrice(4).add();
     }
 
     @Test

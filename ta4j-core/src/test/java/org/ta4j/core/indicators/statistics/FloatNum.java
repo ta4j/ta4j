@@ -45,7 +45,7 @@ class FloatNum implements Num {
 
     @Override
     public NumFactory getNumFactory() {
-        return FloatNumFactory.getInstance();
+        return SinglePrecisionNumFactory.getInstance();
     }
 
     @Override

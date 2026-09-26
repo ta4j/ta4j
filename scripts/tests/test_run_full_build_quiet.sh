@@ -263,6 +263,7 @@ test_validate_only_rejects_unformatted_source_without_repairing_it() {
   pass "test_validate_only_rejects_unformatted_source_without_repairing_it"
 }
 
+
 test_goals_override_and_maven_args_passthrough() {
   echo "Running test_goals_override_and_maven_args_passthrough"
   create_test_repo
@@ -413,20 +414,43 @@ EOF
 test_progressing_build_is_not_killed_at_timeout_boundary() {
   echo "Running test_progressing_build_is_not_killed_at_timeout_boundary"
   create_test_repo
+  local watchdog_clock="$TMP/watchdog-clock"
+  local progress_ready="$TMP/progress-ready"
+  local baseline_sampled="$TMP/baseline-sampled"
+  printf '%s\n' 0 > "$watchdog_clock"
+  cat > "$TMP/bin/wc" <<'EOF'
+#!/usr/bin/env bash
+while [[ ! -f "$QUIET_BUILD_TEST_PROGRESS_READY_FILE" ]]; do
+  /bin/sleep 0.01
+done
+size="$(/usr/bin/wc "$@")"
+: > "$QUIET_BUILD_TEST_BASELINE_SAMPLED_FILE"
+printf '%s\n' "$size"
+EOF
   cat > "$TMP/bin/mvn" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$@" > "$FAKE_MAVEN_ARGS"
 echo "[INFO] Slow fixture started"
-sleep 1
 echo "[INFO] Slow fixture still progressing"
-sleep 1
+printf '%s\n' 3 > "${QUIET_BUILD_TEST_CLOCK_FILE}.next"
+/bin/mv "${QUIET_BUILD_TEST_CLOCK_FILE}.next" "$QUIET_BUILD_TEST_CLOCK_FILE"
+: > "$QUIET_BUILD_TEST_PROGRESS_READY_FILE"
+while [[ ! -f "$QUIET_BUILD_TEST_BASELINE_SAMPLED_FILE" ]]; do
+  /bin/sleep 0.01
+done
+/bin/sleep 0.05
 echo "[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0"
 echo "[INFO] BUILD SUCCESS"
 EOF
-  chmod +x "$TMP/bin/mvn"
+  chmod +x "$TMP/bin/mvn" "$TMP/bin/wc"
 
   local output
-  output="$(QUIET_BUILD_TIMEOUT_SECONDS=1 QUIET_BUILD_STALL_SECONDS=2 run_quiet_build scripts/run-full-build-quiet.sh)"
+  output="$(QUIET_BUILD_TIMEOUT_SECONDS=1 QUIET_BUILD_STALL_SECONDS=3 \
+    QUIET_BUILD_TEST_CLOCK_FILE="$watchdog_clock" \
+    QUIET_BUILD_TEST_WATCHDOG_POLL_SECONDS=0.01 \
+    QUIET_BUILD_TEST_PROGRESS_READY_FILE="$progress_ready" \
+    QUIET_BUILD_TEST_BASELINE_SAMPLED_FILE="$baseline_sampled" \
+    run_quiet_build scripts/run-full-build-quiet.sh)"
 
   expect_contains "$output" "Build: success" "progressing Maven output should extend the watchdog past the hard timeout boundary"
   expect_file_contains_line "$TMP/maven-args.txt" "verify" "progressing timeout fixture should still run the canonical Maven command"
@@ -493,31 +517,19 @@ EOF
 }
 
 test_powershell_entrypoint_classifier_parity() {
-  echo "Running test_powershell_entrypoint_classifier_parity"
-  create_test_repo
-  write_fake_maven
-
-  local ps1
-  ps1="$(<scripts/run-full-build-quiet.ps1)"
-  expect_contains "$ps1" "\$goals = @(\"clean\", \"license:format\", \"spotless:apply\", \"verify\")" "PowerShell local default should repair source"
-  expect_contains "$ps1" "'^--validate-only$'" "PowerShell should expose validate-only mode"
-  expect_contains "$ps1" "\$goals = @(\"clean\", \"license:check\", \"spotless:check\", \"verify\")" "PowerShell validate-only mode should preserve hosted goals"
-
-  if [[ "${TA4J_RUN_POWERSHELL_FIXTURE:-false}" == "true" ]] && command -v pwsh >/dev/null 2>&1; then
-    local output
-    output="$(FAKE_MAVEN_SUCCESS_UNEXPECTED=1 run_quiet_build pwsh -NoLogo -NoProfile -File scripts/run-full-build-quiet.ps1)"
-    expect_contains "$output" "Warnings summary:" "PowerShell warning digest should be visible"
-    expect_contains "$output" "Unexpected output summary:" "PowerShell unexpected digest should be visible"
-    expect_contains "$output" "java.lang.IllegalStateException: suspicious success diagnostic" "PowerShell should surface exceptions"
+  local shell fixture="$ROOT/scripts/tests/test_run_full_build_quiet.ps1"
+  if command -v pwsh >/dev/null 2>&1; then
+    shell=pwsh
+  elif command -v powershell.exe >/dev/null 2>&1; then
+    shell=powershell.exe
+    if command -v wslpath >/dev/null 2>&1; then
+      fixture="$(wslpath -w "$fixture")"
+    fi
   else
-    expect_contains "$ps1" "function Write-FailureDigest" "PowerShell script should define failure digest"
-    expect_contains "$ps1" "function Write-WarningSummary" "PowerShell script should define warning digest"
-    expect_contains "$ps1" "function Write-UnexpectedSummary" "PowerShell script should define unexpected digest"
-    expect_contains "$ps1" "Test-StackOrExceptionLine" "PowerShell script should classify exception and stack lines"
+    echo "PowerShell runtime unavailable; native gate fixtures require pwsh or powershell.exe"
+    return
   fi
-
-  finish_test_repo
-  pass "test_powershell_entrypoint_classifier_parity"
+  "$shell" -NoProfile -ExecutionPolicy Bypass -File "$fixture"
 }
 
 test_default_invocation_uses_local_repair_gate

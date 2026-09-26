@@ -21,6 +21,8 @@ import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
+import java.util.List;
+
 /**
  * NumericIndicator is a "fluent decorator" for {@code Indicator<Num>}. It
  * provides methods to create rules and other "lightweight" indicators, using a
@@ -207,8 +209,23 @@ public class NumericIndicator implements Indicator<Num> {
      * @return {@code this * this}
      */
     public NumericIndicator squared() {
-        // TODO: implement pow(n); a few others
         return this.multipliedBy(this);
+    }
+
+    /**
+     * Returns an Indicator whose values are {@code this} raised to a constant
+     * exponent, for example {@code relativeVolume.pow(0.5)} as a dampened
+     * confidence weight. Unavailable inputs stay unavailable; the numeric domain
+     * follows {@link Num#pow(Num)}, so keep values non-negative when the exponent
+     * is fractional.
+     *
+     * @param exponent the constant exponent
+     * @return {@code this^exponent}
+     * @see UnaryOperationIndicator#pow(Indicator, Number)
+     * @since 0.25.1
+     */
+    public NumericIndicator pow(Number exponent) {
+        return NumericIndicator.of(UnaryOperationIndicator.pow(this, exponent));
     }
 
     /**
@@ -339,6 +356,11 @@ public class NumericIndicator implements Indicator<Num> {
     @Override
     public Num getValue(int index) {
         return delegate.getValue(index);
+    }
+
+    @Override
+    public List<Indicator<?>> getDependencies() {
+        return List.of(delegate);
     }
 
     @Override

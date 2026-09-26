@@ -86,7 +86,7 @@ public final class LeadLagCorrelationIndicator extends CachedIndicator<Num> {
      */
     public LeadLagCorrelationIndicator(Indicator<Num> first, Indicator<Num> second, int barCount, int minimumLag,
             int maximumLag, LagSelectionPolicy selectionPolicy) {
-        super(first);
+        super(first, second);
         IndicatorUtils.requireSameSeries(first, second);
         this.first = first;
         this.second = second;

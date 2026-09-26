@@ -3,9 +3,20 @@
  */
 package org.ta4j.core;
 
+import java.io.IOException;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.NavigableMap;
 import java.util.Objects;
+import java.util.TreeMap;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.num.Num;
@@ -14,8 +25,214 @@ import org.ta4j.core.num.Num;
  * Base implementation of a {@link Bar}.
  */
 public class BaseBar implements Bar {
-
     private static final long serialVersionUID = 8038383777467488147L;
+
+    private static final ThreadLocal<MutationState> MUTATION_STATE = new ThreadLocal<>();
+
+    /**
+     * Weak retaining-series registrations. The common single-owner case keeps only
+     * one weak registration; a map and reference queue are promoted lazily when a
+     * bar is shared by multiple series.
+     */
+    private transient RetainingSeriesRegistration retainingSeriesOwner;
+    private transient Map<RetainingSeriesRegistration, RetainingSeriesRegistration> retainingSeries;
+    private transient ReferenceQueue<BaseBarSeries> retainingSeriesQueue;
+
+    private record RetainedSeriesMutation(BaseBarSeries series, int index) {
+    }
+
+    static final class RetainedBarMutationPublication {
+
+        private final BaseBar bar;
+        private final List<RetainedSeriesMutation> mutations;
+        private final int publicationCount;
+        private final Throwable failure;
+        private final List<RetainedBarMutationPublication> nestedPublications;
+
+        private RetainedBarMutationPublication(final BaseBar bar, final List<RetainedSeriesMutation> mutations,
+                final int publicationCount, final Throwable failure) {
+            this(bar, mutations, publicationCount, failure, List.of());
+        }
+
+        private RetainedBarMutationPublication(final BaseBar bar, final List<RetainedSeriesMutation> mutations,
+                final int publicationCount, final Throwable failure,
+                final List<RetainedBarMutationPublication> nestedPublications) {
+            this.bar = bar;
+            this.mutations = mutations;
+            this.publicationCount = publicationCount;
+            this.failure = failure;
+            this.nestedPublications = List.copyOf(nestedPublications);
+        }
+
+        private static RetainedBarMutationPublication combine(final RetainedBarMutationPublication primary,
+                final List<RetainedBarMutationPublication> nestedPublications) {
+            if (nestedPublications.isEmpty()) {
+                return primary;
+            }
+            if (primary == null) {
+                return new RetainedBarMutationPublication(null, List.of(), 0, null, nestedPublications);
+            }
+            return new RetainedBarMutationPublication(primary.bar, primary.mutations, primary.publicationCount,
+                    primary.failure, nestedPublications);
+        }
+
+        void publish() {
+            Throwable publicationFailure = mergeFailures(this.failure, publishCallbacks());
+            for (RetainedBarMutationPublication nestedPublication : nestedPublications) {
+                try {
+                    nestedPublication.publish();
+                } catch (RuntimeException | Error cause) {
+                    publicationFailure = mergeFailures(publicationFailure, cause);
+                }
+            }
+            if (publicationFailure instanceof RuntimeException exception) {
+                throw exception;
+            }
+            if (publicationFailure instanceof Error error) {
+                throw error;
+            }
+        }
+
+        private Throwable publishCallbacks() {
+            Throwable publicationFailure = null;
+            for (int publication = 0; publication < publicationCount; publication++) {
+                for (RetainedSeriesMutation mutation : mutations) {
+                    try {
+                        mutation.series().retainedBarMutated(bar, mutation.index());
+                    } catch (RuntimeException | Error cause) {
+                        publicationFailure = mergeFailures(publicationFailure, cause);
+                    }
+                }
+            }
+            return publicationFailure;
+        }
+
+        private static Throwable mergeFailures(final Throwable first, final Throwable second) {
+            if (first == null) {
+                return second;
+            }
+            if (second == null) {
+                return first;
+            }
+            if (first != second) {
+                first.addSuppressed(second);
+            }
+            return first;
+        }
+    }
+
+    private static final class MutationState {
+
+        private final BaseBar bar;
+        private final MutationState nestedPublicationSink;
+        private List<RetainedBarMutationPublication> nestedPublications;
+        private int suppressionDepth;
+        private int publicationCount;
+
+        private MutationState(final BaseBar bar, final boolean defersNestedPublication) {
+            this.bar = bar;
+            this.nestedPublicationSink = defersNestedPublication ? this : null;
+        }
+
+        private MutationState(final BaseBar bar, final MutationState enclosingState) {
+            this.bar = bar;
+            this.nestedPublicationSink = enclosingState == null ? null : enclosingState.nestedPublicationSink;
+        }
+
+        private boolean defersNestedPublication() {
+            return nestedPublicationSink != null;
+        }
+
+        private void deferNestedPublication(final RetainedBarMutationPublication publication) {
+            if (nestedPublicationSink != this) {
+                nestedPublicationSink.deferNestedPublication(publication);
+                return;
+            }
+            if (nestedPublications == null) {
+                nestedPublications = new ArrayList<>();
+            }
+            nestedPublications.add(publication);
+        }
+
+        private List<RetainedBarMutationPublication> nestedPublications() {
+            return nestedPublications == null ? List.of() : nestedPublications;
+        }
+    }
+
+    /**
+     * A weak identity registration stores one series and all of its retained
+     * indexes. Shared bars use registrations as both weak map keys and values,
+     * avoiding a separate identity-key allocation.
+     */
+    private static final class RetainingSeriesRegistration extends WeakReference<BaseBarSeries> {
+
+        private final int identityHash;
+        private int firstIndex;
+        private NavigableMap<Integer, Boolean> additionalIndexes;
+
+        private RetainingSeriesRegistration(final BaseBarSeries series, final int index) {
+            this(series, index, null);
+        }
+
+        private RetainingSeriesRegistration(final BaseBarSeries series, final int index,
+                final ReferenceQueue<BaseBarSeries> queue) {
+            super(series, queue);
+            this.identityHash = System.identityHashCode(series);
+            this.firstIndex = index;
+        }
+
+        @Override
+        public int hashCode() {
+            return identityHash;
+        }
+
+        @Override
+        public boolean equals(final Object other) {
+            if (other == this) {
+                return true;
+            }
+            if (!(other instanceof RetainingSeriesRegistration registration)) {
+                return false;
+            }
+            final BaseBarSeries series = get();
+            return series != null && series == registration.get();
+        }
+
+        private void attach(final int index) {
+            if (index < firstIndex) {
+                indexes().put(firstIndex, Boolean.TRUE);
+                firstIndex = index;
+            } else if (index > firstIndex) {
+                indexes().put(index, Boolean.TRUE);
+            }
+        }
+
+        private boolean detach(final int index) {
+            if (index != firstIndex) {
+                if (additionalIndexes != null) {
+                    additionalIndexes.remove(index);
+                }
+                return true;
+            }
+            if (additionalIndexes == null || additionalIndexes.isEmpty()) {
+                return false;
+            }
+            firstIndex = additionalIndexes.firstKey();
+            additionalIndexes.pollFirstEntry();
+            return true;
+        }
+
+        private int firstIndex() {
+            return firstIndex;
+        }
+
+        private NavigableMap<Integer, Boolean> indexes() {
+            if (additionalIndexes == null) {
+                additionalIndexes = new TreeMap<>();
+            }
+            return additionalIndexes;
+        }
+    }
 
     /** The time period (e.g. 1 day, 15 min, etc.) of the bar. */
     private final Duration timePeriod;
@@ -75,12 +292,14 @@ public class BaseBar implements Bar {
      * @throws NullPointerException     if given or calculated {@link #timePeriod},
      *                                  {@link #beginTime} or {@link #endTime}
      *                                  values are {@code null}
-     * @throws IllegalArgumentException If the calculated timePeriod between the
+     * @throws IllegalArgumentException if the calculated timePeriod between the
      *                                  provided beginTime and endTime does not
      *                                  match the provided timePeriod, if the high
-     *                                  price is below the low price, if volume or
-     *                                  amount is negative, or if the number of
-     *                                  trades is negative
+     *                                  price is below the low price, the open
+     *                                  price, or the close price, if the low price
+     *                                  is above the open price or the close price,
+     *                                  if volume or amount is negative, or if the
+     *                                  number of trades is negative
      */
     @SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Fail-fast validation of bar data is a documented constructor contract: invalid bars "
             + "are rejected before any partially initialized instance can escape")
@@ -95,10 +314,7 @@ public class BaseBar implements Bar {
             + "are rejected before any partially initialized instance can escape")
     private BaseBar(ResolvedTimes times, Num openPrice, Num highPrice, Num lowPrice, Num closePrice, Num volume,
             Num amount, long trades) {
-        if (highPrice != null && lowPrice != null && highPrice.isLessThan(lowPrice)) {
-            throw new IllegalArgumentException(
-                    "High price must be greater than or equal to low price, but was " + highPrice + " < " + lowPrice);
-        }
+        validatePrices(openPrice, highPrice, lowPrice, closePrice);
         if (volume != null && volume.isNegative()) {
             throw new IllegalArgumentException("Volume cannot be negative, but was " + volume);
         }
@@ -118,6 +334,40 @@ public class BaseBar implements Bar {
         this.volume = volume;
         this.amount = amount;
         this.trades = trades;
+    }
+
+    /**
+     * Validates the OHLC invariant: for every non-null price pair, the high price
+     * must be greater than or equal to both the open and the close price, and the
+     * low price must be less than or equal to both the open and the close price.
+     *
+     * @param openPrice  the open price, may be {@code null}
+     * @param highPrice  the high price, may be {@code null}
+     * @param lowPrice   the low price, may be {@code null}
+     * @param closePrice the close price, may be {@code null}
+     * @throws IllegalArgumentException if the OHLC invariant is violated
+     */
+    private static void validatePrices(Num openPrice, Num highPrice, Num lowPrice, Num closePrice) {
+        if (highPrice != null && lowPrice != null && highPrice.isLessThan(lowPrice)) {
+            throw new IllegalArgumentException(
+                    "High price must be greater than or equal to low price, but was " + highPrice + " < " + lowPrice);
+        }
+        if (highPrice != null && openPrice != null && highPrice.isLessThan(openPrice)) {
+            throw new IllegalArgumentException(
+                    "High price must be greater than or equal to open price, but was " + highPrice + " < " + openPrice);
+        }
+        if (highPrice != null && closePrice != null && highPrice.isLessThan(closePrice)) {
+            throw new IllegalArgumentException("High price must be greater than or equal to close price, but was "
+                    + highPrice + " < " + closePrice);
+        }
+        if (lowPrice != null && openPrice != null && lowPrice.isGreaterThan(openPrice)) {
+            throw new IllegalArgumentException(
+                    "Low price must be less than or equal to open price, but was " + lowPrice + " > " + openPrice);
+        }
+        if (lowPrice != null && closePrice != null && lowPrice.isGreaterThan(closePrice)) {
+            throw new IllegalArgumentException(
+                    "Low price must be less than or equal to close price, but was " + lowPrice + " > " + closePrice);
+        }
     }
 
     private static ResolvedTimes resolvedTimes(Duration timePeriod, Instant beginTime, Instant endTime) {
@@ -157,6 +407,98 @@ public class BaseBar implements Bar {
     }
 
     private record ResolvedTimes(Duration timePeriod, Instant beginTime, Instant endTime) {
+    }
+
+    void attachToBarSeries(final BaseBarSeries series, final int index) {
+        synchronized (this) {
+            purgeClearedRetainingSeries();
+            if (retainingSeries != null) {
+                final RetainingSeriesRegistration registration = findRetainingSeries(series);
+                if (registration != null) {
+                    registration.attach(index);
+                } else {
+                    final RetainingSeriesRegistration newRegistration = new RetainingSeriesRegistration(series, index,
+                            retainingSeriesQueue);
+                    retainingSeries.put(newRegistration, newRegistration);
+                }
+                return;
+            }
+            final RetainingSeriesRegistration ownerRegistration = retainingSeriesOwner;
+            final BaseBarSeries owner = ownerRegistration == null ? null : ownerRegistration.get();
+            if (owner == null) {
+                retainingSeriesOwner = new RetainingSeriesRegistration(series, index);
+            } else if (owner == series) {
+                ownerRegistration.attach(index);
+            } else {
+                promoteRetainingSeries(owner, ownerRegistration, series, index);
+            }
+        }
+    }
+
+    void detachFromBarSeries(final BaseBarSeries series, final int index) {
+        synchronized (this) {
+            purgeClearedRetainingSeries();
+            if (retainingSeries != null) {
+                final RetainingSeriesRegistration registration = findRetainingSeries(series);
+                if (registration != null && !registration.detach(index)) {
+                    retainingSeries.remove(registration);
+                }
+                compactRetainingSeries();
+            } else if (retainingSeriesOwner != null && retainingSeriesOwner.get() == series
+                    && !retainingSeriesOwner.detach(index)) {
+                retainingSeriesOwner = null;
+            }
+        }
+    }
+
+    private void promoteRetainingSeries(final BaseBarSeries owner, final RetainingSeriesRegistration ownerRegistration,
+            final BaseBarSeries series, final int index) {
+        final ReferenceQueue<BaseBarSeries> queue = new ReferenceQueue<>();
+        final Map<RetainingSeriesRegistration, RetainingSeriesRegistration> registrations = new HashMap<>(4);
+        final RetainingSeriesRegistration existing = new RetainingSeriesRegistration(owner,
+                ownerRegistration.firstIndex(), queue);
+        existing.additionalIndexes = ownerRegistration.additionalIndexes;
+        registrations.put(existing, existing);
+        final RetainingSeriesRegistration added = new RetainingSeriesRegistration(series, index, queue);
+        registrations.put(added, added);
+        retainingSeriesOwner = null;
+        retainingSeriesQueue = queue;
+        retainingSeries = registrations;
+    }
+
+    private RetainingSeriesRegistration findRetainingSeries(final BaseBarSeries series) {
+        for (final RetainingSeriesRegistration registration : retainingSeries.keySet()) {
+            if (registration.get() == series) {
+                return registration;
+            }
+        }
+        return null;
+    }
+
+    private void purgeClearedRetainingSeries() {
+        if (retainingSeries == null) {
+            return;
+        }
+        RetainingSeriesRegistration cleared;
+        while ((cleared = (RetainingSeriesRegistration) retainingSeriesQueue.poll()) != null) {
+            retainingSeries.remove(cleared);
+        }
+        compactRetainingSeries();
+    }
+
+    private void compactRetainingSeries() {
+        if (retainingSeries == null) {
+            return;
+        }
+        if (retainingSeries.isEmpty()) {
+            retainingSeriesOwner = null;
+            retainingSeries = null;
+            retainingSeriesQueue = null;
+        } else if (retainingSeries.size() == 1) {
+            retainingSeriesOwner = retainingSeries.values().iterator().next();
+            retainingSeries = null;
+            retainingSeriesQueue = null;
+        }
     }
 
     @Override
@@ -211,25 +553,264 @@ public class BaseBar implements Bar {
 
     @Override
     public void addTrade(Num tradeVolume, Num tradePrice) {
-        addPrice(tradePrice);
-
-        volume = volume.plus(tradeVolume);
-        amount = amount.plus(tradeVolume.multipliedBy(tradePrice));
-        trades++;
+        applyTrade(tradeVolume, tradePrice);
+        publishRetainedBarMutation();
     }
 
+    final synchronized RetainedBarMutationPublication deferAddTrade(final BaseBarSeries origin, final Num tradeVolume,
+            final Num tradePrice) {
+        final MutationState previousState = MUTATION_STATE.get();
+        final MutationState deferredState = new MutationState(this, true);
+        Throwable failure = null;
+        MUTATION_STATE.set(deferredState);
+        try {
+            addTrade(tradeVolume, tradePrice);
+        } catch (RuntimeException | Error cause) {
+            failure = cause;
+        } finally {
+            if (previousState == null) {
+                MUTATION_STATE.remove();
+            } else {
+                MUTATION_STATE.set(previousState);
+            }
+        }
+        return completeDeferredMutation(previousState, deferredState, origin, failure);
+    }
+
+    final synchronized RetainedBarMutationPublication deferAddPrice(final BaseBarSeries origin, final Num price) {
+        final MutationState previousState = MUTATION_STATE.get();
+        final MutationState deferredState = new MutationState(this, true);
+        Throwable failure = null;
+        MUTATION_STATE.set(deferredState);
+        try {
+            addPrice(price);
+        } catch (RuntimeException | Error cause) {
+            failure = cause;
+        } finally {
+            if (previousState == null) {
+                MUTATION_STATE.remove();
+            } else {
+                MUTATION_STATE.set(previousState);
+            }
+        }
+        return completeDeferredMutation(previousState, deferredState, origin, failure);
+    }
+
+    private RetainedBarMutationPublication completeDeferredMutation(final MutationState previousState,
+            final MutationState deferredState, final BaseBarSeries origin, final Throwable failure) {
+        final boolean nestedMutation = previousState != null && previousState.defersNestedPublication();
+        // Subclass overrides and partial failures may mutate without publishing.
+        // Match the originating series' fallback for every retaining series.
+        final int publicationCount = Math.max(1, deferredState.publicationCount);
+        final RetainedBarMutationPublication primaryPublication = captureRetainedBarMutation(publicationCount, origin,
+                failure);
+        final RetainedBarMutationPublication publication = RetainedBarMutationPublication.combine(primaryPublication,
+                deferredState.nestedPublications());
+        if (nestedMutation) {
+            if (publication != null) {
+                previousState.deferNestedPublication(publication);
+            }
+            if (failure != null) {
+                rethrow(failure);
+            }
+            return null;
+        }
+        return publication;
+    }
+
+    private static void rethrow(final Throwable failure) {
+        if (failure instanceof RuntimeException runtimeException) {
+            throw runtimeException;
+        }
+        throw (Error) failure;
+    }
+
+    private MutationState currentMutationState() {
+        final MutationState state = MUTATION_STATE.get();
+        return state != null && state.bar == this ? state : null;
+    }
+
+    /**
+     * Applies the common OHLCV update for a trade without publishing its retained
+     * bar mutation. Subclasses that add trade fields call this before publishing
+     * their complete update.
+     */
+    @SuppressFBWarnings(value = "AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE", justification = "BaseBar mutators are intentionally mutable; concurrent callers must synchronize at the series boundary.")
+    final void applyTrade(Num tradeVolume, Num tradePrice) {
+        final MutationState previousState = MUTATION_STATE.get();
+        MutationState state = currentMutationState();
+        final boolean temporaryState = state == null;
+        if (temporaryState) {
+            state = new MutationState(this, previousState);
+            MUTATION_STATE.set(state);
+        }
+        try {
+            state.suppressionDepth++;
+            try {
+                addPrice(tradePrice);
+            } finally {
+                state.suppressionDepth--;
+                if (temporaryState) {
+                    if (previousState == null) {
+                        MUTATION_STATE.remove();
+                    } else {
+                        MUTATION_STATE.set(previousState);
+                    }
+                }
+            }
+            volume = volume.plus(tradeVolume);
+            amount = amount.plus(tradeVolume.multipliedBy(tradePrice));
+            trades++;
+        } catch (RuntimeException | Error failure) {
+            // A price hook can change OHLC before throwing. Restore the enclosing
+            // scope first so direct and nested calls publish through its sink.
+            publishRetainedBarMutationAfterFailure(failure);
+            throw failure;
+        }
+    }
+
+    final void publishRetainedBarMutationAfterFailure(final Throwable failure) {
+        try {
+            publishRetainedBarMutation();
+        } catch (RuntimeException | Error notificationFailure) {
+            if (notificationFailure != failure) {
+                failure.addSuppressed(notificationFailure);
+            }
+        }
+    }
+
+    /**
+     * Adds a price to the bar, folding the existing open and close prices into
+     * freshly initialized extrema so the OHLC invariant survives every mutation
+     * path.
+     */
     @Override
     public void addPrice(Num price) {
+        try {
+            applyTradePrice(price);
+            final MutationState state = currentMutationState();
+            if (state == null || state.suppressionDepth == 0) {
+                publishRetainedBarMutation();
+            }
+        } catch (RuntimeException | Error failure) {
+            publishRetainedBarMutationAfterFailure(failure);
+            throw failure;
+        }
+    }
+
+    private void applyTradePrice(Num price) {
         if (openPrice == null) {
             openPrice = price;
         }
+        final Num priorClose = closePrice;
         closePrice = price;
-        if (highPrice == null || highPrice.isLessThan(price)) {
+        if (highPrice == null) {
+            highPrice = price;
+            if (openPrice.isGreaterThan(highPrice)) {
+                highPrice = openPrice;
+            }
+            if (priorClose != null && priorClose.isGreaterThan(highPrice)) {
+                highPrice = priorClose;
+            }
+        } else if (highPrice.isLessThan(price)) {
             highPrice = price;
         }
-        if (lowPrice == null || lowPrice.isGreaterThan(price)) {
+        if (lowPrice == null) {
+            lowPrice = price;
+            if (openPrice.isLessThan(lowPrice)) {
+                lowPrice = openPrice;
+            }
+            if (priorClose != null && priorClose.isLessThan(lowPrice)) {
+                lowPrice = priorClose;
+            }
+        } else if (lowPrice.isGreaterThan(price)) {
             lowPrice = price;
         }
+    }
+
+    /**
+     * Validates the deserialized state so serialized bars written by older ta4j
+     * versions that predate the OHLC invariant are rejected instead of silently
+     * loading inconsistent prices.
+     *
+     * @param stream the object stream
+     * @throws IOException            if deserialization fails
+     * @throws ClassNotFoundException if a serialized class is unavailable
+     * @throws InvalidObjectException if the serialized prices violate the OHLC
+     *                                invariant
+     */
+    private void readObject(ObjectInputStream stream) throws IOException, ClassNotFoundException {
+        stream.defaultReadObject();
+        retainingSeriesOwner = null;
+        retainingSeries = null;
+        retainingSeriesQueue = null;
+        try {
+            validatePrices(openPrice, highPrice, lowPrice, closePrice);
+        } catch (IllegalArgumentException e) {
+            throw new InvalidObjectException("Serialized bar violates the OHLC invariant: " + e.getMessage());
+        }
+    }
+
+    final void publishRetainedBarMutation() {
+        final MutationState state = currentMutationState();
+        if (state != null) {
+            state.publicationCount++;
+            return;
+        }
+        final MutationState deferredState = MUTATION_STATE.get();
+        if (deferredState != null && deferredState.defersNestedPublication()) {
+            deferredState.deferNestedPublication(captureRetainedBarMutation(1, null, null));
+            return;
+        }
+        captureRetainedBarMutation(1, null, null).publish();
+    }
+
+    private RetainedBarMutationPublication captureRetainedBarMutation(final int publicationCount,
+            final BaseBarSeries origin, final Throwable failure) {
+        final List<RetainedSeriesMutation> mutations;
+        synchronized (this) {
+            purgeClearedRetainingSeries();
+            if (retainingSeriesOwner == null && retainingSeries == null) {
+                mutations = List.of();
+            } else {
+                final int registrationCount = retainingSeries == null ? 1 : retainingSeries.size();
+                mutations = new ArrayList<>(registrationCount);
+                if (retainingSeries == null) {
+                    final BaseBarSeries series = retainingSeriesOwner.get();
+                    if (series != null) {
+                        mutations.add(new RetainedSeriesMutation(series, retainingSeriesOwner.firstIndex()));
+                    }
+                } else {
+                    retainingSeries.forEach((registration, ignored) -> {
+                        final BaseBarSeries series = registration.get();
+                        if (series != null) {
+                            mutations.add(new RetainedSeriesMutation(series, registration.firstIndex()));
+                        }
+                    });
+                }
+            }
+        }
+        // The originating series holds its write lock for the full mutation.
+        // Publish its revision before unlock; nested peer callbacks remain deferred.
+        Throwable publicationFailure = failure;
+        if (origin != null) {
+            for (int index = mutations.size() - 1; index >= 0; index--) {
+                final RetainedSeriesMutation mutation = mutations.get(index);
+                if (mutation.series() == origin) {
+                    for (int publication = 0; publication < publicationCount; publication++) {
+                        try {
+                            origin.retainedBarMutated(this, mutation.index());
+                        } catch (RuntimeException | Error cause) {
+                            publicationFailure = RetainedBarMutationPublication.mergeFailures(publicationFailure,
+                                    cause);
+                        }
+                    }
+                    mutations.remove(index);
+                    break;
+                }
+            }
+        }
+        return new RetainedBarMutationPublication(this, mutations, publicationCount, publicationFailure);
     }
 
     /**
