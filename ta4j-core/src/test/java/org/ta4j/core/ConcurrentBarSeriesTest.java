@@ -1141,7 +1141,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
                     while (!super.tryLock()) {
                         if (System.nanoTime() >= deadline) {
-                            throw new AssertionError("detector acquired replay state before the series read lock");
+                            throw new AssertionError("writer waited on the detector replay held by this reader");
                         }
                         Thread.yield();
                     }

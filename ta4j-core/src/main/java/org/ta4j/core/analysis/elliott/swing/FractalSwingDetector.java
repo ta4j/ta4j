@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
@@ -18,7 +18,6 @@ import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseRealtimeBar;
-import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.indicators.RecentFractalSwingHighIndicator;
 import org.ta4j.core.indicators.RecentFractalSwingLowIndicator;
 import org.ta4j.core.indicators.RecentSwingIndicator;
@@ -105,13 +104,7 @@ public final class FractalSwingDetector implements SwingDetector {
             return new SwingDetectorResult(List.of(), List.of());
         }
         final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
-        return withSeriesReadLock(series, () -> {
-            final CausalReplayState state = replayStates
-                    .computeIfAbsent(new SeriesKey(series), ignored -> new ConcurrentHashMap<>())
-                    .computeIfAbsent(degree, ignored -> new CausalReplayState(series, lookbackLength, lookforwardLength,
-                            allowedEqualBars, degree));
-            return state.resultAt(clampedIndex);
-        });
+        return replayState(series, degree).resultAt(clampedIndex);
     }
 
     @Override
@@ -121,20 +114,23 @@ public final class FractalSwingDetector implements SwingDetector {
             return List.of();
         }
         final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
-        return withSeriesReadLock(series, () -> {
-            final CausalReplayState state = replayStates
-                    .computeIfAbsent(new SeriesKey(series), ignored -> new ConcurrentHashMap<>())
-                    .computeIfAbsent(ElliottDegree.MINUETTE, ignored -> new CausalReplayState(series, lookbackLength,
-                            lookforwardLength, allowedEqualBars, ElliottDegree.MINUETTE));
-            return state.pivotsAt(clampedIndex);
-        });
+        return replayState(series, ElliottDegree.MINUETTE).pivotsAt(clampedIndex);
     }
 
-    private static <T> T withSeriesReadLock(final BarSeries series, final Supplier<T> action) {
-        if (series instanceof ConcurrentBarSeries concurrentSeries) {
-            return concurrentSeries.withReadLock(action);
+    private CausalReplayState replayState(final BarSeries series, final ElliottDegree degree) {
+        final Map<ElliottDegree, CausalReplayState> seriesStates = replayStates.computeIfAbsent(new SeriesKey(series),
+                ignored -> new ConcurrentHashMap<>());
+        final CausalReplayState existing = seriesStates.get(degree);
+        if (existing != null) {
+            return existing;
         }
-        return action.get();
+        // Built outside computeIfAbsent: construction reads the series, and a
+        // caller already holding the series lock must never wait on a map bin
+        // whose owner is itself waiting for that lock.
+        final CausalReplayState created = new CausalReplayState(series, lookbackLength, lookforwardLength,
+                allowedEqualBars, degree);
+        final CausalReplayState raced = seriesStates.putIfAbsent(degree, created);
+        return raced == null ? created : raced;
     }
 
     /**
@@ -169,9 +165,31 @@ public final class FractalSwingDetector implements SwingDetector {
      * confirmed pivots instead of rebuilding the cumulative prefix at every index.
      * Queries below the merged position or detected series history changes fall
      * back to one full re-merge, which is exactly a from-scratch detection.
+     *
+     * <p>
+     * The swing indicators are never evaluated inside the series read scope: their
+     * caches compute misses under their own locks and then read bars, so holding
+     * the series lock around them would invert that order and deadlock against a
+     * queued writer. Each query instead observes the series history in a short
+     * bar-only read scope, replays without any series lock, and re-verifies the
+     * observation afterwards, retrying the replay when the history changed in
+     * between so a result is never served from bars of another history.
+     *
+     * <p>
+     * A replay holds {@link #replayLock} while it reads bars, so no query ever
+     * waits for that lock: a caller that may already hold the series lock would
+     * otherwise wait on a replay that is itself waiting for the series lock. A
+     * query finding the state busy replays on a detached state instead.
      */
     private static final class CausalReplayState {
 
+        /**
+         * Replays attempted before a query gives up on a series whose history keeps
+         * changing during evaluation.
+         */
+        private static final int MAX_REPLAY_ATTEMPTS = 8;
+
+        private final ReentrantLock replayLock = new ReentrantLock();
         private final BarSeries series;
         private RecentSwingIndicator swingHigh;
         private RecentSwingIndicator swingLow;
@@ -236,41 +254,92 @@ public final class FractalSwingDetector implements SwingDetector {
                     lookforwardLength, allowedEqualBars);
             this.swingLow = new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), lookbackLength,
                     lookforwardLength, allowedEqualBars);
-            if (series instanceof ConcurrentBarSeries concurrentSeries) {
-                concurrentSeries.withReadLock(
-                        () -> observeSeries(true, series.getBarSeriesChangeSnapshot(-1L), series.getBeginIndex()));
-            } else {
-                observeSeries(true, series.getBarSeriesChangeSnapshot(-1L), series.getBeginIndex());
-            }
+            series.withReadLock(
+                    () -> observeSeries(true, series.getBarSeriesChangeSnapshot(-1L), series.getBeginIndex()));
         }
 
         /**
          * Returns the detection result for {@code index}, extending the merged pivot
          * state incrementally when the query advances the as-of position.
          */
-        private synchronized List<SwingPivot> pivotsAt(final int index) {
-            advanceTo(index);
-            if (pivotViewDirty) {
-                cachedPivots = snapshotPivots();
-                pivotViewDirty = false;
+        private List<SwingPivot> pivotsAt(final int index) {
+            if (!replayLock.tryLock()) {
+                return detached().pivotsAt(index);
             }
-            return cachedPivots;
+            try {
+                replayCoherentlyTo(index);
+                if (pivotViewDirty) {
+                    cachedPivots = snapshotPivots();
+                    pivotViewDirty = false;
+                }
+                return cachedPivots;
+            } finally {
+                replayLock.unlock();
+            }
         }
 
-        private synchronized SwingDetectorResult resultAt(final int index) {
-            advanceTo(index);
-            if (resultDirty) {
-                cachedResult = snapshot();
-                resultDirty = false;
+        private SwingDetectorResult resultAt(final int index) {
+            if (!replayLock.tryLock()) {
+                return detached().resultAt(index);
             }
-            return cachedResult;
+            try {
+                replayCoherentlyTo(index);
+                if (resultDirty) {
+                    cachedResult = snapshot();
+                    resultDirty = false;
+                }
+                return cachedResult;
+            } finally {
+                replayLock.unlock();
+            }
+        }
+
+        /** Returns an unshared state whose full replay equals the shared one. */
+        private CausalReplayState detached() {
+            return new CausalReplayState(series, lookbackLength, lookforwardLength, allowedEqualBars, degree);
+        }
+
+        /**
+         * Replays up to {@code index} against one observed series history. The history
+         * is observed before the unlocked replay and verified after it; a change in
+         * between discards the replay and retries it against the newer history. Appends
+         * alone keep the replay, exactly as they do between queries.
+         *
+         * @throws IllegalStateException if the history changed during every attempt
+         */
+        private void replayCoherentlyTo(final int index) {
+            boolean historyChanged = seriesHistoryChanged(index, false);
+            for (int attempt = 1;; attempt++) {
+                if (historyChanged || index < lastScannedIndex) {
+                    reset(true);
+                }
+                IndexOutOfBoundsException evaluationFailure = null;
+                try {
+                    advanceTo(index);
+                } catch (IndexOutOfBoundsException exception) {
+                    // A concurrent head removal can evict bars the replay was
+                    // still reading; the verification below decides whether
+                    // this was a race or a genuine failure.
+                    evaluationFailure = exception;
+                }
+                historyChanged = seriesHistoryChanged(index, true);
+                if (!historyChanged && evaluationFailure == null) {
+                    return;
+                }
+                if (!historyChanged || attempt >= MAX_REPLAY_ATTEMPTS) {
+                    // Never keep a partial or stale replay behind an observation
+                    // that the next query would accept as current.
+                    reset(true);
+                    if (!historyChanged) {
+                        throw evaluationFailure;
+                    }
+                    throw new IllegalStateException("Series history changed during each of " + MAX_REPLAY_ATTEMPTS
+                            + " swing detection attempts; retry once the series is stable", evaluationFailure);
+                }
+            }
         }
 
         private void advanceTo(final int index) {
-            final boolean replayRewinds = index < lastScannedIndex;
-            if (replayRewinds || seriesHistoryChanged(index)) {
-                reset(true);
-            }
             if (series.isEmpty()) {
                 return;
             }
@@ -535,15 +604,19 @@ public final class FractalSwingDetector implements SwingDetector {
          * retained OHLC snapshots are validated when revisions are unavailable.
          * Untrackable bars are rescanned on every query; tracked bars retain
          * incremental replay.
+         *
+         * <p>
+         * The check reads bars only, so it runs inside the series' short read scope.
+         * When {@code verifyingReplay} is set it verifies a replay that just ended at
+         * {@code requestedIndex}: legacy snapshots are then revalidated only for
+         * appended bars, as for the next ascending query, instead of rescanning every
+         * retained bar after each replay.
          */
-        private boolean seriesHistoryChanged(final int requestedIndex) {
-            if (series instanceof ConcurrentBarSeries concurrentSeries) {
-                return concurrentSeries.withReadLock(() -> seriesHistoryChangedUnderReadLock(requestedIndex));
-            }
-            return seriesHistoryChangedUnderReadLock(requestedIndex);
+        private boolean seriesHistoryChanged(final int requestedIndex, final boolean verifyingReplay) {
+            return series.withReadLock(() -> seriesHistoryChangedUnderReadLock(requestedIndex, verifyingReplay));
         }
 
-        private boolean seriesHistoryChangedUnderReadLock(final int requestedIndex) {
+        private boolean seriesHistoryChangedUnderReadLock(final int requestedIndex, final boolean verifyingReplay) {
             // Read the revision and series bounds through one coherent change
             // snapshot, then verify the begin index was still read under that
             // same revision. Reading them as separate calls would let an
@@ -571,8 +644,8 @@ public final class FractalSwingDetector implements SwingDetector {
                 boolean changed = currentBeginIndex != observedBeginIndex
                         || (!revisionUnavailable && currentRevision != observedRevision)
                         || currentEndIndex < observedEndIndex;
-                final boolean validateLegacySnapshots = revisionUnavailable
-                        && (currentEndIndex > observedEndIndex || requestedIndex <= lastScannedIndex);
+                final boolean validateLegacySnapshots = revisionUnavailable && (currentEndIndex > observedEndIndex
+                        || (!verifyingReplay && requestedIndex <= lastScannedIndex));
                 final boolean validateUntrackableSnapshots = !observedUntrackableBars.isEmpty();
                 if (!changed && (validateLegacySnapshots || validateUntrackableSnapshots)) {
                     if (validateLegacySnapshots) {

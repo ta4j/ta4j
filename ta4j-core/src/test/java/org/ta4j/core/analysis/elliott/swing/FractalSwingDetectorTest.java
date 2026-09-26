@@ -11,10 +11,18 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SplittableRandom;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.Bar;
@@ -22,6 +30,8 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
@@ -553,6 +563,130 @@ class FractalSwingDetectorTest {
         @Override
         public void addPrice(final Num price) {
             delegate.addPrice(price);
+        }
+    }
+
+    @Test
+    void detectionDoesNotHoldSeriesLockWhileEvaluatingSwingIndicators() throws Exception {
+        final BarSeries source = noisySeries(40, 44L);
+        final int endIndex = source.getEndIndex();
+        final PausedBarRead pause = new PausedBarRead(5);
+        final ReentrantReadWriteLock seriesLock = new ReentrantReadWriteLock();
+        final ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source, seriesLock,
+                pause::beforeBarRead);
+        series.setMaximumBarCount(Integer.MAX_VALUE);
+        final FractalSwingDetector detector = new FractalSwingDetector(2);
+        // Creates the replay state first, so the paused read below comes from the
+        // swing indicators evaluating the ascending replay.
+        detector.detectPivots(series, series.getBeginIndex());
+        final Bar last = series.getLastBar();
+        final Bar appended = new BaseBar(last.getTimePeriod(), last.getEndTime(),
+                last.getEndTime().plus(last.getTimePeriod()), last.getClosePrice(), last.getClosePrice(),
+                last.getClosePrice(), last.getClosePrice(), last.getVolume(), last.getAmount(), 1L);
+        final ExecutorService threads = daemonThreads();
+        try {
+            final Future<List<SwingPivot>> detection = threads
+                    .submit(() -> pause.run(() -> detector.detectPivots(series, endIndex)));
+            awaitLatch(pause.paused);
+
+            // A feed writer must not wait for the detection's indicator work; its bound
+            // stays below the paused read's, so a held series lock surfaces here.
+            threads.submit(() -> series.addBar(appended)).get(2, TimeUnit.SECONDS);
+            final List<SwingPivot> expected = new FractalSwingDetector(2).detectPivots(source, endIndex);
+            // Nor does another query wait for the busy replay state.
+            assertThat(threads.submit(() -> detector.detectPivots(series, endIndex)).get(2, TimeUnit.SECONDS))
+                    .isEqualTo(expected);
+            pause.release.countDown();
+
+            assertThat(detection.get(5, TimeUnit.SECONDS)).isEqualTo(expected);
+            assertThat(seriesLock.getReadLockCount()).isZero();
+        } finally {
+            pause.release.countDown();
+            threads.shutdownNow();
+        }
+    }
+
+    @Test
+    void detectionReplaysAgainWhenHistoryChangesDuringEvaluation() throws Exception {
+        final BarSeries source = noisySeries(40, 45L);
+        final int endIndex = source.getEndIndex();
+        final PausedBarRead pause = new PausedBarRead(endIndex - 1);
+        final ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source,
+                new ReentrantReadWriteLock(), pause::beforeBarRead);
+        final FractalSwingDetector detector = new FractalSwingDetector(2);
+        detector.detectPivots(series, series.getBeginIndex());
+        final List<SwingPivot> before = new FractalSwingDetector(2).detectPivots(source, endIndex);
+        // Raises a pivot high the paused replay has already merged: its index stays
+        // a confirmed swing, so only a re-verified replay can report the new price.
+        final int replacedIndex = before.stream()
+                .filter(pivot -> pivot.type() == SwingPivotType.HIGH && pivot.index() <= endIndex - 5)
+                .reduce((earlier, later) -> later)
+                .orElseThrow()
+                .index();
+        final Bar original = series.getBar(replacedIndex);
+        final Num spike = original.getHighPrice().multipliedBy(series.numFactory().numOf(2));
+        final Bar replacement = new BaseBar(original.getTimePeriod(), original.getBeginTime(), original.getEndTime(),
+                original.getOpenPrice(), spike, original.getLowPrice(), original.getClosePrice(), original.getVolume(),
+                original.getAmount(), original.getTrades());
+        final ExecutorService threads = daemonThreads();
+        try {
+            final Future<List<SwingPivot>> detection = threads
+                    .submit(() -> pause.run(() -> detector.detectPivots(series, endIndex)));
+            awaitLatch(pause.paused);
+
+            threads.submit(() -> series.replaceBar(replacedIndex, replacement)).get(2, TimeUnit.SECONDS);
+            pause.release.countDown();
+
+            final List<SwingPivot> after = new FractalSwingDetector(2).detectPivots(series, endIndex);
+            assertThat(after).isNotEqualTo(before);
+            assertThat(detection.get(5, TimeUnit.SECONDS)).isEqualTo(after);
+        } finally {
+            pause.release.countDown();
+            threads.shutdownNow();
+        }
+    }
+
+    private static ExecutorService daemonThreads() {
+        return Executors.newFixedThreadPool(2, runnable -> {
+            final Thread thread = new Thread(runnable, "fractal-detector-lock-order");
+            thread.setDaemon(true);
+            return thread;
+        });
+    }
+
+    private static void awaitLatch(final CountDownLatch latch) {
+        try {
+            assertThat(latch.await(5, TimeUnit.SECONDS)).as("latch was not released").isTrue();
+        } catch (InterruptedException interruption) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError(interruption);
+        }
+    }
+
+    /**
+     * Pauses the first read of one bar index made by the thread inside
+     * {@link #run(Supplier)} until released.
+     */
+    private static final class PausedBarRead {
+        private final int pausedIndex;
+        private final AtomicReference<Thread> pausedThread = new AtomicReference<>();
+        private final CountDownLatch paused = new CountDownLatch(1);
+        private final CountDownLatch release = new CountDownLatch(1);
+
+        private PausedBarRead(final int pausedIndex) {
+            this.pausedIndex = pausedIndex;
+        }
+
+        private <T> T run(final Supplier<T> action) {
+            pausedThread.set(Thread.currentThread());
+            return action.get();
+        }
+
+        private void beforeBarRead(final int index) {
+            if (index == pausedIndex && Thread.currentThread() == pausedThread.get() && paused.getCount() > 0) {
+                paused.countDown();
+                awaitLatch(release);
+            }
         }
     }
 

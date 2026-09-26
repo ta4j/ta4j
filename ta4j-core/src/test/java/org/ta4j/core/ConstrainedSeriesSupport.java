@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.function.IntConsumer;
 import java.util.function.Supplier;
 
 import org.ta4j.core.bars.TimeBarBuilderFactory;
@@ -30,6 +31,27 @@ public final class ConstrainedSeriesSupport {
         ConcurrentBarSeries series = new ConcurrentBarSeries("observed-read-lease",
                 new ArrayList<>(source.getBarData()), source.getBeginIndex(), source.getEndIndex(), false,
                 source.numFactory(), new MockBarBuilderFactory(), readWriteLock);
+        series.setMaximumBarCount(source.getBarCount());
+        return series;
+    }
+
+    /**
+     * Builds a retained series backed by the supplied read/write lock that runs
+     * {@code beforeBarRead} with the requested index before each
+     * {@link BarSeries#getBar(int)} call acquires the lock, so a test can pause a
+     * reader in the middle of an indicator evaluation.
+     */
+    public static ConcurrentBarSeries seriesWithReadWriteLock(BarSeries source, ReadWriteLock readWriteLock,
+            IntConsumer beforeBarRead) {
+        ConcurrentBarSeries series = new ConcurrentBarSeries("observed-bar-reads", new ArrayList<>(source.getBarData()),
+                source.getBeginIndex(), source.getEndIndex(), false, source.numFactory(), new MockBarBuilderFactory(),
+                readWriteLock) {
+            @Override
+            public Bar getBar(int i) {
+                beforeBarRead.accept(i);
+                return super.getBar(i);
+            }
+        };
         series.setMaximumBarCount(source.getBarCount());
         return series;
     }
