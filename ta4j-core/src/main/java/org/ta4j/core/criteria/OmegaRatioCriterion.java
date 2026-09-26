@@ -3,7 +3,6 @@
  */
 package org.ta4j.core.criteria;
 
-import java.util.List;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
@@ -198,25 +197,37 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
-        if (tradingRecord == null || series.isEmpty()) {
+        if (tradingRecord == null) {
             return zero;
         }
+        return series.withReadLock(() -> calculateTradingRecord(series, tradingRecord, zero));
+    }
 
-        int beginIndex = tradingRecord.getStartIndex(series);
-        int endIndex = tradingRecord.getEndIndex(series);
-        if (endIndex <= beginIndex) {
+    private Num calculateTradingRecord(BarSeries series, TradingRecord tradingRecord, Num zero) {
+        if (series.isEmpty()) {
             return zero;
         }
 
         Returns returns = new Returns(series, tradingRecord, ReturnRepresentation.DECIMAL, equityCurveMode,
                 openPositionHandling);
-        Num thresholdNum = numFactory.numOf(threshold);
+        int beginIndex = tradingRecord.getStartIndex(series);
+        if (tradingRecord.getEndIndex(series) < beginIndex) {
+            return zero;
+        }
+
+        Num thresholdNum = series.numFactory().numOf(threshold);
         Num upsideExcess = zero;
         Num downsideShortfall = zero;
 
-        List<Num> returnRates = returns.getRawValues();
-        for (int i = beginIndex + 1; i <= endIndex; i++) {
-            Num returnRate = returnRates.get(i);
+        // Returns reports an undefined first retained slot as NaN, which the loop
+        // skips. A later recording start only counts its own bar when a position
+        // exited there; otherwise that bar's return is the move into the window.
+        long firstRateIndex = beginIndex + 1L;
+        if (beginIndex == returns.getBeginIndex() || exitsAt(tradingRecord, beginIndex)) {
+            firstRateIndex = beginIndex;
+        }
+        for (long i = firstRateIndex; i <= returns.getEndIndex(); i++) {
+            Num returnRate = returns.getValue((int) i);
             if (returnRate.isNaN()) {
                 continue;
             }
@@ -244,6 +255,15 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
     @Override
     public Optional<ReturnRepresentation> getReturnRepresentation() {
         return Optional.of(returnRepresentation);
+    }
+
+    private static boolean exitsAt(TradingRecord tradingRecord, int index) {
+        for (Position position : tradingRecord.getPositions()) {
+            if (position.isClosed() && position.getExit().getIndex() == index) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private Num toRepresentation(Num omegaRatio) {

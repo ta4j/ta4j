@@ -138,7 +138,8 @@ public final class ExcessReturns {
         }
 
         Num excessGrowth = one;
-        for (int i = previousIndex + 1; i <= currentIndex; i++) {
+        for (long cursor = (long) previousIndex + 1L; cursor <= currentIndex; cursor++) {
+            int i = (int) cursor;
             Num previousEquity = cashFlow.getValue(i - 1);
             Num currentEquity = cashFlow.getValue(i);
             Num riskFreeGrowth = riskFreeGrowth(i - 1, i, one);

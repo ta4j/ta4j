@@ -5,11 +5,11 @@ package org.ta4j.core.backtest;
 
 import java.util.Objects;
 import java.util.function.Consumer;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.function.IntFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
@@ -25,6 +25,25 @@ import org.ta4j.core.walkforward.WalkForwardConfig;
 /**
  * A manager for {@link BarSeries} objects used for backtesting. Allows to run a
  * {@link Strategy trading strategy} over the managed bar series.
+ *
+ * <p>
+ * The manager borrows the caller's {@link BarSeries} without copying it:
+ * strategies, indicators, execution models, and position sizing all observe the
+ * same instance, so signals and fills read the same bars. The manager never
+ * modifies the series.
+ * </p>
+ *
+ * <p>
+ * A run evaluates strategies over the bounds captured when it starts; bars
+ * appended while it runs are not evaluated, although an execution model that
+ * fills on the next bar may fill a signal on the run's last bar at a bar
+ * appended meanwhile. The manager holds no lock while strategies run, so a live
+ * {@link org.ta4j.core.ConcurrentBarSeries} keeps accepting writes and reads
+ * from other threads, and bars replaced or evicted inside the run's bounds are
+ * observed as they change. Use {@link BacktestExecutor} when a result must be
+ * tied to one unchanged window: it fills against that frozen window and fails
+ * if the window changes.
+ * </p>
  *
  * <p>
  * Default {@code run(...)} overloads create a fresh trading record through this
@@ -146,6 +165,9 @@ public class BarSeriesManager {
      * @param tradingRecordFactory factory for default run overloads
      * @since 0.22.4
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2", justification = "The manager borrows the caller's live series so "
+            + "strategies, indicators, execution models, and position sizing observe one coherent price revision; "
+            + "copying desynchronized signal and fill pricing.")
     public BarSeriesManager(BarSeries barSeries, CostModel transactionCostModel, CostModel holdingCostModel,
             TradeExecutionModel tradeExecutionModel, TradingRecordFactory tradingRecordFactory) {
         Objects.requireNonNull(barSeries, "barSeries");
@@ -153,7 +175,7 @@ public class BarSeriesManager {
         Objects.requireNonNull(holdingCostModel, "holdingCostModel");
         Objects.requireNonNull(tradeExecutionModel, "tradeExecutionModel");
         Objects.requireNonNull(tradingRecordFactory, "tradingRecordFactory");
-        this.barSeries = snapshotSeries(barSeries);
+        this.barSeries = barSeries;
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
         this.tradeExecutionModel = tradeExecutionModel;
@@ -163,8 +185,10 @@ public class BarSeriesManager {
     /**
      * @return the managed bar series
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the borrowed caller series by contract; see "
+            + "the class Javadoc ownership note.")
     public BarSeries getBarSeries() {
-        return snapshotSeries(barSeries);
+        return barSeries;
     }
 
     /**
@@ -245,7 +269,8 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, Num amount) {
-        return run(strategy, tradeType, amount, barSeries.getBeginIndex(), barSeries.getEndIndex());
+        Bounds bounds = currentBounds();
+        return run(strategy, tradeType, amount, bounds.begin(), bounds.end());
     }
 
     /**
@@ -275,7 +300,8 @@ public class BarSeriesManager {
      * @since 0.22.9
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, PositionSizer positionSizer) {
-        return run(strategy, tradeType, positionSizer, barSeries.getBeginIndex(), barSeries.getEndIndex());
+        Bounds bounds = currentBounds();
+        return run(strategy, tradeType, positionSizer, bounds.begin(), bounds.end());
     }
 
     /**
@@ -357,7 +383,8 @@ public class BarSeriesManager {
      * @since 0.22.4
      */
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, Num amount) {
-        return run(strategy, tradingRecord, amount, barSeries.getBeginIndex(), barSeries.getEndIndex());
+        Bounds bounds = currentBounds();
+        return run(strategy, tradingRecord, amount, bounds.begin(), bounds.end());
     }
 
     /**
@@ -397,7 +424,8 @@ public class BarSeriesManager {
      * @since 0.22.9
      */
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, PositionSizer positionSizer) {
-        return run(strategy, tradingRecord, positionSizer, barSeries.getBeginIndex(), barSeries.getEndIndex());
+        Bounds bounds = currentBounds();
+        return run(strategy, tradingRecord, positionSizer, bounds.begin(), bounds.end());
     }
 
     /**
@@ -416,6 +444,44 @@ public class BarSeriesManager {
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, PositionSizer positionSizer,
             int startIndex, int finishIndex) {
         return runWithPositionSizer(strategy, tradingRecord, positionSizer, startIndex, finishIndex);
+    }
+
+    /**
+     * Returns a manager with this manager's cost, execution and record settings
+     * whose fills, sizing contexts and run bounds come from {@code series}.
+     * Executions pass their frozen window here, so an execution model filling on
+     * the next bar can never use a bar appended to the live series after the window
+     * was captured. Strategies keep evaluating their own indicators.
+     */
+    BarSeriesManager withSeries(BarSeries series) {
+        return new BarSeriesManager(series, transactionCostModel, holdingCostModel, tradeExecutionModel,
+                tradingRecordFactory);
+    }
+
+    /**
+     * Reads the logical bounds under one read scope so a concurrent eviction or
+     * append cannot pair a begin index with a different revision's end index.
+     */
+    private Bounds currentBounds() {
+        return barSeries.withReadLock(() -> new Bounds(barSeries.getBeginIndex(), barSeries.getEndIndex()));
+    }
+
+    /**
+     * Returns the exclusive raw upper bound for the trailing exit scan, or an empty
+     * range when the run did not end at the logical series end. The bound is
+     * computed in long and clamped to {@code Integer.MAX_VALUE + 1}: bar and
+     * strategy APIs take int indices, so no representable bar exists beyond
+     * {@code Integer.MAX_VALUE}.
+     */
+    private long trailingRawEnd(int runEndIndex) {
+        if (runEndIndex != barSeries.getEndIndex()) {
+            return runEndIndex + 1L;
+        }
+        long rawEnd = (long) barSeries.getRemovedBarsCount() + barSeries.getBarData().size();
+        return Math.min((long) Integer.MAX_VALUE + 1, Math.max(runEndIndex + 1L, rawEnd));
+    }
+
+    private record Bounds(int begin, int end) {
     }
 
     private TradingRecord createDefaultTradingRecord(TradeType tradeType, int startIndex, int finishIndex) {
@@ -582,18 +648,20 @@ public class BarSeriesManager {
             }
         }
 
-        if (runEndIndex < Integer.MAX_VALUE && !tradingRecord.isClosed() && runEndIndex == barSeries.getEndIndex()) {
+        if (runEndIndex < Integer.MAX_VALUE && !tradingRecord.isClosed()) {
             // If the last position is still open and there are still bars after the
             // endIndex of the barSeries, then we execute the strategy on these bars
-            // to give an opportunity to close this position.
-            int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
-            for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
-                lastProcessedIndex = i;
-                tradeExecutionModel.onBar(i, tradingRecord, barSeries);
+            // to give an opportunity to close this position. Bars appended after
+            // the run started are not part of this run.
+            long trailingEnd = barSeries.withReadLock(() -> trailingRawEnd(runEndIndex));
+            for (long i = runEndIndex + 1L; i < trailingEnd; i++) {
+                int index = (int) i;
+                lastProcessedIndex = index;
+                tradeExecutionModel.onBar(index, tradingRecord, barSeries);
                 // For each bar after the end index of this run...
                 // --> Trying to close the last position
-                if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradeExecutionModel.execute(i, tradingRecord, barSeries, amountResolver.apply(i));
+                if (strategy.shouldOperate(index, tradingRecord)) {
+                    tradeExecutionModel.execute(index, tradingRecord, barSeries, amountResolver.apply(index));
                     break;
                 }
             }
@@ -656,15 +724,6 @@ public class BarSeriesManager {
             fallbackIndex = safeEnd;
         }
         return new ExecutionTarget(fallbackIndex, barSeries.getBar(fallbackIndex).getClosePrice());
-    }
-
-    private static BarSeries snapshotSeries(BarSeries barSeries) {
-        BarSeries series = Objects.requireNonNull(barSeries, "barSeries");
-        return new BaseBarSeriesBuilder().withName(series.getName())
-                .withNumFactory(series.numFactory())
-                .withBars(series.getBarData())
-                .withMaxBarCount(series.getMaximumBarCount())
-                .build();
     }
 
 }

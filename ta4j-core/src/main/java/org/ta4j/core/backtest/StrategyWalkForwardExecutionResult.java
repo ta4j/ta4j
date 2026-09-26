@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.backtest;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -13,7 +14,6 @@ import java.util.Optional;
 
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
@@ -26,7 +26,8 @@ import org.ta4j.core.walkforward.WalkForwardSplit;
 /**
  * Wraps walk-forward execution output for one strategy.
  *
- * @param barSeries     series used for execution
+ * @param barSeries     immutable, offset-preserving snapshot of the series
+ *                      window used for execution
  * @param strategy      evaluated strategy
  * @param config        walk-forward configuration
  * @param folds         fold-level execution results
@@ -44,7 +45,9 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
     /**
      * Creates a validated result with no recorded fold failures.
      *
-     * @param barSeries     series used for execution
+     * @param barSeries     series used for execution; its retained window is copied
+     *                      into an immutable, offset-preserving snapshot before
+     *                      storage
      * @param strategy      evaluated strategy
      * @param config        walk-forward configuration
      * @param folds         fold-level execution results
@@ -59,7 +62,9 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
     /**
      * Creates a validated result.
      *
-     * @param barSeries     series used for execution
+     * @param barSeries     series used for execution; its retained window is copied
+     *                      into an immutable, offset-preserving snapshot before
+     *                      storage
      * @param strategy      evaluated strategy
      * @param config        walk-forward configuration
      * @param folds         fold-level execution results
@@ -68,7 +73,7 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
      * @since 0.22.4
      */
     public StrategyWalkForwardExecutionResult {
-        barSeries = snapshotSeries(barSeries);
+        barSeries = BacktestExecutionResult.snapshot(Objects.requireNonNull(barSeries, "barSeries must not be null"));
         strategy = StrategySnapshots.copy(strategy);
         config = Objects.requireNonNull(config, "config");
         folds = List.copyOf(Objects.requireNonNull(folds, "folds"));
@@ -76,9 +81,16 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
         foldFailures = foldFailures == null ? List.of() : List.copyOf(foldFailures);
     }
 
+    /**
+     * Returns the immutable, offset-preserving series snapshot owned by this
+     * result.
+     *
+     * @return the immutable series snapshot captured for this execution
+     */
     @Override
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the immutable, offset-preserving series snapshot owned by this result.")
     public BarSeries barSeries() {
-        return snapshotSeries(barSeries);
+        return barSeries;
     }
 
     @Override
@@ -193,15 +205,6 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
     private List<Num> criterionValuesFor(AnalysisCriterion criterion, List<FoldResult> selectedFolds) {
         Objects.requireNonNull(criterion, "criterion");
         return selectedFolds.stream().map(fold -> criterion.calculate(barSeries, fold.tradingRecord())).toList();
-    }
-
-    private static BarSeries snapshotSeries(BarSeries barSeries) {
-        BarSeries series = Objects.requireNonNull(barSeries, "barSeries");
-        return new BaseBarSeriesBuilder().withName(series.getName())
-                .withNumFactory(series.numFactory())
-                .withBars(series.getBarData())
-                .withMaxBarCount(series.getMaximumBarCount())
-                .build();
     }
 
     /**

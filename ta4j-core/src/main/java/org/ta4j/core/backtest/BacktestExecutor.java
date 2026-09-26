@@ -5,6 +5,7 @@ package org.ta4j.core.backtest;
 
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
@@ -41,6 +42,18 @@ import java.util.stream.IntStream;
  * or weighted ranking workflows. For one strategy over one series, use
  * {@link BarSeriesManager} for lower setup overhead.
  * </p>
+ * <p>
+ * Each execution captures the managed series' current window once and runs
+ * every strategy over exactly that window, so all candidates are compared on
+ * the same bars and the result reports them as an immutable, index-preserving
+ * {@link BacktestExecutionResult#barSeries() series}. No series lock is held
+ * while strategies run, so a live {@link ConcurrentBarSeries} keeps accepting
+ * writes and serving other readers, and parallel scheduling applies to every
+ * series type. Bars appended during an execution are outside its window and are
+ * ignored. If bars inside the window are replaced, updated, or evicted while
+ * strategies run, the execution fails with an {@link IllegalStateException}
+ * rather than report results that mixed bar revisions.
+ * </p>
  */
 public class BacktestExecutor {
 
@@ -52,11 +65,8 @@ public class BacktestExecutor {
 
     /**
      * Strategies that failed during the most recent execution. Replaced atomically
-     * by
-     * {@link #executeAndKeepTopK(List, AnalysisCriterion, int, Consumer, Function)}
-     * and
-     * {@link #executeWithRuntimeReport(List, Trade.TradeType, Consumer, int, int, Function)}
-     * so callers can distinguish healthy results from skipped strategies.
+     * by every top-K and runtime-report execution so callers can distinguish
+     * healthy results from skipped strategies.
      */
     private volatile List<BacktestExecutionResult.StrategyFailure> latestFailures = List.of();
 
@@ -307,7 +317,8 @@ public class BacktestExecutor {
         Objects.requireNonNull(amount, "amount must not be null");
         validateParallelism(parallelism);
         return executeWithRuntimeReport(strategies, tradeType, null, DEFAULT_BATCH_SIZE, parallelism,
-                strategy -> seriesManager.run(strategy, tradeType, amount));
+                (manager, strategy, startIndex, finishIndex) -> manager.run(strategy, tradeType, amount, startIndex,
+                        finishIndex));
     }
 
     /**
@@ -335,7 +346,8 @@ public class BacktestExecutor {
         Objects.requireNonNull(positionSizer, "positionSizer must not be null");
         validateParallelism(parallelism);
         return executeWithRuntimeReport(strategies, tradeType, null, DEFAULT_BATCH_SIZE, parallelism,
-                strategy -> seriesManager.run(strategy, tradeType, positionSizer));
+                (manager, strategy, startIndex, finishIndex) -> manager.run(strategy, tradeType, positionSizer,
+                        startIndex, finishIndex));
     }
 
     /**
@@ -433,8 +445,8 @@ public class BacktestExecutor {
     public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, Num amount,
             Trade.TradeType tradeType, Consumer<Integer> progressCallback, int batchSize) {
         Objects.requireNonNull(amount, "amount must not be null");
-        return executeWithRuntimeReport(strategies, tradeType, progressCallback, batchSize, 0,
-                strategy -> seriesManager.run(strategy, tradeType, amount));
+        return executeWithRuntimeReport(strategies, tradeType, progressCallback, batchSize, 0, (manager, strategy,
+                startIndex, finishIndex) -> manager.run(strategy, tradeType, amount, startIndex, finishIndex));
     }
 
     /**
@@ -456,25 +468,36 @@ public class BacktestExecutor {
     public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, PositionSizer positionSizer,
             Trade.TradeType tradeType, Consumer<Integer> progressCallback, int batchSize) {
         Objects.requireNonNull(positionSizer, "positionSizer must not be null");
-        return executeWithRuntimeReport(strategies, tradeType, progressCallback, batchSize, 0,
-                strategy -> seriesManager.run(strategy, tradeType, positionSizer));
+        return executeWithRuntimeReport(strategies, tradeType, progressCallback, batchSize, 0, (manager, strategy,
+                startIndex, finishIndex) -> manager.run(strategy, tradeType, positionSizer, startIndex, finishIndex));
     }
 
     private BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, Trade.TradeType tradeType,
-            Consumer<Integer> progressCallback, int batchSize, int parallelism,
-            Function<Strategy, TradingRecord> tradingRecordRunner) {
+            Consumer<Integer> progressCallback, int batchSize, int parallelism, WindowRunner windowRunner) {
         Objects.requireNonNull(strategies, "strategies must not be null");
         Objects.requireNonNull(tradeType, "tradeType must not be null");
-        Objects.requireNonNull(tradingRecordRunner, "tradingRecordRunner must not be null");
-
+        Objects.requireNonNull(windowRunner, "windowRunner must not be null");
         if (batchSize <= 0) {
             throw new IllegalArgumentException("batchSize must be positive");
         }
+        return executeWithRuntimeReport(strategies, progressCallback, batchSize, parallelism, windowRunner,
+                BacktestExecutionResult.snapshot(seriesManager.getBarSeries()));
+    }
 
+    /**
+     * Runs every strategy against the live series, bounded to the baseline window,
+     * without holding the series lock: strategies and indicators take only their
+     * own short reads, so a live feed keeps writing and other threads keep reading.
+     * The result is verified against the baseline once all strategies finished.
+     */
+    private BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies,
+            Consumer<Integer> progressCallback, int batchSize, int parallelism, WindowRunner windowRunner,
+            BarSeries baseline) {
+        BarSeries managedSeries = seriesManager.getBarSeries();
         if (strategies.isEmpty()) {
             latestFailures = List.of();
-            return new BacktestExecutionResult(seriesManager.getBarSeries(), new ArrayList<>(),
-                    BacktestRuntimeReport.empty());
+            return BacktestExecutionResult.capture(managedSeries, new ArrayList<>(), BacktestRuntimeReport.empty(),
+                    List.of(), baseline);
         }
 
         Strategy[] strategyArray = strategies.toArray(Strategy[]::new);
@@ -488,24 +511,23 @@ public class BacktestExecutor {
         Consumer<Integer> effectiveCallback = ProgressCompletion.withTotalStrategies(
                 progressCallback != null ? progressCallback : ProgressCompletion.noOp(), strategyCount);
 
+        Function<Strategy, TradingStatement> statementRunner = statementRunner(windowRunner, baseline);
         long overallStart = System.nanoTime();
 
-        // For large strategy counts, use batched processing to prevent memory
-        // exhaustion. Use smaller batches for very large counts.
         if (parallelism > 0) {
             try {
-                executeBounded(strategyArray, statements, durations, tradingRecordRunner, effectiveCallback,
-                        parallelism, executionFailures);
+                executeBounded(strategyArray, statements, durations, statementRunner, effectiveCallback, parallelism,
+                        executionFailures);
             } catch (RuntimeException | Error failure) {
                 publishStrategyFailures(executionFailures);
                 throw failure;
             }
         } else if (usesBatchedExecution(strategyCount)) {
             int effectiveBatchSize = effectiveBatchSize(strategyCount, batchSize);
-            executeBatched(strategyArray, statements, durations, tradingRecordRunner, effectiveCallback,
-                    effectiveBatchSize, executionFailures);
+            executeBatched(strategyArray, statements, durations, statementRunner, effectiveCallback, effectiveBatchSize,
+                    executionFailures);
         } else {
-            executeUnbounded(strategyArray, statements, durations, tradingRecordRunner, effectiveCallback,
+            executeUnbounded(strategyArray, statements, durations, statementRunner, effectiveCallback,
                     executionFailures);
         }
 
@@ -537,8 +559,8 @@ public class BacktestExecutor {
 
         BacktestRuntimeReport runtimeReport = buildRuntimeReport(Arrays.copyOf(successfulDurations, successfulCount),
                 overallRuntime, strategyRuntimes);
-        return new BacktestExecutionResult(seriesManager.getBarSeries(), tradingStatements, runtimeReport,
-                executionFailures.stream().toList());
+        return BacktestExecutionResult.capture(managedSeries, tradingStatements, runtimeReport,
+                executionFailures.stream().toList(), baseline);
     }
 
     /**
@@ -702,9 +724,7 @@ public class BacktestExecutor {
         Objects.requireNonNull(amount, "amount");
         Objects.requireNonNull(tradeType, "tradeType");
         Objects.requireNonNull(config, "config");
-        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(seriesManager, tradingStatementGenerator,
-                new AnchoredExpandingWalkForwardSplitter());
-        return executor.execute(strategy, tradeType, amount, config, progressCallback);
+        return walkForwardExecutor().execute(strategy, tradeType, amount, config, progressCallback);
     }
 
     /**
@@ -757,9 +777,7 @@ public class BacktestExecutor {
         Objects.requireNonNull(positionSizer, "positionSizer");
         Objects.requireNonNull(tradeType, "tradeType");
         Objects.requireNonNull(config, "config");
-        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(seriesManager, tradingStatementGenerator,
-                new AnchoredExpandingWalkForwardSplitter());
-        return executor.execute(strategy, tradeType, positionSizer, config, progressCallback);
+        return walkForwardExecutor().execute(strategy, tradeType, positionSizer, config, progressCallback);
     }
 
     /**
@@ -810,8 +828,15 @@ public class BacktestExecutor {
         Objects.requireNonNull(tradeType, "tradeType");
         Objects.requireNonNull(config, "config");
 
-        BacktestExecutionResult backtestResult = executeWithRuntimeReport(List.of(strategy), amount, tradeType);
-        StrategyWalkForwardExecutionResult walkForwardResult = executeWalkForward(strategy, amount, tradeType, config);
+        // Both phases share one captured window so the combined result describes
+        // one set of bars.
+        BarSeries baseline = BacktestExecutionResult.snapshot(seriesManager.getBarSeries());
+        BacktestExecutionResult backtestResult = executeWithRuntimeReport(List.of(strategy), null, DEFAULT_BATCH_SIZE,
+                0, (manager, candidate, startIndex, finishIndex) -> manager.run(candidate, tradeType, amount,
+                        startIndex, finishIndex),
+                baseline);
+        StrategyWalkForwardExecutionResult walkForwardResult = walkForwardExecutor().execute(strategy, tradeType,
+                amount, config, null, baseline);
         return new BacktestAndWalkForwardResult(backtestResult, walkForwardResult);
     }
 
@@ -848,9 +873,13 @@ public class BacktestExecutor {
         Objects.requireNonNull(tradeType, "tradeType");
         Objects.requireNonNull(config, "config");
 
-        BacktestExecutionResult backtestResult = executeWithRuntimeReport(List.of(strategy), positionSizer, tradeType);
-        StrategyWalkForwardExecutionResult walkForwardResult = executeWalkForward(strategy, positionSizer, tradeType,
-                config);
+        BarSeries baseline = BacktestExecutionResult.snapshot(seriesManager.getBarSeries());
+        BacktestExecutionResult backtestResult = executeWithRuntimeReport(List.of(strategy), null, DEFAULT_BATCH_SIZE,
+                0, (manager, candidate, startIndex, finishIndex) -> manager.run(candidate, tradeType, positionSizer,
+                        startIndex, finishIndex),
+                baseline);
+        StrategyWalkForwardExecutionResult walkForwardResult = walkForwardExecutor().execute(strategy, tradeType,
+                positionSizer, config, null, baseline);
         return new BacktestAndWalkForwardResult(backtestResult, walkForwardResult);
     }
 
@@ -890,8 +919,8 @@ public class BacktestExecutor {
             AnalysisCriterion criterion, int topK, Consumer<Integer> progressCallback) {
         Objects.requireNonNull(amount, "amount must not be null");
         Objects.requireNonNull(tradeType, "tradeType must not be null");
-        return executeAndKeepTopK(strategies, criterion, topK, progressCallback,
-                strategy -> seriesManager.run(strategy, tradeType, amount));
+        return executeAndKeepTopK(strategies, criterion, topK, progressCallback, (manager, strategy, startIndex,
+                finishIndex) -> manager.run(strategy, tradeType, amount, startIndex, finishIndex));
     }
 
     /**
@@ -914,23 +943,24 @@ public class BacktestExecutor {
             Trade.TradeType tradeType, AnalysisCriterion criterion, int topK, Consumer<Integer> progressCallback) {
         Objects.requireNonNull(positionSizer, "positionSizer must not be null");
         Objects.requireNonNull(tradeType, "tradeType must not be null");
-        return executeAndKeepTopK(strategies, criterion, topK, progressCallback,
-                strategy -> seriesManager.run(strategy, tradeType, positionSizer));
+        return executeAndKeepTopK(strategies, criterion, topK, progressCallback, (manager, strategy, startIndex,
+                finishIndex) -> manager.run(strategy, tradeType, positionSizer, startIndex, finishIndex));
     }
 
     private BacktestExecutionResult executeAndKeepTopK(List<Strategy> strategies, AnalysisCriterion criterion, int topK,
-            Consumer<Integer> progressCallback, Function<Strategy, TradingRecord> tradingRecordRunner) {
+            Consumer<Integer> progressCallback, WindowRunner windowRunner) {
         Objects.requireNonNull(strategies, "strategies must not be null");
         Objects.requireNonNull(criterion, "criterion must not be null");
-        Objects.requireNonNull(tradingRecordRunner, "tradingRecordRunner must not be null");
-
+        Objects.requireNonNull(windowRunner, "windowRunner must not be null");
         if (topK <= 0) {
             throw new IllegalArgumentException("topK must be positive");
         }
+        BarSeries managedSeries = seriesManager.getBarSeries();
+        BarSeries baseline = BacktestExecutionResult.snapshot(managedSeries);
         if (strategies.isEmpty()) {
             latestFailures = List.of();
-            return new BacktestExecutionResult(seriesManager.getBarSeries(), new ArrayList<>(),
-                    BacktestRuntimeReport.empty());
+            return BacktestExecutionResult.capture(managedSeries, new ArrayList<>(), BacktestRuntimeReport.empty(),
+                    List.of(), baseline);
         }
         ConcurrentLinkedQueue<BacktestExecutionResult.StrategyFailure> executionFailures = new ConcurrentLinkedQueue<>();
         int strategyCount = strategies.size();
@@ -953,6 +983,7 @@ public class BacktestExecutor {
         int batchSize = strategyCount > LARGE_COUNT_THRESHOLD ? SMALL_BATCH_SIZE : DEFAULT_BATCH_SIZE;
 
         Strategy[] strategyArray = strategies.toArray(Strategy[]::new);
+        Function<Strategy, TradingStatement> statementRunner = statementRunner(windowRunner, baseline);
         long[] durationNanos = new long[strategyCount];
         boolean[] successFlags = new boolean[strategyCount];
 
@@ -963,20 +994,16 @@ public class BacktestExecutor {
 
             batchResults.clear();
 
-            // Evaluate batch in parallel
             IntStream.range(0, batchEnd - batchStart).parallel().forEach(localIndex -> {
                 int globalIndex = batchStartFinal + localIndex;
                 Strategy strategy = strategyArray[globalIndex];
 
                 long strategyStart = System.nanoTime();
                 try {
-                    TradingRecord tradingRecord = tradingRecordRunner.apply(strategy);
-                    TradingStatement statement = tradingStatementGenerator.generate(strategy, tradingRecord,
-                            seriesManager.getBarSeries());
+                    TradingStatement statement = statementRunner.apply(strategy);
                     long duration = System.nanoTime() - strategyStart;
                     durationNanos[globalIndex] = duration;
-                    Num criterionValue = criterion.calculate(seriesManager.getBarSeries(),
-                            statement.getTradingRecord());
+                    Num criterionValue = criterion.calculate(baseline, statement.getTradingRecord());
                     batchResults.add(new StrategyEvaluation(statement, criterionValue, globalIndex));
                     successFlags[globalIndex] = true;
                 } catch (RuntimeException e) {
@@ -1043,8 +1070,34 @@ public class BacktestExecutor {
         BacktestRuntimeReport runtimeReport = buildRuntimeReport(Arrays.copyOf(successfulDurations, successfulCount),
                 overallRuntime, strategyRuntimes);
 
-        return new BacktestExecutionResult(seriesManager.getBarSeries(), resultStatements, runtimeReport,
-                executionFailures.stream().toList());
+        return BacktestExecutionResult.capture(managedSeries, resultStatements, runtimeReport,
+                executionFailures.stream().toList(), baseline);
+    }
+
+    private StrategyWalkForwardExecutor walkForwardExecutor() {
+        return new StrategyWalkForwardExecutor(seriesManager, tradingStatementGenerator,
+                new AnchoredExpandingWalkForwardSplitter());
+    }
+
+    /**
+     * Binds a window runner to the baseline window: fills and statements use
+     * exactly the bars the result reports, while strategies evaluate their own
+     * indicators on the live series.
+     */
+    private Function<Strategy, TradingStatement> statementRunner(WindowRunner windowRunner, BarSeries baseline) {
+        BarSeriesManager windowManager = seriesManager.withSeries(baseline);
+        int startIndex = baseline.getBeginIndex();
+        int finishIndex = baseline.getEndIndex();
+        return strategy -> tradingStatementGenerator.generate(strategy,
+                windowRunner.run(windowManager, strategy, startIndex, finishIndex), baseline);
+    }
+
+    /**
+     * Runs one strategy with a window-bound manager over an explicit index range.
+     */
+    @FunctionalInterface
+    private interface WindowRunner {
+        TradingRecord run(BarSeriesManager manager, Strategy strategy, int startIndex, int finishIndex);
     }
 
     private Comparator<StrategyEvaluation> createBestFirstComparator(AnalysisCriterion criterion) {
@@ -1134,7 +1187,7 @@ public class BacktestExecutor {
      * ForkJoinPool nested-parallelism semantics.
      */
     private void executeBounded(Strategy[] strategyArray, TradingStatement[] statements, long[] durations,
-            Function<Strategy, TradingRecord> tradingRecordRunner, Consumer<Integer> progressCallback, int parallelism,
+            Function<Strategy, TradingStatement> statementRunner, Consumer<Integer> progressCallback, int parallelism,
             ConcurrentLinkedQueue<BacktestExecutionResult.StrategyFailure> failureLedger) {
         int workerCount = Math.min(parallelism, strategyArray.length);
         ExecutorService workerExecutor = Executors.newFixedThreadPool(workerCount);
@@ -1148,7 +1201,7 @@ public class BacktestExecutor {
                     int index;
                     while (!Thread.currentThread().isInterrupted()
                             && (index = nextStrategyIndex.getAndIncrement()) < strategyArray.length) {
-                        executeSingleStrategy(index, strategyArray, statements, durations, tradingRecordRunner,
+                        executeSingleStrategy(index, strategyArray, statements, durations, statementRunner,
                                 progressTracker, failureLedger);
                     }
                     if (Thread.currentThread().isInterrupted()) {
@@ -1181,7 +1234,7 @@ public class BacktestExecutor {
      * Executes strategies using unbounded parallel execution (standard behavior).
      */
     private void executeUnbounded(Strategy[] strategyArray, TradingStatement[] statements, long[] durations,
-            Function<Strategy, TradingRecord> tradingRecordRunner, Consumer<Integer> progressCallback,
+            Function<Strategy, TradingStatement> statementRunner, Consumer<Integer> progressCallback,
             ConcurrentLinkedQueue<BacktestExecutionResult.StrategyFailure> failureLedger) {
         int strategyCount = strategyArray.length;
         ProgressTracker progressTracker = ProgressTracker.create(progressCallback);
@@ -1191,8 +1244,8 @@ public class BacktestExecutor {
             indexStream = indexStream.parallel();
         }
 
-        indexStream.forEach(index -> executeSingleStrategy(index, strategyArray, statements, durations,
-                tradingRecordRunner, progressTracker, failureLedger));
+        indexStream.forEach(index -> executeSingleStrategy(index, strategyArray, statements, durations, statementRunner,
+                progressTracker, failureLedger));
     }
 
     /**
@@ -1201,13 +1254,13 @@ public class BacktestExecutor {
      * completed batch state can become unreachable before the next batch starts.
      */
     private void executeBatched(Strategy[] strategyArray, TradingStatement[] statements, long[] durations,
-            Function<Strategy, TradingRecord> tradingRecordRunner, Consumer<Integer> progressCallback, int batchSize,
+            Function<Strategy, TradingStatement> statementRunner, Consumer<Integer> progressCallback, int batchSize,
             ConcurrentLinkedQueue<BacktestExecutionResult.StrategyFailure> failureLedger) {
         int strategyCount = strategyArray.length;
         ProgressTracker progressTracker = ProgressTracker.create(progressCallback);
 
         forEachBatchIndex(strategyCount, batchSize, index -> executeSingleStrategy(index, strategyArray, statements,
-                durations, tradingRecordRunner, progressTracker, failureLedger));
+                durations, statementRunner, progressTracker, failureLedger));
     }
 
     /**
@@ -1216,15 +1269,12 @@ public class BacktestExecutor {
      * is always reported so parallel batches cannot deadlock on a failed strategy.
      */
     private void executeSingleStrategy(int index, Strategy[] strategyArray, TradingStatement[] statements,
-            long[] durations, Function<Strategy, TradingRecord> tradingRecordRunner, ProgressTracker progressTracker,
+            long[] durations, Function<Strategy, TradingStatement> statementRunner, ProgressTracker progressTracker,
             ConcurrentLinkedQueue<BacktestExecutionResult.StrategyFailure> failureLedger) {
         Strategy strategy = strategyArray[index];
         long strategyStart = System.nanoTime();
         try {
-            TradingRecord tradingRecord = tradingRecordRunner.apply(strategy);
-            TradingStatement statement = tradingStatementGenerator.generate(strategy, tradingRecord,
-                    seriesManager.getBarSeries());
-            statements[index] = statement;
+            statements[index] = statementRunner.apply(strategy);
             durations[index] = System.nanoTime() - strategyStart;
         } catch (RuntimeException e) {
             durations[index] = System.nanoTime() - strategyStart;

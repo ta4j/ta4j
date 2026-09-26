@@ -11,6 +11,7 @@ import org.ta4j.core.serialization.IndicatorSerializationException;
 
 import java.util.List;
 import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
 /**
@@ -69,8 +70,9 @@ public interface Indicator<T> {
      *         as a Stream
      */
     default Stream<T> stream() {
-        return IntStream.range(getBarSeries().getBeginIndex(), getBarSeries().getEndIndex() + 1)
-                .mapToObj(this::getValue);
+        int beginIndex = getBarSeries().getBeginIndex();
+        int endIndex = getBarSeries().getEndIndex();
+        return LongStream.range((long) beginIndex, (long) endIndex + 1L).mapToObj(index -> getValue((int) index));
     }
 
     /**

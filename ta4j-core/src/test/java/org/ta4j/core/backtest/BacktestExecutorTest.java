@@ -11,14 +11,17 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
@@ -30,7 +33,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Position;
@@ -48,7 +54,9 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.FixedRule;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.walkforward.WalkForwardConfig;
@@ -269,6 +277,87 @@ public class BacktestExecutorTest {
         assertEquals(strategies.size(), result.tradingStatements().size());
         assertEquals(strategies.size(), callbackCount.get());
         assertEquals(strategies.size(), lastCompletedCount.get());
+    }
+
+    @Test
+    public void resultCaptureFailsWhenSeriesChangesDuringExecution() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        BacktestExecutor executor = new BacktestExecutor(series);
+
+        assertThrows(IllegalStateException.class, () -> executor.executeWithRuntimeReport(List.of(strategy), numOf(1),
+                Trade.TradeType.BUY, completed -> series.getLastBar().addPrice(numOf(99))));
+
+    }
+
+    @Test
+    public void resultCaptureFailsWhenMaximumBarCountChangesDuringExecution() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        BacktestExecutor executor = new BacktestExecutor(series);
+
+        assertThrows(IllegalStateException.class, () -> executor.executeWithRuntimeReport(List.of(strategy), numOf(1),
+                Trade.TradeType.BUY, completed -> series.setMaximumBarCount(2)));
+    }
+
+    @Test
+    public void boundedExecutionOfConcurrentSeriesUsesWorkerThreads() {
+        ConcurrentBarSeries series = buildConcurrentSeries();
+        Set<Thread> runnerThreads = ConcurrentHashMap.newKeySet();
+        Rule recordsThread = (index, tradingRecord) -> {
+            runnerThreads.add(Thread.currentThread());
+            return false;
+        };
+        List<Strategy> strategies = List.of(new BaseStrategy(recordsThread, new FixedRule(1)),
+                new BaseStrategy(recordsThread, new FixedRule(2)));
+
+        BacktestExecutionResult result = new BacktestExecutor(series).executeWithRuntimeReport(strategies,
+                numFactory.one(), Trade.TradeType.BUY, 2);
+
+        assertEquals(2, result.tradingStatements().size());
+        assertFalse(runnerThreads.isEmpty());
+        assertFalse("bounded workers were bypassed", runnerThreads.contains(Thread.currentThread()));
+    }
+
+    @Test
+    public void executeWithRuntimeReportLetsLiveWritersAppendWhileStrategiesRun() {
+        ConcurrentBarSeries series = buildConcurrentSeries();
+        series.setMaximumBarCount(Integer.MAX_VALUE);
+        Strategy appending = strategyAppendingFromFeedThread(series, buildAppendedBar(series));
+        Strategy other = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+
+        BacktestExecutionResult result = new BacktestExecutor(series)
+                .executeWithRuntimeReport(List.of(appending, other), numFactory.one(), Trade.TradeType.BUY);
+
+        assertEquals("the feed append must not fail a strategy: " + result.strategyFailures(), 2,
+                result.tradingStatements().size());
+        assertEquals(3, series.getEndIndex());
+        assertEquals(0, result.barSeries().getBeginIndex());
+        assertEquals(2, result.barSeries().getEndIndex());
+        assertEquals(3, result.barSeries().getBarCount());
+        for (TradingStatement statement : result.tradingStatements()) {
+            assertEquals(0, statement.getTradingRecord().getStartIndex().intValue());
+            assertEquals(2, statement.getTradingRecord().getEndIndex().intValue());
+            for (Position position : statement.getTradingRecord().getPositions()) {
+                assertTrue("a fill used a bar appended after the window was captured",
+                        position.getExit() == null || position.getExit().getIndex() <= 2);
+            }
+        }
+    }
+
+    @Test
+    public void executeAndKeepTopKFailsWhenLiveWriterEvictsWindowBars() {
+        ConcurrentBarSeries series = buildConcurrentSeries();
+        Strategy appending = strategyAppendingFromFeedThread(series, buildAppendedBar(series));
+        Strategy other = new BaseStrategy(new FixedRule(0), new FixedRule(2));
+        BacktestExecutor executor = new BacktestExecutor(series);
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> executor.executeAndKeepTopK(List.of(appending, other), numFactory.one(), Trade.TradeType.BUY,
+                        new NumberOfBarsCriterion(), 2, null));
+
+        assertTrue(failure.getMessage(), failure.getMessage().contains("bars before index 1 were evicted"));
+        assertEquals(1, series.getBeginIndex());
     }
 
     @Test
@@ -831,6 +920,41 @@ public class BacktestExecutorTest {
         assertTrue(executor.getStrategyFailures().isEmpty());
     }
 
+    private ConcurrentBarSeries buildConcurrentSeries() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
+        return ConstrainedSeriesSupport.seriesWithReadWriteLock(source, new ReentrantReadWriteLock());
+    }
+
+    private Bar buildAppendedBar(ConcurrentBarSeries series) {
+        return series.barBuilder().timePeriod(Duration.ofMinutes(1)).closePrice(13).build();
+    }
+
+    /**
+     * Strategy whose first evaluation appends a bar from a separate feed thread and
+     * requires that write to complete while the strategy is still running.
+     */
+    private Strategy strategyAppendingFromFeedThread(ConcurrentBarSeries series, Bar appendedBar) {
+        AtomicBoolean appended = new AtomicBoolean();
+        Rule appendOnce = (index, tradingRecord) -> {
+            if (appended.compareAndSet(false, true)) {
+                Thread feed = new Thread(() -> series.addBar(appendedBar), "backtest-live-feed");
+                feed.setDaemon(true);
+                feed.start();
+                try {
+                    feed.join(5_000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("Interrupted while waiting for the feed writer", e);
+                }
+                assertFalse("the feed writer was blocked by the running backtest", feed.isAlive());
+            }
+            return index == 0;
+        };
+        // Exits on the window's last bar, after the append completed: a next-open
+        // fill there must not use the appended bar.
+        return new BaseStrategy(appendOnce, new FixedRule(2));
+    }
+
     /**
      * Strategy that pauses before throwing, allowing deterministic overlap of two
      * executor calls.
@@ -903,7 +1027,6 @@ public class BacktestExecutorTest {
                 config);
 
         BarSeries resultSeries = result.barSeries();
-        assertNotSame(series, resultSeries);
         assertEquals(series.getBarCount(), resultSeries.getBarCount());
         assertFalse(result.folds().isEmpty());
         assertEquals(result.folds().size(), result.runtimeReport().foldRuntimes().size());
@@ -962,7 +1085,6 @@ public class BacktestExecutorTest {
         assertFalse(result.walkForward().folds().isEmpty());
         BarSeries backtestSeries = result.backtest().barSeries();
         BarSeries walkForwardSeries = result.walkForward().barSeries();
-        assertNotSame(backtestSeries, walkForwardSeries);
         assertEquals(backtestSeries.getBarCount(), walkForwardSeries.getBarCount());
         assertEquals(backtestSeries.getName(), walkForwardSeries.getName());
     }

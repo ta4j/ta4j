@@ -13,13 +13,20 @@ import static org.ta4j.core.criteria.RatioCriterionTestSupport.buildDailySeries;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.ConcurrentBarSeriesBuilder;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -27,6 +34,24 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
 
     public OmegaRatioCriterionTest(NumFactory numFactory) {
         super(params -> new OmegaRatioCriterion((double) params[0]), numFactory);
+    }
+
+    @Test
+    public void explicitRecordEndExcludesFlatReturnSuffix() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 90d, 121d, 121d, 121d, 121d)
+                .build();
+        BaseTradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY, 0, 2, new ZeroCostModel(),
+                new ZeroCostModel());
+        record.operate(Trade.buyAt(0, series));
+        record.operate(Trade.sellAt(2, series));
+
+        Num actual = new OmegaRatioCriterion(0.05).calculate(series, record);
+
+        // Returns -10% then +34.4%; the flat bars after the record end would
+        // otherwise add 3 x 0.05 of shortfall below the threshold.
+        double expected = (121d / 90d - 1d - 0.05d) / (0.10d + 0.05d);
+        assertNumEquals(numFactory.numOf(expected), actual, 1e-12);
     }
 
     @Test
@@ -54,6 +79,30 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
         double expected = referenceOmega(returnsFromCloses(closes), threshold);
 
         assertNumEquals(numFactory.numOf(expected), actual, 1e-12);
+    }
+
+    @Test
+    public void skipsUnseededRecordStartPlaceholderAtNonzeroThreshold() {
+        BarSeries series = buildSeries("omega_record_window", new double[] { 100d, 100d, 120d });
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, 1, 2, null, null);
+        tradingRecord.enter(1, series.getBar(1).getClosePrice(), numFactory.one());
+        tradingRecord.exit(2, series.getBar(2).getClosePrice(), numFactory.one());
+
+        Num actual = new OmegaRatioCriterion(0.05d).calculate(series, tradingRecord);
+
+        assertTrue(actual.isNaN());
+    }
+
+    @Test
+    public void includesSameBarExitAtBoundedRecordingStart() {
+        BarSeries series = buildSeries("omega_same_bar", new double[] { 100d, 100d, 100d });
+        BaseTradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY, 1, 2, null, null);
+        record.enter(1, numFactory.numOf(100), numFactory.one());
+        record.exit(1, numFactory.numOf(90), numFactory.one());
+        record.enter(2, numFactory.numOf(100), numFactory.one());
+        record.exit(2, numFactory.numOf(120), numFactory.one());
+
+        assertNumEquals(numFactory.two(), new OmegaRatioCriterion().calculate(series, record), 1e-12);
     }
 
     @Test
@@ -133,6 +182,40 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
         Num actual = criterion.calculate(series, new BaseTradingRecord());
 
         assertNumEquals(numFactory.zero(), actual, 0d);
+    }
+
+    @Test
+    public void seededSingleRetainedReturnParticipatesInRatio() {
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d).build();
+        rolling.setMaximumBarCount(1);
+        Trade entry = Trade.buyAt(0, rolling);
+        rolling.barBuilder().closePrice(110d).add();
+        TradingRecord record = new BaseTradingRecord(entry, Trade.sellAt(1, rolling));
+
+        OmegaRatioCriterion criterion = (OmegaRatioCriterion) getCriterion(0d);
+
+        // The seeded +10% return is upside with no shortfall (NaN); dropping it
+        // would leave no observations and score zero.
+        assertTrue(criterion.calculate(rolling, record).isNaN());
+        assertNumEquals(numFactory.zero(), ((OmegaRatioCriterion) getCriterion(0.15d)).calculate(rolling, record));
+    }
+
+    @Test
+    public void keepsReturnsAnchoredWhenRetentionAdvancesAfterMaterialization() {
+        AtomicBoolean appendAfterLock = new AtomicBoolean();
+        ConcurrentBarSeries rolling = ConstrainedSeriesSupport.rollingSeriesWithAppendAfterReadLock(numFactory,
+                appendAfterLock, 100d, 120d, 90d);
+        BaseTradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY, 0, 1, null, null);
+        record.enter(0, rolling.getBar(0).getClosePrice(), numFactory.one());
+        record.exit(1, rolling.getBar(1).getClosePrice(), numFactory.one());
+        appendAfterLock.set(true);
+
+        Num actual = new OmegaRatioCriterion().calculate(rolling, record);
+
+        // The anchored +20% return is upside with no shortfall (NaN); a rebased
+        // lookup would read no return and score zero.
+        assertTrue(actual.isNaN());
+        assertEquals(1, rolling.getBeginIndex());
     }
 
     @Test
@@ -230,5 +313,72 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
             return upsideExcess == 0d ? 0d : Double.NaN;
         }
         return upsideExcess / downsideShortfall;
+    }
+
+    @Test
+    public void scansTerminalWindowWithoutIndexWrap() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 12d, 11d).build();
+        BarSeries terminal = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(Integer.MAX_VALUE - 2)
+                .build();
+        var record = new BaseTradingRecord(Trade.buyAt(Integer.MAX_VALUE - 2, terminal),
+                Trade.sellAt(Integer.MAX_VALUE, terminal));
+
+        Num ratio = new OmegaRatioCriterion(ReturnRepresentation.DECIMAL, OpenPositionHandling.MARK_TO_MARKET)
+                .calculate(terminal, record);
+
+        // Returns +20% then -1/12 around the terminal index: 0.2 / (1/12).
+        assertNumEquals(numFactory.numOf(2.4), ratio, 1e-12);
+    }
+
+    @Test
+    public void indexesReturnsFromRetainedWindowOffsets() {
+        BarSeries full = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 12d, 11d).build();
+        // Retained window starting one bar later: return slots must map against
+        // getBeginIndex(), not absolute indexes.
+        BarSeries live = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(full.getBarData().subList(1, 3))
+                .withBeginIndex(1)
+                .build();
+        var record = new BaseTradingRecord(Trade.buyAt(1, live), Trade.sellAt(2, live));
+
+        Num ratio = new OmegaRatioCriterion(ReturnRepresentation.DECIMAL, OpenPositionHandling.MARK_TO_MARKET)
+                .calculate(live, record);
+
+        // The single retained return (11 / 12 - 1) is negative, so there is
+        // no weighted upside and the ratio collapses to zero.
+        assertNumEquals(0, ratio);
+    }
+
+    @Test
+    public void includesMaterializedTrailingExitBeyondLogicalEnd() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("omega-trailing-exit", numFactory, 1,
+                100d, 110d, 55d);
+        TradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+
+        Num ratio = new OmegaRatioCriterion(ReturnRepresentation.DECIMAL, OpenPositionHandling.MARK_TO_MARKET)
+                .calculate(series, record);
+
+        assertNumEquals(numFactory.numOf(0.2d), ratio, 1e-12);
+    }
+
+    @Test
+    public void omegaIncludesSeededFirstWindowReturn() {
+        // The entry predates the retained window; the seeded -50% loss is a
+        // real downside observation even though it lands in the first slot.
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        rolling.setMaximumBarCount(2);
+        rolling.barBuilder().closePrice(100d).add();
+        Trade entry = Trade.buyAt(0, rolling);
+        rolling.barBuilder().closePrice(50d).add();
+        rolling.barBuilder().closePrice(120d).add();
+        var record = new BaseTradingRecord(entry, Trade.sellAt(2, rolling));
+
+        Num ratio = new OmegaRatioCriterion(ReturnRepresentation.DECIMAL, OpenPositionHandling.MARK_TO_MARKET)
+                .calculate(rolling, record);
+
+        // Upside excess 1.4 over downside shortfall 0.5.
+        assertNumEquals(numFactory.numOf(2.8d), ratio);
     }
 }

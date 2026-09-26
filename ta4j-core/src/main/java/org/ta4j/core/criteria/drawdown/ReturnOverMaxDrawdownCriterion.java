@@ -72,7 +72,6 @@ import org.ta4j.core.num.Num;
  */
 public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsCriterion {
 
-    private final MaximumDrawdownCriterion maxDrawdownCriterion;
     private final ReturnRepresentation returnRepresentation;
 
     /**
@@ -149,7 +148,6 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
             OpenPositionHandling openPositionHandling) {
         super(equityCurveMode, openPositionHandling);
         this.returnRepresentation = Objects.requireNonNull(returnRepresentation, "returnRepresentation");
-        this.maxDrawdownCriterion = new MaximumDrawdownCriterion(equityCurveMode, openPositionHandling);
     }
 
     @Override
@@ -159,16 +157,12 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
             // neutral value (0 for DECIMAL, 1 for MULTIPLICATIVE) instead of a raw zero.
             return returnRepresentation.toRepresentationFromRateOfReturn(series.numFactory().zero());
         }
-        Num maxDrawdown = maxDrawdownCriterion.calculate(series, position);
-        Num netReturn = calculateNetReturn(series, position);
-        return toRepresentation(netReturn, maxDrawdown);
+        return series.withReadLock(() -> calculatePosition(series, position));
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        Num maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
-        Num netReturn = calculateNetReturn(series, tradingRecord);
-        return toRepresentation(netReturn, maxDrawdown);
+        return series.withReadLock(() -> calculateTradingRecord(series, tradingRecord));
     }
 
     @Override
@@ -182,23 +176,25 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    private Num calculateNetReturn(BarSeries series, Position position) {
+    private Num calculatePosition(BarSeries series, Position position) {
         CashFlow cashFlow = new CashFlow(series, position, equityCurveMode);
-        Num one = series.numFactory().one();
-        return cashFlow.getValue(position.getExit().getIndex()).minus(one);
+        Num maxDrawdown = Drawdown.amount(series, null, cashFlow);
+        return toRepresentation(calculateNetReturn(cashFlow), maxDrawdown);
     }
 
-    private Num calculateNetReturn(BarSeries series, TradingRecord tradingRecord) {
-        if (tradingRecord == null) {
-            return series.numFactory().zero();
-        }
-        int endIndex = tradingRecord.getEndIndex(series);
-        if (endIndex < series.getBeginIndex()) {
-            return series.numFactory().zero();
-        }
+    private Num calculateTradingRecord(BarSeries series, TradingRecord tradingRecord) {
         CashFlow cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
-        Num one = series.numFactory().one();
-        return cashFlow.getValue(endIndex).minus(one);
+        Num maxDrawdown = Drawdown.amount(series, tradingRecord, cashFlow);
+        return toRepresentation(calculateNetReturn(cashFlow), maxDrawdown);
+    }
+
+    private Num calculateNetReturn(CashFlow cashFlow) {
+        int terminalIndex = cashFlow.getEndIndex();
+        if (terminalIndex < cashFlow.getBeginIndex()) {
+            return cashFlow.getBarSeries().numFactory().zero();
+        }
+        Num one = cashFlow.getBarSeries().numFactory().one();
+        return cashFlow.getValue(terminalIndex).minus(one);
     }
 
     private Num toRepresentation(Num netReturn, Num maxDrawdown) {

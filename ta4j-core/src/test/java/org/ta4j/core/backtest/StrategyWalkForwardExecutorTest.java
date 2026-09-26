@@ -6,7 +6,6 @@ package org.ta4j.core.backtest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -14,22 +13,34 @@ import static org.junit.Assert.assertTrue;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.ConcurrentBarSeriesBuilder;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Position;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.criteria.EnterAndHoldCriterion;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
+import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.reports.TradingStatementGenerator;
 import org.ta4j.core.rules.BooleanRule;
 import org.ta4j.core.walkforward.AnchoredExpandingWalkForwardSplitter;
 import org.ta4j.core.walkforward.WalkForwardConfig;
@@ -57,6 +68,51 @@ public class StrategyWalkForwardExecutorTest {
         assertTrue(result.holdoutFold().isPresent());
         assertFalse(result.inSampleFolds().isEmpty());
         assertFalse(result.outOfSampleFolds().isEmpty());
+    }
+
+    @Test
+    public void splitsTheCapturedWindowWhileAFeedAppends() {
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(buildSeries(48),
+                new ReentrantReadWriteLock());
+        series.setMaximumBarCount(Integer.MAX_VALUE);
+        Bar appended = series.barBuilder().timePeriod(Duration.ofDays(1)).closePrice(200).build();
+        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(
+                new BarSeriesManager(series, new ZeroCostModel(), new ZeroCostModel(), new TradeOnCurrentCloseModel()),
+                new TradingStatementGenerator(), (target, config) -> {
+                    series.addBar(appended);
+                    return new AnchoredExpandingWalkForwardSplitter().split(target, config);
+                });
+
+        StrategyWalkForwardExecutionResult result = executor.execute(
+                new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE), Trade.TradeType.BUY, numFactory.one(),
+                walkForwardConfig(), null);
+
+        assertEquals(48, series.getEndIndex());
+        assertEquals(47, result.barSeries().getEndIndex());
+        assertFalse(result.folds().isEmpty());
+        for (StrategyWalkForwardExecutionResult.FoldResult fold : result.folds()) {
+            assertTrue(fold.split().testEnd() <= 47);
+            assertEquals(fold.split().testStart(), fold.tradingRecord().getStartIndex().intValue());
+            assertEquals(fold.split().testEnd(), fold.tradingRecord().getEndIndex().intValue());
+        }
+    }
+
+    @Test
+    public void failsWhenRetentionEvictsWindowBarsDuringFolds() {
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(buildSeries(48),
+                new ReentrantReadWriteLock());
+        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(
+                new BarSeriesManager(series, new ZeroCostModel(), new ZeroCostModel(), new TradeOnCurrentCloseModel()),
+                new TradingStatementGenerator(), (target, config) -> {
+                    series.setMaximumBarCount(2);
+                    return new AnchoredExpandingWalkForwardSplitter().split(target, config);
+                });
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> executor.execute(new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE), Trade.TradeType.BUY,
+                        numFactory.one(), walkForwardConfig(), null));
+
+        assertTrue(failure.getMessage(), failure.getMessage().contains("bars before index 46 were evicted"));
     }
 
     @Test
@@ -167,21 +223,42 @@ public class StrategyWalkForwardExecutorTest {
     }
 
     @Test
-    public void resultCopiesBarSeriesAndAccessorReturnsSnapshots() {
-        BarSeries series = buildSeries(48);
+    public void resultRetainsStableSeriesForPriceDependentMetricsAfterSourceMutationAndRetentionAdvance() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new MockBarBuilderFactory())
+                .withBars(buildSeries(48).getBarData())
+                .withMaxBarCount(48)
+                .build();
         Strategy strategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
-        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(series);
+        StrategyWalkForwardExecutionResult result = new StrategyWalkForwardExecutor(series).execute(strategy,
+                walkForwardConfig());
+        AnalysisCriterion criterion = EnterAndHoldCriterion.enterAndHoldReturnCriterion();
 
-        StrategyWalkForwardExecutionResult result = executor.execute(strategy, walkForwardConfig());
-        BarSeries firstSnapshot = result.barSeries();
-        BarSeries secondSnapshot = result.barSeries();
-        series.barBuilder().closePrice(250).add();
+        List<Num> expectedCriterionValues = result.criterionValues(criterion);
+        Map<String, Num> expectedCriterionValuesByFold = result.criterionValuesByFold(criterion);
+        Num expectedHoldoutValue = result.holdoutCriterionValue(criterion).orElseThrow();
+        BarSeries resultSeries = result.barSeries();
+        int resultBeginIndex = resultSeries.getBeginIndex();
+        int resultEndIndex = resultSeries.getEndIndex();
+        int resultBarCount = resultSeries.getBarCount();
+        int resultRemovedBarsCount = resultSeries.getRemovedBarsCount();
+        int resultMaximumBarCount = resultSeries.getMaximumBarCount();
 
-        assertNotSame(series, firstSnapshot);
-        assertNotSame(firstSnapshot, secondSnapshot);
-        assertEquals(48, firstSnapshot.getBarCount());
-        assertEquals(48, secondSnapshot.getBarCount());
-        assertEquals(48, result.barSeries().getBarCount());
+        int sourceEndIndex = series.getEndIndex();
+        series.getBar(sourceEndIndex).addPrice(numFactory.numOf(1_000));
+        series.setMaximumBarCount(2);
+
+        assertEquals(numFactory.numOf(1_000), series.getBar(sourceEndIndex).getClosePrice());
+        assertEquals(sourceEndIndex - 1, series.getBeginIndex());
+        assertEquals(2, series.getBarCount());
+        assertEquals(resultBeginIndex, result.barSeries().getBeginIndex());
+        assertEquals(resultEndIndex, result.barSeries().getEndIndex());
+        assertEquals(resultBarCount, result.barSeries().getBarCount());
+        assertEquals(resultRemovedBarsCount, result.barSeries().getRemovedBarsCount());
+        assertEquals(resultMaximumBarCount, result.barSeries().getMaximumBarCount());
+        assertEquals(expectedCriterionValues, result.criterionValues(criterion));
+        assertEquals(expectedCriterionValuesByFold, result.criterionValuesByFold(criterion));
+        assertEquals(expectedHoldoutValue, result.holdoutCriterionValue(criterion).orElseThrow());
     }
 
     @Test

@@ -7,6 +7,7 @@ import java.io.Serializable;
 import java.io.Serial;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -125,6 +126,42 @@ public interface BarSeries extends Serializable {
      * @return the raw bar data
      */
     List<Bar> getBarData();
+
+    /**
+     * Executes a read-only action within this series' coherent read scope, so
+     * several reads (bounds, bars, revision) describe one state of the series.
+     * Concurrent implementations such as {@link ConcurrentBarSeries} hold their
+     * read lock for the duration of the action; other series run it directly.
+     * Views, such as the series returned by an indicator, delegate the scope to
+     * their source. Scopes nest on the same thread.
+     *
+     * <p>
+     * Keep the action short and limited to reading bar data. Do not evaluate
+     * indicators or strategies, invoke callbacks, or wait on other threads inside
+     * it: indicator caches take their own locks and then read bars, so holding the
+     * series lock while taking theirs can deadlock with another reader once a
+     * writer is waiting, and every writer is delayed until the action returns.
+     * </p>
+     *
+     * @param action read-only action
+     * @since 0.25.1
+     */
+    default void withReadLock(Runnable action) {
+        action.run();
+    }
+
+    /**
+     * Executes a read-only computation within this series' coherent read scope. See
+     * {@link #withReadLock(Runnable)} for the contract.
+     *
+     * @param action read-only computation
+     * @param <T>    result type
+     * @return the computation result
+     * @since 0.25.1
+     */
+    default <T> T withReadLock(Supplier<T> action) {
+        return action.get();
+    }
 
     /**
      * Returns a monotonically increasing revision for changes to already published

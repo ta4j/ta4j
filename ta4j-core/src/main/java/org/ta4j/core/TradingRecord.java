@@ -377,9 +377,11 @@ public interface TradingRecord extends Serializable {
      * @param series the bar series, not null
      * @return the {@link #getEndIndex()} if not null and less than
      *         {@link BarSeries#getEndIndex()}, otherwise
-     *         {@link BarSeries#getEndIndex()}
+     *         {@link BarSeries#getEndIndex()}. This is a logical execution bound;
+     *         retained raw bars beyond it do not extend the benchmark window.
      */
     default int getEndIndex(BarSeries series) {
-        return getEndIndex() == null ? series.getEndIndex() : Math.min(getEndIndex(), series.getEndIndex());
+        Integer endIndex = getEndIndex();
+        return endIndex == null ? series.getEndIndex() : Math.min(endIndex, series.getEndIndex());
     }
 }

@@ -7,17 +7,21 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import java.time.Duration;
+import java.time.Instant;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.reports.BaseTradingStatement;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.serialization.DurationTypeAdapter;
 
-import java.time.Duration;
 import java.util.*;
 
 /**
@@ -40,11 +44,337 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
      * @param strategyFailures  strategies skipped because execution failed
      */
     public BacktestExecutionResult {
-        barSeries = snapshotSeries(barSeries);
+        barSeries = snapshotSeries(Objects.requireNonNull(barSeries, "barSeries must not be null"));
         tradingStatements = List
                 .copyOf(Objects.requireNonNull(tradingStatements, "tradingStatements must not be null"));
         runtimeReport = Objects.requireNonNull(runtimeReport, "runtimeReport must not be null");
         strategyFailures = List.copyOf(Objects.requireNonNull(strategyFailures, "strategyFailures must not be null"));
+    }
+
+    /**
+     * Captures an immutable, index-preserving copy of the source's current window
+     * under one read scope. Executions run against the source bounded to this
+     * window and report it as their result series.
+     */
+    static BarSeries snapshot(BarSeries source) {
+        return snapshotSeries(Objects.requireNonNull(source, "source must not be null"));
+    }
+
+    /**
+     * Fails when the source changed inside the baseline window after the baseline
+     * was captured. Bars appended beyond the window are allowed; replaced, updated
+     * or evicted bars inside it are not, because strategies that ran before and
+     * after the change observed different data than the baseline reports.
+     *
+     * @throws IllegalStateException if the window changed
+     */
+    static void verifyUnchanged(BarSeries source, BarSeries baseline) {
+        if (!(baseline instanceof FrozenBarSeries frozenBaseline)) {
+            throw new IllegalArgumentException("baseline must be a frozen result series");
+        }
+        String change = source.withReadLock(() -> frozenBaseline.changeSince(source));
+        if (change != null) {
+            throw new IllegalStateException(String.format(
+                    "Bar series '%s' changed inside the backtest window [%d, %d] while strategies were running: %s. "
+                            + "Results would mix bar revisions. Pause writes to the series while backtesting, or "
+                            + "build the strategies on a copy the feed does not update (for example "
+                            + "series.getSubSeries(begin, end), which also leaves out the forming last bar).",
+                    frozenBaseline.getName(), frozenBaseline.getBeginIndex(), frozenBaseline.getEndIndex(), change));
+        }
+    }
+
+    /**
+     * Verifies the baseline window and builds the result on it.
+     */
+    static BacktestExecutionResult capture(BarSeries source, List<TradingStatement> tradingStatements,
+            BacktestRuntimeReport runtimeReport, List<StrategyFailure> strategyFailures, BarSeries baseline) {
+        verifyUnchanged(source, baseline);
+        return new BacktestExecutionResult(baseline, tradingStatements, runtimeReport, strategyFailures);
+    }
+
+    private static BarSeries snapshotSeries(BarSeries source) {
+        if (source instanceof FrozenBarSeries) {
+            return source;
+        }
+        return source.withReadLock(() -> snapshotSeriesUnlocked(source));
+    }
+
+    private static BarSeries snapshotSeriesUnlocked(BarSeries source) {
+        List<Bar> frozenBars = source.getBarData().stream().<Bar>map(ImmutableBar::new).toList();
+        return new FrozenBarSeries(source, frozenBars);
+    }
+
+    private static final class FrozenBarSeries implements BarSeries {
+        private final String name;
+        private final NumFactory numFactory;
+        private final List<Bar> bars;
+        private final int beginIndex;
+        private final int endIndex;
+        private final int removedBarsCount;
+        private final int maximumBarCount;
+        private final long revision;
+
+        private FrozenBarSeries(BarSeries source, List<Bar> bars) {
+            this.name = source.getName();
+            this.numFactory = source.numFactory();
+            this.bars = List.copyOf(bars);
+            this.beginIndex = source.getBeginIndex();
+            this.endIndex = source.getEndIndex();
+            this.removedBarsCount = source.getRemovedBarsCount();
+            this.maximumBarCount = source.getMaximumBarCount();
+            this.revision = source.getBarHistoryRevision();
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+
+        @Override
+        public BarBuilder barBuilder() {
+            throw new UnsupportedOperationException("Result bar series is immutable");
+        }
+
+        @Override
+        public NumFactory numFactory() {
+            return numFactory;
+        }
+
+        /**
+         * Describes the first change the source made to this window since the copy was
+         * taken, or returns {@code null} when the window is unchanged. Tracked
+         * revisions answer in constant time; untracked series fall back to a bar
+         * comparison.
+         */
+        private String changeSince(BarSeries source) {
+            if (source.getRemovedBarsCount() > removedBarsCount) {
+                return "bars before index " + source.getRemovedBarsCount() + " were evicted";
+            }
+            if (source.getBeginIndex() > beginIndex) {
+                return "the series begin moved to index " + source.getBeginIndex();
+            }
+            long rawEndIndex = (long) removedBarsCount + bars.size() - 1L;
+            long sourceRevision = source.getBarHistoryRevision();
+            if (revision >= 0L && sourceRevision >= 0L) {
+                if (sourceRevision == revision) {
+                    return null;
+                }
+                int changedIndex = source.getBarSeriesChangeSnapshot(revision).earliestChangedIndex();
+                return changedIndex >= 0 && changedIndex <= rawEndIndex
+                        ? "bar " + changedIndex + " was replaced or updated"
+                        : null;
+            }
+            List<Bar> sourceBars = source.getBarData();
+            if ((long) source.getRemovedBarsCount() + sourceBars.size() - 1L < rawEndIndex) {
+                return "bars after index " + (source.getRemovedBarsCount() + sourceBars.size() - 1) + " were removed";
+            }
+            for (int i = 0; i < bars.size(); i++) {
+                if (!sameBar(bars.get(i), sourceBars.get(removedBarsCount + i - source.getRemovedBarsCount()))) {
+                    return "bar " + (removedBarsCount + i) + " was replaced or updated";
+                }
+            }
+            return null;
+        }
+
+        private static boolean sameBar(Bar left, Bar right) {
+            return Objects.equals(left.getTimePeriod(), right.getTimePeriod())
+                    && Objects.equals(left.getBeginTime(), right.getBeginTime())
+                    && Objects.equals(left.getEndTime(), right.getEndTime())
+                    && Objects.equals(left.getOpenPrice(), right.getOpenPrice())
+                    && Objects.equals(left.getHighPrice(), right.getHighPrice())
+                    && Objects.equals(left.getLowPrice(), right.getLowPrice())
+                    && Objects.equals(left.getClosePrice(), right.getClosePrice())
+                    && Objects.equals(left.getVolume(), right.getVolume())
+                    && Objects.equals(left.getAmount(), right.getAmount()) && left.getTrades() == right.getTrades();
+        }
+
+        @Override
+        public Bar getBar(int index) {
+            long position = (long) index - removedBarsCount;
+            if (position < 0) {
+                if (index < 0 || bars.isEmpty()) {
+                    throw new IndexOutOfBoundsException("Index is outside the frozen result series: " + index);
+                }
+                position = 0;
+            }
+            if (position >= bars.size()) {
+                throw new IndexOutOfBoundsException("Index is outside the frozen result series: " + index);
+            }
+            return bars.get((int) position);
+        }
+
+        @Override
+        public int getBarCount() {
+            if (endIndex < 0) {
+                return 0;
+            }
+            return endIndex - Math.max(removedBarsCount, beginIndex) + 1;
+        }
+
+        @Override
+        public List<Bar> getBarData() {
+            return bars;
+        }
+
+        @Override
+        public long getBarHistoryRevision() {
+            return revision;
+        }
+
+        @Override
+        public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long sinceRevision) {
+            return new BarSeriesChangeSnapshot(revision, -1, removedBarsCount - 1, maximumBarCount, endIndex);
+        }
+
+        @Override
+        public void clear() {
+            throw new UnsupportedOperationException("Result bar series is immutable");
+        }
+
+        @Override
+        public int getBeginIndex() {
+            return beginIndex;
+        }
+
+        @Override
+        public int getEndIndex() {
+            return endIndex;
+        }
+
+        @Override
+        public int getMaximumBarCount() {
+            return maximumBarCount;
+        }
+
+        @Override
+        public void setMaximumBarCount(int maximumBarCount) {
+            throw new UnsupportedOperationException("Result bar series is immutable");
+        }
+
+        @Override
+        public int getRemovedBarsCount() {
+            return removedBarsCount;
+        }
+
+        @Override
+        public void addBar(Bar bar, boolean replace) {
+            throw new UnsupportedOperationException("Result bar series is immutable");
+        }
+
+        @Override
+        public void addTrade(Num tradeVolume, Num tradePrice) {
+            throw new UnsupportedOperationException("Result bar series is immutable");
+        }
+
+        @Override
+        public void addPrice(Num price) {
+            throw new UnsupportedOperationException("Result bar series is immutable");
+        }
+
+        @Override
+        public BarSeries getSubSeries(int startIndex, int endIndex) {
+            if (startIndex < 0 || startIndex >= endIndex) {
+                throw new IllegalArgumentException("Subseries requires 0 <= startIndex < endIndex");
+            }
+            int retainedStart = Math.max(startIndex, beginIndex);
+            int from = Math.min(bars.size(), Math.max(0, retainedStart - removedBarsCount));
+            int to = (int) Math.max(from,
+                    Math.min(bars.size(), Math.min((long) endIndex, (long) this.endIndex + 1) - removedBarsCount));
+            List<Bar> selected = bars.subList(from, to);
+            BarSeries view = new BaseBarSeriesBuilder().withName(name)
+                    .withNumFactory(numFactory)
+                    .withMaxBarCount(maximumBarCount)
+                    .withBeginIndex(removedBarsCount > 0 ? retainedStart : 0)
+                    .withBars(selected)
+                    .build();
+            return new FrozenBarSeries(view, selected);
+        }
+    }
+
+    private static final class ImmutableBar implements Bar {
+        private final Duration timePeriod;
+        private final Instant beginTime;
+        private final Instant endTime;
+        private final Num openPrice;
+        private final Num highPrice;
+        private final Num lowPrice;
+        private final Num closePrice;
+        private final Num volume;
+        private final Num amount;
+        private final long trades;
+
+        private ImmutableBar(Bar source) {
+            this.timePeriod = source.getTimePeriod();
+            this.beginTime = source.getBeginTime();
+            this.endTime = source.getEndTime();
+            this.openPrice = source.getOpenPrice();
+            this.highPrice = source.getHighPrice();
+            this.lowPrice = source.getLowPrice();
+            this.closePrice = source.getClosePrice();
+            this.volume = source.getVolume();
+            this.amount = source.getAmount();
+            this.trades = source.getTrades();
+        }
+
+        @Override
+        public Duration getTimePeriod() {
+            return timePeriod;
+        }
+
+        @Override
+        public Instant getBeginTime() {
+            return beginTime;
+        }
+
+        @Override
+        public Instant getEndTime() {
+            return endTime;
+        }
+
+        @Override
+        public Num getOpenPrice() {
+            return openPrice;
+        }
+
+        @Override
+        public Num getHighPrice() {
+            return highPrice;
+        }
+
+        @Override
+        public Num getLowPrice() {
+            return lowPrice;
+        }
+
+        @Override
+        public Num getClosePrice() {
+            return closePrice;
+        }
+
+        @Override
+        public Num getVolume() {
+            return volume;
+        }
+
+        @Override
+        public Num getAmount() {
+            return amount;
+        }
+
+        @Override
+        public long getTrades() {
+            return trades;
+        }
+
+        @Override
+        public void addTrade(Num tradeVolume, Num tradePrice) {
+            throw new UnsupportedOperationException("Result bars are immutable");
+        }
+
+        @Override
+        public void addPrice(Num price) {
+            throw new UnsupportedOperationException("Result bars are immutable");
+        }
     }
 
     /**
@@ -107,8 +437,9 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
     }
 
     @Override
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the immutable result snapshot series captured for this execution.")
     public BarSeries barSeries() {
-        return snapshotSeries(barSeries);
+        return barSeries;
     }
 
     @Override
@@ -391,12 +722,4 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
         return gson.toJson(json);
     }
 
-    private static BarSeries snapshotSeries(BarSeries barSeries) {
-        BarSeries series = Objects.requireNonNull(barSeries, "barSeries must not be null");
-        return new BaseBarSeriesBuilder().withName(series.getName())
-                .withNumFactory(series.numFactory())
-                .withBars(series.getBarData())
-                .withMaxBarCount(series.getMaximumBarCount())
-                .build();
-    }
 }

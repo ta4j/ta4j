@@ -365,12 +365,15 @@ public class ConcurrentBarSeries extends BaseBarSeries {
     }
 
     /**
-     * Runs the supplied action while holding the read lock.
+     * Runs the supplied action while holding the read lock. Writers wait until it
+     * returns; see {@link BarSeries#withReadLock(Runnable)} for what is safe to do
+     * inside it.
      *
      * @param action read-only action to execute
      *
      * @since 0.22.2
      */
+    @Override
     public void withReadLock(final Runnable action) {
         Objects.requireNonNull(action, "action cannot be null");
         this.readLock.lock();
@@ -382,7 +385,9 @@ public class ConcurrentBarSeries extends BaseBarSeries {
     }
 
     /**
-     * Runs the supplied action while holding the read lock.
+     * Runs the supplied action while holding the read lock. Writers wait until it
+     * returns; see {@link BarSeries#withReadLock(Runnable)} for what is safe to do
+     * inside it.
      *
      * @param action read-only action to execute
      * @param <T>    return type
@@ -390,6 +395,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      *
      * @since 0.22.2
      */
+    @Override
     public <T> T withReadLock(final Supplier<T> action) {
         Objects.requireNonNull(action, "action cannot be null");
         this.readLock.lock();

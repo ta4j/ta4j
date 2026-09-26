@@ -10,9 +10,10 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
@@ -209,6 +210,17 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         var expected = netReturn.dividedBy(maxDrawdown);
 
         assertNumEquals(expected, result);
+    }
+
+    @Test
+    public void usesCapturedTrailingExitForDecimalReturnOverMaxDrawdown() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("romad-trailing-exit", numFactory, 1,
+                100d, 110d, 55d);
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+
+        Num result = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL).calculate(series, tradingRecord);
+
+        assertNumEquals(-0.9, result);
     }
 
     @Test
