@@ -116,10 +116,20 @@ public final class ConstrainedSeriesSupport {
                 new MockBarBuilderFactory()) {
             @Override
             public void withReadLock(Runnable action) {
+                appendBeforeLease();
+                super.withReadLock(action);
+            }
+
+            @Override
+            public <T> T withReadLock(Supplier<T> action) {
+                appendBeforeLease();
+                return super.withReadLock(action);
+            }
+
+            private void appendBeforeLease() {
                 if (appendBeforeLock.compareAndSet(true, false)) {
                     addBar(source.getBar(initialSize));
                 }
-                super.withReadLock(action);
             }
         };
         series.setMaximumBarCount(initialSize);

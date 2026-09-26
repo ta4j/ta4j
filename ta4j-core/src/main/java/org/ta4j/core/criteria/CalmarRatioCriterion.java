@@ -168,13 +168,14 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         Num zero = numFactory.zero();
         CashFlow cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
         Integer explicitStartIndex = tradingRecord.getStartIndex();
-        int requestedBeginIndex = explicitStartIndex == null ? cashFlow.getBeginIndex() : explicitStartIndex;
-        int logicalBeginIndex = Math.max(requestedBeginIndex, cashFlow.getBeginIndex());
-        if (cashFlow.getEndIndex() <= logicalBeginIndex) {
+        int beginIndex = explicitStartIndex == null ? cashFlow.getBeginIndex()
+                : Math.max(explicitStartIndex, cashFlow.getBeginIndex());
+        int endIndex = cashFlow.getEndIndex();
+        if (endIndex <= beginIndex) {
             return zero;
         }
 
-        Num annualizedReturn = annualizedReturn(series, cashFlow, requestedBeginIndex);
+        Num annualizedReturn = annualizedReturn(series, cashFlow, beginIndex, endIndex);
         Num maximumDrawdown = Drawdown.amount(series, tradingRecord, cashFlow);
         if (maximumDrawdown.isZero()) {
             return toRepresentation(annualizedReturn);
@@ -182,25 +183,18 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         return toRepresentation(annualizedReturn.dividedBy(maximumDrawdown));
     }
 
-    private Num annualizedReturn(BarSeries series, CashFlow cashFlow, int requestedBeginIndex) {
-        NumFactory numFactory = series.numFactory();
-        Num zero = numFactory.zero();
-        Num one = numFactory.one();
-        int logicalBeginIndex = Math.max(requestedBeginIndex, cashFlow.getBeginIndex());
-        int logicalEndIndex = cashFlow.getEndIndex();
-        if (logicalEndIndex <= logicalBeginIndex) {
-            return zero;
-        }
-        Num years = BarSeriesUtils.deltaYears(series, logicalBeginIndex, logicalEndIndex);
+    private Num annualizedReturn(BarSeries series, CashFlow cashFlow, int beginIndex, int endIndex) {
+        Num one = series.numFactory().one();
+        Num years = BarSeriesUtils.deltaYears(series, beginIndex, endIndex);
         if (years.isZero()) {
-            return zero;
+            return series.numFactory().zero();
         }
-        Num startValue = cashFlow.getValue(logicalBeginIndex);
+        Num startValue = cashFlow.getValue(beginIndex);
         if (startValue.isNaN() || startValue.isZero()) {
             return NaN.NaN;
         }
 
-        Num endValue = cashFlow.getValue(logicalEndIndex);
+        Num endValue = cashFlow.getValue(endIndex);
         if (endValue.isNaN()) {
             return NaN.NaN;
         }

@@ -58,15 +58,16 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
         Objects.requireNonNull(series, "series cannot be null");
         Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
-        final int[] beginIndex = new int[1];
-        final boolean[][] intervals = new boolean[1][];
-        Runnable action = () -> {
-            beginIndex[0] = getBarSeries().getBeginIndex();
-            intervals[0] = buildInvestedIntervals(tradingRecord, openPositionHandling, beginIndex[0]);
-        };
-        series.withReadLock(action);
-        materializedBeginIndex = beginIndex[0];
-        investedIntervals = intervals[0];
+        Materialized materialized = series.withReadLock(() -> {
+            int beginIndex = getBarSeries().getBeginIndex();
+            return new Materialized(beginIndex,
+                    buildInvestedIntervals(tradingRecord, openPositionHandling, beginIndex));
+        });
+        materializedBeginIndex = materialized.beginIndex();
+        investedIntervals = materialized.intervals();
+    }
+
+    private record Materialized(int beginIndex, boolean[] intervals) {
     }
 
     /**
@@ -103,7 +104,7 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
             int beginIndex) {
         BarSeries series = getBarSeries();
         int analysisEndIndex = Math.max(series.getEndIndex(), AnalysisPositionSupport.analysisEndIndex(series,
-                tradingRecord, OffsetNumBuffer.addressableEndIndex(series)));
+                tradingRecord, AnalysisPositionSupport.addressableEndIndex(series)));
         if (beginIndex < 0) {
             return new boolean[0];
         }

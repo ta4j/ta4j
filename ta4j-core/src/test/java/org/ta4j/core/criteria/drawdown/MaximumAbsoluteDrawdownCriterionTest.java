@@ -9,6 +9,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.EquityCurveMode;
@@ -28,6 +29,17 @@ public class MaximumAbsoluteDrawdownCriterionTest extends AbstractCriterionTest 
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
         var criterion = getCriterion();
         assertNumEquals(0, criterion.calculate(series, new BaseTradingRecord()));
+    }
+
+    @Test
+    public void includesTrailingExitBeyondTheLogicalWindow() {
+        var series = ConstrainedSeriesSupport.trailingConstrainedSeries("absolute-drawdown-trailing-exit", numFactory,
+                1, 100d, 110d, 55d);
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+
+        // Profit peaks at +10 on bar 1, then the exit on raw bar 2 realizes -45.
+        assertNumEquals(55, getCriterion().calculate(series, tradingRecord));
+        assertNumEquals(0.5, new MaximumDrawdownCriterion().calculate(series, tradingRecord));
     }
 
     @Test

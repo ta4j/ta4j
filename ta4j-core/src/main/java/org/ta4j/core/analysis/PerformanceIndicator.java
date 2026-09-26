@@ -30,6 +30,33 @@ public interface PerformanceIndicator extends Indicator<Num> {
     EquityCurveMode getEquityCurveMode();
 
     /**
+     * Returns the first absolute index of the analysis window this curve describes.
+     * Curves that capture their window when they materialize return that captured
+     * index, independent of later changes to the series; the default is the series'
+     * current begin index.
+     *
+     * @return the first index of the analysis window
+     * @since 0.25.1
+     */
+    default int getBeginIndex() {
+        return getBarSeries().getBeginIndex();
+    }
+
+    /**
+     * Returns the last absolute index of the analysis window this curve describes:
+     * the trading record's logical end (or requested final index), extended to an
+     * exit that landed beyond the logical series end. Values after it only carry
+     * the final value forward. An empty window ends below {@link #getBeginIndex()}.
+     * The default is the series' current end index.
+     *
+     * @return the last index of the analysis window
+     * @since 0.25.1
+     */
+    default int getEndIndex() {
+        return getBarSeries().getEndIndex();
+    }
+
+    /**
      * Calculates indicator values for a single position.
      *
      * @param position   the position

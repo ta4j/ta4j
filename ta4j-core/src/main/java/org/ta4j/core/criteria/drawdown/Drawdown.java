@@ -7,6 +7,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.analysis.PerformanceIndicator;
 import org.ta4j.core.analysis.CumulativePnL;
 import org.ta4j.core.num.Num;
 
@@ -103,23 +104,23 @@ public final class Drawdown {
 
         int begin;
         int end;
-        if (curve instanceof CashFlow cashFlow) {
-            // CashFlow's captured window is authoritative. It may include a
-            // retained trailing exit beyond the record's logical series end,
-            // while an explicitly bounded CashFlow must not be widened from
-            // the live series or record bounds.
-            begin = cashFlow.getBeginIndex();
+        if (curve instanceof PerformanceIndicator performanceCurve) {
+            // A performance curve's captured window is authoritative. It may
+            // include a retained trailing exit beyond the record's logical
+            // series end, while an explicitly bounded curve must not be widened
+            // from the live series or record bounds.
+            begin = performanceCurve.getBeginIndex();
             Integer explicitStartIndex = tradingRecord == null ? null : tradingRecord.getStartIndex();
             if (explicitStartIndex != null) {
                 begin = Math.max(begin, explicitStartIndex);
             }
-            end = cashFlow.getEndIndex();
+            end = performanceCurve.getEndIndex();
         } else {
             begin = tradingRecord == null ? series.getBeginIndex() : tradingRecord.getStartIndex(series);
             end = tradingRecord == null ? series.getEndIndex() : tradingRecord.getEndIndex(series);
         }
 
-        if (begin <= end && (curve instanceof CashFlow || !series.isEmpty())) {
+        if (begin <= end && (curve instanceof PerformanceIndicator || !series.isEmpty())) {
             for (long i = begin; i <= end; i++) {
                 int index = (int) i;
                 Num value = curve.getValue(index);

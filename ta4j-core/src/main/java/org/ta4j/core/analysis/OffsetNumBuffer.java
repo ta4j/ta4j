@@ -8,7 +8,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
 
@@ -54,6 +53,16 @@ final class OffsetNumBuffer {
         this.endIndex = endIndex;
         this.neutral = Objects.requireNonNull(neutral);
         this.values = new ArrayList<>(Collections.nCopies(sizeOf(startIndex, endIndex), initialValue));
+    }
+
+    /**
+     * Returns a buffer covering no index; every read yields {@code neutral}.
+     *
+     * @param neutral the value returned for every read
+     * @return an empty buffer
+     */
+    static OffsetNumBuffer empty(Num neutral) {
+        return new OffsetNumBuffer(-1, -1, neutral, neutral);
     }
 
     private static int sizeOf(int startIndex, int endIndex) {
@@ -190,25 +199,5 @@ final class OffsetNumBuffer {
      */
     Num at(int position) {
         return values.get(position);
-    }
-
-    /**
-     * Resolves the highest bar index that is still addressable in the series' raw
-     * storage. For a live series this equals {@link BarSeries#getEndIndex()}; for
-     * builder-constrained or rolling-window series it can lie beyond the logical
-     * window end, where trailing bars remain readable for analyses that must price
-     * exits landing there.
-     *
-     * @param series the bar series
-     * @return the last addressable index, or {@code -1} for an empty series
-     */
-    static int addressableEndIndex(BarSeries series) {
-        int logicalEndIndex = series.getEndIndex();
-        List<Bar> rawBars = series.getBarData();
-        if (rawBars.isEmpty()) {
-            return logicalEndIndex;
-        }
-        long rawLastIndex = (long) series.getRemovedBarsCount() + rawBars.size() - 1;
-        return rawLastIndex > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) rawLastIndex;
     }
 }
