@@ -36,7 +36,6 @@ public final class CumulativePnL implements PerformanceIndicator {
      */
     private volatile BarSeries exposedBarSeries;
     private final List<Num> values;
-    private volatile boolean frozen;
 
     /**
      * The first logical bar index materialized in {@link #values}; storage is
@@ -69,22 +68,7 @@ public final class CumulativePnL implements PerformanceIndicator {
      */
     public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, finalIndex, equityCurveMode, openPositionHandling, false);
-    }
-
-    /**
-     * Internal factory. Creates the curve over an already detached, privately owned
-     * snapshot without copying it again; used by {@link EquityCurveCache}, whose
-     * snapshots are never shared.
-     */
-    static CumulativePnL overOwnedSnapshot(BarSeries ownedSnapshot, TradingRecord tradingRecord, int finalIndex,
-            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
-        return new CumulativePnL(ownedSnapshot, tradingRecord, finalIndex, equityCurveMode, openPositionHandling, true);
-    }
-
-    private CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
-            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling, boolean seriesIsOwnedSnapshot) {
-        this.barSeries = seriesIsOwnedSnapshot ? barSeries : SeriesSnapshots.deepCopy(barSeries);
+        this.barSeries = SeriesSnapshots.deepCopy(barSeries);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
         int seriesBegin = Math.max(this.barSeries.getBeginIndex(), 0);
         int seriesEnd = this.barSeries.getEndIndex();
@@ -215,10 +199,6 @@ public final class CumulativePnL implements PerformanceIndicator {
      */
     @Override
     public void calculate(TradingRecord tradingRecord, int finalIndex, OpenPositionHandling openPositionHandling) {
-        if (frozen) {
-            throw new UnsupportedOperationException(
-                    "shared EquityCurveCache curves are read-only; construct a new CumulativePnL to accumulate positions");
-        }
         Objects.requireNonNull(tradingRecord);
         Objects.requireNonNull(openPositionHandling);
         if (materialized) {
@@ -339,15 +319,6 @@ public final class CumulativePnL implements PerformanceIndicator {
     }
 
     /**
-     * Marks this curve immutable after {@link EquityCurveCache} fully materialized
-     * it, so the shared cached instance cannot be altered through the public
-     * accumulating operations.
-     */
-    void freeze() {
-        this.frozen = true;
-    }
-
-    /**
      * Adds {@code value} to every cell of the inclusive range {@code [from, to]}
      * and returns the next unmaterialized index ({@code max(from, to) + 1}).
      * Untouched cells hold zero, so composition equals replacement on a freshly
@@ -375,10 +346,6 @@ public final class CumulativePnL implements PerformanceIndicator {
      */
     @Override
     public void calculatePosition(Position position, int finalIndex) {
-        if (frozen) {
-            throw new UnsupportedOperationException(
-                    "shared EquityCurveCache curves are read-only; construct a new CumulativePnL to accumulate positions");
-        }
         Trade entry = position.getEntry();
         if (entry == null) {
             return;

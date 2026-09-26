@@ -70,45 +70,6 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
     }
 
     @Test
-    public void scopedCurvesMatchStandaloneCurves() {
-        BarSeries series = getBarSeries("excess_returns_bundle_series");
-        Instant start = Instant.parse("2024-01-01T00:00:00Z");
-        var closes = new double[] { 100d, 110d, 110d, 121d };
-
-        IntStream.range(0, closes.length).forEach(i -> {
-            Instant endTime = start.plus(Duration.ofDays(i + 1L));
-            double close = closes[i];
-            series.addBar(series.barBuilder()
-                    .timePeriod(Duration.ofDays(1))
-                    .endTime(endTime)
-                    .openPrice(close)
-                    .highPrice(close)
-                    .lowPrice(close)
-                    .closePrice(close)
-                    .volume(1)
-                    .build());
-        });
-
-        var tradingRecord = new BaseTradingRecord();
-        Num one = numFactory.one();
-        tradingRecord.enter(0, series.getBar(0).getClosePrice(), one);
-        tradingRecord.exit(1, series.getBar(1).getClosePrice(), one);
-        tradingRecord.enter(2, series.getBar(2).getClosePrice(), one);
-        tradingRecord.exit(3, series.getBar(3).getClosePrice(), one);
-
-        Num annualRate = numFactory.numOf(0.05d);
-
-        for (EquityCurveMode equityCurveMode : EquityCurveMode.values()) {
-            ExcessReturns recordBased = new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_ZERO,
-                    tradingRecord, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
-            ExcessReturns shared = EquityCurveCache.evaluate(series, tradingRecord,
-                    () -> new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord,
-                            equityCurveMode, OpenPositionHandling.MARK_TO_MARKET));
-            assertEquals(recordBased.excessReturn(0, 3), shared.excessReturn(0, 3));
-        }
-    }
-
-    @Test
     public void defaultPolicyKeepsFlatCashNeutralWhenRiskFreeIsZero() {
         BarSeries series = buildDailySeries(new double[] { 100d, 100d, 100d });
         var tradingRecord = new BaseTradingRecord();

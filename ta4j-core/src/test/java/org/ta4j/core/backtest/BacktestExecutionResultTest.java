@@ -430,8 +430,8 @@ public class BacktestExecutionResultTest {
      * exactly once per statement.
      */
     @Test
-    public void getTopStrategiesSharesEquityCurvesAndRunsFallbackOncePerStatement() {
-        BacktestExecutionResult result = createSharedCurveBacktestResult();
+    public void getTopStrategiesMatchesSequentialEvaluationOncePerStatement() {
+        BacktestExecutionResult result = createRankingBacktestResult();
         List<AnalysisCriterion> criteria = new ArrayList<>();
         criteria.add(new MaximumDrawdownCriterion());
         criteria.add(new ReturnOverMaxDrawdownCriterion());
@@ -459,20 +459,19 @@ public class BacktestExecutionResultTest {
                 fallbackCallsBeforeRanking + result.tradingStatements().size(), countingCriterion.calculations.get());
     }
 
-    private BacktestExecutionResult createSharedCurveBacktestResult() {
+    private BacktestExecutionResult createRankingBacktestResult() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(1d, 2d, 3d, 2d, 4d, 3d, 5d, 4d, 6d, 5d, 7d)
                 .build();
         Strategy strategyOne = new BaseStrategy("strategy-1", new FixedRule(0), new FixedRule(2));
         Strategy strategyTwo = new BaseStrategy("strategy-2", new FixedRule(3), new FixedRule(5));
         Strategy strategyThree = new BaseStrategy("strategy-3", new FixedRule(6), new FixedRule(9));
-        List<TradingStatement> statements = List.of(createSharedCurveStatement(series, strategyOne, 0, 2),
-                createSharedCurveStatement(series, strategyTwo, 3, 5),
-                createSharedCurveStatement(series, strategyThree, 6, 9));
+        List<TradingStatement> statements = List.of(createRankingStatement(series, strategyOne, 0, 2),
+                createRankingStatement(series, strategyTwo, 3, 5), createRankingStatement(series, strategyThree, 6, 9));
         return new BacktestExecutionResult(series, statements, BacktestRuntimeReport.empty());
     }
 
-    private TradingStatement createSharedCurveStatement(BarSeries series, Strategy strategy, int entryIndex,
+    private TradingStatement createRankingStatement(BarSeries series, Strategy strategy, int entryIndex,
             int exitIndex) {
         BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(),
                 new ZeroCostModel());

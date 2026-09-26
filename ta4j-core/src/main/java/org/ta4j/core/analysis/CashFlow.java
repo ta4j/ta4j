@@ -36,7 +36,6 @@ public class CashFlow implements PerformanceIndicator {
      * The (accrued) cash flow sequence (without trading costs).
      */
     private final List<Num> values;
-    private volatile boolean frozen;
 
     /**
      * Whether a sweep already composed positions into {@link #values}. Once data is
@@ -201,23 +200,7 @@ public class CashFlow implements PerformanceIndicator {
      */
     private CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int startIndex, int endIndex, int finalIndex,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, startIndex, endIndex, finalIndex, equityCurveMode, openPositionHandling, false);
-    }
-
-    /**
-     * Internal factory. Creates the curve over an already detached, privately owned
-     * snapshot without copying it again; used by {@link EquityCurveCache}, whose
-     * snapshots are never shared.
-     */
-    static CashFlow overOwnedSnapshot(BarSeries ownedSnapshot, TradingRecord tradingRecord, int startIndex,
-            int endIndex, int finalIndex, EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
-        return new CashFlow(ownedSnapshot, tradingRecord, startIndex, endIndex, finalIndex, equityCurveMode,
-                openPositionHandling, true);
-    }
-
-    private CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int startIndex, int endIndex, int finalIndex,
-            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling, boolean seriesIsOwnedSnapshot) {
-        this.barSeries = seriesIsOwnedSnapshot ? barSeries : SeriesSnapshots.deepCopy(barSeries);
+        this.barSeries = SeriesSnapshots.deepCopy(barSeries);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
         int seriesEnd = this.barSeries.getEndIndex();
         this.valueStartIndex = Math.max(Math.max(0, startIndex), this.barSeries.getBeginIndex());
@@ -249,10 +232,6 @@ public class CashFlow implements PerformanceIndicator {
      */
     @Override
     public void calculate(TradingRecord tradingRecord, int finalIndex, OpenPositionHandling openPositionHandling) {
-        if (frozen) {
-            throw new UnsupportedOperationException(
-                    "shared EquityCurveCache curves are read-only; construct a new CashFlow to accumulate positions");
-        }
         Objects.requireNonNull(tradingRecord);
         Objects.requireNonNull(openPositionHandling);
         if (materialized) {
@@ -398,15 +377,6 @@ public class CashFlow implements PerformanceIndicator {
     }
 
     /**
-     * Marks this curve immutable after {@link EquityCurveCache} fully materialized
-     * it, so the shared cached instance cannot be altered through the public
-     * accumulating operations.
-     */
-    void freeze() {
-        this.frozen = true;
-    }
-
-    /**
      * Composes {@code ratio} multiplicatively into the cell at {@code index}.
      */
     private void setOrMultiply(int index, Num ratio) {
@@ -443,10 +413,6 @@ public class CashFlow implements PerformanceIndicator {
      */
     @Override
     public void calculatePosition(Position position, int finalIndex) {
-        if (frozen) {
-            throw new UnsupportedOperationException(
-                    "shared EquityCurveCache curves are read-only; construct a new CashFlow to accumulate positions");
-        }
         Trade entry = position.getEntry();
         if (entry == null) {
             return;

@@ -117,17 +117,8 @@ public final class ExcessReturns {
         OpenPositionHandling effectiveOpenPositionHandling = equityCurveMode == EquityCurveMode.REALIZED
                 ? OpenPositionHandling.IGNORE
                 : openPositionHandling;
-        EquityCurveCache sharedCurveCache = EquityCurveCache.current(series, tradingRecord);
-        if (sharedCurveCache != null) {
-            // Both curves must come from one coherent input revision of the scope.
-            EquityCurveCache.SharedCurves sharedCurves = sharedCurveCache.sharedCurves(equityCurveMode,
-                    effectiveOpenPositionHandling);
-            this.investedInterval = sharedCurves.investedInterval();
-            this.cashFlow = sharedCurves.cashFlow();
-        } else {
-            this.investedInterval = new InvestedInterval(series, tradingRecord, effectiveOpenPositionHandling);
-            this.cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, effectiveOpenPositionHandling);
-        }
+        this.investedInterval = new InvestedInterval(series, tradingRecord, effectiveOpenPositionHandling);
+        this.cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, effectiveOpenPositionHandling);
     }
 
     /**

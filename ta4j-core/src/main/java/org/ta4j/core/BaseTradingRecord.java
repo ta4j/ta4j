@@ -460,24 +460,6 @@ public class BaseTradingRecord implements TradingRecord {
         return totalFeesSnapshot();
     }
 
-    /**
-     * Returns the record's monotonically increasing modification counter. Every
-     * recorded fill (including fee additions) increments it exactly once, so
-     * callers can detect structural changes in constant time instead of hashing the
-     * reconstructed positions and trades.
-     *
-     * @return the current modification count
-     * @since 0.25.1
-     */
-    public long getModificationCount() {
-        lock.readLock().lock();
-        try {
-            return modificationCount;
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
-
     @Override
     public Num getRecordedTotalFees() {
         return getTotalFees();
@@ -808,6 +790,7 @@ public class BaseTradingRecord implements TradingRecord {
         positionBook.rehydrateCostModels(transactionCostModel, holdingCostModel);
         tradesCache = null;
         tradesCacheVersion = -1L;
+        modificationCount = 0L;
         closedPositionsCache = null;
         closedPositionsCacheVersion = -1L;
         numFactory = null;

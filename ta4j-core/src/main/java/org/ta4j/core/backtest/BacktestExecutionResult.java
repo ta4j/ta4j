@@ -12,8 +12,6 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Strategy;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.EquityCurveCache;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.BaseTradingStatement;
 import org.ta4j.core.reports.TradingStatement;
@@ -202,15 +200,11 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
         for (TradingStatement statement : tradingStatements) {
             List<Num> values = new ArrayList<>(criteria.size());
             Map<AnalysisCriterion, Num> scores = new HashMap<>(criteria.size());
-            TradingRecord tradingRecord = statement.getTradingRecord();
-            EquityCurveCache.evaluate(barSeries, tradingRecord, () -> {
-                for (AnalysisCriterion criterion : criteria) {
-                    Num value = criterion.calculate(barSeries, tradingRecord);
-                    values.add(value);
-                    scores.put(criterion, value);
-                }
-                return null;
-            });
+            for (AnalysisCriterion criterion : criteria) {
+                Num value = criterion.calculate(barSeries, statement.getTradingRecord());
+                values.add(value);
+                scores.put(criterion, value);
+            }
             criterionValuesMap.put(statement, values);
             criterionScoresMap.put(statement, scores);
         }

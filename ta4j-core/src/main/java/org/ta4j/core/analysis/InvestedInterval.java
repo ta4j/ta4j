@@ -47,22 +47,7 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
      * @since 0.22.2
      */
     public InvestedInterval(BarSeries series, TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
-        this(series, tradingRecord, openPositionHandling, false);
-    }
-
-    /**
-     * Internal factory. Creates the indicator over an already detached, privately
-     * owned snapshot without copying it again; used by {@link EquityCurveCache},
-     * whose snapshots are never shared.
-     */
-    static InvestedInterval overOwnedSnapshot(BarSeries ownedSnapshot, TradingRecord tradingRecord,
-            OpenPositionHandling openPositionHandling) {
-        return new InvestedInterval(ownedSnapshot, tradingRecord, openPositionHandling, true);
-    }
-
-    private InvestedInterval(BarSeries series, TradingRecord tradingRecord, OpenPositionHandling openPositionHandling,
-            boolean seriesIsOwnedSnapshot) {
-        super(seriesIsOwnedSnapshot ? series : SeriesSnapshots.deepCopy(series));
+        super(SeriesSnapshots.deepCopy(series));
         Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
         valueStartIndex = Math.max(0, super.getBarSeries().getBeginIndex());

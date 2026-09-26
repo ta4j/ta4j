@@ -9,7 +9,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
-import org.ta4j.core.analysis.EquityCurveCache;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.AbstractEquityCurveSettingsCriterion;
@@ -197,7 +196,7 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
         if (endIndex < series.getBeginIndex()) {
             return series.numFactory().zero();
         }
-        CashFlow cashFlow = EquityCurveCache.cashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
+        CashFlow cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
         Num one = series.numFactory().one();
         return cashFlow.getValue(endIndex).minus(one);
     }
