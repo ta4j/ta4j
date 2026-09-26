@@ -18,6 +18,8 @@
         <Logger name="org.ta4j.core.backtest.StrategyWalkForwardExecutor" level="error"/>
         <Logger name="org.ta4j.core.walkforward.WalkForwardEngine" level="error"/>
         <Logger name="org.ta4j.core.walkforward.WalkForwardTuner" level="error"/>
+        <!-- Acceleration tests intentionally trigger broken-provider discovery WARNs; keep them off test output. -->
+        <Logger name="org.ta4j.core.acceleration.AccelerationRuntime" level="error"/>
         <!-- Protocol integrity tests intentionally trigger checksum-mismatch ERRORs; keep them off test output. -->
         <Logger name="org.ta4j.core.analysis.elliott.ElliottStudyProtocolTest" level="off" additivity="false"/>
         <Logger name="org.apache.poi" level="warn" additivity="false">

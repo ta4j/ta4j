@@ -5,8 +5,10 @@ package org.ta4j.core.indicators.forecast;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.acceleration.AccelerationRuntime;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.ReturnIndicator;
@@ -33,10 +35,13 @@ import org.ta4j.core.num.NumFactory;
 public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Forecast>
         implements ForecastProjectionIndicator {
 
-    private static final int MAX_EXPONENT = 700;
+    static {
+        AccelerationRuntime.registerPlanner(new MonteCarloShockPathPlanner());
+    }
 
     private final Indicator<Num> priceIndicator;
     private final MonteCarloSimulation simulation;
+    private final ShockPathKernelConfig kernelConfig;
 
     /**
      * Creates a one-bar forecast and infers price from {@link LogReturnIndicator}.
@@ -87,9 +92,13 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
 
     private MonteCarloPriceForecastIndicator(Builder builder) {
         super(builder.priceIndicator, builder.stateIndicator);
+        MonteCarloSettings settings = builder.settings();
         this.priceIndicator = builder.priceIndicator;
-        this.simulation = new MonteCarloSimulation(builder.stateIndicator, builder.settings(),
-                builder.methodOrDefault());
+        this.simulation = new MonteCarloSimulation(builder.stateIndicator, settings, builder.methodOrDefault());
+        this.kernelConfig = builder.monteCarloMethod == null
+                ? new ShockPathKernelConfig(builder.priceIndicator, builder.stateIndicator, settings,
+                        builder.shockModel, builder.volatilityUpdateMode, builder.volatilityDecayFactor)
+                : null;
     }
 
     /**
@@ -118,22 +127,39 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
 
     @Override
     protected Forecast calculate(int index) {
+        // An open acceleration scope may hold this index in a validated batch that
+        // is bitwise identical to the scalar lane. Returning it from calculate lets
+        // the indicator cache serve later reads and later runs without re-planning.
+        Optional<Forecast> accelerated = AccelerationRuntime.value(this, index);
+        if (accelerated.isPresent()) {
+            return accelerated.get();
+        }
         Num price = priceIndicator.getValue(index);
         if (!Num.isFinite(price) || !price.isPositive()) {
             return Forecast.unstable(index, getHorizon());
         }
+        Num exponentLimit = price.getNumFactory().numOf(MonteCarloKernel.MAX_EXPONENT);
+        return simulation.project(index, cumulativeReturn -> terminalPrice(price, cumulativeReturn, exponentLimit));
+    }
+
+    /**
+     * Maps one simulated cumulative log-return to its terminal price, shared by the
+     * scalar lane and the accelerated decoder so both apply the same exponential
+     * and guards.
+     *
+     * @return terminal price, or {@code null} when the return exceeds the exponent
+     *         limit, does not survive normalization, or the price underflows
+     */
+    static Num terminalPrice(Num price, Num cumulativeReturn, Num exponentLimit) {
         NumFactory numFactory = price.getNumFactory();
-        Num exponentLimit = numFactory.numOf(MAX_EXPONENT);
-        return simulation.project(index, cumulativeReturn -> {
-            Num normalizedReturn = numFactory.numOf(cumulativeReturn.bigDecimalValue());
-            if (!Num.isFinite(normalizedReturn) || normalizedReturn.isZero() && !cumulativeReturn.isZero()
-                    || normalizedReturn.abs().isGreaterThan(exponentLimit)) {
-                return null;
-            }
-            Num growth = normalizedReturn.exp();
-            Num terminalPrice = price.multipliedBy(growth);
-            return terminalPrice.isZero() && !growth.isZero() ? null : terminalPrice;
-        });
+        Num normalizedReturn = numFactory.numOf(cumulativeReturn.bigDecimalValue());
+        if (!Num.isFinite(normalizedReturn) || normalizedReturn.isZero() && !cumulativeReturn.isZero()
+                || normalizedReturn.abs().isGreaterThan(exponentLimit)) {
+            return null;
+        }
+        Num growth = normalizedReturn.exp();
+        Num terminalPrice = price.multipliedBy(growth);
+        return terminalPrice.isZero() && !growth.isZero() ? null : terminalPrice;
     }
 
     /**
@@ -182,6 +208,33 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
     @Override
     public int getHorizon() {
         return simulation.getHorizon();
+    }
+
+    /**
+     * Returns the default shock-path inputs the core planner lowers, or
+     * {@code null} when a custom Monte Carlo method replaces the default technique.
+     */
+    ShockPathKernelConfig shockPathKernelConfig() {
+        return kernelConfig;
+    }
+
+    /**
+     * Whether this forecast draws from the per-path stream that accelerated
+     * evaluation requires.
+     */
+    boolean usesPerPathRng() {
+        return simulation.usesPerPathRng();
+    }
+
+    /**
+     * Default shock-path configuration snapshotted by the core planner into kernel
+     * requests.
+     */
+    record ShockPathKernelConfig(Indicator<Num> priceIndicator,
+            ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator, MonteCarloSettings settings,
+            MonteCarloReturnProjectionIndicator.ShockModel shockModel,
+            MonteCarloReturnProjectionIndicator.VolatilityUpdateMode volatilityUpdateMode,
+            double volatilityDecayFactor) {
     }
 
     private static Indicator<Num> sourceIndicator(
