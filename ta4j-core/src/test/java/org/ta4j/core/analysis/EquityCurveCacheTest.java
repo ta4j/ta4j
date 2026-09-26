@@ -70,7 +70,7 @@ public class EquityCurveCacheTest {
     }
 
     @Test
-    public void bundleReusesOneCurveInstancePerConfigurationKey() {
+    public void cacheReusesOneCurveInstancePerConfigurationKey() {
         BarSeries series = series();
         TradingRecord tradingRecord = closedPositionsRecord(series);
         EquityCurveCache equityCurveCache = new EquityCurveCache(series, tradingRecord);
@@ -94,7 +94,7 @@ public class EquityCurveCacheTest {
     }
 
     @Test
-    public void bundleNormalizesRealizedModeCacheKeys() {
+    public void cacheNormalizesRealizedModeCacheKeys() {
         BarSeries series = series();
         TradingRecord tradingRecord = closedPositionsRecord(series);
         EquityCurveCache equityCurveCache = new EquityCurveCache(series, tradingRecord);
@@ -185,7 +185,7 @@ public class EquityCurveCacheTest {
     }
 
     @Test
-    public void bundledCurvesUsePrivateBarCopies() {
+    public void cachedCurvesUsePrivateBarCopies() {
         BarSeries series = series();
         TradingRecord tradingRecord = closedPositionsRecord(series);
         EquityCurveCache equityCurveCache = new EquityCurveCache(series, tradingRecord);
@@ -205,7 +205,7 @@ public class EquityCurveCacheTest {
     }
 
     @Test
-    public void bundleRebuildsCurvesAfterSeriesAppend() {
+    public void cacheRebuildsCurvesAfterSeriesAppend() {
         BarSeries series = series();
         TradingRecord tradingRecord = closedPositionsRecord(series);
         EquityCurveCache equityCurveCache = new EquityCurveCache(series, tradingRecord);
@@ -233,7 +233,7 @@ public class EquityCurveCacheTest {
     }
 
     @Test
-    public void bundleRebuildsCurvesAfterNewTrades() {
+    public void cacheRebuildsCurvesAfterNewTrades() {
         BarSeries series = series();
         BaseTradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
         EquityCurveCache equityCurveCache = new EquityCurveCache(series, tradingRecord);
@@ -253,7 +253,7 @@ public class EquityCurveCacheTest {
     }
 
     @Test
-    public void bundleRebuildsCurvesWhenCostModelsChange() {
+    public void cacheRebuildsCurvesWhenCostModelsChange() {
         CostModel transactionCostModel = new ZeroCostModel();
         AtomicReference<CostModel> currentTransactionCostModel = new AtomicReference<>(transactionCostModel);
         BarSeries series = series();
@@ -282,7 +282,7 @@ public class EquityCurveCacheTest {
     }
 
     @Test
-    public void bundleReusesCurveWhenCostModelReturnsEquivalentInstance() {
+    public void cacheReusesCurveWhenCostModelReturnsEquivalentInstance() {
         CostModel transactionCostModel = new ZeroCostModel();
         AtomicReference<CostModel> currentTransactionCostModel = new AtomicReference<>(transactionCostModel);
         BarSeries series = series();
@@ -308,7 +308,7 @@ public class EquityCurveCacheTest {
     }
 
     @Test
-    public void bundleDisablesReuseForSeriesWithoutRevisionTracking() {
+    public void cacheDisablesReuseForSeriesWithoutRevisionTracking() {
         // Bars must share the anonymous series' default DecimalNumFactory.
         BarSeries trackedSeries = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
                 .withData(1d, 2d, 3d, 2d, 4d, 3d, 5d, 4d, 6d, 5d, 7d)
@@ -341,7 +341,7 @@ public class EquityCurveCacheTest {
 
         EquityCurveCache found = EquityCurveCache.evaluate(series, tradingRecord, () -> {
             TradingRecord otherRecord = closedPositionsRecord(series);
-            assertNull("a mismatched record must not resolve to the active bundle",
+            assertNull("a mismatched record must not resolve to the active cache",
                     EquityCurveCache.current(series, otherRecord));
             return EquityCurveCache.current(series, tradingRecord);
         });
@@ -349,7 +349,7 @@ public class EquityCurveCacheTest {
         assertNotNull(found);
         assertSame(series, found.getBarSeries());
         assertSame(tradingRecord, found.getTradingRecord());
-        assertNull("no bundle may stay active after the evaluation", EquityCurveCache.current(series, tradingRecord));
+        assertNull("no cache may stay active after the evaluation", EquityCurveCache.current(series, tradingRecord));
     }
 
     @Test
@@ -358,16 +358,16 @@ public class EquityCurveCacheTest {
         TradingRecord outerRecord = closedPositionsRecord(series);
         TradingRecord innerRecord = closedPositionsRecord(series);
 
-        EquityCurveCache innerBundle = EquityCurveCache.evaluate(series, outerRecord, () -> {
-            EquityCurveCache outerBundle = EquityCurveCache.current(series, outerRecord);
+        EquityCurveCache innerCache = EquityCurveCache.evaluate(series, outerRecord, () -> {
+            EquityCurveCache outerCache = EquityCurveCache.current(series, outerRecord);
             EquityCurveCache nested = EquityCurveCache.evaluate(series, innerRecord,
                     () -> EquityCurveCache.current(series, innerRecord));
-            assertNotSame("each scope must get its own bundle", outerBundle, nested);
+            assertNotSame("each scope must get its own cache", outerCache, nested);
             return EquityCurveCache.current(series, outerRecord);
         });
 
-        assertNotNull(innerBundle);
-        assertNull("no bundle may stay active after the evaluations", EquityCurveCache.current(series, outerRecord));
+        assertNotNull(innerCache);
+        assertNull("no cache may stay active after the evaluations", EquityCurveCache.current(series, outerRecord));
     }
 
     @Test
@@ -390,7 +390,7 @@ public class EquityCurveCacheTest {
     }
 
     @Test
-    public void bundleCachedCurvesRejectMutation() {
+    public void sharedCurvesRejectMutation() {
         BarSeries series = series();
         TradingRecord tradingRecord = closedPositionsRecord(series);
         EquityCurveCache equityCurveCache = new EquityCurveCache(series, tradingRecord);
@@ -417,28 +417,28 @@ public class EquityCurveCacheTest {
     }
 
     @Test
-    public void bundleCurvesPreservePrunedSeriesIndices() {
+    public void cacheCurvesPreservePrunedSeriesIndices() {
         BarSeries pruned = series();
         TradingRecord tradingRecord = closedPositionsRecord(pruned);
         pruned.setMaximumBarCount(5);
         assertEquals(6, pruned.getBeginIndex());
 
         EquityCurveCache equityCurveCache = new EquityCurveCache(pruned, tradingRecord);
-        CashFlow bundled = equityCurveCache.cashFlow(EquityCurveMode.MARK_TO_MARKET,
+        CashFlow cached = equityCurveCache.cashFlow(EquityCurveMode.MARK_TO_MARKET,
                 OpenPositionHandling.MARK_TO_MARKET);
 
         // Retained bars keep their absolute indices, and realized returns from
         // positions closed before the window carry into every retained cell.
-        assertNumEquals(numFactory.numOf(4.5), bundled.getValue(6));
-        assertNumEquals(numFactory.numOf(3.6), bundled.getValue(7));
-        assertNumEquals(numFactory.numOf(5.3999999999999995), bundled.getValue(8));
-        assertNumEquals(numFactory.numOf(4.5), bundled.getValue(9));
-        assertNumEquals(numFactory.numOf(4.5), bundled.getValue(10));
+        assertNumEquals(numFactory.numOf(4.5), cached.getValue(6));
+        assertNumEquals(numFactory.numOf(3.6), cached.getValue(7));
+        assertNumEquals(numFactory.numOf(5.3999999999999995), cached.getValue(8));
+        assertNumEquals(numFactory.numOf(4.5), cached.getValue(9));
+        assertNumEquals(numFactory.numOf(4.5), cached.getValue(10));
 
         CashFlow direct = new CashFlow(pruned, tradingRecord, EquityCurveMode.MARK_TO_MARKET,
                 OpenPositionHandling.MARK_TO_MARKET);
         for (int i = pruned.getBeginIndex(); i <= pruned.getEndIndex(); i++) {
-            assertNumEquals(direct.getValue(i), bundled.getValue(i));
+            assertNumEquals(direct.getValue(i), cached.getValue(i));
         }
     }
 

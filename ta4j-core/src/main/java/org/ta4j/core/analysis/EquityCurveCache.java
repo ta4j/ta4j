@@ -200,9 +200,9 @@ public final class EquityCurveCache {
         if (scopes == null) {
             return null;
         }
-        for (EquityCurveCache bundle : scopes) {
-            if (bundle.series == series && bundle.tradingRecord == tradingRecord) {
-                return bundle;
+        for (EquityCurveCache scope : scopes) {
+            if (scope.series == series && scope.tradingRecord == tradingRecord) {
+                return scope;
             }
         }
         return null;
@@ -228,9 +228,9 @@ public final class EquityCurveCache {
     private BarSeries curveSeries;
 
     /**
-     * Creates a bundle for the given series and trading record. The record and the
+     * Creates a cache for the given series and trading record. The record and the
      * series reference are captured for identity checks; a private deep-copy of the
-     * bar data backs every curve this bundle computes and is taken lazily when the
+     * bar data backs every curve this cache computes and is taken lazily when the
      * first curve is requested.
      *
      * @param series        the bar series to analyze, not null
@@ -464,7 +464,7 @@ public final class EquityCurveCache {
     }
 
     /**
-     * Returns the series this bundle was created for.
+     * Returns the series this cache was created for.
      *
      * @return the captured bar series reference
      */
@@ -473,7 +473,7 @@ public final class EquityCurveCache {
     }
 
     /**
-     * Returns the trading record this bundle was created for.
+     * Returns the trading record this cache was created for.
      *
      * @return the captured trading record reference
      */
