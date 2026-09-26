@@ -45,6 +45,13 @@ public class Returns implements PerformanceIndicator {
     private final BarSeries barSeries;
 
     /**
+     * Lazily created defensive copy of {@link #barSeries} handed out by
+     * {@link #getBarSeries()}; kept separate so caller-side mutations of the
+     * exposed series cannot reach the calculation inputs.
+     */
+    private volatile BarSeries exposedBarSeries;
+
+    /**
      * The raw return rates (before formatting).
      * <p>
      * Stores log returns if {@code representation == LOG}, otherwise stores
@@ -66,6 +73,11 @@ public class Returns implements PerformanceIndicator {
 
     /**
      * Constructor.
+     *
+     * <p>
+     * Takes a single defensive snapshot of the given bar series so the calculated
+     * values stay isolated from later mutations of the caller's series;
+     * {@link #getBarSeries()} returns that same snapshot for every call.
      *
      * @param barSeries            the bar series
      * @param tradingRecord        the trading record
@@ -263,9 +275,24 @@ public class Returns implements PerformanceIndicator {
         return 0;
     }
 
+    /**
+     * Returns a defensive snapshot of the series used for the calculation. The same
+     * instance is returned for every call, and mutating it cannot reach the
+     * indicator's calculated values because those are computed from a separate
+     * internal snapshot taken at construction time.
+     */
     @Override
     public BarSeries getBarSeries() {
-        return snapshotSeries(barSeries);
+        BarSeries snapshot = exposedBarSeries;
+        if (snapshot == null) {
+            synchronized (this) {
+                if (exposedBarSeries == null) {
+                    exposedBarSeries = snapshotSeries(barSeries);
+                }
+                snapshot = exposedBarSeries;
+            }
+        }
+        return snapshot;
     }
 
     /**
@@ -405,4 +432,5 @@ public class Returns implements PerformanceIndicator {
                 .withMaxBarCount(series.getMaximumBarCount())
                 .build();
     }
+
 }

@@ -12,6 +12,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.analysis.EquityCurveCache;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.AbstractEquityCurveSettingsCriterion;
@@ -204,9 +205,10 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        List<List<Num>> blocks = buildBlocks(series, tradingRecord);
+        CashFlow cashFlow = EquityCurveCache.cashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
+        List<List<Num>> blocks = buildBlocks(series, tradingRecord, cashFlow);
         if (blocks.size() < 3) {
-            return maximumDrawdownCriterion.calculate(series, tradingRecord);
+            return Drawdown.amount(series, tradingRecord, cashFlow);
         }
         int blocksPerPath = pathBlocks != null ? pathBlocks : blocks.size();
         RandomGenerator random = randomSupplier.get();
@@ -236,19 +238,37 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
         return statistics.calculate(numFactory, maxDrawdowns);
     }
 
-    private List<List<Num>> buildBlocks(BarSeries series, TradingRecord record) {
+    private List<List<Num>> buildBlocks(BarSeries series, TradingRecord record, CashFlow cashFlow) {
         List<List<Num>> blocks = new ArrayList<>();
-        CashFlow cashFlow = new CashFlow(series, record, equityCurveMode, openPositionHandling);
         Num one = series.numFactory().one();
+        int retainedBegin = series.getBeginIndex();
+        int retainedEnd = series.getEndIndex();
         for (Position position : record.getPositions()) {
             if (!position.isClosed()) {
                 continue;
             }
             int entryIndex = position.getEntry().getIndex();
             int exitIndex = position.getExit().getIndex();
+            int blockStart = Math.max(entryIndex, retainedBegin);
+            int blockEnd = Math.min(exitIndex, retainedEnd);
+            if (blockStart > blockEnd) {
+                continue;
+            }
             List<Num> block = new ArrayList<>();
-            Num previousEquity = entryIndex > 0 ? cashFlow.getValue(entryIndex - 1) : one;
-            for (int i = entryIndex; i <= exitIndex; i++) {
+            int firstIndex = blockStart;
+            Num previousEquity;
+            if (blockStart > retainedBegin) {
+                previousEquity = cashFlow.getValue(blockStart - 1);
+            } else if (blockStart == 0) {
+                // The curve starts at one before the first bar.
+                previousEquity = one;
+            } else {
+                // Pruned bars leave no prior equity cell: start from the first
+                // retained bar's equity.
+                previousEquity = cashFlow.getValue(blockStart);
+                firstIndex++;
+            }
+            for (int i = firstIndex; i <= blockEnd; i++) {
                 Num currentEquity = cashFlow.getValue(i);
                 block.add(currentEquity.dividedBy(previousEquity).minus(one));
                 previousEquity = currentEquity;

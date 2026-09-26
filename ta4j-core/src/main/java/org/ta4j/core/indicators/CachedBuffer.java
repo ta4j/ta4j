@@ -154,6 +154,7 @@ class CachedBuffer<T> {
 
     T getOrCompute(int index, IntFunction<T> calculator, IntConsumer onComputedIndex) {
         // Optimistic fast-path (lock-free) for cache hits.
+        long stampBefore = writeStamp.get();
         Object cached = readAtOptimistic(index);
         if (cached != NOT_COMPUTED) {
             if (cached == NULL_VALUE) {
@@ -164,21 +165,27 @@ class CachedBuffer<T> {
             return result;
         }
 
-        // Fast-path: read lock for cache hits
-        lock.readLock().lock();
-        try {
-            cached = readAtUnlocked(index);
-        } finally {
-            lock.readLock().unlock();
-        }
-        if (cached != NOT_COMPUTED) {
-            if (cached == NULL_VALUE) {
-                return null;
+        boolean bufferUnchangedSinceAttempt = stampBefore == writeStamp.get() && (stampBefore & 1L) == 0L;
+        if (!bufferUnchangedSinceAttempt) {
+            // Fast-path: read lock for cache hits
+            lock.readLock().lock();
+            try {
+                cached = readAtUnlocked(index);
+            } finally {
+                lock.readLock().unlock();
             }
-            @SuppressWarnings("unchecked")
-            T result = (T) cached;
-            return result;
+            if (cached != NOT_COMPUTED) {
+                if (cached == NULL_VALUE) {
+                    return null;
+                }
+                @SuppressWarnings("unchecked")
+                T result = (T) cached;
+                return result;
+            }
         }
+        // Otherwise no writer has mutated the buffer since the optimistic
+        // attempt, so the slot is still uncomputed: skip the redundant
+        // read-lock recheck and go straight to compute-under-write-lock.
 
         // Miss: compute under write lock (reentrant for recursive indicators)
         lock.writeLock().lock();

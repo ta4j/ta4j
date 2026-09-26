@@ -16,6 +16,7 @@ import java.util.Set;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.EquityCurveCache;
 import org.ta4j.core.analysis.WeightedValue;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
@@ -78,10 +79,11 @@ public interface TradingStatementExecutionResult<R> {
      */
     default List<Num> criterionValues(AnalysisCriterion criterion) {
         Objects.requireNonNull(criterion, "criterion");
+        BarSeries series = barSeries();
         List<Num> values = new ArrayList<>(tradingStatements().size());
         for (TradingStatement statement : tradingStatements()) {
             TradingRecord tradingRecord = statement.getTradingRecord();
-            Num value = tradingRecord == null ? NaN.NaN : criterion.calculate(barSeries(), tradingRecord);
+            Num value = tradingRecord == null ? NaN.NaN : criterion.calculate(series, tradingRecord);
             values.add(value);
         }
         return Collections.unmodifiableList(values);
@@ -97,10 +99,11 @@ public interface TradingStatementExecutionResult<R> {
     default Map<Integer, Num> criterionValuesByIndex(AnalysisCriterion criterion) {
         Objects.requireNonNull(criterion, "criterion");
         Map<Integer, Num> values = new LinkedHashMap<>();
+        BarSeries series = barSeries();
         List<TradingStatement> statements = tradingStatements();
         for (int index = 0; index < statements.size(); index++) {
             TradingRecord tradingRecord = statements.get(index).getTradingRecord();
-            Num value = tradingRecord == null ? NaN.NaN : criterion.calculate(barSeries(), tradingRecord);
+            Num value = tradingRecord == null ? NaN.NaN : criterion.calculate(series, tradingRecord);
             values.put(index, value);
         }
         return Collections.unmodifiableMap(values);
@@ -121,7 +124,8 @@ public interface TradingStatementExecutionResult<R> {
             return List.of();
         }
 
-        NumFactory numFactory = barSeries().numFactory();
+        BarSeries series = barSeries();
+        NumFactory numFactory = series.numFactory();
         List<WeightedCriterion> weightedCriteria = profile.criteria();
         int criterionCount = weightedCriteria.size();
         List<WeightedValue<AnalysisCriterion>> normalizedWeightedCriteria = normalizeCriteria(weightedCriteria,
@@ -135,11 +139,20 @@ public interface TradingStatementExecutionResult<R> {
         Num[][] rawValuesByCriterion = new Num[criterionCount][statementCount];
         for (int statementIndex = 0; statementIndex < statementCount; statementIndex++) {
             TradingRecord tradingRecord = statements.get(statementIndex).getTradingRecord();
-            for (int criterionIndex = 0; criterionIndex < criterionCount; criterionIndex++) {
-                AnalysisCriterion criterion = criteria[criterionIndex];
-                rawValuesByCriterion[criterionIndex][statementIndex] = tradingRecord == null ? NaN.NaN
-                        : criterion.calculate(barSeries(), tradingRecord);
+            if (tradingRecord == null) {
+                for (int criterionIndex = 0; criterionIndex < criterionCount; criterionIndex++) {
+                    rawValuesByCriterion[criterionIndex][statementIndex] = NaN.NaN;
+                }
+                continue;
             }
+            final int index = statementIndex;
+            EquityCurveCache.evaluate(series, tradingRecord, () -> {
+                for (int criterionIndex = 0; criterionIndex < criterionCount; criterionIndex++) {
+                    rawValuesByCriterion[criterionIndex][index] = criteria[criterionIndex].calculate(series,
+                            tradingRecord);
+                }
+                return null;
+            });
         }
 
         Num[] bestValuesByCriterion = new Num[criterionCount];
