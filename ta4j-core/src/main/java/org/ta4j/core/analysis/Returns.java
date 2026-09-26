@@ -91,6 +91,12 @@ public class Returns implements PerformanceIndicator {
     private int materializedAddressableEndIndex;
 
     /**
+     * The last absolute bar index of the analysis window captured at
+     * materialization.
+     */
+    private int analysisEndIndex;
+
+    /**
      * Constructor.
      *
      * @param barSeries            the bar series
@@ -136,6 +142,8 @@ public class Returns implements PerformanceIndicator {
             returnFactors = endIndex < beginIndex ? new OffsetNumBuffer(-1, -1, initial, NaN.NaN)
                     : new OffsetNumBuffer(beginIndex, endIndex, initial, NaN.NaN);
             materializedBeginIndex = beginIndex;
+            analysisEndIndex = endIndex < beginIndex ? beginIndex - 1
+                    : Math.min(finalIndex, this.materializedAddressableEndIndex);
             rawValues = new ArrayList<>(Collections.nCopies(returnFactors.size(), zero));
             values = new ArrayList<>(Collections.nCopies(returnFactors.size(), zero));
             calculate(tradingRecord, finalIndex, openPositionHandling);
@@ -328,6 +336,31 @@ public class Returns implements PerformanceIndicator {
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the borrowed caller series by contract.")
     public BarSeries getBarSeries() {
         return barSeries;
+    }
+
+    /**
+     * Returns the first absolute index of the captured return window, independent
+     * of later changes to the borrowed series.
+     *
+     * @return the captured begin index
+     * @since 0.25.1
+     */
+    public int getBeginIndex() {
+        return materializedBeginIndex;
+    }
+
+    /**
+     * Returns the last absolute index of the analysis window: the trading record's
+     * logical end (or explicit final index), extended to a trailing exit beyond the
+     * logical series end. Later materialized slots up to the series end carry no
+     * position activity and are excluded here. An empty window has an end index
+     * below {@link #getBeginIndex()}.
+     *
+     * @return the captured analysis end index
+     * @since 0.25.1
+     */
+    public int getEndIndex() {
+        return analysisEndIndex;
     }
 
     /**

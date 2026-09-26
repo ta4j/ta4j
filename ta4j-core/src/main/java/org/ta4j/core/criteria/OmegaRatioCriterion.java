@@ -209,13 +209,11 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
             return zero;
         }
 
-        final int capturedBeginIndex = series.getBeginIndex();
         Returns returns = new Returns(series, tradingRecord, ReturnRepresentation.DECIMAL, equityCurveMode,
                 openPositionHandling);
-        BarSeries snapshot = returns.getBarSeries();
-        int beginIndex = tradingRecord.getStartIndex(snapshot);
-        int logicalEndIndex = tradingRecord.getEndIndex(snapshot);
-        if (logicalEndIndex < beginIndex) {
+        int capturedBeginIndex = returns.getBeginIndex();
+        int beginIndex = tradingRecord.getStartIndex(series);
+        if (tradingRecord.getEndIndex(series) < beginIndex) {
             return zero;
         }
 
@@ -241,8 +239,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         if (firstSlotSeeded) {
             firstRateIndex = beginIndex;
         }
-        long capturedEndIndex = (long) capturedBeginIndex + returns.getValues().size() - 1L;
-        for (long i = firstRateIndex; i <= capturedEndIndex; i++) {
+        for (long i = firstRateIndex; i <= returns.getEndIndex(); i++) {
             Num returnRate = returns.getValue((int) i);
             if (returnRate.isNaN()) {
                 continue;

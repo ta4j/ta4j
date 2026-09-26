@@ -83,6 +83,21 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void explicitRecordEndExcludesFlatCashFlowSuffixFromAnnualization() {
+        double[] closes = new double[] { 100d, 80d, 120d, 120d, 120d, 120d };
+        double[] recordedCloses = new double[] { 100d, 80d, 120d };
+        BarSeries series = buildYearlySeries("calmar-explicit-end", closes);
+        BarSeries recorded = buildYearlySeries("calmar-explicit-end-recorded", recordedCloses);
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, 0, 2, new ZeroCostModel(), new ZeroCostModel());
+        record.operate(Trade.buyAt(0, series));
+        record.operate(Trade.sellAt(2, series));
+
+        Num actual = getCriterion().calculate(series, record);
+
+        assertNumEquals(numFactory.numOf(referenceCalmar(recorded, recordedCloses)), actual, 1e-12);
+    }
+
+    @Test
     public void rawOnlySeriesUsesCapturedCashFlowRange() {
         BarSeries rawOnly = ConstrainedSeriesSupport.emptyLogicalSeries("calmar-raw-only", numFactory, 100d, 50d);
         BaseTradingRecord rawOnlyRecord = new BaseTradingRecord(Trade.buyAt(0, rawOnly), Trade.sellAt(1, rawOnly));

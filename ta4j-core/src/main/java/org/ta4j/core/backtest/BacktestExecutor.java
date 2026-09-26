@@ -945,6 +945,9 @@ public class BacktestExecutor {
         Objects.requireNonNull(strategies, "strategies must not be null");
         Objects.requireNonNull(criterion, "criterion must not be null");
         Objects.requireNonNull(tradingRecordRunner, "tradingRecordRunner must not be null");
+        if (topK <= 0) {
+            throw new IllegalArgumentException("topK must be positive");
+        }
         BarSeries managedSeries = seriesManager.getBarSeries();
         return managedSeries.withReadLock(() -> executeAndKeepTopKLocked(strategies, criterion, topK, progressCallback,
                 tradingRecordRunner, managedSeries));
@@ -954,9 +957,6 @@ public class BacktestExecutor {
             int topK, Consumer<Integer> progressCallback, Function<Strategy, TradingRecord> tradingRecordRunner,
             BarSeries managedSeries) {
         BarSeries baseline = BacktestExecutionResult.snapshot(managedSeries);
-        if (topK <= 0) {
-            throw new IllegalArgumentException("topK must be positive");
-        }
         if (strategies.isEmpty()) {
             latestFailures = List.of();
             return BacktestExecutionResult.capture(managedSeries, new ArrayList<>(), BacktestRuntimeReport.empty(),

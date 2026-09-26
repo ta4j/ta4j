@@ -39,6 +39,13 @@ public class CashFlow implements PerformanceIndicator {
      * The last absolute bar index materialized in {@link #values}.
      */
     private int valueEndIndex;
+
+    /**
+     * The last absolute bar index of the analysis window: the record's logical end,
+     * or a trailing exit beyond it. Values after it only carry equity forward.
+     */
+    private int analysisEndIndex;
+
     /**
      * The last raw bar index captured when the cash flow was materialized.
      */
@@ -198,7 +205,7 @@ public class CashFlow implements PerformanceIndicator {
                     ? AnalysisPositionSupport.analysisEndIndex(this.barSeries, record, materializedAddressableEndIndex)
                     : useSeriesEnd ? this.barSeries.getEndIndex() : requestedFinalIndex;
             this.valueStartIndex = Math.max(Math.max(0, startIndex), this.barSeries.getBeginIndex());
-            int materializationEnd = useRecordEnd ? finalIndex : requestedEndIndex;
+            int materializationEnd = useRecordEnd || useSeriesEnd ? finalIndex : requestedEndIndex;
             int endIndex = padToSeriesEnd ? Math.max(this.barSeries.getEndIndex(), materializationEnd)
                     : materializationEnd;
             Num one = this.barSeries.numFactory().one();
@@ -207,9 +214,11 @@ public class CashFlow implements PerformanceIndicator {
                 // Keep the requested bounds for calculation guards, but use the
                 // canonical empty buffer rather than allocating an inverted span.
                 this.valueEndIndex = valueStartIndex - 1;
+                this.analysisEndIndex = valueEndIndex;
                 this.values = new OffsetNumBuffer(-1, -1, one, one);
             } else {
                 this.valueEndIndex = Math.min(endIndex, this.materializedAddressableEndIndex);
+                this.analysisEndIndex = Math.min(materializationEnd, valueEndIndex);
                 this.values = new OffsetNumBuffer(valueStartIndex, valueEndIndex, one, one);
             }
             calculate(record, finalIndex, handling);
@@ -351,14 +360,18 @@ public class CashFlow implements PerformanceIndicator {
     }
 
     /**
-     * Returns the last absolute index of the captured curve. An empty curve has an
-     * end index below {@link #getBeginIndex()}.
+     * Returns the last absolute index of the analysis window: the trading record's
+     * logical end (or explicit final index), extended to a trailing exit beyond the
+     * logical series end. Record-driven curves may still materialize later values
+     * up to the series end; those only carry the final equity forward and are
+     * excluded here. An empty curve has an end index below
+     * {@link #getBeginIndex()}.
      *
-     * @return the captured end index
+     * @return the captured analysis end index
      * @since 0.25.1
      */
     public int getEndIndex() {
-        return valueEndIndex;
+        return analysisEndIndex;
     }
 
     /**

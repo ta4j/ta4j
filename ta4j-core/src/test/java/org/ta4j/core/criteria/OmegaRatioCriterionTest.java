@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ConcurrentBarSeries;
@@ -33,6 +34,24 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
 
     public OmegaRatioCriterionTest(NumFactory numFactory) {
         super(params -> new OmegaRatioCriterion((double) params[0]), numFactory);
+    }
+
+    @Test
+    public void explicitRecordEndExcludesFlatReturnSuffix() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 90d, 121d, 121d, 121d, 121d)
+                .build();
+        BaseTradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY, 0, 2, new ZeroCostModel(),
+                new ZeroCostModel());
+        record.operate(Trade.buyAt(0, series));
+        record.operate(Trade.sellAt(2, series));
+
+        Num actual = new OmegaRatioCriterion(0.05).calculate(series, record);
+
+        // Returns -10% then +34.4%; the flat bars after the record end would
+        // otherwise add 3 x 0.05 of shortfall below the threshold.
+        double expected = (121d / 90d - 1d - 0.05d) / (0.10d + 0.05d);
+        assertNumEquals(numFactory.numOf(expected), actual, 1e-12);
     }
 
     @Test
