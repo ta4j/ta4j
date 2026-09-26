@@ -391,7 +391,7 @@ Restore supported components with `Indicator.fromJson(series, json)` and `Strate
 
 ### Specialized research tools
 
-Beyond the basic strategy loop, ta4j includes building blocks for batch backtests, parameter research, position sizing, causal swing detection, rolling correlations, regime-aware rules, candlestick patterns, Elliott Wave analysis, LPPL residuals, streaming trade ingestion, and fill-aware live records.
+Beyond the basic strategy loop, ta4j includes building blocks for batch backtests, static target-weight multi-asset portfolio backtests, parameter research, position sizing, causal swing detection, rolling correlations, regime-aware rules, candlestick patterns, Elliott Wave analysis, LPPL residuals, streaming trade ingestion, and fill-aware live records.
 
 These capabilities are intentionally not expanded into mini-manuals here. Use the [examples index](ta4j-examples/README.md), [core API guide](ta4j-core/README.md), [Javadoc](https://ta4j.github.io/ta4j/), and [wiki](https://ta4j.github.io/ta4j-wiki/) to go deeper without losing the onboarding path.
 
@@ -410,6 +410,7 @@ The `ta4j-examples` module is organized as progressive learning tracks:
 | First strategy and metrics | [`Quickstart`](ta4j-examples/src/main/java/ta4jexamples/Quickstart.java), [`StrategyAnalysis`](ta4j-examples/src/main/java/ta4jexamples/analysis/StrategyAnalysis.java) |
 | Data sourcing | [`YahooFinanceBacktest`](ta4j-examples/src/main/java/ta4jexamples/backtesting/YahooFinanceBacktest.java), [`CoinbaseBacktest`](ta4j-examples/src/main/java/ta4jexamples/backtesting/CoinbaseBacktest.java) |
 | Execution semantics | [`TradingRecordParityBacktest`](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradingRecordParityBacktest.java), [`TradeFillRecordingExample`](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradeFillRecordingExample.java) |
+| Multi-asset portfolios | [`StaticPortfolioBacktest`](ta4j-examples/src/main/java/ta4jexamples/portfolio/StaticPortfolioBacktest.java) compares buy-and-hold with monthly rebalancing of a target-weight portfolio with a cash sleeve and transaction costs |
 | Parameter research | [`SimpleMovingAverageRangeBacktest`](ta4j-examples/src/main/java/ta4jexamples/backtesting/SimpleMovingAverageRangeBacktest.java), [`RelationshipObjectiveSearchExample`](ta4j-examples/src/main/java/ta4jexamples/research/RelationshipObjectiveSearchExample.java) |
 | Forecasting and calibration | [`RollingConformalForecastExample`](ta4j-examples/src/main/java/ta4jexamples/analysis/forecast/RollingConformalForecastExample.java), [`KinematicKalmanForecastExample`](ta4j-examples/src/main/java/ta4jexamples/analysis/forecast/KinematicKalmanForecastExample.java) |
 | Forecasting and robustness | [`CorrentropyKalmanExample`](ta4j-examples/src/main/java/ta4jexamples/analysis/forecast/CorrentropyKalmanExample.java) demonstrates ATR-derived Q/R, the robust estimate, residual, and measurement weight on an ossified S&P 500 weekly series |
