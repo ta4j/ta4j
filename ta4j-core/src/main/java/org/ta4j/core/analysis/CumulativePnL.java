@@ -28,11 +28,14 @@ import org.ta4j.core.num.NumFactory;
  */
 public final class CumulativePnL implements PerformanceIndicator {
 
-    private final BarSeries barSeries;
     /**
-     * The separate series snapshot exposed to callers so they cannot mutate the
-     * calculation input through {@link #getBarSeries()}. Created lazily on first
-     * access so cached curves never pay for a copy nobody requests.
+     * The series' retained bounds and close prices, captured at construction so
+     * later in-place bar edits cannot reach this curve.
+     */
+    private final SeriesSnapshots.CapturedSeries series;
+    /**
+     * Detached copy of the captured bars handed out by {@link #getBarSeries()};
+     * built on first request so curves never pay for a copy nobody asks for.
      */
     private volatile BarSeries exposedBarSeries;
     private final List<Num> values;
@@ -55,9 +58,9 @@ public final class CumulativePnL implements PerformanceIndicator {
     private final EquityCurveMode equityCurveMode;
 
     /**
-     * Constructor for a trading record with a specified final index. Takes
-     * defensive snapshots so calculated values stay isolated from later mutations
-     * of the caller's series and from mutations through the public series accessor.
+     * Constructor for a trading record with a specified final index. Captures the
+     * series' close prices so calculated values stay isolated from later mutations
+     * of the caller's series.
      *
      * @param barSeries            the bar series
      * @param tradingRecord        the trading record
@@ -68,13 +71,13 @@ public final class CumulativePnL implements PerformanceIndicator {
      */
     public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
-        this.barSeries = SeriesSnapshots.deepCopy(barSeries);
+        this.series = SeriesSnapshots.capture(barSeries);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        int seriesBegin = Math.max(this.barSeries.getBeginIndex(), 0);
-        int seriesEnd = this.barSeries.getEndIndex();
+        int seriesBegin = Math.max(this.series.beginIndex(), 0);
+        int seriesEnd = this.series.endIndex();
         this.valueStartIndex = seriesBegin;
         int size = seriesEnd < seriesBegin ? 0 : seriesEnd - seriesBegin + 1;
-        this.values = new ArrayList<>(Collections.nCopies(size, this.barSeries.numFactory().zero()));
+        this.values = new ArrayList<>(Collections.nCopies(size, this.series.numFactory().zero()));
         sweep(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
     }
 
@@ -220,9 +223,9 @@ public final class CumulativePnL implements PerformanceIndicator {
                 : openPositionHandling;
         List<Position> positions = AnalysisPositionSupport.positionsForAnalysis(tradingRecord, finalIndex,
                 effectiveOpenPositionHandling, equityCurveMode);
-        int seriesBegin = barSeries.getBeginIndex();
-        int seriesEnd = barSeries.getEndIndex();
-        NumFactory numFactory = barSeries.numFactory();
+        int seriesBegin = series.beginIndex();
+        int seriesEnd = series.endIndex();
+        NumFactory numFactory = series.numFactory();
         Num realized = numFactory.zero();
         int cursor = Math.max(seriesBegin, 0);
 
@@ -243,7 +246,7 @@ public final class CumulativePnL implements PerformanceIndicator {
                     Num holdingCost = equityCurveMode == EquityCurveMode.MARK_TO_MARKET
                             ? averageHoldingCostPerPeriod(position, endIndex, numFactory)
                             : position.getHoldingCost(endIndex);
-                    Num netExit = addCost(resolveExitPrice(position, endIndex, barSeries), holdingCost, entry.isBuy());
+                    Num netExit = addCost(series.exitPrice(position, endIndex), holdingCost, entry.isBuy());
                     Num deltaExit = entry.isBuy() ? netExit.minus(entry.getNetPrice())
                             : entry.getNetPrice().minus(netExit);
                     addToRange(seriesBegin, cursor - 1, deltaExit);
@@ -258,8 +261,8 @@ public final class CumulativePnL implements PerformanceIndicator {
                 Num averageCostPerPeriod = averageHoldingCostPerPeriod(position, endIndex, numFactory);
                 boolean beginValueSeeded = false;
                 if (entryIndex < seriesBegin) {
-                    Num beginRawPrice = seriesBegin == endIndex ? resolveExitPrice(position, endIndex, barSeries)
-                            : barSeries.getBar(seriesBegin).getClosePrice();
+                    Num beginRawPrice = seriesBegin == endIndex ? series.exitPrice(position, endIndex)
+                            : series.closePrice(seriesBegin);
                     Num beginNetPrice = addCost(beginRawPrice, averageCostPerPeriod, isLongTrade);
                     Num beginDelta = isLongTrade ? beginNetPrice.minus(netEntryPrice)
                             : netEntryPrice.minus(beginNetPrice);
@@ -269,13 +272,13 @@ public final class CumulativePnL implements PerformanceIndicator {
                 int start = Math.max(entryIndex + 1, seriesBegin + 1);
                 for (int i = start; i < endIndex; i++) {
                     cursor = fillRange(cursor, i, realized);
-                    Num close = barSeries.getBar(i).getClosePrice();
+                    Num close = series.closePrice(i);
                     Num netIntermediate = addCost(close, averageCostPerPeriod, isLongTrade);
                     Num delta = isLongTrade ? netIntermediate.minus(netEntryPrice)
                             : netEntryPrice.minus(netIntermediate);
                     addValue(i, delta);
                 }
-                Num exitRaw = resolveExitPrice(position, endIndex, barSeries);
+                Num exitRaw = series.exitPrice(position, endIndex);
                 Num netExit = addCost(exitRaw, averageCostPerPeriod, isLongTrade);
                 Num deltaExit = isLongTrade ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
                 if (endIndex < cursor) {
@@ -350,21 +353,21 @@ public final class CumulativePnL implements PerformanceIndicator {
         if (entry == null) {
             return;
         }
-        int seriesEnd = barSeries.getEndIndex();
+        int seriesEnd = series.endIndex();
         int entryIndex = entry.getIndex();
         if (entryIndex > finalIndex || entryIndex > seriesEnd) {
             return;
         }
         int endIndex = determineEndIndex(position, finalIndex, seriesEnd);
-        int seriesBegin = barSeries.getBeginIndex();
+        int seriesBegin = series.beginIndex();
         if (endIndex < seriesBegin) {
             Trade exit = position.getExit();
             if (exit != null && exit.getIndex() <= endIndex) {
-                NumFactory numFactory = barSeries.numFactory();
+                NumFactory numFactory = series.numFactory();
                 Num holdingCost = equityCurveMode == EquityCurveMode.MARK_TO_MARKET
                         ? averageHoldingCostPerPeriod(position, endIndex, numFactory)
                         : position.getHoldingCost(endIndex);
-                Num netExit = addCost(resolveExitPrice(position, endIndex, barSeries), holdingCost, entry.isBuy());
+                Num netExit = addCost(series.exitPrice(position, endIndex), holdingCost, entry.isBuy());
                 Num deltaExit = entry.isBuy() ? netExit.minus(entry.getNetPrice()) : entry.getNetPrice().minus(netExit);
                 addToRange(seriesBegin, seriesEnd, deltaExit);
                 // Per-position updates add one position at a time; flag the
@@ -375,7 +378,7 @@ public final class CumulativePnL implements PerformanceIndicator {
             return;
         }
 
-        NumFactory numFactory = barSeries.numFactory();
+        NumFactory numFactory = series.numFactory();
         boolean isLong = entry.isBuy();
         Num netEntryPrice = entry.getNetPrice();
 
@@ -386,19 +389,19 @@ public final class CumulativePnL implements PerformanceIndicator {
                 // begin carries its entry-to-begin mark-to-market delta into the
                 // begin cell before later bars are processed from begin + 1. An
                 // exit at the begin index is added by the exit range below.
-                Num beginRawPrice = barSeries.getBar(seriesBegin).getClosePrice();
+                Num beginRawPrice = series.closePrice(seriesBegin);
                 Num beginNetPrice = addCost(beginRawPrice, averageCostPerPeriod, isLong);
                 Num beginDelta = isLong ? beginNetPrice.minus(netEntryPrice) : netEntryPrice.minus(beginNetPrice);
                 addValue(seriesBegin, beginDelta);
             }
             int start = Math.max(entryIndex + 1, seriesBegin + 1);
             for (int i = start; i < endIndex; i++) {
-                Num close = barSeries.getBar(i).getClosePrice();
+                Num close = series.closePrice(i);
                 Num netIntermediate = addCost(close, averageCostPerPeriod, isLong);
                 Num delta = isLong ? netIntermediate.minus(netEntryPrice) : netEntryPrice.minus(netIntermediate);
                 addValue(i, delta);
             }
-            Num exitRaw = resolveExitPrice(position, endIndex, barSeries);
+            Num exitRaw = series.exitPrice(position, endIndex);
             Num netExit = addCost(exitRaw, averageCostPerPeriod, isLong);
             Num deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
             addToRange(endIndex, seriesEnd, deltaExit);
@@ -437,8 +440,10 @@ public final class CumulativePnL implements PerformanceIndicator {
     }
 
     /**
-     * Returns a stable defensive series snapshot. Mutating this returned series
-     * does not alter the series used to calculate the curve.
+     * Returns a detached copy of the bars this curve was computed from, with the
+     * source series' absolute indexing. It is built on first request and the same
+     * instance is returned afterwards; mutating it cannot reach the source series
+     * or this curve.
      */
     @Override
     public BarSeries getBarSeries() {
@@ -447,7 +452,7 @@ public final class CumulativePnL implements PerformanceIndicator {
             synchronized (this) {
                 snapshot = exposedBarSeries;
                 if (snapshot == null) {
-                    snapshot = SeriesSnapshots.deepCopy(barSeries);
+                    snapshot = series.toDetachedSeries();
                     exposedBarSeries = snapshot;
                 }
             }
@@ -462,7 +467,7 @@ public final class CumulativePnL implements PerformanceIndicator {
      * @since 0.19
      */
     public int getSize() {
-        return barSeries.getBarCount();
+        return series.barCount();
     }
 
     /**

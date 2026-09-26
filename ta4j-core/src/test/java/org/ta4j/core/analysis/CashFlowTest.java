@@ -859,4 +859,18 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
             }
         }
     }
+
+    @Test
+    public void laterInPlaceBarEditsDoNotReachAccumulatedPositions() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120, 130).build();
+        Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(3, series));
+        CashFlow cashFlow = new CashFlow(series, new BaseTradingRecord());
+
+        series.getBar(2).addPrice(numFactory.numOf(1000));
+        cashFlow.calculatePosition(position, series.getEndIndex());
+
+        // Marked at the close captured at construction (120), not the edited 1000.
+        assertNumEquals(1.2, cashFlow.getValue(2));
+        assertNumEquals(1.3, cashFlow.getValue(3));
+    }
 }

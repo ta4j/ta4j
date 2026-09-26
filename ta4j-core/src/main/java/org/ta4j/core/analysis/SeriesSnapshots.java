@@ -13,12 +13,14 @@ import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseRealtimeBar;
 import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * Internal helper that creates detached, deep-copied series snapshots for the
- * equity analysis indicators. Not part of the public API.
+ * Internal helper that captures series state for the equity analysis curves.
+ * Not part of the public API.
  *
  * @since 0.25.1
  */
@@ -28,57 +30,132 @@ final class SeriesSnapshots {
     }
 
     /**
-     * Creates a series mirroring the given one, but owning deep copies of its bar
-     * data so later in-place edits of the original bars cannot reach values
-     * computed from the copy. Specialized bar types such as {@link BaseRealtimeBar}
-     * are recreated with their side and liquidity metadata preserved instead of
-     * being normalized to plain {@link BaseBar} instances. The snapshot keeps the
-     * source's absolute indexing: when the source has already pruned bars, its
-     * retained bars keep their original indices instead of being renumbered from
-     * zero.
+     * Captures the given series' retained bars and close prices. The capture holds
+     * the close prices eagerly, so calculations never observe later in-place bar
+     * edits, and only references to the retained bars, so capturing neither copies
+     * bar objects nor registers the bars with another series. The series keeps its
+     * absolute indexing: after pruning, retained bars keep their original indices.
      *
-     * @param barSeries the series to copy, not null
-     * @return the detached deep-copy snapshot
+     * @param barSeries the series to capture, not null
+     * @return the capture
      */
-    static BarSeries deepCopy(BarSeries barSeries) {
+    static CapturedSeries capture(BarSeries barSeries) {
         Objects.requireNonNull(barSeries);
-        // Concurrent series mutate under a write lock, so capturing the bar
-        // list and its bounds inside the read lock makes the copy atomic; an
-        // unbounded copy-retry would instead starve when an at-capacity moving
-        // series prunes on every append. Plain series are documented as
-        // single-threaded, so their reads are coherent by contract.
+        // Concurrent series mutate under a write lock, so reading the bar list
+        // and its bounds inside the read lock makes the capture atomic. Plain
+        // series are documented as single-threaded, so their reads are coherent
+        // by contract; the removal delta below still keeps indices aligned if a
+        // moving series prunes while the bar list is read.
         if (barSeries instanceof ConcurrentBarSeries concurrentBarSeries) {
-            return concurrentBarSeries.withReadLock(() -> snapshot(barSeries));
+            return concurrentBarSeries.withReadLock(() -> read(barSeries));
         }
-        return snapshot(barSeries);
+        return read(barSeries);
     }
 
-    private static BarSeries snapshot(BarSeries barSeries) {
-        // Capture the bar list before the counters: any prune already reflected
-        // in this list is also reflected in the baseline read right after it,
-        // so the reconciliation below never trims a retained bar twice.
-        List<Bar> sourceBars = barSeries.getBarData();
-        int beginIndexAtCapture = Math.max(0, barSeries.getBeginIndex());
+    private static CapturedSeries read(BarSeries barSeries) {
+        // Read the bar list before the counters: any prune already reflected in
+        // this list is also reflected in the baseline read right after it, so
+        // the reconciliation below never trims a retained bar twice.
+        List<Bar> bars = List.copyOf(barSeries.getBarData());
+        int beginIndex = barSeries.getBeginIndex();
         int removedBarsAtCapture = barSeries.getRemovedBarsCount();
-        List<Bar> copiedBars = new ArrayList<>(sourceBars.size());
-        for (Bar bar : sourceBars) {
-            copiedBars.add(copyBar(bar, barSeries.numFactory()));
+        int prunedDuringCapture = Math.max(0, barSeries.getRemovedBarsCount() - removedBarsAtCapture);
+        if (prunedDuringCapture > 0) {
+            bars = prunedDuringCapture >= bars.size() ? List.of() : bars.subList(prunedDuringCapture, bars.size());
+            beginIndex += prunedDuringCapture;
         }
-        // Appends during the copy only yield a slightly stale but coherent
-        // window; expired-bar removals shift logical indexes, so the copied
-        // prefix is trimmed by the removal delta and the first retained bar
-        // keeps its source index.
-        int prunedDuringCopy = Math.max(0, barSeries.getRemovedBarsCount() - removedBarsAtCapture);
-        BaseBarSeriesBuilder builder = new BaseBarSeriesBuilder().withName(barSeries.getName())
-                .withNumFactory(barSeries.numFactory())
-                .withMaxBarCount(barSeries.getMaximumBarCount());
-        if (copiedBars.isEmpty()) {
-            return builder.withBeginIndex(beginIndexAtCapture).build();
+        int endIndex = bars.isEmpty() ? barSeries.getEndIndex() : Math.max(0, beginIndex) + bars.size() - 1;
+        return new CapturedSeries(barSeries.getName(), barSeries.numFactory(), barSeries.getMaximumBarCount(),
+                bars.isEmpty() ? beginIndex : Math.max(0, beginIndex), endIndex, bars);
+    }
+
+    /**
+     * Immutable capture of a series' retained window: its absolute bounds, number
+     * factory, close prices, and bar references for building a detached series on
+     * demand.
+     */
+    static final class CapturedSeries {
+
+        private final String name;
+        private final NumFactory numFactory;
+        private final int maximumBarCount;
+        private final int beginIndex;
+        private final int endIndex;
+        private final List<Bar> bars;
+        private final Num[] closePrices;
+
+        private CapturedSeries(String name, NumFactory numFactory, int maximumBarCount, int beginIndex, int endIndex,
+                List<Bar> bars) {
+            this.name = name;
+            this.numFactory = numFactory;
+            this.maximumBarCount = maximumBarCount;
+            this.beginIndex = beginIndex;
+            this.endIndex = endIndex;
+            this.bars = bars;
+            this.closePrices = new Num[bars.size()];
+            for (int i = 0; i < closePrices.length; i++) {
+                closePrices[i] = bars.get(i).getClosePrice();
+            }
         }
-        int retainedBeginIndex = beginIndexAtCapture + prunedDuringCopy;
-        List<Bar> retainedBars = prunedDuringCopy >= copiedBars.size() ? List.of()
-                : copiedBars.subList(prunedDuringCopy, copiedBars.size());
-        return builder.withBeginIndex(retainedBeginIndex).withBars(retainedBars).build();
+
+        int beginIndex() {
+            return beginIndex;
+        }
+
+        int endIndex() {
+            return endIndex;
+        }
+
+        int barCount() {
+            return closePrices.length;
+        }
+
+        NumFactory numFactory() {
+            return numFactory;
+        }
+
+        /**
+         * @param index an absolute index within {@code [beginIndex, endIndex]}
+         * @return the close price captured for that bar
+         */
+        Num closePrice(int index) {
+            return closePrices[index - beginIndex];
+        }
+
+        /**
+         * Mirrors {@link PerformanceIndicator#resolveExitPrice}: the exit's net price
+         * when the position exited by {@code endIndex}, otherwise the captured close
+         * price at {@code endIndex}.
+         */
+        Num exitPrice(Position position, int endIndex) {
+            Trade exit = position.getExit();
+            if (exit != null && exit.getIndex() <= endIndex) {
+                return exit.getNetPrice();
+            }
+            return closePrice(endIndex);
+        }
+
+        /**
+         * Builds a detached series holding deep copies of the captured bars, so
+         * mutating it cannot reach the source series. Specialized bar types such as
+         * {@link BaseRealtimeBar} keep their side and liquidity metadata.
+         *
+         * @return a new detached series with the captured bars and absolute indices
+         */
+        BarSeries toDetachedSeries() {
+            BaseBarSeriesBuilder builder = new BaseBarSeriesBuilder().withName(name)
+                    .withNumFactory(numFactory)
+                    .withMaxBarCount(maximumBarCount)
+                    .withBeginIndex(Math.max(0, beginIndex));
+            if (bars.isEmpty()) {
+                return builder.build();
+            }
+            List<Bar> copiedBars = new ArrayList<>(bars.size());
+            for (Bar bar : bars) {
+                copiedBars.add(copyBar(bar, numFactory));
+            }
+            return builder.withBars(copiedBars).build();
+        }
     }
 
     private static Bar copyBar(Bar bar, NumFactory numFactory) {

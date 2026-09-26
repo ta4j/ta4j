@@ -23,6 +23,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 public class InvestedInterval extends CachedIndicator<Boolean> {
 
     private final boolean[] investedIntervals;
+    private final SeriesSnapshots.CapturedSeries capturedSeries;
     private volatile BarSeries exposedBarSeries;
     private final int valueStartIndex;
 
@@ -47,10 +48,11 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
      * @since 0.22.2
      */
     public InvestedInterval(BarSeries series, TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
-        super(SeriesSnapshots.deepCopy(series));
+        super(series);
         Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
-        valueStartIndex = Math.max(0, super.getBarSeries().getBeginIndex());
+        capturedSeries = SeriesSnapshots.capture(series);
+        valueStartIndex = Math.max(0, capturedSeries.beginIndex());
         investedIntervals = buildInvestedIntervals(tradingRecord, openPositionHandling);
     }
 
@@ -78,10 +80,10 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
     }
 
     /**
-     * Returns the detached snapshot series the invested intervals were computed
-     * from: it mirrors the calculation series' absolute indexing but owns private
-     * bar data, so in-place edits of the original bars cannot alter the published
-     * intervals.
+     * Returns a detached copy of the bars the invested intervals were computed
+     * from, with the source series' absolute indexing. It is built on first request
+     * and the same instance is returned afterwards; mutating it cannot reach the
+     * source series.
      *
      * @return the detached backing series snapshot
      * @since 0.25.1
@@ -93,7 +95,7 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
             synchronized (this) {
                 snapshot = exposedBarSeries;
                 if (snapshot == null) {
-                    snapshot = SeriesSnapshots.deepCopy(super.getBarSeries());
+                    snapshot = capturedSeries.toDetachedSeries();
                     exposedBarSeries = snapshot;
                 }
             }
@@ -102,9 +104,8 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
     }
 
     private boolean[] buildInvestedIntervals(TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
-        BarSeries series = super.getBarSeries();
-        int seriesBegin = Math.max(0, series.getBeginIndex());
-        int seriesEnd = series.getEndIndex();
+        int seriesBegin = Math.max(0, capturedSeries.beginIndex());
+        int seriesEnd = capturedSeries.endIndex();
         int size = seriesEnd < seriesBegin ? 0 : seriesEnd - seriesBegin + 1;
         boolean[] invested = new boolean[size];
         tradingRecord.getPositions().forEach(position -> markInvestedIntervals(position, invested));
@@ -116,14 +117,13 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
     }
 
     private void markInvestedIntervals(Position position, boolean[] invested) {
-        BarSeries series = super.getBarSeries();
         if (position == null || position.getEntry() == null) {
             return;
         }
         int entryIndex = position.getEntry().getIndex();
-        int exitIndex = position.isClosed() ? position.getExit().getIndex() : series.getEndIndex();
-        int start = Math.max(entryIndex + 1, series.getBeginIndex() + 1);
-        int end = Math.min(exitIndex, series.getEndIndex());
+        int exitIndex = position.isClosed() ? position.getExit().getIndex() : capturedSeries.endIndex();
+        int start = Math.max(entryIndex + 1, capturedSeries.beginIndex() + 1);
+        int end = Math.min(exitIndex, capturedSeries.endIndex());
         for (int i = start; i <= end; i++) {
             invested[i - valueStartIndex] = true;
         }
