@@ -118,14 +118,14 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
         return new Builder(series);
     }
 
-    /**
-     * Calculates the indicator value at the requested index.
-     */
     @Override
     public WyckoffPhase getValue(final int index) {
         return getBarSeries().withReadLock(() -> super.getValue(index));
     }
 
+    /**
+     * Calculates the indicator value at the requested index.
+     */
     @Override
     protected WyckoffPhase calculate(int index) {
         if (index < getBarSeries().getBeginIndex() + getCountOfUnstableBars()) {
