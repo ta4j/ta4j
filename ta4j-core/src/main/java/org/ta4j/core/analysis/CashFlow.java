@@ -460,7 +460,9 @@ public class CashFlow implements PerformanceIndicator {
         int seriesBegin = barSeries.getBeginIndex();
         int windowStartIndex = Math.max(valueStartIndex, seriesBegin);
         int windowEndIndex = Math.min(valueEndIndex, seriesEnd);
-        if (endIndex < seriesBegin) {
+        if (endIndex < windowStartIndex) {
+            // Like the batch sweep, a position closed before the materialized
+            // window carries its realized ratio into every window cell.
             Trade exit = position.getExit();
             if (exit != null && exit.getIndex() <= endIndex) {
                 NumFactory numFactory = barSeries.numFactory();

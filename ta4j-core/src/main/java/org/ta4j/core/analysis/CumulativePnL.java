@@ -414,12 +414,12 @@ public final class CumulativePnL implements PerformanceIndicator {
 
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
             Num averageCostPerPeriod = averageHoldingCostPerPeriod(position, endIndex, numFactory);
-            if (entryIndex < seriesBegin) {
+            if (entryIndex < seriesBegin && endIndex != seriesBegin) {
                 // Mirror the batch sweep: a position entered before the retained
                 // begin carries its entry-to-begin mark-to-market delta into the
-                // begin cell before later bars are processed from begin + 1.
-                Num beginRawPrice = seriesBegin == endIndex ? resolveExitPrice(position, endIndex, barSeries)
-                        : barSeries.getBar(seriesBegin).getClosePrice();
+                // begin cell before later bars are processed from begin + 1. An
+                // exit at the begin index is added by the exit range below.
+                Num beginRawPrice = barSeries.getBar(seriesBegin).getClosePrice();
                 Num beginNetPrice = addCost(beginRawPrice, averageCostPerPeriod, isLong);
                 Num beginDelta = isLong ? beginNetPrice.minus(netEntryPrice) : netEntryPrice.minus(beginNetPrice);
                 addValue(seriesBegin, beginDelta);

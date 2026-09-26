@@ -492,4 +492,21 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
                 .volume(1)
                 .add();
     }
+
+    @Test
+    public void perPositionExitAtRetainedBeginIsCountedOnce() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120, 130).build();
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
+        record.exit(2, series.getBar(2).getClosePrice(), numFactory.one());
+        series.setMaximumBarCount(2);
+
+        CumulativePnL perPosition = new CumulativePnL(series, new BaseTradingRecord());
+        record.getPositions().forEach(position -> perPosition.calculatePosition(position, series.getEndIndex()));
+
+        // Bought at 100 and sold at 120 on the retained begin bar: one +20 exit.
+        assertNumEquals(20, perPosition.getValue(2));
+        assertNumEquals(20, perPosition.getValue(3));
+        assertNumEquals(new CumulativePnL(series, record).getValue(2), perPosition.getValue(2));
+    }
 }

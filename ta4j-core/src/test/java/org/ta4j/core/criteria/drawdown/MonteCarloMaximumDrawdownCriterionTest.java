@@ -294,4 +294,24 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
 
         return record;
     }
+
+    @Test
+    public void zeroDurationPositionAtFirstBarStillFormsABlock() {
+        NumFactory decimalFactory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(decimalFactory)
+                .withData(100, 120, 90, 110, 80)
+                .build();
+        BaseTradingRecord record = new BaseTradingRecord();
+        for (int[] leg : new int[][] { { 0, 0 }, { 1, 2 }, { 3, 4 } }) {
+            record.enter(leg[0], series.getBar(leg[0]).getClosePrice(), decimalFactory.one());
+            record.exit(leg[1], series.getBar(leg[1]).getClosePrice(), decimalFactory.one());
+        }
+        MonteCarloMaximumDrawdownCriterion criterion = new MonteCarloMaximumDrawdownCriterion(1000, null, 42L,
+                Statistics.P95, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        // Pinned from the pre-refactor implementation: three blocks run the
+        // simulation instead of falling back to the deterministic drawdown
+        // (0.4545...).
+        assertEquals(0.6033057851239669, criterion.calculate(series, record).doubleValue(), 1e-12);
+    }
 }

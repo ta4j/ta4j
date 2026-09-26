@@ -257,11 +257,16 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
             List<Num> block = new ArrayList<>();
             int firstIndex = blockStart;
             Num previousEquity;
-            if (blockStart == retainedBegin) {
+            if (blockStart > retainedBegin) {
+                previousEquity = cashFlow.getValue(blockStart - 1);
+            } else if (blockStart == 0) {
+                // The curve starts at one before the first bar.
+                previousEquity = one;
+            } else {
+                // Pruned bars leave no prior equity cell: start from the first
+                // retained bar's equity.
                 previousEquity = cashFlow.getValue(blockStart);
                 firstIndex++;
-            } else {
-                previousEquity = cashFlow.getValue(blockStart - 1);
             }
             for (int i = firstIndex; i <= blockEnd; i++) {
                 Num currentEquity = cashFlow.getValue(i);

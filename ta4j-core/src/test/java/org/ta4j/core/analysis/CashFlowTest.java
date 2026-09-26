@@ -840,4 +840,23 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         }
     }
 
+    @Test
+    public void perPositionCarriesPositionsClosedBeforeWindowLikeConstructor() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 200, 50, 60, 70).build();
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
+        record.exit(1, series.getBar(1).getClosePrice(), numFactory.one());
+
+        for (EquityCurveMode mode : EquityCurveMode.values()) {
+            CashFlow windowed = new CashFlow(series, record, 2, 4, mode, OpenPositionHandling.IGNORE);
+            CashFlow perPosition = new CashFlow(series, new BaseTradingRecord(), 2, 4, mode,
+                    OpenPositionHandling.IGNORE);
+            record.getPositions().forEach(position -> perPosition.calculatePosition(position, 4));
+            for (int i = 2; i <= 4; i++) {
+                // The 100 -> 200 round trip doubled equity before the window.
+                assertNumEquals(2, windowed.getValue(i));
+                assertNumEquals(2, perPosition.getValue(i));
+            }
+        }
+    }
 }
