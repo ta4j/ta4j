@@ -424,31 +424,16 @@ public final class AnalysisCriterionSerialization {
         return value;
     }
 
-    @SuppressWarnings("unchecked")
     private static Class<? extends AnalysisCriterion> resolveCriterionClass(String type) {
         if (type == null || type.isBlank()) {
             throw new IllegalArgumentException("Analysis criterion descriptor missing type");
         }
-        try {
-            Class<?> clazz = Class.forName(type, false, AnalysisCriterionSerialization.class.getClassLoader());
-            if (AnalysisCriterion.class.isAssignableFrom(clazz)) {
-                return (Class<? extends AnalysisCriterion>) clazz;
-            }
-        } catch (ClassNotFoundException ex) {
-            // Try standard criterion packages below.
+        Class<? extends AnalysisCriterion> criterionType = ComponentDescriptor.resolveSubtype(type,
+                AnalysisCriterion.class, CRITERIA_PACKAGES);
+        if (criterionType == null) {
+            throw new IllegalArgumentException("Unknown analysis criterion type: " + type);
         }
-        for (String packageName : CRITERIA_PACKAGES) {
-            try {
-                Class<?> clazz = Class.forName(packageName + "." + type, false,
-                        AnalysisCriterionSerialization.class.getClassLoader());
-                if (AnalysisCriterion.class.isAssignableFrom(clazz)) {
-                    return (Class<? extends AnalysisCriterion>) clazz;
-                }
-            } catch (ClassNotFoundException ex) {
-                // Continue through candidate packages.
-            }
-        }
-        throw new IllegalArgumentException("Unknown analysis criterion type: " + type);
+        return criterionType;
     }
 
     private static AnalysisCriterion instantiate(Class<? extends AnalysisCriterion> criterionType,
