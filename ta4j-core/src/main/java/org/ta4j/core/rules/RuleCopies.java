@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+import org.slf4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
@@ -68,7 +69,9 @@ public final class RuleCopies {
     }
 
     private static Optional<BarSeries> findBarSeries(Object value, IdentityHashMap<Object, Boolean> visited) {
-        if (value == null || visited.containsKey(value)) {
+        // Loggers (for example AbstractRule#log) never own rule inputs; walking one
+        // traverses the logging backend's JVM-wide registries on every copy.
+        if (value == null || value instanceof Logger || visited.containsKey(value)) {
             return Optional.empty();
         }
         visited.put(value, Boolean.TRUE);

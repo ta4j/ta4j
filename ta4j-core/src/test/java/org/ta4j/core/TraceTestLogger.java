@@ -34,6 +34,14 @@ public final class TraceTestLogger {
     private LoggerConfig rootLoggerConfig;
 
     public void open() {
+        open("%msg%n");
+    }
+
+    /**
+     * Starts capturing with a custom Log4j pattern, for example {@code "%c %msg%n"}
+     * to include the logger name in each captured line.
+     */
+    public void open(String layoutPattern) {
         loggerContext = (LoggerContext) LogManager.getContext(false);
         Configuration config = loggerContext.getConfiguration();
         rootLoggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
@@ -48,7 +56,7 @@ public final class TraceTestLogger {
         loggerContext.updateLoggers();
 
         logOutput = new StringWriter();
-        PatternLayout layout = PatternLayout.newBuilder().withPattern("%msg%n").build();
+        PatternLayout layout = PatternLayout.newBuilder().withPattern(layoutPattern).build();
         appender = WriterAppender.newBuilder().setTarget(logOutput).setLayout(layout).setName("TestAppender").build();
         appender.start();
         rootLoggerConfig.addAppender(appender, Level.TRACE, null);
