@@ -3,8 +3,6 @@
  */
 package org.ta4j.core.analysis;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-
 import java.util.ArrayDeque;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -91,9 +89,6 @@ public final class EquityCurveCache {
      * @param investedInterval the shared invested-interval indicator
      * @param cashFlow         the shared cash-flow snapshot
      */
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "SharedCurves deliberately hands the cached "
-            + "shared curve instances to ExcessReturns so both inputs come from one coherent revision; the curves "
-            + "are frozen and immutable once published")
     record SharedCurves(InvestedInterval investedInterval, CashFlow cashFlow) {
     }
 
