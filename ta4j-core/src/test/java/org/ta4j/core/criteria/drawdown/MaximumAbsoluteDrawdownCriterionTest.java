@@ -32,14 +32,15 @@ public class MaximumAbsoluteDrawdownCriterionTest extends AbstractCriterionTest 
     }
 
     @Test
-    public void includesTrailingExitBeyondTheLogicalWindow() {
+    public void ignoresAnExitAfterTheWindow() {
         var series = ConstrainedSeriesSupport.trailingConstrainedSeries("absolute-drawdown-trailing-exit", numFactory,
                 1, 100d, 110d, 55d);
         var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
 
-        // Profit peaks at +10 on bar 1, then the exit on raw bar 2 realizes -45.
-        assertNumEquals(55, getCriterion().calculate(series, tradingRecord));
-        assertNumEquals(0.5, new MaximumDrawdownCriterion().calculate(series, tradingRecord));
+        // Profit is +10 at the window close; the later exit at 55 is unseen, so
+        // neither absolute nor relative drawdown may report its fall.
+        assertNumEquals(0, getCriterion().calculate(series, tradingRecord));
+        assertNumEquals(0, new MaximumDrawdownCriterion().calculate(series, tradingRecord));
     }
 
     @Test

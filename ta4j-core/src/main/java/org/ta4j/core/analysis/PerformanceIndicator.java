@@ -44,10 +44,11 @@ public interface PerformanceIndicator extends Indicator<Num> {
 
     /**
      * Returns the last absolute index of the analysis window this curve describes:
-     * the trading record's logical end (or requested final index), extended to an
-     * exit that landed beyond the logical series end. Values after it only carry
-     * the final value forward. An empty window ends below {@link #getBeginIndex()}.
-     * The default is the series' current end index.
+     * the trading record's logical end or requested final index. No position is
+     * priced after it; one still open there is marked at that bar's close (or
+     * ignored, per the open-position handling) rather than at a later exit. Values
+     * after it only carry the final value forward. An empty window ends below
+     * {@link #getBeginIndex()}. The default is the series' current end index.
      *
      * @return the last index of the analysis window
      * @since 0.25.1

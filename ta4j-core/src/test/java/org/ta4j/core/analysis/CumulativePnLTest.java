@@ -7,6 +7,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertSame;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import java.util.List;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -464,7 +465,7 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
     }
 
     @Test
-    public void pricesRawExitWhenLogicalWindowIsEmpty() {
+    public void ignoresTradesOutsideAnEmptyLogicalWindow() {
         BarSeries series = ConstrainedSeriesSupport.emptyLogicalSeries("empty-window", numFactory, 100d);
         Num one = numFactory.one();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, numFactory.numOf(100d), one),
@@ -472,21 +473,23 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
 
         CumulativePnL pnl = new CumulativePnL(series, tradingRecord);
 
-        assertNumEquals(numFactory.numOf(-50d), pnl.getValue(0));
+        assertNumEquals(0, pnl.getValue(0));
+        assertEquals(0, pnl.getSize());
     }
 
     @Test
-    public void accumulatesTrailingExitBeyondLogicalWindowEnd() {
+    public void marksPositionExitingAfterTheWindowAtTheWindowClose() {
         BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("trailing-exit", numFactory, 1, 10d, 20d,
                 30d);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, 0, 1, null, null);
-        tradingRecord.enter(1, series.getBar(1).getClosePrice(), numFactory.one());
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
         tradingRecord.exit(2, series.getBar(2).getClosePrice(), numFactory.one());
 
         CumulativePnL pnl = new CumulativePnL(series, tradingRecord);
 
-        assertNumEquals(0, pnl.getValue(0));
-        assertNumEquals(10, pnl.getValue(2));
-        assertNumEquals(10, pnl.stream().toList().getLast());
+        // Marked at the last window close (20 - 10), not at the later exit (30 - 10).
+        assertNumEquals(10, pnl.getValue(1));
+        assertEquals(List.of(numFactory.zero(), numFactory.numOf(10)), pnl.stream().toList());
+        assertEquals(1, pnl.getEndIndex());
     }
 }

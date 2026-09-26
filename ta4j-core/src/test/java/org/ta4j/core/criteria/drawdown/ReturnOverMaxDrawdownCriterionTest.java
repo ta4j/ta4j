@@ -17,6 +17,7 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.AbstractCriterionTest;
@@ -213,14 +214,19 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void usesCapturedTrailingExitForDecimalReturnOverMaxDrawdown() {
+    public void scoresAnExitAfterTheWindowAsOpenAtTheWindowEnd() {
         BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("romad-trailing-exit", numFactory, 1,
                 100d, 110d, 55d);
         var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+        BarSeries truncated = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 110d).build();
+        TradingRecord openAtWindowEnd = new BaseTradingRecord(Trade.buyAt(0, truncated));
+        ReturnOverMaxDrawdownCriterion criterion = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL);
 
-        Num result = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL).calculate(series, tradingRecord);
+        Num result = criterion.calculate(series, tradingRecord);
 
-        assertNumEquals(-0.9, result);
+        // +10% at the window close with no drawdown; the later exit (-45%) is unseen.
+        assertNumEquals(0.1, result);
+        assertNumEquals(criterion.calculate(truncated, openAtWindowEnd), result);
     }
 
     @Test

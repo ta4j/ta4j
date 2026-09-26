@@ -187,12 +187,12 @@ public final class CumulativePnL implements PerformanceIndicator {
         if (entry == null) {
             return;
         }
-        int addressableEndIndex = captured.addressableEndIndex();
+        int seriesEndIndex = captured.seriesEndIndex();
         int entryIndex = entry.getIndex();
-        if (entryIndex > finalIndex || entryIndex > addressableEndIndex) {
+        if (entryIndex > finalIndex || entryIndex > seriesEndIndex) {
             return;
         }
-        int endIndex = determineEndIndex(position, finalIndex, addressableEndIndex);
+        int endIndex = determineEndIndex(position, finalIndex, seriesEndIndex);
         int seriesBegin = captured.beginIndex();
         if (endIndex < seriesBegin) {
             return;
@@ -206,7 +206,7 @@ public final class CumulativePnL implements PerformanceIndicator {
                             isLong ? netPrice.minus(netEntryPrice) : netEntryPrice.minus(netPrice)))
                     .netPrice();
             Num deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
-            buffer.addRange(endIndex, addressableEndIndex, deltaExit);
+            buffer.addRange(endIndex, captured.bufferEndIndex(), deltaExit);
             return;
         }
 
@@ -215,7 +215,7 @@ public final class CumulativePnL implements PerformanceIndicator {
             Num holdingCost = position.getHoldingCost(endIndex);
             Num netExit = addCost(exit.getNetPrice(), holdingCost, isLong);
             Num deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
-            buffer.addRange(exit.getIndex(), addressableEndIndex, deltaExit);
+            buffer.addRange(exit.getIndex(), captured.bufferEndIndex(), deltaExit);
         }
     }
 

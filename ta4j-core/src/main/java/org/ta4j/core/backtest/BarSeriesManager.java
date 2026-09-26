@@ -6,7 +6,6 @@ package org.ta4j.core.backtest;
 import java.util.Objects;
 import java.util.function.Consumer;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import java.util.function.IntFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
@@ -34,15 +33,17 @@ import org.ta4j.core.walkforward.WalkForwardConfig;
  * </p>
  *
  * <p>
- * A run evaluates strategies over the bounds captured when it starts; bars
- * appended while it runs are not evaluated, although an execution model that
- * fills on the next bar may fill a signal on the run's last bar at a bar
- * appended meanwhile. The manager holds no lock while strategies run, so a live
+ * A run covers the bounds captured when it starts and never trades outside
+ * them: execution models and position sizing see the series only up to the
+ * run's last index, so a signal on that bar that needs a later bar to fill does
+ * not fill, and a position still open at the end stays open for criteria to
+ * mark to market or ignore. Bars after the window, whether retained past a
+ * constrained series' logical end or appended by a live feed, are never used.
+ * The manager holds no lock while strategies run, so a live
  * {@link org.ta4j.core.ConcurrentBarSeries} keeps accepting writes and reads
  * from other threads, and bars replaced or evicted inside the run's bounds are
  * observed as they change. Use {@link BacktestExecutor} when a result must be
- * tied to one unchanged window: it fills against that frozen window and fails
- * if the window changes.
+ * tied to one unchanged window: it fails if the window changes.
  * </p>
  *
  * <p>
@@ -410,7 +411,7 @@ public class BarSeriesManager {
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, Num amount, int startIndex,
             int finishIndex) {
         Objects.requireNonNull(amount, "amount");
-        return run(strategy, tradingRecord, startIndex, finishIndex, index -> amount);
+        return run(strategy, tradingRecord, startIndex, finishIndex, (index, runSeries) -> amount);
     }
 
     /**
@@ -447,38 +448,11 @@ public class BarSeriesManager {
     }
 
     /**
-     * Returns a manager with this manager's cost, execution and record settings
-     * whose fills, sizing contexts and run bounds come from {@code series}.
-     * Executions pass their frozen window here, so an execution model filling on
-     * the next bar can never use a bar appended to the live series after the window
-     * was captured. Strategies keep evaluating their own indicators.
-     */
-    BarSeriesManager withSeries(BarSeries series) {
-        return new BarSeriesManager(series, transactionCostModel, holdingCostModel, tradeExecutionModel,
-                tradingRecordFactory);
-    }
-
-    /**
      * Reads the logical bounds under one read scope so a concurrent eviction or
      * append cannot pair a begin index with a different revision's end index.
      */
     private Bounds currentBounds() {
         return barSeries.withReadLock(() -> new Bounds(barSeries.getBeginIndex(), barSeries.getEndIndex()));
-    }
-
-    /**
-     * Returns the exclusive raw upper bound for the trailing exit scan, or an empty
-     * range when the run did not end at the logical series end. The bound is
-     * computed in long and clamped to {@code Integer.MAX_VALUE + 1}: bar and
-     * strategy APIs take int indices, so no representable bar exists beyond
-     * {@code Integer.MAX_VALUE}.
-     */
-    private long trailingRawEnd(int runEndIndex) {
-        if (runEndIndex != barSeries.getEndIndex()) {
-            return runEndIndex + 1L;
-        }
-        long rawEnd = (long) barSeries.getRemovedBarsCount() + barSeries.getBarData().size();
-        return Math.min((long) Integer.MAX_VALUE + 1, Math.max(runEndIndex + 1L, rawEnd));
     }
 
     private record Bounds(int begin, int end) {
@@ -617,16 +591,26 @@ public class BarSeriesManager {
         Objects.requireNonNull(positionSizer, "positionSizer");
         TradeType runTradeType = tradingRecord.getStartingType();
         return run(strategy, tradingRecord, startIndex, finishIndex,
-                index -> amountForNextOperation(positionSizer, index, strategy, tradingRecord, runTradeType));
+                (index, runSeries) -> amountForNextOperation(positionSizer, index, strategy, tradingRecord,
+                        runTradeType, runSeries));
     }
 
+    /**
+     * Runs the strategy over {@code [startIndex, finishIndex]}, clamped to the
+     * series bounds when the run starts. Execution models and sizing see the series
+     * only through that window, so no trade is ever placed after it: a position
+     * still open at the window end stays open for criteria to handle through their
+     * open-position policy, instead of being closed with prices the window never
+     * saw.
+     */
     private TradingRecord run(Strategy strategy, TradingRecord tradingRecord, int startIndex, int finishIndex,
-            IntFunction<Num> amountResolver) {
+            AmountResolver amountResolver) {
         Objects.requireNonNull(strategy, "strategy");
         Objects.requireNonNull(tradingRecord, "tradingRecord");
         Objects.requireNonNull(amountResolver, "amountResolver");
         int runBeginIndex = Math.max(startIndex, barSeries.getBeginIndex());
         int runEndIndex = Math.min(finishIndex, barSeries.getEndIndex());
+        BarSeries runSeries = new RunWindowBarSeries(barSeries, runEndIndex);
 
         if (log.isTraceEnabled()) {
             log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex,
@@ -637,31 +621,12 @@ public class BarSeriesManager {
         if (runBeginIndex <= runEndIndex) {
             for (int i = runBeginIndex;; i++) {
                 lastProcessedIndex = i;
-                tradeExecutionModel.onBar(i, tradingRecord, barSeries);
+                tradeExecutionModel.onBar(i, tradingRecord, runSeries);
                 // For each bar between both indexes...
                 if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradeExecutionModel.execute(i, tradingRecord, barSeries, amountResolver.apply(i));
+                    tradeExecutionModel.execute(i, tradingRecord, runSeries, amountResolver.amount(i, runSeries));
                 }
                 if (i == runEndIndex) {
-                    break;
-                }
-            }
-        }
-
-        if (runEndIndex < Integer.MAX_VALUE && !tradingRecord.isClosed()) {
-            // If the last position is still open and there are still bars after the
-            // endIndex of the barSeries, then we execute the strategy on these bars
-            // to give an opportunity to close this position. Bars appended after
-            // the run started are not part of this run.
-            long trailingEnd = barSeries.withReadLock(() -> trailingRawEnd(runEndIndex));
-            for (long i = runEndIndex + 1L; i < trailingEnd; i++) {
-                int index = (int) i;
-                lastProcessedIndex = index;
-                tradeExecutionModel.onBar(index, tradingRecord, barSeries);
-                // For each bar after the end index of this run...
-                // --> Trying to close the last position
-                if (strategy.shouldOperate(index, tradingRecord)) {
-                    tradeExecutionModel.execute(index, tradingRecord, barSeries, amountResolver.apply(index));
                     break;
                 }
             }
@@ -671,9 +636,15 @@ public class BarSeriesManager {
         return tradingRecord;
     }
 
+    /** Resolves the amount for an operation at an index of the run window. */
+    @FunctionalInterface
+    private interface AmountResolver {
+        Num amount(int index, BarSeries runSeries);
+    }
+
     private Num amountForIndex(PositionSizer positionSizer, int index, Strategy strategy, TradingRecord tradingRecord,
-            TradeType tradeType) {
-        Num amount = positionSizer.amount(positionSizerContext(index, strategy, tradingRecord, tradeType));
+            TradeType tradeType, BarSeries runSeries) {
+        Num amount = positionSizer.amount(positionSizerContext(index, strategy, tradingRecord, tradeType, runSeries));
         validateAmount(amount);
         return amount;
     }
@@ -689,29 +660,24 @@ public class BarSeriesManager {
     }
 
     private Num amountForNextOperation(PositionSizer positionSizer, int index, Strategy strategy,
-            TradingRecord tradingRecord, TradeType tradeType) {
+            TradingRecord tradingRecord, TradeType tradeType, BarSeries runSeries) {
         if (tradingRecord.isClosed()) {
-            return amountForIndex(positionSizer, index, strategy, tradingRecord, tradeType);
+            return amountForIndex(positionSizer, index, strategy, tradingRecord, tradeType, runSeries);
         }
         return tradingRecord.getCurrentPosition().amount();
     }
 
     private PositionSizer.Context positionSizerContext(int index, Strategy strategy, TradingRecord tradingRecord,
-            TradeType tradeType) {
-        ExecutionTarget target = estimateEntryTarget(index, tradeType);
-        return new PositionSizer.Context(index, target.index(), target.price(), strategy, barSeries, tradeType,
+            TradeType tradeType, BarSeries runSeries) {
+        ExecutionTarget target = tradeExecutionModel.estimateEntryTarget(index, runSeries, tradeType);
+        if (target == null) {
+            target = fallbackSizingTarget(index, runSeries);
+        }
+        return new PositionSizer.Context(index, target.index(), target.price(), strategy, runSeries, tradeType,
                 tradingRecord, transactionCostModel, holdingCostModel);
     }
 
-    private ExecutionTarget estimateEntryTarget(int index, TradeType tradeType) {
-        ExecutionTarget target = tradeExecutionModel.estimateEntryTarget(index, barSeries, tradeType);
-        if (target == null) {
-            return fallbackSizingTarget(index);
-        }
-        return target;
-    }
-
-    private ExecutionTarget fallbackSizingTarget(int index) {
+    private static ExecutionTarget fallbackSizingTarget(int index, BarSeries barSeries) {
         int fallbackIndex = index;
         if (barSeries.isEmpty()) {
             return new ExecutionTarget(index, barSeries.numFactory().one());

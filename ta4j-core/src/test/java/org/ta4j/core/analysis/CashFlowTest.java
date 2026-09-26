@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis;
 
+import java.util.List;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -711,21 +712,24 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void pricesTrailingExitBeyondLogicalWindowEnd() {
+    public void marksPositionExitingAfterTheWindowAtTheWindowClose() {
         BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("trailing-exit", numFactory, 1, 10d, 20d,
                 30d);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, 0, 1, null, null);
-        tradingRecord.enter(1, series.getBar(1).getClosePrice(), numFactory.one());
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
         tradingRecord.exit(2, series.getBar(2).getClosePrice(), numFactory.one());
 
         CashFlow cashFlow = new CashFlow(series, tradingRecord);
-        assertNumEquals(1, cashFlow.getValue(1));
-        assertNumEquals(1.5, cashFlow.getValue(2));
-        assertNumEquals(1.5, cashFlow.stream().toList().getLast());
+
+        // The exit at 30 happens after the window: equity is marked at the last
+        // window close (20), never at the later exit price.
+        assertNumEquals(2, cashFlow.getValue(1));
+        assertEquals(List.of(numFactory.one(), numFactory.numOf(2)), cashFlow.stream().toList());
+        assertEquals(1, cashFlow.getEndIndex());
     }
 
     @Test
-    public void pricesRawExitWhenLogicalWindowIsEmpty() {
+    public void ignoresTradesOutsideAnEmptyLogicalWindow() {
         BarSeries series = ConstrainedSeriesSupport.emptyLogicalSeries("empty-window", numFactory, 100d);
         Num one = numFactory.one();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, numFactory.numOf(100d), one),
@@ -733,7 +737,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         CashFlow cashFlow = new CashFlow(series, tradingRecord);
 
-        assertNumEquals(numFactory.numOf(0.5d), cashFlow.getValue(0));
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertEquals(0, cashFlow.getSize());
     }
 
     @Test

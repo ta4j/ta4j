@@ -4,6 +4,7 @@
 package org.ta4j.core.criteria;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -148,18 +149,18 @@ public class ExpectedShortfallCriterionTest {
     }
 
     @Test
-    public void shortfallIncludesTrailingExitLoss() {
-        // The exit lands on a raw trailing bar beyond the logical window end;
-        // its -50% return must join the tail distribution instead of being
-        // cut off by the logical bar count.
+    public void shortfallIgnoresAnExitAfterTheWindow() {
+        // The exit lands on a bar after the window; its -50% return must not
+        // join the tail distribution.
         BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("tail", numFactory, 1, 100d, 110d, 55d);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+        BarSeries truncated = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 110d).build();
+        TradingRecord openAtWindowEnd = new BaseTradingRecord(Trade.buyAt(0, truncated));
 
         Num es = getCriterion().calculate(series, tradingRecord);
 
-        // Default representation converts the log tail mean back to a simple
-        // return ratio: exp(ln(55/110)) = 55/110.
-        assertNumEquals(numFactory.numOf(55d / 110d), es);
+        assertNumEquals(getCriterion().calculate(truncated, openAtWindowEnd), es);
+        assertNotEquals(numFactory.numOf(55d / 110d), es);
     }
 
     @Test

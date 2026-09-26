@@ -27,6 +27,7 @@
 ## Backtesting a live series
 
 - `BarSeriesManager` and `BacktestExecutor` run on the series you pass, keeping its begin index; they never copy it.
+- A run never trades or prices positions after its window. A signal on the last bar that needs a later bar to fill (for example next-open execution at the end of a walk-forward fold) does not fill, and a position still open at the window end is marked at the last window close or ignored, per the criterion's open-position handling.
 - A backtest captures the series window when it starts and runs every strategy over exactly that window. It holds no series lock while strategies run, so a live `ConcurrentBarSeries` keeps accepting writes, and bars appended meanwhile are ignored.
 - `BacktestExecutor` and walk-forward runs throw `IllegalStateException` if bars inside the window are replaced, updated in place (including a forming last bar), or evicted by retention before they finish, rather than return results computed from mixed bar revisions. A rolling series with a maximum bar count evicts on every append.
 - For live data, pause writes during the backtest, or build the strategies on a stable copy, for example `series.getSubSeries(series.getBeginIndex(), series.getEndIndex())`, which also leaves out the forming bar.

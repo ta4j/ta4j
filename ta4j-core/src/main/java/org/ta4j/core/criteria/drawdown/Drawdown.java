@@ -105,10 +105,9 @@ public final class Drawdown {
         int begin;
         int end;
         if (curve instanceof PerformanceIndicator performanceCurve) {
-            // A performance curve's captured window is authoritative. It may
-            // include a retained trailing exit beyond the record's logical
-            // series end, while an explicitly bounded curve must not be widened
-            // from the live series or record bounds.
+            // A performance curve's captured window is authoritative: an
+            // explicitly bounded curve must not be widened from the live series
+            // or record bounds.
             begin = performanceCurve.getBeginIndex();
             Integer explicitStartIndex = tradingRecord == null ? null : tradingRecord.getStartIndex();
             if (explicitStartIndex != null) {

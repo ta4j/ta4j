@@ -48,23 +48,20 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void trailingExitMatchesEquivalentUnconstrainedCalmarReference() {
+    public void scoresAnExitAfterTheWindowAsOpenAtTheWindowEnd() {
         double[] closes = new double[] { 100d, 110d, 55d };
         BarSeries constrained = ConstrainedSeriesSupport.trailingConstrainedSeries("calmar-trailing-exit", numFactory,
                 1, closes);
         BaseTradingRecord constrainedRecord = new BaseTradingRecord(Trade.buyAt(0, constrained),
                 Trade.sellAt(2, constrained));
-
-        BarSeries unconstrained = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closes).build();
-        BaseTradingRecord unconstrainedRecord = new BaseTradingRecord(Trade.buyAt(0, unconstrained),
-                Trade.sellAt(2, unconstrained));
+        BarSeries truncated = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 110d).build();
+        BaseTradingRecord openAtWindowEnd = new BaseTradingRecord(Trade.buyAt(0, truncated));
         CalmarRatioCriterion criterion = (CalmarRatioCriterion) getCriterion();
 
         Num constrainedValue = criterion.calculate(constrained, constrainedRecord);
-        Num unconstrainedValue = criterion.calculate(unconstrained, unconstrainedRecord);
 
-        assertNumEquals(numFactory.numOf(referenceCalmar(unconstrained, closes)), unconstrainedValue, 1e-12);
-        assertNumEquals(unconstrainedValue, constrainedValue, 1e-12);
+        assertNumEquals(criterion.calculate(truncated, openAtWindowEnd), constrainedValue, 1e-12);
+        assertTrue("the later exit at 55 must not create a drawdown", constrainedValue.isPositive());
     }
 
     @Test
@@ -98,16 +95,11 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void rawOnlySeriesUsesCapturedCashFlowRange() {
+    public void ignoresTradesOutsideAnEmptyLogicalWindow() {
         BarSeries rawOnly = ConstrainedSeriesSupport.emptyLogicalSeries("calmar-raw-only", numFactory, 100d, 50d);
         BaseTradingRecord rawOnlyRecord = new BaseTradingRecord(Trade.buyAt(0, rawOnly), Trade.sellAt(1, rawOnly));
-        BarSeries logical = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 50d).build();
-        BaseTradingRecord logicalRecord = new BaseTradingRecord(Trade.buyAt(0, logical), Trade.sellAt(1, logical));
 
-        Num expected = getCriterion().calculate(logical, logicalRecord);
-        Num actual = getCriterion().calculate(rawOnly, rawOnlyRecord);
-
-        assertNumEquals(expected, actual, 1e-12);
+        assertNumEquals(0, getCriterion().calculate(rawOnly, rawOnlyRecord));
     }
 
     @Test

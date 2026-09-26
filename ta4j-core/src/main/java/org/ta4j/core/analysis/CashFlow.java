@@ -213,12 +213,12 @@ public class CashFlow implements PerformanceIndicator {
         if (entry == null) {
             return;
         }
-        int addressableEndIndex = captured.addressableEndIndex();
+        int seriesEndIndex = captured.seriesEndIndex();
         int entryIndex = entry.getIndex();
-        if (entryIndex > finalIndex || entryIndex > addressableEndIndex) {
+        if (entryIndex > finalIndex || entryIndex > seriesEndIndex) {
             return;
         }
-        int endIndex = determineEndIndex(position, finalIndex, addressableEndIndex);
+        int endIndex = determineEndIndex(position, finalIndex, seriesEndIndex);
         int windowStartIndex = captured.beginIndex();
         int windowEndIndex = captured.bufferEndIndex();
         if (windowStartIndex > windowEndIndex || endIndex < windowStartIndex) {

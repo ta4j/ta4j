@@ -19,18 +19,18 @@ final class AnalysisPositionSupport {
      * Bounds a curve captures once, under the series read scope, when it
      * materializes.
      *
-     * @param beginIndex          first absolute index of the curve
-     * @param bufferEndIndex      last absolute index materialized; record-driven
-     *                            curves pad through the series end so later indices
-     *                            carry the final value forward
-     * @param endIndex            last absolute index of the analysis window: the
-     *                            record's logical end or requested final index,
-     *                            extended to a trailing exit beyond the logical
-     *                            series end; below {@code beginIndex} when empty
-     * @param addressableEndIndex last raw index positions may be priced at
-     * @param finalIndex          index open positions are marked through
+     * @param beginIndex     first absolute index of the curve
+     * @param bufferEndIndex last absolute index materialized; record-driven curves
+     *                       pad through the series end so later indices carry the
+     *                       final value forward
+     * @param endIndex       last absolute index of the analysis window: the
+     *                       record's logical end or requested final index; below
+     *                       {@code beginIndex} when empty
+     * @param seriesEndIndex the logical series end: no position is priced after it,
+     *                       so bars beyond the window never reach a curve
+     * @param finalIndex     index open positions are marked through
      */
-    record Window(int beginIndex, int bufferEndIndex, int endIndex, int addressableEndIndex, int finalIndex) {
+    record Window(int beginIndex, int bufferEndIndex, int endIndex, int seriesEndIndex, int finalIndex) {
 
         boolean isEmpty() {
             return bufferEndIndex < beginIndex;
@@ -50,25 +50,22 @@ final class AnalysisPositionSupport {
      * @param startIndex     requested first index, clamped to the series begin
      * @param requestedFinal final index used unless a record or series end is
      *                       requested
-     * @param useRecordEnd   derive the final index from the record and its trailing
-     *                       exits
+     * @param useRecordEnd   use the record's logical end as final index
      * @param useSeriesEnd   use the logical series end as final index
      * @param padToSeriesEnd materialize through the series end even when the
      *                       analysis window ends earlier
      */
     static Window captureWindow(BarSeries series, TradingRecord record, int startIndex, int requestedFinal,
             boolean useRecordEnd, boolean useSeriesEnd, boolean padToSeriesEnd) {
-        int addressableEndIndex = addressableEndIndex(series);
-        int finalIndex = useRecordEnd ? analysisEndIndex(series, record, addressableEndIndex)
-                : useSeriesEnd ? series.getEndIndex() : requestedFinal;
+        int seriesEndIndex = series.getEndIndex();
+        int finalIndex = useRecordEnd ? record.getEndIndex(series) : useSeriesEnd ? seriesEndIndex : requestedFinal;
         int beginIndex = Math.max(Math.max(0, startIndex), series.getBeginIndex());
-        int requestedEnd = padToSeriesEnd ? Math.max(series.getEndIndex(), finalIndex) : finalIndex;
-        if (beginIndex > addressableEndIndex || requestedEnd < beginIndex) {
-            return new Window(beginIndex, beginIndex - 1, beginIndex - 1, addressableEndIndex, finalIndex);
+        int requestedEnd = padToSeriesEnd ? Math.max(seriesEndIndex, finalIndex) : finalIndex;
+        int bufferEndIndex = Math.min(requestedEnd, seriesEndIndex);
+        if (bufferEndIndex < beginIndex) {
+            return new Window(beginIndex, beginIndex - 1, beginIndex - 1, seriesEndIndex, finalIndex);
         }
-        int bufferEndIndex = Math.min(requestedEnd, addressableEndIndex);
-        return new Window(beginIndex, bufferEndIndex, Math.min(finalIndex, bufferEndIndex), addressableEndIndex,
-                finalIndex);
+        return new Window(beginIndex, bufferEndIndex, Math.min(finalIndex, bufferEndIndex), seriesEndIndex, finalIndex);
     }
 
     /**
@@ -77,26 +74,6 @@ final class AnalysisPositionSupport {
     static OffsetNumBuffer buffer(Window window, Num initialValue, Num neutral) {
         return window.isEmpty() ? OffsetNumBuffer.empty(neutral)
                 : new OffsetNumBuffer(window.beginIndex(), window.bufferEndIndex(), initialValue, neutral);
-    }
-
-    /**
-     * Returns the last index addressable in the series' raw bar storage. For a live
-     * series this equals {@link BarSeries#getEndIndex()}; for builder-constrained
-     * or rolling-window series it can lie beyond the logical window end, where
-     * trailing bars remain readable for analyses that must price exits landing
-     * there.
-     *
-     * @param series the bar series
-     * @return the last addressable index, or {@code -1} for an empty series
-     */
-    static int addressableEndIndex(BarSeries series) {
-        int logicalEndIndex = series.getEndIndex();
-        List<Bar> rawBars = series.getBarData();
-        if (rawBars.isEmpty()) {
-            return logicalEndIndex;
-        }
-        long rawLastIndex = (long) series.getRemovedBarsCount() + rawBars.size() - 1;
-        return rawLastIndex > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) rawLastIndex;
     }
 
     /** Receives one mark-to-market price of a position. */
@@ -152,31 +129,6 @@ final class AnalysisPositionSupport {
         Num accruedExitCost = costPerPeriod.multipliedBy(numFactory.numOf((long) endIndex - entryIndex));
         Num netExitPrice = curve.addCost(curve.resolveExitPrice(position, endIndex, series), accruedExitCost, isLong);
         return new ExitMark(netExitPrice, previousPrice);
-    }
-
-    /**
-     * Extends only materialized analysis windows to actual position activity in
-     * addressable raw storage; logical execution and benchmark bounds stay
-     * unchanged.
-     */
-    static int analysisEndIndex(BarSeries series, TradingRecord record, int addressableEndIndex) {
-        int logicalEndIndex = series.getEndIndex();
-        int endIndex = record.getEndIndex(series);
-        if (addressableEndIndex <= logicalEndIndex) {
-            return endIndex;
-        }
-        boolean unboundedRecord = record.getEndIndex() == null;
-        for (Position position : record.getPositions()) {
-            Trade activity = position.getExit();
-            if (activity == null && unboundedRecord) {
-                activity = position.getEntry();
-            }
-            if (activity != null && activity.getIndex() > logicalEndIndex
-                    && activity.getIndex() <= addressableEndIndex) {
-                endIndex = Math.max(endIndex, activity.getIndex());
-            }
-        }
-        return endIndex;
     }
 
     static List<Position> positionsForAnalysis(TradingRecord record, int finalIndex,

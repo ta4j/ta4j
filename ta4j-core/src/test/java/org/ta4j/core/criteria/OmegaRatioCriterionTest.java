@@ -352,15 +352,20 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void includesMaterializedTrailingExitBeyondLogicalEnd() {
+    public void scoresAnExitAfterTheWindowAsOpenAtTheWindowEnd() {
         BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("omega-trailing-exit", numFactory, 1,
                 100d, 110d, 55d);
         TradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+        BarSeries truncated = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 110d).build();
+        TradingRecord openAtWindowEnd = new BaseTradingRecord(Trade.buyAt(0, truncated));
+        OmegaRatioCriterion criterion = new OmegaRatioCriterion(0.15d);
 
-        Num ratio = new OmegaRatioCriterion(ReturnRepresentation.DECIMAL, OpenPositionHandling.MARK_TO_MARKET)
-                .calculate(series, record);
+        Num ratio = criterion.calculate(series, record);
 
-        assertNumEquals(numFactory.numOf(0.2d), ratio, 1e-12);
+        // Only the +10% window return counts: shortfall 0.05 below the 15%
+        // threshold and no upside. The later -50% exit return is unseen.
+        assertNumEquals(numFactory.zero(), ratio);
+        assertNumEquals(criterion.calculate(truncated, openAtWindowEnd), ratio);
     }
 
     @Test

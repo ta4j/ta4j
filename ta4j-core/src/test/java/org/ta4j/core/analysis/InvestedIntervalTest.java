@@ -104,7 +104,7 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
     }
 
     @Test
-    public void marksRawExitIntervalWhenLogicalWindowIsEmpty() {
+    public void ignoresTradesOutsideAnEmptyLogicalWindow() {
         BarSeries series = ConstrainedSeriesSupport.emptyLogicalSeries("empty-window", numFactory, 100d, 50d);
         Num one = numFactory.one();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, numFactory.numOf(100d), one),
@@ -113,8 +113,8 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
         InvestedInterval indicator = new InvestedInterval(series, tradingRecord);
 
         assertThat(series.isEmpty()).isTrue();
-        assertThat(indicator.getValue(1)).as("raw exit interval").isTrue();
-        assertThat(indicator.stream().toList()).containsExactly(false, true);
+        assertThat(indicator.getValue(1)).isFalse();
+        assertThat(indicator.stream().toList()).isEmpty();
     }
 
     @Test
@@ -174,17 +174,17 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
     }
 
     @Test
-    public void marksTrailingExitIntervalBeyondLogicalWindowEnd() {
+    public void endsAtTheWindowWhenAnExitLandsAfterIt() {
         BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("trailing-exit", numFactory, 1, 10d, 20d,
                 30d);
         BaseTradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, 0, 1, null, null);
-        tradingRecord.enter(1, series.getBar(1).getClosePrice(), numFactory.one());
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
         tradingRecord.exit(2, series.getBar(2).getClosePrice(), numFactory.one());
 
         var indicator = new InvestedInterval(series, tradingRecord);
 
-        assertThat(indicator.getValue(2)).as("trailing exit interval").isTrue();
-        assertThat(indicator.stream().toList()).containsExactly(false, false, true);
+        assertThat(indicator.stream().toList()).containsExactly(false, true);
+        assertThat(indicator.getValue(2)).as("interval after the window").isFalse();
     }
 
     @Test

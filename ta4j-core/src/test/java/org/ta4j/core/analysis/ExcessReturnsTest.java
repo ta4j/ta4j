@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.analysis;
 
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.stream.IntStream;
@@ -44,20 +46,18 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
     }
 
     @Test
-    public void appliesInvestedPolicyToRawExitWhenLogicalWindowIsEmpty() {
+    public void ignoresTradesOutsideAnEmptyLogicalWindow() {
         BarSeries series = ConstrainedSeriesSupport.emptyLogicalSeries("empty-window", numFactory, 100d, 100d);
         Num one = numFactory.one();
         BaseTradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, numFactory.numOf(100d), one),
                 Trade.sellAt(1, numFactory.numOf(100d), one));
-        double annualRiskFreeRate = 0.05d;
 
-        Num actual = new ExcessReturns(series, numFactory.numOf(annualRiskFreeRate),
-                CashReturnPolicy.CASH_EARNS_RISK_FREE, tradingRecord).excessReturn(0, 1);
+        Num actual = new ExcessReturns(series, numFactory.numOf(0.05d), CashReturnPolicy.CASH_EARNS_RISK_FREE,
+                tradingRecord).excessReturn(0, 1);
 
-        double expected = Math.pow(1d + annualRiskFreeRate,
-                -Duration.ofMinutes(1).getSeconds() / (double) TimeConstants.SECONDS_PER_YEAR) - 1d;
-        assertEquals(expected, actual.doubleValue(), 1e-12);
-        assertTrue(actual.isNegative());
+        // Both trades lie outside the (empty) logical window, so no invested
+        // interval exists to price against the risk-free rate.
+        assertNumEquals(0, actual);
     }
 
     @Test

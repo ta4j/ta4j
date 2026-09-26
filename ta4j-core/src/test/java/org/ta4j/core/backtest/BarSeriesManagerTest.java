@@ -186,17 +186,33 @@ public class BarSeriesManagerTest {
     }
 
     @Test
-    public void currentCloseModelClosesOpenPositionUsingTrailingRawBar() {
+    public void doesNotTradeOnRawBarsAfterTheLogicalWindow() {
         BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("trailing", numFactory, 1, 10d, 20d, 30d);
         Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(2));
 
-        Position position = new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(strategy)
-                .getPositions()
-                .getFirst();
+        TradingRecord tradingRecord = new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(strategy);
 
+        // The exit signal only fires on raw bar 2, after the window: the position
+        // stays open at the window end instead of closing on a bar it never saw.
+        Position position = tradingRecord.getCurrentPosition();
         assertEquals(0, position.getEntry().getIndex());
-        assertEquals(2, position.getExit().getIndex());
-        assertEquals(series.getBar(2).getClosePrice(), position.getExit().getPricePerAsset());
+        assertTrue(position.isOpened());
+        assertEquals(0, tradingRecord.getPositionCount());
+    }
+
+    @Test
+    public void nextOpenSignalOnTheLastRunBarDoesNotFillAfterTheRun() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30, 40, 50).build();
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(2));
+
+        TradingRecord tradingRecord = new BarSeriesManager(series, new TradeOnNextOpenModel()).run(strategy,
+                TradeType.BUY, 0, 2);
+
+        // The exit signal on bar 2 would fill at bar 3's open, outside [0, 2]
+        // (the next walk-forward fold, for example), so it does not fill.
+        assertEquals(1, tradingRecord.getCurrentPosition().getEntry().getIndex());
+        assertTrue(tradingRecord.getCurrentPosition().isOpened());
+        assertEquals(0, tradingRecord.getPositionCount());
     }
 
     @Test
@@ -213,18 +229,15 @@ public class BarSeriesManagerTest {
     }
 
     @Test
-    public void closeScanReachesTrailingBarWithRemovedIndexOffset() {
+    public void doesNotTradeAfterTheWindowWithRemovedIndexOffset() {
         BarSeries series = ConstrainedSeriesSupport.offsetSeries("offset-trailing", numFactory, 10, 11, 10, 10d, 20d,
                 30d);
         Strategy strategy = new BaseStrategy(new FixedRule(10), new FixedRule(12));
 
-        Position position = new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(strategy)
-                .getPositions()
-                .getFirst();
+        TradingRecord tradingRecord = new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(strategy);
 
-        assertEquals(10, position.getEntry().getIndex());
-        assertEquals(12, position.getExit().getIndex());
-        assertEquals(series.getBar(12).getClosePrice(), position.getExit().getPricePerAsset());
+        assertEquals(10, tradingRecord.getCurrentPosition().getEntry().getIndex());
+        assertTrue(tradingRecord.getCurrentPosition().isOpened());
     }
 
     @Test
@@ -276,7 +289,12 @@ public class BarSeriesManagerTest {
             assertNotSame(oneTradeStrategy, firstContextStrategy);
             assertNotSame(firstContextStrategy, secondContextStrategy);
             assertTrue(firstContextStrategy.shouldEnter(2));
-            assertSame(series, firstContextSeries);
+            // The context sees the caller's bars at their own indexes, ending at
+            // the run's last index so sizing cannot read bars after the window.
+            assertSame(series.getBar(2), firstContextSeries.getBar(2));
+            assertEquals(series.getBeginIndex(), firstContextSeries.getBeginIndex());
+            assertEquals(3, firstContextSeries.getEndIndex());
+            assertThrows(IndexOutOfBoundsException.class, () -> firstContextSeries.getBar(4));
             assertSame(firstContextSeries, secondContextSeries);
             return context.entryPrice().dividedBy(numFactory.numOf(10));
         };

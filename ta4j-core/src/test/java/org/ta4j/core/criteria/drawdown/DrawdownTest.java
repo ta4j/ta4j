@@ -8,6 +8,7 @@ import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.analysis.CumulativePnL;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.junit.Test;
@@ -106,17 +107,15 @@ public class DrawdownTest extends AbstractIndicatorTest<org.ta4j.core.Indicator<
     }
 
     @Test
-    public void cashFlowUsesCapturedTrailingExitForDrawdown() {
+    public void ignoresAnExitAfterTheWindow() {
+        // Entry 100, window close 110, exit after the window at 55: the window
+        // never saw the fall, so there is no drawdown.
         BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("drawdown-trailing-exit", numFactory, 1,
                 100d, 110d, 55d);
         var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
-        CashFlow cashFlow = new CashFlow(series, record);
 
-        assertNumEquals(0.5, Drawdown.amount(series, record, cashFlow));
-
-        CashFlow explicitWindow = new CashFlow(series, record, 0, 1, EquityCurveMode.MARK_TO_MARKET,
-                OpenPositionHandling.MARK_TO_MARKET);
-        assertNumEquals(0, Drawdown.amount(series, record, explicitWindow));
+        assertNumEquals(0, Drawdown.amount(series, record, new CashFlow(series, record)));
+        assertNumEquals(0, Drawdown.amount(series, record, new CumulativePnL(series, record), false));
     }
 
     @Test

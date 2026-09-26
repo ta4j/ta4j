@@ -33,10 +33,10 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * The return values are materialized positionally from the captured series
- * begin index through the materialized end, which may extend beyond
- * {@code barSeries.getEndIndex()} when a trailing exit remains addressable in
- * raw storage. {@link #getValue(int)} returns {@link NaN#NaN} outside that
- * materialized range.
+ * begin index through the logical series end captured with them. Positions are
+ * never priced after that end: one still open there is marked at its last close
+ * rather than at an exit that happened later. {@link #getValue(int)} returns
+ * {@link NaN#NaN} outside that materialized range.
  *
  * @see ReturnRepresentation
  * @see ReturnRepresentationPolicy
@@ -319,33 +319,27 @@ public class Returns implements PerformanceIndicator {
     }
 
     /**
-     * Returns the first absolute index of the captured return window, independent
-     * of later changes to the borrowed series.
+     * {@inheritDoc}
      *
-     * @return the captured begin index
      * @since 0.25.1
      */
+    @Override
     public int getBeginIndex() {
         return window.beginIndex();
     }
 
     /**
-     * Returns the last absolute index of the analysis window: the trading record's
-     * logical end (or explicit final index), extended to a trailing exit beyond the
-     * logical series end. Later materialized slots up to the series end carry no
-     * position activity and are excluded here. An empty window has an end index
-     * below {@link #getBeginIndex()}.
+     * {@inheritDoc}
      *
-     * @return the captured analysis end index
      * @since 0.25.1
      */
+    @Override
     public int getEndIndex() {
         return window.endIndex();
     }
 
     /**
-     * @return the number of materialized returns, including any trailing exit
-     *         return beyond the logical window end. The leading no-prior-close
+     * @return the number of materialized returns. The leading no-prior-close
      *         placeholder is only excluded when the first slot carries no real
      *         return.
      */
@@ -376,11 +370,11 @@ public class Returns implements PerformanceIndicator {
             return;
         }
         int entryIndex = entry.getIndex();
-        int addressableEndIndex = captured.addressableEndIndex();
-        if (entryIndex > finalIndex || entryIndex > addressableEndIndex) {
+        int seriesEndIndex = captured.seriesEndIndex();
+        if (entryIndex > finalIndex || entryIndex > seriesEndIndex) {
             return;
         }
-        int endIndex = determineEndIndex(position, finalIndex, addressableEndIndex);
+        int endIndex = determineEndIndex(position, finalIndex, seriesEndIndex);
         int seriesBegin = captured.beginIndex();
         if (endIndex < seriesBegin) {
             return;

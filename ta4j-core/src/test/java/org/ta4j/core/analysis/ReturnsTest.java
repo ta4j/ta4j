@@ -510,17 +510,19 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void pricesTrailingExitBeyondLogicalWindowEnd() {
+    public void marksPositionExitingAfterTheWindowAtTheWindowClose() {
         BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("trailing-exit", numFactory, 1, 10d, 20d,
                 30d);
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, 0, 1, null, null);
-        tradingRecord.enter(1, series.getBar(1).getClosePrice(), numFactory.one());
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
         tradingRecord.exit(2, series.getBar(2).getClosePrice(), numFactory.one());
 
         Returns returns = new Returns(series, tradingRecord, ReturnRepresentation.DECIMAL);
 
-        assertNumEquals(0.5, returns.getValue(2));
-        assertNumEquals(0.5, returns.stream().toList().getLast());
+        // One window return (10 -> 20); the move to the later exit at 30 is not seen.
+        assertNumEquals(1, returns.getValue(1));
+        assertTrue(returns.getValue(2).isNaN());
+        assertEquals(1, returns.getSize());
     }
 
     @Test
@@ -547,17 +549,15 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void sizeIncludesTrailingExitReturn() {
+    public void sizeEndsAtTheWindowEvenWhenAnExitLandsAfterIt() {
         BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("tail", numFactory, 1, 100d, 110d, 55d);
         var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
 
         Returns returns = new Returns(series, record, ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET,
                 OpenPositionHandling.MARK_TO_MARKET);
 
-        assertEquals(2, returns.getSize());
-        Returns boundedReturns = new Returns(series, record, record.getEndIndex(series), ReturnRepresentation.DECIMAL,
-                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
-        assertEquals(1, boundedReturns.getSize());
+        assertEquals(1, returns.getSize());
+        assertNumEquals(0.1, returns.getValue(1));
     }
 
     @Test
@@ -601,7 +601,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void pricesRawExitWhenLogicalWindowIsEmpty() {
+    public void ignoresTradesOutsideAnEmptyLogicalWindow() {
         BarSeries series = ConstrainedSeriesSupport.emptyLogicalSeries("empty-window", numFactory, 100d);
         Num one = numFactory.one();
         TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, numFactory.numOf(100d), one),
@@ -609,8 +609,8 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         Returns returns = new Returns(series, tradingRecord, ReturnRepresentation.DECIMAL);
 
-        assertNumEquals(numFactory.numOf(-0.5d), returns.getValue(0));
-        assertEquals(1, returns.getSize());
+        assertTrue(returns.getValue(0).isNaN());
+        assertEquals(0, returns.getSize());
     }
 
     @Test

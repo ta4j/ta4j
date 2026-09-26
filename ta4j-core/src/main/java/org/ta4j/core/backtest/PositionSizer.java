@@ -233,16 +233,19 @@ public interface PositionSizer {
      * @param entryIndex           estimated execution bar index
      * @param entryPrice           estimated entry price
      * @param strategy             strategy being evaluated
-     * @param barSeries            backtested bar series
+     * @param barSeries            backtested bar series; during a
+     *                             {@link BarSeriesManager} run, a read-only view of
+     *                             the caller's series that keeps its indexes and
+     *                             ends at the run's last index
      * @param tradeType            entry trade type
      * @param tradingRecord        trading record for the current run
      * @param transactionCostModel transaction cost model
      * @param holdingCostModel     holding cost model
      * @since 0.22.9
      */
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "The context borrows the caller's live series, "
-            + "strategy, trading record and cost models so sizing observes the same price revision the strategy "
-            + "rules and execution models see; accessors expose them by contract.")
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "The context borrows the run's series view, "
+            + "strategy, trading record and cost models so sizing observes the same bars the strategy rules and "
+            + "execution models see; accessors expose them by contract.")
     public record Context(int signalIndex, int entryIndex, Num entryPrice, Strategy strategy, BarSeries barSeries,
             TradeType tradeType, TradingRecord tradingRecord, CostModel transactionCostModel,
             CostModel holdingCostModel) {
