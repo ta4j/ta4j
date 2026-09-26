@@ -127,6 +127,27 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
     }
 
     @Test
+    public void markToMarketHoldingCostAccruesPerPeriodAndEndsAtRealizedValue() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 100d, 100d, 100d)
+                .build();
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(),
+                new FixedTransactionCostModel(1.5d));
+        record.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
+        record.exit(3, series.getBar(3).getClosePrice(), numFactory.one());
+
+        CumulativePnL markToMarket = new CumulativePnL(series, record, EquityCurveMode.MARK_TO_MARKET);
+        CumulativePnL realized = new CumulativePnL(series, record, EquityCurveMode.REALIZED);
+
+        // A 1.5 fee per trade makes 3.0 of holding cost over three bars; it
+        // accrues one unit per held bar instead of one average period per mark.
+        assertNumEquals(-1, markToMarket.getValue(1));
+        assertNumEquals(-2, markToMarket.getValue(2));
+        assertNumEquals(-3, markToMarket.getValue(3));
+        assertNumEquals(realized.getValue(3), markToMarket.getValue(3));
+    }
+
+    @Test
     public void flatPriceHoldingCostRemainsCumulativeAfterRetainedSeed() {
         BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         rolling.setMaximumBarCount(2);

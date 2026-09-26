@@ -90,6 +90,30 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
+    public void markToMarketHoldingCostCompoundsToTheRealizedReturn() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 100d, 100d, 100d)
+                .build();
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(),
+                new FixedTransactionCostModel(1.5d));
+        record.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
+        record.exit(3, series.getBar(3).getClosePrice(), numFactory.one());
+
+        Returns returns = new Returns(series, record, ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        // Net marks fall 100 -> 99 -> 98 -> 97 as one cost unit accrues per bar.
+        assertNumEquals(99d / 100d - 1d, returns.getValue(1));
+        assertNumEquals(98d / 99d - 1d, returns.getValue(2));
+        assertNumEquals(97d / 98d - 1d, returns.getValue(3));
+        Num compounded = numFactory.one();
+        for (int index = 1; index <= 3; index++) {
+            compounded = compounded.multipliedBy(returns.getValue(index).plus(numFactory.one()));
+        }
+        assertNumEquals(numFactory.numOf(0.97d), compounded, 1e-12);
+    }
+
+    @Test
     public void retainedHeadHoldingCostRemainsCumulativeAcrossMarks() {
         BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         rolling.setMaximumBarCount(2);

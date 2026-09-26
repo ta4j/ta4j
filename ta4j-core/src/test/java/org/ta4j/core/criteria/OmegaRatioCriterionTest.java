@@ -194,7 +194,10 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
 
         OmegaRatioCriterion criterion = (OmegaRatioCriterion) getCriterion(0d);
 
+        // The seeded +10% return is upside with no shortfall (NaN); dropping it
+        // would leave no observations and score zero.
         assertTrue(criterion.calculate(rolling, record).isNaN());
+        assertNumEquals(numFactory.zero(), ((OmegaRatioCriterion) getCriterion(0.15d)).calculate(rolling, record));
     }
 
     @Test
@@ -209,6 +212,8 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
 
         Num actual = new OmegaRatioCriterion().calculate(rolling, record);
 
+        // The anchored +20% return is upside with no shortfall (NaN); a rebased
+        // lookup would read no return and score zero.
         assertTrue(actual.isNaN());
         assertEquals(1, rolling.getBeginIndex());
     }
@@ -323,7 +328,8 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
         Num ratio = new OmegaRatioCriterion(ReturnRepresentation.DECIMAL, OpenPositionHandling.MARK_TO_MARKET)
                 .calculate(terminal, record);
 
-        assertTrue(ratio.isPositive());
+        // Returns +20% then -1/12 around the terminal index: 0.2 / (1/12).
+        assertNumEquals(numFactory.numOf(2.4), ratio, 1e-12);
     }
 
     @Test

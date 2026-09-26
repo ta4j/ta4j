@@ -511,6 +511,20 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
+    public void markToMarketHoldingCostEndsAtRealizedEquity() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 100d, 100d).build();
+        var position = new Position(Trade.buyAt(0, series), Trade.sellAt(2, series), new ZeroCostModel(),
+                new FixedHoldingCostModel(4d));
+
+        var markToMarket = new CashFlow(series, position, EquityCurveMode.MARK_TO_MARKET);
+        var realized = new CashFlow(series, position, EquityCurveMode.REALIZED);
+
+        assertNumEquals(0.98d, markToMarket.getValue(1));
+        assertNumEquals(0.96d, markToMarket.getValue(2));
+        assertNumEquals(realized.getValue(2), markToMarket.getValue(2));
+    }
+
+    @Test
     public void retainedSeedAndLaterMarksAccrueHoldingCostsFromEntry() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d)
