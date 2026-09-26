@@ -3,13 +3,17 @@
  */
 package org.ta4j.core.analysis;
 
+import java.time.Duration;
 import java.util.Objects;
 
 import org.ta4j.core.utils.BarSeriesUtils;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.utils.TimeConstants;
 
 /**
  * Computes compounded excess returns between sampled index pairs.
@@ -106,25 +110,61 @@ public final class ExcessReturns {
      */
     public ExcessReturns(BarSeries series, Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy,
             TradingRecord tradingRecord, EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+        this(series, annualRiskFreeRate, cashReturnPolicy,
+                new InvestedInterval(series, tradingRecord,
+                        equityCurveMode == EquityCurveMode.REALIZED ? OpenPositionHandling.IGNORE
+                                : openPositionHandling),
+                new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling));
+    }
+
+    /**
+     * Creates excess returns for one position. Native futures use the existing
+     * entry-notional capital fallback rather than requiring account capital.
+     *
+     * @param series               the bar series
+     * @param annualRiskFreeRate   the annual risk-free rate
+     * @param cashReturnPolicy     the policy for flat equity intervals
+     * @param position             the position to analyse
+     * @param equityCurveMode      the equity curve mode
+     * @param openPositionHandling how to handle remaining exposure
+     * @since 0.25.1
+     */
+    public ExcessReturns(BarSeries series, Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy, Position position,
+            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+        this(series, annualRiskFreeRate, cashReturnPolicy,
+                new InvestedInterval(series, new BaseTradingRecord(Objects.requireNonNull(position, "position")),
+                        equityCurveMode == EquityCurveMode.REALIZED ? OpenPositionHandling.IGNORE
+                                : openPositionHandling),
+                new CashFlow(series, position,
+                        openPositionHandling == OpenPositionHandling.IGNORE ? EquityCurveMode.REALIZED
+                                : equityCurveMode));
+    }
+
+    private ExcessReturns(BarSeries series, Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy,
+            InvestedInterval investedInterval, CashFlow cashFlow) {
         this.series = Objects.requireNonNull(series, "series cannot be null");
         this.annualRiskFreeRate = Objects.requireNonNull(annualRiskFreeRate, "annualRiskFreeRate cannot be null");
         this.cashReturnPolicy = Objects.requireNonNull(cashReturnPolicy, "cashReturnPolicy cannot be null");
+        this.investedInterval = investedInterval;
+        this.cashFlow = cashFlow;
+    }
 
-        Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
-        Objects.requireNonNull(equityCurveMode, "equityCurveMode cannot be null");
-        Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
-
-        OpenPositionHandling effectiveOpenPositionHandling = equityCurveMode == EquityCurveMode.REALIZED
-                ? OpenPositionHandling.IGNORE
-                : openPositionHandling;
-        this.investedInterval = new InvestedInterval(series, tradingRecord, effectiveOpenPositionHandling);
-        this.cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, effectiveOpenPositionHandling);
+    /**
+     * Whether the curve has a first-bar futures return from initial capital, rather
+     * than cumulative activity before the retained window.
+     *
+     * @return whether sampling should include the capital-to-first-bar move
+     * @since 0.25.1
+     */
+    public boolean hasInitialReturn() {
+        return cashFlow.hasInitialReturn();
     }
 
     /**
      * Computes the compounded excess return using the configured cash flow.
      *
-     * @param previousIndex the start index
+     * @param previousIndex the start index; one before the series begin index uses
+     *                      initial capital when {@link #hasInitialReturn()} is true
      * @param currentIndex  the end index
      * @return the compounded excess return
      * @since 0.22.2
@@ -169,7 +209,17 @@ public final class ExcessReturns {
     private Num riskFreeGrowth(int previousIndex, int currentIndex, Num one) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
-        Num deltaYears = BarSeriesUtils.deltaYears(series, previousIndex, currentIndex);
+        Num deltaYears;
+        if (previousIndex == series.getBeginIndex() - 1 && hasInitialReturn()) {
+            long seconds = Math
+                    .max(0, Duration
+                            .between(series.getBar(series.getBeginIndex()).getBeginTime(),
+                                    series.getBar(currentIndex).getEndTime())
+                            .getSeconds());
+            deltaYears = numFactory.numOf(seconds).dividedBy(numFactory.numOf(TimeConstants.SECONDS_PER_YEAR));
+        } else {
+            deltaYears = BarSeriesUtils.deltaYears(series, previousIndex, currentIndex);
+        }
         if (deltaYears.isLessThanOrEqual(zero)) {
             return one;
         }

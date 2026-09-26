@@ -245,7 +245,7 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
                 continue;
             }
             int entryIndex = position.getEntry().getIndex();
-            int exitIndex = position.getExit().getIndex();
+            int exitIndex = Math.min(lastExecutedIndex(position.getExit()), series.getEndIndex());
             List<Num> block = new ArrayList<>();
             Num previousEquity = entryIndex > 0 ? cashFlow.getValue(entryIndex - 1) : one;
             for (int i = entryIndex; i <= exitIndex; i++) {
@@ -270,4 +270,11 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
         return criterionValue1.isLessThan(criterionValue2);
     }
 
+    private static int lastExecutedIndex(org.ta4j.core.Trade trade) {
+        int lastIndex = trade.getIndex();
+        for (org.ta4j.core.TradeFill fill : org.ta4j.core.Trade.executionFillsOf(trade)) {
+            lastIndex = Math.max(lastIndex, fill.index());
+        }
+        return lastIndex;
+    }
 }

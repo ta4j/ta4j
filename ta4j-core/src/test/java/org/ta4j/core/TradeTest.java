@@ -378,4 +378,75 @@ public class TradeTest {
         String json = trade.toString();
         assertTrue(json.contains("\"type\":\"BUY\""));
     }
+
+    @Test
+    public void futuresFallbackRejectsMissingTimestamp() {
+        FuturesContract contract = FuturesContract.builder()
+                .venue("test")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(DoubleNum.valueOf(0.01))
+                .build();
+        Trade trade = new BaseTrade(0, TradeType.BUY, DoubleNum.valueOf(100), DoubleNum.valueOf(1)) {
+            @Override
+            public List<TradeFill> getFills() {
+                return List.of();
+            }
+
+            @Override
+            public FuturesContract getFuturesContract() {
+                return contract;
+            }
+        };
+
+        assertThrows(NullPointerException.class, () -> Trade.executionFillsOf(trade));
+    }
+
+    @Test
+    public void rejectsNonRepresentableCrossFactoryFuturesFills() {
+        FuturesContract contract = FuturesContract.builder()
+                .venue("test")
+                .symbol("BTCUSD-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.INVERSE)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("BTC")
+                .contractSize(DoubleNum.valueOf(1))
+                .build();
+        TradeFill first = TradeFill.builder()
+                .index(0)
+                .time(java.time.Instant.parse("2025-01-01T00:00:00Z"))
+                .price(DoubleNum.valueOf(100))
+                .amount(DoubleNum.valueOf(1))
+                .side(ExecutionSide.BUY)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+        TradeFill tinyPrice = TradeFill.builder()
+                .index(1)
+                .time(java.time.Instant.parse("2025-01-01T00:00:01Z"))
+                .price(DecimalNumFactory.getInstance().numOf("1e-400"))
+                .amount(DecimalNumFactory.getInstance().one())
+                .side(ExecutionSide.BUY)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+        TradeFill hugeAmount = TradeFill.builder()
+                .index(2)
+                .time(java.time.Instant.parse("2025-01-01T00:00:02Z"))
+                .price(DecimalNumFactory.getInstance().numOf(100))
+                .amount(DecimalNumFactory.getInstance().numOf("1e400"))
+                .side(ExecutionSide.BUY)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+
+        assertThrows(IllegalArgumentException.class, () -> Trade.fromFills(TradeType.BUY, List.of(first, tinyPrice)));
+        assertThrows(IllegalArgumentException.class, () -> Trade.fromFills(TradeType.BUY, List.of(first, hugeAmount)));
+    }
 }
