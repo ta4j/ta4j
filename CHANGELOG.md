@@ -5,6 +5,8 @@
 - **Transparent Monte Carlo forecast acceleration (`CF-336`)**: with `-Dta4j.acceleration.enabled=auto` (or `true`) and `-Dta4j.forecast.rngVersion=1`, `BarSeriesManager` batches eligible `DoubleNum` `MonteCarloPriceForecastIndicator` values through optional ServiceLoader providers of the `org.ta4j.core.acceleration.AccelerationRuntime` SPI while keeping `Indicator#getValue(int)`, strategy, executor, and trading-record contracts. Accelerated values are cached like scalar ones, warm-up prefixes stay scalar, oversized ranges run in memory-bounded chunks, and unsupported work, stale data, or provider failures fall back to complete scalar results; `AccelerationRuntime.lastDiagnostic()` explains why a run stayed on CPU even after it returns. RNG version `1` selects a deterministic per-path stream (seeded forecast values differ from the default stream) and adds `MonteCarloContext#randomForPath(int)` plus the `perPathRandoms` component for custom methods.
 - **Experimental Elliott topology analysis (`CF-525`)**: Added package-private pivot history, confirmation tracking, and grammar analysis under `org.ta4j.core.analysis.elliott` for `MOTIVE_5`, `CORRECTIVE_3`, and `CYCLE_5_3`. Outcomes distinguish insufficient history, no match, forming, complete, ambiguous, and invalidated candidates; four selectable relationship rules emit structured evidence. Deterministic internal study tooling includes `StudyRunner`, `StudyReport`, and `DetectorRobustnessMatrix`.
 - **Runtime-reported backtests**: Added `BacktestExecutor.executeWithRuntimeReport` overloads for fixed amounts and `PositionSizer` entries. A platform-worker cap avoids nested parallel streams for constrained ForkJoin callers.
+- **Fluent numeric powers**: `NumericIndicator.pow(Number)` raises any composed indicator to a constant exponent, so chains such as `NumericIndicator.of(relativeVolume).max(0.25).min(4).pow(0.5)` no longer need to drop out to `UnaryOperationIndicator.pow`.
+- **Adaptive Kalman noise example**: `AdaptiveKalmanNoiseExample` and the `adaptive-kalman-noise.md` walkthrough show how to feed ATR-squared process noise and relative-volume-adjusted measurement noise into `KinematicKalmanFilterIndicator` through `KalmanNoiseIndicator`, with same-bar or prior-bar (`--lag-noise`) timing, an explicit missing/zero/negative-volume policy, and MAE/RMSE scoring against fixed-noise and last-close baselines on identical one-step forecast origins. Core defaults are unchanged.
 
 ### Changed
 
@@ -12,11 +14,15 @@
 - **Bar mutation ownership**: `BaseBar` uses lazy ownership for unretained bars, compact state for one retaining series, and a weak map for shared bars. Partial price-update failures and subclass mutations that omit superclass publication now invalidate every retaining series.
 - **Concurrent retained-bar handling**: `ConcurrentBarSeries.withWriteLock` defers invalidation callbacks until the outermost lease, preventing cross-series deadlocks; surviving aliases are revalidated after head eviction.
 - **Fractal replay and observation**: Replay uses one exact-class mutation-tracking policy, while observation captures revision, bounds, and bar state under one read lease.
+- **Faster test gate**: Surefire runs test classes across four bounded JVM forks (`ta4j.test.forkCount`); the benchmark and analysis-demo lanes pin one fork so their timings and shared outputs stay isolated.
 
 ### Fixed
 
 - Realtime bars now publish retained-series invalidation when side or liquidity aggregation fails after a partial trade.
 - Bootstrap logarithms no longer construct out-of-domain scales for bounded numeric factories.
+- **Kalman filters initialize at the first usable observation**: `KalmanFilterIndicator` and `KinematicKalmanForecastStateIndicator` (and therefore `KinematicKalmanFilterIndicator` and its forecasts) no longer correct a zero-valued placeholder when the source, process noise, or measurement noise is unavailable on the first bars. The first bar with a finite source and finite, positive Q/R now seeds the estimate at the observed value with zero velocity, so dynamic-noise warm-ups such as ATR no longer drag early estimates toward zero or invent velocity. Valid-from-start results and recovery after missing inputs are unchanged.
+- Rule copies (`BaseStrategy#getEntryRule`/`getExitRule`, composite rule accessors, and position-sizing strategy snapshots) no longer walk the logging backend's JVM-wide logger registry while locating a rule's bar series, removing a per-copy cost that grew with every logger created in the JVM.
+- **Security**: `Rule`/`Strategy` deserialization no longer initializes arbitrary classes named by the JSON `type`, and missing vs. non-rule/strategy types now fail with the same `Unknown rule/strategy type` message. `ComponentDescriptor#getTypeClass` now resolves `org.ta4j.core` simple names, and `ProgressCompletion` caller detection uses `StackWalker`.
 
 ## 0.25.0 (2026-09-07)
 
