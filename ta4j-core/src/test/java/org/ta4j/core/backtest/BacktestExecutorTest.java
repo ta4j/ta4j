@@ -304,18 +304,14 @@ public class BacktestExecutorTest {
     public void boundedExecutionOfConcurrentSeriesUsesWorkerThreads() {
         ConcurrentBarSeries series = buildConcurrentSeries();
         Set<Thread> runnerThreads = ConcurrentHashMap.newKeySet();
-        BarSeriesManager manager = new BarSeriesManager(series) {
-            @Override
-            public TradingRecord run(Strategy strategy, Trade.TradeType tradeType, Num amount, int startIndex,
-                    int finishIndex) {
-                runnerThreads.add(Thread.currentThread());
-                return super.run(strategy, tradeType, amount, startIndex, finishIndex);
-            }
+        Rule recordsThread = (index, tradingRecord) -> {
+            runnerThreads.add(Thread.currentThread());
+            return false;
         };
-        List<Strategy> strategies = List.of(new BaseStrategy(new FixedRule(0), new FixedRule(1)),
-                new BaseStrategy(new FixedRule(1), new FixedRule(2)));
+        List<Strategy> strategies = List.of(new BaseStrategy(recordsThread, new FixedRule(1)),
+                new BaseStrategy(recordsThread, new FixedRule(2)));
 
-        BacktestExecutionResult result = new BacktestExecutor(manager).executeWithRuntimeReport(strategies,
+        BacktestExecutionResult result = new BacktestExecutor(series).executeWithRuntimeReport(strategies,
                 numFactory.one(), Trade.TradeType.BUY, 2);
 
         assertEquals(2, result.tradingStatements().size());
@@ -328,12 +324,13 @@ public class BacktestExecutorTest {
         ConcurrentBarSeries series = buildConcurrentSeries();
         series.setMaximumBarCount(Integer.MAX_VALUE);
         Strategy appending = strategyAppendingFromFeedThread(series, buildAppendedBar(series));
-        Strategy other = new BaseStrategy(new FixedRule(0), new FixedRule(2));
+        Strategy other = new BaseStrategy(new FixedRule(0), new FixedRule(1));
 
         BacktestExecutionResult result = new BacktestExecutor(series)
                 .executeWithRuntimeReport(List.of(appending, other), numFactory.one(), Trade.TradeType.BUY);
 
-        assertEquals("the feed append must not fail a strategy", 2, result.tradingStatements().size());
+        assertEquals("the feed append must not fail a strategy: " + result.strategyFailures(), 2,
+                result.tradingStatements().size());
         assertEquals(3, series.getEndIndex());
         assertEquals(0, result.barSeries().getBeginIndex());
         assertEquals(2, result.barSeries().getEndIndex());
@@ -341,6 +338,10 @@ public class BacktestExecutorTest {
         for (TradingStatement statement : result.tradingStatements()) {
             assertEquals(0, statement.getTradingRecord().getStartIndex().intValue());
             assertEquals(2, statement.getTradingRecord().getEndIndex().intValue());
+            for (Position position : statement.getTradingRecord().getPositions()) {
+                assertTrue("a fill used a bar appended after the window was captured",
+                        position.getExit() == null || position.getExit().getIndex() <= 2);
+            }
         }
     }
 
@@ -949,7 +950,9 @@ public class BacktestExecutorTest {
             }
             return index == 0;
         };
-        return new BaseStrategy(appendOnce, new FixedRule(1));
+        // Exits on the window's last bar, after the append completed: a next-open
+        // fill there must not use the appended bar.
+        return new BaseStrategy(appendOnce, new FixedRule(2));
     }
 
     /**

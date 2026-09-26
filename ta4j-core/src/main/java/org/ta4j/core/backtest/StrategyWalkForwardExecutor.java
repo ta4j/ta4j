@@ -213,8 +213,8 @@ public class StrategyWalkForwardExecutor {
         Objects.requireNonNull(tradeType, "tradeType");
         Objects.requireNonNull(amount, "amount");
         Objects.requireNonNull(config, "config");
-        return execute(strategy, config, progressCallback,
-                split -> seriesManager.run(strategy, tradeType, amount, split.testStart(), split.testEnd()), baseline);
+        return execute(strategy, config, progressCallback, split -> seriesManager.withSeries(baseline)
+                .run(strategy, tradeType, amount, split.testStart(), split.testEnd()), baseline);
     }
 
     /**
@@ -246,9 +246,8 @@ public class StrategyWalkForwardExecutor {
         Objects.requireNonNull(tradeType, "tradeType");
         Objects.requireNonNull(positionSizer, "positionSizer");
         Objects.requireNonNull(config, "config");
-        return execute(strategy, config, progressCallback,
-                split -> seriesManager.run(strategy, tradeType, positionSizer, split.testStart(), split.testEnd()),
-                baseline);
+        return execute(strategy, config, progressCallback, split -> seriesManager.withSeries(baseline)
+                .run(strategy, tradeType, positionSizer, split.testStart(), split.testEnd()), baseline);
     }
 
     /**

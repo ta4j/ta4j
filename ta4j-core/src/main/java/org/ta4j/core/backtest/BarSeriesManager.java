@@ -34,12 +34,15 @@ import org.ta4j.core.walkforward.WalkForwardConfig;
  * </p>
  *
  * <p>
- * A run covers the bounds captured when it starts; bars appended while it runs
- * are not evaluated. The manager holds no lock while strategies run, so a live
+ * A run evaluates strategies over the bounds captured when it starts; bars
+ * appended while it runs are not evaluated, although an execution model that
+ * fills on the next bar may fill a signal on the run's last bar at a bar
+ * appended meanwhile. The manager holds no lock while strategies run, so a live
  * {@link org.ta4j.core.ConcurrentBarSeries} keeps accepting writes and reads
- * from other threads. Bars replaced or evicted inside the run's bounds during a
- * run are observed as they change; use {@link BacktestExecutor} when a result
- * must be tied to one unchanged window.
+ * from other threads, and bars replaced or evicted inside the run's bounds are
+ * observed as they change. Use {@link BacktestExecutor} when a result must be
+ * tied to one unchanged window: it fills against that frozen window and fails
+ * if the window changes.
  * </p>
  *
  * <p>
@@ -441,6 +444,18 @@ public class BarSeriesManager {
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, PositionSizer positionSizer,
             int startIndex, int finishIndex) {
         return runWithPositionSizer(strategy, tradingRecord, positionSizer, startIndex, finishIndex);
+    }
+
+    /**
+     * Returns a manager with this manager's cost, execution and record settings
+     * whose fills, sizing contexts and run bounds come from {@code series}.
+     * Executions pass their frozen window here, so an execution model filling on
+     * the next bar can never use a bar appended to the live series after the window
+     * was captured. Strategies keep evaluating their own indicators.
+     */
+    BarSeriesManager withSeries(BarSeries series) {
+        return new BarSeriesManager(series, transactionCostModel, holdingCostModel, tradeExecutionModel,
+                tradingRecordFactory);
     }
 
     /**
