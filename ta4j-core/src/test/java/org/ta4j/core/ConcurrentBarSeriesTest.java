@@ -141,10 +141,20 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                 1, false, numFactory, barBuilderFactory) {
             @Override
             public void withReadLock(Runnable action) {
+                appendBeforeLease();
+                super.withReadLock(action);
+            }
+
+            @Override
+            public <T> T withReadLock(Supplier<T> action) {
+                appendBeforeLease();
+                return super.withReadLock(action);
+            }
+
+            private void appendBeforeLease() {
                 if (appendBeforeLock.compareAndSet(true, false)) {
                     addBar(testBars.get(2));
                 }
-                super.withReadLock(action);
             }
         };
         series.setMaximumBarCount(2);
