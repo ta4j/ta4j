@@ -53,7 +53,7 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
         addBar(distributionSeries, 81, 83, 80, 81, 850);
         addBar(distributionSeries, 86, 88, 85, 87, 1100);
         addBar(distributionSeries, 93, 96, 92, 95, 3200);
-        addBar(distributionSeries, 94, 95, 93, 95.5, 1200);
+        addBar(distributionSeries, 94, 95.5, 93, 95.5, 1200);
         addBar(distributionSeries, 94, 95, 93, 94.8, 500);
         addBar(distributionSeries, 89, 90, 78, 79, 2800);
         addBar(distributionSeries, 82, 83, 80, 81, 1500);
@@ -203,6 +203,46 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
         WyckoffPhaseIndicator indicator = WyckoffPhaseIndicator.builder(longSeries).build();
 
         assertThat(indicator.getLastPhaseTransitionIndex(longSeries.getEndIndex())).isEqualTo(-1);
+    }
+
+    /**
+     * Verifies that cached structures and transitions refresh after the forming bar
+     * is replaced.
+     */
+    @Test
+    public void shouldMatchFreshIndicatorAfterFormingBarReplacement() {
+        var indicator = WyckoffPhaseIndicator.builder(accumulationSeries)
+                .withSwingConfiguration(1, 1, 0)
+                .withVolumeWindows(1, 4)
+                .withTolerances(numOf(0.02), numOf(0.05))
+                .withVolumeThresholds(numOf(1.4), numOf(0.6))
+                .build();
+        int lastIndex = accumulationSeries.getEndIndex();
+
+        indicator.getValue(lastIndex);
+        indicator.getLastPhaseTransitionIndex(lastIndex);
+
+        accumulationSeries.addBar(accumulationSeries.barBuilder()
+                .openPrice(130)
+                .highPrice(132)
+                .lowPrice(128)
+                .closePrice(131)
+                .volume(2600)
+                .build(), true);
+
+        var fresh = WyckoffPhaseIndicator.builder(accumulationSeries)
+                .withSwingConfiguration(1, 1, 0)
+                .withVolumeWindows(1, 4)
+                .withTolerances(numOf(0.02), numOf(0.05))
+                .withVolumeThresholds(numOf(1.4), numOf(0.6))
+                .build();
+        var cached = indicator.getValue(lastIndex);
+        var expected = fresh.getValue(lastIndex);
+        assertThat(cached.cycleType()).isEqualTo(expected.cycleType());
+        assertThat(cached.phaseType()).isEqualTo(expected.phaseType());
+        assertThat(indicator.getTradingRangeHigh(lastIndex)).isEqualByComparingTo(fresh.getTradingRangeHigh(lastIndex));
+        assertThat(indicator.getLastPhaseTransitionIndex(lastIndex))
+                .isEqualTo(fresh.getLastPhaseTransitionIndex(lastIndex));
     }
 
     /**

@@ -33,6 +33,17 @@ public class VWMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     }
 
     @Test
+    public void registersVolumeWeightedDelegateAsCacheSource() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        Indicator<Num> priceIndicator = new ClosePriceIndicator(series);
+        Indicator<Num> volumeIndicator = new VolumeIndicator(series);
+        VWMAIndicator indicator = new VWMAIndicator(priceIndicator, volumeIndicator, 2);
+
+        assertEquals(1, indicator.getDependencies().size());
+        assertEquals(2, indicator.getDependencies().get(0).getDependencies().size());
+    }
+
+    @Test
     public void vwmaIndicatorTest() {
 
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withName("VWMA test").build();

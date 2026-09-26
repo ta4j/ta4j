@@ -14,6 +14,8 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.FixedNumIndicator;
 
 public class OrWithThresholdRuleTest {
 
@@ -63,6 +65,16 @@ public class OrWithThresholdRuleTest {
         Rule rule = new OrWithThresholdRule(unsatisfiedRule, satisfiedRule, 1);
         assertTrue(rule.isSatisfied(5));
         assertTrue(rule.isSatisfied(9));
+    }
+
+    @Test
+    public void isSatisfiedUsesCurrentSeriesBeginIndex() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        InPipeRule inPipe = new InPipeRule(closePrice, 1000, 0);
+        Rule rule = new OrWithThresholdRule(inPipe, new BooleanRule(false), 3);
+
+        series.setMaximumBarCount(5);
+        assertFalse(rule.isSatisfied(6));
     }
 
     @Test
@@ -257,5 +269,17 @@ public class OrWithThresholdRuleTest {
         assertTrue("Summary mode should include window end", logContent.contains("windowEnd=2"));
         assertTrue("Summary mode should include insufficient bars reason",
                 logContent.contains("reason=insufficientBars"));
+    }
+
+    @Test
+    public void doesNotScanWindowBeforeSeriesBeginIndex() {
+        BarSeries trimmedSeries = new MockBarSeriesBuilder().withData(10, 10, 10, 1, 10, 10, 10, 10, 10, 10).build();
+        trimmedSeries.setMaximumBarCount(5);
+        var indicator = new FixedNumIndicator(trimmedSeries, 10, 10, 10, 1, 10, 10, 10, 10, 10, 10);
+        Rule child = new UnderIndicatorRule(indicator, trimmedSeries.numFactory().numOf(5));
+
+        Rule rule = new OrWithThresholdRule(child, child, 4);
+
+        assertFalse(rule.isSatisfied(6));
     }
 }

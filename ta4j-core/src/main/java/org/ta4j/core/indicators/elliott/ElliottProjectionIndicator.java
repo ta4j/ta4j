@@ -49,7 +49,7 @@ public class ElliottProjectionIndicator extends CachedIndicator<Num> {
     }
 
     private ElliottProjectionIndicator(final Config config) {
-        super(config.series());
+        super(config.scenarioIndicator());
         this.scenarioIndicator = config.scenarioIndicator();
     }
 

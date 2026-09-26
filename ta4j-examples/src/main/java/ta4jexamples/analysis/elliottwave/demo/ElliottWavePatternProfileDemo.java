@@ -14,7 +14,6 @@ import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfiles;
 import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
 
-import ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo;
 import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
 
 /**
@@ -40,7 +39,7 @@ public class ElliottWavePatternProfileDemo {
             return;
         }
 
-        ElliottDegree baseDegree = ElliottWaveIndicatorSuiteDemo.autoSelectDegree(series);
+        ElliottDegree baseDegree = ElliottWaveDemoSupport.autoSelectDegree(series);
 
         ElliottWaveAnalysisRunner defaultAnalyzer = ElliottWaveAnalysisRunner.builder()
                 .degree(baseDegree)

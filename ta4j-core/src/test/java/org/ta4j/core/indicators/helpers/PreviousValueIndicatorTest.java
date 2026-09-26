@@ -59,6 +59,16 @@ public class PreviousValueIndicatorTest {
     }
 
     @Test
+    public void returnsNaNBeforeBeginIndexAfterRemoval() {
+        BarSeries removed = new MockBarSeriesBuilder().withData(1, 2, 3, 4).withMaxBarCount(3).build();
+        PreviousValueIndicator prev = new PreviousValueIndicator(new ClosePriceIndicator(removed));
+
+        // remaining closes are [2, 3, 4] at indices 1..3
+        assertTrue(prev.getValue(1).isNaN());
+        assertEquals(removed.getBar(1).getClosePrice(), prev.getValue(2));
+    }
+
+    @Test
     public void shouldBePreviousValueFromIndicator() {
 
         // test 1 with openPrice-indicator

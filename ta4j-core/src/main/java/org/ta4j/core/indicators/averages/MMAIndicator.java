@@ -25,6 +25,29 @@ public class MMAIndicator extends AbstractEMAIndicator {
         super(indicator, barCount, 1.0 / barCount);
     }
 
+    /**
+     * The EMA-style chain is severed by a head advance: the value at
+     * {@code firstRetainedIndex} consumed the removed predecessor, and every value
+     * below {@code firstRetainedIndex} plus the declared unstable band still embeds
+     * the severed chain. Evicting that band makes the next read rebuild it through
+     * the NaN-reset recovery in {@link AbstractEMAIndicator#calculate(int)},
+     * matching a fresh calculation against the retained window.
+     *
+     * @param firstRetainedIndex the first series index that remains available
+     * @return {@code firstRetainedIndex + barCount} when no source propagates a
+     *         higher floor, saturated at {@link Integer#MAX_VALUE}
+     */
+    @Override
+    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+        int propagatedFloor = super.minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex);
+        if (propagatedFloor == Integer.MAX_VALUE) {
+            return Integer.MAX_VALUE;
+        }
+        long severedChainFloor = (long) firstRetainedIndex + getCountOfUnstableBars();
+        return severedChainFloor >= Integer.MAX_VALUE ? Integer.MAX_VALUE
+                : Math.max(propagatedFloor, (int) severedChainFloor);
+    }
+
     @Override
     public int getCountOfUnstableBars() {
         return getBarCount();

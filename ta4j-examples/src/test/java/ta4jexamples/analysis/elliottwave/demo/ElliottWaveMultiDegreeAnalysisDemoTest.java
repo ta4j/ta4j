@@ -19,7 +19,6 @@ import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner;
 import org.ta4j.core.analysis.elliott.swing.AdaptiveZigZagConfig;
 import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
 
-import ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo;
 import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
 
 class ElliottWaveMultiDegreeAnalysisDemoTest {
@@ -33,7 +32,7 @@ class ElliottWaveMultiDegreeAnalysisDemoTest {
                 OSSIFIED_OHLCV_RESOURCE, "BTC-USD_PT1D@Coinbase (ossified)", LOG);
         assertNotNull(series, "Series should load from ossified classpath resource");
         assertFalse(series.isEmpty(), "Series should contain bars");
-        ElliottDegree baseDegree = ElliottWaveIndicatorSuiteDemo.autoSelectDegree(series);
+        ElliottDegree baseDegree = ElliottWaveDemoSupport.autoSelectDegree(series);
 
         ElliottWaveAnalysisRunner analyzer = ElliottWaveAnalysisRunner.builder()
                 .degree(baseDegree)

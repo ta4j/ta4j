@@ -5,6 +5,7 @@ package org.ta4j.core.analysis.frequency;
 
 import java.util.Optional;
 import java.util.stream.Stream;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.num.Num;
 
@@ -112,8 +113,12 @@ public final class SampleSummary {
     /**
      * Returns the unbiased sample variance.
      *
+     * <p>
+     * The variance is undefined (NaN) when fewer than two samples are available.
+     * </p>
+     *
      * @param numFactory the numeric factory to use for calculations
-     * @return the sample variance (zero when fewer than two samples are available)
+     * @return the sample variance, or NaN when fewer than two samples are available
      */
     public Num sampleVariance(NumFactory numFactory) {
         return moments.sampleVariance(numFactory);
@@ -122,9 +127,14 @@ public final class SampleSummary {
     /**
      * Returns the sample skewness.
      *
+     * <p>
+     * The skewness is undefined (NaN) when fewer than three samples are available
+     * or when the sample variance is zero.
+     * </p>
+     *
      * @param numFactory the numeric factory to use for calculations
-     * @return the sample skewness (zero when fewer than three samples or variance
-     *         is zero)
+     * @return the sample skewness, or NaN when fewer than three samples are
+     *         available or the variance is zero
      */
     public Num sampleSkewness(NumFactory numFactory) {
         return moments.sampleSkewness(numFactory);
@@ -133,9 +143,14 @@ public final class SampleSummary {
     /**
      * Returns the sample excess kurtosis.
      *
+     * <p>
+     * The kurtosis is undefined (NaN) when fewer than four samples are available or
+     * when the sample variance is zero.
+     * </p>
+     *
      * @param numFactory the numeric factory to use for calculations
-     * @return the sample kurtosis (zero when fewer than four samples or variance is
-     *         zero)
+     * @return the sample kurtosis, or NaN when fewer than four samples are
+     *         available or the variance is zero
      */
     public Num sampleKurtosis(NumFactory numFactory) {
         return moments.sampleKurtosis(numFactory);
@@ -258,14 +273,14 @@ public final class SampleSummary {
 
         Num sampleVariance(NumFactory f) {
             if (count < 2) {
-                return f.zero();
+                return NaN.NaN;
             }
             return m2.dividedBy(f.numOf(count - 1));
         }
 
         Num sampleSkewness(NumFactory f) {
             if (count < 3 || m2.isZero()) {
-                return f.zero();
+                return NaN.NaN;
             }
             var n = f.numOf(count);
             var nMinus1 = f.numOf(count - 1);
@@ -277,7 +292,7 @@ public final class SampleSummary {
 
         Num sampleKurtosis(NumFactory f) {
             if (count < 4 || m2.isZero()) {
-                return f.zero();
+                return NaN.NaN;
             }
             var n = f.numOf(count);
             var nMinus1 = f.numOf(count - 1);

@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+import org.slf4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
@@ -53,12 +54,24 @@ public final class RuleCopies {
         return new BaseBarSeriesBuilder().build();
     }
 
-    private static Optional<BarSeries> findBarSeries(Object value) {
+    /**
+     * Returns the first {@link BarSeries} reachable from {@code value}, if any.
+     *
+     * <p>
+     * Composite rules use this to anchor evaluation windows at the series'
+     * {@link BarSeries#getBeginIndex()} instead of literal zero.
+     *
+     * @param value the value to scan for a bar series
+     * @return the first reachable bar series, or empty if none is reachable
+     */
+    static Optional<BarSeries> findBarSeries(Object value) {
         return findBarSeries(value, new IdentityHashMap<>());
     }
 
     private static Optional<BarSeries> findBarSeries(Object value, IdentityHashMap<Object, Boolean> visited) {
-        if (value == null || visited.containsKey(value)) {
+        // Loggers (for example AbstractRule#log) never own rule inputs; walking one
+        // traverses the logging backend's JVM-wide registries on every copy.
+        if (value == null || value instanceof Logger || visited.containsKey(value)) {
             return Optional.empty();
         }
         visited.put(value, Boolean.TRUE);

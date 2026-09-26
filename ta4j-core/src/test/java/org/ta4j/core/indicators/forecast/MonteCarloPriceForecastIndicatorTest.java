@@ -6,14 +6,19 @@ package org.ta4j.core.indicators.forecast;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertNotSame;
+
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -152,6 +157,111 @@ public class MonteCarloPriceForecastIndicatorTest
         assertEquals(1, removed.decisionIndex());
         assertEquals(2, removed.horizon());
         assertFalse(removed.isStable());
+    }
+
+    @Test
+    public void restartingStateDiscardsCachedForecastsAfterHeadAdvance() {
+        double[] prices = new double[600];
+        java.util.Arrays.fill(prices, 100d);
+        BaseBarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(prices).build();
+        EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(new LogReturnIndicator(series));
+        CountingRestartStateIndicator countingState = new CountingRestartStateIndicator(state);
+        MonteCarloPriceForecastIndicator forecast = new MonteCarloPriceForecastIndicator(countingState, 1);
+
+        Forecast initial = forecast.getValue(series.getEndIndex());
+        assertTrue(initial.isStable());
+        long readsBeforeAdvance = countingState.reads();
+
+        series.setMaximumBarCount(300);
+        Forecast afterAdvance = forecast.getValue(series.getEndIndex());
+
+        assertNotSame(initial, afterAdvance);
+        assertTrue(afterAdvance.isStable());
+        assertTrue(countingState.reads() > readsBeforeAdvance);
+    }
+
+    @Test
+    public void stateRestartContractFlagsOnlineChangePointAndNotEwma() {
+        BarSeries series = constantSeries(300, 100);
+        LogReturnIndicator returns = new LogReturnIndicator(series);
+
+        assertFalse(new EwmaReturnForecastStateIndicator(returns).restartsAfterHeadAdvance());
+        assertTrue(OnlineChangePointForecastStateIndicator.builder(returns).build().restartsAfterHeadAdvance());
+    }
+
+    private static final class CountingRestartStateIndicator
+            implements ReturnForecastStateIndicator<ReturnForecastState> {
+
+        private final ReturnForecastStateIndicator<ReturnForecastState> delegate;
+        private final AtomicInteger reads = new AtomicInteger();
+
+        private CountingRestartStateIndicator(ReturnForecastStateIndicator<ReturnForecastState> delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public ReturnForecastState getValue(int index) {
+            reads.incrementAndGet();
+            return delegate.getValue(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return delegate.getCountOfUnstableBars();
+        }
+
+        @Override
+        public BarSeries getBarSeries() {
+            return delegate.getBarSeries();
+        }
+
+        @Override
+        public ReturnIndicator getReturnIndicator() {
+            return delegate.getReturnIndicator();
+        }
+
+        @Override
+        public ReturnRepresentation getReturnRepresentation() {
+            return delegate.getReturnRepresentation();
+        }
+
+        @Override
+        public boolean restartsAfterHeadAdvance() {
+            return true;
+        }
+
+        long reads() {
+            return reads.get();
+        }
+    }
+
+    @Test
+    public void customMethodReplacesShockSimulation() {
+        BarSeries series = constantSeries(6, 100);
+        LogReturnIndicator returns = new LogReturnIndicator(series);
+        EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns, 2, 0.5,
+                EwmaReturnForecastStateIndicator.DriftMode.ZERO);
+        MonteCarloPriceForecastIndicator forecast = MonteCarloPriceForecastIndicator
+                .builder(new ClosePriceIndicator(series), state)
+                .horizon(1)
+                .iterationCount(25)
+                .lookbackBarCount(2)
+                .monteCarloMethod(context -> {
+                    List<Num> samples = new ArrayList<>();
+                    for (int i = 0; i < context.iterationCount(); i++) {
+                        samples.add(context.numFactory().zero());
+                    }
+                    return samples;
+                })
+                .build();
+
+        Forecast prediction = forecast.getValue(series.getBarCount() - 1);
+
+        assertTrue(prediction.isStable());
+        assertEquals(25, prediction.sampleCount());
+        assertNumEquals(numOf(100), prediction.mean());
+        assertNumEquals(numOf(100), prediction.median());
+        assertNumEquals(0, prediction.standardDeviation());
     }
 
     private Forecast explicitHistoricalForecast(double down, double up) {

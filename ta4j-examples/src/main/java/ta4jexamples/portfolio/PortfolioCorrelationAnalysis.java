@@ -41,7 +41,7 @@ import ta4jexamples.datasources.YahooFinanceHttpBarSeriesDataSource.YahooFinance
  * account or owner identifiers.
  * </p>
  *
- * @since 0.23.1
+ * @since 0.25.1
  */
 public final class PortfolioCorrelationAnalysis {
 

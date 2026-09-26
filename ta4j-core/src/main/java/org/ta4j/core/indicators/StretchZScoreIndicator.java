@@ -79,7 +79,7 @@ public class StretchZScoreIndicator extends CachedIndicator<Num> {
     }
 
     private StretchZScoreIndicator(Config config) {
-        super(config.series());
+        super(config.zScoreIndicator());
         this.sourceIndicator = config.sourceIndicator();
         this.referenceIndicator = config.referenceIndicator();
         this.barCount = config.barCount();

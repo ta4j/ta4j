@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import org.ta4j.core.analysis.WeightedValue;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -18,12 +19,19 @@ import org.ta4j.core.num.NumFactory;
  * Long-only static target weights for a portfolio backtest.
  *
  * <p>
- * Explicit weights may sum to less than {@code 1}; the remainder is held as
- * cash. Weights greater than {@code 1} are rejected to keep portfolio execution
- * unlevered and deterministic.
+ * Weights are fractions of total portfolio value ({@code 0.6} means 60%). They
+ * may sum to less than {@code 1}; the remainder is the cash target. Sums
+ * greater than {@code 1} are rejected to keep execution unlevered. Assets of
+ * the {@link PortfolioSeries} that are missing from the allocation have a zero
+ * target and are sold on the first rebalance.
  * </p>
  *
- * @since 0.23.1
+ * <pre>{@code
+ * PortfolioAllocation sixtyForty = new PortfolioAllocation(Map.of("SPY", 0.6, "TLT", 0.4));
+ * PortfolioAllocation equityAndCash = new PortfolioAllocation(Map.of("SPY", 0.6)); // 40% cash
+ * }</pre>
+ *
+ * @since 0.25.1
  */
 public final class PortfolioAllocation {
 
@@ -33,11 +41,29 @@ public final class PortfolioAllocation {
     private final Num one;
 
     /**
-     * Creates an allocation from explicit portfolio-fraction target weights.
+     * Creates an allocation from literal target weights, for example
+     * {@code Map.of("SPY", 0.6, "TLT", 0.3)}.
      *
-     * @param targetWeights target weights keyed by asset name
-     * @param numFactory    numeric factory for portfolio accounting
-     * @since 0.23.1
+     * <p>
+     * Values are converted exactly through their decimal representation; the
+     * portfolio run converts them to the portfolio's numeric factory.
+     * </p>
+     *
+     * @param targetWeights target weights keyed by asset name; iteration order is
+     *                      retained
+     * @since 0.25.1
+     */
+    public PortfolioAllocation(Map<String, ? extends Number> targetWeights) {
+        this(numWeights(targetWeights, DecimalNumFactory.getInstance()), DecimalNumFactory.getInstance());
+    }
+
+    /**
+     * Creates an allocation from explicit target weights.
+     *
+     * @param targetWeights target weights keyed by asset name; iteration order is
+     *                      retained
+     * @param numFactory    numeric factory for the stored weights
+     * @since 0.25.1
      */
     public PortfolioAllocation(Map<String, Num> targetWeights, NumFactory numFactory) {
         Objects.requireNonNull(targetWeights, "targetWeights");
@@ -50,19 +76,17 @@ public final class PortfolioAllocation {
         Num normalizedTotalWeight = numFactory.zero();
         for (Map.Entry<String, Num> entry : targetWeights.entrySet()) {
             String asset = requireAsset(entry.getKey());
-            Num weight = normalizeWeight(entry.getValue(), numFactory);
-            if (weight.isNegative()) {
-                throw new IllegalArgumentException("target weight must be >= 0 for asset " + asset);
-            }
+            Num weight = normalizeWeight(asset, entry.getValue(), numFactory);
             normalizedWeights.put(asset, weight);
             normalizedTotalWeight = normalizedTotalWeight.plus(weight);
         }
 
         Num unitWeight = numFactory.one();
         if (normalizedTotalWeight.isGreaterThan(unitWeight.plus(numFactory.epsilon()))) {
-            throw new IllegalArgumentException("sum of target weights must be <= 1");
+            throw new IllegalArgumentException("sum of target weights must be <= 1 but was " + normalizedTotalWeight);
         }
         if (normalizedTotalWeight.isGreaterThan(unitWeight)) {
+            // Absorb representation noise such as 0.1 + 0.2 + 0.7 in double math.
             for (Map.Entry<String, Num> entry : normalizedWeights.entrySet()) {
                 entry.setValue(entry.getValue().dividedBy(normalizedTotalWeight));
             }
@@ -76,32 +100,32 @@ public final class PortfolioAllocation {
     }
 
     /**
-     * Creates a fully invested allocation by normalizing relative weighted asset
-     * values.
+     * Creates a fully invested allocation by normalizing relative weights so they
+     * sum to exactly {@code 1}.
      *
-     * @param weightedAssets relative asset weights
-     * @param numFactory     numeric factory for portfolio accounting
-     * @since 0.23.1
+     * @param weightedAssets relative asset weights; repeated assets are summed
+     * @param numFactory     numeric factory for the stored weights
+     * @since 0.25.1
      */
     public PortfolioAllocation(List<WeightedValue<String>> weightedAssets, NumFactory numFactory) {
         this(normalizedTargetWeights(weightedAssets, numFactory), numFactory);
     }
 
     /**
-     * @return target weights in deterministic asset order
-     * @since 0.23.1
+     * @return target weights in allocation order
+     * @since 0.25.1
      */
     public Map<String, Num> getTargetWeights() {
         return targetWeights;
     }
 
     /**
-     * Returns the target weight for an asset or zero when it is intentionally
+     * Returns the target weight for an asset, or zero when it is intentionally
      * unallocated.
      *
      * @param asset asset name
-     * @return target weight
-     * @since 0.23.1
+     * @return target weight as a fraction of portfolio value
+     * @since 0.25.1
      */
     public Num getTargetWeight(String asset) {
         return targetWeights.getOrDefault(requireAsset(asset), zero);
@@ -109,18 +133,44 @@ public final class PortfolioAllocation {
 
     /**
      * @return sum of all asset target weights
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public Num getTotalWeight() {
         return totalWeight;
     }
 
     /**
-     * @return cash target weight
-     * @since 0.23.1
+     * @return cash target weight ({@code 1 - totalWeight})
+     * @since 0.25.1
      */
     public Num getCashWeight() {
         return one.minus(totalWeight);
+    }
+
+    /**
+     * @return compact description with every target weight and the cash weight
+     */
+    @Override
+    public String toString() {
+        StringBuilder text = new StringBuilder("PortfolioAllocation{");
+        for (Map.Entry<String, Num> entry : targetWeights.entrySet()) {
+            text.append(entry.getKey()).append('=').append(entry.getValue()).append(", ");
+        }
+        return text.append("cash=").append(getCashWeight()).append('}').toString();
+    }
+
+    private static Map<String, Num> numWeights(Map<String, ? extends Number> targetWeights, NumFactory numFactory) {
+        Objects.requireNonNull(targetWeights, "targetWeights");
+        Map<String, Num> weights = new LinkedHashMap<>();
+        for (Map.Entry<String, ? extends Number> entry : targetWeights.entrySet()) {
+            String asset = requireAsset(entry.getKey());
+            Number weight = Objects.requireNonNull(entry.getValue(), "weight for " + asset);
+            if (!Double.isFinite(weight.doubleValue())) {
+                throw new IllegalArgumentException("target weight must be finite for asset " + asset);
+            }
+            weights.put(asset, numFactory.numOf(weight));
+        }
+        return weights;
     }
 
     private static Map<String, Num> normalizedTargetWeights(List<WeightedValue<String>> weightedAssets,
@@ -135,11 +185,8 @@ public final class PortfolioAllocation {
         for (WeightedValue<String> weightedAsset : weightedAssets) {
             Objects.requireNonNull(weightedAsset, "weightedAssets must not contain null entries");
             String asset = requireAsset(weightedAsset.value());
-            Num weight = normalizeWeight(weightedAsset.weight(), numFactory);
-            if (weight.isNegative()) {
-                throw new IllegalArgumentException("weight must be >= 0 for asset " + asset);
-            }
-            validatedWeights.add(new WeightedValue<>(asset, weight));
+            validatedWeights
+                    .add(new WeightedValue<>(asset, normalizeWeight(asset, weightedAsset.weight(), numFactory)));
         }
         Map<String, Num> normalizedWeights = new LinkedHashMap<>();
         for (WeightedValue<String> weightedAsset : WeightedValue.normalizeWeights(validatedWeights, numFactory)) {
@@ -156,10 +203,13 @@ public final class PortfolioAllocation {
         return asset;
     }
 
-    private static Num normalizeWeight(Num weight, NumFactory numFactory) {
-        Objects.requireNonNull(weight, "weight");
+    private static Num normalizeWeight(String asset, Num weight, NumFactory numFactory) {
+        Objects.requireNonNull(weight, "weight for " + asset);
         if (!Num.isFinite(weight)) {
-            throw new IllegalArgumentException("target weight must be finite");
+            throw new IllegalArgumentException("target weight must be finite for asset " + asset);
+        }
+        if (weight.isNegative()) {
+            throw new IllegalArgumentException("target weight must be >= 0 for asset " + asset);
         }
         return numFactory.numOf(weight.bigDecimalValue());
     }

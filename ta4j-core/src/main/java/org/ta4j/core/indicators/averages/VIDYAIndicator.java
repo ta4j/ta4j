@@ -5,7 +5,7 @@ package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CMOIndicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -19,7 +19,7 @@ import org.ta4j.core.num.Num;
  * useful in dynamic market conditions.
  *
  */
-public class VIDYAIndicator extends CachedIndicator<Num> {
+public class VIDYAIndicator extends RecursiveCachedIndicator<Num> {
 
     private final Indicator<Num> indicator; // Input price (e.g., close price)
     private final int cmoPeriod; // Lookback period for cmoPeriod
@@ -34,7 +34,8 @@ public class VIDYAIndicator extends CachedIndicator<Num> {
      * @param vidyaPeriod Lookback period for VIDYA.
      */
     public VIDYAIndicator(Indicator<Num> indicator, int cmoPeriod, int vidyaPeriod) {
-        super(indicator.getBarSeries());
+        super(indicator);
+
         this.indicator = indicator;
         this.cmoPeriod = cmoPeriod;
         this.vidyaPeriod = vidyaPeriod;
@@ -44,8 +45,8 @@ public class VIDYAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        if (index < 1) {
-            // Initialize VIDYA with the first price
+        if (index <= getBarSeries().getBeginIndex()) {
+            // Initialize VIDYA with the first retained price
             return indicator.getValue(index);
         }
 

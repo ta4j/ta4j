@@ -3,10 +3,10 @@
  */
 package org.ta4j.core.portfolio;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -14,47 +14,61 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.TreeSet;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * Chronologically aligned collection of named {@link BarSeries} instances.
+ * Immutable, chronologically aligned collection of named {@link BarSeries}
+ * instances: the input of a portfolio backtest.
  *
  * <p>
  * Alignment is deterministic and strict: the portfolio timeline is the
  * intersection of bar end times present in every source series. Missing bars
- * are excluded instead of being forward-filled. Source series are snapshotted
- * once during construction so later source mutations cannot invalidate the
- * retained source-index mapping.
+ * are excluded instead of being forward-filled, so callers that need
+ * exchange-calendar joins or carry-forward bars should prepare those inputs
+ * upstream. All prices must be quoted in one common currency and include any
+ * split/dividend adjustments the experiment requires.
  * </p>
  *
  * <p>
- * At least two source series are required. The simple constructors use each
- * {@link BarSeries#getName()} as its asset name; use the map constructor when
- * explicit aliases are preferable.
+ * The portfolio owns a detached copy of every source bar, taken once during
+ * construction. Later mutations of the source series or of their bars (for
+ * example {@link BarSeries#addPrice(Num)}) do not change the portfolio, and the
+ * bars and series returned by {@link #getBar(String, int)} and
+ * {@link #getBarSeries(String)} are fresh copies that callers may modify
+ * freely. Repeated backtests over the same instance are therefore reproducible.
  * </p>
  *
- * @since 0.23.1
+ * <p>
+ * A single series is a valid portfolio (for example a 60% equity / 40% cash
+ * benchmark). The simple constructors use each {@link BarSeries#getName()} as
+ * its asset name; use {@link #PortfolioSeries(Map)} for explicit aliases.
+ * Portfolio-level accounting uses the {@link NumFactory} of the first series.
+ * </p>
+ *
+ * @since 0.25.1
  */
 public final class PortfolioSeries {
 
     private final List<String> assets;
-    private final Map<String, BarSeries> sourceSeriesByAsset;
+    private final Map<String, Integer> assetPositions;
+    private final BarSeries[] ownedSeries;
     private final List<Instant> endTimes;
-    private final Map<String, List<Integer>> sourceIndexesByAsset;
+    private final int[][] sourceIndexes;
+    private final Num[][] closePrices;
     private final NumFactory numFactory;
 
     /**
      * Creates a portfolio from bar series, using each series name as its asset
      * name.
      *
-     * @param series source bar series in deterministic portfolio order
-     * @since 0.23.1
+     * @param series non-empty source bar series in portfolio order
+     * @since 0.25.1
      */
     public PortfolioSeries(BarSeries... series) {
         this(Arrays.asList(Objects.requireNonNull(series, "series")));
@@ -64,8 +78,8 @@ public final class PortfolioSeries {
      * Creates a portfolio from bar series, using each series name as its asset
      * name.
      *
-     * @param series source bar series in deterministic portfolio order
-     * @since 0.23.1
+     * @param series non-empty source bar series in portfolio order
+     * @since 0.25.1
      */
     public PortfolioSeries(List<BarSeries> series) {
         this(seriesByName(series));
@@ -75,68 +89,92 @@ public final class PortfolioSeries {
      * Creates a portfolio from explicit asset-name and bar-series associations.
      *
      * <p>
-     * Encounter order is retained for matrices, snapshots, reports, and normal
-     * iteration.
+     * Encounter order is retained for snapshots, weights, and normal iteration, so
+     * prefer an ordered map such as {@link LinkedHashMap}.
      * </p>
      *
-     * @param seriesByAsset source series keyed by non-blank asset name
-     * @since 0.23.1
+     * @param seriesByAsset non-empty source series keyed by non-blank asset name
+     * @since 0.25.1
      */
     public PortfolioSeries(Map<String, BarSeries> seriesByAsset) {
         Objects.requireNonNull(seriesByAsset, "seriesByAsset");
-        if (seriesByAsset.size() < 2) {
-            throw new IllegalArgumentException("portfolio series must contain at least two assets");
+        if (seriesByAsset.isEmpty()) {
+            throw new IllegalArgumentException("portfolio series must contain at least one asset");
         }
 
-        Map<String, BarSeries> snapshots = new LinkedHashMap<>();
+        List<String> assetNames = new ArrayList<>(seriesByAsset.size());
+        Map<String, Integer> positions = new HashMap<>();
+        BarSeries[] owned = new BarSeries[seriesByAsset.size()];
         for (Map.Entry<String, BarSeries> entry : seriesByAsset.entrySet()) {
             String asset = requireAssetName(entry.getKey());
-            BarSeries source = Objects.requireNonNull(entry.getValue(), "seriesByAsset must not contain null series");
+            BarSeries source = Objects.requireNonNull(entry.getValue(), "series must not be null for asset " + asset);
             if (source.isEmpty()) {
                 throw new IllegalArgumentException("series must not be empty for asset " + asset);
             }
-            BarSeries previous = snapshots.putIfAbsent(asset, snapshotSeries(source));
-            if (previous != null) {
+            if (positions.putIfAbsent(asset, assetNames.size()) != null) {
                 throw new IllegalArgumentException("duplicate portfolio asset: " + asset);
             }
+            owned[assetNames.size()] = detachedCopy(source);
+            assetNames.add(asset);
         }
 
-        this.assets = List.copyOf(snapshots.keySet());
-        this.sourceSeriesByAsset = Collections.unmodifiableMap(snapshots);
-        this.numFactory = snapshots.get(assets.getFirst()).numFactory();
+        this.assets = List.copyOf(assetNames);
+        this.assetPositions = Map.copyOf(positions);
+        this.ownedSeries = owned;
+        this.numFactory = owned[0].numFactory();
 
-        Alignment alignment = align(assets, snapshots);
-        this.endTimes = alignment.endTimes();
-        this.sourceIndexesByAsset = alignment.sourceIndexesByAsset();
+        List<Map<Instant, Integer>> indexesByEndTime = new ArrayList<>(owned.length);
+        for (int position = 0; position < owned.length; position++) {
+            indexesByEndTime.add(indexesByEndTime(assets.get(position), owned[position]));
+        }
+        TreeSet<Instant> commonEndTimes = new TreeSet<>(indexesByEndTime.getFirst().keySet());
+        for (Map<Instant, Integer> currentIndexes : indexesByEndTime) {
+            commonEndTimes.retainAll(currentIndexes.keySet());
+        }
+        if (commonEndTimes.isEmpty()) {
+            throw new IllegalArgumentException("portfolio series do not share any common bar end times");
+        }
+
+        this.endTimes = List.copyOf(commonEndTimes);
+        this.sourceIndexes = new int[owned.length][endTimes.size()];
+        this.closePrices = new Num[owned.length][endTimes.size()];
+        for (int position = 0; position < owned.length; position++) {
+            Map<Instant, Integer> currentIndexes = indexesByEndTime.get(position);
+            for (int index = 0; index < endTimes.size(); index++) {
+                int sourceIndex = currentIndexes.get(endTimes.get(index));
+                sourceIndexes[position][index] = sourceIndex;
+                closePrices[position][index] = toPortfolioNum(owned[position].getBar(sourceIndex).getClosePrice());
+            }
+        }
     }
 
     /**
-     * @return asset names in deterministic portfolio order
-     * @since 0.23.1
+     * @return asset names in portfolio order
+     * @since 0.25.1
      */
     public List<String> getAssets() {
         return assets;
     }
 
     /**
-     * @return shared numeric factory used for portfolio-level calculations
-     * @since 0.23.1
+     * @return numeric factory used for portfolio-level accounting
+     * @since 0.25.1
      */
     public NumFactory numFactory() {
         return numFactory;
     }
 
     /**
-     * @return first aligned portfolio index
-     * @since 0.23.1
+     * @return first aligned portfolio index (always {@code 0})
+     * @since 0.25.1
      */
     public int getBeginIndex() {
         return 0;
     }
 
     /**
-     * @return final aligned portfolio index
-     * @since 0.23.1
+     * @return last aligned portfolio index
+     * @since 0.25.1
      */
     public int getEndIndex() {
         return endTimes.size() - 1;
@@ -144,68 +182,93 @@ public final class PortfolioSeries {
 
     /**
      * @return aligned bar count after strict end-time intersection
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public int getBarCount() {
         return endTimes.size();
     }
 
     /**
-     * @return aligned end times in chronological order
-     * @since 0.23.1
+     * @return aligned bar end times in chronological order
+     * @since 0.25.1
      */
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "endTimes is copied once and is immutable")
     public List<Instant> getEndTimes() {
         return endTimes;
     }
 
     /**
-     * Returns a defensive snapshot of an asset's source series.
+     * Returns a fresh, detached copy of an asset's full retained source history,
+     * including bars that are not part of the aligned timeline. Source indexes are
+     * preserved, so {@link #getSourceIndex(String, int)} addresses this copy and
+     * the caller's original series alike.
      *
      * @param asset asset name
-     * @return source series snapshot
-     * @since 0.23.1
+     * @return detached source series copy
+     * @since 0.25.1
      */
     public BarSeries getBarSeries(String asset) {
-        return snapshotSeries(sourceSeriesByAsset.get(requireAsset(asset)));
+        return detachedCopy(ownedSeries[position(asset)]);
     }
 
     /**
-     * Returns the original source index for an aligned portfolio bar.
+     * Returns the source-series index of an aligned portfolio bar. Use it to look
+     * up indicators computed on the original per-asset series.
      *
      * @param asset asset name
      * @param index aligned portfolio index
      * @return source series index
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public int getSourceIndex(String asset, int index) {
+        int position = position(asset);
         requireIndex(index);
-        return sourceIndexesByAsset.get(requireAsset(asset)).get(index);
+        return sourceIndexes[position][index];
     }
 
     /**
-     * Returns a source bar by aligned portfolio index.
+     * Returns a fresh, detached copy of an asset's bar at an aligned index.
      *
      * @param asset asset name
      * @param index aligned portfolio index
-     * @return source bar
-     * @since 0.23.1
+     * @return detached source bar copy
+     * @since 0.25.1
      */
     public Bar getBar(String asset, int index) {
-        String requiredAsset = requireAsset(asset);
-        return sourceSeriesByAsset.get(requiredAsset).getBar(getSourceIndex(requiredAsset, index));
+        int position = position(asset);
+        requireIndex(index);
+        return detachedCopy(ownedSeries[position].getBar(sourceIndexes[position][index]));
     }
 
     /**
-     * Returns the close price converted to the portfolio numeric factory.
+     * Returns an asset's close price at an aligned index, converted to
+     * {@link #numFactory()}.
      *
      * @param asset asset name
      * @param index aligned portfolio index
      * @return close price
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public Num getClosePrice(String asset, int index) {
-        return toPortfolioNum(getBar(asset, index).getClosePrice());
+        int position = position(asset);
+        requireIndex(index);
+        return closePrices[position][index];
+    }
+
+    /**
+     * @return compact description with assets, aligned bar count, and date range
+     */
+    @Override
+    public String toString() {
+        return "PortfolioSeries{assets=" + assets + ", bars=" + endTimes.size() + ", from=" + endTimes.getFirst()
+                + ", to=" + endTimes.getLast() + '}';
+    }
+
+    Num closePrice(int assetPosition, int index) {
+        return closePrices[assetPosition][index];
+    }
+
+    Duration timePeriod(int index) {
+        return ownedSeries[0].getBar(sourceIndexes[0][index]).getTimePeriod();
     }
 
     Num toPortfolioNum(Num value) {
@@ -216,17 +279,18 @@ public final class PortfolioSeries {
         return numFactory.numOf(value.bigDecimalValue());
     }
 
-    private String requireAsset(String asset) {
-        String requiredAsset = requireAssetName(asset);
-        if (!sourceSeriesByAsset.containsKey(requiredAsset)) {
-            throw new IllegalArgumentException("asset is not in this portfolio series: " + requiredAsset);
+    private int position(String asset) {
+        Objects.requireNonNull(asset, "asset");
+        Integer position = assetPositions.get(asset);
+        if (position == null) {
+            throw new IllegalArgumentException("asset is not in this portfolio series: " + asset);
         }
-        return requiredAsset;
+        return position;
     }
 
     private void requireIndex(int index) {
-        if (index < getBeginIndex() || index > getEndIndex()) {
-            throw new IndexOutOfBoundsException("index must be between " + getBeginIndex() + " and " + getEndIndex());
+        if (index < 0 || index >= endTimes.size()) {
+            throw new IndexOutOfBoundsException("index must be between 0 and " + getEndIndex() + " but was " + index);
         }
     }
 
@@ -236,8 +300,7 @@ public final class PortfolioSeries {
         for (BarSeries barSeries : series) {
             BarSeries source = Objects.requireNonNull(barSeries, "series must not contain null entries");
             String asset = requireAssetName(source.getName());
-            BarSeries previous = seriesByAsset.putIfAbsent(asset, source);
-            if (previous != null) {
+            if (seriesByAsset.putIfAbsent(asset, source) != null) {
                 throw new IllegalArgumentException("duplicate portfolio asset: " + asset);
             }
         }
@@ -252,60 +315,38 @@ public final class PortfolioSeries {
         return asset;
     }
 
-    private static Alignment align(List<String> assets, Map<String, BarSeries> sourceSeriesByAsset) {
-        List<Map<Instant, Integer>> indexesByEndTime = new ArrayList<>(assets.size());
-        TreeSet<Instant> commonEndTimes = null;
-
-        for (String asset : assets) {
-            Map<Instant, Integer> currentIndexes = indexesByEndTime(asset, sourceSeriesByAsset.get(asset));
-            indexesByEndTime.add(currentIndexes);
-            if (commonEndTimes == null) {
-                commonEndTimes = new TreeSet<>(currentIndexes.keySet());
-            } else {
-                commonEndTimes.retainAll(currentIndexes.keySet());
-            }
-        }
-
-        if (commonEndTimes == null || commonEndTimes.isEmpty()) {
-            throw new IllegalArgumentException("portfolio series do not share any common bar end times");
-        }
-
-        List<Instant> alignedEndTimes = List.copyOf(commonEndTimes);
-        Map<String, List<Integer>> sourceIndexes = new LinkedHashMap<>();
-        for (int seriesIndex = 0; seriesIndex < assets.size(); seriesIndex++) {
-            String asset = assets.get(seriesIndex);
-            Map<Instant, Integer> currentIndexes = indexesByEndTime.get(seriesIndex);
-            List<Integer> alignedIndexes = new ArrayList<>(alignedEndTimes.size());
-            for (Instant endTime : alignedEndTimes) {
-                alignedIndexes.add(currentIndexes.get(endTime));
-            }
-            sourceIndexes.put(asset, List.copyOf(alignedIndexes));
-        }
-
-        return new Alignment(alignedEndTimes, Collections.unmodifiableMap(sourceIndexes));
-    }
-
     private static Map<Instant, Integer> indexesByEndTime(String asset, BarSeries source) {
+        List<Bar> bars = source.getBarData();
+        int beginIndex = source.getBeginIndex();
         Map<Instant, Integer> indexesByEndTime = new HashMap<>();
-        for (int index = source.getBeginIndex(); index <= source.getEndIndex(); index++) {
-            Instant endTime = source.getBar(index).getEndTime();
-            Integer previous = indexesByEndTime.putIfAbsent(endTime, index);
-            if (previous != null) {
+        // Offset iteration stays overflow-safe when the retained end index is
+        // Integer.MAX_VALUE.
+        for (int offset = 0; offset < bars.size(); offset++) {
+            Instant endTime = bars.get(offset).getEndTime();
+            if (indexesByEndTime.putIfAbsent(endTime, beginIndex + offset) != null) {
                 throw new IllegalArgumentException("duplicate bar end time for asset " + asset + ": " + endTime);
             }
         }
         return indexesByEndTime;
     }
 
-    private static BarSeries snapshotSeries(BarSeries source) {
+    private static BarSeries detachedCopy(BarSeries source) {
+        List<Bar> sourceBars = source.getBarData();
+        List<Bar> bars = new ArrayList<>(sourceBars.size());
+        for (Bar bar : sourceBars) {
+            bars.add(detachedCopy(bar));
+        }
         return new BaseBarSeriesBuilder().withName(source.getName())
                 .withNumFactory(source.numFactory())
                 .withBeginIndex(source.getBeginIndex())
-                .withBars(source.getBarData())
+                .withBars(bars)
                 .withMaxBarCount(source.getMaximumBarCount())
                 .build();
     }
 
-    private record Alignment(List<Instant> endTimes, Map<String, List<Integer>> sourceIndexesByAsset) {
+    private static Bar detachedCopy(Bar bar) {
+        return new BaseBar(bar.getTimePeriod(), bar.getBeginTime(), bar.getEndTime(), bar.getOpenPrice(),
+                bar.getHighPrice(), bar.getLowPrice(), bar.getClosePrice(), bar.getVolume(), bar.getAmount(),
+                bar.getTrades());
     }
 }

@@ -86,7 +86,7 @@ public class TrendConclusionIndicator extends CachedIndicator<Num> {
     }
 
     private TrendConclusionIndicator(Config config) {
-        super(config.series());
+        super(config.compositeIndicator());
         this.normalizationBarCount = config.normalizationBarCount();
         this.adxFadeIndicator = config.adxFadeIndicator();
         this.histogramMeanReversionIndicator = config.histogramMeanReversionIndicator();

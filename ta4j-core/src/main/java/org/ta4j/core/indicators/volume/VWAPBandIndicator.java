@@ -60,7 +60,7 @@ public class VWAPBandIndicator extends CachedIndicator<Num> {
     }
 
     private VWAPBandIndicator(Config config) {
-        super(config.series());
+        super(config.band());
         this.vwapIndicator = config.vwapIndicator();
         this.standardDeviationIndicator = config.standardDeviationIndicator();
         this.bandType = config.bandType();

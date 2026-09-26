@@ -79,7 +79,7 @@ public class ElliottConfluenceIndicator extends CachedIndicator<Num> {
     }
 
     private ElliottConfluenceIndicator(final Config config) {
-        super(config.series());
+        super(config.priceIndicator(), config.ratioIndicator(), config.channelIndicator());
         this.priceIndicator = config.priceIndicator();
         this.ratioIndicator = config.ratioIndicator();
         this.channelIndicator = config.channelIndicator();

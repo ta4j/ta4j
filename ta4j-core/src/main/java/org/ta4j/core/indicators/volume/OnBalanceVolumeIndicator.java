@@ -46,4 +46,5 @@ public class OnBalanceVolumeIndicator extends RecursiveCachedIndicator<Num> {
     public int getCountOfUnstableBars() {
         return 0;
     }
+
 }

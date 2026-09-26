@@ -3,78 +3,98 @@
  */
 package org.ta4j.core.indicators.candles;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.trend.UpTrendIndicator;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.num.Num;
 
 /**
  * Shooting star candle indicator.
  *
+ * <p>
+ * A candle at index {@code i} is a shooting star when it has a short body, a
+ * long upper shadow, a very short lower shadow, and opens strictly above the
+ * previous candle's close:
+ *
+ * <pre>
+ * body_i &lt; 0.5 * average(body[i-averagePeriod] ... body[i-1])
+ * upperShadow_i &gt; 2.0 * average(body[i-averagePeriod] ... body[i-1])
+ * lowerShadow_i &lt;= 0.1 * average(range[i-averagePeriod] ... range[i-1])
+ * open_i &gt; close_(i-1)
+ * </pre>
+ *
+ * The body and upper-shadow comparisons are <em>strict</em>; the lower-shadow
+ * comparison is <em>inclusive</em> at its threshold, and the gap-up comparison
+ * is <em>strict</em> (an open exactly equal to the previous close is not a
+ * shooting star).
+ *
+ * <p>
+ * This indicator evaluates only candle geometry; it does not evaluate trend or
+ * direction context. A shooting star is traditionally interpreted as a bearish
+ * reversal signal only after an uptrend — a context this indicator does not
+ * own.
+ *
  * @see <a href="https://www.investopedia.com/terms/s/shootingstar.asp">
  *      https://www.investopedia.com/terms/s/shootingstar.asp</a>
  */
-public class ShootingStarIndicator extends CachedIndicator<Boolean> {
-
-    private static final double DEFAULT_BODY_LENGTH_TO_BOTTOM_WICK_COEFFICIENT = 1d;
-    private static final double DEFAULT_BODY_LENGTH_TO_UPPER_WICK_COEFFICIENT = 2d;
-
-    private final transient RealBodyIndicator realBodyIndicator;
-    private final transient UpTrendIndicator trendIndicator;
-    private final double bodyToBottomWickRatio;
-    private final double bodyToUpperWickRatio;
+public class ShootingStarIndicator extends CandlePatternIndicator {
 
     /**
-     * Constructor.
+     * The number of preceding candles averaged into the body and range baselines.
+     */
+    private final int averagePeriod;
+
+    /** The current candle's upper shadow, shared from the interned support. */
+    private final transient Indicator<Num> upperShadow;
+
+    /** The current candle's lower shadow, shared from the interned support. */
+    private final transient Indicator<Num> lowerShadow;
+
+    /**
+     * Constructor with the recommended default average period of 5 candles.
      *
      * @param series the bar series
      */
     public ShootingStarIndicator(final BarSeries series) {
-        super(series);
-        this.realBodyIndicator = new RealBodyIndicator(series);
-        this.trendIndicator = new UpTrendIndicator(series);
-        this.bodyToBottomWickRatio = DEFAULT_BODY_LENGTH_TO_BOTTOM_WICK_COEFFICIENT;
-        this.bodyToUpperWickRatio = DEFAULT_BODY_LENGTH_TO_UPPER_WICK_COEFFICIENT;
+        this(series, CandleThresholdSupport.DEFAULT_AVERAGE_PERIOD);
     }
 
     /**
-     * Constructor.
+     * Constructor with a custom average period.
      *
-     * @param series                the bar series
-     * @param bodyToBottomWickRatio the body to bottom wick ratio
-     * @param bodyToUpperWickRatio  the body to upper wick ratio
+     * @param series        the bar series
+     * @param averagePeriod the number of preceding candles averaged into each
+     *                      baseline; must be at least 1
+     * @throws IllegalArgumentException if {@code averagePeriod} is below 1
+     * @since 0.24.2
      */
-    public ShootingStarIndicator(final BarSeries series, double bodyToBottomWickRatio, double bodyToUpperWickRatio) {
-        super(series);
-        this.realBodyIndicator = new RealBodyIndicator(series);
-        this.trendIndicator = new UpTrendIndicator(series);
-        this.bodyToBottomWickRatio = bodyToBottomWickRatio;
-        this.bodyToUpperWickRatio = bodyToUpperWickRatio;
+    public ShootingStarIndicator(final BarSeries series, final int averagePeriod) {
+        super(series, CandleThresholdSupport.forSeries(series, averagePeriod));
+        this.averagePeriod = averagePeriod;
+        this.upperShadow = thresholds.upperShadow();
+        this.lowerShadow = thresholds.lowerShadow();
     }
 
     @Override
     protected Boolean calculate(final int index) {
-        final var bar = getBarSeries().getBar(index);
-        final var openPrice = bar.getOpenPrice();
-        final var closePrice = bar.getClosePrice();
-        final var lowPrice = bar.getLowPrice();
-        final var highPrice = bar.getHighPrice();
+        if (index - 1 < getBarSeries().getBeginIndex()) {
+            return false;
+        }
+        final Bar bar = getBarSeries().getBar(index);
+        final Num priorClose = getBarSeries().getBar(index - 1).getClosePrice();
+        final Num openPrice = bar.getOpenPrice();
+        // Guard both gap operands: a non-finite prior close or open must not
+        // qualify. DoubleNum orders 0.0 above -0.0, so two zero-valued prices
+        // would register as a gap up; equal prices must not qualify.
+        final boolean opensAbove = Num.isFinite(openPrice) && Num.isFinite(priorClose)
+                && !(openPrice.isZero() && priorClose.isZero()) && openPrice.isGreaterThan(priorClose);
 
-        final var bodyHeight = this.realBodyIndicator.getValue(index).abs();
-
-        final var upperBodyBoundary = openPrice.max(closePrice);
-        final var bottomBodyBoundary = openPrice.min(closePrice);
-        final var bottomWickHeight = bottomBodyBoundary.minus(lowPrice);
-        final var upperWickHeight = highPrice.minus(upperBodyBoundary);
-
-        return upperWickHeight.dividedBy(bodyHeight)
-                .isGreaterThan(getBarSeries().numFactory().numOf(this.bodyToUpperWickRatio))
-                && bottomWickHeight.dividedBy(bodyHeight)
-                        .isLessThanOrEqual(getBarSeries().numFactory().numOf(this.bodyToBottomWickRatio))
-                && this.trendIndicator.getValue(index);
+        return thresholds.isShortBody(index) && thresholds.isLongShadow(index, upperShadow)
+                && thresholds.isShortShadow(index, lowerShadow) && opensAbove;
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(realBodyIndicator.getCountOfUnstableBars(), trendIndicator.getCountOfUnstableBars());
+        return averagePeriod;
     }
 }

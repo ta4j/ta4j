@@ -25,10 +25,22 @@ import org.ta4j.core.indicators.helpers.DateTimeIndicator;
  * that time zone.
  *
  * <p>
+ * Each {@link TimeRange} must have a {@code from} that is not after its
+ * {@code to}; inverted windows (e.g. 22:00 to 02:00) are rejected at
+ * construction time. Overnight sessions spanning midnight are not supported and
+ * must be modeled as two ranges.
+ *
+ * <p>
  * This rule does not use the {@code tradingRecord}.
  */
 public class TimeRangeRule extends AbstractRule {
 
+    /**
+     * A time-of-day window.
+     *
+     * @param from the inclusive window start
+     * @param to   the inclusive window end
+     */
     public record TimeRange(LocalTime from, LocalTime to) {
     }
 
@@ -85,6 +97,10 @@ public class TimeRangeRule extends AbstractRule {
         for (int i = 0; i < copiedFromSecondOfDay.length; i++) {
             LocalTime from = LocalTime.ofSecondOfDay(validateSecond(copiedFromSecondOfDay[i]));
             LocalTime to = LocalTime.ofSecondOfDay(validateSecond(copiedToSecondOfDay[i]));
+            if (from.isAfter(to)) {
+                throw new IllegalArgumentException(
+                        "Time range 'from' must not be after 'to' but was " + from + " > " + to);
+            }
             normalizedRanges.add(new TimeRange(from, to));
         }
         return new Config(validatedTimeIndicator, copiedFromSecondOfDay, copiedToSecondOfDay,

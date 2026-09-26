@@ -94,4 +94,45 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         assertNumEquals(0, covar.getValue(3));
         assertNumEquals(0, covar.getValue(8));
     }
+
+    @Test
+    public void anchorsWindowAtBeginIndexAfterRemoval() {
+        // Evict the first four bars so beginIndex = 4; the retained (close, volume)
+        // pairs sit at absolute indices 4..9: (5,10) (6,5) (7,14) (8,7) (9,18) (10,9).
+        int i = 10;
+        var now = Instant.now();
+        BarSeries pruned = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        double[] closes = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+        double[] volumes = { 4, 1, 6, 3, 10, 5, 14, 7, 18, 9 };
+        for (int j = 0; j < closes.length; j++) {
+            pruned.barBuilder().endTime(now.minusSeconds(i--)).closePrice(closes[j]).volume(volumes[j]).add();
+        }
+        pruned.setMaximumBarCount(6);
+
+        var covar = new CovarianceIndicator(new ClosePriceIndicator(pruned), new VolumeIndicator(pruned, 1), 6);
+
+        // Window [4..7]: closes {5,6,7,8}, volumes {10,5,14,7}: sum of products = 0
+        assertNumEquals(0, covar.getValue(7));
+        // Window [4..8]: sum of products = 18 over 5 observations
+        assertNumEquals(3.6, covar.getValue(8));
+        // Window [4..9]: sum of products = 13.5 over 6 observations
+        assertNumEquals(2.25, covar.getValue(9));
+    }
+
+    @Test
+    public void acceptsAlignedInputsFromSeparateSeries() {
+        BarSeries xSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries ySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        var now = Instant.now();
+        for (int j = 0; j < 5; j++) {
+            xSeries.barBuilder().endTime(now.minusSeconds(2L * (4 - j))).closePrice(2 * (j + 1)).add();
+            ySeries.barBuilder().endTime(now.minusSeconds(2L * (4 - j))).closePrice(5 * (j + 1)).add();
+        }
+
+        var covar = new CovarianceIndicator(new ClosePriceIndicator(xSeries), new ClosePriceIndicator(ySeries), 5);
+
+        // Perfectly linear pairs (2,5), (4,10), (6,15), (8,20), (10,25):
+        // population covariance = sum((x - 6)(y - 15)) / 5 = 100 / 5
+        assertNumEquals(20, covar.getValue(4));
+    }
 }

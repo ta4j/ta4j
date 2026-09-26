@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
 import org.ta4j.core.Bar;
@@ -31,6 +32,7 @@ import org.ta4j.core.indicators.helpers.CrossIndicator;
 import org.ta4j.core.indicators.helpers.DateTimeIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.AndRule;
 import org.ta4j.core.rules.AbstractRule;
@@ -41,6 +43,7 @@ import org.ta4j.core.rules.DayOfWeekRule;
 import org.ta4j.core.rules.FixedRule;
 import org.ta4j.core.rules.NotRule;
 import org.ta4j.core.rules.OrRule;
+import org.ta4j.core.rules.InSlopeRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.TrailingFixedAmountStopGainRule;
 import org.ta4j.core.rules.TrailingFixedAmountStopLossRule;
@@ -821,6 +824,36 @@ public class RuleSerializationTest {
     }
 
     @Test
+    public void fromDescriptorRejectsNonRuleTypeLikeMissingTypeWithoutInitializingIt() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String probeType = StaticInitializerProbe.class.getName();
+
+        IllegalArgumentException nonRule = assertThrows(IllegalArgumentException.class,
+                () -> RuleSerialization.fromDescriptor(series, ComponentDescriptor.typeOnly(probeType)));
+        IllegalArgumentException missing = assertThrows(IllegalArgumentException.class, () -> RuleSerialization
+                .fromDescriptor(series, ComponentDescriptor.typeOnly("com.example.MissingRule")));
+
+        assertThat(nonRule).hasMessage("Unknown rule type: " + probeType).hasNoCause();
+        assertThat(missing).hasMessage("Unknown rule type: com.example.MissingRule").hasNoCause();
+        assertThat(STATIC_INITIALIZER_PROBE_RUNS).hasValue(0);
+    }
+
+    @Test
+    public void fromDescriptorDecodesEnumsFromDeclaredTypeWithoutLoadingEnumTypeMetadata() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType("WaitForRule")
+                .withParameters(Map.of("tradeType", TradeType.SELL.name(), "numberOfBars", 1, "__enumType_tradeType",
+                        StaticInitializerProbe.class.getName()))
+                .build();
+
+        Rule restored = RuleSerialization.fromDescriptor(series, descriptor);
+
+        assertThat(RuleSerialization.describe(restored).getParameters()).containsEntry("tradeType", "SELL");
+        assertThat(STATIC_INITIALIZER_PROBE_RUNS).hasValue(0);
+    }
+
+    @Test
     public void fromDescriptorRejectsFractionalIntegerParameter() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
         ComponentDescriptor descriptor = ComponentDescriptor.builder()
@@ -861,6 +894,19 @@ public class RuleSerializationTest {
         assertThat(descriptor.getComponents().get(0).getType()).isEqualTo("ClosePriceIndicator");
         assertThat(restored).isInstanceOf(OverloadedIndicatorRule.class);
         assertThat(((OverloadedIndicatorRule) restored).getConstructorUsed()).isEqualTo("generic");
+    }
+
+    private static final AtomicInteger STATIC_INITIALIZER_PROBE_RUNS = new AtomicInteger();
+
+    /** Not a rule or enum; descriptor resolution must never initialize it. */
+    private static final class StaticInitializerProbe {
+
+        static {
+            STATIC_INITIALIZER_PROBE_RUNS.incrementAndGet();
+        }
+
+        private StaticInitializerProbe() {
+        }
     }
 
     private static final class ConstructorPreferenceRule extends AbstractRule {
@@ -962,6 +1008,15 @@ public class RuleSerializationTest {
         private Number getBarCount() {
             return barCount;
         }
+    }
+
+    @Test
+    public void toDescriptorRejectsNonFiniteNumericParameter() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
+        Rule rule = new InSlopeRule(new ClosePriceIndicator(series), NaN.NaN);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, rule::toDescriptor);
+        assertThat(exception.getMessage()).contains("Non-finite numeric parameter");
     }
 
     private record Fixture(BarSeries series, Rule andRule, Strategy strategy) {

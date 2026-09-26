@@ -42,7 +42,8 @@ public class KiJunV2Indicator extends CachedIndicator<Num> {
      * @param barCount  the Simple Moving Average time frame
      */
     public KiJunV2Indicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, int barCount) {
-        super(highPrice.getBarSeries());
+        super(highPrice, lowPrice);
+
         this.barCount = barCount;
         this.highPrice = highPrice;
         this.lowPrice = lowPrice;

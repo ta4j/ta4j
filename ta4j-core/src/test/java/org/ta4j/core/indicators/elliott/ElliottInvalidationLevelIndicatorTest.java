@@ -4,11 +4,13 @@
 package org.ta4j.core.indicators.elliott;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 class ElliottInvalidationLevelIndicatorTest {
 
@@ -55,6 +57,49 @@ class ElliottInvalidationLevelIndicatorTest {
     }
 
     @Test
+    void conservativeModeFoldsBullishAndBearishScenariosSeparately() {
+        BarSeries series = seriesWithClose(103);
+        ElliottSwingIndicator swingIndicator = new ElliottSwingIndicator(series, 1, ElliottDegree.MINOR);
+        ElliottScenarioIndicator scenarioIndicator = new ElliottScenarioIndicator(swingIndicator);
+        ElliottInvalidationLevelIndicator indicator = new ElliottInvalidationLevelIndicator(scenarioIndicator,
+                ElliottInvalidationLevelIndicator.InvalidationMode.CONSERVATIVE);
+
+        // Bearish invalidation levels (105, 108) and a bullish level (100):
+        // folding them under the first scenario's direction used to return 100.
+        // Per-direction folds with a close reference of 103 must select the
+        // tightest bearish level 105 (distance 2 vs distance 3 for bullish).
+        NumFactory numFactory = series.numFactory();
+        ElliottScenarioSet set = ElliottScenarioSet.of(List.of(scenario("bearish-tight", false, 105, 0.9, numFactory),
+                scenario("bullish", true, 100, 0.85, numFactory),
+                scenario("bearish-wide", false, 108, 0.8, numFactory)), 0);
+
+        Num invalidation = indicator.calculateConservativeInvalidation(set, 0);
+
+        assertThat(invalidation).isEqualTo(numFactory.numOf(105));
+    }
+
+    @Test
+    void aggressiveModeFoldsBullishAndBearishScenariosSeparately() {
+        BarSeries series = seriesWithClose(103);
+        ElliottSwingIndicator swingIndicator = new ElliottSwingIndicator(series, 1, ElliottDegree.MINOR);
+        ElliottScenarioIndicator scenarioIndicator = new ElliottScenarioIndicator(swingIndicator);
+        ElliottInvalidationLevelIndicator indicator = new ElliottInvalidationLevelIndicator(scenarioIndicator,
+                ElliottInvalidationLevelIndicator.InvalidationMode.AGGRESSIVE);
+
+        // Folding all scenarios under the first scenario's direction used to
+        // return 100; per-direction folds with a close reference of 103 must
+        // select the widest bearish level 108 (distance 5 vs distance 3).
+        NumFactory numFactory = series.numFactory();
+        ElliottScenarioSet set = ElliottScenarioSet.of(List.of(scenario("bullish", true, 100, 0.9, numFactory),
+                scenario("bearish-tight", false, 105, 0.85, numFactory),
+                scenario("bearish-wide", false, 108, 0.8, numFactory)), 0);
+
+        Num invalidation = indicator.calculateAggressiveInvalidation(set, 0);
+
+        assertThat(invalidation).isEqualTo(numFactory.numOf(108));
+    }
+
+    @Test
     void aggressiveModeUsesWidestInvalidation() {
         BarSeries series = createSeriesWithSwings();
         ElliottSwingIndicator swingIndicator = new ElliottSwingIndicator(series, 1, ElliottDegree.MINOR);
@@ -94,6 +139,54 @@ class ElliottInvalidationLevelIndicatorTest {
     }
 
     @Test
+    void distanceToInvalidationFollowsSelectedLevelDirection() {
+        BarSeries series = seriesWithClose(103);
+        NumFactory numFactory = series.numFactory();
+        ElliottScenarioSet set = ElliottScenarioSet.of(List.of(scenario("bullish", true, 100, 0.9, numFactory),
+                scenario("bearish-tight", false, 105, 0.85, numFactory)), 0);
+
+        // CONSERVATIVE selects the bearish level 105, which sits above the close
+        // of 103: the distance is 2, not the -2 derived from the primary
+        // scenario's bullish direction.
+        ElliottInvalidationLevelIndicator conservative = new ElliottInvalidationLevelIndicator(
+                new StubScenarioIndicator(set, series),
+                ElliottInvalidationLevelIndicator.InvalidationMode.CONSERVATIVE);
+        assertThat(conservative.distanceToInvalidation(0, numFactory.numOf(103))).isEqualTo(numFactory.numOf(2));
+
+        // PRIMARY uses the bullish primary level 100 below the price: distance 3.
+        ElliottInvalidationLevelIndicator primary = new ElliottInvalidationLevelIndicator(
+                new StubScenarioIndicator(set, series), ElliottInvalidationLevelIndicator.InvalidationMode.PRIMARY);
+        assertThat(primary.distanceToInvalidation(0, numFactory.numOf(103))).isEqualTo(numFactory.numOf(3));
+
+        // Degenerate: the selected bearish level equals the current price.
+        ElliottScenarioSet equalSet = ElliottScenarioSet.of(List.of(scenario("bullish", true, 100, 0.9, numFactory),
+                scenario("bearish-equal", false, 103, 0.85, numFactory)), 0);
+        ElliottInvalidationLevelIndicator equal = new ElliottInvalidationLevelIndicator(
+                new StubScenarioIndicator(equalSet, series),
+                ElliottInvalidationLevelIndicator.InvalidationMode.CONSERVATIVE);
+        assertThat(equal.distanceToInvalidation(0, numFactory.numOf(103))).isEqualTo(numFactory.numOf(0));
+    }
+
+    @Test
+    void distanceToInvalidationReportsNegativeWhenSelectedSideIsCrossed() {
+        BarSeries series = seriesWithClose(103);
+        NumFactory numFactory = series.numFactory();
+        // Single bullish scenario: both folded modes select its level 100. With
+        // the price at 90 the bullish boundary has been crossed, so the distance
+        // must be negative (-10) instead of being re-read as a bearish +10.
+        ElliottScenarioSet set = ElliottScenarioSet.of(List.of(scenario("bullish", true, 100, 0.9, numFactory)), 0);
+
+        ElliottInvalidationLevelIndicator conservative = new ElliottInvalidationLevelIndicator(
+                new StubScenarioIndicator(set, series),
+                ElliottInvalidationLevelIndicator.InvalidationMode.CONSERVATIVE);
+        assertThat(conservative.distanceToInvalidation(0, numFactory.numOf(90))).isEqualTo(numFactory.numOf(-10));
+
+        ElliottInvalidationLevelIndicator aggressive = new ElliottInvalidationLevelIndicator(
+                new StubScenarioIndicator(set, series), ElliottInvalidationLevelIndicator.InvalidationMode.AGGRESSIVE);
+        assertThat(aggressive.distanceToInvalidation(0, numFactory.numOf(90))).isEqualTo(numFactory.numOf(-10));
+    }
+
+    @Test
     void unstableBarsFromScenarioIndicator() {
         BarSeries series = createSeriesWithSwings();
         ElliottSwingIndicator swingIndicator = new ElliottSwingIndicator(series, 3, ElliottDegree.MINOR);
@@ -119,5 +212,55 @@ class ElliottInvalidationLevelIndicatorTest {
         }
 
         return series;
+    }
+
+    private BarSeries seriesWithClose(final double close) {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        series.barBuilder()
+                .openPrice(close - 1)
+                .highPrice(close + 1)
+                .lowPrice(close - 2)
+                .closePrice(close)
+                .volume(100)
+                .add();
+        return series;
+    }
+
+    private ElliottScenario scenario(final String id, final boolean rising, final double invalidation,
+            final double confidence, final NumFactory numFactory) {
+        final Num from = numFactory.numOf(rising ? 100 : 150);
+        final Num to = numFactory.numOf(rising ? 110 : 140);
+        final ElliottSwing swing = new ElliottSwing(0, 1, from, to, ElliottDegree.MINOR);
+        final Num zero = numFactory.zero();
+        final ElliottConfidence scores = new ElliottConfidence(numFactory.numOf(confidence), zero, zero, zero, zero,
+                zero, "test");
+        return new ElliottScenario(id, ElliottPhase.WAVE3, List.of(swing), scores, ElliottDegree.MINOR,
+                numFactory.numOf(invalidation), numFactory.numOf(130), List.of(), ScenarioType.IMPULSE, 0, null);
+    }
+
+    /**
+     * Stub scenario indicator serving a fixed scenario set, preserving the set
+     * across the defensive copy made by {@link ElliottInvalidationLevelIndicator}.
+     */
+    private static final class StubScenarioIndicator extends ElliottScenarioIndicator {
+
+        private final ElliottScenarioSet set;
+        private final BarSeries series;
+
+        private StubScenarioIndicator(ElliottScenarioSet set, BarSeries series) {
+            super(new ElliottSwingIndicator(series, 1, ElliottDegree.MINOR));
+            this.set = set;
+            this.series = series;
+        }
+
+        @Override
+        protected ElliottScenarioSet calculate(int index) {
+            return set;
+        }
+
+        @Override
+        ElliottScenarioIndicator copy() {
+            return new StubScenarioIndicator(set, series);
+        }
     }
 }

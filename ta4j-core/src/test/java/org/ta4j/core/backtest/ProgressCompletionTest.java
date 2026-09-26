@@ -6,11 +6,13 @@ package org.ta4j.core.backtest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import org.junit.Test;
+import org.ta4j.core.TraceTestLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,6 +27,32 @@ public class ProgressCompletionTest {
         callback.accept(1);
         callback.accept(100);
         callback.accept(1000);
+    }
+
+    @Test
+    public void autoDetectionLogsUnderTheCallingClass() {
+        TestHelper helper = new TestHelper();
+        MemoryTestHelper memoryHelper = new MemoryTestHelper();
+        TraceTestLogger traceLogger = new TraceTestLogger();
+        traceLogger.open("%c %msg%n");
+        try {
+            assertLoggedBy(ProgressCompletionTest.class, ProgressCompletion.logging(), 100, traceLogger);
+            assertLoggedBy(ProgressCompletionTest.class, createCallbackFromNestedMethod(), 100, traceLogger);
+            assertLoggedBy(TestHelper.class, helper.createCallback(), 100, traceLogger);
+            assertLoggedBy(TestHelper.class, helper.createCallbackWithInterval(25), 25, traceLogger);
+            assertLoggedBy(MemoryTestHelper.class, memoryHelper.createCallback(), 100, traceLogger);
+            assertLoggedBy(MemoryTestHelper.class, memoryHelper.createCallbackWithInterval(25), 25, traceLogger);
+        } finally {
+            traceLogger.close();
+        }
+    }
+
+    private static void assertLoggedBy(Class<?> expectedCaller, Consumer<Integer> callback, int completed,
+            TraceTestLogger traceLogger) {
+        traceLogger.clear();
+        callback.accept(completed);
+        String output = traceLogger.getLogOutput();
+        assertTrue(output, output.startsWith(expectedCaller.getName() + " Progress: " + completed));
     }
 
     @Test

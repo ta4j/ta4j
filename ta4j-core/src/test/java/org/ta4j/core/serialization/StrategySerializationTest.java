@@ -685,6 +685,32 @@ public class StrategySerializationTest {
     }
 
     @Test
+    public void canonicalPayloadRejectsMalformedStrategyParameters() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+
+        String malformedUnstableBars = canonicalStrategyJson("{\"unstableBars\":1.9}");
+        IllegalArgumentException unstableBarsException = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, malformedUnstableBars));
+        assertThat(unstableBarsException).hasMessageContaining("unstableBars").hasMessageContaining("1.9");
+
+        String malformedStartingType = canonicalStrategyJson("{\"startingType\":\"HOLD\"}");
+        IllegalArgumentException startingTypeException = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, malformedStartingType));
+        assertThat(startingTypeException).hasMessageContaining("starting type").hasMessageContaining("HOLD");
+    }
+
+    @Test
+    public void canonicalPayloadRejectsMissingUnstableBarsValue() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+
+        String malformedUnstableBars = canonicalStrategyJson("{\"unstableBars\":null}");
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, malformedUnstableBars));
+
+        assertThat(exception).hasMessageContaining("unstableBars");
+    }
+
+    @Test
     public void versionTwoPayloadRejectsNonJsonIntegerObjectValues() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
 
@@ -1200,10 +1226,10 @@ public class StrategySerializationTest {
     }
 
     @Test
-    public void customStrategyOutsideCorePackageUsesFullyQualifiedName() {
-        // Test that strategies outside org.ta4j.core use fully qualified names
-        // We'll manually create a descriptor with a fully qualified name to simulate
-        // a strategy from a different package (e.g., com.example.MyStrategy)
+    public void fromDescriptorFailsLoudForUnresolvableStrategyType() {
+        // Strategies outside org.ta4j.core carry fully qualified names, but a type
+        // that cannot be resolved on the classpath must fail loudly instead of
+        // silently falling back to BaseStrategy.
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4).build();
 
         // Create a descriptor with a fully qualified name outside org.ta4j.core
@@ -1223,12 +1249,68 @@ public class StrategySerializationTest {
                         .build())
                 .build();
 
-        // This should fail to resolve the class and fall back to BaseStrategy
-        // But the important thing is that the deserializer can handle fully qualified
-        // names
-        Strategy restored = StrategySerialization.fromDescriptor(series, descriptor);
-        assertThat(restored).isInstanceOf(BaseStrategy.class);
-        assertThat(restored.getName()).isEqualTo("TestStrategy");
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> StrategySerialization.fromDescriptor(series, descriptor));
+        assertThat(exception.getMessage()).contains("Unknown strategy type: com.example.CustomStrategy");
+    }
+
+    @Test
+    public void fromDescriptorRejectsNonStrategyTypeLikeMissingTypeWithoutInitializingIt() {
+        // A resolvable class that does not implement Strategy must fail loudly, must
+        // not run its static initializer, and must be indistinguishable from a
+        // missing class so descriptor input cannot probe the classpath.
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4).build();
+        String probeType = StaticInitializerProbe.class.getName();
+
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType(probeType)
+                .withLabel("TestStrategy")
+                .withParameters(Map.of("unstableBars", 1))
+                .addComponent(ComponentDescriptor.builder()
+                        .withType(SerializableRule.class.getName())
+                        .withLabel("entry")
+                        .withParameters(Map.of("satisfied", true))
+                        .build())
+                .addComponent(ComponentDescriptor.builder()
+                        .withType(SerializableRule.class.getName())
+                        .withLabel("exit")
+                        .withParameters(Map.of("satisfied", false))
+                        .build())
+                .build();
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> StrategySerialization.fromDescriptor(series, descriptor));
+        assertThat(exception).hasMessage("Unknown strategy type: " + probeType).hasNoCause();
+        assertThat(STATIC_INITIALIZER_PROBE_RUNS).hasValue(0);
+    }
+
+    @Test
+    public void fromDescriptorRejectsNonRuleEntryTypeLikeMissingTypeWithoutInitializingIt() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4).build();
+        String probeType = StaticInitializerProbe.class.getName();
+
+        IllegalArgumentException nonRule = assertThrows(IllegalArgumentException.class,
+                () -> StrategySerialization.fromDescriptor(series, strategyWithEntryRuleType(probeType)));
+        IllegalArgumentException missing = assertThrows(IllegalArgumentException.class,
+                () -> StrategySerialization.fromDescriptor(series, strategyWithEntryRuleType("com.example.Missing")));
+
+        assertThat(nonRule).hasMessage("Unknown rule type: " + probeType).hasNoCause();
+        assertThat(missing).hasMessage("Unknown rule type: com.example.Missing").hasNoCause();
+        assertThat(STATIC_INITIALIZER_PROBE_RUNS).hasValue(0);
+    }
+
+    private static ComponentDescriptor strategyWithEntryRuleType(String entryRuleType) {
+        return ComponentDescriptor.builder()
+                .withType(BaseStrategy.class.getName())
+                .withLabel("TestStrategy")
+                .withParameters(Map.of("unstableBars", 1))
+                .addComponent(ComponentDescriptor.builder().withType(entryRuleType).withLabel("entry").build())
+                .addComponent(ComponentDescriptor.builder()
+                        .withType(SerializableRule.class.getName())
+                        .withLabel("exit")
+                        .withParameters(Map.of("satisfied", false))
+                        .build())
+                .build();
     }
 
     @Test
@@ -1271,6 +1353,52 @@ public class StrategySerializationTest {
         TradingRecord record = new BaseTradingRecord();
         assertThat(restored.shouldEnter(3, record)).isTrue();
         assertThat(restored.shouldExit(3, record)).isFalse();
+    }
+
+    @Test
+    public void fromJsonRejectsUnknownStrategyType() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4).build();
+        String json = "{\"type\":\"NoSuchStrategy\",\"parameters\":{\"unstableBars\":0},\"rules\":[]}";
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, json));
+        assertThat(exception.getMessage()).contains("Unknown strategy type: NoSuchStrategy");
+    }
+
+    @Test
+    public void fromJsonFailsLoudWhenStrategyTypeHasNoSuitableConstructor() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4).build();
+        Strategy strategy = new NoSuitableConstructorStrategy(
+                List.of(new SerializableRule(true), new SerializableRule(false)));
+
+        String json = strategy.toJson();
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> Strategy.fromJson(series, json));
+        assertThat(exception.getMessage()).contains("No suitable constructor found for strategy type");
+    }
+
+    private static final AtomicInteger STATIC_INITIALIZER_PROBE_RUNS = new AtomicInteger();
+
+    /**
+     * Neither a strategy nor a rule; descriptor resolution must never initialize
+     * it. The type name deliberately omits "Rule" so rule descriptors reach the
+     * strategy-side rule resolver.
+     */
+    private static final class StaticInitializerProbe {
+
+        static {
+            STATIC_INITIALIZER_PROBE_RUNS.incrementAndGet();
+        }
+
+        private StaticInitializerProbe() {
+        }
+    }
+
+    private static final class NoSuitableConstructorStrategy extends BaseStrategy {
+
+        private NoSuitableConstructorStrategy(List<Rule> rules) {
+            super(rules.get(0), rules.get(1), 0);
+        }
     }
 
     private static final class SerializableRule extends org.ta4j.core.rules.AbstractRule {
@@ -1444,6 +1572,14 @@ public class StrategySerializationTest {
             token = token.substring(1);
         }
         return Integer.parseInt(token);
+    }
+
+    private static String canonicalStrategyJson(String parameters) {
+        String ruleType = SerializableRule.class.getName();
+        return "{\"type\":\"BaseStrategy\",\"label\":\"MalformedCanonical\"," + "\"parameters\":" + parameters
+                + ",\"rules\":[" + "{\"type\":\"" + ruleType
+                + "\",\"label\":\"entry\",\"parameters\":{\"satisfied\":true}}," + "{\"type\":\"" + ruleType
+                + "\",\"label\":\"exit\",\"parameters\":{\"satisfied\":false}}]}";
     }
 
     private static ComponentDescriptor shortMacroDescriptor() {

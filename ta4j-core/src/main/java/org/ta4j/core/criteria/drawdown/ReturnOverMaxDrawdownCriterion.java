@@ -16,7 +16,6 @@ import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.ReturnRepresentationPolicy;
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * Reward risk ratio criterion (also known as "RoMaD"), returned in the
@@ -64,7 +63,9 @@ import org.ta4j.core.num.NumFactory;
  * <b>Open positions:</b> When using {@link EquityCurveMode#MARK_TO_MARKET}, the
  * {@link OpenPositionHandling} setting controls whether open positions
  * contribute to the return calculation. {@link EquityCurveMode#REALIZED} always
- * ignores open positions regardless of the requested handling.
+ * ignores open positions regardless of the requested handling. A null or still
+ * open position has no completed equity path and yields the configured
+ * representation's neutral value (for example, 1.0 under MULTIPLICATIVE).
  *
  * @see ReturnRepresentation
  * @see ReturnRepresentationPolicy
@@ -153,21 +154,21 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        NumFactory numFactory = series.numFactory();
         if (position == null || position.isOpened()) {
-            return numFactory.zero();
+            // No completed equity path exists yet, so report the representation's
+            // neutral value (0 for DECIMAL, 1 for MULTIPLICATIVE) instead of a raw zero.
+            return returnRepresentation.toRepresentationFromRateOfReturn(series.numFactory().zero());
         }
         Num maxDrawdown = maxDrawdownCriterion.calculate(series, position);
         Num netReturn = calculateNetReturn(series, position);
-        return toRepresentation(netReturn, maxDrawdown, numFactory);
+        return toRepresentation(netReturn, maxDrawdown);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        NumFactory numFactory = series.numFactory();
         Num maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
         Num netReturn = calculateNetReturn(series, tradingRecord);
-        return toRepresentation(netReturn, maxDrawdown, numFactory);
+        return toRepresentation(netReturn, maxDrawdown);
     }
 
     @Override
@@ -200,19 +201,11 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
         return cashFlow.getValue(endIndex).minus(one);
     }
 
-    private Num toRepresentation(Num netReturn, Num maxDrawdown, NumFactory numFactory) {
+    private Num toRepresentation(Num netReturn, Num maxDrawdown) {
         if (maxDrawdown.isZero()) {
             return returnRepresentation.toRepresentationFromRateOfReturn(netReturn);
         }
         Num rawRatio = netReturn.dividedBy(maxDrawdown);
-        if (returnRepresentation == ReturnRepresentation.MULTIPLICATIVE) {
-            Num one = numFactory.one();
-            Num zero = numFactory.zero();
-            if (rawRatio.isGreaterThanOrEqual(zero)) {
-                return rawRatio.plus(one);
-            }
-            return rawRatio;
-        }
         return returnRepresentation.toRepresentationFromRateOfReturn(rawRatio);
     }
 }

@@ -36,7 +36,7 @@ import org.ta4j.core.num.Num;
  * factory and deterministic asset order.
  * </p>
  *
- * @since 0.23.1
+ * @since 0.25.1
  */
 public final class PortfolioCorrelations {
 
@@ -45,16 +45,19 @@ public final class PortfolioCorrelations {
     /**
      * Creates correlation analytics for a portfolio series.
      *
-     * @param series aligned portfolio series
-     * @since 0.23.1
+     * @param series aligned portfolio series with at least two assets
+     * @since 0.25.1
      */
     public PortfolioCorrelations(PortfolioSeries series) {
         this.series = Objects.requireNonNull(series, "series");
+        if (series.getAssets().size() < 2) {
+            throw new IllegalArgumentException("correlation analysis requires at least two assets");
+        }
     }
 
     /**
      * @return analyzed portfolio series
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public PortfolioSeries getPortfolioSeries() {
         return series;
@@ -64,7 +67,7 @@ public final class PortfolioCorrelations {
      * Builds a population close-price matrix over the full aligned history.
      *
      * @return final close-price correlation matrix
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public CorrelationMatrix getPriceMatrix() {
         return getPriceMatrix(series.getBarCount());
@@ -75,7 +78,7 @@ public final class PortfolioCorrelations {
      *
      * @param barCount number of close-price observations
      * @return final close-price correlation matrix
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public CorrelationMatrix getPriceMatrix(int barCount) {
         return getPriceMatrix(series.getEndIndex(), barCount, SampleType.POPULATION);
@@ -87,7 +90,7 @@ public final class PortfolioCorrelations {
      * @param index    aligned portfolio index
      * @param barCount number of close-price observations
      * @return close-price correlation matrix
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public CorrelationMatrix getPriceMatrix(int index, int barCount) {
         return getPriceMatrix(index, barCount, SampleType.POPULATION);
@@ -100,7 +103,7 @@ public final class PortfolioCorrelations {
      * @param barCount   number of close-price observations
      * @param sampleType sample or population normalization
      * @return close-price correlation matrix
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public CorrelationMatrix getPriceMatrix(int index, int barCount, SampleType sampleType) {
         return matrix(index, barCount, sampleType, closePriceIndicators(), 0);
@@ -110,7 +113,7 @@ public final class PortfolioCorrelations {
      * Builds a population simple-return matrix over all available one-bar returns.
      *
      * @return final simple-return correlation matrix
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public CorrelationMatrix getSimpleReturnMatrix() {
         return getSimpleReturnMatrix(series.getEndIndex());
@@ -121,7 +124,7 @@ public final class PortfolioCorrelations {
      *
      * @param barCount number of one-bar simple returns
      * @return final simple-return correlation matrix
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public CorrelationMatrix getSimpleReturnMatrix(int barCount) {
         return getSimpleReturnMatrix(series.getEndIndex(), barCount, SampleType.POPULATION);
@@ -133,7 +136,7 @@ public final class PortfolioCorrelations {
      * @param index    aligned portfolio index
      * @param barCount number of one-bar simple returns
      * @return simple-return correlation matrix
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public CorrelationMatrix getSimpleReturnMatrix(int index, int barCount) {
         return getSimpleReturnMatrix(index, barCount, SampleType.POPULATION);
@@ -151,7 +154,7 @@ public final class PortfolioCorrelations {
      * @param barCount   number of one-bar simple returns
      * @param sampleType sample or population normalization
      * @return simple-return correlation matrix
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public CorrelationMatrix getSimpleReturnMatrix(int index, int barCount, SampleType sampleType) {
         return matrix(index, barCount, sampleType,
@@ -163,7 +166,7 @@ public final class PortfolioCorrelations {
      * Builds a population log-return matrix over all available one-bar returns.
      *
      * @return final log-return correlation matrix
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public CorrelationMatrix getLogReturnMatrix() {
         return getLogReturnMatrix(series.getEndIndex());
@@ -174,7 +177,7 @@ public final class PortfolioCorrelations {
      *
      * @param barCount number of one-bar log returns
      * @return final log-return correlation matrix
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public CorrelationMatrix getLogReturnMatrix(int barCount) {
         return getLogReturnMatrix(series.getEndIndex(), barCount, SampleType.POPULATION);
@@ -186,7 +189,7 @@ public final class PortfolioCorrelations {
      * @param index    aligned portfolio index
      * @param barCount number of one-bar log returns
      * @return log-return correlation matrix
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public CorrelationMatrix getLogReturnMatrix(int index, int barCount) {
         return getLogReturnMatrix(index, barCount, SampleType.POPULATION);
@@ -199,7 +202,7 @@ public final class PortfolioCorrelations {
      * @param barCount   number of one-bar log returns
      * @param sampleType sample or population normalization
      * @return log-return correlation matrix
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public CorrelationMatrix getLogReturnMatrix(int index, int barCount, SampleType sampleType) {
         return matrix(index, barCount, sampleType, transformedIndicators(LogReturnIndicator::new), 1);
@@ -321,7 +324,7 @@ public final class PortfolioCorrelations {
     /**
      * Immutable correlation matrix for one aligned portfolio index.
      *
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public static final class CorrelationMatrix {
 
@@ -346,7 +349,7 @@ public final class PortfolioCorrelations {
 
         /**
          * @return assets in deterministic portfolio order
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public List<String> getAssets() {
             return assets;
@@ -354,7 +357,7 @@ public final class PortfolioCorrelations {
 
         /**
          * @return aligned portfolio index at which the matrix was evaluated
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public int getIndex() {
             return index;
@@ -362,7 +365,7 @@ public final class PortfolioCorrelations {
 
         /**
          * @return observation count in the rolling correlation window
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public int getBarCount() {
             return barCount;
@@ -370,7 +373,7 @@ public final class PortfolioCorrelations {
 
         /**
          * @return first index with a full transform and correlation window
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public int getCountOfUnstableBars() {
             return countOfUnstableBars;
@@ -378,7 +381,7 @@ public final class PortfolioCorrelations {
 
         /**
          * @return sample or population normalization
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public SampleType getSampleType() {
             return sampleType;
@@ -386,7 +389,7 @@ public final class PortfolioCorrelations {
 
         /**
          * @return whether the evaluated index has a full correlation window
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public boolean isStable() {
             return index >= countOfUnstableBars;
@@ -394,7 +397,7 @@ public final class PortfolioCorrelations {
 
         /**
          * @return immutable symmetric matrix values
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public Map<String, Map<String, Num>> getValues() {
             return immutableValues(assets, values);
@@ -406,7 +409,7 @@ public final class PortfolioCorrelations {
          * @param firstAsset  row asset
          * @param secondAsset column asset
          * @return correlation coefficient
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public Num getCoefficient(String firstAsset, String secondAsset) {
             Objects.requireNonNull(secondAsset, "secondAsset");
@@ -420,7 +423,7 @@ public final class PortfolioCorrelations {
 
         /**
          * @return unique off-diagonal pairs in portfolio order
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public List<CorrelationPair> getPairs() {
             return Collections.unmodifiableList(new ArrayList<>(pairs));
@@ -435,7 +438,7 @@ public final class PortfolioCorrelations {
          * </p>
          *
          * @return deterministic complete-linkage hierarchy
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public CorrelationHierarchy completeLinkage() {
             int assetCount = assets.size();
@@ -539,7 +542,7 @@ public final class PortfolioCorrelations {
     /**
      * Immutable complete-linkage hierarchy for a correlation matrix.
      *
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public static final class CorrelationHierarchy {
 
@@ -557,7 +560,7 @@ public final class PortfolioCorrelations {
 
         /**
          * @return assets in original matrix order
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public List<String> getAssets() {
             return assets;
@@ -565,7 +568,7 @@ public final class PortfolioCorrelations {
 
         /**
          * @return linkage merges in construction order
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public List<ClusterMerge> getMerges() {
             return merges;
@@ -573,7 +576,7 @@ public final class PortfolioCorrelations {
 
         /**
          * @return assets in deterministic dendrogram leaf order
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public List<String> getLeafOrder() {
             return leafOrder;
@@ -581,7 +584,7 @@ public final class PortfolioCorrelations {
 
         /**
          * @return root cluster index
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public int getRootClusterIndex() {
             return assets.size() + merges.size() - 1;
@@ -601,7 +604,7 @@ public final class PortfolioCorrelations {
     /**
      * One complete-linkage hierarchy merge.
      *
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public static final class ClusterMerge {
 
@@ -619,7 +622,7 @@ public final class PortfolioCorrelations {
 
         /**
          * @return left child cluster index
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public int getLeftClusterIndex() {
             return leftClusterIndex;
@@ -627,7 +630,7 @@ public final class PortfolioCorrelations {
 
         /**
          * @return right child cluster index
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public int getRightClusterIndex() {
             return rightClusterIndex;
@@ -635,7 +638,7 @@ public final class PortfolioCorrelations {
 
         /**
          * @return complete-linkage distance
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public Num getDistance() {
             return distance;
@@ -643,7 +646,7 @@ public final class PortfolioCorrelations {
 
         /**
          * @return number of leaves in the merged cluster
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public int getSize() {
             return size;
@@ -653,7 +656,7 @@ public final class PortfolioCorrelations {
     /**
      * One unique off-diagonal portfolio correlation.
      *
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public static final class CorrelationPair {
 
@@ -669,7 +672,7 @@ public final class PortfolioCorrelations {
 
         /**
          * @return first asset
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public String getFirstAsset() {
             return firstAsset;
@@ -677,7 +680,7 @@ public final class PortfolioCorrelations {
 
         /**
          * @return second asset
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public String getSecondAsset() {
             return secondAsset;
@@ -685,7 +688,7 @@ public final class PortfolioCorrelations {
 
         /**
          * @return correlation coefficient
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public Num getCoefficient() {
             return coefficient;
@@ -693,7 +696,7 @@ public final class PortfolioCorrelations {
 
         /**
          * @return absolute coefficient magnitude
-         * @since 0.23.1
+         * @since 0.25.1
          */
         public Num getAbsoluteCoefficient() {
             return coefficient.abs();

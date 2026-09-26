@@ -131,7 +131,9 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
     }
 
     private UltimateOscillatorIndicator(Config config) {
-        super(config.series());
+        super(config.shortBuyingPressureSumIndicator(), config.middleBuyingPressureSumIndicator(),
+                config.longBuyingPressureSumIndicator(), config.shortTrueRangeSumIndicator(),
+                config.middleTrueRangeSumIndicator(), config.longTrueRangeSumIndicator());
         this.highPriceIndicator = config.highPriceIndicator();
         this.lowPriceIndicator = config.lowPriceIndicator();
         this.closePriceIndicator = config.closePriceIndicator();
@@ -267,7 +269,7 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
         private final int unstableBars;
 
         private BuyingPressureIndicator(Indicator<Num> lowPriceIndicator, Indicator<Num> closePriceIndicator) {
-            super(closePriceIndicator);
+            super(lowPriceIndicator, closePriceIndicator);
             this.lowPriceIndicator = lowPriceIndicator;
             this.closePriceIndicator = closePriceIndicator;
             this.unstableBars = Math.max(lowPriceIndicator.getCountOfUnstableBars(),

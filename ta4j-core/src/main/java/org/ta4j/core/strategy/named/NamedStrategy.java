@@ -254,8 +254,7 @@ public abstract class NamedStrategy extends BaseStrategy {
     public static boolean unregisterImplementation(Class<? extends NamedStrategy> type) {
         Objects.requireNonNull(type, "type");
         String key = type.getSimpleName();
-        Class<? extends NamedStrategy> removed = REGISTRY.remove(key);
-        return removed != null && removed == type;
+        return REGISTRY.remove(key, type);
     }
 
     /**

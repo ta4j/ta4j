@@ -4,11 +4,13 @@
 package org.ta4j.core.indicators.forecast;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.time.Duration;
 import java.util.List;
 
 import org.junit.Test;
@@ -16,9 +18,11 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.ReturnIndicator;
+import org.ta4j.core.indicators.averages.EWMAIndicator;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
+import org.ta4j.core.indicators.statistics.EwmaVarianceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -130,6 +134,203 @@ public class EwmaReturnForecastStateIndicatorTest
         assertThrows(IllegalArgumentException.class, () -> new EwmaReturnForecastStateIndicator(returns, 2, 1));
         assertThrows(IllegalArgumentException.class,
                 () -> new EwmaReturnForecastStateIndicator(returns, 2, Double.NaN));
+    }
+
+    @Test
+    public void sharedMeanReAnchorsWithVarianceAfterPrune() {
+        // The state must pair the variance with the same EWMA mean the
+        // variance re-anchors on prune; a separate mean estimator would keep
+        // its pre-prune recursion and publish a stale mean/drift next to the
+        // re-anchored variance.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 1.1051709180756477, 1.22140275816017, 1.3498588075760032, 1.4918246976412703,
+                        1.6487212707001282, 1.8221188003905089, 2.0137527074704766, 5.4739473917272, 14.879731724872837,
+                        40.44730436006742)
+                .build();
+        LogReturnIndicator returns = new LogReturnIndicator(series);
+        EwmaReturnForecastStateIndicator stateIndicator = new EwmaReturnForecastStateIndicator(returns, 3, 0.9,
+                EwmaReturnForecastStateIndicator.DriftMode.ROLLING_MEAN);
+
+        // Warm the caches against the full prefix so stale recursions would
+        // surface after the prune.
+        assertTrue(stateIndicator.getValue(10).isStable());
+
+        series.setMaximumBarCount(6);
+        series.addBar(series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
+                .openPrice(42.52108155356342)
+                .highPrice(42.52108155356342)
+                .lowPrice(42.52108155356342)
+                .closePrice(42.52108155356342)
+                .build());
+        series.addBar(series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
+                .openPrice(44.70118357203251)
+                .highPrice(44.70118357203251)
+                .lowPrice(44.70118357203251)
+                .closePrice(44.70118357203251)
+                .build());
+        ReturnForecastState state = stateIndicator.getValue(12);
+        assertTrue(state.isStable());
+        // The observation count re-anchors past the retained head: the head's
+        // log return is an artificial zero computed against the pruned
+        // predecessor, so seven pruned bars plus the one-bar lookback make
+        // the sixth retained bar report the five returns its mean and
+        // variance actually fold.
+        assertEquals(5, state.observationCount());
+
+        // Fresh estimators built after the prune re-anchor from the retained
+        // head; the stale full-history mean (~0.26) would fail this check.
+        assertNumEquals(new EWMAIndicator(returns, 3, 0.9).getValue(12), state.mean(), 1e-9);
+        assertNumEquals(new EwmaVarianceIndicator(returns, 3, 0.9).getValue(12), state.variance(), 1e-9);
+
+        // A retained index whose state was cached before the prune must be
+        // recomputed from the re-anchored estimators: the indicator's own
+        // cache must not serve the pre-prune stable state.
+        ReturnForecastState retainedState = stateIndicator.getValue(10);
+        assertTrue(retainedState.isStable());
+        assertNumEquals(new EWMAIndicator(returns, 3, 0.9).getValue(10), retainedState.mean(), 1e-9);
+        assertNumEquals(new EwmaVarianceIndicator(returns, 3, 0.9).getValue(10), retainedState.variance(), 1e-9);
+        assertEquals(3, retainedState.observationCount());
+    }
+
+    @Test
+    public void prunedHeadArtificialReturnIsNotCounted() {
+        // The retained head's log return is computed against the pruned
+        // predecessor, so it is an artificial zero: the observation count
+        // must restart past it instead of folding it into the moments.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 121, 133.1).build();
+        LogReturnIndicator returns = new LogReturnIndicator(series);
+        EwmaReturnForecastStateIndicator stateIndicator = new EwmaReturnForecastStateIndicator(returns, 2, 0.5,
+                EwmaReturnForecastStateIndicator.DriftMode.ROLLING_MEAN);
+
+        // Warm the pre-prune caches so the prune exercises the invalidation.
+        assertTrue(stateIndicator.getValue(3).isStable());
+
+        series.setMaximumBarCount(2);
+        series.addBar(series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
+                .openPrice(146.41)
+                .highPrice(146.41)
+                .lowPrice(146.41)
+                .closePrice(146.41)
+                .build());
+        series.addBar(series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
+                .openPrice(161.051)
+                .highPrice(161.051)
+                .lowPrice(161.051)
+                .closePrice(161.051)
+                .build());
+
+        // Four bars were pruned in total, so the retained head is index 4
+        // and the count restarts at index 5 (head + one log-return bar);
+        // only two bars are retained, so index 5 is the last readable one.
+        ReturnForecastState headState = stateIndicator.getValue(4);
+        assertFalse(headState.isStable());
+        assertEquals(0, headState.observationCount());
+        assertEquals(1, stateIndicator.getValue(5).observationCount());
+    }
+
+    @Test
+    public void publishedBarMutationRefreshesCachedState() {
+        // Mutating the published end bar (addPrice replaces its close and
+        // bumps the series bar-history revision): the cached state must
+        // refresh on the revision change instead of publishing the state
+        // computed from the superseded close.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 121, 133.1).build();
+        LogReturnIndicator returns = new LogReturnIndicator(series);
+        EwmaReturnForecastStateIndicator stateIndicator = new EwmaReturnForecastStateIndicator(returns, 2, 0.5,
+                EwmaReturnForecastStateIndicator.DriftMode.ROLLING_MEAN);
+
+        ReturnForecastState before = stateIndicator.getValue(3);
+        assertTrue(before.isStable());
+
+        series.addPrice(120);
+
+        ReturnForecastState after = stateIndicator.getValue(3);
+        assertTrue(after.isStable());
+        assertFalse(after.mean().isEqual(before.mean()));
+    }
+
+    @Test
+    public void publishedBarReplacedBetweenMeanAndVarianceReadsRetriesToConsistentState() {
+        // A concurrent writer replacing the published end bar mid-read must not
+        // publish a state whose mean was read from the superseded close while the
+        // variance was read from the replacement close. The MutatingReturnIndicator
+        // replaces the close only after the observation-count and mean reads have
+        // consumed the superseded value, so the retry bracket in getValue(3) must
+        // re-read against the new revision and match a reference built over the
+        // post-replacement close sequence.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 121, 133.1).build();
+        MutatingReturnIndicator mutatingReturns = new MutatingReturnIndicator(series, 3, numFactory.numOf(120));
+        EwmaReturnForecastStateIndicator stateIndicator = new EwmaReturnForecastStateIndicator(mutatingReturns, 2, 0.5,
+                EwmaReturnForecastStateIndicator.DriftMode.ROLLING_MEAN);
+
+        ReturnForecastState result = stateIndicator.getValue(3);
+
+        BarSeries referenceSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 110, 121, 120)
+                .build();
+        EwmaReturnForecastStateIndicator referenceIndicator = new EwmaReturnForecastStateIndicator(
+                new LogReturnIndicator(referenceSeries), 2, 0.5,
+                EwmaReturnForecastStateIndicator.DriftMode.ROLLING_MEAN);
+        ReturnForecastState reference = referenceIndicator.getValue(3);
+
+        assertTrue(result.isStable());
+        assertTrue(reference.isStable());
+        assertNumEquals(reference.mean(), result.mean());
+        assertNumEquals(reference.variance(), result.variance());
+    }
+
+    private static final class MutatingReturnIndicator implements ReturnIndicator {
+
+        private final LogReturnIndicator delegate;
+        private final BarSeries series;
+        private final int targetIndex;
+        private final Num staleReturn;
+        private final Num replacementClose;
+        private int targetIndexReads;
+
+        private MutatingReturnIndicator(BarSeries series, int targetIndex, Num replacementClose) {
+            this.series = series;
+            this.delegate = new LogReturnIndicator(series);
+            this.targetIndex = targetIndex;
+            this.staleReturn = delegate.getValue(targetIndex);
+            this.replacementClose = replacementClose;
+        }
+
+        @Override
+        public Num getValue(int index) {
+            // Replace the published end bar only on the second read of the target
+            // index, so the mean consumes the superseded close while the variance
+            // (read third) consumes the replacement close. This is the torn state
+            // the retry bracket must not publish.
+            if (index == targetIndex && ++targetIndexReads == 2) {
+                series.addPrice(replacementClose);
+                return staleReturn;
+            }
+            return delegate.getValue(index);
+        }
+
+        @Override
+        public BarSeries getBarSeries() {
+            return series;
+        }
+
+        @Override
+        public ReturnRepresentation getReturnRepresentation() {
+            return ReturnRepresentation.LOG;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return delegate.getCountOfUnstableBars();
+        }
     }
 
     private static final class FixedReturnIndicator extends FixedIndicator<Num> implements ReturnIndicator {

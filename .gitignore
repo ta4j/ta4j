@@ -18,6 +18,9 @@ out/
 
 # Compiled class file
 *.class
+# Python cache
+__pycache__/
+*.pyc
 
 # Log file
 *.log

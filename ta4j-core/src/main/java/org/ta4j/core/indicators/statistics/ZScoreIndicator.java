@@ -3,8 +3,6 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import java.util.Objects;
-
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
@@ -46,10 +44,9 @@ public class ZScoreIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public ZScoreIndicator(Indicator<Num> deviationIndicator, Indicator<Num> standardDeviationIndicator) {
-        super(requireSameSeries(deviationIndicator, standardDeviationIndicator));
-        this.deviationIndicator = Objects.requireNonNull(deviationIndicator, "deviationIndicator must not be null");
-        this.standardDeviationIndicator = Objects.requireNonNull(standardDeviationIndicator,
-                "standardDeviationIndicator must not be null");
+        super(deviationIndicator, standardDeviationIndicator);
+        this.deviationIndicator = deviationIndicator;
+        this.standardDeviationIndicator = standardDeviationIndicator;
     }
 
     /**
@@ -89,15 +86,4 @@ public class ZScoreIndicator extends CachedIndicator<Num> {
         return getClass().getSimpleName() + " deviation: " + deviationIndicator + " std: " + standardDeviationIndicator;
     }
 
-    private static BarSeries requireSameSeries(Indicator<?> deviationIndicator,
-            Indicator<?> standardDeviationIndicator) {
-        Objects.requireNonNull(deviationIndicator, "deviationIndicator must not be null");
-        Objects.requireNonNull(standardDeviationIndicator, "standardDeviationIndicator must not be null");
-        BarSeries series = Objects.requireNonNull(deviationIndicator.getBarSeries(),
-                "deviationIndicator must reference a bar series");
-        if (!Objects.equals(series, standardDeviationIndicator.getBarSeries())) {
-            throw new IllegalArgumentException("Indicators must share the same bar series");
-        }
-        return series;
-    }
 }

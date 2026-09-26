@@ -10,8 +10,6 @@ import org.ta4j.core.analysis.Returns;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -56,7 +54,7 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position == null || !position.isClosed()) {
-            return getNeutralValue(series.numFactory());
+            return RiskTailSupport.neutralValue(series.numFactory(), returnRepresentation);
         }
         Returns returns = new Returns(series, position, ReturnRepresentation.LOG);
         return calculateVaR(returns, confidence, returnRepresentation);
@@ -76,20 +74,19 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
      * @return the relative Value at Risk
      */
     private Num calculateVaR(Returns returns, double confidence, ReturnRepresentation representation) {
-        Num zero = returns.getBarSeries().numFactory().zero();
-        // select non-NaN returns (use raw values for statistical calculations)
-        List<Num> returnRates = new ArrayList<>(returns.getRawValues().subList(1, returns.getSize() + 1));
+        NumFactory numFactory = returns.getBarSeries().numFactory();
+        // raw return rates excluding the initial placeholder, sorted ascending
+        List<Num> returnRates = RiskTailSupport.sortedRates(returns);
         if (returnRates.isEmpty()) {
-            return getNeutralValue(returns.getBarSeries().numFactory());
+            return RiskTailSupport.neutralValue(numFactory, returnRepresentation);
         }
 
+        Num zero = numFactory.zero();
         Num valueAtRisk = zero;
         // F(x_var) >= alpha (=1-confidence)
-        int nInBody = (int) (returns.getSize() * confidence);
-        int nInTail = returns.getSize() - nInBody;
+        int nInTail = RiskTailSupport.nInTail(returns.getSize(), confidence);
 
         // The series is not empty, nInTail > 0
-        Collections.sort(returnRates);
         valueAtRisk = returnRates.get(nInTail - 1);
 
         // VaR is non-positive
@@ -98,20 +95,6 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
         }
         // Format the final result according to the representation
         return representation.toRepresentationFromLogReturn(valueAtRisk);
-    }
-
-    /**
-     * Returns the neutral value (no return) in the target representation format.
-     *
-     * @param numFactory the number factory
-     * @return the neutral value in the target representation
-     */
-    private Num getNeutralValue(NumFactory numFactory) {
-        if (returnRepresentation == ReturnRepresentation.MULTIPLICATIVE) {
-            return numFactory.one();
-        }
-        // DECIMAL, PERCENTAGE, and LOG all use 0.0 as neutral
-        return numFactory.zero();
     }
 
     @Override

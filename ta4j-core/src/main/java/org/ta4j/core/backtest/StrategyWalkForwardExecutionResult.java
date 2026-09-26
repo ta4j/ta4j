@@ -19,6 +19,7 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.walkforward.WalkForwardConfig;
+import org.ta4j.core.walkforward.WalkForwardRunResult;
 import org.ta4j.core.walkforward.WalkForwardRuntimeReport;
 import org.ta4j.core.walkforward.WalkForwardSplit;
 
@@ -30,11 +31,30 @@ import org.ta4j.core.walkforward.WalkForwardSplit;
  * @param config        walk-forward configuration
  * @param folds         fold-level execution results
  * @param runtimeReport aggregate runtime report across folds
+ * @param foldFailures  per-fold execution failures encountered during the run;
+ *                      healthy folds remain fully represented in {@code folds}
  * @since 0.22.4
  */
 public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy strategy, WalkForwardConfig config,
-        List<FoldResult> folds,
-        WalkForwardRuntimeReport runtimeReport) implements TradingStatementExecutionResult<WalkForwardRuntimeReport> {
+        List<FoldResult> folds, WalkForwardRuntimeReport runtimeReport,
+        List<WalkForwardRunResult.FoldFailure> foldFailures)
+        implements
+            TradingStatementExecutionResult<WalkForwardRuntimeReport> {
+
+    /**
+     * Creates a validated result with no recorded fold failures.
+     *
+     * @param barSeries     series used for execution
+     * @param strategy      evaluated strategy
+     * @param config        walk-forward configuration
+     * @param folds         fold-level execution results
+     * @param runtimeReport aggregate runtime report across folds
+     * @since 0.22.4
+     */
+    public StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy strategy, WalkForwardConfig config,
+            List<FoldResult> folds, WalkForwardRuntimeReport runtimeReport) {
+        this(barSeries, strategy, config, folds, runtimeReport, List.of());
+    }
 
     /**
      * Creates a validated result.
@@ -44,6 +64,7 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
      * @param config        walk-forward configuration
      * @param folds         fold-level execution results
      * @param runtimeReport aggregate runtime report across folds
+     * @param foldFailures  per-fold execution failures encountered during the run
      * @since 0.22.4
      */
     public StrategyWalkForwardExecutionResult {
@@ -52,6 +73,7 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
         config = Objects.requireNonNull(config, "config");
         folds = List.copyOf(Objects.requireNonNull(folds, "folds"));
         runtimeReport = Objects.requireNonNull(runtimeReport, "runtimeReport");
+        foldFailures = foldFailures == null ? List.of() : List.copyOf(foldFailures);
     }
 
     @Override

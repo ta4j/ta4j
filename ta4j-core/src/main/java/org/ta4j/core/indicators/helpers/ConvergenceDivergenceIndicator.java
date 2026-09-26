@@ -146,7 +146,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     public ConvergenceDivergenceIndicator(Indicator<Num> ref, Indicator<Num> other, int barCount,
             ConvergenceDivergenceType type, double minStrength, double minSlope) {
-        super(ref);
+        super(ref, other);
         this.ref = ref;
         this.other = other;
         this.barCount = barCount;
@@ -180,7 +180,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
      */
     public ConvergenceDivergenceIndicator(Indicator<Num> ref, Indicator<Num> other, int barCount,
             ConvergenceDivergenceStrictType strictType) {
-        super(ref);
+        super(ref, other);
         this.ref = ref;
         this.other = other;
         this.barCount = barCount;

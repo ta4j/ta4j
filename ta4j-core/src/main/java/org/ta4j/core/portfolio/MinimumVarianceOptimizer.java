@@ -29,7 +29,7 @@ import org.ta4j.core.num.NumFactory;
  * matrices are supported.
  * </p>
  *
- * @since 0.23.1
+ * @since 0.25.1
  */
 public final class MinimumVarianceOptimizer {
 
@@ -45,7 +45,7 @@ public final class MinimumVarianceOptimizer {
      * Creates an uncapped optimizer over all available simple returns.
      *
      * @param series aligned portfolio series
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public MinimumVarianceOptimizer(PortfolioSeries series) {
         this(series, Objects.requireNonNull(series, "series").getEndIndex(), series.getEndIndex(),
@@ -57,7 +57,7 @@ public final class MinimumVarianceOptimizer {
      *
      * @param series             aligned portfolio series
      * @param maximumAssetWeight maximum weight for any asset
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public MinimumVarianceOptimizer(PortfolioSeries series, Num maximumAssetWeight) {
         this(series, Objects.requireNonNull(series, "series").getEndIndex(), series.getEndIndex(), maximumAssetWeight);
@@ -69,7 +69,7 @@ public final class MinimumVarianceOptimizer {
      * @param series   aligned portfolio series
      * @param index    final aligned index included in estimation
      * @param barCount number of one-bar return observations
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public MinimumVarianceOptimizer(PortfolioSeries series, int index, int barCount) {
         this(series, index, barCount, Objects.requireNonNull(series, "series").numFactory().one());
@@ -82,7 +82,7 @@ public final class MinimumVarianceOptimizer {
      * @param index              final aligned index included in estimation
      * @param barCount           number of one-bar return observations
      * @param maximumAssetWeight maximum weight for any asset
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public MinimumVarianceOptimizer(PortfolioSeries series, int index, int barCount, Num maximumAssetWeight) {
         this.series = Objects.requireNonNull(series, "series");
@@ -105,7 +105,7 @@ public final class MinimumVarianceOptimizer {
      * @throws IllegalArgumentException if the estimation window contains invalid
      *                                  prices or returns
      * @throws IllegalStateException    if the numerical solver does not converge
-     * @since 0.23.1
+     * @since 0.25.1
      */
     public PortfolioAllocation optimize() {
         Num[][] covariance = covarianceMatrix();

@@ -31,11 +31,11 @@ import ta4jexamples.datasources.YahooFinanceHttpBarSeriesDataSource.YahooFinance
  *
  * <p>
  * The report contains annotated price and return heatmaps, complete-linkage
- * dendrograms, equal-weight and minimum-variance allocations, an XLSX workbook,
- * HTML, and a prompt for optional external AI analysis.
+ * dendrograms, equal-weight and minimum-variance allocations, CSV tables, HTML,
+ * and a prompt for optional external AI analysis.
  * </p>
  *
- * @since 0.23.1
+ * @since 0.25.1
  */
 public final class DiversifiedPortfolioAnalysis {
 

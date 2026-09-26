@@ -4,7 +4,7 @@
 package org.ta4j.core.walkforward;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -180,7 +180,7 @@ class WalkForwardEngineTest {
     }
 
     @Test
-    void parallelFoldFailuresPreserveOriginalRuntimeExceptionType() {
+    void parallelFoldFailuresAreRecordedAndDoNotAbortRun() {
         BarSeries series = new MockBarSeriesBuilder().withData(prices(220)).build();
         WalkForwardConfig config = new WalkForwardConfig(80, 30, 30, 2, 2, 0, 5, List.of(3), 2, List.of(1), 7L);
 
@@ -194,14 +194,21 @@ class WalkForwardEngineTest {
                     // no-op
                 }, 3);
 
-        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
-                () -> engine.run(series, "ctx", config));
+        WalkForwardRunResult<String, Boolean> result = engine.run(series, "ctx", config);
 
-        assertThat(failure).hasMessage("synthetic provider failure");
+        assertThat(result.foldFailures()).isNotEmpty();
+        assertThat(result.foldFailures())
+                .allSatisfy(failure -> assertThat(failure.cause()).isInstanceOf(IllegalArgumentException.class)
+                        .hasMessage("synthetic provider failure"));
+        assertThat(result.foldMetricsForHorizon(5)).isEmpty();
+        // Every fold failed, but the run still consumed wall-clock time: the
+        // overall runtime must be retained even with zero fold runtimes.
+        assertThat(result.runtimeReport().foldRuntimes()).isEmpty();
+        assertThat(result.runtimeReport().overallRuntime().isZero()).isFalse();
     }
 
     @Test
-    void engineStreamsProgressBeforePredictionFailuresBubbleOut() {
+    void engineContinuesPastFoldFailureAndStreamsRemainingProgress() {
         BarSeries series = new MockBarSeriesBuilder().withData(prices(120)).build();
         WalkForwardConfig config = new WalkForwardConfig(60, 20, 20, 0, 0, 0, 5, List.of(), 1, List.of(), 1L);
         AtomicInteger invocationCount = new AtomicInteger();
@@ -220,11 +227,92 @@ class WalkForwardEngineTest {
                     // no-op
                 });
 
-        IllegalStateException failure = assertThrows(IllegalStateException.class,
-                () -> engine.run(series, "ctx", config));
+        WalkForwardRunResult<String, Boolean> result = engine.run(series, "ctx", config);
 
-        assertThat(failure).hasMessage("synthetic prediction failure");
-        assertThat(progress).containsExactly(1, 2, 3, 4);
+        assertThat(result.foldFailures()).hasSize(1);
+        assertThat(result.foldFailures().get(0).cause()).isInstanceOf(IllegalStateException.class)
+                .hasMessage("synthetic prediction failure");
+        assertThat(progress).isNotEmpty();
+        assertThat(progress.size()).isGreaterThan(4);
+        assertThat(progress).isSorted();
+    }
+
+    @Test
+    void isolatesFailingFoldAndPreservesHealthyFoldResults() {
+        BarSeries series = new MockBarSeriesBuilder().withData(prices(220)).build();
+        NumFactory numFactory = series.numFactory();
+        WalkForwardConfig config = new WalkForwardConfig(80, 30, 30, 2, 2, 0, 5, List.of(3), 2, List.of(1), 7L);
+        WalkForwardSplitter splitter = new AnchoredExpandingWalkForwardSplitter();
+        List<WalkForwardSplit> splits = splitter.split(series, config);
+        int failingDecisionIndex = splits.get(1).testStart();
+
+        WalkForwardEngine<String, String, Boolean> engine = new WalkForwardEngine<>(splitter,
+                (fullSeries, decisionIndex, context) -> {
+                    if (decisionIndex == failingDecisionIndex) {
+                        throw new IllegalStateException("synthetic fold-2 provider failure");
+                    }
+                    return samplePredictions(numFactory, context);
+                }, (fullSeries, decisionIndex, horizonBars, prediction) -> true,
+                List.of(WalkForwardMetric.agreement("agreement", 1, (prediction, outcome) -> outcome)), ignored -> {
+                    // no-op
+                }, ignored -> {
+                    // no-op
+                }, 3);
+
+        WalkForwardRunResult<String, Boolean> result = engine.run(series, "ctx", config);
+
+        assertThat(result.foldFailures()).hasSize(1);
+        WalkForwardRunResult.FoldFailure failure = result.foldFailures().get(0);
+        assertThat(failure.foldId()).isEqualTo(splits.get(1).foldId());
+        assertThat(failure.foldOrder()).isEqualTo(1);
+        assertThat(failure.cause()).isInstanceOf(IllegalStateException.class)
+                .hasMessage("synthetic fold-2 provider failure");
+
+        assertThat(result.foldMetricsForHorizon(5)).containsKeys(splits.get(0).foldId(), splits.get(2).foldId());
+        assertThat(result.foldMetricsForHorizon(5)).doesNotContainKey(splits.get(1).foldId());
+        assertThat(result.snapshots()).isNotEmpty();
+    }
+
+    @Test
+    void progressCallbackFailurePropagatesFromSequentialFolds() {
+        BarSeries series = new MockBarSeriesBuilder().withData(prices(120)).build();
+        WalkForwardConfig config = new WalkForwardConfig(60, 20, 20, 0, 0, 0, 15, List.of(), 1, List.of(), 1L);
+
+        WalkForwardEngine<String, String, Boolean> engine = new WalkForwardEngine<>(
+                new AnchoredExpandingWalkForwardSplitter(),
+                (fullSeries, decisionIndex,
+                        context) -> List.of(new RankedPrediction<>("p", 1, fullSeries.numFactory().numOf(0.5),
+                                fullSeries.numFactory().numOf(0.5), "p")),
+                (fullSeries, decisionIndex, horizonBars, prediction) -> true,
+                List.of(WalkForwardMetric.agreement("agreement", 1, (prediction, outcome) -> outcome)), ignored -> {
+                    throw new IllegalStateException("callback failure");
+                }, ignored -> {
+                    // no-op
+                });
+
+        assertThatThrownBy(() -> engine.run(series, "ctx", config)).isInstanceOf(IllegalStateException.class)
+                .hasMessage("callback failure");
+    }
+
+    @Test
+    void progressCallbackFailurePropagatesFromParallelFolds() {
+        BarSeries series = new MockBarSeriesBuilder().withData(prices(120)).build();
+        WalkForwardConfig config = new WalkForwardConfig(60, 20, 20, 0, 0, 0, 15, List.of(), 1, List.of(), 1L);
+
+        WalkForwardEngine<String, String, Boolean> engine = new WalkForwardEngine<>(
+                new AnchoredExpandingWalkForwardSplitter(),
+                (fullSeries, decisionIndex,
+                        context) -> List.of(new RankedPrediction<>("p", 1, fullSeries.numFactory().numOf(0.5),
+                                fullSeries.numFactory().numOf(0.5), "p")),
+                (fullSeries, decisionIndex, horizonBars, prediction) -> true,
+                List.of(WalkForwardMetric.agreement("agreement", 1, (prediction, outcome) -> outcome)), ignored -> {
+                    throw new IllegalStateException("callback failure");
+                }, ignored -> {
+                    // no-op
+                }, 2);
+
+        assertThatThrownBy(() -> engine.run(series, "ctx", config)).isInstanceOf(IllegalStateException.class)
+                .hasMessage("callback failure");
     }
 
     private static double[] prices(int size) {

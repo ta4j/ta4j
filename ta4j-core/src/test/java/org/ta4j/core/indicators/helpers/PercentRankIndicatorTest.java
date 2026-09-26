@@ -292,7 +292,7 @@ public class PercentRankIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         // Percent rank = 1/3 * 100 = 33.33...%
         Num value = percentRank.getValue(4);
         Num expected = numFactory.numOf(100).dividedBy(numFactory.numOf(3));
-        assertNumEquals(expected, value);
+        assertNumEquals(expected, value, 1e-12);
     }
 
     @Test

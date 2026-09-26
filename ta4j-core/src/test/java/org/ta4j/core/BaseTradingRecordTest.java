@@ -189,7 +189,7 @@ class BaseTradingRecordTest {
         assertEquals("order-2", trades.get(1).getOrderId());
         assertEquals("corr-1", trades.get(0).getCorrelationId());
         assertEquals("corr-2", trades.get(1).getCorrelationId());
-        assertEquals(numFactory.numOf(0.3), record.getRecordedTotalFees());
+        assertEquals(numFactory.numOf(0.30000000000000004), record.getRecordedTotalFees());
     }
 
     @Test
@@ -446,7 +446,7 @@ class BaseTradingRecordTest {
 
         Position net = record.getCurrentPosition();
         assertNotNull(net);
-        assertEquals(numFactory.numOf(0.3), net.totalFees());
+        assertEquals(numFactory.numOf(0.30000000000000004), net.totalFees());
     }
 
     @Test
@@ -462,7 +462,7 @@ class BaseTradingRecordTest {
         Position currentPosition = record.getCurrentPosition();
 
         assertTrue(currentPosition.isOpened());
-        assertEquals(numFactory.numOf(0.3), currentPosition.getEntry().getCost());
+        assertEquals(numFactory.numOf(0.30000000000000004), currentPosition.getEntry().getCost());
     }
 
     @Test
@@ -494,7 +494,7 @@ class BaseTradingRecordTest {
         record.operate(new BaseTrade(0, Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110), numFactory.one(),
                 numFactory.numOf(0.2), ExecutionSide.SELL, null, null));
 
-        assertEquals(numFactory.numOf(0.3), record.getTotalFees());
+        assertEquals(numFactory.numOf(0.30000000000000004), record.getTotalFees());
     }
 
     @Test

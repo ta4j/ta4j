@@ -33,7 +33,10 @@ final class ExecutionModelSupport {
             }
             return createExecutionTarget(signalIndex, barSeries.getBar(signalIndex).getClosePrice());
         }
-        if (signalIndex > barSeries.getEndIndex()) {
+        // Executing on the next open requires a subsequent bar; using >= keeps the
+        // check exact even when signalIndex is Integer.MAX_VALUE, where signalIndex + 1
+        // would overflow and wrap around to a negative index.
+        if (signalIndex >= barSeries.getEndIndex()) {
             return null;
         }
         int executionIndex = signalIndex + 1;

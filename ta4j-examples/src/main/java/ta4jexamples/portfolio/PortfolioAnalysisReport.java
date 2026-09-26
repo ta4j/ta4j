@@ -4,20 +4,14 @@
 package ta4jexamples.portfolio;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellStyle;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.jfree.chart.ChartUtils;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.portfolio.PortfolioAllocation;
@@ -35,7 +29,10 @@ final class PortfolioAnalysisReport {
     static final String PRICE_DENDROGRAM = "price-correlation-dendrogram.png";
     static final String RETURN_HEATMAP = "return-correlation-heatmap.png";
     static final String RETURN_DENDROGRAM = "return-correlation-dendrogram.png";
-    static final String WORKBOOK = "portfolio-analysis.xlsx";
+    static final String PRICE_CORRELATIONS_CSV = "price-correlations.csv";
+    static final String RETURN_CORRELATIONS_CSV = "return-correlations.csv";
+    static final String ALLOCATIONS_CSV = "allocations.csv";
+    static final String RETURN_LINKAGE_CSV = "return-linkage.csv";
     static final String HTML_REPORT = "report.html";
     static final String AI_PROMPT = "ai-analysis-prompt.md";
 
@@ -69,8 +66,11 @@ final class PortfolioAnalysisReport {
         writeChart(outputDirectory.resolve(RETURN_DENDROGRAM),
                 chartFactory.createDendrogram("Simple-return correlation hierarchy", returnMatrix.completeLinkage()));
 
-        writeWorkbook(outputDirectory.resolve(WORKBOOK), series, priceMatrix, returnMatrix, equalWeight,
-                minimumVariance, cappedMinimumVariance, maximumAssetWeight);
+        writeCsv(outputDirectory.resolve(PRICE_CORRELATIONS_CSV), matrixRows(priceMatrix));
+        writeCsv(outputDirectory.resolve(RETURN_CORRELATIONS_CSV), matrixRows(returnMatrix));
+        writeCsv(outputDirectory.resolve(ALLOCATIONS_CSV), allocationRows(series.getAssets(), equalWeight,
+                minimumVariance, cappedMinimumVariance, maximumAssetWeight));
+        writeCsv(outputDirectory.resolve(RETURN_LINKAGE_CSV), linkageRows(returnMatrix.completeLinkage()));
         Files.writeString(outputDirectory.resolve(AI_PROMPT),
                 aiPrompt(series, returnMatrix, cappedMinimumVariance, maximumAssetWeight), StandardCharsets.UTF_8);
         String externalAnalysis = aiAnalysisFile == null ? null
@@ -83,117 +83,74 @@ final class PortfolioAnalysisReport {
         ChartUtils.saveChartAsPNG(path.toFile(), chart, 1200, 900);
     }
 
-    private static void writeWorkbook(Path path, PortfolioSeries series, CorrelationMatrix priceMatrix,
-            CorrelationMatrix returnMatrix, PortfolioAllocation equalWeight, PortfolioAllocation minimumVariance,
-            PortfolioAllocation cappedMinimumVariance, Num maximumAssetWeight) throws IOException {
-        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
-            CellStyle decimalStyle = workbook.createCellStyle();
-            decimalStyle.setDataFormat(workbook.createDataFormat().getFormat("0.0000"));
-            CellStyle percentStyle = workbook.createCellStyle();
-            percentStyle.setDataFormat(workbook.createDataFormat().getFormat("0.00%"));
-
-            Sheet summary = workbook.createSheet("Summary");
-            addRow(summary, 0, "Generated", Instant.now().toString());
-            addRow(summary, 1, "Aligned bars", series.getBarCount());
-            addRow(summary, 2, "First date", series.getEndTimes().getFirst().toString());
-            addRow(summary, 3, "Last date", series.getEndTimes().getLast().toString());
-            addRow(summary, 4, "Assets", String.join(", ", series.getAssets()));
-            summary.autoSizeColumn(0);
-            summary.autoSizeColumn(1);
-
-            writeMatrix(workbook.createSheet("Price Correlations"), priceMatrix, decimalStyle);
-            writeMatrix(workbook.createSheet("Return Correlations"), returnMatrix, decimalStyle);
-            writeAllocations(workbook.createSheet("Allocations"), series.getAssets(), equalWeight, minimumVariance,
-                    cappedMinimumVariance, maximumAssetWeight, percentStyle);
-            writeHierarchy(workbook.createSheet("Return Linkage"), returnMatrix.completeLinkage(), decimalStyle);
-
-            try (OutputStream output = Files.newOutputStream(path)) {
-                workbook.write(output);
+    /*
+     * CSV keeps the report dependency-free: spreadsheets open it directly, and the
+     * HTML report carries the formatted view. Values are written as plain
+     * fractions.
+     */
+    private static void writeCsv(Path path, List<List<String>> rows) throws IOException {
+        StringBuilder csv = new StringBuilder();
+        for (List<String> row : rows) {
+            for (int column = 0; column < row.size(); column++) {
+                if (column > 0) {
+                    csv.append(',');
+                }
+                csv.append(csvField(row.get(column)));
             }
+            csv.append("\r\n");
         }
+        Files.writeString(path, csv, StandardCharsets.UTF_8);
     }
 
-    private static void writeMatrix(Sheet sheet, CorrelationMatrix matrix, CellStyle decimalStyle) {
-        Row header = sheet.createRow(0);
-        header.createCell(0).setCellValue("Asset");
-        for (int column = 0; column < matrix.getAssets().size(); column++) {
-            header.createCell(column + 1).setCellValue(matrix.getAssets().get(column));
+    static String csvField(String value) {
+        Objects.requireNonNull(value, "value");
+        if (value.contains(",") || value.contains("\"") || value.contains("\n") || value.contains("\r")) {
+            return '"' + value.replace("\"", "\"\"") + '"';
         }
-        for (int rowIndex = 0; rowIndex < matrix.getAssets().size(); rowIndex++) {
-            String rowAsset = matrix.getAssets().get(rowIndex);
-            Row row = sheet.createRow(rowIndex + 1);
-            row.createCell(0).setCellValue(rowAsset);
-            for (int columnIndex = 0; columnIndex < matrix.getAssets().size(); columnIndex++) {
-                Cell cell = row.createCell(columnIndex + 1);
-                cell.setCellValue(matrix.getCoefficient(rowAsset, matrix.getAssets().get(columnIndex)).doubleValue());
-                cell.setCellStyle(decimalStyle);
+        return value;
+    }
+
+    private static List<List<String>> matrixRows(CorrelationMatrix matrix) {
+        List<String> assets = matrix.getAssets();
+        List<List<String>> rows = new ArrayList<>();
+        List<String> header = new ArrayList<>();
+        header.add("asset");
+        header.addAll(assets);
+        rows.add(header);
+        for (String rowAsset : assets) {
+            List<String> row = new ArrayList<>();
+            row.add(rowAsset);
+            for (String columnAsset : assets) {
+                row.add(matrix.getCoefficient(rowAsset, columnAsset).toString());
             }
+            rows.add(row);
         }
-        for (int column = 0; column <= matrix.getAssets().size(); column++) {
-            sheet.autoSizeColumn(column);
-        }
-        sheet.createFreezePane(1, 1);
+        return rows;
     }
 
-    private static void writeAllocations(Sheet sheet, List<String> assets, PortfolioAllocation equalWeight,
-            PortfolioAllocation minimumVariance, PortfolioAllocation cappedMinimumVariance, Num maximumAssetWeight,
-            CellStyle percentStyle) {
-        Row header = sheet.createRow(0);
-        header.createCell(0).setCellValue("Asset");
-        header.createCell(1).setCellValue("Equal weight");
-        header.createCell(2).setCellValue("Minimum variance");
-        header.createCell(3).setCellValue("Minimum variance (" + percent(maximumAssetWeight) + " cap)");
-        for (int index = 0; index < assets.size(); index++) {
-            String asset = assets.get(index);
-            Row row = sheet.createRow(index + 1);
-            row.createCell(0).setCellValue(asset);
-            addAllocationCell(row, 1, equalWeight.getTargetWeight(asset), percentStyle);
-            addAllocationCell(row, 2, minimumVariance.getTargetWeight(asset), percentStyle);
-            addAllocationCell(row, 3, cappedMinimumVariance.getTargetWeight(asset), percentStyle);
+    private static List<List<String>> allocationRows(List<String> assets, PortfolioAllocation equalWeight,
+            PortfolioAllocation minimumVariance, PortfolioAllocation cappedMinimumVariance, Num maximumAssetWeight) {
+        List<List<String>> rows = new ArrayList<>();
+        rows.add(List.of("asset", "equal_weight", "minimum_variance",
+                "minimum_variance_capped_" + maximumAssetWeight.toString()));
+        for (String asset : assets) {
+            rows.add(List.of(asset, equalWeight.getTargetWeight(asset).toString(),
+                    minimumVariance.getTargetWeight(asset).toString(),
+                    cappedMinimumVariance.getTargetWeight(asset).toString()));
         }
-        for (int column = 0; column < 4; column++) {
-            sheet.autoSizeColumn(column);
-        }
-        sheet.createFreezePane(1, 1);
+        return rows;
     }
 
-    private static void addAllocationCell(Row row, int column, Num weight, CellStyle style) {
-        Cell cell = row.createCell(column);
-        cell.setCellValue(weight.doubleValue());
-        cell.setCellStyle(style);
-    }
-
-    private static void writeHierarchy(Sheet sheet, CorrelationHierarchy hierarchy, CellStyle decimalStyle) {
-        Row header = sheet.createRow(0);
-        header.createCell(0).setCellValue("Merge");
-        header.createCell(1).setCellValue("Left cluster");
-        header.createCell(2).setCellValue("Right cluster");
-        header.createCell(3).setCellValue("Distance");
-        header.createCell(4).setCellValue("Size");
+    private static List<List<String>> linkageRows(CorrelationHierarchy hierarchy) {
+        List<List<String>> rows = new ArrayList<>();
+        rows.add(List.of("merge", "left_cluster", "right_cluster", "distance", "size"));
         for (int index = 0; index < hierarchy.getMerges().size(); index++) {
             ClusterMerge merge = hierarchy.getMerges().get(index);
-            Row row = sheet.createRow(index + 1);
-            row.createCell(0).setCellValue(index + 1);
-            row.createCell(1).setCellValue(merge.getLeftClusterIndex());
-            row.createCell(2).setCellValue(merge.getRightClusterIndex());
-            Cell distance = row.createCell(3);
-            distance.setCellValue(merge.getDistance().doubleValue());
-            distance.setCellStyle(decimalStyle);
-            row.createCell(4).setCellValue(merge.getSize());
+            rows.add(List.of(String.valueOf(index + 1), String.valueOf(merge.getLeftClusterIndex()),
+                    String.valueOf(merge.getRightClusterIndex()), merge.getDistance().toString(),
+                    String.valueOf(merge.getSize())));
         }
-        for (int column = 0; column < 5; column++) {
-            sheet.autoSizeColumn(column);
-        }
-    }
-
-    private static void addRow(Sheet sheet, int rowIndex, String label, Object value) {
-        Row row = sheet.createRow(rowIndex);
-        row.createCell(0).setCellValue(label);
-        if (value instanceof Number number) {
-            row.createCell(1).setCellValue(number.doubleValue());
-        } else {
-            row.createCell(1).setCellValue(String.valueOf(value));
-        }
+        return rows;
     }
 
     private static String aiPrompt(PortfolioSeries series, CorrelationMatrix returnMatrix,
@@ -279,7 +236,8 @@ final class PortfolioAnalysisReport {
                   </div>
                   <h2>External AI analysis</h2>
                   %s
-                  <p>Raw matrices, allocations, and linkage merges are available in <a href="%s">%s</a>.</p>
+                  <p>Raw data as CSV: <a href="%s">price correlations</a>, <a href="%s">return correlations</a>,
+                  <a href="%s">allocations</a>, and <a href="%s">return linkage merges</a>.</p>
                 </main></body></html>
                 """
                 .replace("\n", "%n")
@@ -289,7 +247,8 @@ final class PortfolioAnalysisReport {
                                 maximumAssetWeight),
                         escapeHtml(strongest.getFirstAsset()), escapeHtml(strongest.getSecondAsset()),
                         strongest.getCoefficient().doubleValue(), PRICE_HEATMAP, PRICE_DENDROGRAM, RETURN_HEATMAP,
-                        RETURN_DENDROGRAM, aiSection, WORKBOOK, WORKBOOK);
+                        RETURN_DENDROGRAM, aiSection, PRICE_CORRELATIONS_CSV, RETURN_CORRELATIONS_CSV, ALLOCATIONS_CSV,
+                        RETURN_LINKAGE_CSV);
     }
 
     private static String allocationTable(List<String> assets, PortfolioAllocation equalWeight,

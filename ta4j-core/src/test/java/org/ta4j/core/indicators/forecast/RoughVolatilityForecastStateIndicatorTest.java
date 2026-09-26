@@ -23,6 +23,7 @@ import org.ta4j.core.indicators.forecast.state.ForecastFeatureExtractors;
 import org.ta4j.core.indicators.forecast.state.RoughVolatilityForecastState;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
+import org.ta4j.core.indicators.statistics.HurstExponentIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NaN;
@@ -110,6 +111,29 @@ public class RoughVolatilityForecastStateIndicatorTest
                 state.horizonVarianceForecasts().get(1));
         assertNumEquals(state.variance().doubleValue() * Math.pow(3d, 2d * hurst),
                 state.horizonVarianceForecasts().get(2));
+    }
+
+    @Test
+    public void roughnessMatchesReusableHurstEstimatorWithModelBounds() {
+        double[] returns = { 0.01, 0.03, 0.02, 0.08, 0.04, 0.09, 0.05, 0.12 };
+        Fixture fixture = fixture(ReturnRepresentation.LOG, returns);
+        RoughVolatilityForecastState state = RoughVolatilityForecastStateIndicator.builder(fixture.returns())
+                .initializationBarCount(2)
+                .decayFactor(0.5d)
+                .roughnessWindow(6)
+                .volOfVolWindow(4)
+                .horizon(2)
+                .build()
+                .getValue(7);
+        Num[] proxies = Arrays.stream(returns)
+                .mapToObj(value -> numFactory.numOf(Math.log(Math.abs(value) + 1e-8d)))
+                .toArray(Num[]::new);
+        HurstExponentIndicator reusable = new HurstExponentIndicator(
+                new FixedIndicator<>(fixture.returns().getBarSeries(), proxies), 6);
+        double expected = Math.max(0.01d, Math.min(0.49d, reusable.getValue(7).doubleValue()));
+
+        assertTrue(state.isStable());
+        assertNumEquals(expected, state.roughnessHurst());
     }
 
     @Test

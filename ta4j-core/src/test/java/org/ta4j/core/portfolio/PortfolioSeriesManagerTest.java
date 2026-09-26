@@ -5,259 +5,278 @@ package org.ta4j.core.portfolio;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.portfolio.PortfolioFixtures.assertNumClose;
+import static org.ta4j.core.portfolio.PortfolioFixtures.series;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.portfolio.PortfolioSnapshot.RebalanceStatus;
 
 public class PortfolioSeriesManagerTest {
 
+    private static final double TOLERANCE = 1e-6;
+
     @Test
-    public void runsStaticTargetWeightsWithoutChangingSingleSeriesApis() {
-        Fixture fixture = fixture(new double[] { 100, 110, 120 }, new double[] { 50, 40, 60 });
-        PortfolioAllocation allocation = allocation(fixture, 0.6, 0.4);
+    public void defaultRunIsBuyAndHold() {
+        PortfolioSeriesManager manager = manager(new double[] { 100, 110, 120 }, new double[] { 50, 40, 60 });
 
-        PortfolioSeriesManager manager = new PortfolioSeriesManager(fixture.series());
-        PortfolioExecutionResult result = manager.run(allocation, fixture.num(1000));
+        PortfolioExecutionResult result = manager.run(weights(0.6, 0.4), 1000);
 
-        assertEquals(fixture.series(), manager.getPortfolioSeries());
-        assertEquals(3, result.getSnapshots().size());
-        assertNumEquals(6, result.getSnapshots().get(0).getHoldings().get(fixture.alpha()));
-        assertNumEquals(8, result.getSnapshots().get(0).getHoldings().get(fixture.beta()));
-        assertNumEquals(0, result.getSnapshots().get(0).getCash());
-        assertNumEquals(1000, result.getSnapshots().get(0).getPortfolioValue());
-        assertNumEquals(-0.02, result.getSnapshots().get(1).getPeriodReturn());
+        List<PortfolioSnapshot> snapshots = result.getSnapshots();
+        assertEquals(List.of(RebalanceStatus.COMPLETED, RebalanceStatus.NOT_SCHEDULED, RebalanceStatus.NOT_SCHEDULED),
+                snapshots.stream().map(PortfolioSnapshot::getRebalanceStatus).toList());
+        assertNumEquals(6, snapshots.get(0).getHoldings().get("ALPHA"));
+        assertNumEquals(8, snapshots.get(0).getHoldings().get("BETA"));
+        assertNumEquals(0, snapshots.get(0).getCash());
+        assertNumEquals(1, snapshots.get(0).getTurnover());
+        assertNumEquals(-0.02, snapshots.get(1).getPeriodReturn());
         assertNumEquals(1200, result.getFinalValue());
         assertNumEquals(0.2, result.getTotalReturn());
-        assertEquals(List.of(fixture.alpha(), fixture.beta()), List.copyOf(result.getFinalWeights().keySet()));
-        assertNumEquals(0.6, result.getFinalWeights().get(fixture.alpha()));
-        assertNumEquals(0.4, result.getFinalWeights().get(fixture.beta()));
+        assertEquals(List.of("ALPHA", "BETA"), List.copyOf(result.getFinalWeights().keySet()));
+        assertNumEquals(0.6, result.getFinalWeights().get("ALPHA"));
     }
 
     @Test
     public void everyBarRebalanceRestoresTargetWeightsAfterPriceDrift() {
-        Fixture fixture = fixture(new double[] { 100, 200 }, new double[] { 100, 50 });
-        PortfolioAllocation allocation = allocation(fixture, 0.5, 0.5);
+        PortfolioSeriesManager manager = manager(new double[] { 100, 200 }, new double[] { 100, 50 });
 
-        PortfolioExecutionResult result = new PortfolioSeriesManager(fixture.series()).run(allocation,
-                fixture.num(1000), RebalancePolicy.everyBar());
+        PortfolioExecutionResult result = manager.run(weights(0.5, 0.5), 1000, RebalancePolicy.everyBar());
 
-        PortfolioSnapshot finalSnapshot = result.getFinalSnapshot();
-        assertNumEquals(3.125, finalSnapshot.getHoldings().get(fixture.alpha()));
-        assertNumEquals(12.5, finalSnapshot.getHoldings().get(fixture.beta()));
-        assertNumEquals(1250, finalSnapshot.getPortfolioValue());
-        assertNumEquals(0.5, finalSnapshot.getAssetWeight(fixture.alpha()));
-        assertNumEquals(0.5, finalSnapshot.getAssetWeight(fixture.beta()));
-        assertNumEquals(750, finalSnapshot.getTurnover());
+        PortfolioSnapshot last = result.getFinalSnapshot();
+        assertNumEquals(3.125, last.getHoldings().get("ALPHA"));
+        assertNumEquals(12.5, last.getHoldings().get("BETA"));
+        assertNumEquals(1250, last.getPortfolioValue());
+        assertNumEquals(750, last.getTradedNotional());
+        assertNumEquals(0.6, last.getTurnover());
+        assertEquals(RebalanceStatus.COMPLETED, last.getRebalanceStatus());
     }
 
     @Test
-    public void transactionCostsScaleInitialBuysSoCashDoesNotGoNegative() {
-        Fixture fixture = fixture(new double[] { 100, 100 }, new double[] { 50, 50 });
-        PortfolioAllocation allocation = allocation(fixture, 0.6, 0.4);
+    public void scheduleControlsInitialInvestment() {
+        PortfolioSeriesManager manager = manager(new double[] { 100, 100, 100, 110 }, new double[] { 50, 50, 50, 50 });
 
-        PortfolioExecutionResult result = new PortfolioSeriesManager(fixture.series(),
-                new LinearTransactionCostModel(0.01)).run(allocation, fixture.num(1000));
+        PortfolioExecutionResult delayed = manager.run(weights(0.5, 0.5), 1000, RebalancePolicy.onIndexes(2));
+        PortfolioExecutionResult investedThenRebalanced = manager.run(weights(0.5, 0.5), 1000,
+                RebalancePolicy.atStart().or(RebalancePolicy.onIndexes(2)));
 
-        PortfolioSnapshot firstSnapshot = result.getSnapshots().getFirst();
-        assertNumEquals(fixture.num(0), firstSnapshot.getCash(), 0.0001);
-        assertNumEquals(fixture.num(990.0990099), firstSnapshot.getPortfolioValue(), 0.0001);
-        assertNumEquals(fixture.num(9.9009901), firstSnapshot.getTransactionCost(), 0.0001);
-        assertNumEquals(fixture.num(990.0990099), firstSnapshot.getTurnover(), 0.0001);
-        assertNumEquals(fixture.num(-0.00990099), firstSnapshot.getPeriodReturn(), 0.0001);
+        assertNumEquals(1000, delayed.getSnapshots().get(1).getCash());
+        assertEquals(RebalanceStatus.NOT_SCHEDULED, delayed.getSnapshots().get(1).getRebalanceStatus());
+        assertEquals(RebalanceStatus.COMPLETED, delayed.getSnapshots().get(2).getRebalanceStatus());
+        assertNumEquals(0, investedThenRebalanced.getSnapshots().get(1).getCash());
+        assertNumEquals(0, investedThenRebalanced.getSnapshots().get(2).getTradedNotional());
+        assertNumEquals(1050, delayed.getFinalValue());
     }
 
     @Test
-    public void transactionCostsPreserveCashSleeveTargetWeight() {
-        Fixture fixture = fixture(new double[] { 100, 100 }, new double[] { 50, 50 });
-        PortfolioAllocation allocation = allocation(fixture, 0.6, 0.3);
+    public void driftBandTradesOnlyWhenWeightsLeaveTheBand() {
+        PortfolioSeriesManager manager = manager(new double[] { 100, 101, 110, 111 },
+                new double[] { 100, 100, 100, 100 });
 
-        PortfolioExecutionResult result = new PortfolioSeriesManager(fixture.series(),
-                new LinearTransactionCostModel(0.01)).run(allocation, fixture.num(1000));
+        PortfolioExecutionResult result = manager.run(weights(0.5, 0.5), 1000, RebalancePolicy.whenDriftExceeds(0.02));
 
-        PortfolioSnapshot firstSnapshot = result.getSnapshots().getFirst();
-        assertNumEquals(fixture.num(991.0802775), firstSnapshot.getPortfolioValue(), 0.0001);
-        assertNumEquals(fixture.num(99.1080278), firstSnapshot.getCash(), 0.0001);
-        assertNumEquals(fixture.num(8.9197225), firstSnapshot.getTransactionCost(), 0.0001);
-        assertNumEquals(fixture.num(891.9722498), firstSnapshot.getTurnover(), 0.0001);
-        assertNumEquals(fixture.num(0.6), firstSnapshot.getAssetWeight(fixture.alpha()), 0.0001);
-        assertNumEquals(fixture.num(0.3), firstSnapshot.getAssetWeight(fixture.beta()), 0.0001);
-        assertNumEquals(fixture.num(0.1), firstSnapshot.getCash().dividedBy(firstSnapshot.getPortfolioValue()), 0.0001);
+        assertEquals(
+                List.of(RebalanceStatus.COMPLETED, RebalanceStatus.NOT_SCHEDULED, RebalanceStatus.COMPLETED,
+                        RebalanceStatus.NOT_SCHEDULED),
+                result.getSnapshots().stream().map(PortfolioSnapshot::getRebalanceStatus).toList());
+        assertNumClose(0.5, result.getSnapshots().get(2).getAssetWeight("ALPHA"), TOLERANCE);
     }
 
     @Test
-    public void fixedTransactionCostsPreserveCashSleeveTargetWeight() {
-        Fixture fixture = fixture(new double[] { 100, 100 }, new double[] { 50, 50 });
-        PortfolioAllocation allocation = allocation(fixture, 0.6, 0.3);
+    public void driftBandAvoidsFixedFeesForNegligibleDrift() {
+        CostModel fixedFee = new FixedTransactionCostModel(50);
+        PortfolioSeriesManager manager = new PortfolioSeriesManager(
+                new PortfolioSeries(series("ALPHA", 100, 101), series("BETA", 100, 100)), fixedFee);
 
-        PortfolioExecutionResult result = new PortfolioSeriesManager(fixture.series(), new FixedTransactionCostModel(5))
-                .run(allocation, fixture.num(1000));
+        PortfolioExecutionResult everyBar = manager.run(weights(0.01, 0.99), 1000, RebalancePolicy.everyBar());
+        PortfolioExecutionResult banded = manager.run(weights(0.01, 0.99), 1000,
+                RebalancePolicy.everyBar().and(RebalancePolicy.whenDriftExceeds(0.05)));
 
-        PortfolioSnapshot firstSnapshot = result.getSnapshots().getFirst();
-        assertNumEquals(fixture.num(990), firstSnapshot.getPortfolioValue(), 0.0001);
-        assertNumEquals(fixture.num(99), firstSnapshot.getCash(), 0.0001);
-        assertNumEquals(10, firstSnapshot.getTransactionCost());
-        assertNumEquals(fixture.num(891), firstSnapshot.getTurnover(), 0.0001);
-        assertNumEquals(0.6, firstSnapshot.getAssetWeight(fixture.alpha()));
-        assertNumEquals(0.3, firstSnapshot.getAssetWeight(fixture.beta()));
-        assertNumEquals(fixture.num(0.1), firstSnapshot.getCash().dividedBy(firstSnapshot.getPortfolioValue()), 0.0001);
+        assertNumEquals(200, everyBar.getTotalTransactionCost());
+        assertNumEquals(100, banded.getTotalTransactionCost());
+        assertEquals(RebalanceStatus.NOT_SCHEDULED, banded.getFinalSnapshot().getRebalanceStatus());
     }
 
     @Test
-    public void fixedTransactionCostsSkipSellThatWouldSpendCashNegative() {
-        Fixture fixture = fixture(new double[] { 100, 101 }, new double[] { 100, 100 });
-        PortfolioAllocation allocation = allocation(fixture, 0.01, 0.99);
+    public void singleAssetWithCashSleeveIsABenchmark() {
+        PortfolioSeriesManager manager = new PortfolioSeriesManager(new PortfolioSeries(series("SPY", 100, 110)));
 
-        PortfolioExecutionResult result = new PortfolioSeriesManager(fixture.series(),
-                new FixedTransactionCostModel(50)).run(allocation, fixture.num(1000), RebalancePolicy.everyBar());
+        PortfolioExecutionResult buyAndHold = manager.run(new PortfolioAllocation(Map.of("SPY", 0.6)), 1000);
+        PortfolioExecutionResult rebalanced = manager.run(new PortfolioAllocation(Map.of("SPY", 0.6)), 1000,
+                RebalancePolicy.everyBar());
 
-        PortfolioSnapshot firstSnapshot = result.getSnapshots().get(0);
-        PortfolioSnapshot secondSnapshot = result.getSnapshots().get(1);
-        assertNumEquals(firstSnapshot.getHoldings().get(fixture.alpha()),
-                secondSnapshot.getHoldings().get(fixture.alpha()));
-        assertNumEquals(fixture.num(48.9109), secondSnapshot.getCash(), 0.0001);
-        assertNumEquals(fixture.num(50), secondSnapshot.getTransactionCost(), 0.0001);
+        assertNumEquals(1060, buyAndHold.getFinalValue());
+        assertNumEquals(400, buyAndHold.getFinalSnapshot().getCash());
+        assertNumEquals(0.4, rebalanced.getFinalSnapshot().getCashWeight());
+        assertNumEquals(0.6, rebalanced.getFinalSnapshot().getAssetWeight("SPY"));
     }
 
     @Test
-    public void rejectsAllocationAssetsMissingFromAlignedSeries() {
-        Fixture fixture = fixture(new double[] { 100, 100 }, new double[] { 50, 50 });
-        PortfolioAllocation allocation = new PortfolioAllocation(Map.of("MISSING", fixture.num(0.5)),
-                fixture.alphaSeries().numFactory());
-        PortfolioSeriesManager manager = new PortfolioSeriesManager(fixture.series());
+    public void proportionalCostsAreFundedFromThePostCostValue() {
+        PortfolioSeriesManager manager = manager(new double[] { 100, 100 }, new double[] { 50, 50 },
+                new LinearTransactionCostModel(0.01));
 
-        assertThrows(IllegalArgumentException.class, () -> manager.run(allocation, fixture.num(1000)));
+        PortfolioSnapshot fullyInvested = manager.run(weights(0.6, 0.4), 1000).getSnapshots().getFirst();
+        PortfolioSnapshot cashSleeve = manager.run(weights(0.6, 0.3), 1000).getSnapshots().getFirst();
+
+        assertNumClose(0, fullyInvested.getCash(), TOLERANCE);
+        assertNumClose(990.0990099, fullyInvested.getPortfolioValue(), TOLERANCE);
+        assertNumClose(9.9009901, fullyInvested.getTransactionCost(), TOLERANCE);
+        assertNumClose(-0.00990099, fullyInvested.getPeriodReturn(), TOLERANCE);
+        assertNumClose(991.0802775, cashSleeve.getPortfolioValue(), TOLERANCE);
+        assertNumClose(8.9197225, cashSleeve.getTransactionCost(), TOLERANCE);
+        assertNumClose(0.6, cashSleeve.getAssetWeight("ALPHA"), TOLERANCE);
+        assertNumClose(0.1, cashSleeve.getCashWeight(), TOLERANCE);
+        assertEquals(RebalanceStatus.COMPLETED, cashSleeve.getRebalanceStatus());
     }
 
     @Test
-    public void rejectsNullInitialCash() {
-        Fixture fixture = fixture(new double[] { 100, 100 }, new double[] { 50, 50 });
-        PortfolioAllocation allocation = allocation(fixture, 0.6, 0.4);
+    public void flatPricesWithFixedFeesNeverChurnAfterTheInitialInvestment() {
+        for (NumFactory numFactory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            PortfolioSeries series = new PortfolioSeries(series("ALPHA", numFactory, 100, 100, 100, 100),
+                    series("BETA", numFactory, 100, 100, 100, 100));
+            PortfolioSeriesManager manager = new PortfolioSeriesManager(series, new FixedTransactionCostModel(5));
 
-        PortfolioSeriesManager manager = new PortfolioSeriesManager(fixture.series());
+            PortfolioExecutionResult result = manager.run(weights(0.6, 0.3), 1000, RebalancePolicy.everyBar());
 
-        assertThrows(NullPointerException.class, () -> manager.run(allocation, null));
+            assertNumEquals(10, result.getSnapshots().getFirst().getTransactionCost());
+            for (PortfolioSnapshot snapshot : result.getSnapshots()) {
+                assertNumClose(990, snapshot.getPortfolioValue(), TOLERANCE);
+                assertNumClose(0.1, snapshot.getCashWeight(), TOLERANCE);
+                assertEquals(RebalanceStatus.COMPLETED, snapshot.getRebalanceStatus());
+            }
+            for (PortfolioSnapshot snapshot : result.getSnapshots().subList(1, 4)) {
+                assertNumEquals(0, snapshot.getTradedNotional());
+                assertNumEquals(0, snapshot.getTransactionCost());
+            }
+        }
     }
 
     @Test
-    public void convertsAllocationWeightsToPortfolioNumFactory() {
-        Fixture fixture = fixture(new double[] { 100, 110 }, new double[] { 50, 55 });
-        Map<String, Num> weights = new LinkedHashMap<>();
-        weights.put(fixture.alpha(), DecimalNumFactory.getInstance().numOf(0.6));
-        weights.put(fixture.beta(), DecimalNumFactory.getInstance().numOf(0.4));
-        PortfolioAllocation allocation = new PortfolioAllocation(weights, DecimalNumFactory.getInstance());
+    public void executionIsIndependentOfAssetPresentationOrder() {
+        CostModel fixedFee = new FixedTransactionCostModel(50);
+        BarSeries alpha = series("ALPHA", 100, 101);
+        BarSeries beta = series("BETA", 100, 100);
+        PortfolioAllocation allocation = weights(0.01, 0.99);
 
-        PortfolioExecutionResult result = new PortfolioSeriesManager(fixture.series()).run(allocation,
-                fixture.num(1000));
+        PortfolioSnapshot alphaFirst = new PortfolioSeriesManager(new PortfolioSeries(alpha, beta), fixedFee)
+                .run(allocation, 1000, RebalancePolicy.everyBar())
+                .getFinalSnapshot();
+        PortfolioSnapshot betaFirst = new PortfolioSeriesManager(new PortfolioSeries(beta, alpha), fixedFee)
+                .run(allocation, 1000, RebalancePolicy.everyBar())
+                .getFinalSnapshot();
+
+        for (String asset : List.of("ALPHA", "BETA")) {
+            assertNumEquals(alphaFirst.getHoldings().get(asset), betaFirst.getHoldings().get(asset));
+        }
+        assertNumEquals(alphaFirst.getCash(), betaFirst.getCash());
+        assertNumEquals(alphaFirst.getTransactionCost(), betaFirst.getTransactionCost());
+        assertEquals(alphaFirst.getRebalanceStatus(), betaFirst.getRebalanceStatus());
+        assertTrue(alphaFirst.getCash().isPositiveOrZero());
+    }
+
+    @Test
+    public void unaffordableRebalanceIsReportedAsSkippedWithoutTrading() {
+        PortfolioSeriesManager manager = manager(new double[] { 100, 100 }, new double[] { 50, 50 },
+                new FixedTransactionCostModel(60));
+
+        PortfolioExecutionResult result = manager.run(weights(0.5, 0.5), 100);
+
+        PortfolioSnapshot first = result.getSnapshots().getFirst();
+        assertEquals(RebalanceStatus.SKIPPED, first.getRebalanceStatus());
+        assertNumEquals(100, first.getCash());
+        assertNumEquals(0, first.getTransactionCost());
+        assertEquals(List.of(first), result.getSnapshots(RebalanceStatus.SKIPPED));
+        assertEquals(1, result.getRebalanceCount(RebalanceStatus.SKIPPED));
+    }
+
+    @Test
+    public void accountingIsInvariantToMonetaryScale() {
+        NumFactory numFactory = DecimalNumFactory.getInstance();
+        PortfolioSnapshot tiny = scaledRun(numFactory, "1E-14", "1E-13");
+        PortfolioSnapshot ordinary = scaledRun(numFactory, "100", "1000");
+
+        assertNumEquals(ordinary.getAssetWeight("ALPHA"), tiny.getAssetWeight("ALPHA"), 1e-12);
+        assertNumEquals(ordinary.getAssetWeight("BETA"), tiny.getAssetWeight("BETA"), 1e-12);
+        assertNumEquals(ordinary.getCashWeight(), tiny.getCashWeight(), 1e-12);
+        // Precision is set by the solver's relative tolerance (1e-12 of portfolio
+        // value).
+        assertNumClose(0, tiny.getCashWeight(), 1e-11);
+        assertNumEquals(ordinary.getTransactionCost().dividedBy(numFactory.numOf(1000)),
+                tiny.getTransactionCost().dividedBy(numFactory.numOf("1E-13")), 1e-12);
+    }
+
+    @Test
+    public void convertsInputsToThePortfolioNumFactory() {
+        PortfolioSeriesManager manager = manager(new double[] { 100, 110 }, new double[] { 50, 55 });
+        Map<String, Num> decimalWeights = new LinkedHashMap<>();
+        decimalWeights.put("ALPHA", DecimalNumFactory.getInstance().numOf("0.6"));
+        decimalWeights.put("BETA", DecimalNumFactory.getInstance().numOf("0.4"));
+
+        PortfolioExecutionResult result = manager.run(
+                new PortfolioAllocation(decimalWeights, DecimalNumFactory.getInstance()),
+                DecimalNumFactory.getInstance().numOf(1000), RebalancePolicy.atStart());
 
         assertNumEquals(1100, result.getFinalValue());
+        assertTrue(DoubleNumFactory.getInstance().produces(result.getFinalValue()));
     }
 
     @Test
-    public void acceptsFiniteHighPrecisionDecimalInputs() {
-        NumFactory numFactory = DecimalNumFactory.getInstance();
-        String alpha = "ALPHA";
-        String beta = "BETA";
-        BarSeries alphaSeries = decimalSeries(alpha, numFactory, "1E400", "1E400");
-        BarSeries betaSeries = decimalSeries(beta, numFactory, "2E400", "2E400");
-        PortfolioSeries portfolioSeries = new PortfolioSeries(alphaSeries, betaSeries);
-        Map<String, Num> weights = new LinkedHashMap<>();
-        weights.put(alpha, numFactory.numOf("0.5"));
-        weights.put(beta, numFactory.numOf("0.5"));
-        PortfolioAllocation allocation = new PortfolioAllocation(weights, numFactory);
+    public void rejectsInvalidRunInputs() {
+        PortfolioSeriesManager manager = manager(new double[] { 100, 100 }, new double[] { 50, 50 });
+        PortfolioAllocation allocation = weights(0.5, 0.5);
 
-        PortfolioExecutionResult result = new PortfolioSeriesManager(portfolioSeries).run(allocation,
-                numFactory.numOf("1E410"));
-
-        assertEquals(2, result.getSnapshots().size());
+        assertThrows(IllegalArgumentException.class,
+                () -> manager.run(new PortfolioAllocation(Map.of("MISSING", 0.5)), 1000));
+        assertThrows(NullPointerException.class, () -> manager.run(allocation, (Num) null));
+        assertThrows(IllegalArgumentException.class, () -> manager.run(allocation, 0));
+        assertThrows(NullPointerException.class, () -> manager.run(allocation, 1000, null));
     }
 
     @Test
-    public void exportsPortfolioValueSeriesForExistingAnalysisFlows() {
-        Fixture fixture = fixture(new double[] { 100, 110, 120 }, new double[] { 50, 40, 60 });
-        PortfolioAllocation allocation = allocation(fixture, 0.6, 0.4);
-        PortfolioExecutionResult result = new PortfolioSeriesManager(fixture.series()).run(allocation,
-                fixture.num(1000));
+    public void rejectsNonPositivePricesWithAssetAndTime() {
+        PortfolioSeriesManager manager = manager(new double[] { 100, 0 }, new double[] { 50, 50 });
 
-        BarSeries valueSeries = result.toPortfolioValueSeries("portfolio-value");
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> manager.run(weights(0.5, 0.5), 1000));
 
-        assertEquals("portfolio-value", valueSeries.getName());
-        assertEquals(3, valueSeries.getBarCount());
-        assertEquals(fixture.series().getEndTimes().get(2), valueSeries.getBar(2).getEndTime());
-        assertNumEquals(1200, valueSeries.getBar(2).getClosePrice());
+        assertTrue(exception.getMessage().contains("ALPHA at 2026-01-02T00:00:00Z"));
     }
 
-    private static PortfolioAllocation allocation(Fixture fixture, double alphaWeight, double betaWeight) {
-        Map<String, Num> weights = new LinkedHashMap<>();
-        weights.put(fixture.alpha(), fixture.num(alphaWeight));
-        weights.put(fixture.beta(), fixture.num(betaWeight));
-        return new PortfolioAllocation(weights, fixture.alphaSeries().numFactory());
+    private static PortfolioSnapshot scaledRun(NumFactory numFactory, String price, String capital) {
+        PortfolioSeries series = new PortfolioSeries(series("ALPHA", numFactory, 0, price, price),
+                series("BETA", numFactory, 0, price, price));
+        return new PortfolioSeriesManager(series, new LinearTransactionCostModel(0.01))
+                .run(weights(0.6, 0.4), numFactory.numOf(capital), RebalancePolicy.atStart())
+                .getFinalSnapshot();
     }
 
-    private static Fixture fixture(double[] alphaCloses, double[] betaCloses) {
-        Instant start = Instant.parse("2026-01-01T00:00:00Z");
-        String alpha = "ALPHA";
-        String beta = "BETA";
-        BarSeries alphaSeries = series(alpha, start, alphaCloses);
-        BarSeries betaSeries = series(beta, start, betaCloses);
-        PortfolioSeries series = new PortfolioSeries(alphaSeries, betaSeries);
-        return new Fixture(alpha, beta, alphaSeries, betaSeries, series);
+    private static PortfolioAllocation weights(double alpha, double beta) {
+        Map<String, Double> weights = new LinkedHashMap<>();
+        weights.put("ALPHA", alpha);
+        weights.put("BETA", beta);
+        return new PortfolioAllocation(weights);
     }
 
-    private static BarSeries series(String name, Instant start, double[] closes) {
-        BarSeries series = new BaseBarSeriesBuilder().withName(name).build();
-        Num zero = series.numFactory().zero();
-        for (int i = 0; i < closes.length; i++) {
-            Num close = series.numFactory().numOf(closes[i]);
-            series.barBuilder()
-                    .timePeriod(Duration.ofDays(1))
-                    .endTime(start.plus(Duration.ofDays(i)))
-                    .openPrice(close)
-                    .highPrice(close)
-                    .lowPrice(close)
-                    .closePrice(close)
-                    .volume(zero)
-                    .add();
-        }
-        return series;
+    private static PortfolioSeriesManager manager(double[] alphaCloses, double[] betaCloses) {
+        return new PortfolioSeriesManager(
+                new PortfolioSeries(series("ALPHA", alphaCloses), series("BETA", betaCloses)));
     }
 
-    private static BarSeries decimalSeries(String name, NumFactory numFactory, String... closes) {
-        Instant start = Instant.parse("2026-01-01T00:00:00Z");
-        BarSeries series = new BaseBarSeriesBuilder().withName(name).withNumFactory(numFactory).build();
-        Num zero = numFactory.zero();
-        for (int i = 0; i < closes.length; i++) {
-            Num close = numFactory.numOf(closes[i]);
-            series.barBuilder()
-                    .timePeriod(Duration.ofDays(1))
-                    .endTime(start.plus(Duration.ofDays(i)))
-                    .openPrice(close)
-                    .highPrice(close)
-                    .lowPrice(close)
-                    .closePrice(close)
-                    .volume(zero)
-                    .add();
-        }
-        return series;
-    }
-
-    private record Fixture(String alpha, String beta, BarSeries alphaSeries, BarSeries betaSeries,
-            PortfolioSeries series) {
-
-        Num num(Number value) {
-            return alphaSeries.numFactory().numOf(value);
-        }
+    private static PortfolioSeriesManager manager(double[] alphaCloses, double[] betaCloses, CostModel costModel) {
+        return new PortfolioSeriesManager(new PortfolioSeries(series("ALPHA", alphaCloses), series("BETA", betaCloses)),
+                costModel);
     }
 }

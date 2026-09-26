@@ -717,7 +717,7 @@ public final class DecimalNum implements Num {
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.delegate);
+        return this.delegate.stripTrailingZeros().hashCode();
     }
 
     /**

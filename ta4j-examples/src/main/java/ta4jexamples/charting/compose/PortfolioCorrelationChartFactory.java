@@ -36,7 +36,7 @@ import org.ta4j.core.portfolio.PortfolioCorrelations.CorrelationMatrix;
  * Creates annotated heatmaps and headless-safe dendrograms for portfolio
  * correlation results.
  *
- * @since 0.23.1
+ * @since 0.25.1
  */
 public final class PortfolioCorrelationChartFactory {
 

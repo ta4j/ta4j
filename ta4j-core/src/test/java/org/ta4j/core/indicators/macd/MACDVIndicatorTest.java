@@ -277,4 +277,47 @@ public class MACDVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         }
         return result;
     }
+
+    /**
+     * MACD-V lazily creates VWMA and ATR sub-indicators that are not
+     * constructor-registered dependencies. A rebaselining source inside those
+     * chains (the TR inside the ATRs discards the whole cache on head advance) must
+     * still propagate a whole-cache discard into MACD-V, so cached values above its
+     * own unstable-range floor are recomputed after the head advance.
+     */
+    @Test
+    public void headAdvanceDiscardsWholeCacheThroughDerivedAtrChain() {
+        BarSeries bounded = buildSeries(200);
+        bounded.setMaximumBarCount(100);
+        CountingMacdvIndicator indicator = new CountingMacdvIndicator(new ClosePriceIndicator(bounded));
+        int probeIndex = bounded.getBeginIndex() + 60;
+
+        indicator.getValue(probeIndex);
+        int calculationsBefore = indicator.calculations();
+
+        bounded.setMaximumBarCount(80);
+        indicator.getValue(probeIndex);
+
+        assertThat(indicator.calculations()).isGreaterThan(calculationsBefore);
+    }
+
+    private static final class CountingMacdvIndicator extends MACDVIndicator {
+
+        private final AtomicInteger calculations = new AtomicInteger();
+
+        CountingMacdvIndicator(Indicator<Num> priceIndicator) {
+            super(priceIndicator);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            calculations.incrementAndGet();
+            return super.calculate(index);
+        }
+
+        int calculations() {
+            return calculations.get();
+        }
+    }
+
 }

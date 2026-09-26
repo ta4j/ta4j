@@ -122,27 +122,19 @@ public class TrailingFixedAmountStopGainRule extends AbstractRule implements Sto
             return false;
         }
         boolean buy = currentPosition.getEntry().isBuy();
-        Num extremePrice;
-        Num activationPrice;
-        Num stopPrice;
-        boolean activationReached;
-        boolean satisfied;
-        String extremeField;
-        if (buy) {
-            extremePrice = highestClosePrice(index, lookback);
-            activationPrice = StopGainRule.stopGainPriceFromDistance(entryPrice, gainAmount, true);
-            activationReached = !extremePrice.isLessThan(activationPrice);
-            stopPrice = StopGainRule.trailingStopGainPriceFromDistance(extremePrice, gainAmount, true);
-            satisfied = activationReached && currentPrice.isLessThanOrEqual(stopPrice);
-            extremeField = "highestPrice";
-        } else {
-            extremePrice = lowestClosePrice(index, lookback);
-            activationPrice = StopGainRule.stopGainPriceFromDistance(entryPrice, gainAmount, false);
-            activationReached = !extremePrice.isGreaterThan(activationPrice);
-            stopPrice = StopGainRule.trailingStopGainPriceFromDistance(extremePrice, gainAmount, false);
-            satisfied = activationReached && currentPrice.isGreaterThanOrEqual(stopPrice);
-            extremeField = "lowestPrice";
+        Num extremePrice = buy ? highestClosePrice(index, lookback) : lowestClosePrice(index, lookback);
+        if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice) || Num.isNaNOrNull(extremePrice)) {
+            StopRuleTrace.traceDecision(this, index, false, buy, currentPrice, entryPrice, null, "gainAmount",
+                    gainAmount, "priceUnavailable");
+            return false;
         }
+        Num activationPrice = StopGainRule.stopGainPriceFromDistance(entryPrice, gainAmount, buy);
+        boolean activationReached = buy ? !extremePrice.isLessThan(activationPrice)
+                : !extremePrice.isGreaterThan(activationPrice);
+        Num stopPrice = StopGainRule.trailingStopGainPriceFromDistance(extremePrice, gainAmount, buy);
+        boolean satisfied = buy ? activationReached && currentPrice.isLessThanOrEqual(stopPrice)
+                : activationReached && currentPrice.isGreaterThanOrEqual(stopPrice);
+        String extremeField = buy ? "highestPrice" : "lowestPrice";
         String reason = traceReason(satisfied, activationReached, buy);
         StopRuleTrace.traceTrailingGainDecision(this, index, satisfied, buy, currentPrice, entryPrice, stopPrice,
                 extremeField, extremePrice, activationPrice, lookback, "gainAmount", gainAmount, reason);
@@ -165,12 +157,12 @@ public class TrailingFixedAmountStopGainRule extends AbstractRule implements Sto
         int entryIndex = position.getEntry().getIndex();
         // stopPrice models the initial trailing stop at entry time.
         int lookback = 1;
-        if (position.getEntry().isBuy()) {
-            Num highestCloseNum = highestClosePrice(entryIndex, lookback);
-            return StopGainRule.trailingStopGainPriceFromDistance(highestCloseNum, gainAmount, true);
+        Num extremePrice = position.getEntry().isBuy() ? highestClosePrice(entryIndex, lookback)
+                : lowestClosePrice(entryIndex, lookback);
+        if (Num.isNaNOrNull(extremePrice)) {
+            return null;
         }
-        Num lowestCloseNum = lowestClosePrice(entryIndex, lookback);
-        return StopGainRule.trailingStopGainPriceFromDistance(lowestCloseNum, gainAmount, false);
+        return StopGainRule.trailingStopGainPriceFromDistance(extremePrice, gainAmount, position.getEntry().isBuy());
     }
 
     /**

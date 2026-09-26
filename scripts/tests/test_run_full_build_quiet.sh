@@ -84,9 +84,9 @@ if [[ "${FAKE_MAVEN_CAPS:-0}" == "1" ]]; then
 fi
 if [[ "${FAKE_MAVEN_UNFORMATTED:-0}" == "1" ]]; then
   for arg in "$@"; do
-    if [[ "$arg" == "formatter:format" ]]; then
+    if [[ "$arg" == "spotless:apply" ]]; then
       echo formatted > "$FAKE_SOURCE_FILE"
-    elif [[ "$arg" == "formatter:validate" ]]; then
+    elif [[ "$arg" == "spotless:check" ]]; then
     echo "[ERROR] File has not been previously formatted."
     echo "[INFO] BUILD FAILURE"
     exit 8
@@ -161,11 +161,11 @@ test_default_invocation_uses_local_repair_gate() {
   expect_not_contains "$output" "[INFO] BUILD SUCCESS" "script should not print INFO-level Maven success lines"
   expect_file_contains_line "$TMP/maven-args.txt" "clean" "default invocation should clean generated output"
   expect_file_contains_line "$TMP/maven-args.txt" "license:format" "default invocation should repair license headers"
-  expect_file_contains_line "$TMP/maven-args.txt" "formatter:format" "default invocation should repair formatting"
+  expect_file_contains_line "$TMP/maven-args.txt" "spotless:apply" "default invocation should repair formatting"
   expect_file_contains_line "$TMP/maven-args.txt" "verify" "default invocation should pass verify"
   expect_file_contains_line "$TMP/maven-args.txt" "-Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless" "default invocation should include hosted non-demo tests"
   expect_file_not_contains_line "$TMP/maven-args.txt" "license:check" "default invocation should not duplicate hosted license validation"
-  expect_file_not_contains_line "$TMP/maven-args.txt" "formatter:validate" "default invocation should not duplicate hosted format validation"
+  expect_file_not_contains_line "$TMP/maven-args.txt" "spotless:check" "default invocation should not duplicate hosted format validation"
   expect_file_not_contains_line "$TMP/maven-args.txt" "install" "default invocation should not add a non-CI lifecycle phase"
 
   finish_test_repo
@@ -255,13 +255,14 @@ test_validate_only_rejects_unformatted_source_without_repairing_it() {
   expect_contains "$output" "Build: failed" "format validation failure should be summarized"
   expect_file_contains_line "$source_file" "unformatted" "validate-only gate must leave unformatted source unchanged"
   expect_file_contains_line "$TMP/maven-args.txt" "license:check" "validate-only should check license headers"
-  expect_file_contains_line "$TMP/maven-args.txt" "formatter:validate" "validate-only should validate formatting"
+  expect_file_contains_line "$TMP/maven-args.txt" "spotless:check" "validate-only should validate formatting"
   expect_file_not_contains_line "$TMP/maven-args.txt" "license:format" "validate-only must not repair license headers"
-  expect_file_not_contains_line "$TMP/maven-args.txt" "formatter:format" "validate-only must not repair formatting"
+  expect_file_not_contains_line "$TMP/maven-args.txt" "spotless:apply" "validate-only must not repair formatting"
 
   finish_test_repo
   pass "test_validate_only_rejects_unformatted_source_without_repairing_it"
 }
+
 
 test_goals_override_and_maven_args_passthrough() {
   echo "Running test_goals_override_and_maven_args_passthrough"
@@ -413,20 +414,43 @@ EOF
 test_progressing_build_is_not_killed_at_timeout_boundary() {
   echo "Running test_progressing_build_is_not_killed_at_timeout_boundary"
   create_test_repo
+  local watchdog_clock="$TMP/watchdog-clock"
+  local progress_ready="$TMP/progress-ready"
+  local baseline_sampled="$TMP/baseline-sampled"
+  printf '%s\n' 0 > "$watchdog_clock"
+  cat > "$TMP/bin/wc" <<'EOF'
+#!/usr/bin/env bash
+while [[ ! -f "$QUIET_BUILD_TEST_PROGRESS_READY_FILE" ]]; do
+  /bin/sleep 0.01
+done
+size="$(/usr/bin/wc "$@")"
+: > "$QUIET_BUILD_TEST_BASELINE_SAMPLED_FILE"
+printf '%s\n' "$size"
+EOF
   cat > "$TMP/bin/mvn" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$@" > "$FAKE_MAVEN_ARGS"
 echo "[INFO] Slow fixture started"
-sleep 1
 echo "[INFO] Slow fixture still progressing"
-sleep 1
+printf '%s\n' 3 > "${QUIET_BUILD_TEST_CLOCK_FILE}.next"
+/bin/mv "${QUIET_BUILD_TEST_CLOCK_FILE}.next" "$QUIET_BUILD_TEST_CLOCK_FILE"
+: > "$QUIET_BUILD_TEST_PROGRESS_READY_FILE"
+while [[ ! -f "$QUIET_BUILD_TEST_BASELINE_SAMPLED_FILE" ]]; do
+  /bin/sleep 0.01
+done
+/bin/sleep 0.05
 echo "[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0"
 echo "[INFO] BUILD SUCCESS"
 EOF
-  chmod +x "$TMP/bin/mvn"
+  chmod +x "$TMP/bin/mvn" "$TMP/bin/wc"
 
   local output
-  output="$(QUIET_BUILD_TIMEOUT_SECONDS=1 QUIET_BUILD_STALL_SECONDS=2 run_quiet_build scripts/run-full-build-quiet.sh)"
+  output="$(QUIET_BUILD_TIMEOUT_SECONDS=1 QUIET_BUILD_STALL_SECONDS=3 \
+    QUIET_BUILD_TEST_CLOCK_FILE="$watchdog_clock" \
+    QUIET_BUILD_TEST_WATCHDOG_POLL_SECONDS=0.01 \
+    QUIET_BUILD_TEST_PROGRESS_READY_FILE="$progress_ready" \
+    QUIET_BUILD_TEST_BASELINE_SAMPLED_FILE="$baseline_sampled" \
+    run_quiet_build scripts/run-full-build-quiet.sh)"
 
   expect_contains "$output" "Build: success" "progressing Maven output should extend the watchdog past the hard timeout boundary"
   expect_file_contains_line "$TMP/maven-args.txt" "verify" "progressing timeout fixture should still run the canonical Maven command"
@@ -449,7 +473,7 @@ EOF
   chmod +x "$TMP/bin/mvn"
 
   local output
-  output="$(QUIET_BUILD_TIMEOUT_SECONDS=5 QUIET_BUILD_STALL_SECONDS=5 QUIET_BUILD_HEARTBEAT_SECONDS=1 run_quiet_build scripts/run-full-build-quiet.sh)"
+  output="$(QUIET_BUILD_TIMEOUT_SECONDS=30 QUIET_BUILD_STALL_SECONDS=30 QUIET_BUILD_HEARTBEAT_SECONDS=1 run_quiet_build scripts/run-full-build-quiet.sh)"
   local log_file
   log_file="$(latest_log_from_output "$output")"
 
@@ -493,31 +517,19 @@ EOF
 }
 
 test_powershell_entrypoint_classifier_parity() {
-  echo "Running test_powershell_entrypoint_classifier_parity"
-  create_test_repo
-  write_fake_maven
-
-  local ps1
-  ps1="$(<scripts/run-full-build-quiet.ps1)"
-  expect_contains "$ps1" "\$goals = @(\"clean\", \"license:format\", \"formatter:format\", \"verify\")" "PowerShell local default should repair source"
-  expect_contains "$ps1" "'^--validate-only$'" "PowerShell should expose validate-only mode"
-  expect_contains "$ps1" "\$goals = @(\"clean\", \"license:check\", \"formatter:validate\", \"verify\")" "PowerShell validate-only mode should preserve hosted goals"
-
-  if [[ "${TA4J_RUN_POWERSHELL_FIXTURE:-false}" == "true" ]] && command -v pwsh >/dev/null 2>&1; then
-    local output
-    output="$(FAKE_MAVEN_SUCCESS_UNEXPECTED=1 run_quiet_build pwsh -NoLogo -NoProfile -File scripts/run-full-build-quiet.ps1)"
-    expect_contains "$output" "Warnings summary:" "PowerShell warning digest should be visible"
-    expect_contains "$output" "Unexpected output summary:" "PowerShell unexpected digest should be visible"
-    expect_contains "$output" "java.lang.IllegalStateException: suspicious success diagnostic" "PowerShell should surface exceptions"
+  local shell fixture="$ROOT/scripts/tests/test_run_full_build_quiet.ps1"
+  if command -v pwsh >/dev/null 2>&1; then
+    shell=pwsh
+  elif command -v powershell.exe >/dev/null 2>&1; then
+    shell=powershell.exe
+    if command -v wslpath >/dev/null 2>&1; then
+      fixture="$(wslpath -w "$fixture")"
+    fi
   else
-    expect_contains "$ps1" "function Write-FailureDigest" "PowerShell script should define failure digest"
-    expect_contains "$ps1" "function Write-WarningSummary" "PowerShell script should define warning digest"
-    expect_contains "$ps1" "function Write-UnexpectedSummary" "PowerShell script should define unexpected digest"
-    expect_contains "$ps1" "Test-StackOrExceptionLine" "PowerShell script should classify exception and stack lines"
+    echo "PowerShell runtime unavailable; native gate fixtures require pwsh or powershell.exe"
+    return
   fi
-
-  finish_test_repo
-  pass "test_powershell_entrypoint_classifier_parity"
+  "$shell" -NoProfile -ExecutionPolicy Bypass -File "$fixture"
 }
 
 test_default_invocation_uses_local_repair_gate

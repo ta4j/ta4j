@@ -9,6 +9,7 @@ import org.ta4j.core.serialization.ComponentDescriptor;
 import org.ta4j.core.serialization.IndicatorSerialization;
 import org.ta4j.core.serialization.IndicatorSerializationException;
 
+import java.util.List;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -180,6 +181,29 @@ public interface Indicator<T> {
      */
     default String toExpression(NamedAssetRegistry registry) {
         return IndicatorSerialization.toExpression(this, registry);
+    }
+
+    /**
+     * The direct source indicators this indicator reads from, in evaluation order.
+     *
+     * <p>
+     * Non-cached wrapper indicators (for example {@code UnaryOperationIndicator})
+     * override this method to expose the sources they delegate to.
+     * {@link org.ta4j.core.indicators.CachedIndicator} traverses this graph to
+     * propagate bounded-series head-advance invalidation from a rebaselining source
+     * through intervening wrappers, so the walk reaches every component of a
+     * composed indicator instead of stopping at the first non-cached wrapper.
+     *
+     * <p>
+     * The graph is a construction-order DAG: a wrapper can only declare sources it
+     * received at construction time, so the traversal always terminates.
+     *
+     * @return the direct source indicators, empty when this indicator only reads
+     *         bar data
+     * @since 0.24.2
+     */
+    default List<Indicator<?>> getDependencies() {
+        return List.of();
     }
 
     /**

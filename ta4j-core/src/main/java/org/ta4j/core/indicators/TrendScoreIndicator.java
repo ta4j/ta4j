@@ -81,7 +81,7 @@ public class TrendScoreIndicator extends CachedIndicator<Num> {
     }
 
     private TrendScoreIndicator(Config config) {
-        super(config.series());
+        super(config.compositeIndicator());
         this.normalizationBarCount = config.normalizationBarCount();
         this.emaAlignmentIndicator = config.emaAlignmentIndicator();
         this.macdHistogramIndicator = config.macdHistogramIndicator();

@@ -45,7 +45,7 @@ public class ElliottTrendBiasIndicator extends CachedIndicator<ElliottTrendBias>
     }
 
     private ElliottTrendBiasIndicator(final Config config) {
-        super(config.series());
+        super(config.scenarioIndicator());
         this.scenarioIndicator = config.scenarioIndicator();
         this.neutralThreshold = config.neutralThreshold();
     }

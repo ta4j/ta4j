@@ -6,9 +6,15 @@ SNAPSHOT_METADATA_URL="${SNAPSHOT_REPOSITORY_URL}org/ta4j/ta4j-parent/maven-meta
 SNAPSHOT_REPOSITORY_ID="central-portal-snapshots"
 SNAPSHOT_WORKFLOW_NAME="Publish Snapshot to Maven Central"
 MAVEN_DEPENDENCY_PLUGIN_VERSION="3.11.0"
-AI_REQUEST_METADATA_SCHEMA_VERSION=1
-AI_TRANSPORT_DIAGNOSTICS_SCHEMA_VERSION=1
+SNAPSHOT_CONSUMPTION_DEADLINE_SECONDS=300
+AI_REQUEST_METADATA_SCHEMA_VERSION=2
+AI_TRANSPORT_DIAGNOSTICS_SCHEMA_VERSION=2
 DEFAULT_AI_REQUEST_MAX_BYTES=600000
+OPENAI_RELEASE_MODEL="gpt-5.6-luna"
+OPENAI_REASONING_EFFORT="high"
+OPENAI_RESPONSES_ENDPOINT="https://api.openai.com/v1/responses"
+OPENAI_MODELS_ENDPOINT="https://api.openai.com/v1/models"
+RETRYABLE_PREFLIGHT_EXIT_CODE=75
 
 TMP_HELPER_PATHS=()
 cleanup_release_helper_tmps() {
@@ -38,9 +44,12 @@ usage() {
 Usage: release_helpers.sh <command> [options]
 
 Commands:
-  catalog-preflight
+  model-preflight
   build-dossier
   build-ai-request
+  last-release-date
+  extract-response-content
+  sanitize-response
   ai-transport-diagnostics
   parse-decision
   release-pr-review-plan
@@ -98,11 +107,26 @@ append_output() {
 }
 
 redact_text() {
-  perl -pe 's#https?://\S+#[REDACTED_URL]#g; s#gh[oprsu]_[A-Za-z0-9_]{20,}#[REDACTED_TOKEN]#g; s#(?<![A-Za-z0-9_])(?=[A-Za-z0-9+/=_-]{32,})(?=.*[0-9])[A-Za-z0-9+/=_-]{32,}#[REDACTED_SECRET]#g'
+  perl -pe 's#https?://\S+#[REDACTED_URL]#g; s#gh[oprsu]_[A-Za-z0-9_]{20,}#[REDACTED_TOKEN]#g; s#sk-[A-Za-z0-9_-]{16,}#[REDACTED_OPENAI_KEY]#g; s#(?<![A-Za-z0-9_])(?=[A-Za-z0-9+/=_-]{32,})(?=.*[0-9])[A-Za-z0-9+/=_-]{32,}#[REDACTED_SECRET]#g'
 }
 
 redact_log_text() {
   perl -pe 's#https?://\S+#[REDACTED_URL]#g; s#gh[oprsu]_[A-Za-z0-9_]{20,}#[REDACTED_TOKEN]#g'
+}
+
+sanitize_untrusted_text() {
+  local value="${1:-}"
+  value="$(printf '%s' "$value" | redact_text | tr '\r\n' ' ')"
+  printf '%s' "${value:0:2000}"
+}
+
+github_error_annotation() {
+  local value
+  value="$(sanitize_untrusted_text "${1:-}")"
+  value="${value//'%'/'%25'}"
+  value="${value//$'\r'/'%0D'}"
+  value="${value//$'\n'/'%0A'}"
+  printf '%s' "$value"
 }
 
 iso_utc_now() {
@@ -321,93 +345,258 @@ build_ai_request_payload() {
   local semver_file="$2"
   local dossier_file="$3"
   local prompt_profile="$4"
+  local last_release_url="$5"
+  local last_release_tag="$6"
+  local last_release_date="$7"
   local artifact_note=""
   if [[ "$prompt_profile" == compact* ]]; then
     artifact_note=$'\nThe full unabridged release dossier is preserved as release-dossier.md in the workflow audit artifact. Base the decision on this compact, artifact-backed dossier summary and explicitly call out uncertainty in missing or risks when the compact prompt omits detail.'
   fi
+  local release_context=""
+  if [[ -n "$last_release_tag" && "$last_release_tag" != "none" ]]; then
+    release_context="today (UTC): $(date -u +%F)
+last release: ${last_release_tag}, created ${last_release_date:-unknown} (${last_release_url})
+Release recency is a judgment call: weigh the gap since the last release against the value of the unreleased changes. Defer (should_release=false) when the pending changes do not justify another release this soon. Calibration: 0.24.1 shipped too soon after 0.24.0 (minimal user-visible delta); 0.24.0 two days after 0.23.0 would have been justified (large delta)."
+  fi
   jq -S -n \
     --arg model "$model" \
+    --arg reasoning_effort "$OPENAI_REASONING_EFFORT" \
     --rawfile semver "$semver_file" \
     --rawfile dossier "$dossier_file" \
     --arg artifact_note "$artifact_note" \
+    --arg release_context "$release_context" \
     '{
       model: $model,
-      temperature: 0,
-      messages: [
+      reasoning: {effort: $reasoning_effort},
+      store: false,
+      max_output_tokens: 4096,
+      input: [
         {
           role: "system",
-          content: "You are a SemVer release reviewer for a Java library. Return JSON only. Base every conclusion on the release dossier."
+          content: [{type: "input_text", text: "You are a SemVer release reviewer for a Java library. Return JSON only. Base every conclusion on the release dossier and any supplied release-cadence context."}]
         },
         {
           role: "user",
-          content: (
+          content: [{type: "input_text", text: (
             "Decide whether ta4j should cut a release from this dossier. If yes, choose bump patch or minor. Major is disabled for this workflow.\n\n"
+            + (if $release_context != "" then "Release cadence:\n" + $release_context + "\n\n" else "" end)
             + "SemVer rules:\n" + $semver + "\n\n"
             + "Return JSON only with this shape:\n"
             + "{\"should_release\": true|false, \"bump\": \"patch|minor\", \"confidence\": 0.0-1.0, \"reason\": \"1-2 sentences\", \"evidence\": [\"specific dossier facts\"], \"risks\": [\"release risks or empty array\"], \"missing\": [\"missing changelog/javadoc/test evidence or empty array\"]}."
             + $artifact_note + "\n\n" + $dossier
-          )
+          )}]
         }
       ]
     }'
 }
 
-command_catalog_preflight() {
-  local model="" catalog_url="https://models.github.ai/catalog/models" catalog_file="" timeout_seconds=30 output="release-ai-model.json"
+command_last_release_date() {
+  local tag=""
+  while (($#)); do
+    case "$1" in
+      --tag) require_value "$1" "${2:-}"; tag="$2"; shift 2 ;;
+      *) die "Unknown last-release-date option: $1" ;;
+    esac
+  done
+  [[ -n "$tag" ]] || die "--tag is required"
+  if [[ "$tag" == "none" ]]; then
+    printf 'none\n'
+    return 0
+  fi
+  if ! git rev-parse --verify --quiet "refs/tags/${tag}" >/dev/null 2>&1; then
+    die "Tag ${tag} cannot be resolved in this repository; refusing to fabricate a release date"
+  fi
+  if [[ "$(git cat-file -t "refs/tags/${tag}")" != "tag" ]]; then
+    die "Tag ${tag} is a lightweight tag; a release date requires an annotated tag"
+  fi
+  local release_date
+  release_date="$(git for-each-ref "refs/tags/${tag}" --format='%(creatordate:short)')"
+  if [[ -z "$release_date" ]]; then
+    die "Tag ${tag} has no resolvable creation date"
+  fi
+  printf '%s\n' "$release_date"
+}
+
+command_model_preflight() {
+  local model="$OPENAI_RELEASE_MODEL" model_url="" model_file="" response_status="" timeout_seconds=30 output="release-ai-model.json"
   while (($#)); do
     case "$1" in
       --model) require_value "$1" "${2:-}"; model="$2"; shift 2 ;;
-      --catalog-url) require_value "$1" "${2:-}"; catalog_url="$2"; shift 2 ;;
-      --catalog-file) require_value "$1" "${2:-}"; catalog_file="$2"; shift 2 ;;
+      --model-url) require_value "$1" "${2:-}"; model_url="$2"; shift 2 ;;
+      --model-file) require_value "$1" "${2:-}"; model_file="$2"; shift 2 ;;
+      --response-status) require_value "$1" "${2:-}"; response_status="$2"; shift 2 ;;
       --timeout-seconds) require_value "$1" "${2:-}"; timeout_seconds="$2"; shift 2 ;;
       --output) require_value "$1" "${2:-}"; output="$2"; shift 2 ;;
-      *) die "Unknown catalog-preflight option: $1" ;;
+      *) die "Unknown model-preflight option: $1" ;;
     esac
   done
   [[ -n "$model" ]] || die "--model is required"
+  model_url="${model_url:-${OPENAI_MODELS_ENDPOINT}/${model}}"
 
-  local catalog_json selected available
-  catalog_json="$(new_tmp_file)"
-  selected="$(new_tmp_file)"
-  if [[ -n "$catalog_file" ]]; then
-    cp "$catalog_file" "$catalog_json"
+  local model_json headers_file curl_error_file curl_exit_code=0 error_preview selected_id
+  model_json="$(new_tmp_file)"
+  headers_file="$(new_tmp_file)"
+  curl_error_file="$(new_tmp_file)"
+  if [[ -n "$model_file" ]]; then
+    cp "$model_file" "$model_json"
+    response_status="${response_status:-200}"
   else
-    curl --fail --silent --show-error --location --max-time "$timeout_seconds" \
-      -H "Accept: application/json" -H "User-Agent: ta4j-release-automation" \
-      "$catalog_url" > "$catalog_json"
+    local status_file
+    status_file="$(new_tmp_file)"
+    if curl --silent --show-error --location --http1.1 \
+      --connect-timeout 10 --max-time "$timeout_seconds" \
+      -D "$headers_file" -o "$model_json" -w '%{http_code}' \
+      -H "Accept: application/json" \
+      -H "Authorization: Bearer ${OPENAI_API_KEY:-}" \
+      -H "User-Agent: ta4j-release-automation" \
+      "$model_url" > "$status_file" 2> "$curl_error_file"; then
+      curl_exit_code=0
+    else
+      curl_exit_code=$?
+    fi
+    response_status="$(tr -cd '0-9' < "$status_file" 2>/dev/null || true)"
+    response_status="${response_status:-000}"
   fi
-  jq -e 'type == "array"' "$catalog_json" >/dev/null || die "model catalog response must be a JSON array"
 
-  if ! jq -S --arg model "$model" 'map(select(.id == $model)) | first // empty' "$catalog_json" > "$selected" || [[ ! -s "$selected" ]]; then
-    available="$(jq -r '.[].id // empty' "$catalog_json" | sort | paste -sd ', ' -)"
-    echo "::error::Configured RELEASE_AI_MODEL '$model' was not found in the GitHub Models catalog." >&2
-    echo "Available models: $available" >&2
+  if jq -e . "$model_json" >/dev/null 2>&1; then
+    selected_id="$(jq -r '.id // empty' "$model_json")"
+  else
+    selected_id=""
+  fi
+  error_preview="$(head -c 2000 "$model_json" 2>/dev/null | redact_text || true)"
+  if [[ -s "$curl_error_file" ]]; then
+    error_preview="${error_preview}${error_preview:+$'\n'}$(head -c 1000 "$curl_error_file" | redact_text)"
+  fi
+
+  if [[ "$curl_exit_code" -eq 0 && "$response_status" == "200" && "$selected_id" == "$model" ]]; then
+    jq -S --arg provider "openai" --arg endpoint "$model_url" --arg httpStatus "$response_status" --arg curlExitCode "$curl_exit_code" \
+      '{schemaVersion: 2, provider: $provider, endpoint: $endpoint, available: true, httpStatus: $httpStatus, curlExitCode: $curlExitCode, id: .id, object: (.object // ""), owned_by: (.owned_by // ""), created: (.created // null)}' \
+      "$model_json" > "$output"
+    append_output "model_id" "$(jq -r '.id' "$output")"
+    append_output "model_provider" "openai"
+    append_output "model_endpoint" "$model_url"
+    append_output "model_http_status" "$response_status"
+    printf 'audit:model_preflight provider=openai model=%s status=%s endpoint=%s\n' "$model" "$response_status" "$model_url"
+    return 0
+  fi
+
+  jq -S -n \
+    --arg provider "openai" \
+    --arg endpoint "$model_url" \
+    --arg requestedModel "$model" \
+    --arg responseModel "$selected_id" \
+    --arg httpStatus "$response_status" \
+    --arg curlExitCode "$curl_exit_code" \
+    --arg errorPreview "$error_preview" \
+    '{schemaVersion: 2, provider: $provider, endpoint: $endpoint, available: false, requestedModel: $requestedModel, responseModel: $responseModel, httpStatus: $httpStatus, curlExitCode: $curlExitCode, errorPreview: $errorPreview}' > "$output"
+  append_output "model_provider" "openai"
+  append_output "model_endpoint" "$model_url"
+  append_output "model_http_status" "$response_status"
+  echo "::error::OpenAI model preflight failed for '$model' (HTTP $response_status, curl exit $curl_exit_code)." >&2
+  if [[ -n "$error_preview" ]]; then
+    printf 'OpenAI preflight response (truncated): %s\n' "$error_preview" >&2
+  fi
+  printf 'audit:model_preflight provider=openai model=%s status=%s curl_exit=%s available=false\n' "$model" "$response_status" "$curl_exit_code" >&2
+  if [[ "$curl_exit_code" -ne 0 || "$response_status" == "000" || "$response_status" == "408" || "$response_status" == "429" || "$response_status" =~ ^5[0-9][0-9]$ ]]; then
+    return "$RETRYABLE_PREFLIGHT_EXIT_CODE"
+  fi
+  return 1
+}
+
+command_extract_response_content() {
+  local raw_file="response.json" output="ai-content.txt" failure_reason_output="" github_output=""
+  while (($#)); do
+    case "$1" in
+      --raw-file) require_value "$1" "${2:-}"; raw_file="$2"; shift 2 ;;
+      --output) require_value "$1" "${2:-}"; output="$2"; shift 2 ;;
+      --failure-reason-output) require_value "$1" "${2:-}"; failure_reason_output="$2"; shift 2 ;;
+      --github-output) require_value "$1" "${2:-}"; github_output="$2"; shift 2 ;;
+      *) die "Unknown extract-response-content option: $1" ;;
+    esac
+  done
+
+  local reason="" content="" response_state="unknown" refusal=""
+  if ! jq -e . "$raw_file" >/dev/null 2>&1; then
+    reason="OpenAI response was not valid JSON"
+  else
+    response_state="$(jq -r '.status // "unknown"' "$raw_file")"
+    if [[ "$response_state" != "completed" ]]; then
+      reason="OpenAI response was incomplete (status: $response_state)"
+    else
+      content="$(jq -r '[.output[]? | select(.type == "message") | .content[]? | select(.type == "output_text") | .text] | map(select(type == "string" and length > 0)) | join("\n")' "$raw_file" 2>/dev/null || true)"
+      if [[ -z "$content" ]]; then
+        refusal="$(jq -r '[.output[]?.content[]? | select(.type == "refusal") | .refusal // empty] | join("; ")' "$raw_file" 2>/dev/null || true)"
+        reason="${refusal:-OpenAI response did not contain output_text content}"
+      fi
+    fi
+  fi
+
+  if [[ -n "$reason" ]]; then
+    reason="$(sanitize_untrusted_text "$reason")"
+    : > "$output"
+    [[ -n "$failure_reason_output" ]] && printf '%s\n' "$reason" > "$failure_reason_output"
+    append_output "response_content_status" "failed" "$github_output"
+    append_output "response_content_failure_reason" "$reason" "$github_output"
+    echo "::error::$(github_error_annotation "$reason")" >&2
     return 1
   fi
 
-  jq -S --arg fallback "$model" '{
-    id: (.id // $fallback),
-    name: (.name // ""),
-    publisher: (.publisher // ""),
-    summary: (.summary // ""),
-    rate_limit_tier: (.rate_limit_tier // ""),
-    max_input_tokens: ((.limits.max_input_tokens // "") | tostring),
-    max_output_tokens: ((.limits.max_output_tokens // "") | tostring),
-    html_url: (.html_url // "")
-  }' "$selected" > "$output"
+  printf '%s\n' "$content" > "$output"
+  [[ -n "$failure_reason_output" ]] && : > "$failure_reason_output"
+  append_output "response_content_status" "ok" "$github_output"
+  printf 'audit:response_content status=completed output_text_chars=%s\n' "${#content}"
+}
 
-  append_output "model_id" "$(jq -r '.id' "$output")"
-  append_output "model_name" "$(jq -r '.name' "$output")"
-  append_output "model_summary" "$(jq -r '.summary' "$output")"
-  append_output "model_rate_limit_tier" "$(jq -r '.rate_limit_tier' "$output")"
-  append_output "model_max_input_tokens" "$(jq -r '.max_input_tokens' "$output")"
-  append_output "model_max_output_tokens" "$(jq -r '.max_output_tokens' "$output")"
-  append_output "model_html_url" "$(jq -r '.html_url' "$output")"
-  printf 'audit:model_catalog_preflight model=%s max_input_tokens=%s max_output_tokens=%s rate_limit_tier=%s\n' \
-    "$(jq -r '.id' "$output")" \
-    "$(jq -r '.max_input_tokens // "unknown"' "$output")" \
-    "$(jq -r '.max_output_tokens // "unknown"' "$output")" \
-    "$(jq -r '.rate_limit_tier // "unknown"' "$output")"
+command_sanitize_response_artifact() {
+  local raw_file="response.json" output="response.json"
+  while (($#)); do
+    case "$1" in
+      --raw-file) require_value "$1" "${2:-}"; raw_file="$2"; shift 2 ;;
+      --output) require_value "$1" "${2:-}"; output="$2"; shift 2 ;;
+      *) die "Unknown sanitize-response option: $1" ;;
+    esac
+  done
+
+  local sanitized
+  sanitized="$(new_tmp_file)"
+  if ! jq -e . "$raw_file" >/dev/null 2>&1; then
+    jq -S -n '{schemaVersion: 1, status: "invalid", reasoningOutputOmitted: true}' > "$sanitized"
+  else
+    jq -S '
+      {
+        schemaVersion: 1,
+        object: (.object // "response"),
+        id: (.id // ""),
+        model: (.model // ""),
+        status: (.status // "unknown"),
+        createdAt: (.created_at // null),
+        completedAt: (.completed_at // null),
+        error: (if .error == null then null else {type: (.error.type // ""), code: (.error.code // ""), message: "[REDACTED_PROVIDER_ERROR]"} end),
+        incompleteDetails: (.incomplete_details // null),
+        usage: (.usage // null),
+        output: [
+          .output[]?
+          | select(.type == "message")
+          | {
+              type: "message",
+              role: (.role // "assistant"),
+              content: [
+                .content[]?
+                | if .type == "output_text" then {type: "output_text", text: .text}
+                  elif .type == "refusal" then {type: "refusal", refusal: "[REDACTED_REFUSAL]"}
+                  else empty
+                  end
+              ]
+            }
+          | select(.content | length > 0)
+        ],
+        reasoningOutputOmitted: true
+      }
+    ' "$raw_file" > "$sanitized"
+  fi
+  mkdir -p "$(dirname "$output")"
+  mv "$sanitized" "$output"
+  printf 'audit:response_artifact_sanitized output=%s reasoning_output_omitted=true\n' "$output"
 }
 
 command_build_dossier() {
@@ -559,12 +748,15 @@ command_build_dossier() {
 }
 
 command_build_ai_request() {
-  local model="" dossier="release-dossier.md" semver_rules=".github/workflows/semver-rules-override.txt" max_dossier_chars=900000 max_request_bytes="$DEFAULT_AI_REQUEST_MAX_BYTES" output="request.json" metadata_output="release-ai-request-metadata.json"
+  local model="" dossier="release-dossier.md" semver_rules=".github/workflows/semver-rules-override.txt" max_dossier_chars=900000 max_request_bytes="$DEFAULT_AI_REQUEST_MAX_BYTES" output="request.json" metadata_output="release-ai-request-metadata.json" last_release_url="https://github.com/ta4j/ta4j/releases" last_release_tag="none" last_release_date="none"
   while (($#)); do
     case "$1" in
       --model) require_value "$1" "${2:-}"; model="$2"; shift 2 ;;
       --dossier) require_value "$1" "${2:-}"; dossier="$2"; shift 2 ;;
       --semver-rules) require_value "$1" "${2:-}"; semver_rules="$2"; shift 2 ;;
+      --last-release-url) require_value "$1" "${2:-}"; last_release_url="$2"; shift 2 ;;
+      --last-release-tag) require_value "$1" "${2:-}"; last_release_tag="$2"; shift 2 ;;
+      --last-release-date) require_value "$1" "${2:-}"; last_release_date="$2"; shift 2 ;;
       --max-dossier-chars) require_value "$1" "${2:-}"; max_dossier_chars="$2"; shift 2 ;;
       --max-request-bytes) require_value "$1" "${2:-}"; max_request_bytes="$2"; shift 2 ;;
       --output) require_value "$1" "${2:-}"; output="$2"; shift 2 ;;
@@ -602,7 +794,7 @@ EOF
   fi
 
   request_tmp="$tmpdir/request.json"
-  build_ai_request_payload "$model" "$semver_file" "$prompt_dossier" "$prompt_profile" > "$request_tmp"
+  build_ai_request_payload "$model" "$semver_file" "$prompt_dossier" "$prompt_profile" "$last_release_url" "$last_release_tag" "$last_release_date" > "$request_tmp"
   full_request_size="$(file_size_bytes "$request_tmp")"
   local selected_diff_file
   selected_diff_file="$tmpdir/selected-diff.txt"
@@ -641,7 +833,7 @@ EOF
       candidate_request="$tmpdir/request-${compaction_level}.json"
       candidate_profile="compact-artifact-backed-v${compaction_level}"
       build_compact_dossier "$full_dossier" "$candidate_dossier" "${limits[$i]}" "${changelog_limits[$i]}" "${signals_limits[$i]}" "${diff_limits[$i]}"
-      build_ai_request_payload "$model" "$semver_file" "$candidate_dossier" "$candidate_profile" > "$candidate_request"
+      build_ai_request_payload "$model" "$semver_file" "$candidate_dossier" "$candidate_profile" "$last_release_url" "$last_release_tag" "$last_release_date" > "$candidate_request"
       candidate_size="$(file_size_bytes "$candidate_request")"
       if (( candidate_size <= max_request_bytes )); then
         prompt_dossier="$candidate_dossier"
@@ -656,7 +848,7 @@ EOF
       prompt_dossier="$tmpdir/compact-minimal.md"
       request_tmp="$tmpdir/request-minimal.json"
       build_compact_dossier "$dossier" "$prompt_dossier" 1 400 400 0
-      build_ai_request_payload "$model" "$semver_file" "$prompt_dossier" "$prompt_profile" > "$request_tmp"
+      build_ai_request_payload "$model" "$semver_file" "$prompt_dossier" "$prompt_profile" "$last_release_url" "$last_release_tag" "$last_release_date" > "$request_tmp"
       selected_diff_excerpt_chars=0
     fi
   fi
@@ -666,11 +858,17 @@ EOF
   jq -S -n \
     --arg generatedAt "$(iso_utc_now)" \
     --arg model "$model" \
+    --arg provider "openai" \
+    --arg endpoint "$OPENAI_RESPONSES_ENDPOINT" \
+    --arg reasoningEffort "$OPENAI_REASONING_EFFORT" \
     --arg semverRulesSource "$rules_source" \
     --arg promptProfile "$prompt_profile" \
     --arg fullDossierPath "$dossier" \
     --arg compactedBecause "$([[ "$compacted" == true ]] && printf 'full request exceeded transport budget')" \
     --arg metadataOutput "$metadata_output" \
+    --arg lastReleaseTag "$last_release_tag" \
+    --arg lastReleaseDate "$last_release_date" \
+    --arg lastReleaseUrl "$last_release_url" \
     --argjson schemaVersion "$AI_REQUEST_METADATA_SCHEMA_VERSION" \
     --argjson artifactBackedContext "$compacted" \
     --argjson fullDossierChars "$(file_size_bytes "$dossier")" \
@@ -687,8 +885,14 @@ EOF
       schemaVersion: $schemaVersion,
       generatedAt: $generatedAt,
       model: $model,
+      provider: $provider,
+      endpoint: $endpoint,
+      reasoningEffort: $reasoningEffort,
       semverRulesSource: $semverRulesSource,
       promptProfile: $promptProfile,
+      lastReleaseTag: $lastReleaseTag,
+      lastReleaseDate: $lastReleaseDate,
+      lastReleaseUrl: $lastReleaseUrl,
       artifactBackedContext: $artifactBackedContext,
       fullDossierPath: $fullDossierPath,
       fullDossierChars: $fullDossierChars,
@@ -709,8 +913,8 @@ EOF
     echo "::error::AI request JSON is ${request_size} bytes, above transport budget ${max_request_bytes} bytes." >&2
     return 1
   fi
-  printf 'audit:ai_request file=%s model=%s semver_rules_source=%s prompt_profile=%s request_json_size_bytes=%s max_request_bytes=%s\n' \
-    "$output" "$model" "$rules_source" "$prompt_profile" "$request_size" "$max_request_bytes"
+  printf 'audit:ai_request provider=openai endpoint=%s model=%s reasoning_effort=%s semver_rules_source=%s prompt_profile=%s request_json_size_bytes=%s max_request_bytes=%s\n' \
+    "$OPENAI_RESPONSES_ENDPOINT" "$model" "$OPENAI_REASONING_EFFORT" "$rules_source" "$prompt_profile" "$request_size" "$max_request_bytes"
   append_output "request_json_size_bytes" "$request_size"
   append_output "request_max_bytes" "$max_request_bytes"
   append_output "request_metadata_path" "$metadata_output"
@@ -772,11 +976,15 @@ parse_key_value_log_file() {
 }
 
 command_ai_transport_diagnostics() {
-  local ai_mode="full" model="" response_status="000" curl_exit_code="unknown" attempts="1" request_metadata="release-ai-request-metadata.json" release_audit="release-audit.json" curl_error="curl-error.log" curl_metrics="curl-metrics.log" response_headers="response-headers.txt" response="response.json" output="release-ai-transport-diagnostics.json" fallback_output="ai-content.txt"
+  local ai_mode="full" model="" provider="openai" endpoint="$OPENAI_RESPONSES_ENDPOINT" reasoning_effort="$OPENAI_REASONING_EFFORT" failure_reason="" response_status="000" curl_exit_code="unknown" attempts="1" request_metadata="release-ai-request-metadata.json" release_audit="release-audit.json" curl_error="curl-error.log" curl_metrics="curl-metrics.log" response_headers="response-headers.txt" response="response.json" output="release-ai-transport-diagnostics.json" fallback_output="ai-content.txt"
   while (($#)); do
     case "$1" in
       --ai-mode) require_value "$1" "${2:-}"; ai_mode="$2"; shift 2 ;;
       --model) require_value "$1" "${2:-}"; model="$2"; shift 2 ;;
+      --provider) require_value "$1" "${2:-}"; provider="$2"; shift 2 ;;
+      --endpoint) require_value "$1" "${2:-}"; endpoint="$2"; shift 2 ;;
+      --reasoning-effort) require_value "$1" "${2:-}"; reasoning_effort="$2"; shift 2 ;;
+      --failure-reason) require_value "$1" "${2:-}"; failure_reason="$2"; shift 2 ;;
       --response-status) require_value "$1" "${2:-}"; response_status="$2"; shift 2 ;;
       --curl-exit-code) require_value "$1" "${2:-}"; curl_exit_code="$2"; shift 2 ;;
       --attempts) require_value "$1" "${2:-}"; attempts="$2"; shift 2 ;;
@@ -797,11 +1005,12 @@ command_ai_transport_diagnostics() {
     classification="transport_failure_before_http_response"
     connection_closed_during="unknown_before_response"
   fi
-  if [[ "$curl_exit_code" == "18" ]]; then
+  if [[ -n "$failure_reason" ]]; then
+    classification="response_validation_failure"
+    reason="$(sanitize_untrusted_text "$failure_reason")"
+  elif [[ "$curl_exit_code" == "18" ]]; then
     classification="curl_partial_file_transport_close"
     connection_closed_during="response_read"
-  fi
-  if [[ "$curl_exit_code" == "18" ]]; then
     reason="AI response transfer closed before completion (curl exit ${curl_exit_code}, HTTP ${response_status})"
   elif [[ "$curl_exit_code" != "0" && "$curl_exit_code" != "unknown" ]]; then
     reason="AI transport failed with curl exit ${curl_exit_code} (HTTP ${response_status})"
@@ -822,7 +1031,9 @@ command_ai_transport_diagnostics() {
   parse_key_value_log_file "$curl_error" "$attempts_json"
   parse_key_value_log_file "$curl_metrics" "$metrics_json"
   headers_tail="$(tail_redacted_file "$response_headers" 80 8000)"
-  response_preview="$(tail_redacted_file "$response" 20 2000)"
+  response_preview="$(jq -c '{status: (.status // "unknown"), id: (.id // ""), model: (.model // ""), error: (if .error == null then null else {type: (.error.type // ""), code: (.error.code // ""), message: "[REDACTED_PROVIDER_ERROR]"} end), incomplete_details: (.incomplete_details // null)}' "$response" 2>/dev/null | head -c 2000 || true)"
+  local openai_request_id
+  openai_request_id="$(awk 'BEGIN { IGNORECASE=1 } tolower($1) == "x-request-id:" { sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit }' "$response_headers" 2>/dev/null || true)"
 
   jq -S -n \
     --arg generatedAt "$(iso_utc_now)" \
@@ -830,6 +1041,11 @@ command_ai_transport_diagnostics() {
     --arg connectionClosedDuring "$connection_closed_during" \
     --arg aiMode "$ai_mode" \
     --arg model "$model" \
+    --arg provider "$provider" \
+    --arg endpoint "$endpoint" \
+    --arg reasoningEffort "$reasoning_effort" \
+    --arg openaiRequestId "$openai_request_id" \
+    --arg failureReason "$reason" \
     --arg attempts "$attempts" \
     --arg responseStatus "$response_status" \
     --arg curlExitCode "$curl_exit_code" \
@@ -848,6 +1064,11 @@ command_ai_transport_diagnostics() {
       connectionClosedDuring: $connectionClosedDuring,
       aiMode: $aiMode,
       model: $model,
+      provider: $provider,
+      endpoint: $endpoint,
+      reasoningEffort: $reasoningEffort,
+      openaiRequestId: $openaiRequestId,
+      failureReason: $failureReason,
       attempts: $attempts,
       responseStatus: $responseStatus,
       curlExitCode: $curlExitCode,
@@ -861,7 +1082,7 @@ command_ai_transport_diagnostics() {
       recovery: [
         "Do not rerun billed aiMode=full blindly with the same request.",
         "Inspect release-ai-request-metadata.json and release-ai-transport-diagnostics.json from the audit artifact.",
-        "Use aiMode=probe to validate GitHub Models connectivity without sending the full release dossier.",
+        "Use aiMode=probe to validate OpenAI connectivity without sending the full release dossier.",
         "Retry aiMode=full only after request size, provider status, or scheduler compaction policy has been reviewed."
       ]
     }' > "$output"
@@ -877,7 +1098,7 @@ command_ai_transport_diagnostics() {
       warning: $warning,
       reason: $reason,
       evidence: [],
-      risks: ["GitHub Models transport failed before a usable release decision was returned"],
+      risks: ["OpenAI transport or response validation failed before a usable release decision was returned"],
       missing: ["Review " + $output + " before another billed full AI scheduler call"]
     }' > "$fallback_output"
   printf 'audit:ai_transport_diagnostics classification=%s status=%s curl_exit=%s response_bytes=%s output=%s\n' \
@@ -1476,7 +1697,12 @@ command_snapshot_publication() {
 }
 
 sha256_file() {
-  shasum -a 256 "$1" | awk '{print $1}'
+  # sha256sum ships with GNU coreutils and MSYS; shasum covers macOS.
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    shasum -a 256 "$1" | awk '{print $1}'
+  fi
 }
 
 resolved_snapshot_value() {
@@ -1500,15 +1726,83 @@ if snapshot_versions is not None:
 PY
 }
 
-snapshot_metadata_file() {
-  local artifact_directory="$1"
-  local metadata="$artifact_directory/maven-metadata-${SNAPSHOT_REPOSITORY_ID}.xml"
-  [[ -f "$metadata" ]] && printf '%s\n' "$metadata"
-  return 0
+snapshot_metadata_url() {
+  local repository_url="$1" artifact="$2" version="$3" cache_buster="$4"
+  printf '%s/org/ta4j/%s/%s/maven-metadata.xml?cacheBust=%s\n' \
+    "${repository_url%/}" "$artifact" "$version" "$cache_buster"
+}
+
+fetch_snapshot_metadata() {
+  local curl_command="$1" repository_url="$2" artifact="$3" version="$4" cache_buster="$5" timeout_seconds="$6" output="$7" error_output="$8"
+  local metadata_url
+  metadata_url="$(snapshot_metadata_url "$repository_url" "$artifact" "$version" "$cache_buster")"
+  "$curl_command" --fail --silent --show-error --location --max-redirs 5 \
+    --proto '=https' --proto-redir '=https' --max-time "$timeout_seconds" \
+    -H "Accept: application/xml" -H "User-Agent: ta4j-release-automation" \
+    "$metadata_url" > "$output" 2>"$error_output"
+}
+
+run_with_timeout() {
+  local timeout_seconds="$1"
+  shift
+  # Portable Bash watchdog: the GNU `timeout -s KILL` fast path was removed
+  # because macOS/BSD ship without a compatible timeout binary.
+  "$@" &
+
+  local pid=$!
+  local elapsed=0
+  while kill -0 "$pid" 2>/dev/null; do
+    if (( elapsed >= timeout_seconds )); then
+      kill -KILL "$pid" 2>/dev/null || true
+      wait "$pid" 2>/dev/null || true
+      return 124
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+  wait "$pid"
+}
+
+snapshot_consumption_remaining_seconds() {
+  local deadline_epoch="$1"
+  local remaining=$(( deadline_epoch - $(date +%s) ))
+  (( remaining > 0 )) && printf '%s\n' "$remaining" || printf '0\n'
+}
+
+xml_escape_text() {
+  python3 -c 'import html, sys; sys.stdout.write(html.escape(sys.stdin.read(), quote=True))'
+}
+
+write_snapshot_consumer_pom() {
+  local output="$1" repository_url="$2" parent_version="$3" core_version="$4" examples_version="$5"
+  local repository_url_xml
+  repository_url_xml="$(printf '%s' "$repository_url" | xml_escape_text)"
+  cat > "$output" <<EOF
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>org.ta4j.verify</groupId>
+  <artifactId>snapshot-consumer</artifactId>
+  <version>1.0.0</version>
+  <repositories>
+    <repository>
+      <id>${SNAPSHOT_REPOSITORY_ID}</id>
+      <url>${repository_url_xml}</url>
+      <releases><enabled>true</enabled></releases>
+      <snapshots><enabled>true</enabled><updatePolicy>always</updatePolicy></snapshots>
+    </repository>
+  </repositories>
+  <dependencies>
+    <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-parent</artifactId><version>${parent_version}</version><type>pom</type></dependency>
+    <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-core</artifactId><version>${core_version}</version></dependency>
+    <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-examples</artifactId><version>${examples_version}</version></dependency>
+  </dependencies>
+</project>
+EOF
 }
 
 command_snapshot_consumption() {
   local version="" maven_command="./mvnw" repository_url="$SNAPSHOT_REPOSITORY_URL" publisher_root="$PWD"
+  local curl_command="${RELEASE_HELPERS_CURL_COMMAND:-curl}"
   local max_attempts=20 retry_seconds=15 output="snapshot-consumption.json" github_output="" log="snapshot-consumption.log"
   while (($#)); do
     case "$1" in
@@ -1527,6 +1821,7 @@ command_snapshot_consumption() {
   [[ -n "$version" ]] || die "--version is required"
   [[ "$version" == *-SNAPSHOT ]] || die "snapshot consumption requires a -SNAPSHOT version: $version"
   [[ "$repository_url" == https://* ]] || die "--repository-url must use https"
+  [[ "$repository_url" != *\?* && "$repository_url" != *\#* ]] || die "--repository-url must not contain query or fragment components"
   [[ "$max_attempts" =~ ^[1-9][0-9]*$ ]] || die "--max-attempts must be a positive integer"
   [[ "$retry_seconds" =~ ^[0-9]+$ ]] || die "--retry-seconds must be a non-negative integer"
 
@@ -1536,6 +1831,12 @@ command_snapshot_consumption() {
     maven_command="$(cd "$(dirname "$maven_command")" && pwd -P)/$(basename "$maven_command")"
   fi
   [[ -x "$maven_command" ]] || die "Maven command is not executable: $maven_command"
+  if [[ "$curl_command" != */* ]]; then
+    curl_command="$(command -v "$curl_command" || true)"
+  elif [[ "$curl_command" != /* ]]; then
+    curl_command="$(cd "$(dirname "$curl_command")" && pwd -P)/$(basename "$curl_command")"
+  fi
+  [[ -x "$curl_command" ]] || die "curl command is not executable: $curl_command"
   publisher_root="$(cd "$publisher_root" && pwd -P)"
 
   local publisher_core="$publisher_root/ta4j-core/target/ta4j-core-${version}.jar"
@@ -1550,39 +1851,25 @@ command_snapshot_consumption() {
   raw_log="$tmpdir/maven.log"
   redacted_log="$tmpdir/maven-redacted.log"
   mkdir -p "$local_repo" "$(dirname "$output")" "$(dirname "$log")"
-  cat > "$consumer_pom" <<EOF
-<project xmlns="http://maven.apache.org/POM/4.0.0">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>org.ta4j.verify</groupId>
-  <artifactId>snapshot-consumer</artifactId>
-  <version>1.0.0</version>
-  <repositories>
-    <repository>
-      <id>${SNAPSHOT_REPOSITORY_ID}</id>
-      <url>${repository_url}</url>
-      <releases><enabled>false</enabled></releases>
-      <snapshots><enabled>true</enabled><updatePolicy>always</updatePolicy></snapshots>
-    </repository>
-  </repositories>
-  <dependencies>
-    <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-parent</artifactId><version>${version}</version><type>pom</type></dependency>
-    <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-core</artifactId><version>${version}</version></dependency>
-    <dependency><groupId>org.ta4j</groupId><artifactId>ta4j-examples</artifactId><version>${version}</version></dependency>
-  </dependencies>
-</project>
-EOF
 
   local publisher_core_sha publisher_examples_sha resolved_core resolved_examples resolved_core_sha="" resolved_examples_sha=""
-  local parent_metadata core_metadata examples_metadata resolved_parent_version="" resolved_core_version="" resolved_examples_version=""
-  local attempts=0 maven_consumable=false start_time elapsed_seconds=0
+  local parent_metadata="$tmpdir/ta4j-parent-metadata.xml" core_metadata="$tmpdir/ta4j-core-metadata.xml" examples_metadata="$tmpdir/ta4j-examples-metadata.xml"
+  local resolved_parent_version="" resolved_core_version="" resolved_examples_version="" metadata_error="" cache_buster=""
+  local snapshot_prefix="" timestamped_suffix="" resolved_candidate=""
+  local attempts=0 maven_consumable=false start_time elapsed_seconds=0 deadline_epoch=0 remaining_seconds=0 metadata_timeout=0 maven_timeout=0 sleep_seconds=0
+  local deadline_exhausted=false maven_status=0 metadata_artifact=""
   publisher_core_sha="$(sha256_file "$publisher_core")"
   publisher_examples_sha="$(sha256_file "$publisher_examples")"
-  resolved_core="$local_repo/org/ta4j/ta4j-core/${version}/ta4j-core-${version}.jar"
-  resolved_examples="$local_repo/org/ta4j/ta4j-examples/${version}/ta4j-examples-${version}.jar"
   start_time="$(date +%s)"
+  deadline_epoch=$(( start_time + SNAPSHOT_CONSUMPTION_DEADLINE_SECONDS ))
   : > "$raw_log"
 
   while (( attempts < max_attempts )); do
+    remaining_seconds="$(snapshot_consumption_remaining_seconds "$deadline_epoch")"
+    if (( remaining_seconds <= 0 )); then
+      deadline_exhausted=true
+      break
+    fi
     attempts=$((attempts + 1))
     resolved_parent_version=""
     resolved_core_version=""
@@ -1590,39 +1877,106 @@ EOF
     resolved_core_sha=""
     resolved_examples_sha=""
     rm -rf "$local_repo/org/ta4j"
+    rm -f "$parent_metadata" "$core_metadata" "$examples_metadata"
     printf 'attempt=%s/%s version=%s\n' "$attempts" "$max_attempts" "$version" >> "$raw_log"
-    if "$maven_command" -B -U -f "$consumer_pom" -Dmaven.repo.local="$local_repo" \
-      "org.apache.maven.plugins:maven-dependency-plugin:${MAVEN_DEPENDENCY_PLUGIN_VERSION}:resolve" >> "$raw_log" 2>&1; then
-      if [[ -s "$resolved_core" && -s "$resolved_examples" ]]; then
-        resolved_core_sha="$(sha256_file "$resolved_core")"
-        resolved_examples_sha="$(sha256_file "$resolved_examples")"
-        if [[ "$resolved_core_sha" == "$publisher_core_sha" && "$resolved_examples_sha" == "$publisher_examples_sha" ]]; then
-          maven_consumable=true
-          parent_metadata="$(snapshot_metadata_file "$local_repo/org/ta4j/ta4j-parent/${version}")"
-          core_metadata="$(snapshot_metadata_file "$local_repo/org/ta4j/ta4j-core/${version}")"
-          examples_metadata="$(snapshot_metadata_file "$local_repo/org/ta4j/ta4j-examples/${version}")"
-          resolved_parent_version="$(resolved_snapshot_value "$parent_metadata" 2>> "$raw_log" || true)"
-          resolved_core_version="$(resolved_snapshot_value "$core_metadata" 2>> "$raw_log" || true)"
-          resolved_examples_version="$(resolved_snapshot_value "$examples_metadata" 2>> "$raw_log" || true)"
-          if [[ -z "$resolved_parent_version" || -z "$resolved_core_version" || -z "$resolved_examples_version" ]]; then
-            maven_consumable=false
-            printf 'resolved snapshot metadata is missing timestamped parent/core/examples coordinates\n' >> "$raw_log"
-          else
+    cache_buster="$(date +%s)-${attempts}"
+    metadata_error=""
+    remaining_seconds="$(snapshot_consumption_remaining_seconds "$deadline_epoch")"
+    if (( remaining_seconds <= 0 )); then
+      deadline_exhausted=true
+      break
+    fi
+    for metadata_artifact in ta4j-parent ta4j-core ta4j-examples; do
+      remaining_seconds="$(snapshot_consumption_remaining_seconds "$deadline_epoch")"
+      if (( remaining_seconds <= 0 )); then
+        deadline_exhausted=true
+        break
+      fi
+      metadata_timeout=$(( remaining_seconds < 30 ? remaining_seconds : 30 ))
+      fetch_snapshot_metadata "$curl_command" "$repository_url" "$metadata_artifact" "$version" "$cache_buster" \
+        "$metadata_timeout" "$tmpdir/${metadata_artifact}-metadata.xml" "$tmpdir/${metadata_artifact}-metadata.err" \
+        || metadata_error="${metadata_error:+$metadata_error; }${metadata_artifact}: $(cat "$tmpdir/${metadata_artifact}-metadata.err")"
+    done
+    if [[ "$deadline_exhausted" == true ]]; then
+      break
+    fi
+    if [[ -n "$metadata_error" ]]; then
+      printf 'fresh metadata fetch failed cache_buster=%s error=%s\n' "$cache_buster" "$metadata_error" >> "$raw_log"
+    else
+      resolved_parent_version="$(resolved_snapshot_value "$parent_metadata" 2>> "$raw_log" || true)"
+      resolved_core_version="$(resolved_snapshot_value "$core_metadata" 2>> "$raw_log" || true)"
+      resolved_examples_version="$(resolved_snapshot_value "$examples_metadata" 2>> "$raw_log" || true)"
+      snapshot_prefix="${version%-SNAPSHOT}-"
+      for resolved_candidate in "$resolved_parent_version" "$resolved_core_version" "$resolved_examples_version"; do
+        if [[ -n "$resolved_candidate" ]]; then
+          if [[ "$resolved_candidate" != "$snapshot_prefix"* ]]; then
+            printf 'resolved coordinate does not match requested snapshot base: %s\n' "$resolved_candidate" >> "$raw_log"
+            resolved_parent_version=""
+            resolved_core_version=""
+            resolved_examples_version=""
             break
           fi
-        else
-          printf 'checksum mismatch core=%s/%s examples=%s/%s\n' \
-            "$resolved_core_sha" "$publisher_core_sha" "$resolved_examples_sha" "$publisher_examples_sha" >> "$raw_log"
+          timestamped_suffix="${resolved_candidate#"$snapshot_prefix"}"
+          if [[ ! "$timestamped_suffix" =~ ^[0-9]{8}\.[0-9]{6}-[0-9]+$ ]]; then
+            printf 'resolved coordinate is not timestamped for the requested snapshot: %s\n' "$resolved_candidate" >> "$raw_log"
+            resolved_parent_version=""
+            resolved_core_version=""
+            resolved_examples_version=""
+            break
+          fi
         fi
+      done
+      if [[ -z "$resolved_parent_version" || -z "$resolved_core_version" || -z "$resolved_examples_version" ]]; then
+        printf 'resolved snapshot metadata is missing timestamped parent/core/examples coordinates\n' >> "$raw_log"
       else
-        printf 'resolved snapshot artifacts are missing from the isolated local repository\n' >> "$raw_log"
+        write_snapshot_consumer_pom "$consumer_pom" "$repository_url" "$resolved_parent_version" "$resolved_core_version" "$resolved_examples_version"
+        resolved_core="$local_repo/org/ta4j/ta4j-core/${version}/ta4j-core-${resolved_core_version}.jar"
+        resolved_examples="$local_repo/org/ta4j/ta4j-examples/${version}/ta4j-examples-${resolved_examples_version}.jar"
+      fi
+      if [[ -n "$resolved_core_version" && -n "$resolved_examples_version" && -n "$resolved_parent_version" ]]; then
+        remaining_seconds="$(snapshot_consumption_remaining_seconds "$deadline_epoch")"
+        if (( remaining_seconds <= 0 )); then
+          deadline_exhausted=true
+        else
+          maven_timeout="$remaining_seconds"
+          if run_with_timeout "$maven_timeout" "$maven_command" -B -U -f "$consumer_pom" -Dmaven.repo.local="$local_repo" \
+            "org.apache.maven.plugins:maven-dependency-plugin:${MAVEN_DEPENDENCY_PLUGIN_VERSION}:resolve" >> "$raw_log" 2>&1; then
+            if [[ -s "$resolved_core" && -s "$resolved_examples" ]]; then
+              resolved_core_sha="$(sha256_file "$resolved_core")"
+              resolved_examples_sha="$(sha256_file "$resolved_examples")"
+              if [[ "$resolved_core_sha" == "$publisher_core_sha" && "$resolved_examples_sha" == "$publisher_examples_sha" ]]; then
+                maven_consumable=true
+                break
+              else
+                printf 'checksum mismatch core=%s/%s examples=%s/%s\n' \
+                  "$resolved_core_sha" "$publisher_core_sha" "$resolved_examples_sha" "$publisher_examples_sha" >> "$raw_log"
+              fi
+            else
+              printf 'resolved snapshot artifacts are missing from the isolated local repository\n' >> "$raw_log"
+            fi
+          else
+            maven_status=$?
+            if (( maven_status == 124 || maven_status == 137 )); then
+              deadline_exhausted=true
+              printf 'Maven snapshot resolution timed out with the five-minute deadline\n' >> "$raw_log"
+            fi
+          fi
+        fi
       fi
     fi
-    if (( attempts < max_attempts && retry_seconds > 0 )); then
-      sleep "$retry_seconds"
+    if [[ "$deadline_exhausted" == true ]]; then
+      break
+    fi
+    remaining_seconds="$(snapshot_consumption_remaining_seconds "$deadline_epoch")"
+    if (( attempts < max_attempts && retry_seconds > 0 && remaining_seconds > 0 )); then
+      sleep_seconds=$(( retry_seconds < remaining_seconds ? retry_seconds : remaining_seconds ))
+      sleep "$sleep_seconds"
     fi
   done
 
+  if [[ "$deadline_exhausted" == true ]]; then
+    printf 'snapshot consumption deadline exhausted after %s seconds\n' "$SNAPSHOT_CONSUMPTION_DEADLINE_SECONDS" >> "$raw_log"
+  fi
   elapsed_seconds=$(( $(date +%s) - start_time ))
   redact_log_text < "$raw_log" > "$redacted_log"
   copy_prefix_with_notice "$redacted_log" "$log" 200000 "[TRUNCATED: snapshot consumption log exceeded 200000 bytes]"
@@ -1636,10 +1990,11 @@ EOF
     --arg resolvedCoreSha256 "$resolved_core_sha" \
     --arg publisherExamplesSha256 "$publisher_examples_sha" \
     --arg resolvedExamplesSha256 "$resolved_examples_sha" \
+    --arg metadataError "$metadata_error" \
     --argjson attempts "$attempts" \
     --argjson elapsedSeconds "$elapsed_seconds" \
     --argjson mavenConsumable "$maven_consumable" \
-    '{version: $version, repository: $repository, resolvedParentVersion: $resolvedParentVersion, resolvedCoreVersion: $resolvedCoreVersion, resolvedExamplesVersion: $resolvedExamplesVersion, publisherCoreSha256: $publisherCoreSha256, resolvedCoreSha256: $resolvedCoreSha256, publisherExamplesSha256: $publisherExamplesSha256, resolvedExamplesSha256: $resolvedExamplesSha256, attempts: $attempts, elapsedSeconds: $elapsedSeconds, mavenConsumable: $mavenConsumable}' > "$output"
+    '{version: $version, repository: $repository, resolvedParentVersion: $resolvedParentVersion, resolvedCoreVersion: $resolvedCoreVersion, resolvedExamplesVersion: $resolvedExamplesVersion, publisherCoreSha256: $publisherCoreSha256, resolvedCoreSha256: $resolvedCoreSha256, publisherExamplesSha256: $publisherExamplesSha256, resolvedExamplesSha256: $resolvedExamplesSha256, metadataError: $metadataError, attempts: $attempts, elapsedSeconds: $elapsedSeconds, mavenConsumable: $mavenConsumable}' > "$output"
   append_output "maven_consumable" "$maven_consumable" "$github_output"
   append_output "resolved_parent_version" "$resolved_parent_version" "$github_output"
   append_output "resolved_core_version" "$resolved_core_version" "$github_output"
@@ -1693,9 +2048,12 @@ main() {
   fi
   shift
   case "$command" in
-    catalog-preflight) command_catalog_preflight "$@" ;;
+    model-preflight) command_model_preflight "$@" ;;
     build-dossier) command_build_dossier "$@" ;;
     build-ai-request) command_build_ai_request "$@" ;;
+    last-release-date) command_last_release_date "$@" ;;
+    extract-response-content) command_extract_response_content "$@" ;;
+    sanitize-response) command_sanitize_response_artifact "$@" ;;
     ai-transport-diagnostics) command_ai_transport_diagnostics "$@" ;;
     parse-decision) command_parse_decision "$@" ;;
     release-pr-review-plan) command_release_pr_review_plan "$@" ;;

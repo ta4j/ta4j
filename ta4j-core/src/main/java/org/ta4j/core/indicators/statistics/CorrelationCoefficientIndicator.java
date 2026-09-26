@@ -48,7 +48,7 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
      */
     public CorrelationCoefficientIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount,
             SampleType sampleType) {
-        super(indicator1);
+        super(indicator1.getBarSeries(), indicator1, indicator2);
         this.indicator1 = indicator1;
         this.indicator2 = indicator2;
         this.barCount = Math.max(barCount, 1);
@@ -57,7 +57,7 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
                 : VarianceIndicator.ofPopulation(indicator1, this.barCount);
         this.variance2 = this.sampleType.isSample() ? VarianceIndicator.ofSample(indicator2, this.barCount)
                 : VarianceIndicator.ofPopulation(indicator2, this.barCount);
-        this.covariance = new CovarianceIndicator(indicator1, indicator2, this.barCount);
+        this.covariance = new CovarianceIndicator(indicator1.getBarSeries(), indicator1, indicator2, this.barCount);
     }
 
     /**
@@ -92,7 +92,7 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         Num cov = covariance.getValue(index);
         if (sampleType.isSample()) {
-            final int startIndex = Math.max(0, index - barCount + 1);
+            final int startIndex = Math.max(Math.max(0, getBarSeries().getBeginIndex()), index - barCount + 1);
             final int numberOfObservations = index - startIndex + 1;
             if (numberOfObservations > 1) {
                 final var numFactory = getBarSeries().numFactory();

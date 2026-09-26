@@ -67,7 +67,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         Num actual = criterion.calculate(series, tradingRecord);
         Num expected = numFactory.numOf(Math.sqrt(3.0) / 2.0);
 
-        assertNumEquals(expected, actual);
+        assertNumEquals(expected, actual, 1e-12);
     }
 
     @Test

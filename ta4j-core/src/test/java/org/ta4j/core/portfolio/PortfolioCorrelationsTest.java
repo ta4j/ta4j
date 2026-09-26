@@ -24,6 +24,13 @@ import org.ta4j.core.num.Num;
 public class PortfolioCorrelationsTest {
 
     @Test
+    public void requiresAtLeastTwoAssets() {
+        PortfolioSeries single = new PortfolioSeries(series("ALPHA", Instant.parse("2026-01-01T00:00:00Z"), 1, 2));
+
+        assertThrows(IllegalArgumentException.class, () -> new PortfolioCorrelations(single));
+    }
+
+    @Test
     public void buildsClosePriceCorrelationMatrixMatchingPandasCorr() {
         Instant start = Instant.parse("2026-01-01T00:00:00Z");
         String alpha = "ALPHA";
