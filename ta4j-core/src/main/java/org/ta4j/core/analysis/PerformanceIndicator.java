@@ -153,7 +153,7 @@ public interface PerformanceIndicator extends Indicator<Num> {
         if (periods == 0) {
             return numFactory.zero();
         }
-        Num holdingCost = position.getHoldingCost(endIndex);
+        Num holdingCost = AnalysisPositionSupport.holdingCostThrough(position, endIndex);
         return holdingCost.dividedBy(numFactory.numOf(periods));
     }
 

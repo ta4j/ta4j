@@ -136,6 +136,34 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
     }
 
     @Test
+    public void riskFreeGrowthUsesBarTimesCapturedAtConstruction() {
+        var series = buildDailySeries(new double[] { 100d, 100d, 100d });
+        var annualRate = numFactory.numOf(0.1d);
+        var excessReturns = new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_ZERO,
+                new BaseTradingRecord());
+        var perBarRiskFree = Math.pow(1.0 + annualRate.doubleValue(),
+                Duration.ofDays(1).getSeconds() / TimeConstants.SECONDS_PER_YEAR);
+        var expected = (1.0d / (perBarRiskFree * perBarRiskFree)) - 1.0d;
+        assertEquals(expected, excessReturns.excessReturn(0, 2).doubleValue(), 1e-12);
+
+        // A live feed replaces the last bar with one ending a year later; the
+        // captured cash flow still describes the original bar, so the risk-free
+        // growth must too.
+        var lastBar = series.getLastBar();
+        series.addBar(series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(lastBar.getEndTime().plus(Duration.ofDays(365)))
+                .openPrice(100d)
+                .highPrice(100d)
+                .lowPrice(100d)
+                .closePrice(100d)
+                .volume(1)
+                .build(), true);
+
+        assertEquals(expected, excessReturns.excessReturn(0, 2).doubleValue(), 1e-12);
+    }
+
+    @Test
     public void openPositionHandlingControlsExcessReturnForOpenPositions() {
         var series = buildDailySeries(new double[] { 100d, 120d, 180d });
         var tradingRecord = new BaseTradingRecord();

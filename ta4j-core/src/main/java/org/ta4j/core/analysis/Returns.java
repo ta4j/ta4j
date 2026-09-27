@@ -359,7 +359,8 @@ public class Returns implements PerformanceIndicator {
     @Override
     public void calculatePosition(Position position, int finalIndex) {
         Num holdingCost = position.getEntry() == null ? null
-                : position.getHoldingCost(determineEndIndex(position, finalIndex, window.seriesEndIndex()));
+                : AnalysisPositionSupport.holdingCostThrough(position,
+                        determineEndIndex(position, finalIndex, window.seriesEndIndex()));
         calculatePosition(position, finalIndex, window, returnFactors, holdingCost);
     }
 

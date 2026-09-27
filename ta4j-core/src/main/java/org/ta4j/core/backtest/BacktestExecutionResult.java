@@ -174,6 +174,11 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
          * comparison.
          */
         private String changeSince(BarSeries source) {
+            if (bars.isEmpty()) {
+                // Nothing was captured, so appends (which also move an empty
+                // series' begin from -1) cannot invalidate the result.
+                return null;
+            }
             if (source.getRemovedBarsCount() > removedBarsCount) {
                 return "bars before index " + source.getRemovedBarsCount() + " were evicted";
             }

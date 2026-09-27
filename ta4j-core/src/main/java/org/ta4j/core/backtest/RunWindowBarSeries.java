@@ -65,15 +65,25 @@ final class RunWindowBarSeries implements BarSeries {
 
     @Override
     public int getBarCount() {
-        int hiddenBars = Math.max(0, delegate.getEndIndex() - windowEndIndex);
-        return Math.max(0, delegate.getBarCount() - hiddenBars);
+        return delegate.withReadLock(() -> {
+            int hiddenBars = Math.max(0, delegate.getEndIndex() - windowEndIndex);
+            return Math.max(0, delegate.getBarCount() - hiddenBars);
+        });
     }
 
+    /**
+     * Returns a snapshot of the bars inside the run window. The delegate's bars and
+     * removal count are read under one read lease so a concurrent append or
+     * eviction cannot shift the cut, and the result is copied so later appends
+     * never become visible through it.
+     */
     @Override
     public List<Bar> getBarData() {
-        List<Bar> bars = delegate.getBarData();
-        long visible = (long) windowEndIndex - delegate.getRemovedBarsCount() + 1L;
-        return bars.subList(0, (int) Math.max(0L, Math.min(bars.size(), visible)));
+        return delegate.withReadLock(() -> {
+            List<Bar> bars = delegate.getBarData();
+            long visible = (long) windowEndIndex - delegate.getRemovedBarsCount() + 1L;
+            return List.copyOf(bars.subList(0, (int) Math.max(0L, Math.min(bars.size(), visible))));
+        });
     }
 
     @Override

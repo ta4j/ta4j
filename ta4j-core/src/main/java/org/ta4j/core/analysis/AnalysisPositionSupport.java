@@ -101,17 +101,22 @@ final class AnalysisPositionSupport {
      * models are user code that may evaluate indicators, are computed with no lock
      * held; the curve is then built from bar data in a second short read scope
      * while the window's bars are still retained. Appended bars leave the captured
-     * window valid; if retention evicted part of it in between, capture repeats.
+     * window valid; if retention evicted part of it, or a revision-tracking series
+     * replaced or updated one of its bars in between, capture repeats.
      *
-     * @throws IllegalStateException if retention evicted the window during every
-     *                               attempt
+     * @throws IllegalStateException if the window was evicted or changed during
+     *                               every attempt
      */
     static <T> T materialize(PerformanceIndicator curve, BarSeries series, TradingRecord record, int startIndex,
             int requestedFinal, boolean useRecordEnd, boolean useSeriesEnd, boolean padToSeriesEnd,
             OpenPositionHandling handling, CurveBuilder<T> builder) {
         for (int attempt = 0; attempt < MAX_MATERIALIZE_ATTEMPTS; attempt++) {
-            Window window = series.withReadLock(() -> captureWindow(series, record, startIndex, requestedFinal,
-                    useRecordEnd, useSeriesEnd, padToSeriesEnd));
+            long[] revision = new long[1];
+            Window window = series.withReadLock(() -> {
+                revision[0] = series.getBarHistoryRevision();
+                return captureWindow(series, record, startIndex, requestedFinal, useRecordEnd, useSeriesEnd,
+                        padToSeriesEnd);
+            });
             List<Position> positions = positionsForAnalysis(record, window.finalIndex(), handling,
                     curve.getEquityCurveMode());
             Map<Position, Num> holdingCosts = new IdentityHashMap<>();
@@ -120,19 +125,57 @@ final class AnalysisPositionSupport {
                 if (entry != null && entry.getIndex() <= window.finalIndex()
                         && entry.getIndex() <= window.seriesEndIndex()) {
                     int endIndex = curve.determineEndIndex(position, window.finalIndex(), window.seriesEndIndex());
-                    holdingCosts.put(position, position.getHoldingCost(endIndex));
+                    holdingCosts.put(position, holdingCostThrough(position, endIndex));
                 }
             }
-            T built = series.withReadLock(() -> series.getBeginIndex() <= window.beginIndex()
-                    && series.getEndIndex() >= window.seriesEndIndex() ? builder.build(window, positions, holdingCosts)
-                            : null);
+            T built = series.withReadLock(() -> isRetainedUnchanged(series, window, revision[0])
+                    ? builder.build(window, positions, holdingCosts)
+                    : null);
             if (built != null) {
                 return built;
             }
         }
         throw new IllegalStateException(
-                "Bar series '" + series.getName() + "' evicted the analysis window during each of "
+                "Bar series '" + series.getName() + "' evicted or changed the analysis window during each of "
                         + MAX_MATERIALIZE_ATTEMPTS + " attempts; retry once retention is stable");
+    }
+
+    /**
+     * Checks, inside the series read scope, that the captured window's bars are
+     * still retained and, when the series tracks revisions, were not replaced or
+     * updated since {@code revision}; bars appended after the window are fine.
+     */
+    private static boolean isRetainedUnchanged(BarSeries series, Window window, long revision) {
+        if (series.getBeginIndex() > window.beginIndex() || series.getEndIndex() < window.seriesEndIndex()) {
+            return false;
+        }
+        if (revision < 0L || series.getBarHistoryRevision() == revision) {
+            return true;
+        }
+        int changedIndex = series.getBarSeriesChangeSnapshot(revision).earliestChangedIndex();
+        return changedIndex < 0 || changedIndex > window.seriesEndIndex();
+    }
+
+    /**
+     * Returns a position's holding cost accrued through {@code endIndex}. A
+     * position that closes after {@code endIndex} is priced as if still open there:
+     * cost models such as
+     * {@link org.ta4j.core.analysis.cost.LinearBorrowingCostModel} charge a closed
+     * position for its whole hold, which would leak carry from bars after the
+     * analysis window into it.
+     *
+     * @param position a position with an entry
+     * @param endIndex the last index whose carry is charged
+     * @return the holding cost through {@code endIndex}
+     */
+    static Num holdingCostThrough(Position position, int endIndex) {
+        Trade exit = position.getExit();
+        if (exit == null || exit.getIndex() <= endIndex) {
+            return position.getHoldingCost(endIndex);
+        }
+        Position openAtEnd = new Position(position.getEntry(), position.getTransactionCostModel(),
+                position.getHoldingCostModel());
+        return openAtEnd.getHoldingCost(endIndex);
     }
 
     /**

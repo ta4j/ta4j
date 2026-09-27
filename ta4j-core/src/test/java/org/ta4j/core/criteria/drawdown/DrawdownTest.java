@@ -132,6 +132,23 @@ public class DrawdownTest extends AbstractIndicatorTest<org.ta4j.core.Indicator<
     }
 
     @Test
+    public void absoluteLengthWithoutNewPeakIsMeasuredFromTheScannedWindowStart() {
+        // The P&L curve starts at zero at the record start and only falls, so
+        // the initial peak is never replaced: the length must count from the
+        // record start, not from the series begin two bars earlier.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 100d, 100d, 80d, 50d)
+                .build();
+        var record = new BaseTradingRecord(TradeType.BUY, 2, 4, new ZeroCostModel(), new ZeroCostModel());
+        record.operate(Trade.buyAt(2, series));
+        record.operate(Trade.sellAt(4, series));
+        CumulativePnL pnl = new CumulativePnL(series, record);
+
+        assertNumEquals(50, Drawdown.amount(series, record, pnl, false));
+        assertNumEquals(2, Drawdown.length(series, record, pnl, false));
+    }
+
+    @Test
     public void capturedCashFlowBoundsSurviveSeriesPruning() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 110d, 55d).build();
         var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));

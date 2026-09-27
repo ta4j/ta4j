@@ -214,6 +214,23 @@ public class BacktestExecutionResultTest {
     }
 
     @Test
+    public void verifyUnchangedAllowsBarsAppendedToAnEmptyBaseline() {
+        BarSeries source = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries baseline = BacktestExecutionResult.snapshot(source);
+
+        // The first append moves an empty series' begin from -1 to 0 without
+        // touching any captured bar.
+        source.addBar(source.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(Instant.parse("2024-01-02T00:00:00Z"))
+                .closePrice(10)
+                .build());
+        BacktestExecutionResult.verifyUnchanged(source, baseline);
+
+        assertTrue(baseline.isEmpty());
+    }
+
+    @Test
     public void verifyUnchangedRejectsReplacedOrUpdatedWindowBars() {
         BarSeries replaced = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
         BarSeries replacedBaseline = BacktestExecutionResult.snapshot(replaced);

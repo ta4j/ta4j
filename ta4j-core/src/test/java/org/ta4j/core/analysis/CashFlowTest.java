@@ -33,6 +33,7 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
+import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -590,6 +591,53 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
+    public void recapturesWhenAWindowBarIsReplacedWhileHoldingCostsAreEvaluated() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 110d, 120d).build();
+        Bar lastBar = series.getLastBar();
+        Bar replacement = series.barBuilder()
+                .timePeriod(lastBar.getTimePeriod())
+                .endTime(lastBar.getEndTime())
+                .closePrice(150d)
+                .build();
+        AtomicBoolean replaceOnNextCost = new AtomicBoolean(true);
+        // A user cost model priced from the close it reads; a feed replaces that
+        // bar right after the read, before the curve is built from bar data.
+        CostModel closeBackedCost = new CostModel() {
+            @Override
+            public Num calculate(Position position, int finalIndex) {
+                Num cost = series.getBar(finalIndex).getClosePrice().multipliedBy(numFactory.numOf(0.1d));
+                if (replaceOnNextCost.compareAndSet(true, false)) {
+                    series.addBar(replacement, true);
+                }
+                return cost;
+            }
+
+            @Override
+            public Num calculate(Position position) {
+                return calculate(position, position.getExit().getIndex());
+            }
+
+            @Override
+            public Num calculate(Num price, Num amount) {
+                return numFactory.zero();
+            }
+
+            @Override
+            public boolean equals(CostModel otherModel) {
+                return otherModel == this;
+            }
+        };
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), closeBackedCost);
+        record.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
+
+        CashFlow raced = new CashFlow(series, record);
+        CashFlow settled = new CashFlow(series, record);
+
+        assertNumEquals(150d, series.getBar(2).getClosePrice());
+        assertEquals(settled.stream().toList(), raced.stream().toList());
+    }
+
+    @Test
     public void markToMarketHoldingCostEndsAtRealizedEquity() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 100d, 100d).build();
         var position = new Position(Trade.buyAt(0, series), Trade.sellAt(2, series), new ZeroCostModel(),
@@ -622,6 +670,50 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         for (int index = 10; index <= 12; index++) {
             assertEquals(fullHistory.getValue(index), retained.getValue(index));
         }
+    }
+
+    @Test
+    public void positionExitingAfterTheWindowAccruesHoldingCostOnlyInsideIt() {
+        double[] closes = { 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d };
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("borrow-past-window", numFactory, 4,
+                closes);
+        CostModel borrowing = new LinearBorrowingCostModel(0.01d);
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.SELL, new ZeroCostModel(), borrowing);
+        record.enter(1, series.getBar(1).getClosePrice(), numFactory.one());
+        record.exit(8, series.getBar(8).getClosePrice(), numFactory.one());
+        // Oracle: the same short still open on a series truncated at the window end.
+        BarSeries truncated = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 100d, 100d, 100d, 100d)
+                .build();
+        BaseTradingRecord openAtWindowEnd = new BaseTradingRecord(TradeType.SELL, new ZeroCostModel(), borrowing);
+        openAtWindowEnd.enter(1, truncated.getBar(1).getClosePrice(), numFactory.one());
+        CashFlow expected = new CashFlow(truncated, openAtWindowEnd);
+
+        CashFlow materialized = new CashFlow(series, record);
+        CashFlow calculated = new CashFlow(series, new BaseTradingRecord());
+        calculated.calculatePosition(record.getPositions().getFirst(), 4);
+
+        assertTrue(expected.getValue(4).isLessThan(numFactory.one()));
+        for (int index = 0; index <= 4; index++) {
+            assertNumEquals(expected.getValue(index), materialized.getValue(index));
+            assertNumEquals(expected.getValue(index), calculated.getValue(index));
+        }
+    }
+
+    @Test
+    public void calculatePositionBumpsSameBarRatioOnlyWithinTheCapturedSeriesEnd() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 100d, 100d).build();
+        // Filled below the close on the captured last bar: marked at that close.
+        Position openOnLastBar = new Position(Trade.buyAt(2, numFactory.numOf(80d), numFactory.one()),
+                new ZeroCostModel(), new ZeroCostModel());
+        CashFlow cashFlow = new CashFlow(series, new BaseTradingRecord());
+
+        // A live feed appends a bar after the curve was captured.
+        series.barBuilder().closePrice(100d).add();
+        cashFlow.calculatePosition(openOnLastBar, 2);
+
+        assertEquals(2, cashFlow.getEndIndex());
+        assertNumEquals(1.25d, cashFlow.getValue(2));
     }
 
     @Test

@@ -98,7 +98,6 @@ public final class Drawdown {
         var numFactory = series.numFactory();
         var zero = numFactory.zero();
         var peak = zero;
-        var peakIndex = series.getBeginIndex();
         var maxDrawdown = zero;
         var maxLength = 0;
 
@@ -119,6 +118,9 @@ public final class Drawdown {
             end = tradingRecord == null ? series.getEndIndex() : tradingRecord.getEndIndex(series);
         }
 
+        // Lengths are measured from the scanned window's start, never from a
+        // live series begin that may have moved since the curve was captured.
+        int peakIndex = begin;
         if (begin <= end && (curve instanceof PerformanceIndicator || !series.isEmpty())) {
             for (long i = begin; i <= end; i++) {
                 int index = (int) i;
