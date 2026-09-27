@@ -24,6 +24,21 @@ import org.ta4j.core.num.NumFactory;
  * </p>
  *
  * <p>
+ * With few observations per asset the sample covariance is noisy, and the
+ * optimizer concentrates on assets whose variance is underestimated by chance.
+ * {@link #withCovarianceEstimator(CovarianceEstimator)} with
+ * {@link CovarianceEstimator#LEDOIT_WOLF} shrinks the estimate toward a scaled
+ * identity matrix, which usually yields more stable, better diversified weights
+ * out of sample:
+ * </p>
+ *
+ * <pre>{@code
+ * PortfolioAllocation allocation = new MinimumVarianceOptimizer(series, numFactory.numOf(0.25))
+ *         .withCovarianceEstimator(CovarianceEstimator.LEDOIT_WOLF)
+ *         .optimize();
+ * }</pre>
+ *
+ * <p>
  * Calculations remain in the portfolio {@link NumFactory}. A deterministic
  * projected-gradient solver avoids matrix inversion, so singular covariance
  * matrices are supported.
@@ -39,6 +54,34 @@ public final class MinimumVarianceOptimizer {
     private final int index;
     private final int barCount;
     private final Num maximumAssetWeight;
+    private final CovarianceEstimator covarianceEstimator;
+
+    /**
+     * How the optimizer estimates the return covariance matrix.
+     *
+     * @since 0.25.1
+     */
+    public enum CovarianceEstimator {
+
+        /**
+         * Population sample covariance of the window's simple returns. Unbiased in
+         * large samples, but noisy when the window is short relative to the asset
+         * count.
+         *
+         * @since 0.25.1
+         */
+        SAMPLE,
+
+        /**
+         * Ledoit-Wolf (2004) shrinkage of the sample covariance toward {@code mu * I},
+         * where {@code mu} is the average sample variance. The shrinkage intensity is
+         * estimated from the data to minimize expected squared error, matching
+         * scikit-learn's {@code LedoitWolf} estimator.
+         *
+         * @since 0.25.1
+         */
+        LEDOIT_WOLF
+    }
 
     /**
      * Creates an uncapped optimizer over all available simple returns.
@@ -95,6 +138,27 @@ public final class MinimumVarianceOptimizer {
         this.index = index;
         this.barCount = barCount;
         this.maximumAssetWeight = normalizeMaximumWeight(maximumAssetWeight);
+        this.covarianceEstimator = CovarianceEstimator.SAMPLE;
+    }
+
+    private MinimumVarianceOptimizer(MinimumVarianceOptimizer source, CovarianceEstimator covarianceEstimator) {
+        this.series = source.series;
+        this.index = source.index;
+        this.barCount = source.barCount;
+        this.maximumAssetWeight = source.maximumAssetWeight;
+        this.covarianceEstimator = covarianceEstimator;
+    }
+
+    /**
+     * Returns an optimizer with the same window and cap that estimates covariance
+     * with {@code estimator}. The default is {@link CovarianceEstimator#SAMPLE}.
+     *
+     * @param estimator covariance estimator
+     * @return optimizer using {@code estimator}
+     * @since 0.25.1
+     */
+    public MinimumVarianceOptimizer withCovarianceEstimator(CovarianceEstimator estimator) {
+        return new MinimumVarianceOptimizer(this, Objects.requireNonNull(estimator, "estimator"));
     }
 
     /**
@@ -130,8 +194,12 @@ public final class MinimumVarianceOptimizer {
         return normalized;
     }
 
-    /** Population covariance of one-bar simple returns over the window. */
-    private Num[][] covarianceMatrix() {
+    /**
+     * Covariance of one-bar simple returns over the window: the population sample
+     * covariance, shrunk when the estimator is
+     * {@link CovarianceEstimator#LEDOIT_WOLF}.
+     */
+    Num[][] covarianceMatrix() {
         List<String> assets = series.getAssets();
         int assetCount = assets.size();
         NumFactory numFactory = series.numFactory();
@@ -178,7 +246,61 @@ public final class MinimumVarianceOptimizer {
                 covariance[column][row] = value;
             }
         }
+        if (covarianceEstimator == CovarianceEstimator.LEDOIT_WOLF) {
+            shrinkTowardScaledIdentity(covariance, deviations);
+        }
         return covariance;
+    }
+
+    /**
+     * Ledoit and Wolf (2004), "A well-conditioned estimator for large-dimensional
+     * covariance matrices". With p assets, n centered observations x_k, sample
+     * covariance S and mu = trace(S) / p, the estimated intensity is min(beta,
+     * delta) / delta, where delta = ||S - mu I||^2 / p and beta = (sum_k ||x_k||^4
+     * / n - ||S||^2) / (p n), using Frobenius norms.
+     */
+    private void shrinkTowardScaledIdentity(Num[][] covariance, Num[][] deviations) {
+        NumFactory numFactory = series.numFactory();
+        int assetCount = covariance.length;
+        Num assets = numFactory.numOf(assetCount);
+        Num observations = numFactory.numOf(deviations.length);
+
+        Num trace = numFactory.zero();
+        Num squaredNorm = numFactory.zero();
+        for (int row = 0; row < assetCount; row++) {
+            trace = trace.plus(covariance[row][row]);
+            for (int column = 0; column < assetCount; column++) {
+                squaredNorm = squaredNorm.plus(covariance[row][column].multipliedBy(covariance[row][column]));
+            }
+        }
+        Num fourthMoment = numFactory.zero();
+        for (Num[] observation : deviations) {
+            Num observationNorm = numFactory.zero();
+            for (Num value : observation) {
+                observationNorm = observationNorm.plus(value.multipliedBy(value));
+            }
+            fourthMoment = fourthMoment.plus(observationNorm.multipliedBy(observationNorm));
+        }
+
+        // ||S - mu I||^2 = ||S||^2 - trace(S)^2 / p.
+        Num delta = squaredNorm.minus(trace.multipliedBy(trace).dividedBy(assets)).dividedBy(assets);
+        if (!delta.isPositive()) {
+            return; // S is already a multiple of the identity.
+        }
+        Num beta = fourthMoment.dividedBy(observations)
+                .minus(squaredNorm)
+                .dividedBy(assets.multipliedBy(observations))
+                .max(numFactory.zero())
+                .min(delta);
+        Num shrinkage = beta.dividedBy(delta);
+        Num retained = numFactory.one().minus(shrinkage);
+        Num target = shrinkage.multipliedBy(trace.dividedBy(assets));
+        for (int row = 0; row < assetCount; row++) {
+            for (int column = 0; column < assetCount; column++) {
+                covariance[row][column] = covariance[row][column].multipliedBy(retained);
+            }
+            covariance[row][row] = covariance[row][row].plus(target);
+        }
     }
 
     /**

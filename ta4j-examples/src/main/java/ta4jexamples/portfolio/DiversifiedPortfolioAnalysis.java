@@ -17,6 +17,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.analysis.WeightedValue;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.portfolio.MinimumVarianceOptimizer;
+import org.ta4j.core.portfolio.MinimumVarianceOptimizer.CovarianceEstimator;
 import org.ta4j.core.portfolio.PortfolioAllocation;
 import org.ta4j.core.portfolio.PortfolioCorrelations;
 import org.ta4j.core.portfolio.PortfolioCorrelations.CorrelationMatrix;
@@ -57,9 +58,16 @@ public final class DiversifiedPortfolioAnalysis {
             equalInputs.add(new WeightedValue<>(asset, series.numFactory().one()));
         }
         PortfolioAllocation equalWeight = new PortfolioAllocation(equalInputs, series.numFactory());
-        PortfolioAllocation minimumVariance = new MinimumVarianceOptimizer(series).optimize();
+        // A year-to-date window has few observations per asset, so shrink the
+        // covariance
+        // estimate before optimizing; the raw sample estimate over-concentrates.
+        PortfolioAllocation minimumVariance = new MinimumVarianceOptimizer(series)
+                .withCovarianceEstimator(CovarianceEstimator.LEDOIT_WOLF)
+                .optimize();
         Num maximumAssetWeight = series.numFactory().numOf(0.25);
-        PortfolioAllocation cappedMinimumVariance = new MinimumVarianceOptimizer(series, maximumAssetWeight).optimize();
+        PortfolioAllocation cappedMinimumVariance = new MinimumVarianceOptimizer(series, maximumAssetWeight)
+                .withCovarianceEstimator(CovarianceEstimator.LEDOIT_WOLF)
+                .optimize();
 
         PortfolioAnalysisReport.write(arguments.outputDirectory(), series, priceMatrix, returnMatrix, equalWeight,
                 minimumVariance, cappedMinimumVariance, maximumAssetWeight, arguments.aiAnalysisFile());

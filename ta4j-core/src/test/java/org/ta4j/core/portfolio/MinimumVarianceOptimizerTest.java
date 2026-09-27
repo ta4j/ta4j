@@ -101,6 +101,64 @@ public class MinimumVarianceOptimizerTest {
     }
 
     @Test
+    public void ledoitWolfMatchesScikitLearnAndDiversifiesShortWindows() {
+        for (NumFactory numFactory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            PortfolioSeries series = shortWindowSeries(numFactory);
+            MinimumVarianceOptimizer sample = new MinimumVarianceOptimizer(series);
+            MinimumVarianceOptimizer shrunk = sample
+                    .withCovarianceEstimator(MinimumVarianceOptimizer.CovarianceEstimator.LEDOIT_WOLF);
+
+            // sklearn.covariance.LedoitWolf().fit(returns).covariance_ (shrinkage
+            // 0.10631429193176394).
+            double[][] expected = {
+                    { 3.046347632177808e-4, 3.8478231678591994e-4, -1.8687352931656933e-4, 6.359082257700359e-4,
+                            6.974182077110434e-5 },
+                    { 3.8478231678591994e-4, 6.898259479693941e-4, -3.007257124887523e-4, 1.0291400191776844e-3,
+                            1.1277304805115729e-4 },
+                    { -1.8687352931656933e-4, -3.007257124887523e-4, 2.7776001146416235e-4, -5.01397411988546e-4,
+                            -5.6500842315157095e-5 },
+                    { 6.359082257700359e-4, 1.0291400191776844e-3, -5.01397411988546e-4, 1.7728620562621155e-3,
+                            1.8650943472134682e-4 },
+                    { 6.974182077110434e-5, 1.1277304805115729e-4, -5.6500842315157095e-5, 1.8650943472134682e-4,
+                            8.708640681416195e-5 } };
+            Num[][] covariance = shrunk.covarianceMatrix();
+            for (int row = 0; row < expected.length; row++) {
+                for (int column = 0; column < expected.length; column++) {
+                    assertEquals(expected[row][column], covariance[row][column].doubleValue(), 1e-15);
+                }
+            }
+
+            // scipy.optimize SLSQP on the shrunk covariance, uncapped and capped at 35%.
+            assertWeights(shrunk.optimize(), 0.203832142, 0.023694976, 0.362084844, 0, 0.410388038);
+            assertWeights(new MinimumVarianceOptimizer(series, numFactory.numOf(0.35))
+                    .withCovarianceEstimator(MinimumVarianceOptimizer.CovarianceEstimator.LEDOIT_WOLF)
+                    .optimize(), 0.296695947, 0.003304053, 0.35, 0, 0.35);
+            // The sample estimate concentrates on two assets.
+            assertWeights(sample.optimize(), 0, 0, 0.223381106, 0, 0.776618894);
+            assertEquals(sample.optimize().getTargetWeights(),
+                    sample.withCovarianceEstimator(MinimumVarianceOptimizer.CovarianceEstimator.SAMPLE)
+                            .optimize()
+                            .getTargetWeights());
+        }
+        assertThrows(NullPointerException.class,
+                () -> new MinimumVarianceOptimizer(shortWindowSeries(DoubleNumFactory.getInstance()))
+                        .withCovarianceEstimator(null));
+    }
+
+    @Test
+    public void ledoitWolfLeavesZeroVarianceWindowsAtEqualWeight() {
+        PortfolioSeries flat = new PortfolioSeries(series("FLAT_A", DoubleNumFactory.getInstance(), 100, 100, 100),
+                series("FLAT_B", DoubleNumFactory.getInstance(), 50, 50, 50));
+
+        PortfolioAllocation allocation = new MinimumVarianceOptimizer(flat)
+                .withCovarianceEstimator(MinimumVarianceOptimizer.CovarianceEstimator.LEDOIT_WOLF)
+                .optimize();
+
+        assertNumEquals(0.5, allocation.getTargetWeight("FLAT_A"));
+        assertNumEquals(0.5, allocation.getTargetWeight("FLAT_B"));
+    }
+
+    @Test
     public void handlesSingleAssetAndZeroVarianceWindows() {
         NumFactory numFactory = DoubleNumFactory.getInstance();
         PortfolioSeries single = new PortfolioSeries(series("ONLY", numFactory, 100, 101, 99, 102));
@@ -169,6 +227,22 @@ public class MinimumVarianceOptimizerTest {
             sum += (first[index] - firstMean) * (second[index] - secondMean);
         }
         return sum / first.length;
+    }
+
+    private static void assertWeights(PortfolioAllocation allocation, double... expected) {
+        List<Num> weights = new ArrayList<>(allocation.getTargetWeights().values());
+        for (int asset = 0; asset < expected.length; asset++) {
+            assertEquals(expected[asset], weights.get(asset).doubleValue(), 1e-6);
+        }
+    }
+
+    /** Five assets with six returns each: short enough for shrinkage to matter. */
+    private static PortfolioSeries shortWindowSeries(NumFactory numFactory) {
+        return new PortfolioSeries(series("A", numFactory, 100, 101, 99.5, 102, 103, 101.5, 104),
+                series("B", numFactory, 50, 50.8, 49.6, 51.5, 52.3, 51.0, 53.1),
+                series("C", numFactory, 80, 79.2, 80.5, 78.9, 80.1, 81.0, 79.6),
+                series("D", numFactory, 20, 20.6, 19.7, 20.9, 21.4, 20.5, 21.8),
+                series("E", numFactory, 120, 120.4, 119.9, 120.8, 121.1, 120.6, 121.5));
     }
 
     /**
