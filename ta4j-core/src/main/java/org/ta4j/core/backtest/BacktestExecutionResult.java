@@ -149,32 +149,35 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
          * change values without moving the revision.
          */
         private String changeSince(BarSeries source) {
-            if (bars.isEmpty()) {
-                // Nothing was captured, so appends (which also move an empty
-                // series' begin from -1) cannot invalidate the result.
+            // Runs never read outside the logical window, so raw bars retained
+            // before its begin or after its end may change freely.
+            int firstIndex = Math.max(beginIndex, removedBarsCount);
+            if (bars.isEmpty() || endIndex < firstIndex) {
+                // Nothing inside the window was captured, so appends (which also
+                // move an empty series' begin from -1) cannot invalidate the result.
                 return null;
             }
-            if (source.getRemovedBarsCount() > removedBarsCount) {
+            if (source.getRemovedBarsCount() > firstIndex) {
                 return "bars before index " + source.getRemovedBarsCount() + " were evicted";
             }
-            if (source.getBeginIndex() > beginIndex) {
+            if (source.getBeginIndex() > firstIndex) {
                 return "the series begin moved to index " + source.getBeginIndex();
             }
-            long rawEndIndex = (long) removedBarsCount + bars.size() - 1L;
             long sourceRevision = source.getBarHistoryRevision();
             if (revision >= 0L && sourceRevision >= 0L && sourceRevision != revision) {
                 int changedIndex = source.getBarSeriesChangeSnapshot(revision).earliestChangedIndex();
-                if (changedIndex >= 0 && changedIndex <= rawEndIndex) {
+                if (changedIndex >= firstIndex && changedIndex <= endIndex) {
                     return "bar " + changedIndex + " was replaced or updated";
                 }
             }
             List<Bar> sourceBars = source.getBarData();
-            if ((long) source.getRemovedBarsCount() + sourceBars.size() - 1L < rawEndIndex) {
-                return "bars after index " + (source.getRemovedBarsCount() + sourceBars.size() - 1) + " were removed";
+            int sourceRemoved = source.getRemovedBarsCount();
+            if ((long) sourceRemoved + sourceBars.size() - 1L < endIndex) {
+                return "bars after index " + (sourceRemoved + sourceBars.size() - 1) + " were removed";
             }
-            for (int i = 0; i < bars.size(); i++) {
-                if (!sameBar(bars.get(i), sourceBars.get(removedBarsCount + i - source.getRemovedBarsCount()))) {
-                    return "bar " + (removedBarsCount + i) + " was replaced or updated";
+            for (int index = firstIndex; index <= endIndex; index++) {
+                if (!sameBar(bars.get(index - removedBarsCount), sourceBars.get(index - sourceRemoved))) {
+                    return "bar " + index + " was replaced or updated";
                 }
             }
             return null;

@@ -570,4 +570,16 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         assertEquals(List.of(numFactory.zero(), numFactory.numOf(10)), pnl.stream().toList());
         assertEquals(1, pnl.getEndIndex());
     }
+
+    @Test
+    public void neverPricesHoldingCostOfPositionsOutsideTheWindow() {
+        BarSeries series = OutOfWindowPositions.series(numFactory);
+        List<Num> flat = OutOfWindowPositions.values(new CumulativePnL(series, new BaseTradingRecord()));
+
+        CumulativePnL curve = new CumulativePnL(series, OutOfWindowPositions.closedBeforeTheWindow(numFactory));
+        assertEquals(flat, OutOfWindowPositions.values(curve));
+
+        OutOfWindowPositions.calculateAll(curve);
+        assertEquals(flat, OutOfWindowPositions.values(curve));
+    }
 }

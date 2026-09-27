@@ -45,6 +45,9 @@
 - Omega counts a bounded record's first bar when a position is marked there while still open, not only when one exits there.
 - Analysis curves retry their capture when a bar inside their window is replaced or changes its close while holding costs are evaluated, instead of mixing costs from the old bar with prices from the new one. Closes are compared by value, so custom `Bar` classes and series without revision tracking are covered too. `ExcessReturns` (and so Sharpe and Sortino) captures bar times before building its curves and verifies afterwards that the bars did not change, instead of reading times from the live series later.
 - A backtest that started on an empty series no longer fails when bars are appended during the run.
+- Backtest verification checks only the logical window, so raw bars a constrained series retains outside it may change without failing a backtest that never read them.
+- `CalmarRatioCriterion` captures bar times before building its cash flow and retries if a bar at either end changed its time meanwhile, instead of annualizing with times from a different bar history than its returns. `InvestedInterval` reads only the series bounds under the read lock and traverses the trading record after releasing it.
+- `ReturnOverMaxDrawdownCriterion` returns its neutral value for a null trading record again instead of throwing, like Calmar and Omega. Drawdowns skip a curve whose window is empty (`[-1, -1]`), and the curves check a position's range before evaluating its holding-cost model.
 - Drawdown lengths are measured from the scanned window's start rather than from a live series begin that may have moved since the curve was captured.
 
 ## 0.25.0 (2026-09-07)

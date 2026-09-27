@@ -1066,4 +1066,16 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         assertNumEquals(1, cashFlow.getValue(Integer.MAX_VALUE));
     }
+
+    @Test
+    public void neverPricesHoldingCostOfPositionsOutsideTheWindow() {
+        BarSeries series = OutOfWindowPositions.series(numFactory);
+        List<Num> flat = OutOfWindowPositions.values(new CashFlow(series, new BaseTradingRecord()));
+
+        CashFlow curve = new CashFlow(series, OutOfWindowPositions.closedBeforeTheWindow(numFactory));
+        assertEquals(flat, OutOfWindowPositions.values(curve));
+
+        OutOfWindowPositions.calculateAll(curve);
+        assertEquals(flat, OutOfWindowPositions.values(curve));
+    }
 }

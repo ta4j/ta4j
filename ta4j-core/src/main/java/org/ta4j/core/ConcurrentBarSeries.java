@@ -38,7 +38,14 @@ import java.util.Iterator;
  * For real-time data feeds, prefer {@link #ingestTrade(Instant, Num, Num)} and
  * {@link #ingestTrade(Instant, Number, Number)} to let the configured
  * {@link BarBuilder} handle bar rollovers. Direct bar mutations remain
- * available for reconciliation and data correction workflows.
+ * available for reconciliation and data correction workflows. A retained bar
+ * mutated directly (for example {@code bar.addPrice(...)}) changes its fields
+ * before the series publishes the change under its write lock, so a concurrent
+ * reader may observe the new values under the old revision until the next
+ * query. Update the last bar through {@link #addPrice(Num)} or
+ * {@link #addTrade(Num, Num)}, and correct any bar with
+ * {@link #replaceBar(int, Bar)}, when readers must never see a bar change
+ * without its revision.
  *
  * <p>
  * Java serialization preserves bar data, the {@link NumFactory}, and the

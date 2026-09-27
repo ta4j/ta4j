@@ -193,6 +193,17 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void nullTradingRecordReturnsTheRepresentationNeutralValue() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 90, 120).build();
+        TradingRecord noRecord = null;
+
+        assertNumEquals(numFactory.zero(),
+                new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL).calculate(series, noRecord));
+        assertNumEquals(numFactory.one(),
+                new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.MULTIPLICATIVE).calculate(series, noRecord));
+    }
+
+    @Test
     public void includesOpenPositionWhenMarkToMarket() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 90).build();
         var tradingRecord = new BaseTradingRecord();

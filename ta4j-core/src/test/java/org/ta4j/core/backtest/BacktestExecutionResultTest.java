@@ -250,6 +250,27 @@ public class BacktestExecutionResultTest {
     }
 
     @Test
+    public void verifyUnchangedIgnoresRawBarsOutsideTheLogicalWindow() {
+        BarSeries trailing = ConstrainedSeriesSupport.trailingConstrainedSeries("hidden-trailing", numFactory, 1, 10d,
+                20d, 30d);
+        BarSeries trailingBaseline = BacktestExecutionResult.snapshot(trailing);
+        BarSeries leading = ConstrainedSeriesSupport.offsetSeries("hidden-leading", numFactory, 1, 2, 0, 10d, 20d, 30d);
+        BarSeries leadingBaseline = BacktestExecutionResult.snapshot(leading);
+
+        // Runs never read the raw bars retained after the logical end or before
+        // the logical begin, so their changes cannot invalidate the results.
+        trailing.getBar(2).addPrice(numFactory.numOf(35));
+        leading.getBar(0).addPrice(numFactory.numOf(15));
+        BacktestExecutionResult.verifyUnchanged(trailing, trailingBaseline);
+        BacktestExecutionResult.verifyUnchanged(leading, leadingBaseline);
+
+        trailing.getBar(1).addPrice(numFactory.numOf(25));
+        IllegalStateException change = assertThrows(IllegalStateException.class,
+                () -> BacktestExecutionResult.verifyUnchanged(trailing, trailingBaseline));
+        assertTrue(change.getMessage(), change.getMessage().contains("bar 1 was replaced or updated"));
+    }
+
+    @Test
     public void verifyUnchangedRejectsEvictedWindowBars() {
         BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
         source.setMaximumBarCount(3);

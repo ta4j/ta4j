@@ -16,6 +16,7 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.utils.BarSeriesUtils;
 
+import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -163,7 +164,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
             }
         }
         throw new IllegalStateException("Bar series '" + series.getName()
-                + "' evicted the analysis window during each of " + MAX_ATTEMPTS + " attempts");
+                + "' evicted or changed the analysis window during each of " + MAX_ATTEMPTS + " attempts");
     }
 
     @Override
@@ -177,12 +178,15 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
     }
 
     /**
-     * Returns the ratio, or {@code null} when retention evicted the cash flow's
-     * first bar before its time could be read.
+     * Returns the ratio, or {@code null} when a bar at either end of the cash flow
+     * was evicted or given a different time after the analysis started.
      */
     private Num calculateTradingRecord(BarSeries series, TradingRecord tradingRecord) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
+        // Bar times are captured before the curve so they can be verified against
+        // it afterwards: annualizing reads nothing else from the series.
+        EndTimes endTimes = series.withReadLock(() -> EndTimes.capture(series));
         CashFlow cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
         Integer explicitStartIndex = tradingRecord.getStartIndex();
         int beginIndex = explicitStartIndex == null ? cashFlow.getBeginIndex()
@@ -192,7 +196,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
             return zero;
         }
 
-        Num annualizedReturn = annualizedReturn(series, cashFlow, beginIndex, endIndex);
+        Num annualizedReturn = annualizedReturn(series, cashFlow, endTimes, beginIndex, endIndex);
         if (annualizedReturn == null) {
             return null;
         }
@@ -203,12 +207,14 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         return toRepresentation(annualizedReturn.dividedBy(maximumDrawdown));
     }
 
-    private Num annualizedReturn(BarSeries series, CashFlow cashFlow, int beginIndex, int endIndex) {
+    private Num annualizedReturn(BarSeries series, CashFlow cashFlow, EndTimes endTimes, int beginIndex, int endIndex) {
         Num one = series.numFactory().one();
-        // Bar times are read in a short, bar-only scope while the curve's first bar
-        // is still retained; a series that evicted it meanwhile is analysed again.
-        Num years = series.withReadLock(
-                () -> series.getBeginIndex() <= beginIndex ? BarSeriesUtils.deltaYears(series, beginIndex, endIndex)
+        // The captured times are used only if the series still holds them at both
+        // ends of the curve; a bar replaced, or evicted, since they were captured
+        // may disagree with the curve, so the analysis runs again.
+        Num years = series
+                .withReadLock(() -> endTimes.isCurrentAt(series, beginIndex) && endTimes.isCurrentAt(series, endIndex)
+                        ? BarSeriesUtils.deltaYears(endTimes.at(beginIndex), endTimes.at(endIndex), series.numFactory())
                         : null);
         if (years == null) {
             return null;
@@ -235,5 +241,40 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
             return NaN.NaN;
         }
         return returnRepresentation.toRepresentationFromRateOfReturn(value);
+    }
+
+    /**
+     * End times of the bars retained when an analysis started.
+     *
+     * @param beginIndex the index of the first captured time
+     * @param times      the captured end times
+     */
+    private record EndTimes(int beginIndex, Instant[] times) {
+
+        /** Captures the retained bars' end times; runs inside the series read scope. */
+        static EndTimes capture(BarSeries series) {
+            if (series.isEmpty()) {
+                return new EndTimes(0, new Instant[0]);
+            }
+            int beginIndex = series.getBeginIndex();
+            Instant[] times = new Instant[series.getEndIndex() - beginIndex + 1];
+            for (int offset = 0; offset < times.length; offset++) {
+                times[offset] = series.getBar(beginIndex + offset).getEndTime();
+            }
+            return new EndTimes(beginIndex, times);
+        }
+
+        Instant at(int index) {
+            return times[index - beginIndex];
+        }
+
+        /**
+         * @return whether {@code index} was captured and the series still retains it
+         *         with the same end time; runs inside the series read scope
+         */
+        boolean isCurrentAt(BarSeries series, int index) {
+            return index >= beginIndex && index - beginIndex < times.length && index >= series.getBeginIndex()
+                    && index <= series.getEndIndex() && at(index).equals(series.getBar(index).getEndTime());
+        }
     }
 }

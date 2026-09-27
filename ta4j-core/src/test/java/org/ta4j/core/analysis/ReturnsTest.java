@@ -15,6 +15,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.math.MathContext;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.List;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ConstrainedSeriesSupport;
@@ -666,5 +667,17 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertEquals(1, rolling.getBeginIndex());
         assertTrue(returns.getRawValues().get(0).isNaN());
         assertEquals(2, returns.getSize());
+    }
+
+    @Test
+    public void neverPricesHoldingCostOfPositionsOutsideTheWindow() {
+        BarSeries series = OutOfWindowPositions.series(numFactory);
+        List<Num> flat = OutOfWindowPositions.values(new Returns(series, new BaseTradingRecord()));
+
+        Returns curve = new Returns(series, OutOfWindowPositions.closedBeforeTheWindow(numFactory));
+        assertEquals(flat, OutOfWindowPositions.values(curve));
+
+        OutOfWindowPositions.calculateAll(curve);
+        assertEquals(flat, OutOfWindowPositions.values(curve));
     }
 }

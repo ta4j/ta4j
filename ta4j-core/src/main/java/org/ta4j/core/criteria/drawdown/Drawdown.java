@@ -121,7 +121,8 @@ public final class Drawdown {
         // Lengths are measured from the scanned window's start, never from a
         // live series begin that may have moved since the curve was captured.
         int peakIndex = begin;
-        if (begin <= end && (curve instanceof PerformanceIndicator || !series.isEmpty())) {
+        // An empty series reports [-1, -1]; never read a curve at a negative index.
+        if (begin >= 0 && begin <= end && (curve instanceof PerformanceIndicator || !series.isEmpty())) {
             for (long i = begin; i <= end; i++) {
                 int index = (int) i;
                 Num value = curve.getValue(index);

@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
@@ -40,6 +42,8 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
      * @param tradingRecord the trading record used to detect invested intervals
      * @since 0.22.2
      */
+    @SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Rejecting a window too large to "
+            + "materialize is a fail-fast constructor contract; no partially initialized instance escapes")
     public InvestedInterval(BarSeries series, TradingRecord tradingRecord) {
         this(series, tradingRecord, OpenPositionHandling.MARK_TO_MARKET);
     }
@@ -53,21 +57,18 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
      * @param openPositionHandling how open positions should be handled
      * @since 0.22.2
      */
+    @SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Rejecting a window too large to "
+            + "materialize is a fail-fast constructor contract; no partially initialized instance escapes")
     public InvestedInterval(BarSeries series, TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
         super(series);
         Objects.requireNonNull(series, "series cannot be null");
         Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
-        Materialized materialized = series.withReadLock(() -> {
-            int beginIndex = getBarSeries().getBeginIndex();
-            return new Materialized(beginIndex,
-                    buildInvestedIntervals(tradingRecord, openPositionHandling, beginIndex));
-        });
-        materializedBeginIndex = materialized.beginIndex();
-        investedIntervals = materialized.intervals();
-    }
-
-    private record Materialized(int beginIndex, boolean[] intervals) {
+        // Only the bounds come from the series, read together in one short scope;
+        // the record is traversed afterwards without holding the series lock.
+        int[] bounds = series.withReadLock(() -> new int[] { series.getBeginIndex(), series.getEndIndex() });
+        materializedBeginIndex = bounds[0];
+        investedIntervals = buildInvestedIntervals(tradingRecord, openPositionHandling, bounds[0], bounds[1]);
     }
 
     /**
@@ -101,9 +102,7 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
     }
 
     private boolean[] buildInvestedIntervals(TradingRecord tradingRecord, OpenPositionHandling openPositionHandling,
-            int beginIndex) {
-        BarSeries series = getBarSeries();
-        int analysisEndIndex = series.getEndIndex();
+            int beginIndex, int analysisEndIndex) {
         if (beginIndex < 0) {
             return new boolean[0];
         }

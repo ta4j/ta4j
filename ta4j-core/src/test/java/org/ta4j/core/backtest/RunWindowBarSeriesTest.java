@@ -15,6 +15,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -63,5 +64,21 @@ public class RunWindowBarSeriesTest {
         // Bars and removal count come from one snapshot, so a concurrent append
         // that evicts the first bar cannot shift the cut off the run window's end.
         assertEquals(windowBars, bars);
+    }
+
+    @Test
+    public void changeSnapshotDelegatesToTheSourceAndCapsItsEndAtTheWindow() {
+        BarSeries delegate = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14).build();
+        long revision = delegate.getBarHistoryRevision();
+        delegate.getBar(1).addPrice(numFactory.numOf(15));
+        RunWindowBarSeries window = new RunWindowBarSeries(delegate, 3);
+
+        BarSeriesChangeSnapshot snapshot = window.getBarSeriesChangeSnapshot(revision);
+        BarSeriesChangeSnapshot source = delegate.getBarSeriesChangeSnapshot(revision);
+
+        // The source knows exactly which bar changed, where a coarse default would
+        // report the whole history as changed from index 0.
+        assertEquals(new BarSeriesChangeSnapshot(source.revision(), 1, source.removedThroughIndex(),
+                source.maximumBarCount(), 3), snapshot);
     }
 }

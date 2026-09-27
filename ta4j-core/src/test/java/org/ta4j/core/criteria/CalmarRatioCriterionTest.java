@@ -12,8 +12,14 @@ import static org.ta4j.core.criteria.RatioCriterionTestSupport.alwaysInvested;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
@@ -45,6 +51,59 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
         double expected = referenceCalmar(series, closes);
 
         assertNumEquals(numFactory.numOf(expected), actual, 1e-12);
+    }
+
+    @Test
+    public void annualizesWithTheTimesOfTheBarsTheCashFlowWasBuiltFrom() {
+        AtomicBoolean armed = new AtomicBoolean();
+        AtomicInteger outermostLeases = new AtomicInteger();
+        AtomicReference<Runnable> writer = new AtomicReference<>();
+        // Lets a feed writer replace the last bar before the fifth outermost read
+        // lease of the armed calculation: after the cash flow was built from the
+        // original bar, before the bar times used for annualizing are read.
+        ReentrantReadWriteLock lock = new ReentrantReadWriteLock() {
+            private final ReadLock replacingReadLock = new ReadLock(this) {
+                @Override
+                public void lock() {
+                    if (armed.get() && getReadHoldCount() == 0 && outermostLeases.incrementAndGet() == 5) {
+                        armed.set(false);
+                        writer.get().run();
+                    }
+                    super.lock();
+                }
+            };
+
+            @Override
+            public ReadLock readLock() {
+                return replacingReadLock;
+            }
+        };
+        BarSeries yearly = buildYearlySeries("calmar-replaced-last-bar", new double[] { 100d, 80d, 120d });
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(yearly, lock);
+        // The replacement moves both the close and the end time, so the return and
+        // the elapsed years disagree unless both come from the same bar.
+        Bar replacement = series.barBuilder()
+                .timePeriod(Duration.ofDays(365))
+                .endTime(yearly.getLastBar().getEndTime().plus(Duration.ofDays(3 * 365)))
+                .openPrice(150d)
+                .highPrice(150d)
+                .lowPrice(150d)
+                .closePrice(150d)
+                .volume(1)
+                .build();
+        writer.set(() -> series.addBar(replacement, true));
+        BaseTradingRecord tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
+        CalmarRatioCriterion criterion = new CalmarRatioCriterion(EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        armed.set(true);
+        Num raced = criterion.calculate(series, tradingRecord);
+        armed.set(false);
+        Num settled = criterion.calculate(series, tradingRecord);
+
+        assertNumEquals(150d, series.getBar(2).getClosePrice());
+        assertEquals(settled, raced);
     }
 
     @Test

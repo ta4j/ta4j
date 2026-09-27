@@ -5,7 +5,9 @@ package org.ta4j.core.analysis;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.analysis.OpenPositionHandling;
@@ -16,6 +18,7 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Position;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
 import org.junit.Test;
@@ -37,6 +40,53 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
         InvestedInterval intervals = new InvestedInterval(series, record, OpenPositionHandling.MARK_TO_MARKET);
 
         assertThat(intervals.getValue(2)).isTrue();
+    }
+
+    @Test
+    public void traversesTheTradingRecordOutsideTheSeriesReadLock() {
+        ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source, lock);
+        AtomicBoolean readWhileLocked = new AtomicBoolean();
+        AtomicBoolean traversed = new AtomicBoolean();
+        // A record guarded by its own lock must never be traversed while the series
+        // lock is held, or record and series locks could be taken in both orders.
+        BaseTradingRecord record = new BaseTradingRecord() {
+            private void probe() {
+                traversed.set(true);
+                if (lock.getReadHoldCount() > 0) {
+                    readWhileLocked.set(true);
+                }
+            }
+
+            @Override
+            public List<Position> getPositions() {
+                probe();
+                return super.getPositions();
+            }
+
+            @Override
+            public List<Position> getOpenPositions() {
+                probe();
+                return super.getOpenPositions();
+            }
+
+            @Override
+            public Position getCurrentPosition() {
+                probe();
+                return super.getCurrentPosition();
+            }
+        };
+        record.enter(0, numFactory.one(), numFactory.one());
+        record.exit(1, numFactory.two(), numFactory.one());
+        record.enter(2, numFactory.three(), numFactory.one());
+
+        InvestedInterval intervals = new InvestedInterval(series, record, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertThat(traversed).isTrue();
+        assertThat(readWhileLocked).isFalse();
+        assertThat(intervals.getValue(1)).isTrue();
+        assertThat(intervals.getValue(3)).isTrue();
     }
 
     @Test

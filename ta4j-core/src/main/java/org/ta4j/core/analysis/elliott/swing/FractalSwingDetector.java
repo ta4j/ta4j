@@ -260,7 +260,10 @@ public final class FractalSwingDetector implements SwingDetector {
 
         /**
          * Returns the detection result for {@code index}, extending the merged pivot
-         * state incrementally when the query advances the as-of position.
+         * state incrementally when the query advances the as-of position. A caller that
+         * finds the shared state busy replays from the series begin on a detached state
+         * instead of waiting, because waiting could invert the lock order with a caller
+         * holding the series lock; contended queries therefore cost a full replay each.
          */
         private List<SwingPivot> pivotsAt(final int index) {
             if (!replayLock.tryLock()) {

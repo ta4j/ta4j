@@ -91,6 +91,18 @@ final class RunWindowBarSeries implements BarSeries {
         return delegate.getBarHistoryRevision();
     }
 
+    /**
+     * Delegates to the source's snapshot, which describes one coherent state, and
+     * caps its end at the run window.
+     */
+    @Override
+    public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long sinceRevision) {
+        BarSeriesChangeSnapshot snapshot = delegate.getBarSeriesChangeSnapshot(sinceRevision);
+        return new BarSeriesChangeSnapshot(snapshot.revision(), snapshot.earliestChangedIndex(),
+                snapshot.removedThroughIndex(), snapshot.maximumBarCount(),
+                Math.min(snapshot.endIndex(), windowEndIndex));
+    }
+
     @Override
     public void withReadLock(Runnable action) {
         delegate.withReadLock(action);

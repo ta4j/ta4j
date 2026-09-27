@@ -162,6 +162,10 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        if (tradingRecord == null) {
+            // Like an unfinished position: no equity path, so the neutral value.
+            return returnRepresentation.toRepresentationFromRateOfReturn(series.numFactory().zero());
+        }
         return calculateTradingRecord(series, tradingRecord);
     }
 

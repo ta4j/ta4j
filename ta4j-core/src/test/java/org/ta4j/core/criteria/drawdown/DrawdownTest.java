@@ -3,7 +3,13 @@
  */
 package org.ta4j.core.criteria.drawdown;
 
+import static org.junit.Assert.assertEquals;
+
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.Position;
 import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Trade;
@@ -11,6 +17,7 @@ import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.CumulativePnL;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.analysis.PerformanceIndicator;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -37,6 +44,47 @@ public class DrawdownTest extends AbstractIndicatorTest<org.ta4j.core.Indicator<
         var length = Drawdown.length(series, null, close, true);
         assertNumEquals(0, amount);
         assertNumEquals(0, length);
+    }
+
+    @Test
+    public void defaultPerformanceBoundsOnAnEmptySeriesAreNeverRead() {
+        BarSeries empty = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+        AtomicInteger reads = new AtomicInteger();
+        // A third-party curve relying on the interface's default bounds reports
+        // [-1, -1] for an empty series; index -1 must never be read.
+        PerformanceIndicator curve = new PerformanceIndicator() {
+            @Override
+            public Num getValue(int index) {
+                reads.incrementAndGet();
+                if (index < 0) {
+                    throw new IndexOutOfBoundsException("index " + index);
+                }
+                return numFactory.one();
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            public BarSeries getBarSeries() {
+                return empty;
+            }
+
+            @Override
+            public EquityCurveMode getEquityCurveMode() {
+                return EquityCurveMode.MARK_TO_MARKET;
+            }
+
+            @Override
+            public void calculatePosition(Position position, int finalIndex) {
+            }
+        };
+
+        assertNumEquals(0, Drawdown.amount(empty, null, curve, true));
+        assertNumEquals(0, Drawdown.length(empty, null, curve, false));
+        assertEquals(0, reads.get());
     }
 
     @Test

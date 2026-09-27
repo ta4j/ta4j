@@ -3,13 +3,12 @@
  */
 package org.ta4j.core.analysis;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.utils.TimeConstants;
+import org.ta4j.core.utils.BarSeriesUtils;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -218,9 +217,7 @@ public final class ExcessReturns {
         if (previousEnd == null || currentEnd == null) {
             return numFactory.zero();
         }
-        long seconds = Duration.between(previousEnd, currentEnd).getSeconds();
-        return seconds <= 0 ? numFactory.zero()
-                : numFactory.numOf(seconds).dividedBy(numFactory.numOf(TimeConstants.SECONDS_PER_YEAR));
+        return BarSeriesUtils.deltaYears(previousEnd, currentEnd, numFactory);
     }
 
 }

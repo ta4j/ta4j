@@ -123,11 +123,9 @@ final class AnalysisPositionSupport {
                     curve.getEquityCurveMode());
             Map<Position, Num> holdingCosts = new IdentityHashMap<>();
             for (Position position : positions) {
-                Trade entry = position.getEntry();
-                if (entry != null && entry.getIndex() <= window.finalIndex()
-                        && entry.getIndex() <= window.seriesEndIndex()) {
-                    int endIndex = curve.determineEndIndex(position, window.finalIndex(), window.seriesEndIndex());
-                    holdingCosts.put(position, holdingCostThrough(position, endIndex));
+                Num holdingCost = holdingCostInWindow(curve, position, window.finalIndex(), window);
+                if (holdingCost != null) {
+                    holdingCosts.put(position, holdingCost);
                 }
             }
             T built = series.withReadLock(
@@ -139,6 +137,29 @@ final class AnalysisPositionSupport {
         throw new IllegalStateException(
                 "Bar series '" + series.getName() + "' evicted or changed the analysis window during each of "
                         + MAX_MATERIALIZE_ATTEMPTS + " attempts; retry once retention is stable");
+    }
+
+    /**
+     * Returns the holding cost a curve charges a position, or {@code null} when the
+     * position does not reach the captured window: it has no entry, enters after
+     * {@code finalIndex} or the captured series end, or ends before the window. The
+     * range is checked first so a cost model is never evaluated for a position the
+     * curve ignores.
+     *
+     * @param curve      the curve supplying the end-index convention
+     * @param position   the position
+     * @param finalIndex index open positions are marked through
+     * @param window     the captured window
+     * @return the holding cost through the position's end in the window, or
+     *         {@code null}
+     */
+    static Num holdingCostInWindow(PerformanceIndicator curve, Position position, int finalIndex, Window window) {
+        Trade entry = position.getEntry();
+        if (entry == null || entry.getIndex() > finalIndex || entry.getIndex() > window.seriesEndIndex()) {
+            return null;
+        }
+        int endIndex = curve.determineEndIndex(position, finalIndex, window.seriesEndIndex());
+        return endIndex < window.beginIndex() ? null : holdingCostThrough(position, endIndex);
     }
 
     /**
