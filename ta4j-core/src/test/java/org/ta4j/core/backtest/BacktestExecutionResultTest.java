@@ -301,6 +301,30 @@ public class BacktestExecutionResultTest {
         assertTrue(change.getMessage(), change.getMessage().contains("bar 1 was replaced or updated"));
     }
 
+    @Test
+    public void verifyUnchangedComparesTrackedBarsWhoseMutationIsNotYetPublished() {
+        List<Bar> bars = new ArrayList<>(
+                new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build().getBarData());
+        long[] pinnedRevision = { -1L };
+        // Pinning the revision simulates a BaseBar whose fields already changed
+        // while its mutation has not yet been published under the write lock.
+        BarSeries series = new BaseBarSeries("unpublished", bars) {
+            @Override
+            public synchronized long getBarHistoryRevision() {
+                return pinnedRevision[0] >= 0L ? pinnedRevision[0] : super.getBarHistoryRevision();
+            }
+        };
+        BarSeries baseline = BacktestExecutionResult.snapshot(series);
+        pinnedRevision[0] = series.getBarHistoryRevision();
+
+        series.getBar(1).addPrice(numFactory.numOf(25));
+
+        assertEquals(pinnedRevision[0], series.getBarHistoryRevision());
+        IllegalStateException change = assertThrows(IllegalStateException.class,
+                () -> BacktestExecutionResult.verifyUnchanged(series, baseline));
+        assertTrue(change.getMessage(), change.getMessage().contains("bar 1 was replaced or updated"));
+    }
+
     /** A custom bar whose in-place price updates the series cannot observe. */
     private static final class MutableCustomBar implements Bar {
 

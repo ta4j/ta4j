@@ -14,9 +14,6 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBar;
-import org.ta4j.core.BaseBarSeries;
-import org.ta4j.core.BaseRealtimeBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.num.Num;
@@ -26,7 +23,6 @@ import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.serialization.DurationTypeAdapter;
 
 import java.util.*;
-import java.util.stream.IntStream;
 
 /**
  * Wraps the outcome of a {@link BacktestExecutor} run including runtime
@@ -106,24 +102,7 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
     private static BarSeries snapshotSeriesUnlocked(BarSeries source) {
         List<Bar> sourceBars = source.getBarData();
         List<Bar> frozenBars = sourceBars.stream().<Bar>map(ImmutableBar::new).toList();
-        return new FrozenBarSeries(source, frozenBars, untrackedOffsets(source, sourceBars));
-    }
-
-    /**
-     * Returns the positions of bars whose in-place mutations the series cannot
-     * publish through its revision: every bar of a series that is not a
-     * {@link BaseBarSeries}, and otherwise bars of custom classes. Verification
-     * compares these by value even when the revision did not move.
-     */
-    private static int[] untrackedOffsets(BarSeries source, List<Bar> sourceBars) {
-        boolean seriesTracksBars = source instanceof BaseBarSeries;
-        return IntStream.range(0, sourceBars.size())
-                .filter(offset -> !seriesTracksBars || !isTrackedBar(sourceBars.get(offset)))
-                .toArray();
-    }
-
-    private static boolean isTrackedBar(Bar bar) {
-        return bar.getClass() == BaseBar.class || bar.getClass() == BaseRealtimeBar.class;
+        return new FrozenBarSeries(source, frozenBars);
     }
 
     private static final class FrozenBarSeries implements BarSeries {
@@ -135,13 +114,8 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
         private final int removedBarsCount;
         private final int maximumBarCount;
         private final long revision;
-        /**
-         * Positions in {@link #bars} of bars whose mutations the source cannot publish.
-         */
-        private final int[] untrackedOffsets;
 
-        private FrozenBarSeries(BarSeries source, List<Bar> bars, int[] untrackedOffsets) {
-            this.untrackedOffsets = untrackedOffsets;
+        private FrozenBarSeries(BarSeries source, List<Bar> bars) {
             this.name = source.getName();
             this.numFactory = source.numFactory();
             this.bars = List.copyOf(bars);
@@ -169,9 +143,10 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
 
         /**
          * Describes the first change the source made to this window since the copy was
-         * taken, or returns {@code null} when the window is unchanged. Tracked
-         * revisions answer in constant time; untracked series fall back to a bar
-         * comparison.
+         * taken, or returns {@code null} when the window is unchanged. Every bar is
+         * compared by value: series that do not track revisions, custom bar classes,
+         * and a tracked bar whose fields change before its mutation is published all
+         * change values without moving the revision.
          */
         private String changeSince(BarSeries source) {
             if (bars.isEmpty()) {
@@ -187,14 +162,11 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
             }
             long rawEndIndex = (long) removedBarsCount + bars.size() - 1L;
             long sourceRevision = source.getBarHistoryRevision();
-            if (revision >= 0L && sourceRevision >= 0L) {
-                if (sourceRevision != revision) {
-                    int changedIndex = source.getBarSeriesChangeSnapshot(revision).earliestChangedIndex();
-                    if (changedIndex >= 0 && changedIndex <= rawEndIndex) {
-                        return "bar " + changedIndex + " was replaced or updated";
-                    }
+            if (revision >= 0L && sourceRevision >= 0L && sourceRevision != revision) {
+                int changedIndex = source.getBarSeriesChangeSnapshot(revision).earliestChangedIndex();
+                if (changedIndex >= 0 && changedIndex <= rawEndIndex) {
+                    return "bar " + changedIndex + " was replaced or updated";
                 }
-                return untrackedBarChange(source);
             }
             List<Bar> sourceBars = source.getBarData();
             if ((long) source.getRemovedBarsCount() + sourceBars.size() - 1L < rawEndIndex) {
@@ -203,22 +175,6 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
             for (int i = 0; i < bars.size(); i++) {
                 if (!sameBar(bars.get(i), sourceBars.get(removedBarsCount + i - source.getRemovedBarsCount()))) {
                     return "bar " + (removedBarsCount + i) + " was replaced or updated";
-                }
-            }
-            return null;
-        }
-
-        /** Compares, by value, the bars whose mutations the revision cannot reveal. */
-        private String untrackedBarChange(BarSeries source) {
-            if (untrackedOffsets.length == 0) {
-                return null;
-            }
-            List<Bar> sourceBars = source.getBarData();
-            for (int offset : untrackedOffsets) {
-                long sourceOffset = (long) removedBarsCount + offset - source.getRemovedBarsCount();
-                if (sourceOffset >= sourceBars.size()
-                        || !sameBar(bars.get(offset), sourceBars.get((int) sourceOffset))) {
-                    return "bar " + (removedBarsCount + offset) + " was replaced or updated";
                 }
             }
             return null;
@@ -335,7 +291,7 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
                     .withBeginIndex(removedBarsCount > 0 ? retainedStart : 0)
                     .withBars(selected)
                     .build();
-            return new FrozenBarSeries(view, selected, new int[0]);
+            return new FrozenBarSeries(view, selected);
         }
     }
 

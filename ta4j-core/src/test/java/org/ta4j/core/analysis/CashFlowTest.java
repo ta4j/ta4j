@@ -20,6 +20,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.ConstrainedSeriesSupport;
@@ -634,6 +635,67 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         CashFlow settled = new CashFlow(series, record);
 
         assertNumEquals(150d, series.getBar(2).getClosePrice());
+        assertEquals(settled.stream().toList(), raced.stream().toList());
+    }
+
+    @Test
+    public void recapturesWhenAWindowBarChangesWithoutMovingTheRevision() {
+        List<Bar> bars = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 110d, 120d)
+                .build()
+                .getBarData();
+        Bar last = bars.get(2);
+        Num[] lastClose = { last.getClosePrice() };
+        // A custom bar class whose close changes in place without publishing the
+        // mutation, so the series revision cannot reveal it.
+        Bar mutableLast = new BaseBar(last.getTimePeriod(), last.getBeginTime(), last.getEndTime(), last.getOpenPrice(),
+                last.getHighPrice(), last.getLowPrice(), last.getClosePrice(), last.getVolume(), last.getAmount(),
+                last.getTrades()) {
+            @Override
+            public Num getClosePrice() {
+                return lastClose[0];
+            }
+        };
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(List.of(bars.get(0), bars.get(1), mutableLast))
+                .build();
+        long revision = series.getBarHistoryRevision();
+        AtomicBoolean updateOnNextCost = new AtomicBoolean(true);
+        // A user cost model priced from the close it reads; a feed updates that
+        // bar in place right after the read, before the curve is built.
+        CostModel closeBackedCost = new CostModel() {
+            @Override
+            public Num calculate(Position position, int finalIndex) {
+                Num cost = series.getBar(finalIndex).getClosePrice().multipliedBy(numFactory.numOf(0.1d));
+                if (updateOnNextCost.compareAndSet(true, false)) {
+                    lastClose[0] = numFactory.numOf(150d);
+                }
+                return cost;
+            }
+
+            @Override
+            public Num calculate(Position position) {
+                return calculate(position, position.getExit().getIndex());
+            }
+
+            @Override
+            public Num calculate(Num price, Num amount) {
+                return numFactory.zero();
+            }
+
+            @Override
+            public boolean equals(CostModel otherModel) {
+                return otherModel == this;
+            }
+        };
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), closeBackedCost);
+        record.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
+
+        CashFlow raced = new CashFlow(series, record);
+        CashFlow settled = new CashFlow(series, record);
+
+        assertNumEquals(150d, series.getBar(2).getClosePrice());
+        assertEquals(revision, series.getBarHistoryRevision());
         assertEquals(settled.stream().toList(), raced.stream().toList());
     }
 

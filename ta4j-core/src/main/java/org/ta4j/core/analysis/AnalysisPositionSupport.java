@@ -100,9 +100,9 @@ final class AnalysisPositionSupport {
      * The window is captured in one short read scope; holding costs, whose cost
      * models are user code that may evaluate indicators, are computed with no lock
      * held; the curve is then built from bar data in a second short read scope
-     * while the window's bars are still retained. Appended bars leave the captured
-     * window valid; if retention evicted part of it, or a revision-tracking series
-     * replaced or updated one of its bars in between, capture repeats.
+     * while the window's bars are still retained with the close prices captured
+     * first. Appended bars leave the captured window valid; if a bar of it was
+     * evicted, replaced or updated in between, capture repeats.
      *
      * @throws IllegalStateException if the window was evicted or changed during
      *                               every attempt
@@ -111,11 +111,13 @@ final class AnalysisPositionSupport {
             int requestedFinal, boolean useRecordEnd, boolean useSeriesEnd, boolean padToSeriesEnd,
             OpenPositionHandling handling, CurveBuilder<T> builder) {
         for (int attempt = 0; attempt < MAX_MATERIALIZE_ATTEMPTS; attempt++) {
-            long[] revision = new long[1];
+            BarWindowSnapshot[] snapshot = new BarWindowSnapshot[1];
             Window window = series.withReadLock(() -> {
-                revision[0] = series.getBarHistoryRevision();
-                return captureWindow(series, record, startIndex, requestedFinal, useRecordEnd, useSeriesEnd,
+                Window captured = captureWindow(series, record, startIndex, requestedFinal, useRecordEnd, useSeriesEnd,
                         padToSeriesEnd);
+                snapshot[0] = BarWindowSnapshot.capture(series, captured.beginIndex(), captured.seriesEndIndex(),
+                        false);
+                return captured;
             });
             List<Position> positions = positionsForAnalysis(record, window.finalIndex(), handling,
                     curve.getEquityCurveMode());
@@ -128,9 +130,8 @@ final class AnalysisPositionSupport {
                     holdingCosts.put(position, holdingCostThrough(position, endIndex));
                 }
             }
-            T built = series.withReadLock(() -> isRetainedUnchanged(series, window, revision[0])
-                    ? builder.build(window, positions, holdingCosts)
-                    : null);
+            T built = series.withReadLock(
+                    () -> snapshot[0].isUnchangedIn(series) ? builder.build(window, positions, holdingCosts) : null);
             if (built != null) {
                 return built;
             }
@@ -138,22 +139,6 @@ final class AnalysisPositionSupport {
         throw new IllegalStateException(
                 "Bar series '" + series.getName() + "' evicted or changed the analysis window during each of "
                         + MAX_MATERIALIZE_ATTEMPTS + " attempts; retry once retention is stable");
-    }
-
-    /**
-     * Checks, inside the series read scope, that the captured window's bars are
-     * still retained and, when the series tracks revisions, were not replaced or
-     * updated since {@code revision}; bars appended after the window are fine.
-     */
-    private static boolean isRetainedUnchanged(BarSeries series, Window window, long revision) {
-        if (series.getBeginIndex() > window.beginIndex() || series.getEndIndex() < window.seriesEndIndex()) {
-            return false;
-        }
-        if (revision < 0L || series.getBarHistoryRevision() == revision) {
-            return true;
-        }
-        int changedIndex = series.getBarSeriesChangeSnapshot(revision).earliestChangedIndex();
-        return changedIndex < 0 || changedIndex > window.seriesEndIndex();
     }
 
     /**

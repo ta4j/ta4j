@@ -55,7 +55,7 @@ public final class ExcessReturns {
     private final BarSeries series;
     private final InvestedInterval investedInterval;
     private final CashFlow cashFlow;
-    private final BarTimes barTimes;
+    private final BarWindowSnapshot bars;
 
     /**
      * Captures attempted before giving up on a series that keeps evicting the
@@ -126,22 +126,25 @@ public final class ExcessReturns {
         OpenPositionHandling effectiveOpenPositionHandling = equityCurveMode == EquityCurveMode.REALIZED
                 ? OpenPositionHandling.IGNORE
                 : openPositionHandling;
-        // Bar times are frozen together with the curves: a live series may
-        // evict or replace bars afterwards, and the risk-free growth must stay
-        // consistent with the captured cash flow.
+        // Bar times are captured once, before the curves, and the retained
+        // bars are verified unchanged after them, so equity and risk-free growth
+        // always describe the same bar history even on a live series.
         for (int attempt = 0; attempt < MAX_CAPTURE_ATTEMPTS; attempt++) {
+            BarWindowSnapshot snapshot = series
+                    .withReadLock(() -> series.isEmpty() ? BarWindowSnapshot.capture(series, 0, -1, true)
+                            : BarWindowSnapshot.capture(series, series.getBeginIndex(), series.getEndIndex(), true));
             InvestedInterval invested = new InvestedInterval(series, tradingRecord, effectiveOpenPositionHandling);
             CashFlow flow = new CashFlow(series, tradingRecord, equityCurveMode, effectiveOpenPositionHandling);
-            BarTimes times = series.withReadLock(() -> BarTimes.capture(series, flow.getBeginIndex()));
-            if (times != null) {
+            if (snapshot.covers(flow.getBeginIndex(), flow.getEndIndex())
+                    && series.withReadLock(() -> snapshot.isUnchangedIn(series))) {
                 this.investedInterval = invested;
                 this.cashFlow = flow;
-                this.barTimes = times;
+                this.bars = snapshot;
                 return;
             }
         }
         throw new IllegalStateException(
-                "Bar series '" + series.getName() + "' evicted the analysis window during each of "
+                "Bar series '" + series.getName() + "' evicted or changed the analysis window during each of "
                         + MAX_CAPTURE_ATTEMPTS + " attempts; retry once retention is stable");
     }
 
@@ -194,7 +197,7 @@ public final class ExcessReturns {
     private Num riskFreeGrowth(int previousIndex, int currentIndex, Num one) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
-        Num deltaYears = barTimes.deltaYears(previousIndex, currentIndex, numFactory);
+        Num deltaYears = deltaYears(previousIndex, currentIndex, numFactory);
         if (deltaYears.isLessThanOrEqual(zero)) {
             return one;
         }
@@ -206,49 +209,18 @@ public final class ExcessReturns {
     }
 
     /**
-     * End times of the bars retained when the curves were captured.
-     *
-     * @param beginIndex the absolute index of the first captured time
-     * @param endTimes   the captured end times
+     * @return the years between two captured bar end times, or zero when either bar
+     *         was not captured or time does not advance
      */
-    private record BarTimes(int beginIndex, Instant[] endTimes) {
-
-        /**
-         * Reads the retained bars' end times; runs inside the series read scope.
-         *
-         * @return the times, or {@code null} if bars of the window starting at
-         *         {@code windowBeginIndex} were evicted since it was captured
-         */
-        static BarTimes capture(BarSeries series, int windowBeginIndex) {
-            if (series.isEmpty()) {
-                return new BarTimes(0, new Instant[0]);
-            }
-            int beginIndex = series.getBeginIndex();
-            if (beginIndex > windowBeginIndex) {
-                return null;
-            }
-            Instant[] endTimes = new Instant[series.getEndIndex() - beginIndex + 1];
-            for (int i = 0; i < endTimes.length; i++) {
-                endTimes[i] = series.getBar(beginIndex + i).getEndTime();
-            }
-            return new BarTimes(beginIndex, endTimes);
+    private Num deltaYears(int previousIndex, int currentIndex, NumFactory numFactory) {
+        Instant previousEnd = bars.endTime(previousIndex);
+        Instant currentEnd = bars.endTime(currentIndex);
+        if (previousEnd == null || currentEnd == null) {
+            return numFactory.zero();
         }
-
-        /**
-         * @return the years between two captured bar end times, or zero when either bar
-         *         was not captured or time does not advance
-         */
-        Num deltaYears(int previousIndex, int currentIndex, NumFactory numFactory) {
-            long previousOffset = (long) previousIndex - beginIndex;
-            long currentOffset = (long) currentIndex - beginIndex;
-            if (previousOffset < 0 || currentOffset < 0 || previousOffset >= endTimes.length
-                    || currentOffset >= endTimes.length) {
-                return numFactory.zero();
-            }
-            long seconds = Duration.between(endTimes[(int) previousOffset], endTimes[(int) currentOffset]).getSeconds();
-            return seconds <= 0 ? numFactory.zero()
-                    : numFactory.numOf(seconds).dividedBy(numFactory.numOf(TimeConstants.SECONDS_PER_YEAR));
-        }
+        long seconds = Duration.between(previousEnd, currentEnd).getSeconds();
+        return seconds <= 0 ? numFactory.zero()
+                : numFactory.numOf(seconds).dividedBy(numFactory.numOf(TimeConstants.SECONDS_PER_YEAR));
     }
 
 }
