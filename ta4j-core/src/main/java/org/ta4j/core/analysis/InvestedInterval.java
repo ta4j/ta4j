@@ -24,7 +24,6 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
 
     private final boolean[] investedIntervals;
     private final SeriesSnapshots.CapturedSeries capturedSeries;
-    private volatile BarSeries exposedBarSeries;
     private final int valueStartIndex;
 
     /**
@@ -80,28 +79,18 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
     }
 
     /**
-     * Returns a detached copy of the bars the invested intervals were computed
-     * from, with the source series' absolute indexing. The bar set is the one
-     * retained at construction; bar contents are copied on first request (under the
-     * read lock of a {@code ConcurrentBarSeries}). The same instance is returned
-     * afterwards, and mutating it cannot reach the source series.
+     * Returns a fresh detached copy of the bars the invested intervals were
+     * computed from, with the source series' absolute indexing. The bar set is the
+     * one retained at construction; bar contents are copied at each call (under the
+     * read lock of a {@code ConcurrentBarSeries}). Mutating the copy cannot reach
+     * the source series or later copies.
      *
      * @return the detached backing series snapshot
      * @since 0.25.1
      */
     @Override
     public BarSeries getBarSeries() {
-        BarSeries snapshot = exposedBarSeries;
-        if (snapshot == null) {
-            synchronized (this) {
-                snapshot = exposedBarSeries;
-                if (snapshot == null) {
-                    snapshot = capturedSeries.toDetachedSeries();
-                    exposedBarSeries = snapshot;
-                }
-            }
-        }
-        return snapshot;
+        return capturedSeries.toDetachedSeries();
     }
 
     private boolean[] buildInvestedIntervals(TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {

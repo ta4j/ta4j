@@ -8,7 +8,6 @@ import java.time.Duration;
 import java.util.Collections;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -53,19 +52,19 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void getBarSeriesReturnsDefensiveSnapshot() {
+    public void getBarSeriesReturnsDefensiveSnapshots() {
         BarSeries sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         CashFlow cashFlow = new CashFlow(sampleBarSeries, new BaseTradingRecord());
         int originalSize = cashFlow.getSize();
+        BarSeries firstReturnedSeries = cashFlow.getBarSeries();
 
         appendOneBar(sampleBarSeries, 4);
+        appendOneBar(firstReturnedSeries, 5);
 
         assertEquals(originalSize, cashFlow.getSize());
         assertEquals(originalSize, cashFlow.getBarSeries().getBarCount());
         assertNotSame(sampleBarSeries, cashFlow.getBarSeries());
-        assertSame(cashFlow.getBarSeries(), cashFlow.getBarSeries());
-        cashFlow.getBarSeries().setMaximumBarCount(1);
-        assertEquals(originalSize, cashFlow.getSize());
+        assertNotSame(firstReturnedSeries, cashFlow.getBarSeries());
     }
 
     @Test

@@ -26,11 +26,6 @@ public class CashFlow implements PerformanceIndicator {
      * later in-place bar edits cannot reach this curve.
      */
     private final SeriesSnapshots.CapturedSeries series;
-    /**
-     * Detached copy of the captured bars handed out by {@link #getBarSeries()};
-     * built on first request so curves never pay for a copy nobody asks for.
-     */
-    private volatile BarSeries exposedBarSeries;
 
     /**
      * The (accrued) cash flow sequence (without trading costs).
@@ -554,27 +549,16 @@ public class CashFlow implements PerformanceIndicator {
     }
 
     /**
-     * Returns a detached copy of the bars this curve was computed from, with the
-     * source series' absolute indexing. The bar set is the one retained at
-     * construction; bar contents are copied on first request (under the read lock
-     * of a {@code ConcurrentBarSeries}), so in-place bar edits made before that
-     * request are visible in the copy but never in this curve's values. The same
-     * instance is returned afterwards, and mutating it cannot reach the source
-     * series or this curve.
+     * Returns a fresh detached copy of the bars this curve was computed from, with
+     * the source series' absolute indexing. The bar set is the one retained at
+     * construction; bar contents are copied at each call (under the read lock of a
+     * {@code ConcurrentBarSeries}), so in-place bar edits made since construction
+     * are visible in the copy but never in this curve's values. Mutating the copy
+     * cannot reach the source series, this curve, or later copies.
      */
     @Override
     public BarSeries getBarSeries() {
-        BarSeries snapshot = exposedBarSeries;
-        if (snapshot == null) {
-            synchronized (this) {
-                snapshot = exposedBarSeries;
-                if (snapshot == null) {
-                    snapshot = series.toDetachedSeries();
-                    exposedBarSeries = snapshot;
-                }
-            }
-        }
-        return snapshot;
+        return series.toDetachedSeries();
     }
 
     /**

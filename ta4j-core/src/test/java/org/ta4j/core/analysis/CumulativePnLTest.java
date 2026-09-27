@@ -5,7 +5,6 @@ package org.ta4j.core.analysis;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertSame;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
@@ -45,19 +44,19 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
     }
 
     @Test
-    public void getBarSeriesReturnsDefensiveSnapshot() {
+    public void getBarSeriesReturnsDefensiveSnapshots() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110).build();
         CumulativePnL pnl = new CumulativePnL(series, new BaseTradingRecord());
         int originalSize = pnl.getSize();
+        BarSeries firstReturnedSeries = pnl.getBarSeries();
 
         appendOneBar(series, 115);
+        appendOneBar(firstReturnedSeries, 120);
 
         assertEquals(originalSize, pnl.getSize());
         assertEquals(originalSize, pnl.getBarSeries().getBarCount());
         assertNotSame(series, pnl.getBarSeries());
-        assertSame(pnl.getBarSeries(), pnl.getBarSeries());
-        pnl.getBarSeries().setMaximumBarCount(1);
-        assertEquals(originalSize, pnl.getSize());
+        assertNotSame(firstReturnedSeries, pnl.getBarSeries());
     }
 
     @Test
