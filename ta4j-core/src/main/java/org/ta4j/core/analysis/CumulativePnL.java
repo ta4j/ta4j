@@ -422,11 +422,15 @@ public final class CumulativePnL implements PerformanceIndicator {
     /**
      * {@inheritDoc}
      *
+     * <p>
+     * Like {@link BarSeries#getBar(int)}, an index before the retained begin of a
+     * pruned series resolves to the first retained value.
+     *
      * @since 0.19
      */
     @Override
     public Num getValue(int index) {
-        return values.get(index - valueStartIndex);
+        return values.get(Math.max(index, valueStartIndex) - valueStartIndex);
     }
 
     /**

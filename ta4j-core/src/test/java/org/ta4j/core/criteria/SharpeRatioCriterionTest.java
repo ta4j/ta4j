@@ -479,4 +479,33 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         return (SharpeRatioCriterion) getCriterion(0.05d, SamplingFrequency.BAR, Annualization.PERIOD, ZoneOffset.UTC);
     }
 
+    @Test
+    public void tradeSamplingClipsTradesToPrunedSeriesWindow() {
+        double[] closes = { 100d, 110d, 99d, 118.8d, 112d, 125d };
+        BarSeries pruned = buildDailySeries(getBarSeries("trade_sampling_pruned_series"), closes,
+                Instant.parse("2024-01-01T00:00:00Z"));
+        Num amount = pruned.numFactory().one();
+        BaseTradingRecord prunedRecord = new BaseTradingRecord();
+        for (int[] leg : new int[][] { { 0, 1 }, { 1, 2 }, { 2, 4 }, { 4, 5 } }) {
+            prunedRecord.enter(leg[0], pruned.getBar(leg[0]).getClosePrice(), amount);
+            prunedRecord.exit(leg[1], pruned.getBar(leg[1]).getClosePrice(), amount);
+        }
+        pruned.setMaximumBarCount(3);
+
+        // Oracle: the same retained bars as a fresh series, where the trade that
+        // crossed the retained begin starts at that begin and earlier trades
+        // are gone; per-trade returns are curve ratios, so earlier compounding
+        // cancels out.
+        BarSeries retained = buildDailySeries(getBarSeries("trade_sampling_retained_series"),
+                new double[] { 118.8d, 112d, 125d }, Instant.parse("2024-01-04T00:00:00Z"));
+        BaseTradingRecord retainedRecord = new BaseTradingRecord();
+        for (int[] leg : new int[][] { { 0, 1 }, { 1, 2 } }) {
+            retainedRecord.enter(leg[0], retained.getBar(leg[0]).getClosePrice(), amount);
+            retainedRecord.exit(leg[1], retained.getBar(leg[1]).getClosePrice(), amount);
+        }
+
+        SharpeRatioCriterion criterion = criterion(SamplingFrequency.TRADE, Annualization.PERIOD);
+        assertNumEquals(criterion.calculate(retained, retainedRecord), criterion.calculate(pruned, prunedRecord),
+                1e-12);
+    }
 }
