@@ -6,6 +6,7 @@ package ta4jexamples.portfolio;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.image.BufferedImage;
@@ -92,6 +93,22 @@ public class PortfolioAnalysisReportTest {
                 Files.readAllLines(temporaryDirectory.resolve(PortfolioAnalysisReport.PRICE_CORRELATIONS_CSV)).size());
         assertEquals("merge,left_cluster,right_cluster,distance,size",
                 Files.readAllLines(temporaryDirectory.resolve(PortfolioAnalysisReport.RETURN_LINKAGE_CSV)).get(0));
+    }
+
+    @Test
+    public void rejectsUndefinedCorrelationsBeforeWritingAnyFile() throws Exception {
+        PortfolioSeries series = new PortfolioSeries(series("ALPHA", 100, 110, 99, 120), series("CASH", 1, 1, 1, 1));
+        PortfolioCorrelations correlations = new PortfolioCorrelations(series);
+        PortfolioAllocation allocation = new MinimumVarianceOptimizer(series).optimize();
+        Path output = temporaryDirectory.resolve("report");
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> PortfolioAnalysisReport.write(output, series, correlations.getPriceMatrix(),
+                        correlations.getSimpleReturnMatrix(), allocation, allocation, allocation,
+                        series.numFactory().one(), null));
+
+        assertTrue(exception.getMessage().contains("ALPHA / CASH"));
+        assertFalse(Files.exists(output));
     }
 
     @Test

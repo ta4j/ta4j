@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.portfolio;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -10,6 +11,10 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -75,6 +80,119 @@ public class MinimumVarianceOptimizerTest {
                 () -> new MinimumVarianceOptimizer(series).optimize());
 
         assertTrue(exception.getMessage().contains("covariance matrix"));
+    }
+
+    @Test
+    public void satisfiesKktConditionsWhenBoundsAndCapBind() {
+        for (NumFactory numFactory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            PortfolioSeries series = factorSeries(numFactory);
+            Num cap = numFactory.numOf(0.3);
+
+            PortfolioAllocation uncapped = new MinimumVarianceOptimizer(series).optimize();
+            PortfolioAllocation capped = new MinimumVarianceOptimizer(series, cap).optimize();
+
+            assertKkt(series, uncapped, 1.0);
+            assertKkt(series, capped, 0.3);
+            assertTrue("a high-beta asset should be excluded",
+                    uncapped.getTargetWeights().values().stream().anyMatch(Num::isZero));
+            assertTrue("the cap should bind",
+                    capped.getTargetWeights().values().stream().anyMatch(weight -> weight.isEqual(cap)));
+        }
+    }
+
+    @Test
+    public void handlesSingleAssetAndZeroVarianceWindows() {
+        NumFactory numFactory = DoubleNumFactory.getInstance();
+        PortfolioSeries single = new PortfolioSeries(series("ONLY", numFactory, 100, 101, 99, 102));
+        PortfolioSeries flat = new PortfolioSeries(series("FLAT_A", numFactory, 100, 100, 100),
+                series("FLAT_B", numFactory, 50, 50, 50));
+
+        assertNumEquals(1, new MinimumVarianceOptimizer(single).optimize().getTargetWeight("ONLY"));
+        PortfolioAllocation equal = new MinimumVarianceOptimizer(flat).optimize();
+        assertNumEquals(0.5, equal.getTargetWeight("FLAT_A"));
+        assertNumEquals(0.5, equal.getTargetWeight("FLAT_B"));
+    }
+
+    /**
+     * KKT conditions of min w'Cw subject to sum w = 1 and 0 <= w <= cap: with
+     * gradient g = 2Cw there is a multiplier lambda such that g_i = lambda for
+     * interior weights, g_i >= lambda at zero, and g_i <= lambda at the cap.
+     */
+    private static void assertKkt(PortfolioSeries series, PortfolioAllocation allocation, double cap) {
+        List<String> assets = series.getAssets();
+        double[][] returns = new double[assets.size()][series.getBarCount() - 1];
+        for (int asset = 0; asset < assets.size(); asset++) {
+            for (int bar = 1; bar < series.getBarCount(); bar++) {
+                returns[asset][bar - 1] = series.getClosePrice(assets.get(asset), bar).doubleValue()
+                        / series.getClosePrice(assets.get(asset), bar - 1).doubleValue() - 1;
+            }
+        }
+        double[] weights = new double[assets.size()];
+        double total = 0;
+        for (int asset = 0; asset < assets.size(); asset++) {
+            weights[asset] = allocation.getTargetWeight(assets.get(asset)).doubleValue();
+            total += weights[asset];
+            assertTrue(weights[asset] >= -1e-12 && weights[asset] <= cap + 1e-12);
+        }
+        assertEquals(1, total, 1e-9);
+
+        double[] gradient = new double[assets.size()];
+        for (int row = 0; row < assets.size(); row++) {
+            for (int column = 0; column < assets.size(); column++) {
+                gradient[row] += 2 * covariance(returns[row], returns[column]) * weights[column];
+            }
+        }
+        double lambda = Double.NaN;
+        for (int asset = 0; asset < assets.size(); asset++) {
+            if (weights[asset] > 1e-9 && weights[asset] < cap - 1e-9) {
+                lambda = gradient[asset];
+            }
+        }
+        assertTrue("expected at least one interior weight", Double.isFinite(lambda));
+        double tolerance = 1e-7 * Math.abs(lambda);
+        for (int asset = 0; asset < assets.size(); asset++) {
+            if (weights[asset] <= 1e-9) {
+                assertTrue(gradient[asset] >= lambda - tolerance);
+            } else if (weights[asset] >= cap - 1e-9) {
+                assertTrue(gradient[asset] <= lambda + tolerance);
+            } else {
+                assertEquals(lambda, gradient[asset], tolerance);
+            }
+        }
+    }
+
+    private static double covariance(double[] first, double[] second) {
+        double firstMean = Arrays.stream(first).average().orElseThrow();
+        double secondMean = Arrays.stream(second).average().orElseThrow();
+        double sum = 0;
+        for (int index = 0; index < first.length; index++) {
+            sum += (first[index] - firstMean) * (second[index] - secondMean);
+        }
+        return sum / first.length;
+    }
+
+    /**
+     * Six assets on one market factor with rising betas and idiosyncratic noise.
+     */
+    private static PortfolioSeries factorSeries(NumFactory numFactory) {
+        Random random = new Random(42);
+        int bars = 60;
+        double[] market = new double[bars];
+        for (int bar = 0; bar < bars; bar++) {
+            market[bar] = random.nextGaussian() * 0.01;
+        }
+        List<BarSeries> assets = new ArrayList<>();
+        for (int asset = 0; asset < 6; asset++) {
+            double beta = 0.2 + asset * 0.4;
+            double noise = 0.004 + asset * 0.001;
+            double[] closes = new double[bars + 1];
+            closes[0] = 100;
+            for (int bar = 0; bar < bars; bar++) {
+                closes[bar + 1] = closes[bar] * (1 + beta * market[bar] + random.nextGaussian() * noise);
+            }
+            assets.add(series("ASSET" + asset, numFactory, closes));
+        }
+        return new PortfolioSeries(assets);
     }
 
     private static void assertMinimumVarianceAllocation(NumFactory numFactory) {

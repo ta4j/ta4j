@@ -3,7 +3,7 @@
  */
 package org.ta4j.core.portfolio;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +34,6 @@ import org.ta4j.core.num.NumFactory;
 public final class MinimumVarianceOptimizer {
 
     private static final int MAX_ITERATIONS = 20_000;
-    private static final int PROJECTION_ITERATIONS = 128;
 
     private final PortfolioSeries series;
     private final int index;
@@ -108,11 +107,11 @@ public final class MinimumVarianceOptimizer {
      * @since 0.25.1
      */
     public PortfolioAllocation optimize() {
-        Num[][] covariance = covarianceMatrix();
-        List<Num> weights = optimize(covariance);
+        Num[] weights = minimize(covarianceMatrix());
+        List<String> assets = series.getAssets();
         Map<String, Num> targetWeights = new LinkedHashMap<>();
-        for (int assetIndex = 0; assetIndex < series.getAssets().size(); assetIndex++) {
-            targetWeights.put(series.getAssets().get(assetIndex), weights.get(assetIndex));
+        for (int assetIndex = 0; assetIndex < assets.size(); assetIndex++) {
+            targetWeights.put(assets.get(assetIndex), weights[assetIndex]);
         }
         return new PortfolioAllocation(targetWeights, series.numFactory());
     }
@@ -131,45 +130,45 @@ public final class MinimumVarianceOptimizer {
         return normalized;
     }
 
+    /** Population covariance of one-bar simple returns over the window. */
     private Num[][] covarianceMatrix() {
-        int assetCount = series.getAssets().size();
+        List<String> assets = series.getAssets();
+        int assetCount = assets.size();
         NumFactory numFactory = series.numFactory();
-        Num[][] returns = new Num[barCount][assetCount];
+        Num[][] deviations = new Num[barCount][assetCount];
         int firstReturnIndex = index - barCount + 1;
+        Num observationCount = numFactory.numOf(barCount);
 
-        for (int observation = 0; observation < barCount; observation++) {
-            int currentIndex = firstReturnIndex + observation;
-            for (int assetIndex = 0; assetIndex < assetCount; assetIndex++) {
-                String asset = series.getAssets().get(assetIndex);
-                Num previous = requirePositive(series.getClosePrice(asset, currentIndex - 1), asset, currentIndex - 1);
+        for (int assetIndex = 0; assetIndex < assetCount; assetIndex++) {
+            String asset = assets.get(assetIndex);
+            Num sum = numFactory.zero();
+            Num previous = requirePositive(series.getClosePrice(asset, firstReturnIndex - 1), asset,
+                    firstReturnIndex - 1);
+            for (int observation = 0; observation < barCount; observation++) {
+                int currentIndex = firstReturnIndex + observation;
                 Num current = requirePositive(series.getClosePrice(asset, currentIndex), asset, currentIndex);
                 Num value = current.dividedBy(previous).minus(numFactory.one());
                 if (!Num.isFinite(value)) {
                     throw new IllegalArgumentException(
                             "simple return must be finite for asset " + asset + " at index " + currentIndex);
                 }
-                returns[observation][assetIndex] = value;
+                deviations[observation][assetIndex] = value;
+                sum = sum.plus(value);
+                previous = current;
             }
-        }
-
-        Num observationCount = numFactory.numOf(barCount);
-        Num[] means = new Num[assetCount];
-        for (int assetIndex = 0; assetIndex < assetCount; assetIndex++) {
-            Num sum = numFactory.zero();
-            for (Num[] observation : returns) {
-                sum = sum.plus(observation[assetIndex]);
+            // Center once so the covariance loop needs one multiply-add per term.
+            Num mean = sum.dividedBy(observationCount);
+            for (Num[] observation : deviations) {
+                observation[assetIndex] = observation[assetIndex].minus(mean);
             }
-            means[assetIndex] = sum.dividedBy(observationCount);
         }
 
         Num[][] covariance = new Num[assetCount][assetCount];
         for (int row = 0; row < assetCount; row++) {
             for (int column = row; column < assetCount; column++) {
                 Num sum = numFactory.zero();
-                for (Num[] observation : returns) {
-                    Num rowDifference = observation[row].minus(means[row]);
-                    Num columnDifference = observation[column].minus(means[column]);
-                    sum = sum.plus(rowDifference.multipliedBy(columnDifference));
+                for (Num[] observation : deviations) {
+                    sum = sum.plus(observation[row].multipliedBy(observation[column]));
                 }
                 Num value = sum.dividedBy(observationCount);
                 if (!Num.isFinite(value)) {
@@ -182,7 +181,13 @@ public final class MinimumVarianceOptimizer {
         return covariance;
     }
 
-    private List<Num> optimize(Num[][] covariance) {
+    /**
+     * Accelerated projected gradient (FISTA) with gradient-based adaptive restart
+     * (O'Donoghue and Candes, 2015). The restart drops stale momentum whenever it
+     * points uphill, which keeps convergence linear on ill-conditioned covariance
+     * matrices instead of oscillating.
+     */
+    private Num[] minimize(Num[][] covariance) {
         NumFactory numFactory = series.numFactory();
         int assetCount = covariance.length;
         Num one = numFactory.one();
@@ -193,43 +198,63 @@ public final class MinimumVarianceOptimizer {
         if (!Num.isFinite(lipschitzBound)) {
             throw new IllegalArgumentException("covariance matrix must contain only finite values");
         }
-        List<Num> weights = equalWeights(assetCount);
+        Num[] weights = new Num[assetCount];
+        Arrays.fill(weights, one.dividedBy(numFactory.numOf(assetCount)));
         if (lipschitzBound.isZero()) {
             return weights;
         }
 
-        Num step = one.dividedBy(lipschitzBound);
-        List<Num> accelerated = weights;
+        // The gradient of w'Cw is 2Cw; folding the 2 into the step saves a multiply.
+        Num step = two.dividedBy(lipschitzBound);
+        Num[] accelerated = weights.clone();
         Num acceleration = one;
+        Num[] unprojected = new Num[assetCount];
 
         for (int iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
-            List<Num> gradient = gradient(covariance, accelerated, two);
-            List<Num> unprojected = new ArrayList<>(assetCount);
-            for (int assetIndex = 0; assetIndex < assetCount; assetIndex++) {
-                unprojected.add(accelerated.get(assetIndex).minus(step.multipliedBy(gradient.get(assetIndex))));
+            for (int row = 0; row < assetCount; row++) {
+                Num product = numFactory.zero();
+                for (int column = 0; column < assetCount; column++) {
+                    product = product.plus(covariance[row][column].multipliedBy(accelerated[column]));
+                }
+                unprojected[row] = accelerated[row].minus(step.multipliedBy(product));
             }
-            List<Num> nextWeights = project(unprojected);
-            if (maximumDifference(weights, nextWeights).isLessThanOrEqual(tolerance)) {
+            Num[] nextWeights = project(unprojected);
+
+            Num maximumChange = numFactory.zero();
+            Num momentumAlignment = numFactory.zero();
+            for (int assetIndex = 0; assetIndex < assetCount; assetIndex++) {
+                Num change = nextWeights[assetIndex].minus(weights[assetIndex]);
+                maximumChange = maximumChange.max(change.abs());
+                momentumAlignment = momentumAlignment
+                        .plus(accelerated[assetIndex].minus(nextWeights[assetIndex]).multipliedBy(change));
+            }
+            if (maximumChange.isLessThanOrEqual(tolerance)) {
                 return nextWeights;
             }
 
-            Num nextAcceleration = one.plus(one.plus(four.multipliedBy(acceleration.multipliedBy(acceleration))).sqrt())
-                    .dividedBy(two);
-            Num momentum = acceleration.minus(one).dividedBy(nextAcceleration);
-            List<Num> nextAccelerated = new ArrayList<>(assetCount);
-            for (int assetIndex = 0; assetIndex < assetCount; assetIndex++) {
-                Num delta = nextWeights.get(assetIndex).minus(weights.get(assetIndex));
-                nextAccelerated.add(nextWeights.get(assetIndex).plus(momentum.multipliedBy(delta)));
+            if (momentumAlignment.isPositive()) {
+                acceleration = one;
+                accelerated = nextWeights.clone();
+            } else {
+                Num nextAcceleration = one
+                        .plus(one.plus(four.multipliedBy(acceleration.multipliedBy(acceleration))).sqrt())
+                        .dividedBy(two);
+                Num momentum = acceleration.minus(one).dividedBy(nextAcceleration);
+                for (int assetIndex = 0; assetIndex < assetCount; assetIndex++) {
+                    Num change = nextWeights[assetIndex].minus(weights[assetIndex]);
+                    accelerated[assetIndex] = nextWeights[assetIndex].plus(momentum.multipliedBy(change));
+                }
+                acceleration = nextAcceleration;
             }
-
             weights = nextWeights;
-            accelerated = nextAccelerated;
-            acceleration = nextAcceleration;
         }
 
         throw new IllegalStateException("minimum-variance optimization did not converge");
     }
 
+    /**
+     * Gershgorin bound: twice the largest absolute row sum bounds 2 * lambdaMax.
+     */
     private Num lipschitzBound(Num[][] covariance) {
         Num maxRowSum = series.numFactory().zero();
         for (Num[] row : covariance) {
@@ -242,67 +267,76 @@ public final class MinimumVarianceOptimizer {
         return series.numFactory().two().multipliedBy(maxRowSum);
     }
 
-    private List<Num> gradient(Num[][] covariance, List<Num> weights, Num two) {
-        List<Num> gradient = new ArrayList<>(covariance.length);
-        for (Num[] row : covariance) {
-            Num value = series.numFactory().zero();
-            for (int column = 0; column < row.length; column++) {
-                value = value.plus(row[column].multipliedBy(weights.get(column)));
-            }
-            gradient.add(two.multipliedBy(value));
-        }
-        return gradient;
-    }
-
-    private List<Num> project(List<Num> values) {
+    /**
+     * Exact Euclidean projection onto {@code {w : sum w = 1, 0 <= w <= cap}}. The
+     * projection is {@code clamp(v - tau)} for the threshold {@code tau} where the
+     * piecewise-linear, non-increasing {@code sum clamp(v - tau)} equals one; it is
+     * located between two sorted breakpoints and solved linearly there.
+     */
+    private Num[] project(Num[] values) {
         NumFactory numFactory = series.numFactory();
-        for (Num value : values) {
+        Num one = numFactory.one();
+        Num[] breakpoints = new Num[values.length * 2];
+        for (int assetIndex = 0; assetIndex < values.length; assetIndex++) {
+            Num value = values[assetIndex];
             if (!Num.isFinite(value)) {
                 throw new IllegalStateException("minimum-variance optimization did not converge");
             }
+            breakpoints[2 * assetIndex] = value.minus(maximumAssetWeight);
+            breakpoints[2 * assetIndex + 1] = value;
         }
-        Num lower = values.getFirst().minus(maximumAssetWeight);
-        Num upper = values.getFirst();
-        for (Num value : values) {
-            lower = lower.min(value.minus(maximumAssetWeight));
-            upper = upper.max(value);
-        }
+        Arrays.sort(breakpoints);
 
-        for (int iteration = 0; iteration < PROJECTION_ITERATIONS; iteration++) {
-            Num threshold = lower.plus(upper).dividedBy(numFactory.two());
-            Num sum = numFactory.zero();
-            for (Num value : values) {
-                sum = sum.plus(clamp(value.minus(threshold)));
-            }
-            if (sum.isGreaterThan(numFactory.one())) {
-                lower = threshold;
+        // Sum at the lowest breakpoint is assetCount * cap >= 1 and at the highest it
+        // is 0, so the root lies between breakpoints[low] and breakpoints[low + 1].
+        int low = 0;
+        int high = breakpoints.length - 1;
+        while (high - low > 1) {
+            int middle = (low + high) >>> 1;
+            if (clampedSum(values, breakpoints[middle]).isGreaterThanOrEqual(one)) {
+                low = middle;
             } else {
-                upper = threshold;
+                high = middle;
             }
         }
-
-        Num threshold = lower.plus(upper).dividedBy(numFactory.two());
-        List<Num> projected = new ArrayList<>(values.size());
-        Num sum = numFactory.zero();
-        for (Num value : values) {
-            Num projectedValue = clamp(value.minus(threshold));
-            projected.add(projectedValue);
-            sum = sum.plus(projectedValue);
+        Num lowSum = clampedSum(values, breakpoints[low]);
+        Num highSum = clampedSum(values, breakpoints[high]);
+        Num threshold = breakpoints[low];
+        if (lowSum.isGreaterThan(highSum)) {
+            threshold = threshold.plus(lowSum.minus(one)
+                    .dividedBy(lowSum.minus(highSum))
+                    .multipliedBy(breakpoints[high].minus(breakpoints[low])));
         }
-        correctProjectionResidual(projected, numFactory.one().minus(sum));
-        return List.copyOf(projected);
+
+        Num[] projected = new Num[values.length];
+        Num sum = numFactory.zero();
+        for (int assetIndex = 0; assetIndex < values.length; assetIndex++) {
+            projected[assetIndex] = clamp(values[assetIndex].minus(threshold));
+            sum = sum.plus(projected[assetIndex]);
+        }
+        correctProjectionResidual(projected, one.minus(sum));
+        return projected;
     }
 
-    private void correctProjectionResidual(List<Num> projected, Num residual) {
-        for (int index = 0; index < projected.size() && !residual.isZero(); index++) {
-            Num current = projected.get(index);
+    private Num clampedSum(Num[] values, Num threshold) {
+        Num sum = series.numFactory().zero();
+        for (Num value : values) {
+            sum = sum.plus(clamp(value.minus(threshold)));
+        }
+        return sum;
+    }
+
+    /** Absorbs rounding residue so the weights sum to exactly one. */
+    private void correctProjectionResidual(Num[] projected, Num residual) {
+        for (int index = 0; index < projected.length && !residual.isZero(); index++) {
+            Num current = projected[index];
             if (residual.isPositive()) {
                 Num adjustment = residual.min(maximumAssetWeight.minus(current));
-                projected.set(index, current.plus(adjustment));
+                projected[index] = current.plus(adjustment);
                 residual = residual.minus(adjustment);
             } else {
                 Num adjustment = residual.abs().min(current);
-                projected.set(index, current.minus(adjustment));
+                projected[index] = current.minus(adjustment);
                 residual = residual.plus(adjustment);
             }
         }
@@ -316,23 +350,6 @@ public final class MinimumVarianceOptimizer {
             return series.numFactory().zero();
         }
         return value.min(maximumAssetWeight);
-    }
-
-    private List<Num> equalWeights(int assetCount) {
-        Num weight = series.numFactory().one().dividedBy(series.numFactory().numOf(assetCount));
-        List<Num> weights = new ArrayList<>(assetCount);
-        for (int index = 0; index < assetCount; index++) {
-            weights.add(weight);
-        }
-        return List.copyOf(weights);
-    }
-
-    private Num maximumDifference(List<Num> first, List<Num> second) {
-        Num maximum = series.numFactory().zero();
-        for (int index = 0; index < first.size(); index++) {
-            maximum = maximum.max(first.get(index).minus(second.get(index)).abs());
-        }
-        return maximum;
     }
 
     private static Num requirePositive(Num value, String asset, int index) {

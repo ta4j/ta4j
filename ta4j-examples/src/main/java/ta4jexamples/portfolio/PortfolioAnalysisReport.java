@@ -54,6 +54,11 @@ final class PortfolioAnalysisReport {
                 || maximumAssetWeight.isGreaterThan(series.numFactory().one())) {
             throw new IllegalArgumentException("maximumAssetWeight must be finite and in (0, 1]");
         }
+        // Validate before writing so an undefined coefficient never leaves a partial
+        // report behind.
+        requireDefinedCorrelations("priceMatrix", priceMatrix);
+        requireDefinedCorrelations("returnMatrix", returnMatrix);
+        CorrelationHierarchy returnLinkage = returnMatrix.completeLinkage();
         Files.createDirectories(outputDirectory);
 
         PortfolioCorrelationChartFactory chartFactory = new PortfolioCorrelationChartFactory();
@@ -64,19 +69,28 @@ final class PortfolioAnalysisReport {
         writeChart(outputDirectory.resolve(RETURN_HEATMAP),
                 chartFactory.createHeatmap("Simple-return correlations", returnMatrix));
         writeChart(outputDirectory.resolve(RETURN_DENDROGRAM),
-                chartFactory.createDendrogram("Simple-return correlation hierarchy", returnMatrix.completeLinkage()));
+                chartFactory.createDendrogram("Simple-return correlation hierarchy", returnLinkage));
 
         writeCsv(outputDirectory.resolve(PRICE_CORRELATIONS_CSV), matrixRows(priceMatrix));
         writeCsv(outputDirectory.resolve(RETURN_CORRELATIONS_CSV), matrixRows(returnMatrix));
         writeCsv(outputDirectory.resolve(ALLOCATIONS_CSV), allocationRows(series.getAssets(), equalWeight,
                 minimumVariance, cappedMinimumVariance, maximumAssetWeight));
-        writeCsv(outputDirectory.resolve(RETURN_LINKAGE_CSV), linkageRows(returnMatrix.completeLinkage()));
+        writeCsv(outputDirectory.resolve(RETURN_LINKAGE_CSV), linkageRows(returnLinkage));
         Files.writeString(outputDirectory.resolve(AI_PROMPT),
                 aiPrompt(series, returnMatrix, cappedMinimumVariance, maximumAssetWeight), StandardCharsets.UTF_8);
         String externalAnalysis = aiAnalysisFile == null ? null
                 : Files.readString(aiAnalysisFile, StandardCharsets.UTF_8);
         Files.writeString(outputDirectory.resolve(HTML_REPORT), htmlReport(series, returnMatrix, equalWeight,
                 minimumVariance, cappedMinimumVariance, maximumAssetWeight, externalAnalysis), StandardCharsets.UTF_8);
+    }
+
+    private static void requireDefinedCorrelations(String name, CorrelationMatrix matrix) {
+        for (PortfolioCorrelations.CorrelationPair pair : matrix.getPairs()) {
+            if (!Num.isFinite(pair.getCoefficient())) {
+                throw new IllegalArgumentException(name + " has an undefined correlation for " + pair.getFirstAsset()
+                        + " / " + pair.getSecondAsset() + "; remove assets whose prices are constant in the window");
+            }
+        }
     }
 
     private static void writeChart(Path path, org.jfree.chart.JFreeChart chart) throws IOException {
@@ -186,7 +200,6 @@ final class PortfolioAnalysisReport {
             PortfolioAllocation cappedMinimumVariance, Num maximumAssetWeight, String externalAnalysis) {
         PortfolioCorrelations.CorrelationPair strongest = returnMatrix.getPairs()
                 .stream()
-                .filter(pair -> Num.isFinite(pair.getCoefficient()))
                 .max((first, second) -> first.getAbsoluteCoefficient().compareTo(second.getAbsoluteCoefficient()))
                 .orElseThrow();
         String aiSection = externalAnalysis == null

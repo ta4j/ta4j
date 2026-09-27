@@ -103,9 +103,9 @@ public final class DiversifiedPortfolioAnalysis {
         }
     }
 
-    private record Arguments(Path outputDirectory, Path aiAnalysisFile) {
+    record Arguments(Path outputDirectory, Path aiAnalysisFile) {
 
-        private static Arguments parse(String[] args) {
+        static Arguments parse(String[] args) {
             Path outputDirectory = Path.of("target", "portfolio-analysis");
             Path aiAnalysisFile = null;
             for (String argument : args) {
