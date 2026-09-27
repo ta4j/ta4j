@@ -27,10 +27,16 @@ import org.ta4j.core.num.Num;
  * closed position. The exit never uses a bar after the run.
  * </p>
  *
+ * <p>
+ * {@link StrategyWalkForwardExecutor} applies this model to every fold, so
+ * walk-forward folds always end flat. Wrap the model passed to
+ * {@link BarSeriesManager} or {@link BacktestExecutor} to end their runs flat
+ * too:
+ * </p>
+ *
  * <pre>{@code
- * TradeExecutionModel model = new ExitOnRunEndModel(new TradeOnNextOpenModel());
- * StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(series, transactionCostModel,
- *         holdingCostModel, model);
+ * BarSeriesManager manager = new BarSeriesManager(series, transactionCostModel, holdingCostModel,
+ *         new ExitOnRunEndModel(new TradeOnNextOpenModel()));
  * }</pre>
  *
  * @since 0.25.1

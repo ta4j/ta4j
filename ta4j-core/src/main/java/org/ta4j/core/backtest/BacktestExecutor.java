@@ -58,6 +58,11 @@ import java.util.stream.IntStream;
  * already depend on bars after that index and also reflect bars appended during
  * the execution.
  * </p>
+ * <p>
+ * A position still open at the window end stays open for criteria to mark to
+ * market or ignore, unless the execution model is an {@link ExitOnRunEndModel}.
+ * Walk-forward folds always end flat, exiting at their last close.
+ * </p>
  */
 public class BacktestExecutor {
 

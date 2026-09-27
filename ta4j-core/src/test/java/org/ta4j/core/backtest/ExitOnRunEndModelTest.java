@@ -161,18 +161,25 @@ public class ExitOnRunEndModelTest {
     }
 
     @Test
-    public void walkForwardFoldsEndFlatAtTheirTestEnd() {
+    public void walkForwardFoldsEndFlatAtTheirTestEndByDefault() {
         BarSeries series = seriesWithOpensAndCloses(48);
         WalkForwardConfig config = new WalkForwardConfig(12, 6, 6, 0, 0, 6, 3, List.of(2), 1, List.of(1), 42L);
         Strategy enterAndHold = new BaseStrategy(BooleanRule.TRUE, BooleanRule.FALSE);
-        StrategyWalkForwardExecutor wrapped = new StrategyWalkForwardExecutor(series, new ZeroCostModel(),
-                new ZeroCostModel(), new ExitOnRunEndModel(new TradeOnNextOpenModel()));
-        StrategyWalkForwardExecutor unwrapped = new StrategyWalkForwardExecutor(series, new ZeroCostModel(),
+        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(series, new ZeroCostModel(),
                 new ZeroCostModel(), new TradeOnNextOpenModel());
+        StrategyWalkForwardExecutor alreadyWrapped = new StrategyWalkForwardExecutor(series, new ZeroCostModel(),
+                new ZeroCostModel(), new ExitOnRunEndModel(new TradeOnNextOpenModel()));
+        BarSeriesManager manager = new BarSeriesManager(series, new ZeroCostModel(), new ZeroCostModel(),
+                new TradeOnNextOpenModel());
 
-        StrategyWalkForwardExecutionResult result = wrapped.execute(enterAndHold, TradeType.BUY, numFactory.one(),
-                config);
+        assertFoldsEndFlat(series, executor.execute(enterAndHold, TradeType.BUY, numFactory.one(), config));
+        assertFoldsEndFlat(series, alreadyWrapped.execute(enterAndHold, TradeType.BUY, numFactory.one(), config));
+        assertFoldsEndFlat(series, manager.runWalkForward(enterAndHold, TradeType.BUY, numFactory.one(), config));
+        // A plain run keeps the position open for criteria to mark or ignore.
+        assertTrue(manager.run(enterAndHold, TradeType.BUY, 12, 17).getCurrentPosition().isOpened());
+    }
 
+    private static void assertFoldsEndFlat(BarSeries series, StrategyWalkForwardExecutionResult result) {
         assertFalse(result.folds().isEmpty());
         for (StrategyWalkForwardExecutionResult.FoldResult fold : result.folds()) {
             TradingRecord record = fold.tradingRecord();
@@ -183,11 +190,6 @@ public class ExitOnRunEndModelTest {
             assertEquals(testEnd, exit.getIndex());
             assertEquals(series.getBar(testEnd).getClosePrice(), exit.getPricePerAsset());
         }
-        // Without the wrapper the same folds end with the position still open.
-        assertTrue(unwrapped.execute(enterAndHold, TradeType.BUY, numFactory.one(), config)
-                .folds()
-                .stream()
-                .allMatch(fold -> fold.tradingRecord().getCurrentPosition().isOpened()));
     }
 
     @Test

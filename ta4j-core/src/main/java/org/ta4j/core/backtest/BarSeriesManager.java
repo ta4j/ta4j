@@ -40,13 +40,13 @@ import org.ta4j.core.walkforward.WalkForwardConfig;
  * mark to market or ignore (see
  * {@link org.ta4j.core.analysis.OpenPositionHandling}); wrap the execution
  * model in an {@link ExitOnRunEndModel} to close it at the last close instead.
- * Bars after the window, whether retained past a constrained series' logical
- * end or appended by a live feed, are never used. The manager holds no lock
- * while strategies run, so a live {@link org.ta4j.core.ConcurrentBarSeries}
- * keeps accepting writes and reads from other threads, and bars replaced or
- * evicted inside the run's bounds are observed as they change. Use
- * {@link BacktestExecutor} when a result must be tied to one unchanged window:
- * it fails if the window changes.
+ * Walk-forward folds always end flat this way. Bars after the window, whether
+ * retained past a constrained series' logical end or appended by a live feed,
+ * are never used. The manager holds no lock while strategies run, so a live
+ * {@link org.ta4j.core.ConcurrentBarSeries} keeps accepting writes and reads
+ * from other threads, and bars replaced or evicted inside the run's bounds are
+ * observed as they change. Use {@link BacktestExecutor} when a result must be
+ * tied to one unchanged window: it fails if the window changes.
  * </p>
  *
  * <p>
@@ -184,6 +184,19 @@ public class BarSeriesManager {
         this.holdingCostModel = holdingCostModel;
         this.tradeExecutionModel = tradeExecutionModel;
         this.tradingRecordFactory = tradingRecordFactory;
+    }
+
+    /**
+     * Returns a manager over the same series, cost models and record factory whose
+     * runs end flat: its execution model is wrapped in an {@link ExitOnRunEndModel}
+     * unless it already is one.
+     */
+    BarSeriesManager exitingOnRunEnd() {
+        if (tradeExecutionModel instanceof ExitOnRunEndModel) {
+            return this;
+        }
+        return new BarSeriesManager(barSeries, transactionCostModel, holdingCostModel,
+                new ExitOnRunEndModel(tradeExecutionModel), tradingRecordFactory);
     }
 
     /**

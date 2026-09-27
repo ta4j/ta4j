@@ -37,10 +37,10 @@ import org.ta4j.core.walkforward.WalkForwardSplitter;
  * folds run without holding any series lock, so a live
  * {@link ConcurrentBarSeries} keeps accepting writes. Execution fails with an
  * {@link IllegalStateException} if bars inside that window change before it
- * completes; appended bars are ignored. A position still open at a fold's test
- * end stays open for criteria to mark to market or ignore; construct the
- * executor with an {@link ExitOnRunEndModel} to end every fold flat, paying the
- * exit cost at the fold's last close.
+ * completes; appended bars are ignored. Every fold ends flat: a position still
+ * open at the fold's last bar is exited at that bar's close and pays the
+ * transaction cost (see {@link ExitOnRunEndModel}), so folds never hand an open
+ * position to the next fold's data and their records can be chained.
  *
  * @since 0.22.4
  */
@@ -107,7 +107,7 @@ public class StrategyWalkForwardExecutor {
 
     StrategyWalkForwardExecutor(BarSeriesManager seriesManager, TradingStatementGenerator tradingStatementGenerator,
             WalkForwardSplitter splitter) {
-        this.seriesManager = Objects.requireNonNull(seriesManager, "seriesManager");
+        this.seriesManager = Objects.requireNonNull(seriesManager, "seriesManager").exitingOnRunEnd();
         this.tradingStatementGenerator = Objects.requireNonNull(tradingStatementGenerator, "tradingStatementGenerator");
         this.splitter = Objects.requireNonNull(splitter, "splitter");
     }
