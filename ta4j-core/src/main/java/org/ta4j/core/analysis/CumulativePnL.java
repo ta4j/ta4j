@@ -202,11 +202,13 @@ public final class CumulativePnL implements PerformanceIndicator {
         boolean isLong = entry.isBuy();
         Num netEntryPrice = entry.getNetPrice();
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
+            Num basis = AnalysisPositionSupport.valuationBasis(this, barSeries, position, holdingCost, endIndex,
+                    seriesBegin);
             Num netExit = AnalysisPositionSupport.markToMarket(this, barSeries, position, holdingCost, endIndex,
                     seriesBegin, endIndex - 1, (index, netPrice, previousPrice) -> buffer.add(index,
-                            isLong ? netPrice.minus(netEntryPrice) : netEntryPrice.minus(netPrice)))
+                            isLong ? netPrice.minus(basis) : basis.minus(netPrice)))
                     .netPrice();
-            Num deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
+            Num deltaExit = isLong ? netExit.minus(basis) : basis.minus(netExit);
             buffer.addRange(endIndex, captured.bufferEndIndex(), deltaExit);
             return;
         }

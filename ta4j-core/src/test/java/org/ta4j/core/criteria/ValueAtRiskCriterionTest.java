@@ -114,14 +114,18 @@ public class ValueAtRiskCriterionTest {
     }
 
     @Test
-    public void calculateWithUndefinedSeededReturnDoesNotSlicePastRawValues() {
+    public void calculateWithUndefinedFirstRetainedReturnDoesNotSlicePastRawValues() {
+        // The pre-window entry is valued at the first retained close, 0, and
+        // exits there at 0: the undefined 0/0 return occupies the first raw
+        // slot and must not shift the slice past the raw values.
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.setMaximumBarCount(2);
-        series.barBuilder().closePrice(0d).add();
+        series.barBuilder().closePrice(10d).add();
         Trade entry = Trade.buyAt(0, series);
-        series.barBuilder().closePrice(20d).add();
+        series.barBuilder().closePrice(0d).add();
+        Trade exit = Trade.sellAt(1, series);
         series.barBuilder().closePrice(30d).add();
-        TradingRecord tradingRecord = new BaseTradingRecord(entry, Trade.sellAt(2, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(entry, exit);
 
         Num result = getCriterion().calculate(series, tradingRecord);
 

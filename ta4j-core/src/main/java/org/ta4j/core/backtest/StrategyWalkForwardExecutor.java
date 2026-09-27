@@ -37,7 +37,10 @@ import org.ta4j.core.walkforward.WalkForwardSplitter;
  * folds run without holding any series lock, so a live
  * {@link ConcurrentBarSeries} keeps accepting writes. Execution fails with an
  * {@link IllegalStateException} if bars inside that window change before it
- * completes; appended bars are ignored.
+ * completes; appended bars are ignored. A position still open at a fold's test
+ * end stays open for criteria to mark to market or ignore; construct the
+ * executor with an {@link ExitOnRunEndModel} to end every fold flat, paying the
+ * exit cost at the fold's last close.
  *
  * @since 0.22.4
  */

@@ -239,11 +239,13 @@ public class CashFlow implements PerformanceIndicator {
         }
 
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
+            Num basis = AnalysisPositionSupport.valuationBasis(this, barSeries, position, holdingCost, endIndex,
+                    windowStartIndex);
             Num netExitPrice = AnalysisPositionSupport.markToMarket(this, barSeries, position, holdingCost, endIndex,
                     windowStartIndex, windowEndIndex, (index, netPrice, previousPrice) -> buffer.multiply(index,
-                            getIntermediateRatio(isLongTrade, netEntryPrice, netPrice)))
+                            getIntermediateRatio(isLongTrade, basis, netPrice)))
                     .netPrice();
-            Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
+            Num ratio = getIntermediateRatio(isLongTrade, basis, netExitPrice);
             if (ratioIndex <= windowEndIndex) {
                 buffer.multiply(ratioIndex, ratio);
             }

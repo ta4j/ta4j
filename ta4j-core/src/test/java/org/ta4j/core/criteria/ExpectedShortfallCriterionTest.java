@@ -127,14 +127,18 @@ public class ExpectedShortfallCriterionTest {
     }
 
     @Test
-    public void calculateWithUndefinedSeededReturnDoesNotSlicePastRawValues() {
+    public void calculateWithUndefinedFirstRetainedReturnDoesNotSlicePastRawValues() {
+        // The pre-window entry is valued at the first retained close, 0, and
+        // exits there at 0: the undefined 0/0 return occupies the first raw
+        // slot and must not shift the slice past the raw values.
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.setMaximumBarCount(2);
-        series.barBuilder().closePrice(0d).add();
+        series.barBuilder().closePrice(10d).add();
         Trade entry = Trade.buyAt(0, series);
-        series.barBuilder().closePrice(20d).add();
+        series.barBuilder().closePrice(0d).add();
+        Trade exit = Trade.sellAt(1, series);
         series.barBuilder().closePrice(30d).add();
-        TradingRecord tradingRecord = new BaseTradingRecord(entry, Trade.sellAt(2, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(entry, exit);
 
         Num result = getCriterion().calculate(series, tradingRecord);
 
@@ -164,22 +168,26 @@ public class ExpectedShortfallCriterionTest {
     }
 
     @Test
-    public void shortfallIncludesSeededFirstWindowLoss() {
-        // The entry predates the retained window; its -50% seeded return is a
-        // real observation that must join the tail distribution instead of
-        // being dropped by the unconditional placeholder trim.
+    public void shortfallIncludesFirstRetainedExitLoss() {
+        // The entry predates the retained window and exits on its first bar at
+        // 25, half the 50 close it is valued at: that -50% loss is a real
+        // observation that must join the tail distribution instead of being
+        // dropped by the unconditional placeholder trim. A re-entry at 50 then
+        // earns +140%.
         BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         rolling.setMaximumBarCount(2);
         rolling.barBuilder().closePrice(100d).add();
         Trade entry = Trade.buyAt(0, rolling);
         rolling.barBuilder().closePrice(50d).add();
         rolling.barBuilder().closePrice(120d).add();
-        TradingRecord tradingRecord = new BaseTradingRecord(entry, Trade.sellAt(2, rolling));
+        TradingRecord tradingRecord = new BaseTradingRecord(entry,
+                Trade.sellAt(1, numFactory.numOf(25d), numFactory.one()), Trade.buyAt(1, rolling),
+                Trade.sellAt(2, rolling));
 
         Num es = getCriterion().calculate(rolling, tradingRecord);
 
-        // Rates: seeded -50% and in-window +140%; the .95 tail keeps the
-        // single worst rate, whose log mean converts back to 50/100.
+        // Rates: -50% on the first retained bar and +140%; the .95 tail keeps
+        // the single worst rate, whose log mean converts back to 25/50.
         assertNumEquals(numFactory.numOf(0.5d), es);
     }
 }

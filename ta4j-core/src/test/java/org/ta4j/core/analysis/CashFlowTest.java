@@ -59,10 +59,19 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         CashFlow cashFlow = new CashFlow(series, record, EquityCurveMode.MARK_TO_MARKET,
                 OpenPositionHandling.MARK_TO_MARKET);
 
-        assertNumEquals(numFactory.numOf(3.5d).dividedBy(numFactory.numOf(1.5d)), cashFlow.getValue(2));
-        Num firstMaterializedValue = cashFlow.getValue(series.getBeginIndex());
+        // The append inside the lease evicts the entry bar: the window is [1, 2]
+        // and the entry is valued at the window's first close (2.5), so equity
+        // is 1 at index 1 and 3.5 / 2.5 at index 2.
+        assertEquals(1, cashFlow.getBeginIndex());
+        assertNumEquals(numFactory.one(), cashFlow.getValue(1));
+        assertNumEquals(numFactory.numOf(3.5d).dividedBy(numFactory.numOf(2.5d)), cashFlow.getValue(2));
+        List<Num> materialized = cashFlow.stream().toList();
         series.barBuilder().closePrice(4.5d).add();
-        assertNumEquals(firstMaterializedValue, cashFlow.stream().findFirst().orElseThrow());
+        // A rebased or recomputed curve over [2, 3] would start at 1 and end at
+        // 4.5 / 3.5; the materialized one keeps its values.
+        assertEquals(materialized, cashFlow.stream().toList());
+        assertEquals(List.of(numFactory.one(), numFactory.numOf(3.5d).dividedBy(numFactory.numOf(2.5d))),
+                cashFlow.stream().toList());
     }
 
     @Test
@@ -149,7 +158,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void cashFlowWindowedMarkToMarketSeedsWindowStartForOpenPosition() {
+    public void cashFlowWindowedMarkToMarketValuesPreWindowEntryAtWindowStartClose() {
         var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100d, 120d, 110d, 90d)
                 .build();
@@ -158,9 +167,11 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         var cashFlow = new CashFlow(sampleBarSeries, tradingRecord, 1, 3, EquityCurveMode.MARK_TO_MARKET,
                 OpenPositionHandling.MARK_TO_MARKET);
 
-        assertNumEquals(1.2d, cashFlow.getValue(1));
-        assertNumEquals(1.1d, cashFlow.getValue(2));
-        assertNumEquals(0.9d, cashFlow.getValue(3));
+        // The window [1, 3] is credited only with the move from its first close
+        // (120): the 100 -> 120 gain before it is not equity of this window.
+        assertNumEquals(1d, cashFlow.getValue(1));
+        assertNumEquals(numFactory.numOf(110d).dividedBy(numFactory.numOf(120d)), cashFlow.getValue(2));
+        assertNumEquals(numFactory.numOf(90d).dividedBy(numFactory.numOf(120d)), cashFlow.getValue(3));
     }
 
     @Test
@@ -714,7 +725,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void retainedSeedAndLaterMarksAccrueHoldingCostsFromEntry() {
+    public void retainedMarksAccrueOnlyInWindowHoldingCostAtTheWholeHoldRate() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d, 100d)
                 .build();
@@ -726,12 +737,84 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         CashFlow retained = new CashFlow(series, position);
 
-        assertNumEquals(0.90d, retained.getValue(10));
-        assertNumEquals(0.89d, retained.getValue(11));
-        assertNumEquals(0.88d, retained.getValue(12));
-        for (int index = 10; index <= 12; index++) {
-            assertEquals(fullHistory.getValue(index), retained.getValue(index));
+        // 12 of holding cost over 12 held bars is 1 per bar. The window [10, 12]
+        // values the position at close 100 net of the 10 accrued by then (90);
+        // later marks are net of 11 and 12, so only in-window carry moves equity.
+        assertNumEquals(1d, retained.getValue(10));
+        assertNumEquals(numFactory.numOf(89d).dividedBy(numFactory.numOf(90d)), retained.getValue(11));
+        assertNumEquals(numFactory.numOf(88d).dividedBy(numFactory.numOf(90d)), retained.getValue(12));
+        // Each in-window step matches the full-history curve's step.
+        for (int index = 11; index <= 12; index++) {
+            assertNumEquals(fullHistory.getValue(index).dividedBy(fullHistory.getValue(index - 1)),
+                    retained.getValue(index).dividedBy(retained.getValue(index - 1)), 1e-12);
         }
+    }
+
+    @Test
+    public void markToMarketPreWindowEntryMatchesEntryAtTheRetainedWindowStart() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 110d, 99d, 121d, 110d, 132d)
+                .build();
+        // Oracle: with no holding cost, a long entered before the window is
+        // worth the same as one bought at the window's first close (121).
+        TradingRecord closedPredating = new BaseTradingRecord(Trade.buyAt(1, series), Trade.sellAt(4, series));
+        TradingRecord closedAtStart = new BaseTradingRecord(Trade.buyAt(3, series), Trade.sellAt(4, series));
+        TradingRecord openPredating = new BaseTradingRecord(Trade.buyAt(2, series));
+        TradingRecord openAtStart = new BaseTradingRecord(Trade.buyAt(3, series));
+        series.setMaximumBarCount(3);
+
+        CashFlow closed = new CashFlow(series, closedPredating, EquityCurveMode.MARK_TO_MARKET);
+        CashFlow closedOracle = new CashFlow(series, closedAtStart, EquityCurveMode.MARK_TO_MARKET);
+        CashFlow open = new CashFlow(series, openPredating, EquityCurveMode.MARK_TO_MARKET);
+        CashFlow openOracle = new CashFlow(series, openAtStart, EquityCurveMode.MARK_TO_MARKET);
+
+        assertEquals(3, series.getBeginIndex());
+        // 110 / 121 at the exit, carried to the window end; open: 132 / 121.
+        assertNumEquals(numFactory.numOf(110d).dividedBy(numFactory.numOf(121d)), closed.getValue(5));
+        assertNumEquals(numFactory.numOf(132d).dividedBy(numFactory.numOf(121d)), open.getValue(5));
+        for (int index = 3; index <= 5; index++) {
+            assertNumEquals(closedOracle.getValue(index), closed.getValue(index));
+            assertNumEquals(openOracle.getValue(index), open.getValue(index));
+        }
+    }
+
+    @Test
+    public void preWindowShortCarriesOnlyBorrowingAccruedInsideTheWindow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 100d, 100d, 100d, 100d, 100d)
+                .build();
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.SELL, new ZeroCostModel(),
+                new LinearBorrowingCostModel(0.01d));
+        record.enter(1, series.getBar(1).getClosePrice(), numFactory.one());
+        series.setMaximumBarCount(3);
+
+        CashFlow cashFlow = new CashFlow(series, record, EquityCurveMode.MARK_TO_MARKET);
+
+        // Borrowing 1% of 100 per bar is 1 per bar. The window [3, 5] values the
+        // short at 100 plus the 2 accrued by index 3 (102); the marks at 4 and 5
+        // owe 103 and 104, so equity is 2 - 103/102 and 2 - 104/102: only the two
+        // in-window periods of carry reduce it.
+        assertEquals(3, series.getBeginIndex());
+        assertNumEquals(1d, cashFlow.getValue(3));
+        assertNumEquals(numFactory.numOf(101d).dividedBy(numFactory.numOf(102d)), cashFlow.getValue(4), 1e-12);
+        assertNumEquals(numFactory.numOf(100d).dividedBy(numFactory.numOf(102d)), cashFlow.getValue(5), 1e-12);
+    }
+
+    @Test
+    public void realizedKeepsEntryPriceCostBasisForPreWindowEntry() {
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(30d, 40d, 50d).build();
+        TradingRecord record = new BaseTradingRecord(Trade.buyAt(0, rolling), Trade.sellAt(2, rolling));
+        rolling.setMaximumBarCount(2);
+
+        CashFlow realized = new CashFlow(rolling, record, EquityCurveMode.REALIZED);
+        CashFlow markToMarket = new CashFlow(rolling, record, EquityCurveMode.MARK_TO_MARKET);
+
+        // Realized equity books proceeds against the 30 cost basis at the exit;
+        // mark-to-market measures the window from its first close (40).
+        assertEquals(1, rolling.getBeginIndex());
+        assertNumEquals(1d, realized.getValue(1));
+        assertNumEquals(numFactory.numOf(50d).dividedBy(numFactory.numOf(30d)), realized.getValue(2));
+        assertNumEquals(numFactory.numOf(50d).dividedBy(numFactory.numOf(40d)), markToMarket.getValue(2));
     }
 
     @Test

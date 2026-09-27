@@ -178,8 +178,8 @@ final class AnalysisPositionSupport {
         /**
          * @param index         the marked bar index
          * @param netPrice      the bar close net of holding cost accrued since entry
-         * @param previousPrice the previous mark, or the net entry price for the first
-         *                      mark
+         * @param previousPrice the previous mark, or the position's valuation basis for
+         *                      the first mark
          */
         void accept(int index, Num netPrice, Num previousPrice);
     }
@@ -189,20 +189,55 @@ final class AnalysisPositionSupport {
     }
 
     /**
-     * Marks a position to market at every held close inside the window and prices
-     * its exit. Each mark is the close net of holding cost accrued since entry; the
-     * exit at {@code endIndex} uses the exit price (or that bar's close for an open
-     * position) with the full accrued cost. Marks start at the later of the bar
-     * after entry and {@code windowStartIndex}, so an entry predating the window is
-     * marked once at the window start against its entry price, and a position that
-     * exits on the window start is only priced by its exit.
+     * Returns the price a mark-to-market curve measures a position's gains from:
+     * its net entry price, or, for an entry predating the window, its value at the
+     * window's first close net of holding cost accrued by then. Following the
+     * period-return convention, a window is credited only with the change in value
+     * from its beginning market value, never with gains earned before it; realized
+     * curves keep the entry price as cost basis.
      *
      * @param curve            the curve supplying cost conventions
      * @param series           the analysed series
      * @param position         the position, with an entry
      * @param holdingCost      the position's holding cost through {@code endIndex}
      * @param endIndex         the exit or final marked index
-     * @param windowStartIndex first index that may be marked
+     * @param windowStartIndex the window's first index
+     * @return the valuation basis
+     */
+    static Num valuationBasis(PerformanceIndicator curve, BarSeries series, Position position, Num holdingCost,
+            int endIndex, int windowStartIndex) {
+        Trade entry = position.getEntry();
+        int entryIndex = entry.getIndex();
+        if (entryIndex >= windowStartIndex) {
+            return entry.getNetPrice();
+        }
+        NumFactory numFactory = series.numFactory();
+        Num accruedCost = costPerPeriod(holdingCost, entryIndex, endIndex, numFactory)
+                .multipliedBy(numFactory.numOf((long) windowStartIndex - entryIndex));
+        return curve.addCost(series.getBar(windowStartIndex).getClosePrice(), accruedCost, entry.isBuy());
+    }
+
+    private static Num costPerPeriod(Num holdingCost, int entryIndex, int endIndex, NumFactory numFactory) {
+        long heldPeriods = (long) endIndex - entryIndex;
+        return heldPeriods <= 0L ? numFactory.zero() : holdingCost.dividedBy(numFactory.numOf(heldPeriods));
+    }
+
+    /**
+     * Marks a position to market at every held close inside the window and prices
+     * its exit. Each mark is the close net of holding cost accrued since entry; the
+     * exit at {@code endIndex} uses the exit price (or that bar's close for an open
+     * position) with the full accrued cost. The first mark is measured against the
+     * {@link #valuationBasis valuation basis}: an entry predating the window is
+     * valued at the window's first close, so its first mark is the bar after the
+     * window start, and a position that exits on the window start is only priced by
+     * its exit.
+     *
+     * @param curve            the curve supplying cost conventions
+     * @param series           the analysed series
+     * @param position         the position, with an entry
+     * @param holdingCost      the position's holding cost through {@code endIndex}
+     * @param endIndex         the exit or final marked index
+     * @param windowStartIndex the window's first index
      * @param lastMarkIndex    last index that may be marked before the exit
      * @param marks            receives each intermediate mark in index order
      * @return the exit mark
@@ -213,11 +248,9 @@ final class AnalysisPositionSupport {
         Trade entry = position.getEntry();
         boolean isLong = entry.isBuy();
         int entryIndex = entry.getIndex();
-        long heldPeriods = (long) endIndex - entryIndex;
-        Num costPerPeriod = heldPeriods <= 0L ? numFactory.zero()
-                : holdingCost.dividedBy(numFactory.numOf(heldPeriods));
-        Num previousPrice = entry.getNetPrice();
-        long firstMarkIndex = Math.max((long) entryIndex + 1L, windowStartIndex);
+        Num costPerPeriod = costPerPeriod(holdingCost, entryIndex, endIndex, numFactory);
+        Num previousPrice = valuationBasis(curve, series, position, holdingCost, endIndex, windowStartIndex);
+        long firstMarkIndex = (long) Math.max(entryIndex, windowStartIndex) + 1L;
         for (long index = firstMarkIndex; index < endIndex && index <= lastMarkIndex; index++) {
             Num accruedCost = costPerPeriod.multipliedBy(numFactory.numOf(index - entryIndex));
             Num netPrice = curve.addCost(series.getBar((int) index).getClosePrice(), accruedCost, isLong);

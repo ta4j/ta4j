@@ -444,9 +444,9 @@ public class Returns implements PerformanceIndicator {
             return;
         }
         if (index == captured.beginIndex()) {
-            // Any write into the first retained slot makes it a real return:
-            // either an entry predating the window seeded it, or a position
-            // entered and exited on the first retained bar itself.
+            // Any write into the first retained slot makes it a real return: a
+            // position that exits on the first retained bar (entered there or,
+            // valued at that bar's close, before the window).
             firstRetainedSlotSeeded = true;
         }
         if (representation == ReturnRepresentation.LOG) {
@@ -460,8 +460,8 @@ public class Returns implements PerformanceIndicator {
         Num one = barSeries.numFactory().one();
         for (int i = 0; i < returnFactors.size(); i++) {
             if (i == 0 && !firstRetainedSlotSeeded) {
-                // No prior in-window close exists for the first retained bar
-                // unless an entry predating the window seeded its return.
+                // No prior in-window close exists for the first retained bar;
+                // positions held into the window are valued from its close.
                 rawValues.add(NaN.NaN);
                 values.add(NaN.NaN);
             } else if (representation == ReturnRepresentation.LOG) {

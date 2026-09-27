@@ -199,36 +199,45 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void seededSingleRetainedReturnParticipatesInRatio() {
+    public void singleRetainedExitReturnParticipatesInRatio() {
         BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d).build();
         rolling.setMaximumBarCount(1);
         Trade entry = Trade.buyAt(0, rolling);
         rolling.barBuilder().closePrice(110d).add();
-        TradingRecord record = new BaseTradingRecord(entry, Trade.sellAt(1, rolling));
+        TradingRecord atClose = new BaseTradingRecord(entry, Trade.sellAt(1, rolling));
+        TradingRecord aboveClose = new BaseTradingRecord(entry,
+                Trade.sellAt(1, numFactory.numOf(121d), numFactory.one()));
 
         OmegaRatioCriterion criterion = (OmegaRatioCriterion) getCriterion(0d);
 
-        // The seeded +10% return is upside with no shortfall (NaN); dropping it
-        // would leave no observations and score zero.
-        assertTrue(criterion.calculate(rolling, record).isNaN());
-        assertNumEquals(numFactory.zero(), ((OmegaRatioCriterion) getCriterion(0.15d)).calculate(rolling, record));
+        // The entry is valued at the only retained close (110): exiting there
+        // earns the window nothing (the 100 -> 110 move predates it), so there
+        // is no upside or shortfall.
+        assertNumEquals(numFactory.zero(), criterion.calculate(rolling, atClose));
+        // Exiting at 121 is a +10% return on the only retained bar: upside with
+        // no shortfall (NaN); dropping it would leave no observations (zero).
+        assertTrue(criterion.calculate(rolling, aboveClose).isNaN());
+        assertNumEquals(numFactory.zero(), ((OmegaRatioCriterion) getCriterion(0.15d)).calculate(rolling, aboveClose));
     }
 
     @Test
     public void keepsReturnsAnchoredWhenRetentionAdvancesAfterMaterialization() {
         AtomicBoolean appendAfterLock = new AtomicBoolean();
         ConcurrentBarSeries rolling = ConstrainedSeriesSupport.rollingSeriesWithAppendAfterReadLock(numFactory,
-                appendAfterLock, 100d, 120d, 90d);
-        BaseTradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY, 0, 1, null, null);
+                appendAfterLock, 100d, 120d, 90d, 99d, 50d);
+        BaseTradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY, 0, 3, null, null);
         record.enter(0, rolling.getBar(0).getClosePrice(), numFactory.one());
-        record.exit(1, rolling.getBar(1).getClosePrice(), numFactory.one());
+        record.exit(3, rolling.getBar(3).getClosePrice(), numFactory.one());
         appendAfterLock.set(true);
 
         Num actual = new OmegaRatioCriterion().calculate(rolling, record);
 
-        // The anchored +20% return is upside with no shortfall (NaN); a rebased
-        // lookup would read no return and score zero.
-        assertTrue(actual.isNaN());
+        // Retention evicts the entry bar right after the window capture, so the
+        // returns re-capture [1, 3] and the criterion takes its bounds from that
+        // window rather than the record's start 0. The entry is valued at the
+        // 120 close: index 1 is the placeholder, then 90/120 - 1 = -25% and
+        // 99/90 - 1 = +10%, an Omega of 0.1 / 0.25.
+        assertNumEquals(numFactory.numOf(0.4d), actual, 1e-12);
         assertEquals(1, rolling.getBeginIndex());
     }
 
@@ -383,16 +392,19 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void omegaIncludesSeededFirstWindowReturn() {
-        // The entry predates the retained window; the seeded -50% loss is a
-        // real downside observation even though it lands in the first slot.
+    public void omegaIncludesFirstRetainedExitReturn() {
+        // The entry predates the retained window and exits on its first bar at
+        // 25, half the 50 close it is valued at: that -50% loss is a real
+        // downside observation even though it lands in the first slot. A
+        // re-entry at 50 then earns 120 / 50 - 1 = +140%.
         BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         rolling.setMaximumBarCount(2);
         rolling.barBuilder().closePrice(100d).add();
         Trade entry = Trade.buyAt(0, rolling);
         rolling.barBuilder().closePrice(50d).add();
         rolling.barBuilder().closePrice(120d).add();
-        var record = new BaseTradingRecord(entry, Trade.sellAt(2, rolling));
+        var record = new BaseTradingRecord(entry, Trade.sellAt(1, numFactory.numOf(25d), numFactory.one()),
+                Trade.buyAt(1, rolling), Trade.sellAt(2, rolling));
 
         Num ratio = new OmegaRatioCriterion(ReturnRepresentation.DECIMAL, OpenPositionHandling.MARK_TO_MARKET)
                 .calculate(rolling, record);

@@ -37,13 +37,16 @@ import org.ta4j.core.walkforward.WalkForwardConfig;
  * them: execution models and position sizing see the series only up to the
  * run's last index, so a signal on that bar that needs a later bar to fill does
  * not fill, and a position still open at the end stays open for criteria to
- * mark to market or ignore. Bars after the window, whether retained past a
- * constrained series' logical end or appended by a live feed, are never used.
- * The manager holds no lock while strategies run, so a live
- * {@link org.ta4j.core.ConcurrentBarSeries} keeps accepting writes and reads
- * from other threads, and bars replaced or evicted inside the run's bounds are
- * observed as they change. Use {@link BacktestExecutor} when a result must be
- * tied to one unchanged window: it fails if the window changes.
+ * mark to market or ignore (see
+ * {@link org.ta4j.core.analysis.OpenPositionHandling}); wrap the execution
+ * model in an {@link ExitOnRunEndModel} to close it at the last close instead.
+ * Bars after the window, whether retained past a constrained series' logical
+ * end or appended by a live feed, are never used. The manager holds no lock
+ * while strategies run, so a live {@link org.ta4j.core.ConcurrentBarSeries}
+ * keeps accepting writes and reads from other threads, and bars replaced or
+ * evicted inside the run's bounds are observed as they change. Use
+ * {@link BacktestExecutor} when a result must be tied to one unchanged window:
+ * it fails if the window changes.
  * </p>
  *
  * <p>
@@ -632,7 +635,7 @@ public class BarSeriesManager {
             }
         }
 
-        tradeExecutionModel.onRunEnd(lastProcessedIndex, tradingRecord);
+        tradeExecutionModel.onRunEnd(lastProcessedIndex, tradingRecord, runSeries);
         return tradingRecord;
     }
 

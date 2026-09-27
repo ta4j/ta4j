@@ -4,7 +4,6 @@
 package org.ta4j.core.analysis;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertSame;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.util.List;
@@ -24,6 +23,7 @@ import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
+import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -47,10 +47,19 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         CumulativePnL pnl = new CumulativePnL(series, record, EquityCurveMode.MARK_TO_MARKET,
                 OpenPositionHandling.MARK_TO_MARKET);
 
-        assertNumEquals(numFactory.numOf(3.5d).minus(numFactory.numOf(1.5d)), pnl.getValue(2));
-        Num firstMaterializedValue = pnl.getValue(series.getBeginIndex());
+        // The append inside the lease evicts the entry bar: the window is [1, 2]
+        // and the entry is valued at the window's first close (2.5), so P&L is 0
+        // at index 1 and 3.5 - 2.5 at index 2.
+        assertEquals(1, pnl.getBeginIndex());
+        assertNumEquals(numFactory.zero(), pnl.getValue(1));
+        assertNumEquals(numFactory.numOf(3.5d).minus(numFactory.numOf(2.5d)), pnl.getValue(2));
+        List<Num> materialized = pnl.stream().toList();
         series.barBuilder().closePrice(4.5d).add();
-        assertNumEquals(firstMaterializedValue, pnl.stream().findFirst().orElseThrow());
+        // A rebased or recomputed curve over [2, 3] would read 0 and 4.5 - 3.5;
+        // the materialized one keeps its values.
+        assertEquals(materialized, pnl.stream().toList());
+        assertEquals(List.of(numFactory.zero(), numFactory.numOf(3.5d).minus(numFactory.numOf(2.5d))),
+                pnl.stream().toList());
     }
 
     @Test
@@ -84,10 +93,10 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
     }
 
     @Test
-    public void seedsFirstRetainedLevelWhenEntryPredatesWindow() {
+    public void valuesPreWindowEntryAtFirstRetainedClose() {
         // A rolling window capped at two bars evicts the entry bar (close 30):
-        // the first retained level must still mark the entry-to-first-close
-        // move (40 - 30), not sit at the neutral zero.
+        // the window is credited only with the move from its first close (40),
+        // so its first level is zero and the exit adds 50 - 40, not 50 - 30.
         BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         rolling.setMaximumBarCount(2);
         rolling.barBuilder().closePrice(30d).add();
@@ -99,12 +108,12 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         CumulativePnL pnl = new CumulativePnL(rolling, record, EquityCurveMode.MARK_TO_MARKET);
 
         assertEquals(1, rolling.getBeginIndex());
-        assertNumEquals(10, pnl.getValue(1));
-        assertNumEquals(20, pnl.getValue(2));
+        assertNumEquals(0, pnl.getValue(1));
+        assertNumEquals(10, pnl.getValue(2));
     }
 
     @Test
-    public void retainedHeadAccruesAllPreWindowHoldingPeriods() {
+    public void retainedHeadNetsPreWindowHoldingPeriodsOutOfTheValuationBasis() {
         BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         rolling.setMaximumBarCount(2);
         rolling.barBuilder().closePrice(100d).add();
@@ -118,12 +127,14 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
 
         CumulativePnL pnl = new CumulativePnL(rolling, record, EquityCurveMode.MARK_TO_MARKET);
 
+        // 4 of holding cost over three held bars accrues 4/3 per bar. The window
+        // [2, 3] values the position at 120 net of the two periods accrued by
+        // index 2 (120 - 8/3), so its first level is zero; the mark at 3 is
+        // 130 - 4, adding the 10 price move less one period of carry (4/3). A
+        // basis that ignored pre-window carry would charge all 4 at index 3.
         Num averageCost = numFactory.numOf(4d).dividedBy(numFactory.numOf(3));
-        Num expected = numFactory.numOf(120d)
-                .minus(numFactory.numOf(100d))
-                .minus(averageCost.multipliedBy(numFactory.numOf(2)));
-        assertNumEquals(expected, pnl.getValue(2), 1e-12);
-        Num expectedNext = numFactory.numOf(130d).minus(numFactory.numOf(100d)).minus(numFactory.numOf(4d));
+        assertNumEquals(numFactory.zero(), pnl.getValue(2), 1e-12);
+        Num expectedNext = numFactory.numOf(10d).minus(averageCost);
         assertNumEquals(expectedNext, pnl.getValue(3), 1e-12);
     }
 
@@ -149,9 +160,9 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
     }
 
     @Test
-    public void flatPriceHoldingCostRemainsCumulativeAfterRetainedSeed() {
+    public void flatPriceHoldingCostRemainsCumulativeInsideRetainedWindow() {
         BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        rolling.setMaximumBarCount(2);
+        rolling.setMaximumBarCount(3);
         rolling.barBuilder().closePrice(100d).add();
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(),
                 new FixedTransactionCostModel(4d));
@@ -159,29 +170,96 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         rolling.barBuilder().closePrice(100d).add();
         rolling.barBuilder().closePrice(100d).add();
         rolling.barBuilder().closePrice(100d).add();
+        rolling.barBuilder().closePrice(100d).add();
 
         CumulativePnL pnl = new CumulativePnL(rolling, record, EquityCurveMode.MARK_TO_MARKET);
 
-        assertNumEquals(numFactory.numOf(-8d / 3d), pnl.getValue(2), 1e-12);
-        assertNumEquals(numFactory.numOf(-4d), pnl.getValue(3), 1e-12);
-        assertTrue(pnl.getValue(3).isNegative());
+        // 4 of holding cost over four held bars is 1 per bar. The window [2, 4]
+        // starts at 100 - 2; the marks at 3 and 4 are 97 and 96, so P&L keeps
+        // accumulating carry (-1, then -2) instead of resetting per mark.
+        assertEquals(2, rolling.getBeginIndex());
+        assertNumEquals(numFactory.zero(), pnl.getValue(2), 1e-12);
+        assertNumEquals(numFactory.numOf(-1d), pnl.getValue(3), 1e-12);
+        assertNumEquals(numFactory.numOf(-2d), pnl.getValue(4), 1e-12);
     }
 
     @Test
     public void exitAtFirstRetainedIndexIsNotDoubleCounted() {
-        // endIndex == seriesBegin: the exit level (40 - 30) must be added once,
-        // not once as a seed and once as the exit delta.
+        // endIndex == seriesBegin: the pre-window entry is valued at that bar's
+        // close (40) and the exit fills at 45, so the level is 45 - 40, added
+        // once at the exit and carried, not once as a mark and again as the
+        // exit delta.
         BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         rolling.setMaximumBarCount(2);
         rolling.barBuilder().closePrice(30d).add();
         Trade entry = Trade.buyAt(0, rolling);
         rolling.barBuilder().closePrice(40d).add();
-        Trade exitTrade = Trade.sellAt(1, rolling);
+        Trade exitTrade = Trade.sellAt(1, numFactory.numOf(45d), numFactory.one());
         rolling.barBuilder().closePrice(50d).add();
         var record = new BaseTradingRecord(entry, exitTrade);
 
         CumulativePnL pnl = new CumulativePnL(rolling, record, EquityCurveMode.MARK_TO_MARKET);
-        assertNumEquals(10, pnl.getValue(1));
+        assertNumEquals(5, pnl.getValue(1));
+        assertNumEquals(5, pnl.getValue(2));
+    }
+
+    @Test
+    public void markToMarketPreWindowEntryMatchesEntryAtTheRetainedWindowStart() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 110d, 99d, 121d, 110d, 132d)
+                .build();
+        // Oracle: with no holding cost, a long entered before the window earns
+        // the same P&L in it as one bought at the window's first close (121).
+        TradingRecord predating = new BaseTradingRecord(Trade.buyAt(1, series), Trade.sellAt(4, series));
+        TradingRecord atStart = new BaseTradingRecord(Trade.buyAt(3, series), Trade.sellAt(4, series));
+        series.setMaximumBarCount(3);
+
+        CumulativePnL pnl = new CumulativePnL(series, predating, EquityCurveMode.MARK_TO_MARKET);
+        CumulativePnL oracle = new CumulativePnL(series, atStart, EquityCurveMode.MARK_TO_MARKET);
+
+        assertEquals(3, series.getBeginIndex());
+        assertNumEquals(-11, pnl.getValue(5));
+        for (int index = 3; index <= 5; index++) {
+            assertNumEquals(oracle.getValue(index), pnl.getValue(index));
+        }
+    }
+
+    @Test
+    public void preWindowShortCarriesOnlyBorrowingAccruedInsideTheWindow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 100d, 100d, 100d, 100d, 100d)
+                .build();
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.SELL, new ZeroCostModel(),
+                new LinearBorrowingCostModel(0.01d));
+        record.enter(1, series.getBar(1).getClosePrice(), numFactory.one());
+        series.setMaximumBarCount(3);
+
+        CumulativePnL pnl = new CumulativePnL(series, record, EquityCurveMode.MARK_TO_MARKET);
+
+        // Borrowing 1% of 100 per bar is 1 per bar. The window [3, 5] values the
+        // short at 100 + 2 (carry accrued by index 3); the marks owe 103 and 104,
+        // so P&L is 0, -1, -2: only the in-window carry, not the 4 since entry.
+        assertEquals(3, series.getBeginIndex());
+        assertNumEquals(numFactory.zero(), pnl.getValue(3), 1e-12);
+        assertNumEquals(numFactory.numOf(-1d), pnl.getValue(4), 1e-12);
+        assertNumEquals(numFactory.numOf(-2d), pnl.getValue(5), 1e-12);
+    }
+
+    @Test
+    public void realizedKeepsEntryPriceCostBasisForPreWindowEntry() {
+        BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(30d, 40d, 50d).build();
+        TradingRecord record = new BaseTradingRecord(Trade.buyAt(0, rolling), Trade.sellAt(2, rolling));
+        rolling.setMaximumBarCount(2);
+
+        CumulativePnL realized = new CumulativePnL(rolling, record, EquityCurveMode.REALIZED);
+        CumulativePnL markToMarket = new CumulativePnL(rolling, record, EquityCurveMode.MARK_TO_MARKET);
+
+        // Realized P&L is proceeds less the 30 cost basis, booked at the exit;
+        // mark-to-market credits the window only with 50 - 40.
+        assertEquals(1, rolling.getBeginIndex());
+        assertNumEquals(0, realized.getValue(1));
+        assertNumEquals(20, realized.getValue(2));
+        assertNumEquals(10, markToMarket.getValue(2));
     }
 
     @Test

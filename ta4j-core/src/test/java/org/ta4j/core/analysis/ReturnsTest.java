@@ -69,10 +69,11 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void seedsFirstRetainedSlotWhenEntryPredatesWindow() {
+    public void valuesPreWindowEntryAtFirstRetainedClose() {
         // A rolling window capped at two bars evicts the entry bar (close 30):
-        // the first retained slot must still mark the whole move from the
-        // entry price (40 / 30 - 1), not sit at a neutral 0%.
+        // the position is valued at the first retained close (40), so that slot
+        // stays the no-prior-close placeholder and the window only earns
+        // 50 / 40 - 1, not the 40 / 30 - 1 made before it.
         BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         rolling.setMaximumBarCount(2);
         rolling.barBuilder().closePrice(30d).add();
@@ -85,8 +86,37 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                 EquityCurveMode.MARK_TO_MARKET);
 
         assertEquals(1, rolling.getBeginIndex());
-        assertNumEquals(40d / 30d - 1d, returns.getValue(1));
+        assertTrue(returns.getValue(1).isNaN());
         assertNumEquals(50d / 40d - 1d, returns.getValue(2));
+        assertEquals(1, returns.getSize());
+    }
+
+    @Test
+    public void markToMarketPreWindowEntryMatchesEntryAtTheRetainedWindowStart() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 110d, 99d, 121d, 110d, 132d)
+                .build();
+        // Oracle: with no holding cost, a long entered before the window has
+        // the same in-window returns as one bought at the window's first close.
+        TradingRecord predating = new BaseTradingRecord(Trade.buyAt(1, series));
+        TradingRecord atStart = new BaseTradingRecord(Trade.buyAt(3, series));
+        series.setMaximumBarCount(3);
+
+        Returns returns = new Returns(series, predating, ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        Returns oracle = new Returns(series, atStart, ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        // 110 / 121 - 1, then 132 / 110 - 1; index 3 is the placeholder.
+        assertEquals(3, series.getBeginIndex());
+        assertEquals(oracle.getSize(), returns.getSize());
+        assertTrue(returns.getValue(3).isNaN());
+        assertTrue(oracle.getValue(3).isNaN());
+        assertNumEquals(numFactory.numOf(110d).dividedBy(numFactory.numOf(121d)).minus(numFactory.one()),
+                returns.getValue(4));
+        for (int index = 4; index <= 5; index++) {
+            assertNumEquals(oracle.getValue(index), returns.getValue(index));
+        }
     }
 
     @Test
@@ -116,7 +146,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     @Test
     public void retainedHeadHoldingCostRemainsCumulativeAcrossMarks() {
         BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        rolling.setMaximumBarCount(2);
+        rolling.setMaximumBarCount(3);
         rolling.barBuilder().closePrice(100d).add();
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(),
                 new FixedTransactionCostModel(4d));
@@ -124,22 +154,23 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         rolling.barBuilder().closePrice(100d).add();
         rolling.barBuilder().closePrice(100d).add();
         rolling.barBuilder().closePrice(100d).add();
+        rolling.barBuilder().closePrice(100d).add();
 
         Returns returns = new Returns(rolling, record, ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET,
                 OpenPositionHandling.MARK_TO_MARKET);
 
-        Num accruedAtHead = numFactory.numOf(4d).dividedBy(numFactory.numOf(3)).multipliedBy(numFactory.numOf(2));
-        Num expectedHead = numFactory.numOf(100d)
-                .minus(accruedAtHead)
-                .dividedBy(numFactory.numOf(100d))
-                .minus(numFactory.one());
-        Num expectedNext = numFactory.numOf(100d)
-                .minus(numFactory.numOf(4d))
-                .dividedBy(numFactory.numOf(100d).minus(accruedAtHead))
-                .minus(numFactory.one());
-        assertNumEquals(expectedHead, returns.getValue(2));
-        assertNumEquals(expectedNext, returns.getValue(3));
-        assertTrue(returns.getValue(3).isNegative());
+        // 4 of holding cost over four held bars is 1 per bar. The window [2, 4]
+        // values the position at 100 - 2, leaving index 2 as the placeholder; the
+        // marks at 3 and 4 are 97 and 96, so each return carries one more period
+        // of cumulative carry: 97/98 - 1, then 96/97 - 1 (a per-mark reset would
+        // leave the second return at zero).
+        assertEquals(2, rolling.getBeginIndex());
+        assertTrue(returns.getValue(2).isNaN());
+        assertNumEquals(numFactory.numOf(97d).dividedBy(numFactory.numOf(98d)).minus(numFactory.one()),
+                returns.getValue(3), 1e-12);
+        assertNumEquals(numFactory.numOf(96d).dividedBy(numFactory.numOf(97d)).minus(numFactory.one()),
+                returns.getValue(4), 1e-12);
+        assertTrue(returns.getValue(4).isNegative());
     }
 
     @Test
@@ -581,22 +612,24 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void sizeCountsSeededFirstWindowReturn() {
-        // The entry predates the retained window, so the first slot carries a
-        // real entry-to-close return instead of a placeholder; the reported
-        // size must include it or tail-risk criteria silently drop the loss.
+    public void sizeCountsFirstRetainedExitReturn() {
+        // The pre-window entry exits on the first retained bar at 25, half its
+        // 50 close: the first slot carries that real -50% instead of a
+        // placeholder, and the reported size must include it or tail-risk
+        // criteria silently drop the loss.
         BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         rolling.setMaximumBarCount(2);
         rolling.barBuilder().closePrice(100d).add();
         Trade entry = Trade.buyAt(0, rolling);
         rolling.barBuilder().closePrice(50d).add();
         rolling.barBuilder().closePrice(120d).add();
-        var record = new BaseTradingRecord(entry, Trade.sellAt(2, rolling));
+        var record = new BaseTradingRecord(entry, Trade.sellAt(1, numFactory.numOf(25d), numFactory.one()));
 
         Returns returns = new Returns(rolling, record, rolling.getEndIndex(), ReturnRepresentation.DECIMAL,
                 EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
 
         assertNumEquals(numFactory.numOf(-0.5d), returns.getValue(1));
+        assertNumEquals(numFactory.zero(), returns.getValue(2));
         assertEquals(2, returns.getSize());
     }
 
@@ -614,17 +647,23 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void retainsUndefinedSeededReturnInMaterializedSize() {
+    public void retainsUndefinedFirstRetainedExitReturnInMaterializedSize() {
+        // The pre-window entry is valued at the first retained close, 0, and
+        // exits there at 0: the 0/0 return is undefined but real (measured from
+        // the 10 entry price it would be -100%), so it stays in the materialized
+        // size next to the flat return at index 2.
         BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         rolling.setMaximumBarCount(2);
-        rolling.barBuilder().closePrice(0d).add();
+        rolling.barBuilder().closePrice(10d).add();
         Trade entry = Trade.buyAt(0, rolling);
-        rolling.barBuilder().closePrice(20d).add();
+        rolling.barBuilder().closePrice(0d).add();
+        Trade exit = Trade.sellAt(1, rolling);
         rolling.barBuilder().closePrice(30d).add();
-        TradingRecord tradingRecord = new BaseTradingRecord(entry, Trade.sellAt(2, rolling));
+        TradingRecord tradingRecord = new BaseTradingRecord(entry, exit);
 
-        Returns returns = new Returns(rolling, tradingRecord, ReturnRepresentation.LOG);
+        Returns returns = new Returns(rolling, tradingRecord, ReturnRepresentation.DECIMAL);
 
+        assertEquals(1, rolling.getBeginIndex());
         assertTrue(returns.getRawValues().get(0).isNaN());
         assertEquals(2, returns.getSize());
     }
