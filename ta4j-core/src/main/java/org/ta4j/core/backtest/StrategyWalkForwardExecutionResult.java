@@ -77,8 +77,10 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
     }
 
     /**
-     * Returns a detached copy of the bar series backing this result. Each call
-     * returns a fresh copy, so mutating it cannot affect this result.
+     * Returns a copy of the bar series backing this result. Each call returns a
+     * fresh series, so adding or removing bars on it cannot affect this result. The
+     * copy shares the result's {@link org.ta4j.core.Bar} instances, so do not edit
+     * bars in place through it.
      */
     @Override
     public BarSeries barSeries() {
