@@ -508,4 +508,32 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         assertNumEquals(criterion.calculate(retained, retainedRecord), criterion.calculate(pruned, prunedRecord),
                 1e-12);
     }
+
+    @Test
+    public void tradeSamplingDropsTradesExitingOnPrunedBegin() {
+        double[] closes = { 100d, 110d, 99d, 118.8d, 112d, 125d };
+        BarSeries pruned = buildDailySeries(getBarSeries("trade_sampling_begin_exit_series"), closes,
+                Instant.parse("2024-01-01T00:00:00Z"));
+        Num amount = pruned.numFactory().one();
+        BaseTradingRecord prunedRecord = new BaseTradingRecord();
+        for (int[] leg : new int[][] { { 0, 3 }, { 3, 4 }, { 4, 5 } }) {
+            prunedRecord.enter(leg[0], pruned.getBar(leg[0]).getClosePrice(), amount);
+            prunedRecord.exit(leg[1], pruned.getBar(leg[1]).getClosePrice(), amount);
+        }
+        pruned.setMaximumBarCount(3);
+
+        // The first trade exits on the retained begin (index 3): nothing of it is
+        // observable, so it must not add a zero-return sample.
+        BarSeries retained = buildDailySeries(getBarSeries("trade_sampling_begin_exit_retained"),
+                new double[] { 118.8d, 112d, 125d }, Instant.parse("2024-01-04T00:00:00Z"));
+        BaseTradingRecord retainedRecord = new BaseTradingRecord();
+        for (int[] leg : new int[][] { { 0, 1 }, { 1, 2 } }) {
+            retainedRecord.enter(leg[0], retained.getBar(leg[0]).getClosePrice(), amount);
+            retainedRecord.exit(leg[1], retained.getBar(leg[1]).getClosePrice(), amount);
+        }
+
+        SharpeRatioCriterion criterion = criterion(SamplingFrequency.TRADE, Annualization.PERIOD);
+        assertNumEquals(criterion.calculate(retained, retainedRecord), criterion.calculate(pruned, prunedRecord),
+                1e-12);
+    }
 }

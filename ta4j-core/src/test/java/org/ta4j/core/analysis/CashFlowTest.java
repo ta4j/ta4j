@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.util.Collections;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -898,5 +899,18 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         for (int i = pruned.getBeginIndex(); i <= pruned.getEndIndex(); i++) {
             assertNumEquals(full.getValue(i), carried.getValue(i));
         }
+    }
+
+    @Test
+    public void getValueResolvesPrunedIndicesAndRejectsNegativeOnes() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120, 130).build();
+        series.setMaximumBarCount(2);
+        CashFlow cashFlow = new CashFlow(series, new BaseTradingRecord());
+        CumulativePnL pnl = new CumulativePnL(series, new BaseTradingRecord());
+
+        assertNumEquals(cashFlow.getValue(2), cashFlow.getValue(0));
+        assertNumEquals(pnl.getValue(2), pnl.getValue(1));
+        assertThrows(IndexOutOfBoundsException.class, () -> cashFlow.getValue(-1));
+        assertThrows(IndexOutOfBoundsException.class, () -> pnl.getValue(-1));
     }
 }

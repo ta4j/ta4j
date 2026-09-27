@@ -105,6 +105,12 @@ final class RatioSampleSupport {
         if (currentIndex < entryIndex) {
             return null;
         }
+        if (entry.getIndex() < beginIndex && currentIndex == entryIndex) {
+            // Entered before the retained window and exited on its first bar:
+            // nothing of the trade remains observable, unlike a genuine
+            // zero-duration trade entered on that bar.
+            return null;
+        }
         return new IndexPair(entryIndex, currentIndex);
     }
 
