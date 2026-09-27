@@ -240,8 +240,11 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
     private List<List<Num>> buildBlocks(BarSeries series, TradingRecord record, CashFlow cashFlow) {
         List<List<Num>> blocks = new ArrayList<>();
         Num one = series.numFactory().one();
-        int retainedBegin = series.getBeginIndex();
-        int retainedEnd = series.getEndIndex();
+        // Take the bounds from the curve's own capture: a concurrently appended
+        // and pruned live series may already describe a newer window.
+        BarSeries curveSeries = cashFlow.getBarSeries();
+        int retainedBegin = curveSeries.getBeginIndex();
+        int retainedEnd = curveSeries.getEndIndex();
         for (Position position : record.getPositions()) {
             if (!position.isClosed()) {
                 continue;

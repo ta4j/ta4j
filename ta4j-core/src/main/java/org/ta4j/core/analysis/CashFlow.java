@@ -274,7 +274,9 @@ public class CashFlow implements PerformanceIndicator {
             int endIndex = determineEndIndex(position, finalIndex, seriesEnd);
             if (endIndex < windowStartIndex) {
                 Trade exit = position.getExit();
-                if (exit != null && exit.getIndex() <= endIndex) {
+                // Like the full curve's entry-equity guard below: once carried
+                // equity is no longer positive, later closes cannot compound it.
+                if (exit != null && exit.getIndex() <= endIndex && realized.isGreaterThan(zero)) {
                     Num holdingCost = equityCurveMode == EquityCurveMode.MARK_TO_MARKET
                             ? averageHoldingCostPerPeriod(position, endIndex, numFactory)
                             : position.getHoldingCost(endIndex);
@@ -426,9 +428,12 @@ public class CashFlow implements PerformanceIndicator {
         int windowEndIndex = Math.min(valueEndIndex, seriesEnd);
         if (endIndex < windowStartIndex) {
             // Like the batch sweep, a position closed before the materialized
-            // window carries its realized ratio into every window cell.
+            // window carries its realized ratio into every window cell, unless
+            // the carried equity is no longer positive (the entry-equity guard).
             Trade exit = position.getExit();
-            if (exit != null && exit.getIndex() <= endIndex) {
+            boolean carriedEquityPositive = windowStartIndex > windowEndIndex
+                    || getStoredValue(windowStartIndex).isGreaterThan(series.numFactory().zero());
+            if (exit != null && exit.getIndex() <= endIndex && carriedEquityPositive) {
                 NumFactory numFactory = series.numFactory();
                 Num holdingCost = equityCurveMode == EquityCurveMode.MARK_TO_MARKET
                         ? averageHoldingCostPerPeriod(position, endIndex, numFactory)

@@ -873,4 +873,27 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(1.2, cashFlow.getValue(2));
         assertNumEquals(1.3, cashFlow.getValue(3));
     }
+
+    @Test
+    public void windowedCurveKeepsPreWindowBustLikeFullCurve() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 250, 100, 110, 120, 130)
+                .build();
+        // Short 100 -> 250 leaves equity at 2 - 2.5 = -0.5; the full curve then
+        // skips the later long because its entry equity is not positive.
+        BaseTradingRecord record = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series));
+
+        CashFlow full = new CashFlow(series, record, EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+        CashFlow windowed = new CashFlow(series, record, 4, 5, EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+        CashFlow perPosition = new CashFlow(series, new BaseTradingRecord(), 4, 5, EquityCurveMode.REALIZED,
+                OpenPositionHandling.IGNORE);
+        record.getPositions().forEach(position -> perPosition.calculatePosition(position, 5));
+
+        assertNumEquals(-0.5, full.getValue(4));
+        for (int i = 4; i <= 5; i++) {
+            assertNumEquals(full.getValue(i), windowed.getValue(i));
+            assertNumEquals(full.getValue(i), perPosition.getValue(i));
+        }
+    }
 }
