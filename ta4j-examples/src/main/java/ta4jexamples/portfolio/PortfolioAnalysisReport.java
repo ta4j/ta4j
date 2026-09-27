@@ -41,7 +41,8 @@ final class PortfolioAnalysisReport {
 
     static void write(Path outputDirectory, PortfolioSeries series, CorrelationMatrix priceMatrix,
             CorrelationMatrix returnMatrix, PortfolioAllocation equalWeight, PortfolioAllocation minimumVariance,
-            PortfolioAllocation cappedMinimumVariance, Num maximumAssetWeight, Path aiAnalysisFile) throws IOException {
+            PortfolioAllocation cappedMinimumVariance, double maximumAssetWeight, Path aiAnalysisFile)
+            throws IOException {
         Objects.requireNonNull(outputDirectory, "outputDirectory");
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(priceMatrix, "priceMatrix");
@@ -49,11 +50,10 @@ final class PortfolioAnalysisReport {
         Objects.requireNonNull(equalWeight, "equalWeight");
         Objects.requireNonNull(minimumVariance, "minimumVariance");
         Objects.requireNonNull(cappedMinimumVariance, "cappedMinimumVariance");
-        Objects.requireNonNull(maximumAssetWeight, "maximumAssetWeight");
-        if (!Num.isFinite(maximumAssetWeight) || maximumAssetWeight.isNegativeOrZero()
-                || maximumAssetWeight.isGreaterThan(series.numFactory().one())) {
+        if (!(maximumAssetWeight > 0 && maximumAssetWeight <= 1)) {
             throw new IllegalArgumentException("maximumAssetWeight must be finite and in (0, 1]");
         }
+        Num cap = series.numFactory().numOf(maximumAssetWeight);
         // Validate before writing so an undefined coefficient never leaves a partial
         // report behind.
         requireDefinedCorrelations("priceMatrix", priceMatrix);
@@ -73,15 +73,15 @@ final class PortfolioAnalysisReport {
 
         writeCsv(outputDirectory.resolve(PRICE_CORRELATIONS_CSV), matrixRows(priceMatrix));
         writeCsv(outputDirectory.resolve(RETURN_CORRELATIONS_CSV), matrixRows(returnMatrix));
-        writeCsv(outputDirectory.resolve(ALLOCATIONS_CSV), allocationRows(series.getAssets(), equalWeight,
-                minimumVariance, cappedMinimumVariance, maximumAssetWeight));
+        writeCsv(outputDirectory.resolve(ALLOCATIONS_CSV),
+                allocationRows(series.getAssets(), equalWeight, minimumVariance, cappedMinimumVariance, cap));
         writeCsv(outputDirectory.resolve(RETURN_LINKAGE_CSV), linkageRows(returnLinkage));
         Files.writeString(outputDirectory.resolve(AI_PROMPT),
-                aiPrompt(series, returnMatrix, cappedMinimumVariance, maximumAssetWeight), StandardCharsets.UTF_8);
+                aiPrompt(series, returnMatrix, cappedMinimumVariance, cap), StandardCharsets.UTF_8);
         String externalAnalysis = aiAnalysisFile == null ? null
                 : Files.readString(aiAnalysisFile, StandardCharsets.UTF_8);
         Files.writeString(outputDirectory.resolve(HTML_REPORT), htmlReport(series, returnMatrix, equalWeight,
-                minimumVariance, cappedMinimumVariance, maximumAssetWeight, externalAnalysis), StandardCharsets.UTF_8);
+                minimumVariance, cappedMinimumVariance, cap, externalAnalysis), StandardCharsets.UTF_8);
     }
 
     private static void requireDefinedCorrelations(String name, CorrelationMatrix matrix) {

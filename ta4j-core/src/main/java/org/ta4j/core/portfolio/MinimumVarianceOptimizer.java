@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.portfolio;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -16,30 +17,30 @@ import org.ta4j.core.num.NumFactory;
  * Computes a fully invested long-only minimum-variance allocation.
  *
  * <p>
- * The optimizer estimates a population covariance matrix from aligned one-bar
- * simple returns and minimizes portfolio variance on the bounded probability
- * simplex. It does not estimate expected returns. The optional maximum asset
- * weight provides a concentration constraint without changing the long-only,
- * fully invested contract.
+ * The optimizer estimates the covariance matrix of aligned one-bar simple
+ * returns and minimizes portfolio variance on the bounded probability simplex.
+ * It does not estimate expected returns. The optional maximum asset weight
+ * provides a concentration constraint without changing the long-only, fully
+ * invested contract.
  * </p>
  *
  * <p>
- * With few observations per asset the sample covariance is noisy, and the
- * optimizer concentrates on assets whose variance is underestimated by chance.
- * {@link #withCovarianceEstimator(CovarianceEstimator)} with
- * {@link CovarianceEstimator#LEDOIT_WOLF} shrinks the estimate toward a scaled
- * identity matrix, which usually yields more stable, better diversified weights
- * out of sample:
+ * Covariance is estimated with Ledoit-Wolf shrinkage by default. The raw sample
+ * covariance is noisy when there are few observations per asset, and a
+ * minimum-variance optimizer concentrates on whichever assets it
+ * underestimates; shrinkage yields more stable, better diversified weights out
+ * of sample. {@link CovarianceEstimator#SAMPLE} is available through
+ * {@link #withCovarianceEstimator(CovarianceEstimator)}:
  * </p>
  *
  * <pre>{@code
- * PortfolioAllocation allocation = new MinimumVarianceOptimizer(series, numFactory.numOf(0.25))
- *         .withCovarianceEstimator(CovarianceEstimator.LEDOIT_WOLF)
+ * PortfolioAllocation capped = new MinimumVarianceOptimizer(series, 0.25).optimize();
+ * PortfolioAllocation sample = new MinimumVarianceOptimizer(series).withCovarianceEstimator(CovarianceEstimator.SAMPLE)
  *         .optimize();
  * }</pre>
  *
  * <p>
- * Calculations remain in the portfolio {@link NumFactory}. A deterministic
+ * Calculations use the portfolio series' {@link NumFactory}. A deterministic
  * projected-gradient solver avoids matrix inversion, so singular covariance
  * matrices are supported.
  * </p>
@@ -76,7 +77,7 @@ public final class MinimumVarianceOptimizer {
          * Ledoit-Wolf (2004) shrinkage of the sample covariance toward {@code mu * I},
          * where {@code mu} is the average sample variance. The shrinkage intensity is
          * estimated from the data to minimize expected squared error, matching
-         * scikit-learn's {@code LedoitWolf} estimator.
+         * scikit-learn's {@code LedoitWolf} estimator. This is the default.
          *
          * @since 0.25.1
          */
@@ -90,18 +91,18 @@ public final class MinimumVarianceOptimizer {
      * @since 0.25.1
      */
     public MinimumVarianceOptimizer(PortfolioSeries series) {
-        this(series, Objects.requireNonNull(series, "series").getEndIndex(), series.getEndIndex(),
-                series.numFactory().one());
+        this(series, Objects.requireNonNull(series, "series").getEndIndex(), series.getEndIndex(), 1);
     }
 
     /**
      * Creates a capped optimizer over all available simple returns.
      *
      * @param series             aligned portfolio series
-     * @param maximumAssetWeight maximum weight for any asset
+     * @param maximumAssetWeight maximum weight for any asset, in {@code (0, 1]},
+     *                           for example {@code 0.25}
      * @since 0.25.1
      */
-    public MinimumVarianceOptimizer(PortfolioSeries series, Num maximumAssetWeight) {
+    public MinimumVarianceOptimizer(PortfolioSeries series, Number maximumAssetWeight) {
         this(series, Objects.requireNonNull(series, "series").getEndIndex(), series.getEndIndex(), maximumAssetWeight);
     }
 
@@ -114,7 +115,7 @@ public final class MinimumVarianceOptimizer {
      * @since 0.25.1
      */
     public MinimumVarianceOptimizer(PortfolioSeries series, int index, int barCount) {
-        this(series, index, barCount, Objects.requireNonNull(series, "series").numFactory().one());
+        this(series, index, barCount, 1);
     }
 
     /**
@@ -123,10 +124,11 @@ public final class MinimumVarianceOptimizer {
      * @param series             aligned portfolio series
      * @param index              final aligned index included in estimation
      * @param barCount           number of one-bar return observations
-     * @param maximumAssetWeight maximum weight for any asset
+     * @param maximumAssetWeight maximum weight for any asset, in {@code (0, 1]},
+     *                           for example {@code 0.25}
      * @since 0.25.1
      */
-    public MinimumVarianceOptimizer(PortfolioSeries series, int index, int barCount, Num maximumAssetWeight) {
+    public MinimumVarianceOptimizer(PortfolioSeries series, int index, int barCount, Number maximumAssetWeight) {
         this.series = Objects.requireNonNull(series, "series");
         if (index < series.getBeginIndex() || index > series.getEndIndex()) {
             throw new IndexOutOfBoundsException(
@@ -138,7 +140,7 @@ public final class MinimumVarianceOptimizer {
         this.index = index;
         this.barCount = barCount;
         this.maximumAssetWeight = normalizeMaximumWeight(maximumAssetWeight);
-        this.covarianceEstimator = CovarianceEstimator.SAMPLE;
+        this.covarianceEstimator = CovarianceEstimator.LEDOIT_WOLF;
     }
 
     private MinimumVarianceOptimizer(MinimumVarianceOptimizer source, CovarianceEstimator covarianceEstimator) {
@@ -151,7 +153,8 @@ public final class MinimumVarianceOptimizer {
 
     /**
      * Returns an optimizer with the same window and cap that estimates covariance
-     * with {@code estimator}. The default is {@link CovarianceEstimator#SAMPLE}.
+     * with {@code estimator}. The default is
+     * {@link CovarianceEstimator#LEDOIT_WOLF}.
      *
      * @param estimator covariance estimator
      * @return optimizer using {@code estimator}
@@ -173,16 +176,21 @@ public final class MinimumVarianceOptimizer {
     public PortfolioAllocation optimize() {
         Num[] weights = minimize(covarianceMatrix());
         List<String> assets = series.getAssets();
-        Map<String, Num> targetWeights = new LinkedHashMap<>();
+        Map<String, BigDecimal> targetWeights = new LinkedHashMap<>();
         for (int assetIndex = 0; assetIndex < assets.size(); assetIndex++) {
-            targetWeights.put(assets.get(assetIndex), weights[assetIndex]);
+            targetWeights.put(assets.get(assetIndex), weights[assetIndex].bigDecimalValue());
         }
-        return new PortfolioAllocation(targetWeights, series.numFactory());
+        return new PortfolioAllocation(targetWeights);
     }
 
-    private Num normalizeMaximumWeight(Num maximumWeight) {
+    private Num normalizeMaximumWeight(Number maximumWeight) {
         Objects.requireNonNull(maximumWeight, "maximumAssetWeight");
-        Num normalized = series.toPortfolioNum(maximumWeight);
+        Num normalized;
+        try {
+            normalized = series.numFactory().numOf(maximumWeight);
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("maximumAssetWeight must be finite and in (0, 1]", exception);
+        }
         Num one = series.numFactory().one();
         if (!Num.isFinite(normalized) || normalized.isNegativeOrZero() || normalized.isGreaterThan(one)) {
             throw new IllegalArgumentException("maximumAssetWeight must be finite and in (0, 1]");

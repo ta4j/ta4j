@@ -15,9 +15,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import javax.imageio.ImageIO;
 
@@ -25,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.analysis.WeightedValue;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.portfolio.MinimumVarianceOptimizer;
 import org.ta4j.core.portfolio.PortfolioAllocation;
@@ -41,13 +41,13 @@ public class PortfolioAnalysisReportTest {
         PortfolioSeries series = new PortfolioSeries(series("ALPHA", 100, 110, 99, 120, 115),
                 series("BETA", 100, 105, 101, 111, 109), series("GAMMA", 100, 95, 101, 90, 92));
         PortfolioCorrelations correlations = new PortfolioCorrelations(series);
-        Map<String, Num> equalWeights = new LinkedHashMap<>();
+        List<WeightedValue<String>> equalWeights = new ArrayList<>();
         for (String asset : series.getAssets()) {
-            equalWeights.put(asset, series.numFactory().one().dividedBy(series.numFactory().numOf(3)));
+            equalWeights.add(new WeightedValue<>(asset, series.numFactory().one()));
         }
-        PortfolioAllocation equal = new PortfolioAllocation(equalWeights, series.numFactory());
+        PortfolioAllocation equal = new PortfolioAllocation(equalWeights);
         PortfolioAllocation minimumVariance = new MinimumVarianceOptimizer(series).optimize();
-        Num maximumAssetWeight = series.numFactory().numOf(0.5);
+        double maximumAssetWeight = 0.5;
         PortfolioAllocation capped = new MinimumVarianceOptimizer(series, maximumAssetWeight).optimize();
         Path externalAnalysis = temporaryDirectory.resolve("analysis.txt");
         Files.writeString(externalAnalysis, "<script>alert(\"unsafe\")</script> & review", StandardCharsets.UTF_8);
@@ -104,8 +104,7 @@ public class PortfolioAnalysisReportTest {
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> PortfolioAnalysisReport.write(output, series, correlations.getPriceMatrix(),
-                        correlations.getSimpleReturnMatrix(), allocation, allocation, allocation,
-                        series.numFactory().one(), null));
+                        correlations.getSimpleReturnMatrix(), allocation, allocation, allocation, 1, null));
 
         assertTrue(exception.getMessage().contains("ALPHA / CASH"));
         assertFalse(Files.exists(output));

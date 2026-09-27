@@ -8,7 +8,10 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.ta4j.core.portfolio.MinimumVarianceOptimizer.CovarianceEstimator.LEDOIT_WOLF;
+import static org.ta4j.core.portfolio.MinimumVarianceOptimizer.CovarianceEstimator.SAMPLE;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -37,12 +40,19 @@ public class MinimumVarianceOptimizerTest {
         PortfolioSeries series = orthogonalReturnSeries(DoubleNumFactory.getInstance(), false);
         NumFactory numFactory = series.numFactory();
 
-        PortfolioAllocation allocation = new MinimumVarianceOptimizer(series, numFactory.numOf(0.6)).optimize();
+        PortfolioAllocation allocation = new MinimumVarianceOptimizer(series, 0.6).optimize();
 
         assertNumEquals(numFactory.numOf(0.6), allocation.getTargetWeight("LOW"), 0.000001);
         assertNumEquals(numFactory.numOf(0.4), allocation.getTargetWeight("HIGH"), 0.000001);
-        assertThrows(IllegalArgumentException.class,
-                () -> new MinimumVarianceOptimizer(series, numFactory.numOf(0.49)));
+        assertThrows(IllegalArgumentException.class, () -> new MinimumVarianceOptimizer(series, 0.49));
+        assertThrows(IllegalArgumentException.class, () -> new MinimumVarianceOptimizer(series, 1.01));
+        PortfolioSeries decimalSeries = orthogonalReturnSeries(DecimalNumFactory.getInstance(), false);
+        assertEquals(0.6,
+                new MinimumVarianceOptimizer(decimalSeries, new BigDecimal("0.6")).optimize()
+                        .getTargetWeight("LOW")
+                        .doubleValue(),
+                0.000001);
+        assertThrows(IllegalArgumentException.class, () -> new MinimumVarianceOptimizer(decimalSeries, Double.NaN));
     }
 
     @Test
@@ -86,17 +96,18 @@ public class MinimumVarianceOptimizerTest {
     public void satisfiesKktConditionsWhenBoundsAndCapBind() {
         for (NumFactory numFactory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
             PortfolioSeries series = factorSeries(numFactory);
-            Num cap = numFactory.numOf(0.3);
-
-            PortfolioAllocation uncapped = new MinimumVarianceOptimizer(series).optimize();
-            PortfolioAllocation capped = new MinimumVarianceOptimizer(series, cap).optimize();
+            // assertKkt checks optimality against the sample covariance.
+            PortfolioAllocation uncapped = new MinimumVarianceOptimizer(series).withCovarianceEstimator(SAMPLE)
+                    .optimize();
+            PortfolioAllocation capped = new MinimumVarianceOptimizer(series, 0.3).withCovarianceEstimator(SAMPLE)
+                    .optimize();
 
             assertKkt(series, uncapped, 1.0);
             assertKkt(series, capped, 0.3);
             assertTrue("a high-beta asset should be excluded",
                     uncapped.getTargetWeights().values().stream().anyMatch(Num::isZero));
             assertTrue("the cap should bind",
-                    capped.getTargetWeights().values().stream().anyMatch(weight -> weight.isEqual(cap)));
+                    capped.getTargetWeights().values().stream().anyMatch(weight -> weight.doubleValue() == 0.3));
         }
     }
 
@@ -104,9 +115,8 @@ public class MinimumVarianceOptimizerTest {
     public void ledoitWolfMatchesScikitLearnAndDiversifiesShortWindows() {
         for (NumFactory numFactory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
             PortfolioSeries series = shortWindowSeries(numFactory);
-            MinimumVarianceOptimizer sample = new MinimumVarianceOptimizer(series);
-            MinimumVarianceOptimizer shrunk = sample
-                    .withCovarianceEstimator(MinimumVarianceOptimizer.CovarianceEstimator.LEDOIT_WOLF);
+            MinimumVarianceOptimizer shrunk = new MinimumVarianceOptimizer(series);
+            MinimumVarianceOptimizer sample = shrunk.withCovarianceEstimator(SAMPLE);
 
             // sklearn.covariance.LedoitWolf().fit(returns).covariance_ (shrinkage
             // 0.10631429193176394).
@@ -130,15 +140,13 @@ public class MinimumVarianceOptimizerTest {
 
             // scipy.optimize SLSQP on the shrunk covariance, uncapped and capped at 35%.
             assertWeights(shrunk.optimize(), 0.203832142, 0.023694976, 0.362084844, 0, 0.410388038);
-            assertWeights(new MinimumVarianceOptimizer(series, numFactory.numOf(0.35))
-                    .withCovarianceEstimator(MinimumVarianceOptimizer.CovarianceEstimator.LEDOIT_WOLF)
-                    .optimize(), 0.296695947, 0.003304053, 0.35, 0, 0.35);
+            assertWeights(new MinimumVarianceOptimizer(series, 0.35).optimize(), 0.296695947, 0.003304053, 0.35, 0,
+                    0.35);
             // The sample estimate concentrates on two assets.
             assertWeights(sample.optimize(), 0, 0, 0.223381106, 0, 0.776618894);
-            assertEquals(sample.optimize().getTargetWeights(),
-                    sample.withCovarianceEstimator(MinimumVarianceOptimizer.CovarianceEstimator.SAMPLE)
-                            .optimize()
-                            .getTargetWeights());
+            // Ledoit-Wolf is the default.
+            assertEquals(shrunk.optimize().getTargetWeights(),
+                    sample.withCovarianceEstimator(LEDOIT_WOLF).optimize().getTargetWeights());
         }
         assertThrows(NullPointerException.class,
                 () -> new MinimumVarianceOptimizer(shortWindowSeries(DoubleNumFactory.getInstance()))
@@ -150,9 +158,7 @@ public class MinimumVarianceOptimizerTest {
         PortfolioSeries flat = new PortfolioSeries(series("FLAT_A", DoubleNumFactory.getInstance(), 100, 100, 100),
                 series("FLAT_B", DoubleNumFactory.getInstance(), 50, 50, 50));
 
-        PortfolioAllocation allocation = new MinimumVarianceOptimizer(flat)
-                .withCovarianceEstimator(MinimumVarianceOptimizer.CovarianceEstimator.LEDOIT_WOLF)
-                .optimize();
+        PortfolioAllocation allocation = new MinimumVarianceOptimizer(flat).optimize();
 
         assertNumEquals(0.5, allocation.getTargetWeight("FLAT_A"));
         assertNumEquals(0.5, allocation.getTargetWeight("FLAT_B"));
@@ -272,7 +278,8 @@ public class MinimumVarianceOptimizerTest {
     private static void assertMinimumVarianceAllocation(NumFactory numFactory) {
         PortfolioSeries series = orthogonalReturnSeries(numFactory, false);
 
-        PortfolioAllocation allocation = new MinimumVarianceOptimizer(series, 4, 4).optimize();
+        PortfolioAllocation allocation = new MinimumVarianceOptimizer(series, 4, 4).withCovarianceEstimator(SAMPLE)
+                .optimize();
 
         assertNumEquals(numFactory.numOf(0.8), allocation.getTargetWeight("LOW"), 0.000001);
         assertNumEquals(numFactory.numOf(0.2), allocation.getTargetWeight("HIGH"), 0.000001);
