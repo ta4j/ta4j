@@ -16,6 +16,7 @@ import java.util.Map;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.analysis.WeightedValue;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
@@ -221,13 +222,12 @@ public class PortfolioSeriesManagerTest {
     @Test
     public void convertsInputsToThePortfolioNumFactory() {
         PortfolioSeriesManager manager = manager(new double[] { 100, 110 }, new double[] { 50, 55 });
-        Map<String, Num> decimalWeights = new LinkedHashMap<>();
-        decimalWeights.put("ALPHA", DecimalNumFactory.getInstance().numOf("0.6"));
-        decimalWeights.put("BETA", DecimalNumFactory.getInstance().numOf("0.4"));
+        PortfolioAllocation decimalWeights = new PortfolioAllocation(
+                List.of(new WeightedValue<>("ALPHA", DecimalNumFactory.getInstance().numOf("0.6")),
+                        new WeightedValue<>("BETA", DecimalNumFactory.getInstance().numOf("0.4"))));
 
-        PortfolioExecutionResult result = manager.run(
-                new PortfolioAllocation(decimalWeights, DecimalNumFactory.getInstance()),
-                DecimalNumFactory.getInstance().numOf(1000), RebalancePolicy.atStart());
+        PortfolioExecutionResult result = manager.run(decimalWeights, DecimalNumFactory.getInstance().numOf(1000),
+                RebalancePolicy.atStart());
 
         assertNumEquals(1100, result.getFinalValue());
         assertTrue(DoubleNumFactory.getInstance().produces(result.getFinalValue()));

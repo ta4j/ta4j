@@ -8,6 +8,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +17,6 @@ import org.junit.Test;
 import org.ta4j.core.analysis.WeightedValue;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
-import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 public class PortfolioAllocationTest {
@@ -24,12 +24,12 @@ public class PortfolioAllocationTest {
     private static final NumFactory NUM_FACTORY = DoubleNumFactory.getInstance();
 
     @Test
-    public void targetWeightsCanLeaveCashUnallocated() {
-        Map<String, Num> weights = new LinkedHashMap<>();
-        weights.put("ALPHA", NUM_FACTORY.numOf(0.55));
-        weights.put("BETA", NUM_FACTORY.numOf(0.35));
+    public void numWeightsPassExactlyAsBigDecimalsAndCanLeaveCashUnallocated() {
+        Map<String, BigDecimal> weights = new LinkedHashMap<>();
+        weights.put("ALPHA", NUM_FACTORY.numOf(0.55).bigDecimalValue());
+        weights.put("BETA", NUM_FACTORY.numOf(0.35).bigDecimalValue());
 
-        PortfolioAllocation allocation = new PortfolioAllocation(weights, NUM_FACTORY);
+        PortfolioAllocation allocation = new PortfolioAllocation(weights);
 
         assertEquals(List.of("ALPHA", "BETA"), List.copyOf(allocation.getTargetWeights().keySet()));
         assertNumEquals(0.55, allocation.getTargetWeight("ALPHA"));
@@ -55,7 +55,7 @@ public class PortfolioAllocationTest {
     public void fullyInvestedAllocationNormalizesAndCombinesDuplicateAssets() {
         PortfolioAllocation allocation = new PortfolioAllocation(List.of(
                 new WeightedValue<>("ALPHA", NUM_FACTORY.two()), new WeightedValue<>("ALPHA", NUM_FACTORY.one()),
-                new WeightedValue<>("BETA", NUM_FACTORY.one())), NUM_FACTORY);
+                new WeightedValue<>("BETA", NUM_FACTORY.one())));
 
         assertNumEquals(0.75, allocation.getTargetWeight("ALPHA"));
         assertNumEquals(0.25, allocation.getTargetWeight("BETA"));
@@ -64,11 +64,11 @@ public class PortfolioAllocationTest {
 
     @Test
     public void acceptsTinyWeightOvershootFromNumericDrift() {
-        Map<String, Num> weights = new LinkedHashMap<>();
-        weights.put("ALPHA", NUM_FACTORY.numOf(0.5));
-        weights.put("BETA", NUM_FACTORY.numOf(0.5).plus(NUM_FACTORY.epsilon().dividedBy(NUM_FACTORY.two())));
+        Map<String, BigDecimal> weights = new LinkedHashMap<>();
+        weights.put("ALPHA", new BigDecimal("0.5"));
+        weights.put("BETA", new BigDecimal("0.5000000000005"));
 
-        PortfolioAllocation allocation = new PortfolioAllocation(weights, NUM_FACTORY);
+        PortfolioAllocation allocation = new PortfolioAllocation(weights);
 
         assertNumEquals(1, allocation.getTotalWeight());
         assertNumEquals(0, allocation.getCashWeight());
@@ -85,11 +85,10 @@ public class PortfolioAllocationTest {
 
     @Test
     public void finiteHighPrecisionWeightUsesLeverageValidation() {
-        NumFactory decimalFactory = DecimalNumFactory.getInstance();
-        Map<String, Num> weights = Map.of("ALPHA", decimalFactory.numOf("1E400"));
+        Map<String, BigDecimal> weights = Map.of("ALPHA", new BigDecimal("1E400"));
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> new PortfolioAllocation(weights, decimalFactory));
+                () -> new PortfolioAllocation(weights));
 
         assertTrue(exception.getMessage().startsWith("sum of target weights must be <= 1"));
     }
