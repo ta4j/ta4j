@@ -912,5 +912,11 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(pnl.getValue(2), pnl.getValue(1));
         assertThrows(IndexOutOfBoundsException.class, () -> cashFlow.getValue(-1));
         assertThrows(IndexOutOfBoundsException.class, () -> pnl.getValue(-1));
+
+        // A read before an explicit window start is not a pruned index.
+        BarSeries unpruned = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120, 130).build();
+        CashFlow windowed = new CashFlow(unpruned, new BaseTradingRecord(), 2, 3, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.IGNORE);
+        assertThrows(IndexOutOfBoundsException.class, () -> windowed.getValue(1));
     }
 }

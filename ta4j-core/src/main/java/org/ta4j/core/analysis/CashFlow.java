@@ -533,15 +533,18 @@ public class CashFlow implements PerformanceIndicator {
     /**
      * Returns the cash flow at the given bar index. Like
      * {@link BarSeries#getBar(int)}, a non-negative index before the retained begin
-     * of a pruned series resolves to the first retained value, and a negative index
-     * is rejected.
+     * of a pruned series resolves to the first retained value; a negative index, or
+     * one before an explicit window start, is rejected.
      *
      * @param index the bar index
      * @return the cash flow value at the index-th position
      */
     @Override
     public Num getValue(int index) {
-        return getStoredValue(index < 0 ? index : Math.max(index, valueStartIndex));
+        // Only indices pruned from the series resolve to the first retained value;
+        // negative indices and reads before an explicit window stay invalid.
+        int retainedBegin = Math.max(0, series.beginIndex());
+        return getStoredValue(index >= 0 && index < retainedBegin ? retainedBegin : index);
     }
 
     @Override
