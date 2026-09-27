@@ -47,12 +47,12 @@ final class SeriesSnapshots {
         // by contract; the removal delta below still keeps indices aligned if a
         // moving series prunes while the bar list is read.
         if (barSeries instanceof ConcurrentBarSeries concurrentBarSeries) {
-            return concurrentBarSeries.withReadLock(() -> read(barSeries));
+            return concurrentBarSeries.withReadLock(() -> read(barSeries, concurrentBarSeries));
         }
-        return read(barSeries);
+        return read(barSeries, null);
     }
 
-    private static CapturedSeries read(BarSeries barSeries) {
+    private static CapturedSeries read(BarSeries barSeries, ConcurrentBarSeries lockOwner) {
         // Read the bar list before the counters: any prune already reflected in
         // this list is also reflected in the baseline read right after it, so
         // the reconciliation below never trims a retained bar twice.
@@ -66,7 +66,7 @@ final class SeriesSnapshots {
         }
         int endIndex = bars.isEmpty() ? barSeries.getEndIndex() : Math.max(0, beginIndex) + bars.size() - 1;
         return new CapturedSeries(barSeries.getName(), barSeries.numFactory(), barSeries.getMaximumBarCount(),
-                bars.isEmpty() ? beginIndex : Math.max(0, beginIndex), endIndex, bars);
+                bars.isEmpty() ? beginIndex : Math.max(0, beginIndex), endIndex, bars, lockOwner);
     }
 
     /**
@@ -83,15 +83,21 @@ final class SeriesSnapshots {
         private final int endIndex;
         private final List<Bar> bars;
         private final Num[] closePrices;
+        /**
+         * The concurrent source series whose read lock guards in-place bar updates, or
+         * {@code null} for series documented as single-threaded.
+         */
+        private final ConcurrentBarSeries lockOwner;
 
         private CapturedSeries(String name, NumFactory numFactory, int maximumBarCount, int beginIndex, int endIndex,
-                List<Bar> bars) {
+                List<Bar> bars, ConcurrentBarSeries lockOwner) {
             this.name = name;
             this.numFactory = numFactory;
             this.maximumBarCount = maximumBarCount;
             this.beginIndex = beginIndex;
             this.endIndex = endIndex;
             this.bars = bars;
+            this.lockOwner = lockOwner;
             this.closePrices = new Num[bars.size()];
             for (int i = 0; i < closePrices.length; i++) {
                 closePrices[i] = bars.get(i).getClosePrice();
@@ -137,12 +143,20 @@ final class SeriesSnapshots {
 
         /**
          * Builds a detached series holding deep copies of the captured bars, so
-         * mutating it cannot reach the source series. Specialized bar types such as
-         * {@link BaseRealtimeBar} keep their side and liquidity metadata.
+         * mutating it cannot reach the source series. The bar set and indices are those
+         * captured at construction; bar contents are copied now, so they reflect
+         * in-place edits made since the capture, while curve values keep the close
+         * prices captured at construction. For a concurrent source the copy is taken
+         * under its read lock, so no bar is observed mid-update. Specialized bar types
+         * such as {@link BaseRealtimeBar} keep their side and liquidity metadata.
          *
          * @return a new detached series with the captured bars and absolute indices
          */
         BarSeries toDetachedSeries() {
+            return lockOwner == null ? copyBars() : lockOwner.withReadLock(this::copyBars);
+        }
+
+        private BarSeries copyBars() {
             BaseBarSeriesBuilder builder = new BaseBarSeriesBuilder().withName(name)
                     .withNumFactory(numFactory)
                     .withMaxBarCount(maximumBarCount)

@@ -81,9 +81,10 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
 
     /**
      * Returns a detached copy of the bars the invested intervals were computed
-     * from, with the source series' absolute indexing. It is built on first request
-     * and the same instance is returned afterwards; mutating it cannot reach the
-     * source series.
+     * from, with the source series' absolute indexing. The bar set is the one
+     * retained at construction; bar contents are copied on first request (under the
+     * read lock of a {@code ConcurrentBarSeries}). The same instance is returned
+     * afterwards, and mutating it cannot reach the source series.
      *
      * @return the detached backing series snapshot
      * @since 0.25.1

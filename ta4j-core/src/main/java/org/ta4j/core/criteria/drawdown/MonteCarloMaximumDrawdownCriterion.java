@@ -205,9 +205,12 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         CashFlow cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
-        List<List<Num>> blocks = buildBlocks(series, tradingRecord, cashFlow);
+        // Scan the curve's own capture: a concurrently appended and pruned live
+        // series may already describe a newer window than the curve.
+        BarSeries curveSeries = cashFlow.getBarSeries();
+        List<List<Num>> blocks = buildBlocks(curveSeries, tradingRecord, cashFlow);
         if (blocks.size() < 3) {
-            return Drawdown.amount(series, tradingRecord, cashFlow);
+            return Drawdown.amount(curveSeries, tradingRecord, cashFlow);
         }
         int blocksPerPath = pathBlocks != null ? pathBlocks : blocks.size();
         RandomGenerator random = randomSupplier.get();
@@ -240,11 +243,8 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
     private List<List<Num>> buildBlocks(BarSeries series, TradingRecord record, CashFlow cashFlow) {
         List<List<Num>> blocks = new ArrayList<>();
         Num one = series.numFactory().one();
-        // Take the bounds from the curve's own capture: a concurrently appended
-        // and pruned live series may already describe a newer window.
-        BarSeries curveSeries = cashFlow.getBarSeries();
-        int retainedBegin = curveSeries.getBeginIndex();
-        int retainedEnd = curveSeries.getEndIndex();
+        int retainedBegin = series.getBeginIndex();
+        int retainedEnd = series.getEndIndex();
         for (Position position : record.getPositions()) {
             if (!position.isClosed()) {
                 continue;

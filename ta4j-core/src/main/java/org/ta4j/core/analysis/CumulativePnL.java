@@ -441,9 +441,12 @@ public final class CumulativePnL implements PerformanceIndicator {
 
     /**
      * Returns a detached copy of the bars this curve was computed from, with the
-     * source series' absolute indexing. It is built on first request and the same
-     * instance is returned afterwards; mutating it cannot reach the source series
-     * or this curve.
+     * source series' absolute indexing. The bar set is the one retained at
+     * construction; bar contents are copied on first request (under the read lock
+     * of a {@code ConcurrentBarSeries}), so in-place bar edits made before that
+     * request are visible in the copy but never in this curve's values. The same
+     * instance is returned afterwards, and mutating it cannot reach the source
+     * series or this curve.
      */
     @Override
     public BarSeries getBarSeries() {
