@@ -266,9 +266,15 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
                 previousEquity = one;
             } else {
                 // Pruned bars leave no prior equity cell: start from the first
-                // retained bar's equity.
+                // retained bar's equity. A position entering exactly on that bar
+                // (rather than clipped from earlier history) keeps its entry-bar
+                // return, which is zero because marks start after the entry, like
+                // the same position at index 0 of an unpruned series.
                 previousEquity = cashFlow.getValue(blockStart);
                 firstIndex++;
+                if (entryIndex == blockStart) {
+                    block.add(series.numFactory().zero());
+                }
             }
             for (int i = firstIndex; i <= blockEnd; i++) {
                 Num currentEquity = cashFlow.getValue(i);

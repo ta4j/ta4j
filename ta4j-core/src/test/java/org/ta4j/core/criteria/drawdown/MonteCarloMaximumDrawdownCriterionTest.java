@@ -312,4 +312,33 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         // (0.4545...).
         assertEquals(0.6033057851239669, criterion.calculate(series, record).doubleValue(), 1e-12);
     }
+
+    @Test
+    public void zeroDurationPositionAtPrunedBeginStillFormsABlock() {
+        NumFactory decimalFactory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        BarSeries pruned = new MockBarSeriesBuilder().withNumFactory(decimalFactory)
+                .withData(50, 60, 70, 80, 90, 100, 120, 90, 110, 80)
+                .build();
+        pruned.setMaximumBarCount(5);
+        BarSeries unpruned = new MockBarSeriesBuilder().withNumFactory(decimalFactory)
+                .withData(100, 120, 90, 110, 80)
+                .build();
+        int offset = pruned.getBeginIndex();
+        BaseTradingRecord prunedRecord = new BaseTradingRecord();
+        BaseTradingRecord unprunedRecord = new BaseTradingRecord();
+        for (int[] leg : new int[][] { { 0, 0 }, { 1, 2 }, { 3, 4 } }) {
+            prunedRecord.enter(leg[0] + offset, pruned.getBar(leg[0] + offset).getClosePrice(), decimalFactory.one());
+            prunedRecord.exit(leg[1] + offset, pruned.getBar(leg[1] + offset).getClosePrice(), decimalFactory.one());
+            unprunedRecord.enter(leg[0], unpruned.getBar(leg[0]).getClosePrice(), decimalFactory.one());
+            unprunedRecord.exit(leg[1], unpruned.getBar(leg[1]).getClosePrice(), decimalFactory.one());
+        }
+        MonteCarloMaximumDrawdownCriterion criterion = new MonteCarloMaximumDrawdownCriterion(1000, null, 42L,
+                Statistics.P95, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        // The same three legs on the retained window simulate exactly like the
+        // unpruned series (0.6033...), instead of falling back to 0.4545...
+        assertEquals(criterion.calculate(unpruned, unprunedRecord).doubleValue(),
+                criterion.calculate(pruned, prunedRecord).doubleValue(), 1e-12);
+        assertEquals(0.6033057851239669, criterion.calculate(pruned, prunedRecord).doubleValue(), 1e-12);
+    }
 }

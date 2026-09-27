@@ -896,4 +896,29 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
             assertNumEquals(full.getValue(i), perPosition.getValue(i));
         }
     }
+
+    @Test
+    public void prunedCarryUsesEntryTimeEquityForDecreasingExitOrder() {
+        double[] data = { 100, 100, 100, 150, 100, 250, 100, 100, 100, 100 };
+        BarSeries unpruned = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(data).build();
+        BarSeries pruned = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(data).build();
+        // Processed in decreasing exit order: a short closing at 5 (ratio 2 - 2.5)
+        // before a long that entered at 0 and closed at 3 (ratio 1.5).
+        Position laterShort = new Position(Trade.sellAt(1, pruned), Trade.buyAt(5, pruned));
+        Position earlierLong = new Position(Trade.buyAt(0, pruned), Trade.sellAt(3, pruned));
+        pruned.setMaximumBarCount(4);
+
+        CashFlow full = new CashFlow(unpruned, new BaseTradingRecord());
+        CashFlow carried = new CashFlow(pruned, new BaseTradingRecord());
+        for (Position position : new Position[] { laterShort, earlierLong }) {
+            full.calculatePosition(position, 9);
+            carried.calculatePosition(position, 9);
+        }
+
+        // Equity at the long's entry (index 0) was positive, so both compound.
+        assertNumEquals(-0.75, full.getValue(6));
+        for (int i = pruned.getBeginIndex(); i <= pruned.getEndIndex(); i++) {
+            assertNumEquals(full.getValue(i), carried.getValue(i));
+        }
+    }
 }

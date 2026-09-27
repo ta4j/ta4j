@@ -46,6 +46,14 @@ public class CashFlow implements PerformanceIndicator {
     private volatile boolean materialized;
 
     /**
+     * Realized ratios of positions closed before the retained history, with the
+     * index each takes effect at, in processing order. Their bars are gone, so
+     * these are the only record of the curve before the retained begin.
+     */
+    private final List<Integer> carriedRatioIndices = new ArrayList<>();
+    private final List<Num> carriedRatios = new ArrayList<>();
+
+    /**
      * The first logical bar index materialized in {@link #values}.
      */
     private final int valueStartIndex;
@@ -77,12 +85,13 @@ public class CashFlow implements PerformanceIndicator {
     }
 
     /**
-     * Constructor materializing only a bounded logical window on the original
-     * series.
+     * Constructor for a bounded logical window on the original series. Values
+     * within {@code [startIndex, finalIndex]} equal the full curve's values:
+     * positions closed before {@code startIndex} still compound into the window.
      *
      * @param barSeries            the bar series
      * @param tradingRecord        the trading record
-     * @param startIndex           first logical bar index to materialize
+     * @param startIndex           first logical bar index of the window
      * @param finalIndex           last logical bar index to materialize and to
      *                             consider for open positions
      * @param equityCurveMode      the calculation mode
@@ -202,7 +211,9 @@ public class CashFlow implements PerformanceIndicator {
         this.series = SeriesSnapshots.capture(barSeries);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
         int seriesEnd = this.series.endIndex();
-        this.valueStartIndex = Math.max(Math.max(0, startIndex), this.series.beginIndex());
+        // Materialize from the retained begin even for a later window start, so
+        // the window equals the full curve by construction.
+        this.valueStartIndex = Math.max(0, this.series.beginIndex());
         this.valueEndIndex = seriesEnd < 0 ? -1 : Math.min(Math.max(endIndex, this.valueStartIndex), seriesEnd);
         int size = this.valueEndIndex < this.valueStartIndex ? 0 : this.valueEndIndex - this.valueStartIndex + 1;
         this.values = new ArrayList<>(Collections.nCopies(size, this.series.numFactory().one()));
@@ -273,16 +284,8 @@ public class CashFlow implements PerformanceIndicator {
             }
             int endIndex = determineEndIndex(position, finalIndex, seriesEnd);
             if (endIndex < windowStartIndex) {
-                Trade exit = position.getExit();
-                // Like the full curve's entry-equity guard below: once carried
-                // equity is no longer positive, later closes cannot compound it.
-                if (exit != null && exit.getIndex() <= endIndex && realized.isGreaterThan(zero)) {
-                    Num holdingCost = equityCurveMode == EquityCurveMode.MARK_TO_MARKET
-                            ? averageHoldingCostPerPeriod(position, endIndex, numFactory)
-                            : position.getHoldingCost(endIndex);
-                    Num exitPrice = series.exitPrice(position, endIndex);
-                    Num netExitPrice = addCost(exitPrice, holdingCost, entry.isBuy());
-                    Num ratio = getIntermediateRatio(entry.isBuy(), entry.getNetPrice(), netExitPrice);
+                Num ratio = carryBeforeRetainedHistory(position, endIndex);
+                if (ratio != null) {
                     multiplyRange(windowStartIndex, cursor - 1, ratio);
                     realized = realized.multipliedBy(ratio);
                 }
@@ -377,6 +380,43 @@ public class CashFlow implements PerformanceIndicator {
     }
 
     /**
+     * Returns the realized ratio a position closed before the retained history
+     * contributes, or {@code null} when it contributes nothing. Mirrors the full
+     * curve's entry-equity guard: the position is skipped when the equity at its
+     * entry, the product of the already-carried ratios that took effect by then, is
+     * not positive. Mark-to-market marks before the retained begin are unavailable,
+     * so only realized ratios form that equity.
+     */
+    private Num carryBeforeRetainedHistory(Position position, int endIndex) {
+        Trade entry = position.getEntry();
+        Trade exit = position.getExit();
+        if (exit == null || exit.getIndex() > endIndex) {
+            return null;
+        }
+        NumFactory numFactory = series.numFactory();
+        int entryIndex = entry.getIndex();
+        Num entryEquity = numFactory.one();
+        for (int i = 0; i < carriedRatios.size(); i++) {
+            if (carriedRatioIndices.get(i) <= entryIndex) {
+                entryEquity = entryEquity.multipliedBy(carriedRatios.get(i));
+            }
+        }
+        if (!entryEquity.isGreaterThan(numFactory.zero())) {
+            return null;
+        }
+        Num holdingCost = equityCurveMode == EquityCurveMode.MARK_TO_MARKET
+                ? averageHoldingCostPerPeriod(position, endIndex, numFactory)
+                : position.getHoldingCost(endIndex);
+        Num netExitPrice = addCost(series.exitPrice(position, endIndex), holdingCost, entry.isBuy());
+        Num ratio = getIntermediateRatio(entry.isBuy(), entry.getNetPrice(), netExitPrice);
+        // A zero-duration position's ratio takes effect on the next bar, as in
+        // the full curve.
+        carriedRatioIndices.add(endIndex == entryIndex ? entryIndex + 1 : endIndex);
+        carriedRatios.add(ratio);
+        return ratio;
+    }
+
+    /**
      * Composes {@code ratio} multiplicatively into the cell at {@code index}.
      */
     private void setOrMultiply(int index, Num ratio) {
@@ -427,20 +467,10 @@ public class CashFlow implements PerformanceIndicator {
         int windowStartIndex = Math.max(valueStartIndex, seriesBegin);
         int windowEndIndex = Math.min(valueEndIndex, seriesEnd);
         if (endIndex < windowStartIndex) {
-            // Like the batch sweep, a position closed before the materialized
-            // window carries its realized ratio into every window cell, unless
-            // the carried equity is no longer positive (the entry-equity guard).
-            Trade exit = position.getExit();
-            boolean carriedEquityPositive = windowStartIndex > windowEndIndex
-                    || getStoredValue(windowStartIndex).isGreaterThan(series.numFactory().zero());
-            if (exit != null && exit.getIndex() <= endIndex && carriedEquityPositive) {
-                NumFactory numFactory = series.numFactory();
-                Num holdingCost = equityCurveMode == EquityCurveMode.MARK_TO_MARKET
-                        ? averageHoldingCostPerPeriod(position, endIndex, numFactory)
-                        : position.getHoldingCost(endIndex);
-                Num exitPrice = series.exitPrice(position, endIndex);
-                Num netExitPrice = addCost(exitPrice, holdingCost, entry.isBuy());
-                Num ratio = getIntermediateRatio(entry.isBuy(), entry.getNetPrice(), netExitPrice);
+            // Like the batch sweep, a position closed before the retained
+            // history carries its realized ratio into every retained cell.
+            Num ratio = carryBeforeRetainedHistory(position, endIndex);
+            if (ratio != null) {
                 multiplyRange(windowStartIndex, windowEndIndex, ratio);
                 // Per-position updates compose ratios one position at a time;
                 // flag the curve so a later batch sweep cannot reassociate the
