@@ -841,21 +841,23 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void perPositionCarriesPositionsClosedBeforeWindowLikeConstructor() {
+    public void windowIgnoresPositionsClosedBeforeItOnBothPaths() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 200, 50, 60, 70).build();
         BaseTradingRecord record = new BaseTradingRecord();
         record.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
         record.exit(1, series.getBar(1).getClosePrice(), numFactory.one());
 
         for (EquityCurveMode mode : EquityCurveMode.values()) {
+            CashFlow full = new CashFlow(series, record, mode, OpenPositionHandling.IGNORE);
             CashFlow windowed = new CashFlow(series, record, 2, 4, mode, OpenPositionHandling.IGNORE);
             CashFlow perPosition = new CashFlow(series, new BaseTradingRecord(), 2, 4, mode,
                     OpenPositionHandling.IGNORE);
             record.getPositions().forEach(position -> perPosition.calculatePosition(position, 4));
             for (int i = 2; i <= 4; i++) {
-                // The 100 -> 200 round trip doubled equity before the window.
-                assertNumEquals(2, windowed.getValue(i));
-                assertNumEquals(2, perPosition.getValue(i));
+                // The full curve keeps the doubled equity; a window starts at one.
+                assertNumEquals(2, full.getValue(i));
+                assertNumEquals(1, windowed.getValue(i));
+                assertNumEquals(1, perPosition.getValue(i));
             }
         }
     }
@@ -872,29 +874,6 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         // Marked at the close captured at construction (120), not the edited 1000.
         assertNumEquals(1.2, cashFlow.getValue(2));
         assertNumEquals(1.3, cashFlow.getValue(3));
-    }
-
-    @Test
-    public void windowedCurveKeepsPreWindowBustLikeFullCurve() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100, 250, 100, 110, 120, 130)
-                .build();
-        // Short 100 -> 250 leaves equity at 2 - 2.5 = -0.5; the full curve then
-        // skips the later long because its entry equity is not positive.
-        BaseTradingRecord record = new BaseTradingRecord(Trade.sellAt(0, series), Trade.buyAt(1, series),
-                Trade.buyAt(2, series), Trade.sellAt(3, series));
-
-        CashFlow full = new CashFlow(series, record, EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
-        CashFlow windowed = new CashFlow(series, record, 4, 5, EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
-        CashFlow perPosition = new CashFlow(series, new BaseTradingRecord(), 4, 5, EquityCurveMode.REALIZED,
-                OpenPositionHandling.IGNORE);
-        record.getPositions().forEach(position -> perPosition.calculatePosition(position, 5));
-
-        assertNumEquals(-0.5, full.getValue(4));
-        for (int i = 4; i <= 5; i++) {
-            assertNumEquals(full.getValue(i), windowed.getValue(i));
-            assertNumEquals(full.getValue(i), perPosition.getValue(i));
-        }
     }
 
     @Test

@@ -85,13 +85,13 @@ public class CashFlow implements PerformanceIndicator {
     }
 
     /**
-     * Constructor for a bounded logical window on the original series. Values
-     * within {@code [startIndex, finalIndex]} equal the full curve's values:
-     * positions closed before {@code startIndex} still compound into the window.
+     * Constructor materializing only a bounded logical window on the original
+     * series. The window starts at one: positions closed before {@code startIndex}
+     * are ignored, and positions open across it compound from their entry price.
      *
      * @param barSeries            the bar series
      * @param tradingRecord        the trading record
-     * @param startIndex           first logical bar index of the window
+     * @param startIndex           first logical bar index to materialize
      * @param finalIndex           last logical bar index to materialize and to
      *                             consider for open positions
      * @param equityCurveMode      the calculation mode
@@ -211,9 +211,7 @@ public class CashFlow implements PerformanceIndicator {
         this.series = SeriesSnapshots.capture(barSeries);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
         int seriesEnd = this.series.endIndex();
-        // Materialize from the retained begin even for a later window start, so
-        // the window equals the full curve by construction.
-        this.valueStartIndex = Math.max(0, this.series.beginIndex());
+        this.valueStartIndex = Math.max(Math.max(0, startIndex), this.series.beginIndex());
         this.valueEndIndex = seriesEnd < 0 ? -1 : Math.min(Math.max(endIndex, this.valueStartIndex), seriesEnd);
         int size = this.valueEndIndex < this.valueStartIndex ? 0 : this.valueEndIndex - this.valueStartIndex + 1;
         this.values = new ArrayList<>(Collections.nCopies(size, this.series.numFactory().one()));
@@ -284,7 +282,9 @@ public class CashFlow implements PerformanceIndicator {
             }
             int endIndex = determineEndIndex(position, finalIndex, seriesEnd);
             if (endIndex < windowStartIndex) {
-                Num ratio = carryBeforeRetainedHistory(position, endIndex);
+                // Only history lost to pruning carries forward; an explicit later
+                // window starts at one and ignores earlier closes.
+                Num ratio = windowStartIndex == seriesBegin ? carryBeforeRetainedHistory(position, endIndex) : null;
                 if (ratio != null) {
                     multiplyRange(windowStartIndex, cursor - 1, ratio);
                     realized = realized.multipliedBy(ratio);
@@ -468,8 +468,9 @@ public class CashFlow implements PerformanceIndicator {
         int windowEndIndex = Math.min(valueEndIndex, seriesEnd);
         if (endIndex < windowStartIndex) {
             // Like the batch sweep, a position closed before the retained
-            // history carries its realized ratio into every retained cell.
-            Num ratio = carryBeforeRetainedHistory(position, endIndex);
+            // history carries its realized ratio into every retained cell; an
+            // explicit later window ignores earlier closes.
+            Num ratio = windowStartIndex == seriesBegin ? carryBeforeRetainedHistory(position, endIndex) : null;
             if (ratio != null) {
                 multiplyRange(windowStartIndex, windowEndIndex, ratio);
                 // Per-position updates compose ratios one position at a time;
