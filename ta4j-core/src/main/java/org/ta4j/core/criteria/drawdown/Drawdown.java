@@ -106,13 +106,19 @@ public final class Drawdown {
         if (curve instanceof PerformanceIndicator performanceCurve) {
             // A performance curve's captured window is authoritative: an
             // explicitly bounded curve must not be widened from the live series
-            // or record bounds.
+            // or record bounds, but an explicitly bounded record narrows it.
             begin = performanceCurve.getBeginIndex();
-            Integer explicitStartIndex = tradingRecord == null ? null : tradingRecord.getStartIndex();
-            if (explicitStartIndex != null) {
-                begin = Math.max(begin, explicitStartIndex);
-            }
             end = performanceCurve.getEndIndex();
+            if (tradingRecord != null) {
+                Integer explicitStartIndex = tradingRecord.getStartIndex();
+                if (explicitStartIndex != null) {
+                    begin = Math.max(begin, explicitStartIndex);
+                }
+                Integer explicitEndIndex = tradingRecord.getEndIndex();
+                if (explicitEndIndex != null) {
+                    end = Math.min(end, explicitEndIndex);
+                }
+            }
         } else {
             begin = tradingRecord == null ? series.getBeginIndex() : tradingRecord.getStartIndex(series);
             end = tradingRecord == null ? series.getEndIndex() : tradingRecord.getEndIndex(series);

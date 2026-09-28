@@ -278,7 +278,7 @@ public final class ConstrainedSeriesSupport {
     /** Returns paired criterion inputs for each window shape and edge position. */
     public static List<CriterionWindowFixture> criterionWindowFixtures(NumFactory numFactory) {
         double[] closes = { 100d, 80d, 120d, 90d, 110d, 55d };
-        BarSeries fullSource = yearlySeries("criterion-window-source", numFactory, closes);
+        BarSeries fullSource = yearlySeries(numFactory, closes);
         List<Bar> fullBars = fullSource.getBarData();
         List<CriterionWindowFixture> fixtures = new ArrayList<>();
         String[] shapes = { "constrained-begin", "pruned", "bounded-record", "constrained-end" };
@@ -295,7 +295,7 @@ public final class ConstrainedSeriesSupport {
                 windowedSeries = new BaseBarSeries(shape, new ArrayList<>(fullBars), begin, end, true, numFactory,
                         new TimeBarBuilderFactory());
             } else if (shape.equals("pruned")) {
-                windowedSeries = yearlySeries(shape, numFactory, 100d, 80d, 120d, 90d, 110d);
+                windowedSeries = yearlySeries(numFactory, 100d, 80d, 120d, 90d, 110d);
                 windowedSeries.setMaximumBarCount(3);
             } else if (boundedRecord) {
                 windowedSeries = new BaseBarSeries(shape, new ArrayList<>(fullBars), 0, 5, false, numFactory,
@@ -387,7 +387,7 @@ public final class ConstrainedSeriesSupport {
         return index < 0 ? closes[0] : closes[Math.min(index, closes.length - 1)];
     }
 
-    private static BarSeries yearlySeries(String name, NumFactory numFactory, double... closes) {
+    private static BarSeries yearlySeries(NumFactory numFactory, double... closes) {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         Instant start = Instant.parse("2020-01-01T00:00:00Z");
         for (int i = 0; i < closes.length; i++) {

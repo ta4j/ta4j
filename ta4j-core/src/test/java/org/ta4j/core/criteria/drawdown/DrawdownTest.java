@@ -6,6 +6,7 @@ package org.ta4j.core.criteria.drawdown;
 import static org.junit.Assert.assertEquals;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntFunction;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
@@ -52,14 +53,38 @@ public class DrawdownTest extends AbstractIndicatorTest<org.ta4j.core.Indicator<
         AtomicInteger reads = new AtomicInteger();
         // A third-party curve relying on the interface's default bounds reports
         // [-1, -1] for an empty series; index -1 must never be read.
-        PerformanceIndicator curve = new PerformanceIndicator() {
+        PerformanceIndicator curve = defaultBoundsCurve(empty, index -> {
+            reads.incrementAndGet();
+            if (index < 0) {
+                throw new IndexOutOfBoundsException("index " + index);
+            }
+            return numFactory.one();
+        });
+
+        assertNumEquals(0, Drawdown.amount(empty, null, curve, true));
+        assertNumEquals(0, Drawdown.length(empty, null, curve, false));
+        assertEquals(0, reads.get());
+    }
+
+    @Test
+    public void defaultPerformanceBoundsStopAtAnExplicitRecordEnd() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 8, 9, 1).build();
+        var close = new ClosePriceIndicator(series);
+        // A third-party curve reports the full series; the record ends at 2, so the
+        // fall to 1 at index 3 lies after the analysed window.
+        PerformanceIndicator curve = defaultBoundsCurve(series, close::getValue);
+        var record = new BaseTradingRecord(TradeType.BUY, 0, 2, new ZeroCostModel(), new ZeroCostModel());
+
+        assertNumEquals(0.2, Drawdown.amount(series, record, curve, true));
+        assertNumEquals(2, Drawdown.amount(series, record, curve, false));
+        assertNumEquals(1, Drawdown.length(series, record, curve, true));
+    }
+
+    private static PerformanceIndicator defaultBoundsCurve(BarSeries series, IntFunction<Num> values) {
+        return new PerformanceIndicator() {
             @Override
             public Num getValue(int index) {
-                reads.incrementAndGet();
-                if (index < 0) {
-                    throw new IndexOutOfBoundsException("index " + index);
-                }
-                return numFactory.one();
+                return values.apply(index);
             }
 
             @Override
@@ -69,7 +94,7 @@ public class DrawdownTest extends AbstractIndicatorTest<org.ta4j.core.Indicator<
 
             @Override
             public BarSeries getBarSeries() {
-                return empty;
+                return series;
             }
 
             @Override
@@ -81,10 +106,6 @@ public class DrawdownTest extends AbstractIndicatorTest<org.ta4j.core.Indicator<
             public void calculatePosition(Position position, int finalIndex) {
             }
         };
-
-        assertNumEquals(0, Drawdown.amount(empty, null, curve, true));
-        assertNumEquals(0, Drawdown.length(empty, null, curve, false));
-        assertEquals(0, reads.get());
     }
 
     @Test
