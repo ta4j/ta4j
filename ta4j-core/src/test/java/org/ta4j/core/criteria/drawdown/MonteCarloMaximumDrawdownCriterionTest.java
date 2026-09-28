@@ -18,6 +18,7 @@ import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.BaseTrade;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.Trade;
+import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -73,6 +74,29 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
                 Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series));
         var criterion = new MonteCarloMaximumDrawdownCriterion(200, null, 123L, Statistics.P95);
         assertNumEquals(0d, criterion.calculate(series, record));
+    }
+
+    @Test
+    public void carriedPreWindowLossDoesNotBecomeRetainedBlockReturn() {
+        BarSeries pruned = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 1, 100, 110, 100, 80, 100, 105)
+                .build();
+        BaseTradingRecord prunedRecord = new BaseTradingRecord(Trade.buyAt(0, pruned), Trade.sellAt(1, pruned),
+                Trade.buyAt(2, pruned), Trade.sellAt(3, pruned), Trade.buyAt(4, pruned), Trade.sellAt(5, pruned),
+                Trade.buyAt(6, pruned), Trade.sellAt(7, pruned));
+        pruned.setMaximumBarCount(6);
+        assertNumEquals(0.01d, new CashFlow(pruned, prunedRecord).getValue(pruned.getBeginIndex()));
+
+        BarSeries fresh = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 110, 100, 80, 100, 105)
+                .build();
+        BaseTradingRecord freshRecord = new BaseTradingRecord(Trade.buyAt(0, fresh), Trade.sellAt(1, fresh),
+                Trade.buyAt(2, fresh), Trade.sellAt(3, fresh), Trade.buyAt(4, fresh), Trade.sellAt(5, fresh));
+        MonteCarloMaximumDrawdownCriterion criterion = new MonteCarloMaximumDrawdownCriterion(1000, null, 123L,
+                Statistics.P95);
+
+        assertEquals(criterion.calculate(fresh, freshRecord).doubleValue(),
+                criterion.calculate(pruned, prunedRecord).doubleValue(), 1e-12);
     }
 
     @Test

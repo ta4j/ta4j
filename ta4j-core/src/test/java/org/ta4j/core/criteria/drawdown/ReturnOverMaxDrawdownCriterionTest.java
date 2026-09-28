@@ -423,6 +423,26 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void carriedPreWindowProfitDoesNotAffectWindowReturn() {
+        BarSeries pruned = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 1000, 100, 110, 100, 80, 100, 105)
+                .build();
+        TradingRecord prunedRecord = new BaseTradingRecord(Trade.buyAt(0, pruned), Trade.sellAt(1, pruned),
+                Trade.buyAt(2, pruned), Trade.sellAt(3, pruned), Trade.buyAt(4, pruned), Trade.sellAt(5, pruned),
+                Trade.buyAt(6, pruned), Trade.sellAt(7, pruned));
+        pruned.setMaximumBarCount(6);
+
+        BarSeries fresh = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 110, 100, 80, 100, 105)
+                .build();
+        TradingRecord freshRecord = new BaseTradingRecord(Trade.buyAt(0, fresh), Trade.sellAt(1, fresh),
+                Trade.buyAt(2, fresh), Trade.sellAt(3, fresh), Trade.buyAt(4, fresh), Trade.sellAt(5, fresh));
+
+        assertNumEquals(returnOverMaxDrawDown.calculate(fresh, freshRecord),
+                returnOverMaxDrawDown.calculate(pruned, prunedRecord));
+    }
+
+    @Test
     public void testTradingRecordWithMultiplePositionsAllRepresentations() {
         // Multiple positions with gains and drawdowns
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)

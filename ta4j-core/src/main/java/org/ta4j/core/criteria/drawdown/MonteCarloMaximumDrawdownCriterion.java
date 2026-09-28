@@ -252,7 +252,13 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
                 continue;
             }
             List<Num> block = new ArrayList<>();
-            Num previousEquity = blockStart > 0 ? cashFlow.getValue(blockStart - 1) : one;
+            Num previousEquity = one;
+            if (blockStart == cashFlow.getBeginIndex() && blockStart > 0) {
+                // The captured baseline includes realized P&L carried from pruned positions.
+                previousEquity = cashFlow.getValue(blockStart);
+            } else if (blockStart > 0) {
+                previousEquity = cashFlow.getValue(blockStart - 1);
+            }
             for (long cursor = blockStart; cursor <= blockEnd; cursor++) {
                 int i = (int) cursor;
                 Num currentEquity = cashFlow.getValue(i);

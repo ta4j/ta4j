@@ -16,6 +16,7 @@ import org.ta4j.core.criteria.AbstractEquityCurveSettingsCriterion;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.ReturnRepresentationPolicy;
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
@@ -188,12 +189,18 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
     }
 
     private Num calculateNetReturn(CashFlow cashFlow) {
+        int beginIndex = cashFlow.getBeginIndex();
         int terminalIndex = cashFlow.getEndIndex();
-        if (terminalIndex < cashFlow.getBeginIndex()) {
+        if (terminalIndex < beginIndex) {
             return cashFlow.getBarSeries().numFactory().zero();
         }
         Num one = cashFlow.getBarSeries().numFactory().one();
-        return cashFlow.getValue(terminalIndex).minus(one);
+        Num startValue = cashFlow.getValue(beginIndex);
+        Num terminalValue = cashFlow.getValue(terminalIndex);
+        if (startValue.isNaN() || startValue.isZero() || terminalValue.isNaN()) {
+            return NaN.NaN;
+        }
+        return terminalValue.dividedBy(startValue).minus(one);
     }
 
     private Num toRepresentation(Num netReturn, Num maxDrawdown) {
