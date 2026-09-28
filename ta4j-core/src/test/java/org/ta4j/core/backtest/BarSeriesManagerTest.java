@@ -1043,4 +1043,77 @@ public class BarSeriesManagerTest {
         // eviction between two separate reads.
         assertEquals(List.of(0, 1, 2, 3, 4), evaluated);
     }
+
+    @Test
+    public void logicalWindowsMatchFreshSeriesAcrossOffsetsAndRetentionShapes() {
+        int[][] windows = { { 2, 4, 0 }, { 4, 6, 4 }, { 4, 6, 2 } };
+        double[][] rawCloses = { { 10, 11, 12, 13, 14, 15 }, { 12, 13, 14 }, { 10, 11, 12, 13, 14, 15 } };
+        String[] scenarios = { "constrained", "pruned", "constrained and pruned" };
+        BarSeries freshSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(12, 13, 14).build();
+        TradingRecord freshRecord = new BarSeriesManager(freshSeries, new TradeOnCurrentCloseModel())
+                .run(new BaseStrategy(new FixedRule(0), new FixedRule(2)));
+        Position freshPosition = freshRecord.getPositions().get(0);
+
+        for (int scenario = 0; scenario < windows.length; scenario++) {
+            int begin = windows[scenario][0];
+            int end = windows[scenario][1];
+            int removed = windows[scenario][2];
+            BarSeries window = ConstrainedSeriesSupport.offsetSeries(scenarios[scenario], numFactory, begin, end,
+                    removed, rawCloses[scenario]);
+            Strategy boundarySignals = new BaseStrategy(new FixedRule(begin - 1, begin), new FixedRule(end, end + 1));
+
+            List<Position> positions = new BarSeriesManager(window, new TradeOnCurrentCloseModel()).run(boundarySignals)
+                    .getPositions();
+
+            assertEquals(scenarios[scenario], 1, positions.size());
+            Position actual = positions.get(0);
+            assertEquals(scenarios[scenario], begin, actual.getEntry().getIndex());
+            assertEquals(scenarios[scenario], end, actual.getExit().getIndex());
+            assertEquals(scenarios[scenario], freshPosition.getEntry().getPricePerAsset(),
+                    actual.getEntry().getPricePerAsset());
+            assertEquals(scenarios[scenario], freshPosition.getExit().getPricePerAsset(),
+                    actual.getExit().getPricePerAsset());
+        }
+    }
+
+    @Test
+    public void openEntryAtLogicalEndRemainsOpenForEveryRetentionShape() {
+        int[][] windows = { { 2, 4, 0 }, { 4, 6, 4 }, { 4, 6, 2 } };
+        double[][] rawCloses = { { 10, 11, 12, 13, 14, 15 }, { 12, 13, 14 }, { 10, 11, 12, 13, 14, 15 } };
+        String[] scenarios = { "constrained", "pruned", "constrained and pruned" };
+
+        for (int scenario = 0; scenario < windows.length; scenario++) {
+            int begin = windows[scenario][0];
+            int end = windows[scenario][1];
+            BarSeries window = ConstrainedSeriesSupport.offsetSeries(scenarios[scenario], numFactory, begin, end,
+                    windows[scenario][2], rawCloses[scenario]);
+            Strategy finalBarEntry = new BaseStrategy(new FixedRule(end), BooleanRule.FALSE);
+
+            TradingRecord record = new BarSeriesManager(window, new TradeOnCurrentCloseModel()).run(finalBarEntry);
+
+            assertEquals(scenarios[scenario], end, record.getCurrentPosition().getEntry().getIndex());
+            assertTrue(scenarios[scenario], record.getCurrentPosition().isOpened());
+        }
+    }
+
+    @Test
+    public void closesAnExistingPositionOnASingleBarLogicalWindow() {
+        int[][] windows = { { 2, 2, 0 }, { 4, 4, 4 }, { 4, 4, 2 } };
+        double[][] rawCloses = { { 10, 11, 12 }, { 12 }, { 10, 11, 12, 13 } };
+        String[] scenarios = { "constrained", "pruned", "constrained and pruned" };
+
+        for (int scenario = 0; scenario < windows.length; scenario++) {
+            int index = windows[scenario][0];
+            BarSeries window = ConstrainedSeriesSupport.offsetSeries(scenarios[scenario], numFactory, index, index,
+                    windows[scenario][2], rawCloses[scenario]);
+            BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(index, window));
+            Strategy exitOnOnlyBar = new BaseStrategy(BooleanRule.FALSE, new FixedRule(index));
+
+            new BarSeriesManager(window, new TradeOnCurrentCloseModel()).run(exitOnOnlyBar, record, numOf(1), index,
+                    index);
+
+            assertTrue(scenarios[scenario], record.isClosed());
+            assertEquals(scenarios[scenario], index, record.getPositions().get(0).getExit().getIndex());
+        }
+    }
 }

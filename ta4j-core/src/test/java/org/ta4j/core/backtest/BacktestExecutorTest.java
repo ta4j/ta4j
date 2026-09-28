@@ -12,6 +12,8 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.time.Duration;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -298,6 +300,54 @@ public class BacktestExecutorTest {
 
         assertThrows(IllegalStateException.class, () -> executor.executeWithRuntimeReport(List.of(strategy), numOf(1),
                 Trade.TradeType.BUY, completed -> series.setMaximumBarCount(2)));
+    }
+
+    @Test
+    public void allowsChangesStrictlyAfterTheCapturedWindowDuringBatchExecution() {
+        BarSeries series = ConstrainedSeriesSupport.offsetSeries("outside_window", numFactory, 0, 2, 0, 10d, 11d, 12d,
+                13d);
+        long revision = series.getBarHistoryRevision();
+        Strategy strategy = new BaseStrategy(new FixedRule(), new FixedRule());
+
+        BacktestExecutionResult result = new BacktestExecutor(series).executeWithRuntimeReport(List.of(strategy),
+                numOf(1), Trade.TradeType.BUY, completed -> series.getBarData().get(3).addPrice(numOf(99)));
+
+        assertTrue(series.getBarHistoryRevision() > revision);
+        assertEquals(2, result.barSeries().getEndIndex());
+        assertEquals(3, result.barSeries().getBarCount());
+    }
+
+    @Test
+    public void batchReportsMatchFreshSeriesForConstrainedAndPrunedWindows() {
+        int[][] windows = { { 2, 4, 0 }, { 4, 6, 4 }, { 4, 6, 2 } };
+        double[][] rawCloses = { { 10, 11, 12, 13, 14, 15 }, { 12, 13, 14 }, { 10, 11, 12, 13, 14, 15 } };
+        String[] scenarios = { "constrained", "pruned", "constrained and pruned" };
+        BarSeries freshSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(12, 13, 14).build();
+        TradingRecord freshRecord = new BarSeriesManager(freshSeries, new TradeOnCurrentCloseModel())
+                .run(new BaseStrategy(new FixedRule(0), new FixedRule(2)), Trade.TradeType.BUY, numOf(1));
+        Position freshPosition = freshRecord.getPositions().get(0);
+
+        for (int scenario = 0; scenario < windows.length; scenario++) {
+            int begin = windows[scenario][0];
+            int end = windows[scenario][1];
+            BarSeries window = ConstrainedSeriesSupport.offsetSeries(scenarios[scenario], numFactory, begin, end,
+                    windows[scenario][2], rawCloses[scenario]);
+            Strategy boundarySignals = new BaseStrategy(new FixedRule(begin - 1, begin), new FixedRule(end, end + 1));
+            BacktestExecutionResult result = new BacktestExecutor(window, new TradeOnCurrentCloseModel())
+                    .executeWithRuntimeReport(List.of(boundarySignals), numOf(1), Trade.TradeType.BUY, 1);
+
+            assertEquals(scenarios[scenario], begin, result.barSeries().getBeginIndex());
+            assertEquals(scenarios[scenario], end, result.barSeries().getEndIndex());
+            List<Position> positions = result.tradingStatements().get(0).getTradingRecord().getPositions();
+            assertEquals(scenarios[scenario], 1, positions.size());
+            Position actual = positions.get(0);
+            assertEquals(scenarios[scenario], begin, actual.getEntry().getIndex());
+            assertEquals(scenarios[scenario], end, actual.getExit().getIndex());
+            assertEquals(scenarios[scenario], freshPosition.getEntry().getPricePerAsset(),
+                    actual.getEntry().getPricePerAsset());
+            assertEquals(scenarios[scenario], freshPosition.getExit().getPricePerAsset(),
+                    actual.getExit().getPricePerAsset());
+        }
     }
 
     @Test
@@ -906,6 +956,65 @@ public class BacktestExecutorTest {
         assertEquals(null, firstFailure.get());
         assertEquals(1, firstResult.get().tradingStatements().size());
         assertSame(healthy, firstResult.get().tradingStatements().get(0).getStrategy());
+    }
+
+    @Test
+    public void rejectsEndContractionDuringBatchExecutionEvenWhenRawBarsRemain() {
+        BarSeries delegate = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
+        AtomicInteger beginIndex = new AtomicInteger(0);
+        AtomicInteger endIndex = new AtomicInteger(3);
+        BarSeries series = withMutableLogicalBounds(delegate, beginIndex, endIndex);
+        Rule contractEndAtFirstBar = (index, tradingRecord) -> {
+            if (index == 0) {
+                endIndex.set(2);
+            }
+            return false;
+        };
+        Strategy mutating = new BaseStrategy(contractEndAtFirstBar, new FixedRule());
+        Strategy stable = new BaseStrategy(new FixedRule(), new FixedRule());
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class, () -> new BacktestExecutor(series)
+                .executeWithRuntimeReport(List.of(mutating, stable), numOf(1), Trade.TradeType.BUY, 1));
+
+        assertTrue(failure.getMessage(), failure.getMessage().contains("end moved"));
+    }
+
+    @Test
+    public void rejectsBeginAdvanceDuringBatchExecution() {
+        BarSeries delegate = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
+        AtomicInteger beginIndex = new AtomicInteger(0);
+        AtomicInteger endIndex = new AtomicInteger(3);
+        BarSeries series = withMutableLogicalBounds(delegate, beginIndex, endIndex);
+        Rule advanceBeginAtFirstBar = (index, tradingRecord) -> {
+            if (index == 0) {
+                beginIndex.set(1);
+            }
+            return false;
+        };
+        Strategy mutating = new BaseStrategy(advanceBeginAtFirstBar, new FixedRule());
+        Strategy stable = new BaseStrategy(new FixedRule(), new FixedRule());
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class, () -> new BacktestExecutor(series)
+                .executeWithRuntimeReport(List.of(mutating, stable), numOf(1), Trade.TradeType.BUY, 1));
+
+        assertTrue(failure.getMessage(), failure.getMessage().contains("begin moved"));
+    }
+
+    private BarSeries withMutableLogicalBounds(BarSeries delegate, AtomicInteger beginIndex, AtomicInteger endIndex) {
+        return (BarSeries) Proxy.newProxyInstance(BarSeries.class.getClassLoader(), new Class<?>[] { BarSeries.class },
+                (proxy, method, arguments) -> {
+                    if (method.getName().equals("getBeginIndex")) {
+                        return beginIndex.get();
+                    }
+                    if (method.getName().equals("getEndIndex")) {
+                        return endIndex.get();
+                    }
+                    try {
+                        return method.invoke(delegate, arguments);
+                    } catch (InvocationTargetException exception) {
+                        throw exception.getCause();
+                    }
+                });
     }
 
     @Test

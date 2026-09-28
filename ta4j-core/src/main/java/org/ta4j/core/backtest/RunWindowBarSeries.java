@@ -115,10 +115,13 @@ final class RunWindowBarSeries implements BarSeries {
      */
     @Override
     public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long sinceRevision) {
-        BarSeriesChangeSnapshot snapshot = delegate.getBarSeriesChangeSnapshot(sinceRevision);
-        return new BarSeriesChangeSnapshot(snapshot.revision(), snapshot.earliestChangedIndex(),
-                snapshot.removedThroughIndex(), snapshot.maximumBarCount(),
-                Math.min(snapshot.endIndex(), windowEndIndex));
+        return delegate.withReadLock(() -> {
+            BarSeriesChangeSnapshot snapshot = delegate.getBarSeriesChangeSnapshot(sinceRevision);
+            int visibleBeginIndex = Math.max(delegate.getBeginIndex(), delegate.getRemovedBarsCount());
+            return new BarSeriesChangeSnapshot(snapshot.revision(), snapshot.earliestChangedIndex(),
+                    Math.max(snapshot.removedThroughIndex(), visibleBeginIndex - 1), snapshot.maximumBarCount(),
+                    Math.min(delegate.getEndIndex(), windowEndIndex));
+        });
     }
 
     @Override
@@ -153,7 +156,7 @@ final class RunWindowBarSeries implements BarSeries {
 
     @Override
     public int getRemovedBarsCount() {
-        return delegate.getRemovedBarsCount();
+        return delegate.withReadLock(() -> Math.max(delegate.getBeginIndex(), delegate.getRemovedBarsCount()));
     }
 
     @Override

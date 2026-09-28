@@ -161,8 +161,13 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
             if (source.getRemovedBarsCount() > firstIndex) {
                 return "bars before index " + source.getRemovedBarsCount() + " were evicted";
             }
-            if (source.getBeginIndex() > firstIndex) {
-                return "the series begin moved to index " + source.getBeginIndex();
+            int sourceBeginIndex = Math.max(source.getBeginIndex(), source.getRemovedBarsCount());
+            if (sourceBeginIndex != firstIndex) {
+                return "the series begin moved to index " + sourceBeginIndex;
+            }
+            int sourceEndIndex = source.getEndIndex();
+            if (sourceEndIndex < endIndex) {
+                return "the series end moved back to index " + sourceEndIndex;
             }
             long sourceRevision = source.getBarHistoryRevision();
             if (revision >= 0L && sourceRevision >= 0L && sourceRevision != revision) {
@@ -454,10 +459,8 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
     }
 
     /**
-     * Returns a copy of the bar series backing this result. Each call returns a
-     * fresh series, so adding or removing bars on it cannot affect this result. The
-     * copy shares the result's {@link org.ta4j.core.Bar} instances, so do not edit
-     * bars in place through it.
+     * Returns the immutable bar series snapshot captured for this result. Each call
+     * returns the same read-only series view.
      */
     @Override
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the immutable result snapshot series captured for this execution.")

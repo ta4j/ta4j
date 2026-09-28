@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ExecutionMatchPolicy;
@@ -286,5 +287,31 @@ public class ExitOnRunEndModelTest {
         assertEquals(1, outOfRange.getTrades().size());
         assertTrue(inverted.getCurrentPosition().isOpened());
         assertEquals(1, inverted.getTrades().size());
+    }
+
+    @Test
+    public void closesAtEachLogicalWindowEndAcrossRetentionShapes() {
+        int[][] windows = { { 2, 4, 0 }, { 4, 6, 4 }, { 4, 6, 2 } };
+        double[][] rawCloses = { { 10, 11, 12, 13, 14, 15 }, { 12, 13, 14 }, { 10, 11, 12, 13, 14, 15 } };
+        String[] scenarios = { "constrained", "pruned", "constrained and pruned" };
+
+        for (int scenario = 0; scenario < windows.length; scenario++) {
+            int begin = windows[scenario][0];
+            int end = windows[scenario][1];
+            BarSeries series = ConstrainedSeriesSupport.offsetSeries(scenarios[scenario], numFactory, begin, end,
+                    windows[scenario][2], rawCloses[scenario]);
+            BarSeriesManager manager = new BarSeriesManager(series,
+                    new ExitOnRunEndModel(new TradeOnCurrentCloseModel()));
+            Strategy enterAtLogicalBegin = new BaseStrategy(new FixedRule(begin), BooleanRule.FALSE);
+
+            TradingRecord record = manager.run(enterAtLogicalBegin, TradeType.BUY, numFactory.one());
+
+            assertTrue(scenarios[scenario], record.isClosed());
+            Position position = record.getPositions().getFirst();
+            assertEquals(scenarios[scenario], begin, position.getEntry().getIndex());
+            assertEquals(scenarios[scenario], end, position.getExit().getIndex());
+            assertEquals(scenarios[scenario], series.getBar(end).getClosePrice(),
+                    position.getExit().getPricePerAsset());
+        }
     }
 }

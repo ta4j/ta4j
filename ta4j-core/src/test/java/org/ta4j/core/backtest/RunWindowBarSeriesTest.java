@@ -19,6 +19,8 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.ConstrainedSeriesSupport;
+import org.ta4j.core.indicators.ParabolicSarIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NumFactory;
@@ -88,6 +90,14 @@ public class RunWindowBarSeriesTest {
         BarSeries delegate = ConstrainedSeriesSupport.offsetSeries("run_window_begin", numFactory, 2, 3, 0, 10d, 11d,
                 12d, 13d);
         RunWindowBarSeries window = new RunWindowBarSeries(delegate, 3);
+        ParabolicSarIndicator parabolicSar = new ParabolicSarIndicator(window);
+        parabolicSar.getValue(window.getBeginIndex());
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(window);
+        for (int index = window.getBeginIndex(); index <= window.getEndIndex(); index++) {
+            assertEquals(window.getBar(index).getClosePrice(), closePrice.getValue(index));
+        }
+        assertEquals(2, window.getRemovedBarsCount());
+        assertEquals(1, window.getBarSeriesChangeSnapshot(-1).removedThroughIndex());
 
         assertEquals(2, window.getBeginIndex());
         assertEquals(3, window.getEndIndex());
@@ -98,4 +108,60 @@ public class RunWindowBarSeriesTest {
         assertEquals(visibleBars, window.getSubSeries(0, 4).getBarData());
         assertThrows(UnsupportedOperationException.class, () -> window.getBarData().clear());
     }
+
+    @Test
+    public void accessorsAndIndicatorsAgreeAcrossConstrainedAndPrunedWindowShapes() {
+        BarSeries full = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 20d, 30d, 40d, 50d)
+                .build();
+        BarSeries constrained = ConstrainedSeriesSupport.offsetSeries("constrained", numFactory, 2, 4, 0, 10d, 20d, 30d,
+                40d, 50d);
+        BarSeries pruned = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 20d, 30d, 40d, 50d)
+                .build();
+        pruned.setMaximumBarCount(3);
+        BarSeries constrainedAndPruned = ConstrainedSeriesSupport.offsetSeries("constrained_pruned", numFactory, 4, 5,
+                2, 10d, 20d, 30d, 40d, 50d, 60d);
+        RunWindowCase[] cases = {
+                new RunWindowCase("full", full, 3, 0, 3, List.copyOf(full.getBarData().subList(0, 4))),
+                new RunWindowCase("constrained", constrained, 3, 2, 3,
+                        List.of(constrained.getBar(2), constrained.getBar(3))),
+                new RunWindowCase("pruned", pruned, 3, 2, 3, List.of(pruned.getBar(2), pruned.getBar(3))),
+                new RunWindowCase("constrained and pruned", constrainedAndPruned, 4, 4, 4,
+                        List.of(constrainedAndPruned.getBar(4))) };
+
+        for (RunWindowCase scenario : cases) {
+            RunWindowBarSeries window = new RunWindowBarSeries(scenario.delegate(), scenario.windowEnd());
+            String name = scenario.name();
+            List<Bar> expectedBars = scenario.expectedBars();
+
+            assertEquals(name + " logical begin", scenario.beginIndex(), window.getBeginIndex());
+            assertEquals(name + " removal prefix", scenario.beginIndex(), window.getRemovedBarsCount());
+            assertEquals(name + " logical end", scenario.endIndex(), window.getEndIndex());
+            assertEquals(name + " visible count", expectedBars.size(), window.getBarCount());
+            assertEquals(name + " empty state", expectedBars.isEmpty(), window.isEmpty());
+            assertEquals(name + " data", expectedBars, window.getBarData());
+            assertEquals(name + " first bar", expectedBars.getFirst(), window.getFirstBar());
+            assertEquals(name + " last bar", expectedBars.getLast(), window.getLastBar());
+            assertEquals(name + " subseries", expectedBars,
+                    window.getSubSeries(0, scenario.windowEnd() + 1).getBarData());
+            BarSeriesChangeSnapshot snapshot = window.getBarSeriesChangeSnapshot(-1);
+            assertEquals(name + " virtual removal boundary", scenario.beginIndex() - 1, snapshot.removedThroughIndex());
+            assertEquals(name + " snapshot end", scenario.endIndex(), snapshot.endIndex());
+
+            ClosePriceIndicator closePrice = new ClosePriceIndicator(window);
+            for (int offset = 0; offset < expectedBars.size(); offset++) {
+                int index = scenario.beginIndex() + offset;
+                assertEquals(name + " index " + index, expectedBars.get(offset), window.getBar(index));
+                assertEquals(name + " close " + index, expectedBars.get(offset).getClosePrice(),
+                        closePrice.getValue(index));
+            }
+            new ParabolicSarIndicator(window).getValue(window.getBeginIndex());
+        }
+    }
+
+    private record RunWindowCase(String name, BarSeries delegate, int windowEnd, int beginIndex, int endIndex,
+            List<Bar> expectedBars) {
+    }
+
 }
