@@ -5,10 +5,8 @@ package org.ta4j.core.criteria;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -16,13 +14,25 @@ import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NumFactory;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.num.Num;
 
 public class ExpectedShortfallCriterionTest {
     private BarSeries series;
@@ -129,5 +139,68 @@ public class ExpectedShortfallCriterionTest {
         AnalysisCriterion criterion = getCriterion();
         assertTrue(criterion.betterThan(numFactory.numOf(-0.1), numFactory.numOf(-0.2)));
         assertFalse(criterion.betterThan(numFactory.numOf(-0.1), numFactory.numOf(0.0)));
+    }
+
+    @Test
+    public void windowedSpotReturnsAreSampledWithoutThePlaceholder() {
+        double[] closes = { 100d, 97d, 98.01d, 99.99d, 104d };
+        BarSeries full = seriesWithCloses(numFactory, 0, closes);
+        BarSeries windowed = seriesWithCloses(numFactory, 2, closes);
+        Position fullPosition = new Position(Trade.buyAt(0, full), Trade.sellAt(4, full));
+        Position windowedPosition = new Position(Trade.buyAt(2, windowed), Trade.sellAt(6, windowed));
+
+        ExpectedShortfallCriterion criterion = new ExpectedShortfallCriterion(0.5);
+        assertNumEquals(criterion.calculate(full, fullPosition), criterion.calculate(windowed, windowedPosition));
+    }
+
+    private static BarSeries seriesWithCloses(NumFactory numFactory, int beginIndex, double... closes) {
+        List<Bar> bars = new ArrayList<>();
+        Instant endTime = Instant.parse("2025-01-01T00:00:00Z");
+        for (double close : closes) {
+            Num price = numFactory.numOf(close);
+            bars.add(new BaseBar(Duration.ofMinutes(1), endTime.minus(Duration.ofMinutes(1)), endTime, price, price,
+                    price, price, numFactory.zero(), numFactory.zero(), 0));
+            endTime = endTime.plus(Duration.ofMinutes(1));
+        }
+        return new BaseBarSeriesBuilder().withNumFactory(numFactory).withBeginIndex(beginIndex).withBars(bars).build();
+    }
+
+    @Test
+    public void unavailableFuturesMarkPropagatesThroughExpectedShortfall() {
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01))
+                .build();
+        BarSeries bars = seriesWithCloses(numFactory, 0, 100, 100, Double.NaN, 100);
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(1_000))
+                .build();
+        record.operate(TradeFill.builder()
+                .index(1)
+                .time(Instant.parse("2025-01-01T00:00:01Z"))
+                .price(numFactory.numOf(100))
+                .amount(numFactory.numOf(1_000))
+                .side(org.ta4j.core.ExecutionSide.BUY)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build());
+        record.operate(TradeFill.builder()
+                .index(3)
+                .time(Instant.parse("2025-01-01T00:00:03Z"))
+                .price(numFactory.numOf(100))
+                .amount(numFactory.numOf(1_000))
+                .side(org.ta4j.core.ExecutionSide.SELL)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build());
+
+        assertTrue(getCriterion().calculate(bars, record).isNaN());
     }
 }

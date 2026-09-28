@@ -196,7 +196,13 @@ public class SortinoRatioCriterion extends AbstractAnalysisCriterion {
         if (position == null || position.getEntry() == null) {
             return series.numFactory().zero();
         }
-        return calculate(series, new BaseTradingRecord(position));
+        if (position.getFuturesContract() == null) {
+            return calculate(series, new BaseTradingRecord(position));
+        }
+        ExcessReturns excessReturns = new ExcessReturns(series, series.numFactory().numOf(annualRiskFreeRate),
+                cashReturnPolicy, position, org.ta4j.core.analysis.EquityCurveMode.MARK_TO_MARKET,
+                openPositionHandling);
+        return calculate(series, new BaseTradingRecord(position), excessReturns);
     }
 
     @Override
@@ -209,6 +215,12 @@ public class SortinoRatioCriterion extends AbstractAnalysisCriterion {
         Num annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
         ExcessReturns excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord,
                 openPositionHandling);
+        return calculate(series, tradingRecord, excessReturns);
+    }
+
+    private Num calculate(BarSeries series, TradingRecord tradingRecord, ExcessReturns excessReturns) {
+        NumFactory numFactory = series.numFactory();
+        Num zero = numFactory.zero();
         List<Sample> samples = RatioSampleSupport
                 .samples(series, tradingRecord, samplingFrequency, groupingZoneId, excessReturns, openPositionHandling)
                 .toList();

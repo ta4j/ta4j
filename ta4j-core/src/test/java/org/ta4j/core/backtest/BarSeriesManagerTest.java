@@ -16,6 +16,7 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
@@ -135,7 +136,22 @@ public class BarSeriesManagerTest {
     }
 
     @Test
-    public void runWithPositionSizerRejectsNonPositiveAndNonFiniteAmounts() {
+    public void runWithPositionSizerSkipsZeroEntryAndContinues() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30, 40, 50).build();
+        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        Strategy twoSignalStrategy = new BaseStrategy(new FixedRule(1, 3), new FixedRule(2, 4));
+        PositionSizer positionSizer = context -> context.signalIndex() == 1 ? numFactory.zero() : numFactory.one();
+
+        TradingRecord tradingRecord = localManager.run(twoSignalStrategy, TradeType.BUY, positionSizer);
+
+        assertEquals(1, tradingRecord.getPositionCount());
+        Position position = tradingRecord.getPositions().getFirst();
+        assertEquals(3, position.getEntry().getIndex());
+        assertEquals(4, position.getExit().getIndex());
+    }
+
+    @Test
+    public void runWithPositionSizerRejectsNullNegativeAndNonFiniteAmounts() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30, 40).build();
         BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
         Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(2));
@@ -143,13 +159,21 @@ public class BarSeriesManagerTest {
         assertThrows(IllegalArgumentException.class,
                 () -> localManager.run(oneTradeStrategy, TradeType.BUY, context -> null));
         assertThrows(IllegalArgumentException.class,
-                () -> localManager.run(oneTradeStrategy, TradeType.BUY, context -> numFactory.zero()));
-        assertThrows(IllegalArgumentException.class,
                 () -> localManager.run(oneTradeStrategy, TradeType.BUY, context -> DoubleNum.valueOf(-1)));
         assertThrows(IllegalArgumentException.class,
                 () -> localManager.run(oneTradeStrategy, TradeType.BUY, context -> DoubleNum.valueOf(Double.NaN)));
         assertThrows(IllegalArgumentException.class, () -> localManager.run(oneTradeStrategy, TradeType.BUY,
                 context -> DoubleNum.valueOf(Double.POSITIVE_INFINITY)));
+    }
+
+    @Test
+    public void runWithFixedAmountRejectsInvalidAmountBeforeStrategyEvaluation() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30).build();
+        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        Strategy noSignalStrategy = new BaseStrategy(new FixedRule(), new FixedRule());
+
+        assertThrows(IllegalArgumentException.class,
+                () -> localManager.run(noSignalStrategy, TradeType.BUY, numFactory.zero()));
     }
 
     @Test
@@ -627,6 +651,19 @@ public class BarSeriesManagerTest {
     }
 
     @Test
+    public void runWithProvidedRecordPositionSizerUsesRecordCostModels() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20).build();
+        BarSeriesManager localManager = new BarSeriesManager(series, new FixedTransactionCostModel(5),
+                new ZeroCostModel(), new TradeOnCurrentCloseModel());
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        TradingRecord providedRecord = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel());
+
+        localManager.run(oneTradeStrategy, providedRecord, PositionSizer.balance(100));
+
+        assertEquals(numFactory.numOf(10), providedRecord.getPositions().getFirst().getEntry().getAmount());
+    }
+
+    @Test
     public void runWithProvidedBaseTradingRecordSupportsLiveBacktestStack() {
         BaseTradingRecord liveRecord = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
                 new ZeroCostModel(), new ZeroCostModel(), 0, 8);
@@ -736,4 +773,27 @@ public class BarSeriesManagerTest {
         double actual = tradingRecord.getPositions().getFirst().getEntry().getAmount().doubleValue();
         assertEquals(expected, actual, 1e-9);
     }
+
+    @Test
+    public void runOnWindowedSeriesPreservesRetainedIndexes() {
+        BarSeries windowed = new MockBarSeriesBuilder().withNumFactory(numFactory).withMaxBarCount(4).build();
+        for (int i = 0; i < 10; i++) {
+            windowed.barBuilder()
+                    .endTime(Instant.parse("2013-01-01T05:00:00Z").plusSeconds(600L * i))
+                    .closePrice(1d)
+                    .add();
+        }
+        assertEquals(6, windowed.getRemovedBarsCount());
+        assertEquals(9, windowed.getEndIndex());
+
+        Strategy retainedIndexStrategy = new BaseStrategy(new FixedRule(6), new FixedRule(8));
+        TradingRecord record = new BarSeriesManager(windowed, new TradeOnCurrentCloseModel()).run(retainedIndexStrategy,
+                6, 9);
+
+        assertEquals(1, record.getPositionCount());
+        Position position = record.getPositions().getFirst();
+        assertEquals(6, position.getEntry().getIndex());
+        assertEquals(8, position.getExit().getIndex());
+    }
+
 }

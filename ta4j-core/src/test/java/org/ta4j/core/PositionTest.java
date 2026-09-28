@@ -13,20 +13,26 @@ import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class PositionTest {
 
@@ -358,6 +364,19 @@ public class PositionTest {
     }
 
     @Test
+    public void realizedSpotProfitExcludesUnexecutedExitCost() {
+        CostModel fixed = new FixedTransactionCostModel(3);
+        Trade futureEntry = Trade.buyAt(2, DoubleNum.valueOf(100), DoubleNum.valueOf(1), fixed);
+        Trade futureExit = Trade.sellAt(4, DoubleNum.valueOf(110), DoubleNum.valueOf(1), fixed);
+        Position position = new Position(futureEntry, futureExit, fixed, new ZeroCostModel());
+
+        assertNumEquals(0, position.getRealizedProfit(1));
+        assertNumEquals(-3, position.getRealizedProfit(2));
+        assertNumEquals(-3, position.getRealizedProfit(3));
+        assertNumEquals(4, position.getRealizedProfit(4));
+    }
+
+    @Test
     public void getProfitLongNoFinalBarTest() {
         Position closedPosition = new Position(enter, exitSameType, transactionModel, holdingModel);
         Position openPosition = new Position(TradeType.BUY, transactionModel, holdingModel);
@@ -416,12 +435,1087 @@ public class PositionTest {
         Num profitOfClosedPositionFinalBefore = closedPosition.getProfit(5, DoubleNum.valueOf(3));
         Num profitOfOpenPositionFinalBefore = openPosition.getProfit(5, DoubleNum.valueOf(3));
 
-        Num expectedHoldingCosts = DoubleNum.valueOf(2.0 * 9.0 * 0.001);
-        Num expectedProfitOfClosedPosition = DoubleNum.valueOf(-0.04).minus(expectedHoldingCosts);
+        Num expectedHoldingCostsAfter = DoubleNum.valueOf(2.0 * 9.0 * 0.001);
+        Num expectedProfitOfClosedPositionAfter = DoubleNum.valueOf(-0.04).minus(expectedHoldingCostsAfter);
+        Num expectedHoldingCostsBefore = DoubleNum.valueOf(2.0 * 4.0 * 0.001);
+        // The exit at index 10 is executed after the cutoff, so the exposure still
+        // open at index 5 is marked at 3: one contract sold at 2 is worth -1.
+        Num expectedProfitOfClosedPositionBefore = DoubleNum.valueOf(-1.02).minus(expectedHoldingCostsBefore);
 
         assertNumEquals(DoubleNum.valueOf(-1.05), profitOfOpenPositionFinalAfter);
         assertNumEquals(DoubleNum.valueOf(-1.02), profitOfOpenPositionFinalBefore);
-        assertNumEquals(expectedProfitOfClosedPosition, profitOfClosedPositionFinalAfter);
-        assertNumEquals(expectedProfitOfClosedPosition, profitOfClosedPositionFinalBefore);
+        assertNumEquals(expectedProfitOfClosedPositionAfter, profitOfClosedPositionFinalAfter);
+        assertNumEquals(expectedProfitOfClosedPositionBefore, profitOfClosedPositionFinalBefore);
+    }
+
+    private static final Instant T0 = Instant.parse("2025-01-01T00:00:00Z");
+
+    private static List<NumFactory> factories() {
+        return List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance());
+    }
+
+    @Test
+    public void spotPositionsKeepRealizedAndUnrealizedSplit() {
+        for (NumFactory numFactory : factories()) {
+            Trade entry = new BaseTrade(0, T0, numFactory.numOf(100), numFactory.one(), numFactory.zero(),
+                    ExecutionSide.BUY, null, null);
+            Trade exit = new BaseTrade(1, T0.plusSeconds(1), numFactory.numOf(110), numFactory.one(), numFactory.zero(),
+                    ExecutionSide.SELL, null, null);
+
+            Position closed = new Position(entry, exit, entry.getCostModel(), new ZeroCostModel());
+            assertNumEquals(10, closed.getProfit());
+            assertNumEquals(10, closed.getRealizedProfit(1));
+            assertNumEquals(0, closed.getUnrealizedProfit(numFactory.numOf(110), 1));
+            assertNumEquals(3, closed.getReturnOnMargin(numFactory.numOf(5), numFactory.numOf(110), 1));
+
+            Trade costlyEntry = new BaseTrade(0, T0, numFactory.numOf(100), numFactory.one(), numFactory.one(),
+                    ExecutionSide.BUY, null, null);
+            Position open = new Position(costlyEntry, costlyEntry.getCostModel(), new ZeroCostModel());
+            assertNumEquals(9, open.getProfit(0, numFactory.numOf(110)));
+            assertNumEquals(-1, open.getRealizedProfit(0));
+            assertNumEquals(10, open.getUnrealizedProfit(numFactory.numOf(110), 0));
+            assertNumEquals(open.getProfit(0, numFactory.numOf(110)),
+                    open.getUnrealizedProfit(numFactory.numOf(110), 0).plus(open.getRealizedProfit(0)));
+        }
+    }
+
+    @Test
+    public void spotAsOfCostUsesOriginalAggregateTradeModel() {
+        for (NumFactory numFactory : factories()) {
+            FixedTransactionCostModel costModel = new FixedTransactionCostModel(3);
+            Trade entry = Trade.fromFills(TradeType.BUY,
+                    List.of(new TradeFill(0, T0, numFactory.numOf(100), numFactory.one(), numFactory.zero(),
+                            ExecutionSide.BUY, null, null),
+                            new TradeFill(1, T0.plusSeconds(1), numFactory.numOf(100), numFactory.one(),
+                                    numFactory.zero(), ExecutionSide.BUY, null, null),
+                            new TradeFill(2, T0.plusSeconds(2), numFactory.numOf(100), numFactory.one(),
+                                    numFactory.zero(), ExecutionSide.BUY, null, null)),
+                    costModel);
+            Position position = new Position(entry, costModel, new ZeroCostModel());
+
+            assertNumEquals(17, position.getProfit(1, numFactory.numOf(110)));
+        }
+    }
+
+    @Test
+    public void futuresProfitRejectsExitExposureBeyondEntry() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.numOf(0.01))
+                    .build();
+            Trade entry = Trade.fromFill(futuresFill(contract, 0, 100, 1, ExecutionSide.BUY),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFill(futuresFill(contract, 1, 100, 2, ExecutionSide.SELL),
+                    RecordedTradeCostModel.INSTANCE);
+            assertThrows(IllegalArgumentException.class,
+                    () -> new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+        }
+    }
+
+    @Test
+    public void partialFuturesHoldingCostUsesSettlementNotional() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.numOf(10))
+                    .build();
+            TradeFill executed = TradeFill.builder()
+                    .index(0)
+                    .time(T0)
+                    .price(numFactory.numOf(100))
+                    .amount(numFactory.numOf(2))
+                    .side(ExecutionSide.SELL)
+                    .futuresContract(contract)
+                    .fees(List.of())
+                    .build();
+            TradeFill future = TradeFill.builder()
+                    .index(3)
+                    .time(T0.plusSeconds(3))
+                    .price(numFactory.numOf(110))
+                    .amount(numFactory.one())
+                    .side(ExecutionSide.SELL)
+                    .futuresContract(contract)
+                    .fees(List.of())
+                    .build();
+            Trade entry = Trade.fromFills(TradeType.SELL, List.of(executed, future), RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE,
+                    new LinearBorrowingCostModel(0.01, LinearBorrowingCostModel.Applicability.BOTH));
+
+            assertNumEquals(40, position.getHoldingCost(2));
+        }
+    }
+
+    @Test
+    public void partialEntryHoldingCostOnlyUsesFillsThroughFinalIndex() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.numOf(0.01))
+                    .build();
+            LinearBorrowingCostModel holdingCostModel = new LinearBorrowingCostModel(0.01,
+                    LinearBorrowingCostModel.Applicability.BOTH);
+            Trade entry = Trade.fromFills(TradeType.BUY, List.of(futuresFill(contract, 0, 100, 100, ExecutionSide.BUY),
+                    futuresFill(contract, 2, 100, 100, ExecutionSide.BUY)), RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, holdingCostModel);
+
+            assertNumEquals(1, position.getHoldingCost(1));
+            // The first 100 contracts are held for two periods, while the second fill
+            // executes at the observation index and accrues nothing: 2 + 0.
+            assertNumEquals(2, position.getHoldingCost(2));
+        }
+    }
+
+    @Test
+    public void spotProfitMarksExposureOfPositionsClosedAfterTheFinalIndex() {
+        for (NumFactory numFactory : factories()) {
+            Trade entry = Trade.buyAt(0, numFactory.numOf(100), numFactory.one(), new ZeroCostModel());
+            Trade exit = Trade.sellAt(3, numFactory.numOf(120), numFactory.one(), new ZeroCostModel());
+            Position position = new Position(entry, exit);
+
+            // The exit is executed after the cutoff, so the mark has to value the
+            // exposure that is still open at the cutoff.
+            assertNumEquals(0d, position.getProfit(1, numFactory.numOf(100)));
+            assertNumEquals(10d, position.getProfit(1, numFactory.numOf(110)));
+            assertNumEquals(10d, position.getUnrealizedProfit(numFactory.numOf(110), 1));
+            assertNumEquals(20d, position.getProfit(3, numFactory.numOf(100)));
+        }
+    }
+
+    @Test
+    public void spotProfitAccountsForExitFillsThroughTheFinalIndex() {
+        for (NumFactory numFactory : factories()) {
+            Trade entry = Trade.fromFills(TradeType.BUY,
+                    List.of(new TradeFill(0, numFactory.numOf(100), numFactory.numOf(2))), new ZeroCostModel());
+            Trade exit = Trade.fromFills(TradeType.SELL,
+                    List.of(new TradeFill(1, numFactory.numOf(110), numFactory.one()),
+                            new TradeFill(3, numFactory.numOf(120), numFactory.one())),
+                    new ZeroCostModel());
+            Position position = new Position(entry, exit);
+
+            assertNumEquals(15, position.getProfit(1, numFactory.numOf(105)));
+            assertNumEquals(10, position.getRealizedProfit(1));
+            assertNumEquals(5, position.getUnrealizedProfit(numFactory.numOf(105), 1));
+            assertNumEquals(30, position.getProfit(3, numFactory.numOf(105)));
+        }
+    }
+
+    @Test
+    public void completedSpotProfitExcludesDeferredEntryFills() {
+        for (NumFactory numFactory : factories()) {
+            Trade entry = Trade.fromFills(TradeType.BUY,
+                    List.of(new TradeFill(0, numFactory.numOf(100), numFactory.one()),
+                            new TradeFill(-1, numFactory.numOf(200), numFactory.one())),
+                    new ZeroCostModel());
+            Trade exit = Trade.fromFills(TradeType.SELL,
+                    List.of(new TradeFill(1, numFactory.numOf(110), numFactory.one())), new ZeroCostModel());
+            Position position = new Position(entry, exit);
+
+            assertNumEquals(10, position.getProfit(1, numFactory.numOf(110)));
+            assertNumEquals(10, position.getProfit());
+            assertNumEquals(10, position.getGrossProfit());
+        }
+    }
+
+    @Test
+    public void rejectsUnrepresentableCashFlowSettlement() {
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(DoubleNumFactory.getInstance().one())
+                .build();
+        Trade entry = Trade.fromFills(TradeType.BUY, List.of(futuresFill(contract, 0, 100, 1, ExecutionSide.BUY)),
+                RecordedTradeCostModel.INSTANCE);
+        for (String amountText : List.of("1e-400", "1e400")) {
+            Num amount = DecimalNumFactory.getInstance().numOf(new BigDecimal(amountText));
+            FuturesCashFlow cashFlow = FuturesCashFlow.builder()
+                    .contract(contract)
+                    .type(FuturesCashFlow.Type.VARIATION_MARGIN)
+                    .eventId("vm-" + amountText)
+                    .index(1)
+                    .time(T0.plusSeconds(1))
+                    .amount(amount)
+                    .currency(contract.settlementCurrency())
+                    .build();
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel(),
+                    List.of(cashFlow));
+
+            assertThrows(IllegalArgumentException.class, () -> position.getRealizedProfit(1));
+        }
+    }
+
+    @Test
+    public void spotAsOfProfitUsesEntryFillsThroughFinalIndex() {
+        for (NumFactory numFactory : factories()) {
+            Trade entry = Trade.fromFills(TradeType.BUY,
+                    List.of(new TradeFill(0, T0, numFactory.numOf(100), numFactory.one(), numFactory.one(),
+                            ExecutionSide.BUY, null, null),
+                            new TradeFill(2, T0.plusSeconds(2), numFactory.numOf(200), numFactory.one(),
+                                    numFactory.numOf(7), ExecutionSide.BUY, null, null)),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            assertNumEquals(9, position.getProfit(1, numFactory.numOf(110)));
+            assertNumEquals(-1, position.getRealizedProfit(1));
+            assertNumEquals(10, position.getUnrealizedProfit(numFactory.numOf(110), 1));
+        }
+    }
+
+    @Test
+    public void getReturnOnMarginRejectsMarginThatUnderflowsProfitFactory() {
+        Position position = new Position(
+                Trade.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1), new ZeroCostModel()),
+                Trade.sellAt(1, DoubleNum.valueOf(110), DoubleNum.valueOf(1), new ZeroCostModel()));
+        Num tinyMargin = DecimalNumFactory.getInstance().numOf("1e-400");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> position.getReturnOnMargin(tinyMargin, DoubleNum.valueOf(110), 1));
+    }
+
+    @Test
+    public void futuresHoldingCostAccruesOverEachEntryFillExposure() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.numOf(10))
+                    .build();
+            TradeFill first = TradeFill.builder()
+                    .index(0)
+                    .time(T0)
+                    .price(numFactory.numOf(100))
+                    .amount(numFactory.two())
+                    .side(ExecutionSide.SELL)
+                    .futuresContract(contract)
+                    .fees(List.of())
+                    .build();
+            TradeFill second = TradeFill.builder()
+                    .index(2)
+                    .time(T0.plusSeconds(2))
+                    .price(numFactory.numOf(100))
+                    .amount(numFactory.one())
+                    .side(ExecutionSide.SELL)
+                    .futuresContract(contract)
+                    .fees(List.of())
+                    .build();
+            Trade entry = Trade.fromFills(TradeType.SELL, List.of(first, second), RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE,
+                    new LinearBorrowingCostModel(0.01, LinearBorrowingCostModel.Applicability.BOTH));
+
+            // 2 contracts x 10 x 100 = 2000 notional held for 2 periods is 40, while the
+            // second fill executes at the observation index and accrues nothing.
+            assertNumEquals(40, position.getHoldingCost(2));
+
+            TradeFill exitFill = TradeFill.builder()
+                    .index(2)
+                    .time(T0.plusSeconds(2))
+                    .price(numFactory.numOf(100))
+                    .amount(numFactory.numOf(3))
+                    .side(ExecutionSide.BUY)
+                    .futuresContract(contract)
+                    .fees(List.of())
+                    .build();
+            Position closedPosition = new Position(entry,
+                    Trade.fromFills(TradeType.BUY, List.of(exitFill), RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE,
+                    new LinearBorrowingCostModel(0.01, LinearBorrowingCostModel.Applicability.BOTH));
+
+            assertNumEquals(40, closedPosition.getHoldingCost());
+        }
+    }
+
+    @Test
+    public void futuresHoldingCostAccruesOverEachClosingFillExposure() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.numOf(10))
+                    .build();
+            TradeFill entryFill = futuresFill(contract, 0, 100, 2, ExecutionSide.BUY);
+            TradeFill firstExitFill = futuresFill(contract, 3, 110, 1, ExecutionSide.SELL);
+            TradeFill secondExitFill = futuresFill(contract, 5, 110, 1, ExecutionSide.SELL);
+            Trade entry = Trade.fromFills(TradeType.BUY, List.of(entryFill), RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFills(TradeType.SELL, List.of(firstExitFill, secondExitFill),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE,
+                    new LinearBorrowingCostModel(0.01, LinearBorrowingCostModel.Applicability.BOTH));
+
+            // One contract is held for 3 periods and the other for 5: 1_000 * 3 * 0.01
+            // plus 1_000 * 5 * 0.01.
+            assertNumEquals(80, position.getHoldingCost(5));
+            assertNumEquals(80, position.getHoldingCost());
+        }
+    }
+
+    @Test
+    public void futuresHoldingCostMatchesFillsInExecutionOrder() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.one())
+                    .build();
+            TradeFill entryAtZero = futuresFill(contract, 0, 100, 1, ExecutionSide.BUY);
+            TradeFill entryAtFive = futuresFill(contract, 5, 200, 1, ExecutionSide.BUY);
+            TradeFill exitAtTen = futuresFill(contract, 10, 200, 1, ExecutionSide.SELL);
+            TradeFill exitAtSix = futuresFill(contract, 6, 200, 1, ExecutionSide.SELL);
+            LinearBorrowingCostModel holdingCostModel = new LinearBorrowingCostModel(0.01,
+                    LinearBorrowingCostModel.Applicability.BOTH);
+
+            List<List<TradeFill>> entryOrders = List.of(List.of(entryAtZero, entryAtFive),
+                    List.of(entryAtFive, entryAtZero));
+            for (List<TradeFill> entryOrder : entryOrders) {
+                Trade entry = Trade.fromFills(TradeType.BUY, entryOrder, RecordedTradeCostModel.INSTANCE);
+                Trade exit = Trade.fromFills(TradeType.SELL, List.of(exitAtTen, exitAtSix),
+                        RecordedTradeCostModel.INSTANCE);
+                Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, holdingCostModel);
+
+                // 100 x 6 x 0.01 + 200 x 5 x 0.01 = 16.
+                assertNumEquals(16, position.getHoldingCost());
+            }
+        }
+    }
+
+    private static FuturesCashFlow variationMargin(FuturesContract contract, int index, double amount) {
+        NumFactory numFactory = contract.contractSize().getNumFactory();
+        return FuturesCashFlow.builder()
+                .contract(contract)
+                .type(FuturesCashFlow.Type.VARIATION_MARGIN)
+                .eventId("vm-" + index)
+                .index(index)
+                .time(T0.plusSeconds(index))
+                .amount(numFactory.numOf(amount))
+                .currency(contract.settlementCurrency())
+                .build();
+    }
+
+    private static TradeFill futuresFill(FuturesContract contract, int index, double price, double amount,
+            ExecutionSide side) {
+        NumFactory numFactory = contract.contractSize().getNumFactory();
+        return TradeFill.builder()
+                .index(index)
+                .time(T0.plusSeconds(index))
+                .price(numFactory.numOf(price))
+                .amount(numFactory.numOf(amount))
+                .side(side)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+    }
+
+    private static TradeFill futuresFill(FuturesContract contract, NumFactory fillFactory, int index, Instant time,
+            double price, double amount, ExecutionSide side) {
+        return TradeFill.builder()
+                .index(index)
+                .time(time)
+                .price(fillFactory.numOf(price))
+                .amount(fillFactory.numOf(amount))
+                .side(side)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+    }
+
+    @Test
+    public void futuresClosedPositionsRequireChronologicalTrades() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.one())
+                    .build();
+
+            Trade entryWithLaterIndex = Trade.fromFill(
+                    futuresFill(contract, numFactory, 5, T0.plusSeconds(1), 100, 1, ExecutionSide.BUY),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exitWithEarlierIndex = Trade.fromFill(
+                    futuresFill(contract, numFactory, 1, T0.plusSeconds(2), 110, 1, ExecutionSide.SELL),
+                    RecordedTradeCostModel.INSTANCE);
+            assertThrows(IllegalArgumentException.class, () -> new Position(entryWithLaterIndex, exitWithEarlierIndex,
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+
+            Trade entryWithLaterTime = Trade.fromFill(
+                    futuresFill(contract, numFactory, 1, T0.plusSeconds(5), 100, 1, ExecutionSide.BUY),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exitWithEarlierTime = Trade.fromFill(
+                    futuresFill(contract, numFactory, 5, T0.plusSeconds(1), 110, 1, ExecutionSide.SELL),
+                    RecordedTradeCostModel.INSTANCE);
+            assertThrows(IllegalArgumentException.class, () -> new Position(entryWithLaterTime, exitWithEarlierTime,
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+
+            Trade entryWithLaterFill = Trade.fromFills(TradeType.BUY,
+                    List.of(futuresFill(contract, numFactory, 1, 100, 1, ExecutionSide.BUY),
+                            futuresFill(contract, numFactory, 10, 100, 1, ExecutionSide.BUY)),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exitBeforeLaterEntry = Trade.fromFill(
+                    futuresFill(contract, numFactory, 2, 110, 2, ExecutionSide.SELL), RecordedTradeCostModel.INSTANCE);
+            assertThrows(IllegalArgumentException.class, () -> new Position(entryWithLaterFill, exitBeforeLaterEntry,
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+        }
+    }
+
+    @Test
+    public void positionsWithDifferentCashFlowsAreNotEqual() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.numOf(10))
+                    .build();
+            Trade entry = Trade.fromFills(TradeType.BUY, List.of(futuresFill(contract, 0, 100, 2, ExecutionSide.BUY)),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFills(TradeType.SELL, List.of(futuresFill(contract, 3, 110, 2, ExecutionSide.SELL)),
+                    RecordedTradeCostModel.INSTANCE);
+
+            Position unfunded = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel(),
+                    List.of());
+            Position charged = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel(),
+                    List.of(variationMargin(contract, 2, -5)));
+            Position alsoCharged = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel(),
+                    List.of(variationMargin(contract, 2, -5)));
+
+            assertNotEquals(unfunded, charged);
+            assertEquals(charged, alsoCharged);
+            assertEquals(charged.hashCode(), alsoCharged.hashCode());
+        }
+    }
+
+    @Test
+    public void futuresHoldingCostIncludesUnmatchedEntryAfterPartialExit() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.numOf(10))
+                    .build();
+            Trade entry = Trade.fromFills(TradeType.BUY, List.of(futuresFill(contract, 0, 100, 2, ExecutionSide.BUY)),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFills(TradeType.SELL, List.of(futuresFill(contract, 2, 100, 1, ExecutionSide.SELL)),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE,
+                    new LinearBorrowingCostModel(0.01, LinearBorrowingCostModel.Applicability.BOTH));
+
+            assertNumEquals(50, position.getHoldingCost(3));
+        }
+    }
+
+    @Test
+    public void asOfProfitUsesOnlyRetainedEntryFills() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.one())
+                    .build();
+            Trade entry = Trade.fromFills(TradeType.BUY, List.of(futuresFill(contract, 0, 100, 1, ExecutionSide.BUY),
+                    futuresFill(contract, 2, 200, 1, ExecutionSide.BUY)), RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            assertNumEquals(10, position.getProfit(1, numFactory.numOf(110)));
+        }
+    }
+
+    @Test
+    public void futuresProfitResetsBasisAfterFlatExposureGap() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.one())
+                    .build();
+            Trade entry = Trade.fromFills(TradeType.BUY, List.of(futuresFill(contract, 0, 100, 1, ExecutionSide.BUY),
+                    futuresFill(contract, 2, 120, 1, ExecutionSide.BUY)), RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFill(futuresFill(contract, 1, 110, 1, ExecutionSide.SELL),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            assertNumEquals(10, position.getRealizedProfit(2));
+            assertNumEquals(0, position.getUnrealizedProfit(numFactory.numOf(120), 2));
+        }
+    }
+
+    @Test
+    public void futuresHoldingCostScalesFeesWhenSplittingFills() {
+        NumFactory numFactory = DoubleNumFactory.getInstance();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .build();
+        TradeFee entryFee = TradeFee.builder()
+                .type(TradeFee.Type.COMMISSION)
+                .amount(numFactory.numOf(10))
+                .currency("USD")
+                .build();
+        TradeFill entryFill = futuresFill(contract, 0, 100, 2, ExecutionSide.BUY).toBuilder()
+                .fees(List.of(entryFee))
+                .build();
+        Trade entry = Trade.fromFill(entryFill, RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFills(TradeType.SELL, List.of(futuresFill(contract, 1, 110, 1, ExecutionSide.SELL),
+                futuresFill(contract, 2, 110, 1, ExecutionSide.SELL)), RecordedTradeCostModel.INSTANCE);
+        List<Num> observedEntryFees = new ArrayList<>();
+        CostModel holdingCostModel = new CostModel() {
+            @Override
+            public Num calculate(Position position, int finalIndex) {
+                observedEntryFees.add(position.getEntry().getFills().getFirst().fees().getFirst().amount());
+                return position.getEntry().getPricePerAsset().getNumFactory().zero();
+            }
+
+            @Override
+            public Num calculate(Position position) {
+                return calculate(position, Integer.MAX_VALUE);
+            }
+
+            @Override
+            public Num calculate(Num price, Num amount) {
+                return price.getNumFactory().zero();
+            }
+
+            @Override
+            public boolean equals(CostModel otherModel) {
+                return this == otherModel;
+            }
+        };
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, holdingCostModel);
+
+        position.getHoldingCost(2);
+
+        assertEquals(2, observedEntryFees.size());
+        for (Num observedEntryFee : observedEntryFees) {
+            assertNumEquals(5, observedEntryFee);
+        }
+    }
+
+    private static TradeFill futuresFill(FuturesContract contract, NumFactory fillFactory, int index, double price,
+            double amount, ExecutionSide side) {
+        return TradeFill.builder()
+                .index(index)
+                .time(T0.plusSeconds(index))
+                .price(fillFactory.numOf(price))
+                .amount(fillFactory.numOf(amount))
+                .side(side)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+    }
+
+    @Test
+    public void futuresHoldingCostNormalizesMixedFillFactories() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(doubleFactory.numOf(10))
+                .build();
+        Trade entry = Trade.fromFills(TradeType.BUY,
+                List.of(futuresFill(contract, doubleFactory, 0, 100, 1, ExecutionSide.BUY),
+                        futuresFill(contract, decimalFactory, 1, 110, 1, ExecutionSide.BUY)),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(futuresFill(contract, decimalFactory, 2, 120, 2, ExecutionSide.SELL),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE,
+                new LinearBorrowingCostModel(0.01, LinearBorrowingCostModel.Applicability.BOTH));
+
+        assertNumEquals(31, position.getHoldingCost(2));
+    }
+
+    @Test
+    public void noArgumentProfitExcludesDeferredExitValuation() {
+        NumFactory numFactory = DoubleNumFactory.getInstance();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .build();
+        Trade entry = Trade.fromFill(futuresFill(contract, numFactory, 0, 100, 2, ExecutionSide.BUY),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFills(TradeType.SELL,
+                List.of(futuresFill(contract, numFactory, 1, 110, 1, ExecutionSide.SELL),
+                        futuresFill(contract, numFactory, -1, 200, 1, ExecutionSide.SELL)),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        assertNumEquals(20, position.getProfit());
+        assertNumEquals(20, position.getGrossProfit());
+    }
+
+    @Test
+    public void grossReturnExcludesDeferredExitValuation() {
+        NumFactory numFactory = DoubleNumFactory.getInstance();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .build();
+        Trade entry = Trade.fromFill(futuresFill(contract, numFactory, 0, 100, 2, ExecutionSide.BUY),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFills(TradeType.SELL,
+                List.of(futuresFill(contract, numFactory, 1, 110, 1, ExecutionSide.SELL),
+                        futuresFill(contract, numFactory, -1, 200, 1, ExecutionSide.SELL)),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 150).build();
+
+        assertNumEquals(1.1, position.getGrossReturn());
+        assertNumEquals(1.1, position.getGrossReturn(series));
+        assertNumEquals(1.1, new GrossReturnCriterion().calculate(series, position));
+    }
+
+    @Test
+    public void inverseGrossReturnLeavesDeferredExitUnrealized() {
+        NumFactory numFactory = DoubleNumFactory.getInstance();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.INVERSE)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("BTC")
+                .contractSize(numFactory.one())
+                .build();
+        Trade entry = Trade.fromFill(futuresFill(contract, numFactory, 0, 100, 1, ExecutionSide.BUY),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(futuresFill(contract, numFactory, -1, 110, 1, ExecutionSide.SELL),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        assertNumEquals(1, position.getGrossReturn());
+    }
+
+    @Test
+    public void inverseGrossReturnMarksOnlyUnexecutedExitExposure() {
+        NumFactory numFactory = DoubleNumFactory.getInstance();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.INVERSE)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("BTC")
+                .contractSize(numFactory.one())
+                .build();
+        Trade entry = Trade.fromFill(futuresFill(contract, numFactory, 0, 100, 2, ExecutionSide.BUY),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFills(TradeType.SELL,
+                List.of(futuresFill(contract, numFactory, 1, 110, 1, ExecutionSide.SELL),
+                        futuresFill(contract, numFactory, -1, 200, 1, ExecutionSide.SELL)),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        assertNumEquals(149d / 132d, position.getGrossReturn(numFactory.numOf(120)));
+    }
+
+    @Test
+    public void grossReturnUsesExecutedEntryNotionalForDeferredEntryFill() {
+        NumFactory numFactory = DoubleNumFactory.getInstance();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .build();
+        Trade entry = Trade.fromFills(TradeType.BUY,
+                List.of(futuresFill(contract, numFactory, 0, 100, 1, ExecutionSide.BUY),
+                        futuresFill(contract, numFactory, -1, 200, 1, ExecutionSide.BUY)),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(futuresFill(contract, numFactory, 1, 110, 1, ExecutionSide.SELL),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
+
+        assertNumEquals(1.1, position.getGrossReturn());
+        assertNumEquals(1.1, position.getGrossReturn(series));
+        assertNumEquals(1.1, new GrossReturnCriterion().calculate(series, position));
+    }
+
+    @Test
+    public void noArgumentProfitBoundsPartialFuturesHoldingCost() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.numOf(10))
+                    .build();
+            Trade entry = Trade.fromFills(TradeType.BUY, List.of(futuresFill(contract, 0, 100, 2, ExecutionSide.BUY)),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFills(TradeType.SELL, List.of(futuresFill(contract, 2, 100, 1, ExecutionSide.SELL)),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE,
+                    new LinearBorrowingCostModel(0.01, LinearBorrowingCostModel.Applicability.BOTH));
+
+            assertNumEquals(-40, position.getProfit());
+        }
+    }
+
+    @Test
+    public void singleFillFuturesHoldingCostUsesSettlementCurrency() {
+        for (NumFactory numFactory : factories()) {
+            for (FuturesContract.SettlementType settlement : FuturesContract.SettlementType.values()) {
+                boolean inverse = settlement == FuturesContract.SettlementType.INVERSE;
+                FuturesContract contract = FuturesContract.builder()
+                        .venue("CDE")
+                        .symbol("BTC-PERP")
+                        .productType(FuturesContract.ProductType.PERPETUAL)
+                        .settlementType(settlement)
+                        .baseCurrency("BTC")
+                        .quoteCurrency("USD")
+                        .settlementCurrency(inverse ? "BTC" : "USD")
+                        .contractSize(numFactory.numOf(10))
+                        .build();
+                Trade entry = Trade.fromFill(futuresFill(contract, numFactory, 0, 100, 2, ExecutionSide.SELL),
+                        RecordedTradeCostModel.INSTANCE);
+                Trade exit = Trade.fromFill(futuresFill(contract, numFactory, 2, 100, 2, ExecutionSide.BUY),
+                        RecordedTradeCostModel.INSTANCE);
+                CostModel model = new LinearBorrowingCostModel(0.01);
+                Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, model);
+                double expected = inverse ? 0.004 : 40;
+
+                assertNumEquals(expected, model.calculate(position, 2));
+                assertNumEquals(expected, position.getHoldingCost(2));
+                assertNumEquals(expected, position.getHoldingCost());
+                assertNumEquals(-expected, position.getProfit());
+            }
+        }
+    }
+
+    @Test
+    public void spotProfitIsZeroBeforeEntryExecution() {
+        for (NumFactory numFactory : factories()) {
+            CostModel tradingCost = new FixedTransactionCostModel(3);
+            CostModel holdingCost = new LinearBorrowingCostModel(0.01);
+            Trade entry = Trade.sellAt(5, numFactory.hundred(), numFactory.one(), tradingCost);
+            Trade exit = Trade.buyAt(7, numFactory.numOf(90), numFactory.one(), tradingCost);
+            Position open = new Position(entry, tradingCost, holdingCost);
+            Position closed = new Position(entry, exit, tradingCost, holdingCost);
+
+            assertNumEquals(0, open.getProfit(3, numFactory.numOf(80)));
+            assertNumEquals(0, closed.getProfit(3, numFactory.numOf(80)));
+            assertNumEquals(17, closed.getProfit(5, numFactory.numOf(80)));
+        }
+    }
+
+    @Test
+    public void emptySpotProfitHasNoExposureOrCosts() {
+        for (NumFactory numFactory : factories()) {
+            Position position = new Position(TradeType.BUY, new FixedTransactionCostModel(3),
+                    new LinearBorrowingCostModel(0.01));
+            assertNumEquals(0, position.getProfit(3, numFactory.numOf(80)));
+        }
+    }
+
+    @Test
+    public void partialSpotProfitIncludesExecutedExitFees() {
+        for (NumFactory numFactory : factories()) {
+            Trade entry = Trade
+                    .fromFill(
+                            new TradeFill(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.numOf(100),
+                                    numFactory.numOf(2), numFactory.zero(), ExecutionSide.BUY, null, null),
+                            RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFills(TradeType.SELL,
+                    List.of(new TradeFill(1, Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110),
+                            numFactory.one(), numFactory.numOf(3), ExecutionSide.SELL, null, null),
+                            new TradeFill(5, Instant.parse("2025-01-01T00:00:05Z"), numFactory.numOf(120),
+                                    numFactory.one(), numFactory.numOf(4), ExecutionSide.SELL, null, null)),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            assertNumEquals(12, position.getProfit(1, numFactory.numOf(105)));
+            assertNumEquals(7, position.getRealizedProfit(1));
+        }
+    }
+
+    @Test
+    public void sameIndexTimestamplessExitFollowsTimestampedEntry() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(factory.one())
+                .build();
+        Trade entry = futuresTrade(contract, TradeType.BUY,
+                new TradeFill(7, T0, factory.numOf(100), factory.one(), ExecutionSide.BUY));
+        Trade exit = futuresTrade(contract, TradeType.SELL,
+                new TradeFill(7, null, factory.numOf(101), factory.one(), ExecutionSide.SELL));
+
+        Position position = new Position(entry, exit, new ZeroCostModel(), new ZeroCostModel());
+
+        assertTrue(position.isClosed());
+    }
+
+    @Test
+    public void sameIndexFuturesFollowsTimestampsBeforeSide() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(factory.one())
+                .build();
+        Trade entry = Trade.fromFills(TradeType.BUY,
+                List.of(futuresFill(contract, factory, 7, T0, 100, 1, ExecutionSide.BUY),
+                        futuresFill(contract, factory, 7, T0.plusSeconds(2), 100, 1, ExecutionSide.BUY)),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(futuresFill(contract, factory, 7, T0.plusSeconds(1), 101, 1, ExecutionSide.SELL),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        assertNumEquals(1, position.getRealizedProfit(7));
+    }
+
+    @Test
+    public void futuresProfitNormalizesOverflowingWeightedProducts() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(factory.one())
+                .build();
+        Trade entry = Trade.fromFills(TradeType.BUY,
+                List.of(futuresFill(contract, factory, 0, 1e200, 1e200, ExecutionSide.BUY),
+                        futuresFill(contract, factory, 0, 1e200, 1e200, ExecutionSide.BUY)),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        assertNumEquals(0, position.getProfit(0, factory.numOf(1e200)));
+    }
+
+    private static Trade futuresTrade(FuturesContract contract, TradeType type, TradeFill fill) {
+        return new Trade() {
+            @Override
+            public TradeType getType() {
+                return type;
+            }
+
+            @Override
+            public int getIndex() {
+                return fill.index();
+            }
+
+            @Override
+            public Num getPricePerAsset() {
+                return fill.price();
+            }
+
+            @Override
+            public Num getNetPrice() {
+                return fill.price();
+            }
+
+            @Override
+            public Num getAmount() {
+                return fill.amount();
+            }
+
+            @Override
+            public Num getCost() {
+                return fill.price().getNumFactory().zero();
+            }
+
+            @Override
+            public CostModel getCostModel() {
+                return new ZeroCostModel();
+            }
+
+            @Override
+            public FuturesContract getFuturesContract() {
+                return contract;
+            }
+
+            @Override
+            public List<TradeFill> getFills() {
+                return List.of(fill);
+            }
+        };
+    }
+
+    private static Trade futuresTradeWithFills(FuturesContract contract, TradeType type, List<TradeFill> fills) {
+        TradeFill firstFill = fills.getFirst();
+        Num amount = firstFill.price().getNumFactory().zero();
+        for (TradeFill fill : fills) {
+            amount = amount.plus(fill.amount());
+        }
+        Num totalAmount = amount;
+        return new Trade() {
+            @Override
+            public TradeType getType() {
+                return type;
+            }
+
+            @Override
+            public int getIndex() {
+                return firstFill.index();
+            }
+
+            @Override
+            public Num getPricePerAsset() {
+                return firstFill.price();
+            }
+
+            @Override
+            public Num getNetPrice() {
+                return firstFill.price();
+            }
+
+            @Override
+            public Num getAmount() {
+                return totalAmount;
+            }
+
+            @Override
+            public Num getCost() {
+                return firstFill.price().getNumFactory().zero();
+            }
+
+            @Override
+            public CostModel getCostModel() {
+                return RecordedTradeCostModel.INSTANCE;
+            }
+
+            @Override
+            public FuturesContract getFuturesContract() {
+                return contract;
+            }
+
+            @Override
+            public List<TradeFill> getFills() {
+                return fills;
+            }
+        };
+    }
+
+    @Test
+    public void futuresExposureEventsWithMissingTimesUseConsistentOrdering() {
+        for (NumFactory numFactory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(numFactory.one())
+                    .build();
+            Trade entry = futuresTradeWithFills(contract, TradeType.BUY,
+                    List.of(futuresFill(contract, numFactory, 0, T0.plusSeconds(3), 100, 1, ExecutionSide.BUY),
+                            new TradeFill(0, null, numFactory.numOf(100), numFactory.one(), ExecutionSide.BUY)));
+            Trade exit = Trade.fromFill(
+                    futuresFill(contract, numFactory, 0, T0.plusSeconds(2), 101, 1, ExecutionSide.SELL),
+                    RecordedTradeCostModel.INSTANCE);
+
+            Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            assertTrue(position.isClosed());
+        }
     }
 }

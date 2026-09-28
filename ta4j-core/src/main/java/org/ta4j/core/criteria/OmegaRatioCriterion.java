@@ -3,7 +3,9 @@
  */
 package org.ta4j.core.criteria;
 
-import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
@@ -14,9 +16,6 @@ import org.ta4j.core.analysis.Returns;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
-
-import java.util.Objects;
-import java.util.Optional;
 
 /**
  * Computes the Omega ratio.
@@ -191,7 +190,13 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         if (position == null || position.getEntry() == null) {
             return numFactory.zero();
         }
-        return calculate(series, new BaseTradingRecord(position));
+        if (position.getFuturesContract() == null) {
+            return calculate(series, new BaseTradingRecord(position));
+        }
+        EquityCurveMode mode = openPositionHandling == OpenPositionHandling.IGNORE ? EquityCurveMode.REALIZED
+                : equityCurveMode;
+        Returns returns = new Returns(series, position, ReturnRepresentation.DECIMAL, mode);
+        return calculate(returns, series.getBeginIndex(), series.getEndIndex());
     }
 
     @Override
@@ -204,19 +209,23 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
 
         int beginIndex = tradingRecord.getStartIndex(series);
         int endIndex = tradingRecord.getEndIndex(series);
-        if (endIndex <= beginIndex) {
-            return zero;
-        }
-
         Returns returns = new Returns(series, tradingRecord, ReturnRepresentation.DECIMAL, equityCurveMode,
                 openPositionHandling);
+        return calculate(returns, beginIndex, endIndex);
+    }
+
+    private Num calculate(Returns returns, int beginIndex, int endIndex) {
+        NumFactory numFactory = returns.getBarSeries().numFactory();
+        Num zero = numFactory.zero();
+        boolean hasFirstReturn = returns.hasFirstBarReturn() && !returns.hasSeededFirstBarReturn()
+                && beginIndex == returns.getBarSeries().getBeginIndex();
+        long firstReturnIndex = (long) beginIndex + (hasFirstReturn ? 0 : 1);
         Num thresholdNum = numFactory.numOf(threshold);
         Num upsideExcess = zero;
         Num downsideShortfall = zero;
 
-        List<Num> returnRates = returns.getRawValues();
-        for (int i = beginIndex + 1; i <= endIndex; i++) {
-            Num returnRate = returnRates.get(i);
+        for (long index = firstReturnIndex; index <= endIndex; index++) {
+            Num returnRate = returns.getValue((int) index);
             if (returnRate.isNaN()) {
                 continue;
             }

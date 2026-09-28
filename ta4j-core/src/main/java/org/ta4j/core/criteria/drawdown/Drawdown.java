@@ -96,26 +96,30 @@ public final class Drawdown {
     private static Scan scan(BarSeries series, TradingRecord tradingRecord, Indicator<Num> curve, boolean relative) {
         var numFactory = series.numFactory();
         var zero = numFactory.zero();
-        var peak = zero;
-        var peakIndex = series.getBeginIndex();
-        var maxDrawdown = zero;
-        var maxLength = 0;
-
         var begin = tradingRecord == null ? series.getBeginIndex() : tradingRecord.getStartIndex(series);
         var end = tradingRecord == null ? series.getEndIndex() : tradingRecord.getEndIndex(series);
 
-        if (!series.isEmpty()) {
-            for (var i = begin; i <= end; i++) {
-                var value = curve.getValue(i);
-                if (value.isGreaterThan(peak)) {
-                    peak = value;
-                    peakIndex = i;
-                }
-                var drop = relative ? peak.minus(value).dividedBy(peak) : peak.minus(value);
-                if (drop.isGreaterThan(maxDrawdown)) {
-                    maxDrawdown = drop;
-                    maxLength = i - peakIndex;
-                }
+        if (series.isEmpty() || begin > end) {
+            return new Scan(zero, 0);
+        }
+
+        var initialCapitalBaseline = curve instanceof CashFlow cashFlow && cashFlow.hasInitialReturn()
+                && begin == series.getBeginIndex();
+        var peak = initialCapitalBaseline ? numFactory.one() : curve.getValue(begin);
+        var peakIndex = initialCapitalBaseline ? begin - 1 : begin;
+        var maxDrawdown = zero;
+        var maxLength = 0;
+
+        for (var i = begin; i <= end; i++) {
+            var value = curve.getValue(i);
+            if (value.isGreaterThan(peak)) {
+                peak = value;
+                peakIndex = i;
+            }
+            var drop = relative ? peak.minus(value).dividedBy(peak) : peak.minus(value);
+            if (drop.isGreaterThan(maxDrawdown)) {
+                maxDrawdown = drop;
+                maxLength = i - peakIndex;
             }
         }
 
