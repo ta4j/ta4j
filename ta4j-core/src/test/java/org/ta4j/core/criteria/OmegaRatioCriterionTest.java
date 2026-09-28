@@ -293,6 +293,19 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void ignoresNeutralPlaceholderAtSingleBarWindow() {
+        BarSeries series = buildSeries("omega_ignored_single_bar", new double[] { 100d, 110d });
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, 1, 1, null, null);
+        tradingRecord.enter(1, series.getBar(1).getClosePrice(), numFactory.one());
+        OmegaRatioCriterion ignoreOpen = new OmegaRatioCriterion(-0.1d, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.IGNORE);
+        OmegaRatioCriterion realized = new OmegaRatioCriterion(-0.1d, EquityCurveMode.REALIZED,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        assertNumEquals(numFactory.zero(), ignoreOpen.calculate(series, tradingRecord), 0d);
+        assertNumEquals(numFactory.zero(), realized.calculate(series, tradingRecord), 0d);
+    }
+    @Test
     public void betterThanUsesHigherValuesAsBetter() {
         OmegaRatioCriterion criterion = (OmegaRatioCriterion) getCriterion(0d);
 

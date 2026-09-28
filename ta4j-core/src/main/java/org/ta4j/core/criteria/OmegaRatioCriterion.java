@@ -228,7 +228,10 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         // was last marked there; otherwise that bar's return is the move into the
         // window.
         long firstRateIndex = beginIndex + 1L;
-        if (beginIndex == returns.getBeginIndex() || marksAt(tradingRecord, beginIndex, returns.getEndIndex())) {
+        if (equityCurveMode != EquityCurveMode.REALIZED
+                && openPositionHandling != OpenPositionHandling.IGNORE
+                && (beginIndex == returns.getBeginIndex()
+                        || marksAt(tradingRecord, beginIndex, returns.getEndIndex()))) {
             firstRateIndex = beginIndex;
         }
         for (long i = firstRateIndex; i <= returns.getEndIndex(); i++) {
