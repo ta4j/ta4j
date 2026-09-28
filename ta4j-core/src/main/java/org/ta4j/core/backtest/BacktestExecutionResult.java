@@ -453,6 +453,12 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
         }
     }
 
+    /**
+     * Returns a copy of the bar series backing this result. Each call returns a
+     * fresh series, so adding or removing bars on it cannot affect this result. The
+     * copy shares the result's {@link org.ta4j.core.Bar} instances, so do not edit
+     * bars in place through it.
+     */
     @Override
     @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the immutable result snapshot series captured for this execution.")
     public BarSeries barSeries() {

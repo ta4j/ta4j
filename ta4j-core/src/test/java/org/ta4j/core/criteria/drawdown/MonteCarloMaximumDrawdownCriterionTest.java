@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.criteria.drawdown;
 
+import org.ta4j.core.BarSeries;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.random.RandomGenerator;
 
@@ -24,6 +25,7 @@ import org.ta4j.core.criteria.Statistics;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.num.Num;
 import java.time.Instant;
 
 public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTest {
@@ -70,6 +72,20 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
                 Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series));
         var criterion = new MonteCarloMaximumDrawdownCriterion(200, null, 123L, Statistics.P95);
         assertNumEquals(0d, criterion.calculate(series, record));
+    }
+
+    @Test
+    public void clipsBlocksToRetainedMovingSeriesWindow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 101, 99, 102, 98, 103, 97, 104, 96, 105, 95, 106)
+                .build();
+        var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(7, series), Trade.buyAt(8, series),
+                Trade.sellAt(9, series), Trade.buyAt(10, series), Trade.sellAt(11, series));
+        series.setMaximumBarCount(5);
+        var criterion = new MonteCarloMaximumDrawdownCriterion(1, null, 123L, Statistics.P95);
+
+        // Positions entered before the retained window must not read pruned bars.
+        Assert.assertFalse(criterion.calculate(series, record).isNaN());
     }
 
     @Test
@@ -308,5 +324,54 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
                 ExecutionSide.SELL, "order-3", "c3"));
 
         return record;
+    }
+
+    @Test
+    public void zeroDurationPositionAtFirstBarStillFormsABlock() {
+        NumFactory decimalFactory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(decimalFactory)
+                .withData(100, 120, 90, 110, 80)
+                .build();
+        BaseTradingRecord record = new BaseTradingRecord();
+        for (int[] leg : new int[][] { { 0, 0 }, { 1, 2 }, { 3, 4 } }) {
+            record.enter(leg[0], series.getBar(leg[0]).getClosePrice(), decimalFactory.one());
+            record.exit(leg[1], series.getBar(leg[1]).getClosePrice(), decimalFactory.one());
+        }
+        MonteCarloMaximumDrawdownCriterion criterion = new MonteCarloMaximumDrawdownCriterion(1000, null, 42L,
+                Statistics.P95, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        // Pinned from the pre-refactor implementation: three blocks run the
+        // simulation instead of falling back to the deterministic drawdown
+        // (0.4545...).
+        assertEquals(0.6033057851239669, criterion.calculate(series, record).doubleValue(), 1e-12);
+    }
+
+    @Test
+    public void zeroDurationPositionAtPrunedBeginStillFormsABlock() {
+        NumFactory decimalFactory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        BarSeries pruned = new MockBarSeriesBuilder().withNumFactory(decimalFactory)
+                .withData(50, 60, 70, 80, 90, 100, 120, 90, 110, 80)
+                .build();
+        pruned.setMaximumBarCount(5);
+        BarSeries unpruned = new MockBarSeriesBuilder().withNumFactory(decimalFactory)
+                .withData(100, 120, 90, 110, 80)
+                .build();
+        int offset = pruned.getBeginIndex();
+        BaseTradingRecord prunedRecord = new BaseTradingRecord();
+        BaseTradingRecord unprunedRecord = new BaseTradingRecord();
+        for (int[] leg : new int[][] { { 0, 0 }, { 1, 2 }, { 3, 4 } }) {
+            prunedRecord.enter(leg[0] + offset, pruned.getBar(leg[0] + offset).getClosePrice(), decimalFactory.one());
+            prunedRecord.exit(leg[1] + offset, pruned.getBar(leg[1] + offset).getClosePrice(), decimalFactory.one());
+            unprunedRecord.enter(leg[0], unpruned.getBar(leg[0]).getClosePrice(), decimalFactory.one());
+            unprunedRecord.exit(leg[1], unpruned.getBar(leg[1]).getClosePrice(), decimalFactory.one());
+        }
+        MonteCarloMaximumDrawdownCriterion criterion = new MonteCarloMaximumDrawdownCriterion(1000, null, 42L,
+                Statistics.P95, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        // The same three legs on the retained window simulate exactly like the
+        // unpruned series (0.6033...), instead of falling back to 0.4545...
+        assertEquals(criterion.calculate(unpruned, unprunedRecord).doubleValue(),
+                criterion.calculate(pruned, prunedRecord).doubleValue(), 1e-12);
+        assertEquals(0.6033057851239669, criterion.calculate(pruned, prunedRecord).doubleValue(), 1e-12);
     }
 }

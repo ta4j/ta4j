@@ -401,7 +401,7 @@ class BaseTradingRecordTest {
     }
 
     @Test
-    void openPositionsExposeSnapshotPositions() {
+    void openPositionsReturnDefensiveCopies() {
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
         record.operate(new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(), numFactory.one(),
@@ -411,7 +411,8 @@ class BaseTradingRecordTest {
         Position second = record.getOpenPositions().getFirst();
 
         assertNotSame(first, second);
-        assertNotSame(first.getEntry(), second.getEntry());
+        assertEquals(first.getEntry().getIndex(), second.getEntry().getIndex());
+        assertEquals(first.getEntry().getAmount(), second.getEntry().getAmount());
     }
 
     @Test
