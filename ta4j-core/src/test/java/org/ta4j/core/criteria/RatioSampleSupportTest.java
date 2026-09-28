@@ -16,6 +16,7 @@ import org.junit.runners.Parameterized;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.ExcessReturns;
@@ -90,6 +91,32 @@ public class RatioSampleSupportTest {
         assertNumEquals((120d / 99d) - 1d, markToMarketSamples.get(2).value());
         assertNumEquals(0.1d, ignoreSamples.get(0).value());
         assertNumEquals(-0.1d, ignoreSamples.get(1).value());
+    }
+
+    @Test
+    public void futureExitPositionsRespectIgnoreAtLogicalEnd() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("future_exit_sample", numFactory, 5, 100d,
+                110d, 110d, 110d, 110d, 120d, 120d, 120d, 130d);
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
+        tradingRecord.exit(8, numFactory.numOf(130), numFactory.one());
+        ExcessReturns markToMarketReturns = new ExcessReturns(series, numFactory.zero(),
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, tradingRecord, OpenPositionHandling.MARK_TO_MARKET);
+        ExcessReturns ignoreReturns = new ExcessReturns(series, numFactory.zero(),
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, tradingRecord, OpenPositionHandling.IGNORE);
+
+        List<Sample> markToMarketSamples = RatioSampleSupport
+                .samples(series, tradingRecord, SamplingFrequency.TRADE, ZoneOffset.UTC, markToMarketReturns,
+                        OpenPositionHandling.MARK_TO_MARKET)
+                .toList();
+        List<Sample> ignoreSamples = RatioSampleSupport
+                .samples(series, tradingRecord, SamplingFrequency.TRADE, ZoneOffset.UTC, ignoreReturns,
+                        OpenPositionHandling.IGNORE)
+                .toList();
+
+        assertEquals(1, markToMarketSamples.size());
+        assertEquals(0, ignoreSamples.size());
+        assertNumEquals(0.2d, markToMarketSamples.get(0).value());
     }
 
     @Test

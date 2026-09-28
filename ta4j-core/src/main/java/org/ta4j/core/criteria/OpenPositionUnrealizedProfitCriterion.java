@@ -31,12 +31,24 @@ public class OpenPositionUnrealizedProfitCriterion extends AbstractAnalysisCrite
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         int finalIndex = Math.min(series.getEndIndex(), tradingRecord.getEndIndex(series));
-        Position current = tradingRecord.getCurrentPosition();
-        var positions = tradingRecord.getPositions();
-        if (current.getEntry() == null && !positions.isEmpty()) {
-            current = positions.get(positions.size() - 1);
+        Num totalProfit = series.numFactory().zero();
+        for (Position position : tradingRecord.getPositions()) {
+            if (isOpenAt(position, finalIndex)) {
+                totalProfit = totalProfit.plus(calculateAt(series, position, finalIndex));
+            }
         }
-        return calculateAt(series, current, finalIndex);
+        Position current = tradingRecord.getCurrentPosition();
+        if (current != null && current.isOpened() && isOpenAt(current, finalIndex)) {
+            totalProfit = totalProfit.plus(calculateAt(series, current, finalIndex));
+        }
+        return totalProfit;
+    }
+
+    private boolean isOpenAt(Position position, int finalIndex) {
+        if (position == null || position.getEntry() == null || position.getEntry().getIndex() > finalIndex) {
+            return false;
+        }
+        return position.getExit() == null || position.getExit().getIndex() > finalIndex;
     }
 
     private Num calculateAt(BarSeries series, Position position, int finalIndex) {

@@ -31,13 +31,12 @@ public class OpenPositionUnrealizedProfitCriterionTest extends AbstractCriterion
     }
 
     @Test
-    public void openPositionUsesLogicalCloseDespiteEarlierTrailingExit() {
+    public void includesPositionClosedAfterLogicalEnd() {
         BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("unrealized-end", numFactory, 1, 10d, 20d,
                 30d);
         BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
-        record.enter(1, series.getBar(1).getClosePrice(), numFactory.one());
 
-        assertNumEquals(0d, getCriterion().calculate(series, record));
+        assertNumEquals(10d, getCriterion().calculate(series, record));
     }
 
     @Test
@@ -121,5 +120,49 @@ public class OpenPositionUnrealizedProfitCriterionTest extends AbstractCriterion
                 assertNumEquals(expectedPosition, actualPosition, 1e-10);
             }
         }
+    }
+
+    @Test
+    public void sumsEveryClosedLotStillOpenAtLogicalEnd() {
+        BarSeries series = multiLotSeries();
+        BaseTradingRecord record = multiLotRecord(false);
+
+        assertEquals(2, record.getPositions().size());
+        assertTrue(record.getOpenPositions().isEmpty());
+        assertNumEquals(numFactory.numOf(30), getCriterion().calculate(series, record));
+    }
+
+    @Test
+    public void includesHistoricalLotsWhenCurrentLotStartsAfterLogicalEnd() {
+        BarSeries series = multiLotSeries();
+        BaseTradingRecord record = multiLotRecord(true);
+
+        assertEquals(2, record.getPositions().size());
+        assertEquals(1, record.getOpenPositions().size());
+        assertEquals(7, record.getCurrentPosition().getEntry().getIndex());
+        assertNumEquals(numFactory.numOf(30), getCriterion().calculate(series, record));
+    }
+
+    private BarSeries multiLotSeries() {
+        return ConstrainedSeriesSupport.trailingConstrainedSeries("unrealized-multi-lot", numFactory, 5, 100d, 110d,
+                110d, 110d, 110d, 120d, 120d, 120d, 130d, 130d, 130d, 130d);
+    }
+
+    private BaseTradingRecord multiLotRecord(boolean addLaterOpenLot) {
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        record.operate(new BaseTrade(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.zero(),
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(1, Instant.EPOCH.plusSeconds(1), numFactory.numOf(110), numFactory.one(),
+                numFactory.zero(), ExecutionSide.BUY, null, null));
+        if (addLaterOpenLot) {
+            record.operate(new BaseTrade(7, Instant.EPOCH.plusSeconds(7), numFactory.numOf(120), numFactory.one(),
+                    numFactory.zero(), ExecutionSide.BUY, null, null));
+        }
+        record.operate(new BaseTrade(10, Instant.EPOCH.plusSeconds(10), numFactory.numOf(130), numFactory.one(),
+                numFactory.zero(), ExecutionSide.SELL, null, null));
+        record.operate(new BaseTrade(11, Instant.EPOCH.plusSeconds(11), numFactory.numOf(130), numFactory.one(),
+                numFactory.zero(), ExecutionSide.SELL, null, null));
+        return record;
     }
 }

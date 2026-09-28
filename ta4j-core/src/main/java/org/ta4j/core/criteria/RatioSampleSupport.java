@@ -62,6 +62,8 @@ final class RatioSampleSupport {
             OpenPositionHandling openPositionHandling) {
         Stream<IndexPair> closedPairs = tradingRecord.getPositions()
                 .stream()
+                .filter(position -> openPositionHandling != OpenPositionHandling.IGNORE || position != null
+                        && position.getExit() != null && position.getExit().getIndex() <= finalIndex)
                 .map(position -> toTradePair(position, beginIndex, finalIndex))
                 .filter(Objects::nonNull);
         if (openPositionHandling == OpenPositionHandling.IGNORE) {
