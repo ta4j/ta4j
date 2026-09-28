@@ -3,20 +3,25 @@
  */
 package org.ta4j.core;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.function.IntConsumer;
 import java.util.function.Supplier;
 
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.bars.TimeBarBuilderFactory;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -26,6 +31,19 @@ import org.ta4j.core.num.NumFactory;
  * exposing additional production constructors.
  */
 public final class ConstrainedSeriesSupport {
+
+    public record CriterionWindowFixture(String name, BarSeries series, TradingRecord tradingRecord, Position position,
+            BarSeries equivalentSeries, TradingRecord equivalentRecord, Position equivalentPosition,
+            TradingRecord markedEquivalentRecord, Position markedEquivalentPosition) {
+
+        public TradingRecord equivalentRecord(EquityCurveMode mode) {
+            return mode == EquityCurveMode.MARK_TO_MARKET ? markedEquivalentRecord : equivalentRecord;
+        }
+
+        public Position equivalentPosition(EquityCurveMode mode) {
+            return mode == EquityCurveMode.MARK_TO_MARKET ? markedEquivalentPosition : equivalentPosition;
+        }
+    }
 
     private ConstrainedSeriesSupport() {
     }
@@ -255,6 +273,125 @@ public final class ConstrainedSeriesSupport {
         public int getCountOfUnstableBars() {
             return 0;
         }
+    }
+
+    /** Returns paired criterion inputs for each window shape and edge position. */
+    public static List<CriterionWindowFixture> criterionWindowFixtures(NumFactory numFactory) {
+        double[] closes = { 100d, 80d, 120d, 90d, 110d, 55d };
+        BarSeries fullSource = yearlySeries("criterion-window-source", numFactory, closes);
+        List<Bar> fullBars = fullSource.getBarData();
+        List<CriterionWindowFixture> fixtures = new ArrayList<>();
+        String[] shapes = { "constrained-begin", "pruned", "bounded-record", "constrained-end" };
+        String[] placements = { "before-begin", "straddling-begin", "same-bar-at-begin", "same-bar-at-end",
+                "exit-after-end", "open-at-end", "entry-after-end" };
+        int noExit = Integer.MIN_VALUE;
+
+        for (String shape : shapes) {
+            int begin = shape.equals("constrained-end") ? 0 : 2;
+            int end = 4;
+            boolean boundedRecord = shape.equals("bounded-record");
+            BarSeries windowedSeries;
+            if (shape.equals("constrained-begin")) {
+                windowedSeries = new BaseBarSeries(shape, new ArrayList<>(fullBars), begin, end, true, numFactory,
+                        new TimeBarBuilderFactory());
+            } else if (shape.equals("pruned")) {
+                windowedSeries = yearlySeries(shape, numFactory, 100d, 80d, 120d, 90d, 110d);
+                windowedSeries.setMaximumBarCount(3);
+            } else if (boundedRecord) {
+                windowedSeries = new BaseBarSeries(shape, new ArrayList<>(fullBars), 0, 5, false, numFactory,
+                        new TimeBarBuilderFactory());
+            } else {
+                windowedSeries = new BaseBarSeries(shape, new ArrayList<>(fullBars), begin, end, true, numFactory,
+                        new TimeBarBuilderFactory());
+            }
+
+            int windowSize = end - begin + 1;
+            List<Bar> logicalBars = shape.equals("constrained-end") ? fullBars.subList(0, windowSize)
+                    : shape.equals("pruned") ? windowedSeries.getBarData() : fullBars.subList(begin, end + 1);
+            BarSeries equivalentSeries = new BaseBarSeries(shape + "-equivalent", new ArrayList<>(logicalBars), 0,
+                    windowSize - 1, false, numFactory, new TimeBarBuilderFactory());
+            int[] entries = { begin - 2, begin - 1, begin, end, end - 1, end - 1, end + 1 };
+            int[] exits = { begin - 1, begin + 1, begin, end, end + 1, noExit, noExit };
+
+            for (int i = 0; i < placements.length; i++) {
+                if (begin == 0 && i < 2) {
+                    continue;
+                }
+                boolean beforeBegin = i == 0;
+                int entryIndex = entries[i];
+                int exitIndex = exits[i];
+                double entryPrice = closeAt(entryIndex, closes);
+                double exitPrice = exitIndex == noExit ? entryPrice : closeAt(exitIndex, closes);
+                BaseTradingRecord record = criterionRecord(numFactory, entryIndex, entryPrice, exitIndex, exitPrice,
+                        boundedRecord ? begin : null, boundedRecord ? end : null);
+                int shiftedEntry = Math.max(0, entryIndex - begin);
+                double shiftedEntryPrice = entryIndex < begin ? closeAt(begin, closes) : entryPrice;
+                int shiftedExit = exitIndex == noExit ? noExit : exitIndex - begin;
+                if (shiftedExit >= windowSize) {
+                    shiftedExit = noExit;
+                }
+                BaseTradingRecord equivalentRecord;
+                BaseTradingRecord markedEquivalentRecord;
+                if (beforeBegin) {
+                    equivalentRecord = boundedRecord
+                            ? new BaseTradingRecord(TradeType.BUY, 0, windowSize - 1, new ZeroCostModel(),
+                                    new ZeroCostModel())
+                            : new BaseTradingRecord();
+                    markedEquivalentRecord = equivalentRecord;
+                } else {
+                    equivalentRecord = criterionRecord(numFactory, shiftedEntry, entryPrice, shiftedExit, exitPrice,
+                            boundedRecord ? 0 : null, boundedRecord ? windowSize - 1 : null);
+                    markedEquivalentRecord = criterionRecord(numFactory, shiftedEntry, shiftedEntryPrice, shiftedExit,
+                            exitPrice, boundedRecord ? 0 : null, boundedRecord ? windowSize - 1 : null);
+                }
+                Position position = boundedRecord ? null
+                        : record.getPositions().isEmpty() ? record.getCurrentPosition() : record.getPositions().get(0);
+                Position equivalentPosition = boundedRecord || beforeBegin ? null
+                        : equivalentRecord.getPositions().isEmpty() ? equivalentRecord.getCurrentPosition()
+                                : equivalentRecord.getPositions().get(0);
+                Position markedEquivalentPosition = boundedRecord || beforeBegin ? null
+                        : markedEquivalentRecord.getPositions().isEmpty() ? markedEquivalentRecord.getCurrentPosition()
+                                : markedEquivalentRecord.getPositions().get(0);
+                fixtures.add(new CriterionWindowFixture(shape + "/" + placements[i], windowedSeries, record, position,
+                        equivalentSeries, equivalentRecord, equivalentPosition, markedEquivalentRecord,
+                        markedEquivalentPosition));
+            }
+        }
+        return List.copyOf(fixtures);
+    }
+
+    private static BaseTradingRecord criterionRecord(NumFactory numFactory, int entryIndex, double entryPrice,
+            int exitIndex, double exitPrice, Integer startIndex, Integer endIndex) {
+        BaseTradingRecord record = startIndex == null
+                ? new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel())
+                : new BaseTradingRecord(TradeType.BUY, startIndex, endIndex, new ZeroCostModel(), new ZeroCostModel());
+        record.enter(entryIndex, numFactory.numOf(entryPrice), numFactory.one());
+        if (exitIndex != Integer.MIN_VALUE) {
+            record.exit(exitIndex, numFactory.numOf(exitPrice), numFactory.one());
+        }
+        return record;
+    }
+
+    private static double closeAt(int index, double[] closes) {
+        return index < 0 ? closes[0] : closes[Math.min(index, closes.length - 1)];
+    }
+
+    private static BarSeries yearlySeries(String name, NumFactory numFactory, double... closes) {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        Instant start = Instant.parse("2020-01-01T00:00:00Z");
+        for (int i = 0; i < closes.length; i++) {
+            double close = closes[i];
+            series.addBar(series.barBuilder()
+                    .timePeriod(Duration.ofDays(365))
+                    .endTime(start.plus(Duration.ofDays(365L * i)))
+                    .openPrice(close)
+                    .highPrice(close)
+                    .lowPrice(close)
+                    .closePrice(close)
+                    .volume(1)
+                    .build());
+        }
+        return series;
     }
 
 }

@@ -566,4 +566,29 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         assertNumEquals(ReturnRepresentation.LOG.toRepresentationFromRateOfReturn(rawRatio), logResult);
     }
 
+    @Test
+    public void matchesFreshSeriesAcrossWindowShapesAndPositionBoundaries() {
+        for (ConstrainedSeriesSupport.CriterionWindowFixture fixture : ConstrainedSeriesSupport
+                .criterionWindowFixtures(numFactory)) {
+            for (EquityCurveMode mode : EquityCurveMode.values()) {
+                for (OpenPositionHandling handling : OpenPositionHandling.values()) {
+                    for (ReturnRepresentation representation : ReturnRepresentation.values()) {
+                        var criterion = new ReturnOverMaxDrawdownCriterion(representation, mode, handling);
+                        Num actual = criterion.calculate(fixture.series(), fixture.tradingRecord());
+                        Num expected = criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord(mode));
+                        assertEquals(fixture.name() + ": " + mode + "/" + handling + "/" + representation,
+                                expected.doubleValue(), actual.doubleValue(), 1e-10);
+                        Position expectedPosition = fixture.equivalentPosition(mode);
+                        if (fixture.position() != null && expectedPosition != null) {
+                            Num actualPosition = criterion.calculate(fixture.series(), fixture.position());
+                            Num expectedPositionValue = criterion.calculate(fixture.equivalentSeries(),
+                                    expectedPosition);
+                            assertEquals(fixture.name() + ": position " + mode + "/" + handling + "/" + representation,
+                                    expectedPositionValue.doubleValue(), actualPosition.doubleValue(), 1e-10);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

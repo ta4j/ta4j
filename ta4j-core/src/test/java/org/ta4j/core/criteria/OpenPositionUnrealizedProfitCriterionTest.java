@@ -5,6 +5,7 @@ package org.ta4j.core.criteria;
 
 import java.time.Instant;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -104,5 +105,21 @@ public class OpenPositionUnrealizedProfitCriterionTest extends AbstractCriterion
 
         assertTrue(criterion.betterThan(numFactory.two(), numFactory.one()));
         assertFalse(criterion.betterThan(numFactory.one(), numFactory.two()));
+    }
+
+    @Test
+    public void matchesFreshSeriesAcrossWindowShapesAndPositionBoundaries() {
+        var criterion = new OpenPositionUnrealizedProfitCriterion();
+        for (ConstrainedSeriesSupport.CriterionWindowFixture fixture : ConstrainedSeriesSupport
+                .criterionWindowFixtures(numFactory)) {
+            Num actual = criterion.calculate(fixture.series(), fixture.tradingRecord());
+            Num expected = criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord());
+            assertEquals(fixture.name(), expected.doubleValue(), actual.doubleValue(), 1e-10);
+            if (fixture.position() != null && fixture.equivalentPosition() != null) {
+                Num actualPosition = criterion.calculate(fixture.series(), fixture.position());
+                Num expectedPosition = criterion.calculate(fixture.equivalentSeries(), fixture.equivalentPosition());
+                assertNumEquals(expectedPosition, actualPosition, 1e-10);
+            }
+        }
     }
 }

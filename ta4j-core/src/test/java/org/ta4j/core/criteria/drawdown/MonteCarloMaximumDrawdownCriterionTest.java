@@ -11,6 +11,7 @@ import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
@@ -373,5 +374,22 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         assertEquals(criterion.calculate(unpruned, unprunedRecord).doubleValue(),
                 criterion.calculate(pruned, prunedRecord).doubleValue(), 1e-12);
         assertEquals(0.6033057851239669, criterion.calculate(pruned, prunedRecord).doubleValue(), 1e-12);
+    }
+
+    @Test
+    public void matchesFreshSeriesAcrossWindowShapesAndEquitySettings() {
+        for (ConstrainedSeriesSupport.CriterionWindowFixture fixture : ConstrainedSeriesSupport
+                .criterionWindowFixtures(numFactory)) {
+            for (EquityCurveMode mode : EquityCurveMode.values()) {
+                for (OpenPositionHandling handling : OpenPositionHandling.values()) {
+                    var criterion = new MonteCarloMaximumDrawdownCriterion(1, null, 42L, Statistics.MAX, mode,
+                            handling);
+                    Num actual = criterion.calculate(fixture.series(), fixture.tradingRecord());
+                    Num expected = criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord(mode));
+                    Assert.assertEquals(fixture.name() + ": " + mode + "/" + handling, expected.doubleValue(),
+                            actual.doubleValue(), 1e-10);
+                }
+            }
+        }
     }
 }

@@ -119,4 +119,24 @@ public class MaximumAbsoluteDrawdownCriterionTest extends AbstractCriterionTest 
         assertTrue(criterion.betterThan(numOf(1), numOf(2)));
         assertFalse(criterion.betterThan(numOf(2), numOf(1)));
     }
+
+    @Test
+    public void matchesFreshSeriesAcrossWindowShapesAndPositionBoundaries() {
+        for (ConstrainedSeriesSupport.CriterionWindowFixture fixture : ConstrainedSeriesSupport
+                .criterionWindowFixtures(numFactory)) {
+            for (EquityCurveMode mode : EquityCurveMode.values()) {
+                for (OpenPositionHandling handling : OpenPositionHandling.values()) {
+                    var criterion = new MaximumAbsoluteDrawdownCriterion(mode, handling);
+                    var actual = criterion.calculate(fixture.series(), fixture.tradingRecord());
+                    var expected = criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord(mode));
+                    assertNumEquals(expected, actual, 1e-10);
+                    Position expectedPosition = fixture.equivalentPosition(mode);
+                    if (fixture.position() != null && expectedPosition != null) {
+                        assertNumEquals(criterion.calculate(fixture.equivalentSeries(), expectedPosition),
+                                criterion.calculate(fixture.series(), fixture.position()), 1e-10);
+                    }
+                }
+            }
+        }
+    }
 }

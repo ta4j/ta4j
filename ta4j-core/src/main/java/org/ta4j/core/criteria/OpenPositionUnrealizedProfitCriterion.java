@@ -11,13 +11,12 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * Analysis criterion that returns the unrealized profit/loss for the open
- * position.
+ * Analysis criterion that returns the unrealized profit/loss for the position
+ * active at the end of the effective series or trading-record window.
  *
  * <p>
- * This marks the current open position to the series end price via
- * {@link Position#getProfit(int, Num)}. Returns zero when no open position
- * exists.
+ * Positions exited after the window are treated as open and marked at the last
+ * included bar. Returns zero when no position is active at the window end.
  * </p>
  *
  * @since 0.22.2
@@ -26,26 +25,35 @@ public class OpenPositionUnrealizedProfitCriterion extends AbstractAnalysisCrite
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        NumFactory factory = series.numFactory();
-        if (!position.isOpened()) {
-            return factory.zero();
-        }
-        int endIndex = series.getEndIndex();
-        Num closePrice = series.getBar(endIndex).getClosePrice();
-        Num profit = position.getProfit(endIndex, closePrice);
-        return toSeriesNum(factory, profit);
+        return calculateAt(series, position, series.getEndIndex());
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        NumFactory factory = series.numFactory();
-        int endIndex = tradingRecord.getEndIndex(series);
-        Num closePrice = series.getBar(endIndex).getClosePrice();
+        int finalIndex = Math.min(series.getEndIndex(), tradingRecord.getEndIndex(series));
         Position current = tradingRecord.getCurrentPosition();
-        if (!current.isOpened()) {
+        var positions = tradingRecord.getPositions();
+        if (current.getEntry() == null && !positions.isEmpty()) {
+            current = positions.get(positions.size() - 1);
+        }
+        return calculateAt(series, current, finalIndex);
+    }
+
+    private Num calculateAt(BarSeries series, Position position, int finalIndex) {
+        NumFactory factory = series.numFactory();
+        if (finalIndex < series.getBeginIndex() || position.getEntry() == null
+                || position.getEntry().getIndex() > finalIndex) {
             return factory.zero();
         }
-        Num profit = current.getProfit(endIndex, closePrice);
+        if (!position.isOpened()) {
+            if (position.getExit().getIndex() <= finalIndex) {
+                return factory.zero();
+            }
+            position = new Position(position.getEntry(), position.getTransactionCostModel(),
+                    position.getHoldingCostModel());
+        }
+        Num closePrice = series.getBar(finalIndex).getClosePrice();
+        Num profit = position.getProfit(finalIndex, closePrice);
         return toSeriesNum(factory, profit);
     }
 

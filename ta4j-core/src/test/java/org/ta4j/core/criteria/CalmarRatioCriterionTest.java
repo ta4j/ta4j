@@ -359,4 +359,27 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
         }
         return maximumDrawdown;
     }
+
+    @Test
+    public void matchesFreshSeriesAcrossWindowShapesAndPositionBoundaries() {
+        for (ConstrainedSeriesSupport.CriterionWindowFixture fixture : ConstrainedSeriesSupport
+                .criterionWindowFixtures(numFactory)) {
+            for (EquityCurveMode mode : EquityCurveMode.values()) {
+                for (OpenPositionHandling handling : OpenPositionHandling.values()) {
+                    for (ReturnRepresentation representation : ReturnRepresentation.values()) {
+                        CalmarRatioCriterion criterion = new CalmarRatioCriterion(representation, mode, handling);
+                        String scenario = fixture.name() + "/" + mode + "/" + handling + "/" + representation;
+                        assertEquals(scenario + " record",
+                                criterion.calculate(fixture.series(), fixture.tradingRecord()),
+                                criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord(mode)));
+                        if (fixture.equivalentPosition(mode) != null) {
+                            assertEquals(scenario + " position",
+                                    criterion.calculate(fixture.series(), fixture.position()),
+                                    criterion.calculate(fixture.equivalentSeries(), fixture.equivalentPosition(mode)));
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

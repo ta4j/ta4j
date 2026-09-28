@@ -392,4 +392,19 @@ public class EnterAndHoldCriterionTest extends AbstractCriterionTest {
         assertThrows(IllegalArgumentException.class, () -> new EnterAndHoldCriterion(activeReturnVersusEnterAndHold));
     }
 
+    @Test
+    public void benchmarkMatchesFreshSeriesAcrossWindowShapesAndRecordBounds() {
+        for (ConstrainedSeriesSupport.CriterionWindowFixture fixture : ConstrainedSeriesSupport
+                .criterionWindowFixtures(numFactory)) {
+            for (TradeType type : TradeType.values()) {
+                for (ReturnRepresentation representation : ReturnRepresentation.values()) {
+                    AnalysisCriterion returnCriterion = new GrossReturnCriterion(representation);
+                    var criterion = new EnterAndHoldCriterion(type, returnCriterion);
+                    var actual = criterion.calculate(fixture.series(), fixture.tradingRecord());
+                    var expected = criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord());
+                    assertNumEquals(expected, actual, 1e-10);
+                }
+            }
+        }
+    }
 }

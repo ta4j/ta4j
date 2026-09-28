@@ -205,4 +205,43 @@ public class DrawdownTest extends AbstractIndicatorTest<org.ta4j.core.Indicator<
 
         assertNumEquals(0.5, Drawdown.amount(series, record, cashFlow));
     }
+
+    @Test
+    public void drawdownScansMatchFreshSeriesAcrossWindowShapesAndOpenHandling() {
+        for (ConstrainedSeriesSupport.CriterionWindowFixture fixture : ConstrainedSeriesSupport
+                .criterionWindowFixtures(numFactory)) {
+            for (EquityCurveMode mode : EquityCurveMode.values()) {
+                for (OpenPositionHandling handling : OpenPositionHandling.values()) {
+                    PerformanceIndicator actualCashFlow = new CashFlow(fixture.series(), fixture.tradingRecord(), mode,
+                            handling);
+                    PerformanceIndicator expectedCashFlow = new CashFlow(fixture.equivalentSeries(),
+                            fixture.equivalentRecord(mode), mode, handling);
+                    PerformanceIndicator actualPnl = new CumulativePnL(fixture.series(), fixture.tradingRecord(), mode,
+                            handling);
+                    PerformanceIndicator expectedPnl = new CumulativePnL(fixture.equivalentSeries(),
+                            fixture.equivalentRecord(mode), mode, handling);
+                    PerformanceIndicator[] actualCurves = { actualCashFlow, actualPnl };
+                    PerformanceIndicator[] expectedCurves = { expectedCashFlow, expectedPnl };
+                    for (int curveIndex = 0; curveIndex < actualCurves.length; curveIndex++) {
+                        for (boolean relative : new boolean[] { true, false }) {
+                            String scenario = fixture.name() + ": " + mode + "/" + handling + "/curve=" + curveIndex
+                                    + "/relative=" + relative;
+                            Num actualAmount = Drawdown.amount(fixture.series(), fixture.tradingRecord(),
+                                    actualCurves[curveIndex], relative);
+                            Num expectedAmount = Drawdown.amount(fixture.equivalentSeries(),
+                                    fixture.equivalentRecord(mode), expectedCurves[curveIndex], relative);
+                            assertEquals(scenario + "/amount", expectedAmount.doubleValue(), actualAmount.doubleValue(),
+                                    1e-10);
+                            Num actualLength = Drawdown.length(fixture.series(), fixture.tradingRecord(),
+                                    actualCurves[curveIndex], relative);
+                            Num expectedLength = Drawdown.length(fixture.equivalentSeries(),
+                                    fixture.equivalentRecord(mode), expectedCurves[curveIndex], relative);
+                            assertEquals(scenario + "/length", expectedLength.doubleValue(), actualLength.doubleValue(),
+                                    1e-10);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

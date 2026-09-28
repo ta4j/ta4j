@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.criteria;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
@@ -190,4 +191,26 @@ public class ExpectedShortfallCriterionTest {
         // the single worst rate, whose log mean converts back to 25/50.
         assertNumEquals(numFactory.numOf(0.5d), es);
     }
+
+    @Test
+    public void matchesFreshSeriesAcrossWindowShapesAndPositionBoundaries() {
+        for (ConstrainedSeriesSupport.CriterionWindowFixture fixture : ConstrainedSeriesSupport
+                .criterionWindowFixtures(numFactory)) {
+            for (ReturnRepresentation representation : ReturnRepresentation.values()) {
+                ExpectedShortfallCriterion criterion = new ExpectedShortfallCriterion(0.95, representation);
+                Num actual = criterion.calculate(fixture.series(), fixture.tradingRecord());
+                Num expected = criterion.calculate(fixture.equivalentSeries(), fixture.markedEquivalentRecord());
+                assertEquals(fixture.name() + ": trading-record return window", expected.doubleValue(),
+                        actual.doubleValue(), 1e-10);
+                if (fixture.position() != null && fixture.markedEquivalentPosition() != null) {
+                    Num actualPosition = criterion.calculate(fixture.series(), fixture.position());
+                    Num expectedPosition = criterion.calculate(fixture.equivalentSeries(),
+                            fixture.markedEquivalentPosition());
+                    assertEquals(fixture.name() + ": position return window", expectedPosition.doubleValue(),
+                            actualPosition.doubleValue(), 1e-10);
+                }
+            }
+        }
+    }
+
 }
