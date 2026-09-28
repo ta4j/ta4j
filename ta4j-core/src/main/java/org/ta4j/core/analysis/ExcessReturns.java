@@ -152,7 +152,7 @@ public final class ExcessReturns {
      * window.
      *
      * @return the captured begin index
-     * @since 0.26
+     * @since 0.25.1
      */
     public int getBeginIndex() {
         return cashFlow.getBeginIndex();
@@ -163,7 +163,7 @@ public final class ExcessReturns {
      * window.
      *
      * @return the captured end index
-     * @since 0.26
+     * @since 0.25.1
      */
     public int getEndIndex() {
         return cashFlow.getEndIndex();
@@ -176,7 +176,7 @@ public final class ExcessReturns {
      * @param index the absolute bar index
      * @return the captured end time, or {@code null} when the index was not
      *         captured
-     * @since 0.26
+     * @since 0.25.1
      */
     public Instant getCapturedEndTime(int index) {
         return bars.endTime(index);

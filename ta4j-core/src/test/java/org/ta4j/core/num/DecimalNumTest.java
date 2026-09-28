@@ -10,6 +10,7 @@ import static org.ta4j.core.TestUtils.assertIndicatorNotEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashSet;
@@ -109,6 +110,15 @@ public class DecimalNumTest {
     public void testPowNegativeFractionalExponent() {
         final Num x = precision32Func.numOf("4");
         assertNumEquals(precision32Func.numOf("0.03125"), x.pow(precision32Func.numOf("-2.5")));
+    }
+
+    @Test
+    public void testPowWholeNumExponentKeepsUnlimitedPrecisionExact() {
+        final NumFactory unlimited = DecimalNumFactory.getInstance(MathContext.UNLIMITED);
+        final BigDecimal base = new BigDecimal("1.23456789012345678901");
+        final Num powered = unlimited.numOf(base).pow(unlimited.numOf(3));
+
+        assertEquals(0, base.pow(3).compareTo((BigDecimal) powered.getDelegate()));
     }
 
     @Test

@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.criteria;
 
+import java.util.List;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
@@ -37,11 +39,25 @@ public class OpenPositionUnrealizedProfitCriterion extends AbstractAnalysisCrite
                 totalProfit = totalProfit.plus(calculateAt(series, position, finalIndex));
             }
         }
-        Position current = tradingRecord.getCurrentPosition();
-        if (current != null && current.isOpened() && isOpenAt(current, finalIndex)) {
-            totalProfit = totalProfit.plus(calculateAt(series, current, finalIndex));
+        for (Position openLot : openLots(tradingRecord)) {
+            if (isOpenAt(openLot, finalIndex)) {
+                totalProfit = totalProfit.plus(calculateAt(series, openLot, finalIndex));
+            }
         }
         return totalProfit;
+    }
+
+    /**
+     * Per-lot open positions, so a lot entered after the logical end is excluded on
+     * its own; the aggregated current position keeps the earliest entry.
+     */
+    static List<Position> openLots(TradingRecord tradingRecord) {
+        List<Position> openLots = tradingRecord.getOpenPositions();
+        if (!openLots.isEmpty()) {
+            return openLots;
+        }
+        Position current = tradingRecord.getCurrentPosition();
+        return current != null && current.isOpened() ? List.of(current) : List.of();
     }
 
     private boolean isOpenAt(Position position, int finalIndex) {

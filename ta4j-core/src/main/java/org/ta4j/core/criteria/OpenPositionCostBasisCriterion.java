@@ -37,9 +37,10 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
                 totalCostBasis = totalCostBasis.plus(calculateAt(series, position, finalIndex));
             }
         }
-        Position current = tradingRecord.getCurrentPosition();
-        if (current != null && current.isOpened() && isOpenAt(current, finalIndex)) {
-            totalCostBasis = totalCostBasis.plus(calculateAt(series, current, finalIndex));
+        for (Position openLot : OpenPositionUnrealizedProfitCriterion.openLots(tradingRecord)) {
+            if (isOpenAt(openLot, finalIndex)) {
+                totalCostBasis = totalCostBasis.plus(calculateAt(series, openLot, finalIndex));
+            }
         }
         return totalCostBasis;
     }

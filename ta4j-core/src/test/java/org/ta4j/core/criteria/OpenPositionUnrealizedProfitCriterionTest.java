@@ -143,6 +143,21 @@ public class OpenPositionUnrealizedProfitCriterionTest extends AbstractCriterion
         assertNumEquals(numFactory.numOf(30), getCriterion().calculate(series, record));
     }
 
+    @Test
+    public void marksOnlyOpenLotsEnteredByLogicalEnd() {
+        BarSeries series = multiLotSeries();
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        record.operate(new BaseTrade(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.zero(),
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(7, Instant.EPOCH.plusSeconds(7), numFactory.numOf(130), numFactory.one(),
+                numFactory.zero(), ExecutionSide.BUY, null, null));
+
+        assertEquals(2, record.getOpenPositions().size());
+        // Only the lot entered at 0 exists at the logical end (5, close 120).
+        assertNumEquals(numFactory.numOf(20), getCriterion().calculate(series, record));
+    }
+
     private BarSeries multiLotSeries() {
         return ConstrainedSeriesSupport.trailingConstrainedSeries("unrealized-multi-lot", numFactory, 5, 100d, 110d,
                 110d, 110d, 110d, 120d, 120d, 120d, 130d, 130d, 130d, 130d);

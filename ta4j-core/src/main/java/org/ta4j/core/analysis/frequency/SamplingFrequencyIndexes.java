@@ -78,7 +78,7 @@ public final class SamplingFrequencyIndexes {
      * @param start          the first index eligible for sampling
      * @param end            the last index eligible for sampling
      * @return a stream of index pairs describing each sampling interval
-     * @since 0.26
+     * @since 0.25.1
      */
     public Stream<IndexPair> sample(IntFunction<Instant> endTimeAtIndex, int anchorIndex, int start, int end) {
         Objects.requireNonNull(endTimeAtIndex, "endTimeAtIndex must not be null");

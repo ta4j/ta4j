@@ -786,8 +786,11 @@ public final class DecimalNum implements Num {
         // x^a at the working precision plus guard digits: an exact power grows by
         // digits(x) * a digits, which stalls large exponents, and the result is
         // rounded to mathContext anyway. Also accepts negative whole parts.
-        final BigDecimal xpowa = this.delegate.pow(aInt, new MathContext(
-                this.mathContext.getPrecision() + POW_GUARD_DIGITS, this.mathContext.getRoundingMode()));
+        // Precision 0 means unlimited: keep x^a exact rather than 10 digits.
+        final int precision = this.mathContext.getPrecision();
+        final MathContext powContext = precision == 0 ? MathContext.UNLIMITED
+                : new MathContext(precision + POW_GUARD_DIGITS, this.mathContext.getRoundingMode());
+        final BigDecimal xpowa = this.delegate.pow(aInt, powContext);
         // use double pow(double, double)
         final double xpowb = Math.pow(this.delegate.doubleValue(), bDouble);
         // use PrecisionNum.multiply(PrecisionNum)

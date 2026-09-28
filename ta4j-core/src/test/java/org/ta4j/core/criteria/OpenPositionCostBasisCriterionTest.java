@@ -109,6 +109,25 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
         assertNumEquals(numFactory.hundred(), getCriterion().calculate(series, record.getPositions().getFirst()));
     }
 
+    @Test
+    public void excludesOpenLotEnteredAfterLogicalEndFromMixedOpenLots() {
+        BarSeries series = multiLotSeries();
+        BaseTradingRecord record = openLotsAcrossLogicalEnd();
+
+        assertTrue(record.getPositions().isEmpty());
+        assertNumEquals(numFactory.hundred(), getCriterion().calculate(series, record));
+    }
+
+    private BaseTradingRecord openLotsAcrossLogicalEnd() {
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        record.operate(new BaseTrade(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.zero(),
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(7, Instant.EPOCH.plusSeconds(7), numFactory.numOf(130), numFactory.one(),
+                numFactory.zero(), ExecutionSide.BUY, null, null));
+        return record;
+    }
+
     private BarSeries multiLotSeries() {
         return ConstrainedSeriesSupport.trailingConstrainedSeries("cost-basis-multi-lot", numFactory, 5, 100d, 110d,
                 110d, 110d, 110d, 120d, 120d, 120d, 130d, 130d, 130d, 130d);
