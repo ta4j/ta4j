@@ -270,4 +270,21 @@ public class ExitOnRunEndModelTest {
             calls.add("onRunEnd " + lastProcessedIndex + " with series");
         }
     }
+
+    @Test
+    public void leavesOpenRecordUntouchedWhenRunProcessesNoBars() {
+        BarSeries series = seriesWithOpensAndCloses(3);
+        BarSeriesManager manager = new BarSeriesManager(series, new ExitOnRunEndModel(new TradeOnCurrentCloseModel()));
+        Strategy noSignals = new BaseStrategy(new FixedRule(), new FixedRule());
+        TradingRecord outOfRange = new BaseTradingRecord(Trade.buyAt(0, series));
+        TradingRecord inverted = new BaseTradingRecord(Trade.buyAt(0, series));
+
+        manager.run(noSignals, outOfRange, numFactory.one(), 3, 4);
+        manager.run(noSignals, inverted, numFactory.one(), 2, 1);
+
+        assertTrue(outOfRange.getCurrentPosition().isOpened());
+        assertEquals(1, outOfRange.getTrades().size());
+        assertTrue(inverted.getCurrentPosition().isOpened());
+        assertEquals(1, inverted.getTrades().size());
+    }
 }

@@ -223,17 +223,13 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         Num upsideExcess = zero;
         Num downsideShortfall = zero;
 
-        // Returns reports an undefined first retained slot as NaN, which the loop
-        // skips. A later recording start only counts its own bar when a position
-        // was last marked there; otherwise that bar's return is the move into the
-        // window.
-        long firstRateIndex = beginIndex + 1L;
-        if (equityCurveMode != EquityCurveMode.REALIZED
-                && openPositionHandling != OpenPositionHandling.IGNORE
-                && (beginIndex == returns.getBeginIndex()
-                        || marksAt(tradingRecord, beginIndex, returns.getEndIndex()))) {
-            firstRateIndex = beginIndex;
-        }
+        // Returns can seed a zero placeholder at their first index; include it only
+        // when the trading record has an exit or eligible mark at the window start.
+        boolean includeOpenPositionMarks = equityCurveMode != EquityCurveMode.REALIZED
+                && openPositionHandling != OpenPositionHandling.IGNORE;
+        long firstRateIndex = marksAt(tradingRecord, beginIndex, returns.getEndIndex(), includeOpenPositionMarks)
+                ? beginIndex
+                : beginIndex + 1L;
         for (long i = firstRateIndex; i <= returns.getEndIndex(); i++) {
             Num returnRate = returns.getValue((int) i);
             if (returnRate.isNaN()) {
@@ -255,6 +251,24 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         return toRepresentation(ratio);
     }
 
+    /** Returns whether the record has a mark or exit at the bounded start. */
+    private static boolean marksAt(TradingRecord tradingRecord, int index, int analysisEndIndex,
+            boolean includeOpenPositionMarks) {
+        for (Position position : tradingRecord.getPositions()) {
+            if (position.getExit() == null) {
+                continue;
+            }
+            int exitIndex = position.getExit().getIndex();
+            if (exitIndex == index || includeOpenPositionMarks && exitIndex > analysisEndIndex
+                    && analysisEndIndex == index && position.getEntry().getIndex() <= index) {
+                return true;
+            }
+        }
+        Position current = tradingRecord.getCurrentPosition();
+        return includeOpenPositionMarks && current != null && current.isOpened() && analysisEndIndex == index
+                && current.getEntry().getIndex() <= index;
+    }
+
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
@@ -263,27 +277,6 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
     @Override
     public Optional<ReturnRepresentation> getReturnRepresentation() {
         return Optional.of(returnRepresentation);
-    }
-
-    /**
-     * Whether a position's last mark falls on {@code index}: it exits there, or it
-     * is still held when the analysis window ends there (open, or exiting after the
-     * window) and was entered by then.
-     */
-    private static boolean marksAt(TradingRecord tradingRecord, int index, int analysisEndIndex) {
-        for (Position position : tradingRecord.getPositions()) {
-            if (position.getExit() == null) {
-                continue;
-            }
-            int exitIndex = position.getExit().getIndex();
-            if (exitIndex == index || exitIndex > analysisEndIndex && analysisEndIndex == index
-                    && position.getEntry().getIndex() <= index) {
-                return true;
-            }
-        }
-        Position current = tradingRecord.getCurrentPosition();
-        return current != null && current.isOpened() && analysisEndIndex == index
-                && current.getEntry().getIndex() <= index;
     }
 
     private Num toRepresentation(Num omegaRatio) {

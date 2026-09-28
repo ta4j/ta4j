@@ -85,7 +85,8 @@ public final class ExitOnRunEndModel implements TradeExecutionModel {
     @Override
     public void onRunEnd(int lastProcessedIndex, TradingRecord tradingRecord, BarSeries barSeries) {
         delegate.onRunEnd(lastProcessedIndex, tradingRecord, barSeries);
-        if (tradingRecord.isClosed()) {
+        if (tradingRecord.isClosed()
+                || barSeries instanceof RunWindowBarSeries runWindow && !runWindow.hasProcessedBar()) {
             return;
         }
         ExecutionTarget target = ExecutionModelSupport.resolveExecutionTarget(lastProcessedIndex, barSeries,

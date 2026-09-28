@@ -630,7 +630,7 @@ public class BarSeriesManager {
         Bounds bounds = currentBounds();
         int runBeginIndex = Math.max(startIndex, bounds.begin());
         int runEndIndex = Math.min(finishIndex, bounds.end());
-        BarSeries runSeries = new RunWindowBarSeries(barSeries, runEndIndex);
+        RunWindowBarSeries runSeries = new RunWindowBarSeries(barSeries, runEndIndex);
 
         if (log.isTraceEnabled()) {
             log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex,
@@ -641,6 +641,7 @@ public class BarSeriesManager {
         if (runBeginIndex <= runEndIndex) {
             for (int i = runBeginIndex;; i++) {
                 lastProcessedIndex = i;
+                runSeries.markBarProcessed();
                 tradeExecutionModel.onBar(i, tradingRecord, runSeries);
                 // For each bar between both indexes...
                 if (strategy.shouldOperate(i, tradingRecord)) {

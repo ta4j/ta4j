@@ -848,14 +848,28 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
+    public void calculatePositionKeepsSameBarExitAtBoundedAnalysisEnd() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 100d, 120d, 130d)
+                .build();
+        Position closedAtBoundedEnd = new Position(Trade.buyAt(2, numFactory.numOf(100d), numFactory.one()),
+                Trade.sellAt(2, numFactory.numOf(120d), numFactory.one()));
+        CashFlow cashFlow = new CashFlow(series, new BaseTradingRecord(), 0, 2, EquityCurveMode.REALIZED,
+                OpenPositionHandling.IGNORE);
+
+        cashFlow.calculatePosition(closedAtBoundedEnd, 2);
+
+        assertEquals(2, cashFlow.getEndIndex());
+        assertNumEquals(1.2d, cashFlow.getValue(2));
+    }
+
+    @Test
     public void calculatePositionBumpsSameBarRatioOnlyWithinTheCapturedSeriesEnd() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 100d, 100d).build();
-        // Filled below the close on the captured last bar: marked at that close.
         Position openOnLastBar = new Position(Trade.buyAt(2, numFactory.numOf(80d), numFactory.one()),
                 new ZeroCostModel(), new ZeroCostModel());
         CashFlow cashFlow = new CashFlow(series, new BaseTradingRecord());
 
-        // A live feed appends a bar after the curve was captured.
         series.barBuilder().closePrice(100d).add();
         cashFlow.calculatePosition(openOnLastBar, 2);
 

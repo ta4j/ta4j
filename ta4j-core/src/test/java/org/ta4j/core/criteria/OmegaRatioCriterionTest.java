@@ -305,6 +305,7 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
         assertNumEquals(numFactory.zero(), ignoreOpen.calculate(series, tradingRecord), 0d);
         assertNumEquals(numFactory.zero(), realized.calculate(series, tradingRecord), 0d);
     }
+
     @Test
     public void betterThanUsesHigherValuesAsBetter() {
         OmegaRatioCriterion criterion = (OmegaRatioCriterion) getCriterion(0d);
@@ -424,5 +425,23 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
 
         // Upside excess 1.4 over downside shortfall 0.5.
         assertNumEquals(numFactory.numOf(2.8d), ratio);
+    }
+
+    @Test
+    public void includesClosedReturnSeededAtBoundedStartRegardlessOfOpenPositionPolicy() {
+        BarSeries series = buildSeries("omega_closed_start", new double[] { 100d, 100d, 100d });
+        BaseTradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY, 1, 2, null, null);
+        record.enter(1, numFactory.numOf(100d), numFactory.one());
+        record.exit(1, numFactory.numOf(90d), numFactory.one());
+        record.enter(2, numFactory.numOf(100d), numFactory.one());
+        record.exit(2, numFactory.numOf(120d), numFactory.one());
+
+        Num realized = new OmegaRatioCriterion(0d, EquityCurveMode.REALIZED, OpenPositionHandling.MARK_TO_MARKET)
+                .calculate(series, record);
+        Num ignoredOpen = new OmegaRatioCriterion(0d, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE)
+                .calculate(series, record);
+
+        assertNumEquals(numFactory.two(), realized, 1e-12);
+        assertNumEquals(numFactory.two(), ignoredOpen, 1e-12);
     }
 }

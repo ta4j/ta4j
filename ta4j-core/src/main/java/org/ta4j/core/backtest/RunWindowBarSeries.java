@@ -34,6 +34,15 @@ final class RunWindowBarSeries implements BarSeries {
 
     private final BarSeries delegate;
     private final int windowEndIndex;
+    private boolean processedBar;
+
+    void markBarProcessed() {
+        processedBar = true;
+    }
+
+    boolean hasProcessedBar() {
+        return processedBar;
+    }
 
     RunWindowBarSeries(BarSeries delegate, int windowEndIndex) {
         this.delegate = Objects.requireNonNull(delegate, "delegate");
@@ -57,32 +66,41 @@ final class RunWindowBarSeries implements BarSeries {
 
     @Override
     public Bar getBar(int i) {
-        if (i > windowEndIndex) {
-            throw new IndexOutOfBoundsException("Index " + i + " is after the run window ending at " + windowEndIndex);
-        }
-        return delegate.getBar(i);
+        return delegate.withReadLock(() -> {
+            int beginIndex = Math.max(delegate.getBeginIndex(), delegate.getRemovedBarsCount());
+            int endIndex = Math.min(delegate.getEndIndex(), windowEndIndex);
+            if (i < beginIndex || i > endIndex) {
+                throw new IndexOutOfBoundsException(
+                        "Index " + i + " is outside the run window [" + beginIndex + ", " + endIndex + "]");
+            }
+            return delegate.getBar(i);
+        });
     }
 
     @Override
     public int getBarCount() {
         return delegate.withReadLock(() -> {
-            int hiddenBars = Math.max(0, delegate.getEndIndex() - windowEndIndex);
-            return Math.max(0, delegate.getBarCount() - hiddenBars);
+            long beginIndex = Math.max(delegate.getBeginIndex(), delegate.getRemovedBarsCount());
+            long endIndex = Math.min(delegate.getEndIndex(), windowEndIndex);
+            long visibleCount = Math.max(0L, endIndex - beginIndex + 1L);
+            return (int) Math.min(delegate.getBarCount(), visibleCount);
         });
     }
 
     /**
-     * Returns a snapshot of the bars inside the run window. The delegate's bars and
-     * removal count are read under one read lease so a concurrent append or
-     * eviction cannot shift the cut, and the result is copied so later appends
-     * never become visible through it.
+     * Returns a snapshot of bars in the run window, copying a coherent delegate
+     * range so later appends cannot appear in this view.
      */
     @Override
     public List<Bar> getBarData() {
         return delegate.withReadLock(() -> {
             List<Bar> bars = delegate.getBarData();
-            long visible = (long) windowEndIndex - delegate.getRemovedBarsCount() + 1L;
-            return List.copyOf(bars.subList(0, (int) Math.max(0L, Math.min(bars.size(), visible))));
+            int removedBarsCount = delegate.getRemovedBarsCount();
+            long beginIndex = Math.max(delegate.getBeginIndex(), removedBarsCount);
+            long endIndex = Math.min(delegate.getEndIndex(), windowEndIndex);
+            int start = (int) Math.max(0L, Math.min(bars.size(), beginIndex - removedBarsCount));
+            int end = (int) Math.max(start, Math.min(bars.size(), endIndex - removedBarsCount + 1L));
+            return List.copyOf(bars.subList(start, end));
         });
     }
 
@@ -115,12 +133,12 @@ final class RunWindowBarSeries implements BarSeries {
 
     @Override
     public int getBeginIndex() {
-        return delegate.getBeginIndex();
+        return delegate.withReadLock(() -> Math.max(delegate.getBeginIndex(), delegate.getRemovedBarsCount()));
     }
 
     @Override
     public int getEndIndex() {
-        return Math.min(delegate.getEndIndex(), windowEndIndex);
+        return delegate.withReadLock(() -> Math.min(delegate.getEndIndex(), windowEndIndex));
     }
 
     @Override
@@ -155,6 +173,15 @@ final class RunWindowBarSeries implements BarSeries {
 
     @Override
     public BarSeries getSubSeries(int startIndex, int endIndex) {
-        return delegate.getSubSeries(startIndex, (int) Math.min(endIndex, windowEndIndex + 1L));
+        return delegate.withReadLock(() -> {
+            int beginIndex = Math.max(delegate.getBeginIndex(), delegate.getRemovedBarsCount());
+            int windowEnd = Math.min(delegate.getEndIndex(), windowEndIndex);
+            long start = Math.max(startIndex, beginIndex);
+            long end = Math.min((long) endIndex, (long) windowEnd + 1L);
+            if (end < start) {
+                end = start;
+            }
+            return delegate.getSubSeries((int) start, (int) end);
+        });
     }
 }

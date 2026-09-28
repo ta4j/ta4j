@@ -4,6 +4,7 @@
 package org.ta4j.core.backtest;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 import java.time.Duration;
 import java.util.List;
@@ -80,5 +81,21 @@ public class RunWindowBarSeriesTest {
         // report the whole history as changed from index 0.
         assertEquals(new BarSeriesChangeSnapshot(source.revision(), 1, source.removedThroughIndex(),
                 source.maximumBarCount(), 3), snapshot);
+    }
+
+    @Test
+    public void hidesBarsBeforeTheLogicalBegin() {
+        BarSeries delegate = ConstrainedSeriesSupport.offsetSeries("run_window_begin", numFactory, 2, 3, 0, 10d, 11d,
+                12d, 13d);
+        RunWindowBarSeries window = new RunWindowBarSeries(delegate, 3);
+
+        assertEquals(2, window.getBeginIndex());
+        assertEquals(3, window.getEndIndex());
+        assertEquals(2, window.getBarCount());
+        assertThrows(IndexOutOfBoundsException.class, () -> window.getBar(1));
+        List<Bar> visibleBars = List.of(delegate.getBar(2), delegate.getBar(3));
+        assertEquals(visibleBars, window.getBarData());
+        assertEquals(visibleBars, window.getSubSeries(0, 4).getBarData());
+        assertThrows(UnsupportedOperationException.class, () -> window.getBarData().clear());
     }
 }

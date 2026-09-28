@@ -237,10 +237,9 @@ public class CashFlow implements PerformanceIndicator {
             return;
         }
         int ratioIndex = endIndex;
-        if (ratioIndex == entryIndex && entryIndex < seriesEndIndex) {
+        if (ratioIndex == entryIndex && entryIndex < seriesEndIndex && entryIndex < windowEndIndex) {
             ratioIndex = entryIndex + 1;
         }
-
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
             Num basis = AnalysisPositionSupport.valuationBasis(this, barSeries, position, holdingCost, endIndex,
                     windowStartIndex);

@@ -38,6 +38,7 @@
 - **Faster rule and strategy copies**: copying rules (`getEntryRule()`/`getExitRule()`, composite rule accessors and position-sizing strategy snapshots) no longer scans the logging backend's JVM-wide logger registry, a cost that grew with every logger created in the JVM.
 - **Security: safer JSON loading of rules and strategies**: deserializing a `Rule` or `Strategy` no longer initializes arbitrary classes named in its `type` field, and unknown or non-rule types fail with the same `Unknown rule/strategy type` error. `ComponentDescriptor#getTypeClass` resolves `org.ta4j.core` simple names.
 - **Edge cases**: VaR and Expected Shortfall return `NaN` when a return in the distribution is undefined instead of sorting `NaN` into the tail; return over max drawdown returns its neutral value for a null record, like Calmar and Omega; a backtest that started on an empty series no longer fails when bars are appended; curves no longer evaluate holding-cost models for positions outside their window; and loops over windows ending at `Integer.MAX_VALUE` no longer wrap around.
+- **Bounded backtests and Omega returns honor their exact start**: execution-series views hide bars before a delegate's logical begin, `ExitOnRunEndModel` does not force-close positions when a run processes no bars, and Omega retains a closed return seeded at the bounded start even when open-position marks are ignored. `CashFlow` keeps same-bar realized exits at the bounded analysis end.
 
 ## 0.25.0 (2026-09-07)
 
