@@ -792,6 +792,28 @@ public class BarSeriesManagerTest {
     }
 
     @Test
+    public void defaultRunIteratesTheWindowItsRecordWasCreatedFor() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d).build();
+        Bar appended = series.barBuilder().timePeriod(Duration.ofDays(1)).closePrice(5d).build();
+        // A factory whose record creation coincides with a feed appending a bar.
+        BarSeriesManager.TradingRecordFactory appendingFactory = (tradeType, startIndex, endIndex, txCost,
+                holdCost) -> {
+            series.addBar(appended);
+            return new BaseTradingRecord(tradeType, ExecutionMatchPolicy.FIFO, txCost, holdCost, startIndex, endIndex);
+        };
+        BarSeriesManager localManager = new BarSeriesManager(series, new ZeroCostModel(), new ZeroCostModel(),
+                new TradeOnCurrentCloseModel(), appendingFactory);
+        Strategy entersOnAppendedBar = new BaseStrategy(new FixedRule(4), new FixedRule(Integer.MAX_VALUE));
+
+        TradingRecord record = localManager.run(entersOnAppendedBar, TradeType.BUY, numOf(1), 0, 99);
+
+        // The record ends at bar 3, so the run must not trade the bar appended after
+        // it.
+        assertEquals(Integer.valueOf(3), record.getEndIndex());
+        assertTrue(record.getTrades().isEmpty());
+    }
+
+    @Test
     public void runWalkForwardReturnsAllConfiguredSplits() {
         WalkForwardConfig config = new WalkForwardConfig(3, 2, 2, 0, 0, 2, 1, List.of(), 1, List.of(1), 7L);
         StrategyWalkForwardExecutionResult result = manager.runWalkForward(strategy, config);

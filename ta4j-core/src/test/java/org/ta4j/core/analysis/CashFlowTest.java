@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -1160,5 +1161,142 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         // Only bars [0, 1] are read, so changes to bar 3 never force a recapture.
         assertEquals(List.of(numFactory.one(), numFactory.numOf(1.1d)), bounded.stream().toList());
+    }
+
+    @Test
+    public void readsTheRecordEndWithoutHoldingTheSeriesLock() {
+        ReentrantReadWriteLock seriesLock = new ReentrantReadWriteLock();
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 11d, 12d).build();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source, seriesLock);
+        AtomicBoolean readUnderSeriesLock = new AtomicBoolean();
+        // A synchronized record would deadlock against a writer if its bound
+        // were read while this thread holds the series read lock.
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel()) {
+            @Override
+            public Integer getEndIndex() {
+                if (seriesLock.getReadHoldCount() > 0) {
+                    readUnderSeriesLock.set(true);
+                }
+                return super.getEndIndex();
+            }
+        };
+        record.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
+
+        CashFlow cashFlow = new CashFlow(series, record);
+
+        assertFalse(readUnderSeriesLock.get());
+        assertNumEquals(12d / 10d, cashFlow.getValue(2));
+    }
+
+    @Test
+    public void recapturesWhenAWindowBarChangesWhileTheCurveIsBuilt() {
+        CloseMutatingSeries mutating = new CloseMutatingSeries(numFactory);
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(),
+                mutating.closeBackedCost());
+        record.enter(0, mutating.series.getBar(0).getClosePrice(), numFactory.one());
+        // The last close changes in place while the builder reads it, after the
+        // window was verified and before the change can be published.
+        mutating.changeCloseOnBuildRead();
+
+        CashFlow raced = new CashFlow(mutating.series, record);
+        CashFlow settled = new CashFlow(mutating.series, record);
+
+        assertNumEquals(150d, mutating.series.getBar(2).getClosePrice());
+        assertEquals(settled.stream().toList(), raced.stream().toList());
+    }
+
+    @Test
+    public void calculatePositionRejectsABarChangedWhileTheUpdateReadsIt() {
+        CloseMutatingSeries mutating = new CloseMutatingSeries(numFactory);
+        TradingRecord empty = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel());
+        CashFlow cashFlow = new CashFlow(mutating.series, empty);
+        List<Num> before = cashFlow.stream().toList();
+        Position open = new Position(TradeType.BUY, new ZeroCostModel(), mutating.closeBackedCost());
+        open.operate(0, mutating.series.getBar(0).getClosePrice(), numFactory.one());
+        mutating.changeCloseOnBuildRead();
+
+        // Applying the position would price its mark from the changed close
+        // against a holding cost priced from the old one.
+        assertThrows(IllegalStateException.class, () -> cashFlow.calculatePosition(open, 2));
+        assertEquals(before, cashFlow.stream().toList());
+    }
+
+    /**
+     * A locked series whose last bar close can be changed in place, the way
+     * {@code BaseBar.addPrice} changes it before publishing, during the second read
+     * of that bar under the series read lock after the cost model ran.
+     */
+    private static final class CloseMutatingSeries {
+
+        private final NumFactory numFactory;
+        private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+        private final Num[] lastClose;
+        private final AtomicBoolean armed = new AtomicBoolean();
+        private final AtomicBoolean costEvaluated = new AtomicBoolean();
+        private int lockedReadsAfterCost;
+        private final ConcurrentBarSeries series;
+
+        private CloseMutatingSeries(NumFactory numFactory) {
+            this.numFactory = numFactory;
+            List<Bar> bars = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                    .withData(100d, 110d, 120d)
+                    .build()
+                    .getBarData();
+            Bar last = bars.get(2);
+            this.lastClose = new Num[] { last.getClosePrice() };
+            Bar mutableLast = new BaseBar(last.getTimePeriod(), last.getBeginTime(), last.getEndTime(),
+                    last.getOpenPrice(), last.getHighPrice(), last.getLowPrice(), last.getClosePrice(),
+                    last.getVolume(), last.getAmount(), last.getTrades()) {
+                @Override
+                public Num getClosePrice() {
+                    return lastClose[0];
+                }
+            };
+            BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                    .withBars(List.of(bars.get(0), bars.get(1), mutableLast))
+                    .build();
+            this.series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source, lock, this::beforeBarRead);
+        }
+
+        private void changeCloseOnBuildRead() {
+            costEvaluated.set(false);
+            lockedReadsAfterCost = 0;
+            armed.set(true);
+        }
+
+        private void beforeBarRead(int index) {
+            if (index != 2 || !costEvaluated.get() || lock.getReadHoldCount() == 0) {
+                return;
+            }
+            // The first locked read verifies the window; the second is the build.
+            if (++lockedReadsAfterCost == 2 && armed.compareAndSet(true, false)) {
+                lastClose[0] = numFactory.numOf(150d);
+            }
+        }
+
+        private CostModel closeBackedCost() {
+            return new CostModel() {
+                @Override
+                public Num calculate(Position position, int finalIndex) {
+                    costEvaluated.set(true);
+                    return series.getBar(finalIndex).getClosePrice().multipliedBy(numFactory.numOf(0.1d));
+                }
+
+                @Override
+                public Num calculate(Position position) {
+                    return calculate(position, position.getExit().getIndex());
+                }
+
+                @Override
+                public Num calculate(Num price, Num amount) {
+                    return numFactory.zero();
+                }
+
+                @Override
+                public boolean equals(CostModel otherModel) {
+                    return otherModel == this;
+                }
+            };
+        }
     }
 }

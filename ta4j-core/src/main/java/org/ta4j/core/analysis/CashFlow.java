@@ -207,8 +207,8 @@ public class CashFlow implements PerformanceIndicator {
     public void calculatePosition(Position position, int finalIndex) {
         Num holdingCost = AnalysisPositionSupport.holdingCostInWindow(this, position, finalIndex, window);
         if (holdingCost != null) {
-            AnalysisPositionSupport.updateCapturedCurve(barSeries, window,
-                    () -> calculatePosition(position, finalIndex, window, values, holdingCost));
+            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, values,
+                    staged -> calculatePosition(position, finalIndex, window, staged, holdingCost));
         }
     }
 

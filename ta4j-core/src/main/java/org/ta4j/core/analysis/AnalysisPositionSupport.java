@@ -8,6 +8,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 import org.ta4j.core.*;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -59,19 +60,23 @@ final class AnalysisPositionSupport {
      * every bound describes one state of the series.
      *
      * @param series         the analysed series
-     * @param record         the trading record
+     * @param recordEndIndex the record's logical end, read before the series scope
+     *                       so no record lock is taken under it; {@code null} when
+     *                       the record is open-ended
      * @param startIndex     requested first index, clamped to the series begin
      * @param requestedFinal final index used unless a record or series end is
      *                       requested
-     * @param useRecordEnd   use the record's logical end as final index
+     * @param useRecordEnd   use the record's logical end, clamped to the series
+     *                       end, as final index
      * @param useSeriesEnd   use the logical series end as final index
      * @param padToSeriesEnd materialize through the series end even when the
      *                       analysis window ends earlier
      */
-    static Window captureWindow(BarSeries series, TradingRecord record, int startIndex, int requestedFinal,
+    static Window captureWindow(BarSeries series, Integer recordEndIndex, int startIndex, int requestedFinal,
             boolean useRecordEnd, boolean useSeriesEnd, boolean padToSeriesEnd) {
         int seriesEndIndex = series.getEndIndex();
-        int finalIndex = useRecordEnd ? record.getEndIndex(series) : useSeriesEnd ? seriesEndIndex : requestedFinal;
+        int recordFinal = recordEndIndex == null ? seriesEndIndex : Math.min(recordEndIndex, seriesEndIndex);
+        int finalIndex = useRecordEnd ? recordFinal : useSeriesEnd ? seriesEndIndex : requestedFinal;
         int beginIndex = Math.max(Math.max(0, startIndex), series.getBeginIndex());
         int requestedEnd = padToSeriesEnd ? Math.max(seriesEndIndex, finalIndex) : finalIndex;
         int bufferEndIndex = Math.min(requestedEnd, seriesEndIndex);
@@ -109,12 +114,15 @@ final class AnalysisPositionSupport {
 
     /**
      * Materializes a curve without evaluating user code under the series read lock.
-     * The window is captured in one short read scope; holding costs, whose cost
-     * models are user code that may evaluate indicators, are computed with no lock
-     * held; the curve is then built from bar data in a second short read scope
-     * while the window's bars are still retained with the close prices captured
-     * first. Appended bars leave the captured window valid; if a bar of it was
-     * evicted, replaced or updated in between, capture repeats.
+     * The record's logical end is read first, with no lock held; the window is
+     * captured in one short read scope; holding costs, whose cost models are user
+     * code that may evaluate indicators, are computed with no lock held; the curve
+     * is then built from bar data in a second short read scope while the window's
+     * bars are still retained with the close prices captured first. The window is
+     * verified again after the build: a bar may change its fields before its
+     * mutation is published, so the build itself can read a changed close. Appended
+     * bars leave the captured window valid; if a bar of it was evicted, replaced or
+     * updated in between, capture repeats.
      *
      * @throws IllegalStateException if the window was evicted or changed during
      *                               every attempt
@@ -123,9 +131,10 @@ final class AnalysisPositionSupport {
             int requestedFinal, boolean useRecordEnd, boolean useSeriesEnd, boolean padToSeriesEnd,
             OpenPositionHandling handling, CurveBuilder<T> builder) {
         for (int attempt = 0; attempt < MAX_MATERIALIZE_ATTEMPTS; attempt++) {
+            Integer recordEndIndex = useRecordEnd ? record.getEndIndex() : null;
             // Only the closes the curve reads, [beginIndex, bufferEndIndex], are
             // captured and verified; later bars may change freely.
-            Window window = series.withReadLock(() -> captureWindow(series, record, startIndex, requestedFinal,
+            Window window = series.withReadLock(() -> captureWindow(series, recordEndIndex, startIndex, requestedFinal,
                     useRecordEnd, useSeriesEnd, padToSeriesEnd).withBars(series));
             List<Position> positions = positionsForAnalysis(record, window.finalIndex(), handling,
                     curve.getEquityCurveMode());
@@ -136,8 +145,13 @@ final class AnalysisPositionSupport {
                     holdingCosts.put(position, holdingCost);
                 }
             }
-            T built = series.withReadLock(
-                    () -> window.bars().isUnchangedIn(series) ? builder.build(window, positions, holdingCosts) : null);
+            T built = series.withReadLock(() -> {
+                if (!window.bars().isUnchangedIn(series)) {
+                    return null;
+                }
+                T candidate = builder.build(window, positions, holdingCosts);
+                return window.bars().isUnchangedIn(series) ? candidate : null;
+            });
             if (built != null) {
                 return built;
             }
@@ -151,20 +165,29 @@ final class AnalysisPositionSupport {
      * Applies a later position to an already materialized curve, in a short read
      * scope, only while the bars the curve was captured from are unchanged. A curve
      * holds values computed from one bar history; pricing a new position from bars
-     * replaced or evicted since would mix two histories.
+     * replaced or evicted since would mix two histories. The update is staged on a
+     * copy and published only if the bars are still unchanged after it ran, since a
+     * bar may change its fields before its mutation is published.
      *
      * @param series the analysed series
      * @param window the curve's captured window
-     * @param update the bar-only update of the curve
+     * @param values the curve's values, replaced only by a verified update
+     * @param update the bar-only update, applied to the staged values
      * @throws IllegalStateException if a captured bar was evicted, replaced or
      *                               updated since the curve was materialized
      */
-    static void updateCapturedCurve(BarSeries series, Window window, Runnable update) {
+    static void updateCapturedCurve(BarSeries series, Window window, OffsetNumBuffer values,
+            Consumer<OffsetNumBuffer> update) {
         boolean applied = series.withReadLock(() -> {
             if (!window.bars().isUnchangedIn(series)) {
                 return false;
             }
-            update.run();
+            OffsetNumBuffer staged = values.copy();
+            update.accept(staged);
+            if (!window.bars().isUnchangedIn(series)) {
+                return false;
+            }
+            values.replaceWith(staged);
             return true;
         });
         if (!applied) {

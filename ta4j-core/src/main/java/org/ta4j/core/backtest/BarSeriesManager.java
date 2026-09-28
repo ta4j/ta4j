@@ -302,8 +302,9 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, Num amount, int startIndex, int finishIndex) {
-        TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, startIndex, finishIndex);
-        return run(strategy, tradingRecord, amount, startIndex, finishIndex);
+        Bounds window = clampToCurrentBounds(startIndex, finishIndex);
+        TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, window);
+        return run(strategy, tradingRecord, amount, window.begin(), window.end());
     }
 
     /**
@@ -366,8 +367,9 @@ public class BarSeriesManager {
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, PositionSizer positionSizer, int startIndex,
             int finishIndex) {
-        TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, startIndex, finishIndex);
-        return run(strategy, tradingRecord, positionSizer, startIndex, finishIndex);
+        Bounds window = clampToCurrentBounds(startIndex, finishIndex);
+        TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, window);
+        return run(strategy, tradingRecord, positionSizer, window.begin(), window.end());
     }
 
     /**
@@ -474,11 +476,19 @@ public class BarSeriesManager {
     private record Bounds(int begin, int end) {
     }
 
-    private TradingRecord createDefaultTradingRecord(TradeType tradeType, int startIndex, int finishIndex) {
+    /**
+     * Clamps a requested run window to the current series bounds. Default runs
+     * create their record and iterate with this one window, so a bar appended or
+     * evicted while the record is created cannot give the record and the run
+     * different windows.
+     */
+    private Bounds clampToCurrentBounds(int startIndex, int finishIndex) {
         Bounds bounds = currentBounds();
-        int clampedStartIndex = Math.max(startIndex, bounds.begin());
-        int clampedEndIndex = Math.min(finishIndex, bounds.end());
-        TradingRecord tradingRecord = tradingRecordFactory.create(tradeType, clampedStartIndex, clampedEndIndex,
+        return new Bounds(Math.max(startIndex, bounds.begin()), Math.min(finishIndex, bounds.end()));
+    }
+
+    private TradingRecord createDefaultTradingRecord(TradeType tradeType, Bounds window) {
+        TradingRecord tradingRecord = tradingRecordFactory.create(tradeType, window.begin(), window.end(),
                 transactionCostModel, holdingCostModel);
         if (tradingRecord == null) {
             throw new IllegalStateException("tradingRecordFactory returned null");

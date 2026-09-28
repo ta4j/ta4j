@@ -362,8 +362,8 @@ public class Returns implements PerformanceIndicator {
     public void calculatePosition(Position position, int finalIndex) {
         Num holdingCost = AnalysisPositionSupport.holdingCostInWindow(this, position, finalIndex, window);
         if (holdingCost != null) {
-            AnalysisPositionSupport.updateCapturedCurve(barSeries, window,
-                    () -> calculatePosition(position, finalIndex, window, returnFactors, holdingCost));
+            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, returnFactors,
+                    staged -> calculatePosition(position, finalIndex, window, staged, holdingCost));
         }
     }
 

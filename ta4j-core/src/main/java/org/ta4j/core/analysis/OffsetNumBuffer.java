@@ -55,6 +55,34 @@ final class OffsetNumBuffer {
         this.values = new ArrayList<>(Collections.nCopies(sizeOf(startIndex, endIndex), initialValue));
     }
 
+    private OffsetNumBuffer(OffsetNumBuffer source) {
+        this.startIndex = source.startIndex;
+        this.endIndex = source.endIndex;
+        this.neutral = source.neutral;
+        this.values = new ArrayList<>(source.values);
+    }
+
+    /**
+     * Returns an independent buffer over the same window holding the same values,
+     * so updates can be staged and published only once they are known valid.
+     *
+     * @return the copy
+     */
+    OffsetNumBuffer copy() {
+        return new OffsetNumBuffer(this);
+    }
+
+    /**
+     * Replaces every value with those of a buffer over the same window.
+     *
+     * @param source a buffer {@link #copy() copied} from this one
+     */
+    void replaceWith(OffsetNumBuffer source) {
+        for (int position = 0; position < values.size(); position++) {
+            values.set(position, source.values.get(position));
+        }
+    }
+
     /**
      * Returns a buffer covering no index; every read yields {@code neutral}.
      *
