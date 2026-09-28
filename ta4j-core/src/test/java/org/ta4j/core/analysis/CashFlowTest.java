@@ -8,12 +8,14 @@ import java.time.Duration;
 import java.util.Collections;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.ExecutionMatchPolicy;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
@@ -26,6 +28,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NumFactory;
 
 public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
@@ -86,6 +89,38 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(1, cashFlow.getValue(0));
         assertNumEquals(1, cashFlow.getValue(1));
         assertNumEquals(3, cashFlow.getValue(2));
+    }
+
+    @Test
+    public void cashFlowTwoPositionsWithEmptyHeldRangeOnSecondPosition() {
+        BarSeries sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 6d)
+                .build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(2, sampleBarSeries),
+                Trade.buyAt(2, sampleBarSeries), Trade.sellAt(3, sampleBarSeries));
+
+        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
+
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertNumEquals(2, cashFlow.getValue(1));
+        assertNumEquals(3, cashFlow.getValue(2));
+        assertNumEquals(6, cashFlow.getValue(3));
+    }
+
+    @Test
+    public void cashFlowRealizedTwoPositionsWithAdjacentExits() {
+        BarSeries sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d, 6d)
+                .build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(2, sampleBarSeries),
+                Trade.buyAt(2, sampleBarSeries), Trade.sellAt(3, sampleBarSeries));
+
+        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord, EquityCurveMode.REALIZED);
+
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertNumEquals(1, cashFlow.getValue(1));
+        assertNumEquals(3, cashFlow.getValue(2));
+        assertNumEquals(6, cashFlow.getValue(3));
     }
 
     @Test
@@ -549,6 +584,219 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(expectedAt2, cashFlow.getValue(2));
     }
 
+    @Test
+    public void realizedCashFlowAppliesOutOfOrderCloseRatioInPlace() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 11d, 12d, 13d, 14d, 15d)
+                .build();
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.LIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        record.operate(new BaseTrade(0, Instant.EPOCH, series.getBar(0).getClosePrice(), numFactory.one(), null,
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(3, Instant.EPOCH, series.getBar(3).getClosePrice(), numFactory.one(), null,
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(3, Instant.EPOCH, series.getBar(3).getClosePrice(), numFactory.numOf(2), null,
+                ExecutionSide.SELL, null, null));
+
+        CashFlow actual = new CashFlow(series, record, EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+        CashFlow reference = new CashFlow(series, new BaseTradingRecord(), series.getEndIndex(),
+                EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+        for (Position position : record.getPositions()) {
+            reference.calculatePosition(position, series.getEndIndex());
+        }
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertNumEquals(reference.getValue(i), actual.getValue(i));
+        }
+    }
+
+    @Test
+    public void cashFlowPreservesEarlierValuesWhenExitsDecrease() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 11d, 12d, 13d, 14d, 15d)
+                .build();
+        // LIFO matching closes the newest lot first: exit at 5 precedes exit
+        // at 3 in the positions list even though 3 < 5.
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.LIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        record.operate(new BaseTrade(0, Instant.EPOCH, series.getBar(0).getClosePrice(), numFactory.one(), null,
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(2, Instant.EPOCH, series.getBar(2).getClosePrice(), numFactory.one(), null,
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(5, Instant.EPOCH, series.getBar(5).getClosePrice(), numFactory.one(), null,
+                ExecutionSide.SELL, null, null));
+        record.operate(new BaseTrade(3, Instant.EPOCH, series.getBar(3).getClosePrice(), numFactory.one(), null,
+                ExecutionSide.SELL, null, null));
+
+        for (EquityCurveMode mode : EquityCurveMode.values()) {
+            CashFlow actual = new CashFlow(series, record, mode, OpenPositionHandling.IGNORE);
+            CashFlow reference = new CashFlow(series, new BaseTradingRecord(), series.getEndIndex(), mode,
+                    OpenPositionHandling.IGNORE);
+            for (Position position : record.getPositions()) {
+                reference.calculatePosition(position, series.getEndIndex());
+            }
+
+            for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+                assertNumEquals(reference.getValue(i), actual.getValue(i));
+            }
+        }
+    }
+
+    @Test
+    public void cashFlowMatchesFullWindowWithinBoundedWindow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 11d, 12d, 13d, 14d, 15d)
+                .build();
+        BaseTradingRecord record = decreasingExitLifoRecord(series);
+        int windowStartIndex = 3;
+
+        for (EquityCurveMode mode : EquityCurveMode.values()) {
+            CashFlow actual = new CashFlow(series, record, windowStartIndex, series.getEndIndex(), mode,
+                    OpenPositionHandling.IGNORE);
+            CashFlow expected = new CashFlow(series, record, mode, OpenPositionHandling.IGNORE);
+            for (int i = windowStartIndex; i <= series.getEndIndex(); i++) {
+                assertNumEquals(expected.getValue(i), actual.getValue(i));
+            }
+        }
+    }
+
+    @Test
+    public void repeatedCalculateComposesOntoPriorCurveData() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10d, 11d, 12d, 13d, 14d, 15d)
+                .build();
+        TradingRecord recordA = closedPositionRecord(series, 0, 2);
+        TradingRecord recordB = closedPositionRecord(series, 3, 5);
+
+        for (EquityCurveMode mode : EquityCurveMode.values()) {
+            // Reference: every position composed through the per-position
+            // recipe onto one shared curve.
+            CashFlow reference = new CashFlow(series, new BaseTradingRecord(), mode, OpenPositionHandling.IGNORE);
+            for (Position position : recordA.getPositions()) {
+                reference.calculatePosition(position, series.getEndIndex());
+            }
+            for (Position position : recordB.getPositions()) {
+                reference.calculatePosition(position, series.getEndIndex());
+            }
+
+            CashFlow reused = new CashFlow(series, new BaseTradingRecord(), mode, OpenPositionHandling.IGNORE);
+            reused.calculate(recordA, series.getEndIndex(), OpenPositionHandling.IGNORE);
+            Num valueAfterFirst = reused.getValue(4);
+
+            // Calculating an empty record must not reset prior curve data.
+            reused.calculate(new BaseTradingRecord(), series.getEndIndex(), OpenPositionHandling.IGNORE);
+            assertNumEquals(valueAfterFirst, reused.getValue(4));
+
+            reused.calculate(recordB, series.getEndIndex(), OpenPositionHandling.IGNORE);
+            for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+                assertNumEquals(reference.getValue(i), reused.getValue(i));
+            }
+        }
+    }
+
+    @Test
+    public void repeatedCalculatePreservesPerPositionArithmeticOrder() {
+        // These prices produce ratios with long decimal expansions, which exposes
+        // multiplication-order differences: composing the combined exit factor of a
+        // multi-position record onto an already-materialized curve in one step can
+        // round to a different last digit than applying each position successively.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
+                .withData(31.12345678901234d, 37.98765432109876d, 41.13579111357911d, 43.2468101224681d,
+                        47.36912151836912d, 53.4851620485162d, 59.61723429617234d, 61.73935654739356d)
+                .build();
+        TradingRecord recordA = closedPositionRecord(series, 0, 2);
+        TradingRecord recordB = multiPositionRecord(series, 3, 5, 6, 7);
+
+        for (EquityCurveMode mode : EquityCurveMode.values()) {
+            CashFlow reference = new CashFlow(series, new BaseTradingRecord(), mode, OpenPositionHandling.IGNORE);
+            for (Position position : recordA.getPositions()) {
+                reference.calculatePosition(position, series.getEndIndex());
+            }
+            for (Position position : recordB.getPositions()) {
+                reference.calculatePosition(position, series.getEndIndex());
+            }
+
+            CashFlow reused = new CashFlow(series, new BaseTradingRecord(), mode, OpenPositionHandling.IGNORE);
+            reused.calculate(recordA, series.getEndIndex(), OpenPositionHandling.IGNORE);
+            reused.calculate(recordB, series.getEndIndex(), OpenPositionHandling.IGNORE);
+            for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+                assertNumEquals(reference.getValue(i), reused.getValue(i));
+            }
+        }
+    }
+
+    @Test
+    public void cashFlowPreservesPrunedSeriesBeginIndex() {
+        BarSeries full = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d, 5d).build();
+        TradingRecord fullRecord = closedPositionRecord(full, 3, 4);
+        CashFlow reference = new CashFlow(full, fullRecord);
+
+        BarSeries pruned = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d, 5d).build();
+        TradingRecord prunedRecord = closedPositionRecord(pruned, 3, 4);
+        pruned.setMaximumBarCount(3);
+        assertEquals(2, pruned.getBeginIndex());
+
+        CashFlow cashFlow = new CashFlow(pruned, prunedRecord);
+        for (int i = pruned.getBeginIndex(); i <= pruned.getEndIndex(); i++) {
+            assertNumEquals(reference.getValue(i), cashFlow.getValue(i));
+        }
+    }
+
+    @Test
+    public void cashFlowCarriesRealizedPositionsClosedBeforePrunedWindow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 200d, 50d, 60d).build();
+        TradingRecord record = closedPositionRecord(series, 0, 1);
+        series.setMaximumBarCount(2);
+
+        CashFlow cashFlow = new CashFlow(series, record);
+
+        assertEquals(2, series.getBeginIndex());
+        assertNumEquals(2, cashFlow.getValue(2));
+        assertNumEquals(2, cashFlow.getValue(3));
+    }
+
+    private static TradingRecord closedPositionRecord(BarSeries series, int entryIndex, int exitIndex) {
+        NumFactory numFactory = series.numFactory();
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.operate(new BaseTrade(entryIndex, Instant.EPOCH, series.getBar(entryIndex).getClosePrice(),
+                numFactory.one(), null, ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(exitIndex, Instant.EPOCH, series.getBar(exitIndex).getClosePrice(),
+                numFactory.one(), null, ExecutionSide.SELL, null, null));
+        return record;
+    }
+
+    private static TradingRecord multiPositionRecord(BarSeries series, int... entryExitIndexes) {
+        if (entryExitIndexes.length % 2 != 0) {
+            throw new IllegalArgumentException("entryExitIndexes must contain complete (entry, exit) pairs");
+        }
+        NumFactory numFactory = series.numFactory();
+        BaseTradingRecord record = new BaseTradingRecord();
+        for (int i = 0; i < entryExitIndexes.length; i += 2) {
+            int entryIndex = entryExitIndexes[i];
+            int exitIndex = entryExitIndexes[i + 1];
+            record.operate(new BaseTrade(entryIndex, Instant.EPOCH, series.getBar(entryIndex).getClosePrice(),
+                    numFactory.one(), null, ExecutionSide.BUY, null, null));
+            record.operate(new BaseTrade(exitIndex, Instant.EPOCH, series.getBar(exitIndex).getClosePrice(),
+                    numFactory.one(), null, ExecutionSide.SELL, null, null));
+        }
+        return record;
+    }
+
+    private static BaseTradingRecord decreasingExitLifoRecord(BarSeries series) {
+        NumFactory numFactory = series.numFactory();
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.LIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        record.operate(new BaseTrade(0, Instant.EPOCH, series.getBar(0).getClosePrice(), numFactory.one(), null,
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(2, Instant.EPOCH, series.getBar(2).getClosePrice(), numFactory.one(), null,
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(5, Instant.EPOCH, series.getBar(5).getClosePrice(), numFactory.one(), null,
+                ExecutionSide.SELL, null, null));
+        record.operate(new BaseTrade(3, Instant.EPOCH, series.getBar(3).getClosePrice(), numFactory.one(), null,
+                ExecutionSide.SELL, null, null));
+        return record;
+    }
+
     private static void appendOneBar(final BarSeries targetSeries, final Number closePrice) {
         Duration period = targetSeries.getLastBar().getTimePeriod();
         targetSeries.barBuilder()
@@ -592,4 +840,83 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         }
     }
 
+    @Test
+    public void windowIgnoresPositionsClosedBeforeItOnBothPaths() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 200, 50, 60, 70).build();
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
+        record.exit(1, series.getBar(1).getClosePrice(), numFactory.one());
+
+        for (EquityCurveMode mode : EquityCurveMode.values()) {
+            CashFlow full = new CashFlow(series, record, mode, OpenPositionHandling.IGNORE);
+            CashFlow windowed = new CashFlow(series, record, 2, 4, mode, OpenPositionHandling.IGNORE);
+            CashFlow perPosition = new CashFlow(series, new BaseTradingRecord(), 2, 4, mode,
+                    OpenPositionHandling.IGNORE);
+            record.getPositions().forEach(position -> perPosition.calculatePosition(position, 4));
+            for (int i = 2; i <= 4; i++) {
+                // The full curve keeps the doubled equity; a window starts at one.
+                assertNumEquals(2, full.getValue(i));
+                assertNumEquals(1, windowed.getValue(i));
+                assertNumEquals(1, perPosition.getValue(i));
+            }
+        }
+    }
+
+    @Test
+    public void laterInPlaceBarEditsDoNotReachAccumulatedPositions() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120, 130).build();
+        Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(3, series));
+        CashFlow cashFlow = new CashFlow(series, new BaseTradingRecord());
+
+        series.getBar(2).addPrice(numFactory.numOf(1000));
+        cashFlow.calculatePosition(position, series.getEndIndex());
+
+        // Marked at the close captured at construction (120), not the edited 1000.
+        assertNumEquals(1.2, cashFlow.getValue(2));
+        assertNumEquals(1.3, cashFlow.getValue(3));
+    }
+
+    @Test
+    public void prunedCarryUsesEntryTimeEquityForDecreasingExitOrder() {
+        double[] data = { 100, 100, 100, 150, 100, 250, 100, 100, 100, 100 };
+        BarSeries unpruned = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(data).build();
+        BarSeries pruned = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(data).build();
+        // Processed in decreasing exit order: a short closing at 5 (ratio 2 - 2.5)
+        // before a long that entered at 0 and closed at 3 (ratio 1.5).
+        Position laterShort = new Position(Trade.sellAt(1, pruned), Trade.buyAt(5, pruned));
+        Position earlierLong = new Position(Trade.buyAt(0, pruned), Trade.sellAt(3, pruned));
+        pruned.setMaximumBarCount(4);
+
+        CashFlow full = new CashFlow(unpruned, new BaseTradingRecord());
+        CashFlow carried = new CashFlow(pruned, new BaseTradingRecord());
+        for (Position position : new Position[] { laterShort, earlierLong }) {
+            full.calculatePosition(position, 9);
+            carried.calculatePosition(position, 9);
+        }
+
+        // Equity at the long's entry (index 0) was positive, so both compound.
+        assertNumEquals(-0.75, full.getValue(6));
+        for (int i = pruned.getBeginIndex(); i <= pruned.getEndIndex(); i++) {
+            assertNumEquals(full.getValue(i), carried.getValue(i));
+        }
+    }
+
+    @Test
+    public void getValueResolvesPrunedIndicesAndRejectsNegativeOnes() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120, 130).build();
+        series.setMaximumBarCount(2);
+        CashFlow cashFlow = new CashFlow(series, new BaseTradingRecord());
+        CumulativePnL pnl = new CumulativePnL(series, new BaseTradingRecord());
+
+        assertNumEquals(cashFlow.getValue(2), cashFlow.getValue(0));
+        assertNumEquals(pnl.getValue(2), pnl.getValue(1));
+        assertThrows(IndexOutOfBoundsException.class, () -> cashFlow.getValue(-1));
+        assertThrows(IndexOutOfBoundsException.class, () -> pnl.getValue(-1));
+
+        // A read before an explicit window start is not a pruned index.
+        BarSeries unpruned = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120, 130).build();
+        CashFlow windowed = new CashFlow(unpruned, new BaseTradingRecord(), 2, 3, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.IGNORE);
+        assertThrows(IndexOutOfBoundsException.class, () -> windowed.getValue(1));
+    }
 }

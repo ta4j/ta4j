@@ -167,6 +167,10 @@ public final class ExcessReturns {
     }
 
     private Num riskFreeGrowth(int previousIndex, int currentIndex, Num one) {
+        if (annualRiskFreeRate.isZero()) {
+            // (1 + 0)^y == 1 for every y: skip the year-fraction and power math.
+            return one;
+        }
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
         Num deltaYears = BarSeriesUtils.deltaYears(series, previousIndex, currentIndex);
