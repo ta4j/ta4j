@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.TimeUnit;
@@ -1219,6 +1220,54 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         // against a holding cost priced from the old one.
         assertThrows(IllegalStateException.class, () -> cashFlow.calculatePosition(open, 2));
         assertEquals(before, cashFlow.stream().toList());
+    }
+
+    @Test
+    public void calculatePositionPricesABoundedCurveOnlyThroughItsCapturedBars() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 110d, 120d, 130d)
+                .build();
+        List<Integer> costEndIndices = new ArrayList<>();
+        // A holding cost that grows with the bars it spans, recording each end it
+        // is priced through.
+        CostModel perBarCost = new CostModel() {
+            @Override
+            public Num calculate(Position position, int finalIndex) {
+                costEndIndices.add(finalIndex);
+                return numFactory.numOf(finalIndex - position.getEntry().getIndex());
+            }
+
+            @Override
+            public Num calculate(Position position) {
+                return calculate(position, position.getExit().getIndex());
+            }
+
+            @Override
+            public Num calculate(Num price, Num amount) {
+                return numFactory.zero();
+            }
+
+            @Override
+            public boolean equals(CostModel otherModel) {
+                return otherModel == this;
+            }
+        };
+        TradingRecord empty = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), perBarCost);
+        CashFlow bounded = new CashFlow(series, empty, 0, 1, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        Position open = new Position(TradeType.BUY, new ZeroCostModel(), perBarCost);
+        open.operate(0, series.getBar(0).getClosePrice(), numFactory.one());
+        BaseTradingRecord withOpen = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), perBarCost);
+        withOpen.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
+        List<Num> expected = new CashFlow(series, withOpen, 0, 1, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET).stream().toList();
+        costEndIndices.clear();
+
+        // Bars 2 and 3 are outside the curve, so the later request is capped at 1.
+        bounded.calculatePosition(open, 3);
+
+        assertEquals(List.of(1), costEndIndices);
+        assertEquals(expected, bounded.stream().toList());
     }
 
     /**

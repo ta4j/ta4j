@@ -191,12 +191,14 @@ public final class CumulativePnL implements PerformanceIndicator {
         if (entry == null) {
             return;
         }
-        int seriesEndIndex = captured.seriesEndIndex();
+        // Priced only through the last captured bar, even when a later final index
+        // is requested of a bounded curve.
+        int lastCapturedIndex = captured.bufferEndIndex();
         int entryIndex = entry.getIndex();
-        if (entryIndex > finalIndex || entryIndex > seriesEndIndex) {
+        if (entryIndex > finalIndex || entryIndex > lastCapturedIndex) {
             return;
         }
-        int endIndex = determineEndIndex(position, finalIndex, seriesEndIndex);
+        int endIndex = determineEndIndex(position, finalIndex, lastCapturedIndex);
         int seriesBegin = captured.beginIndex();
         if (endIndex < seriesBegin) {
             return;

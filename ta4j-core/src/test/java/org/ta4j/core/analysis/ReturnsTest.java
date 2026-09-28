@@ -703,4 +703,20 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         // from the replaced bar would mix two bar histories.
         assertThrows(IllegalStateException.class, () -> curve.calculatePosition(later, 2));
     }
+
+    @Test
+    public void calculatePositionRefreshesTheReturnViews() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 110d, 99d).build();
+        Position position = new Position(Trade.buyAt(0, series), Trade.sellAt(2, series));
+        Returns expected = new Returns(series, position, ReturnRepresentation.DECIMAL);
+        Returns curve = new Returns(series, new BaseTradingRecord(), ReturnRepresentation.DECIMAL);
+
+        curve.calculatePosition(position, 2);
+
+        assertEquals(expected.getValues(), curve.getValues());
+        assertEquals(expected.getRawValues(), curve.getRawValues());
+        assertEquals(expected.stream().toList(), curve.stream().toList());
+        assertNumEquals(0.1d, curve.getValue(1));
+        assertEquals(expected.getSize(), curve.getSize());
+    }
 }

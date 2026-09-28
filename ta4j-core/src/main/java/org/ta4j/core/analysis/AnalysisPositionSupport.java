@@ -23,22 +23,21 @@ final class AnalysisPositionSupport {
      * materializes.
      *
      * @param beginIndex     first absolute index of the curve
-     * @param bufferEndIndex last absolute index materialized; record-driven curves
-     *                       pad through the series end so later indices carry the
-     *                       final value forward
+     * @param bufferEndIndex last absolute index materialized, never after the
+     *                       logical series end; record-driven curves pad through
+     *                       the series end so later indices carry the final value
+     *                       forward. No position is priced after it, so bars the
+     *                       curve did not capture never reach it
      * @param endIndex       last absolute index of the analysis window: the
      *                       record's logical end or requested final index; below
      *                       {@code beginIndex} when empty
-     * @param seriesEndIndex the logical series end: no position is priced after it,
-     *                       so bars beyond the window never reach a curve
      * @param finalIndex     index open positions are marked through
      * @param bars           the close prices of
      *                       {@code [beginIndex, bufferEndIndex]} captured with the
      *                       bounds, or {@code null} before materialization captures
      *                       them
      */
-    record Window(int beginIndex, int bufferEndIndex, int endIndex, int seriesEndIndex, int finalIndex,
-            BarWindowSnapshot bars) {
+    record Window(int beginIndex, int bufferEndIndex, int endIndex, int finalIndex, BarWindowSnapshot bars) {
 
         boolean isEmpty() {
             return bufferEndIndex < beginIndex;
@@ -46,7 +45,7 @@ final class AnalysisPositionSupport {
 
         /** Captures the closes the curve reads; runs inside the series read scope. */
         Window withBars(BarSeries series) {
-            return new Window(beginIndex, bufferEndIndex, endIndex, seriesEndIndex, finalIndex,
+            return new Window(beginIndex, bufferEndIndex, endIndex, finalIndex,
                     BarWindowSnapshot.capture(series, beginIndex, bufferEndIndex, false));
         }
     }
@@ -81,10 +80,9 @@ final class AnalysisPositionSupport {
         int requestedEnd = padToSeriesEnd ? Math.max(seriesEndIndex, finalIndex) : finalIndex;
         int bufferEndIndex = Math.min(requestedEnd, seriesEndIndex);
         if (bufferEndIndex < beginIndex) {
-            return new Window(beginIndex, beginIndex - 1, beginIndex - 1, seriesEndIndex, finalIndex, null);
+            return new Window(beginIndex, beginIndex - 1, beginIndex - 1, finalIndex, null);
         }
-        return new Window(beginIndex, bufferEndIndex, Math.min(finalIndex, bufferEndIndex), seriesEndIndex, finalIndex,
-                null);
+        return new Window(beginIndex, bufferEndIndex, Math.min(finalIndex, bufferEndIndex), finalIndex, null);
     }
 
     /**
@@ -200,9 +198,10 @@ final class AnalysisPositionSupport {
     /**
      * Returns the holding cost a curve charges a position, or {@code null} when the
      * position does not reach the captured window: it has no entry, enters after
-     * {@code finalIndex} or the captured series end, or ends before the window. The
+     * {@code finalIndex} or the last captured bar, or ends before the window. The
      * range is checked first so a cost model is never evaluated for a position the
-     * curve ignores.
+     * curve ignores. Pricing stops at the last captured bar, so a later request on
+     * a bounded curve never reads bars the curve did not capture and verify.
      *
      * @param curve      the curve supplying the end-index convention
      * @param position   the position
@@ -213,10 +212,10 @@ final class AnalysisPositionSupport {
      */
     static Num holdingCostInWindow(PerformanceIndicator curve, Position position, int finalIndex, Window window) {
         Trade entry = position.getEntry();
-        if (entry == null || entry.getIndex() > finalIndex || entry.getIndex() > window.seriesEndIndex()) {
+        if (entry == null || entry.getIndex() > finalIndex || entry.getIndex() > window.bufferEndIndex()) {
             return null;
         }
-        int endIndex = curve.determineEndIndex(position, finalIndex, window.seriesEndIndex());
+        int endIndex = curve.determineEndIndex(position, finalIndex, window.bufferEndIndex());
         return endIndex < window.beginIndex() ? null : holdingCostThrough(position, endIndex);
     }
 

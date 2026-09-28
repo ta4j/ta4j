@@ -115,19 +115,27 @@ public class Returns implements PerformanceIndicator {
                     Num initial = this.representation == ReturnRepresentation.LOG ? this.barSeries.numFactory().zero()
                             : this.barSeries.numFactory().one();
                     OffsetNumBuffer factors = AnalysisPositionSupport.buffer(captured, initial, NaN.NaN);
+                    boolean seeded = false;
                     for (Position position : positions) {
-                        calculatePosition(position, captured.finalIndex(), captured, factors, costs.get(position));
+                        seeded |= calculatePosition(position, captured.finalIndex(), captured, factors,
+                                costs.get(position));
                     }
-                    return new Materialized(captured, factors);
+                    return new Materialized(captured, factors, seeded);
                 });
         this.window = materialized.window();
         this.returnFactors = materialized.factors();
+        this.firstRetainedSlotSeeded = materialized.firstRetainedSlotSeeded();
         this.rawValues = new ArrayList<>(returnFactors.size());
         this.values = new ArrayList<>(returnFactors.size());
         buildReturns();
     }
 
-    private record Materialized(AnalysisPositionSupport.Window window, OffsetNumBuffer factors) {
+    /**
+     * One materialization attempt's factors; the seeding flag travels with them so
+     * a discarded attempt cannot leave it set.
+     */
+    private record Materialized(AnalysisPositionSupport.Window window, OffsetNumBuffer factors,
+            boolean firstRetainedSlotSeeded) {
     }
 
     /**
@@ -361,47 +369,62 @@ public class Returns implements PerformanceIndicator {
     @Override
     public void calculatePosition(Position position, int finalIndex) {
         Num holdingCost = AnalysisPositionSupport.holdingCostInWindow(this, position, finalIndex, window);
-        if (holdingCost != null) {
-            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, returnFactors,
-                    staged -> calculatePosition(position, finalIndex, window, staged, holdingCost));
+        if (holdingCost == null) {
+            return;
         }
+        boolean[] seeded = new boolean[1];
+        AnalysisPositionSupport.updateCapturedCurve(barSeries, window, returnFactors,
+                staged -> seeded[0] = calculatePosition(position, finalIndex, window, staged, holdingCost));
+        // Reached only once the staged factors were verified and published.
+        firstRetainedSlotSeeded |= seeded[0];
+        rawValues.clear();
+        values.clear();
+        buildReturns();
     }
 
-    private void calculatePosition(Position position, int finalIndex, AnalysisPositionSupport.Window captured,
+    /**
+     * Combines a position's returns into {@code factors}.
+     *
+     * @return whether a return was written into the first retained slot
+     */
+    private boolean calculatePosition(Position position, int finalIndex, AnalysisPositionSupport.Window captured,
             OffsetNumBuffer factors, Num holdingCost) {
         Trade entry = position.getEntry();
         if (entry == null) {
-            return;
+            return false;
         }
+        // Priced only through the last captured bar, even when a later final index
+        // is requested of a bounded curve.
+        int lastCapturedIndex = captured.bufferEndIndex();
         int entryIndex = entry.getIndex();
-        int seriesEndIndex = captured.seriesEndIndex();
-        if (entryIndex > finalIndex || entryIndex > seriesEndIndex) {
-            return;
+        if (entryIndex > finalIndex || entryIndex > lastCapturedIndex) {
+            return false;
         }
-        int endIndex = determineEndIndex(position, finalIndex, seriesEndIndex);
+        int endIndex = determineEndIndex(position, finalIndex, lastCapturedIndex);
         int seriesBegin = captured.beginIndex();
         if (endIndex < seriesBegin) {
-            return;
+            return false;
         }
 
         boolean isLongTrade = entry.isBuy();
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
+            boolean[] seeded = new boolean[1];
             AnalysisPositionSupport.ExitMark exit = AnalysisPositionSupport.markToMarket(this, barSeries, position,
                     holdingCost, endIndex, seriesBegin, endIndex - 1,
-                    (index, netPrice, previousPrice) -> combineReturnAtIndex(index,
+                    (index, netPrice, previousPrice) -> seeded[0] |= combineReturnAtIndex(index,
                             strategyReturn(calculateReturn(netPrice, previousPrice), isLongTrade), captured, factors));
-            combineReturnAtIndex(endIndex,
+            return combineReturnAtIndex(endIndex,
                     strategyReturn(calculateReturn(exit.netPrice(), exit.previousPrice()), isLongTrade), captured,
-                    factors);
-            return;
+                    factors) | seeded[0];
         }
 
         Trade exit = position.getExit();
         if (exit != null && endIndex >= exit.getIndex()) {
             Num netExit = addCost(exit.getNetPrice(), holdingCost, isLongTrade);
-            combineReturnAtIndex(exit.getIndex(),
+            return combineReturnAtIndex(exit.getIndex(),
                     strategyReturn(calculateReturn(netExit, entry.getNetPrice()), isLongTrade), captured, factors);
         }
+        return false;
     }
 
     /**
@@ -441,22 +464,25 @@ public class Returns implements PerformanceIndicator {
         return isLongTrade ? rawReturn : rawReturn.multipliedBy(barSeries.numFactory().minusOne());
     }
 
-    private void combineReturnAtIndex(int index, Num strategyReturn, AnalysisPositionSupport.Window captured,
+    /**
+     * Combines one return into {@code factors}.
+     *
+     * @return whether the return was written into the first retained slot, which
+     *         makes that slot a real return: a position that exits on the first
+     *         retained bar (entered there or, valued at that bar's close, before
+     *         the window)
+     */
+    private boolean combineReturnAtIndex(int index, Num strategyReturn, AnalysisPositionSupport.Window captured,
             OffsetNumBuffer factors) {
         if (!factors.contains(index)) {
-            return;
-        }
-        if (index == captured.beginIndex()) {
-            // Any write into the first retained slot makes it a real return: a
-            // position that exits on the first retained bar (entered there or,
-            // valued at that bar's close, before the window).
-            firstRetainedSlotSeeded = true;
+            return false;
         }
         if (representation == ReturnRepresentation.LOG) {
             factors.add(index, strategyReturn);
         } else {
             factors.multiply(index, toFactor(strategyReturn));
         }
+        return index == captured.beginIndex();
     }
 
     private void buildReturns() {

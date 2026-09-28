@@ -218,14 +218,15 @@ public class CashFlow implements PerformanceIndicator {
         if (entry == null) {
             return;
         }
-        int seriesEndIndex = captured.seriesEndIndex();
-        int entryIndex = entry.getIndex();
-        if (entryIndex > finalIndex || entryIndex > seriesEndIndex) {
-            return;
-        }
-        int endIndex = determineEndIndex(position, finalIndex, seriesEndIndex);
+        // Priced only through the last captured bar, even when a later final index
+        // is requested of a bounded curve.
         int windowStartIndex = captured.beginIndex();
         int windowEndIndex = captured.bufferEndIndex();
+        int entryIndex = entry.getIndex();
+        if (entryIndex > finalIndex || entryIndex > windowEndIndex) {
+            return;
+        }
+        int endIndex = determineEndIndex(position, finalIndex, windowEndIndex);
         if (windowStartIndex > windowEndIndex || endIndex < windowStartIndex) {
             return;
         }
@@ -237,7 +238,7 @@ public class CashFlow implements PerformanceIndicator {
             return;
         }
         int ratioIndex = endIndex;
-        if (ratioIndex == entryIndex && entryIndex < seriesEndIndex && entryIndex < windowEndIndex) {
+        if (ratioIndex == entryIndex && entryIndex < windowEndIndex) {
             ratioIndex = entryIndex + 1;
         }
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
