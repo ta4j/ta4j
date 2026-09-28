@@ -20,6 +20,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -53,6 +55,7 @@ import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.rules.BooleanRule;
 import org.ta4j.core.rules.FixedRule;
 import org.ta4j.core.walkforward.AnchoredExpandingWalkForwardSplitter;
 import org.ta4j.core.walkforward.WalkForwardConfig;
@@ -974,4 +977,48 @@ public class BarSeriesManagerTest {
         }
     }
 
+    @Test
+    public void runReadsItsBoundsFromOneSnapshot() {
+        AtomicBoolean armed = new AtomicBoolean();
+        AtomicInteger outermostLeases = new AtomicInteger();
+        AtomicReference<Runnable> writer = new AtomicReference<>();
+        // Lets a feed append, evicting the first bar, before the fourth outermost
+        // read lease of the run: between separately read begin and end bounds.
+        ReentrantReadWriteLock lock = new ReentrantReadWriteLock() {
+            private final ReadLock interleavingReadLock = new ReadLock(this) {
+                @Override
+                public void lock() {
+                    if (armed.get() && getReadHoldCount() == 0 && outermostLeases.incrementAndGet() == 4) {
+                        armed.set(false);
+                        writer.get().run();
+                    }
+                    super.lock();
+                }
+            };
+
+            @Override
+            public ReadLock readLock() {
+                return interleavingReadLock;
+            }
+        };
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14).build();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source, lock);
+        Bar appended = series.barBuilder().timePeriod(Duration.ofDays(1)).closePrice(15).build();
+        writer.set(() -> series.addBar(appended));
+        List<Integer> evaluated = new ArrayList<>();
+        Rule recordIndex = (index, tradingRecord) -> {
+            evaluated.add(index);
+            return false;
+        };
+        Strategy strategy = new BaseStrategy(recordIndex, BooleanRule.FALSE);
+
+        armed.set(true);
+        new BarSeriesManager(series).run(strategy, 0, Integer.MAX_VALUE);
+        armed.set(false);
+
+        // The run evaluates exactly the window whose bounds it read together, the
+        // same one its trading record was created with, not a window torn by the
+        // eviction between two separate reads.
+        assertEquals(List.of(0, 1, 2, 3, 4), evaluated);
+    }
 }

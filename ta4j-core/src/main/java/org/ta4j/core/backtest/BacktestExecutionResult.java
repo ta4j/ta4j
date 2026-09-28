@@ -150,7 +150,8 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
          */
         private String changeSince(BarSeries source) {
             // Runs never read outside the logical window, so raw bars retained
-            // before its begin or after its end may change freely.
+            // after its end may change freely; a tracked change before its begin
+            // is rejected below because it can mask a change inside it.
             int firstIndex = Math.max(beginIndex, removedBarsCount);
             if (bars.isEmpty() || endIndex < firstIndex) {
                 // Nothing inside the window was captured, so appends (which also
@@ -165,9 +166,16 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
             }
             long sourceRevision = source.getBarHistoryRevision();
             if (revision >= 0L && sourceRevision >= 0L && sourceRevision != revision) {
+                // The snapshot reports only the earliest change: a change before
+                // the window can hide a later one inside it that was reverted by
+                // now, so only changes wholly after the window are conclusive.
                 int changedIndex = source.getBarSeriesChangeSnapshot(revision).earliestChangedIndex();
                 if (changedIndex >= firstIndex && changedIndex <= endIndex) {
                     return "bar " + changedIndex + " was replaced or updated";
+                }
+                if (changedIndex >= 0 && changedIndex < firstIndex) {
+                    return "bar " + changedIndex + " before the window changed, so changes inside it cannot be "
+                            + "ruled out";
                 }
             }
             List<Bar> sourceBars = source.getBarData();
@@ -175,8 +183,10 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
             if ((long) sourceRemoved + sourceBars.size() - 1L < endIndex) {
                 return "bars after index " + (sourceRemoved + sourceBars.size() - 1) + " were removed";
             }
-            for (int index = firstIndex; index <= endIndex; index++) {
-                if (!sameBar(bars.get(index - removedBarsCount), sourceBars.get(index - sourceRemoved))) {
+            // A long cursor: the window may end at Integer.MAX_VALUE.
+            for (long index = firstIndex; index <= endIndex; index++) {
+                if (!sameBar(bars.get((int) (index - removedBarsCount)),
+                        sourceBars.get((int) (index - sourceRemoved)))) {
                     return "bar " + index + " was replaced or updated";
                 }
             }

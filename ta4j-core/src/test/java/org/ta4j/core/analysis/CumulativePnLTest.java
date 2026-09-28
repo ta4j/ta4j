@@ -14,6 +14,9 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ConcurrentBarSeries;
 import org.junit.Test;
+import static org.junit.Assert.assertThrows;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
@@ -581,5 +584,26 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
 
         OutOfWindowPositions.calculateAll(curve);
         assertEquals(flat, OutOfWindowPositions.values(curve));
+    }
+
+    @Test
+    public void calculatePositionRejectsBarsChangedSinceMaterialization() {
+        BaseBarSeries series = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 110d, 120d)
+                .build();
+        TradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series));
+        CumulativePnL curve = new CumulativePnL(series, record);
+        Bar captured = series.getBar(1);
+        series.replaceBar(1,
+                series.barBuilder()
+                        .timePeriod(captured.getTimePeriod())
+                        .endTime(captured.getEndTime())
+                        .closePrice(200d)
+                        .build());
+        Position later = new Position(Trade.buyAt(0, series), Trade.sellAt(2, series));
+
+        // The curve holds values from the captured bars; pricing a new position
+        // from the replaced bar would mix two bar histories.
+        assertThrows(IllegalStateException.class, () -> curve.calculatePosition(later, 2));
     }
 }

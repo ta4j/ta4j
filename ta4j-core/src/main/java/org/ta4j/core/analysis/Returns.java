@@ -354,13 +354,16 @@ public class Returns implements PerformanceIndicator {
      * @param position   a single position
      * @param finalIndex the index up to which the returns of open positions are
      *                   considered
+     * @throws IllegalStateException if a bar this curve was materialized from was
+     *                               evicted, replaced or updated since
      * @since 0.22.2
      */
     @Override
     public void calculatePosition(Position position, int finalIndex) {
         Num holdingCost = AnalysisPositionSupport.holdingCostInWindow(this, position, finalIndex, window);
         if (holdingCost != null) {
-            calculatePosition(position, finalIndex, window, returnFactors, holdingCost);
+            AnalysisPositionSupport.updateCapturedCurve(barSeries, window,
+                    () -> calculatePosition(position, finalIndex, window, returnFactors, holdingCost));
         }
     }
 

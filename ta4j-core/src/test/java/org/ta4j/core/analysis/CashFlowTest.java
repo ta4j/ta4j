@@ -15,12 +15,14 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.ConstrainedSeriesSupport;
@@ -1077,5 +1079,72 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         OutOfWindowPositions.calculateAll(curve);
         assertEquals(flat, OutOfWindowPositions.values(curve));
+    }
+
+    @Test
+    public void calculatePositionRejectsBarsChangedSinceMaterialization() {
+        BaseBarSeries series = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 110d, 120d)
+                .build();
+        TradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series));
+        CashFlow cashFlow = new CashFlow(series, record);
+        Bar captured = series.getBar(1);
+        series.replaceBar(1,
+                series.barBuilder()
+                        .timePeriod(captured.getTimePeriod())
+                        .endTime(captured.getEndTime())
+                        .closePrice(200d)
+                        .build());
+        Position later = new Position(Trade.buyAt(0, series), Trade.sellAt(2, series));
+
+        // The curve holds values from the captured bars; pricing a new position
+        // from the replaced bar would mix two bar histories.
+        assertThrows(IllegalStateException.class, () -> cashFlow.calculatePosition(later, 2));
+    }
+
+    @Test
+    public void boundedCurveIgnoresBarsChangingAfterItsFinalIndex() {
+        BaseBarSeries series = (BaseBarSeries) new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 110d, 120d, 130d)
+                .build();
+        Bar trailing = series.getBar(3);
+        AtomicBoolean flip = new AtomicBoolean();
+        // A feed keeps rewriting the last bar, after the curve's final index,
+        // every time the holding cost is evaluated.
+        CostModel rewritesTrailingBar = new CostModel() {
+            @Override
+            public Num calculate(Position position, int finalIndex) {
+                series.replaceBar(3,
+                        series.barBuilder()
+                                .timePeriod(trailing.getTimePeriod())
+                                .endTime(trailing.getEndTime())
+                                .closePrice(flip.getAndSet(!flip.get()) ? 140d : 150d)
+                                .build());
+                return numFactory.zero();
+            }
+
+            @Override
+            public Num calculate(Position position) {
+                return calculate(position, position.getExit().getIndex());
+            }
+
+            @Override
+            public Num calculate(Num price, Num amount) {
+                return numFactory.zero();
+            }
+
+            @Override
+            public boolean equals(CostModel otherModel) {
+                return otherModel == this;
+            }
+        };
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), rewritesTrailingBar);
+        record.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
+
+        CashFlow bounded = new CashFlow(series, record, 0, 1, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        // Only bars [0, 1] are read, so changes to bar 3 never force a recapture.
+        assertEquals(List.of(numFactory.one(), numFactory.numOf(1.1d)), bounded.stream().toList());
     }
 }

@@ -475,8 +475,9 @@ public class BarSeriesManager {
     }
 
     private TradingRecord createDefaultTradingRecord(TradeType tradeType, int startIndex, int finishIndex) {
-        int clampedStartIndex = Math.max(startIndex, barSeries.getBeginIndex());
-        int clampedEndIndex = Math.min(finishIndex, barSeries.getEndIndex());
+        Bounds bounds = currentBounds();
+        int clampedStartIndex = Math.max(startIndex, bounds.begin());
+        int clampedEndIndex = Math.min(finishIndex, bounds.end());
         TradingRecord tradingRecord = tradingRecordFactory.create(tradeType, clampedStartIndex, clampedEndIndex,
                 transactionCostModel, holdingCostModel);
         if (tradingRecord == null) {
@@ -624,8 +625,11 @@ public class BarSeriesManager {
         Objects.requireNonNull(strategy, "strategy");
         Objects.requireNonNull(tradingRecord, "tradingRecord");
         Objects.requireNonNull(amountResolver, "amountResolver");
-        int runBeginIndex = Math.max(startIndex, barSeries.getBeginIndex());
-        int runEndIndex = Math.min(finishIndex, barSeries.getEndIndex());
+        // Both bounds come from one read scope, so an eviction between them
+        // cannot pair a stale begin with a newer end.
+        Bounds bounds = currentBounds();
+        int runBeginIndex = Math.max(startIndex, bounds.begin());
+        int runEndIndex = Math.min(finishIndex, bounds.end());
         BarSeries runSeries = new RunWindowBarSeries(barSeries, runEndIndex);
 
         if (log.isTraceEnabled()) {

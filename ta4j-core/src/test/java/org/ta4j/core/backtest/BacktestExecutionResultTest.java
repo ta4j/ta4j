@@ -250,24 +250,43 @@ public class BacktestExecutionResultTest {
     }
 
     @Test
-    public void verifyUnchangedIgnoresRawBarsOutsideTheLogicalWindow() {
+    public void verifyUnchangedIgnoresRawBarsAfterTheLogicalWindow() {
         BarSeries trailing = ConstrainedSeriesSupport.trailingConstrainedSeries("hidden-trailing", numFactory, 1, 10d,
                 20d, 30d);
         BarSeries trailingBaseline = BacktestExecutionResult.snapshot(trailing);
-        BarSeries leading = ConstrainedSeriesSupport.offsetSeries("hidden-leading", numFactory, 1, 2, 0, 10d, 20d, 30d);
-        BarSeries leadingBaseline = BacktestExecutionResult.snapshot(leading);
 
-        // Runs never read the raw bars retained after the logical end or before
-        // the logical begin, so their changes cannot invalidate the results.
+        // Runs never read the raw bars retained after the logical end, and the
+        // earliest change reported after the window rules out changes inside it.
         trailing.getBar(2).addPrice(numFactory.numOf(35));
-        leading.getBar(0).addPrice(numFactory.numOf(15));
         BacktestExecutionResult.verifyUnchanged(trailing, trailingBaseline);
-        BacktestExecutionResult.verifyUnchanged(leading, leadingBaseline);
 
         trailing.getBar(1).addPrice(numFactory.numOf(25));
         IllegalStateException change = assertThrows(IllegalStateException.class,
                 () -> BacktestExecutionResult.verifyUnchanged(trailing, trailingBaseline));
         assertTrue(change.getMessage(), change.getMessage().contains("bar 1 was replaced or updated"));
+    }
+
+    @Test
+    public void verifyUnchangedRejectsTrackedChangesBeforeTheLogicalWindow() {
+        BarSeries leading = ConstrainedSeriesSupport.offsetSeries("hidden-leading", numFactory, 1, 2, 0, 10d, 20d, 30d);
+        BarSeries baseline = BacktestExecutionResult.snapshot(leading);
+
+        // The revision reports only the earliest change, so a change to a hidden
+        // leading bar could mask an in-window change that was reverted since.
+        leading.getBar(0).addPrice(numFactory.numOf(15));
+
+        IllegalStateException change = assertThrows(IllegalStateException.class,
+                () -> BacktestExecutionResult.verifyUnchanged(leading, baseline));
+        assertTrue(change.getMessage(), change.getMessage().contains("bar 0 before the window changed"));
+    }
+
+    @Test
+    public void verifyUnchangedHandlesAWindowEndingAtTheTerminalIndex() {
+        BarSeries terminal = ConstrainedSeriesSupport.terminalOneBarSeries("terminal", numFactory, 10d);
+        BarSeries baseline = BacktestExecutionResult.snapshot(terminal);
+
+        // The comparison must stop after the terminal bar instead of wrapping.
+        BacktestExecutionResult.verifyUnchanged(terminal, baseline);
     }
 
     @Test
