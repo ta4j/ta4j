@@ -238,7 +238,9 @@ public class CashFlow implements PerformanceIndicator {
             return;
         }
         int ratioIndex = endIndex;
-        if (ratioIndex == entryIndex && entryIndex < windowEndIndex) {
+        // A same-bar ratio moves to the next bar only inside the logical analysis
+        // window; the padded buffer can extend past it.
+        if (ratioIndex == entryIndex && entryIndex < captured.endIndex()) {
             ratioIndex = entryIndex + 1;
         }
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {

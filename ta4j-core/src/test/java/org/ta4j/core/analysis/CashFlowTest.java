@@ -866,6 +866,21 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
+    public void keepsSameBarExitAtABoundedRecordsEnd() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 100d, 120d, 130d)
+                .build();
+        TradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY, 0, 2, null, null);
+        record.enter(2, numFactory.numOf(100d), numFactory.one());
+        record.exit(2, numFactory.numOf(120d), numFactory.one());
+
+        CashFlow cashFlow = new CashFlow(series, record);
+
+        assertEquals(2, cashFlow.getEndIndex());
+        assertNumEquals(1.2d, cashFlow.getValue(2));
+    }
+
+    @Test
     public void calculatePositionBumpsSameBarRatioOnlyWithinTheCapturedSeriesEnd() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 100d, 100d).build();
         Position openOnLastBar = new Position(Trade.buyAt(2, numFactory.numOf(80d), numFactory.one()),
