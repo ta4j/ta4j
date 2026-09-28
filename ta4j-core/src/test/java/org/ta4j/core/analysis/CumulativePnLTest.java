@@ -779,10 +779,12 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         // from the replaced bar would mix two bar histories.
         assertThrows(IllegalStateException.class, () -> curve.calculatePosition(later, 2));
     }
+
     @Test
     public void carriesRealizedPnlAcrossPrunedBegin() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100d, 110d, 120d, 130d).build();
+                .withData(100d, 110d, 120d, 130d)
+                .build();
         BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series));
         series.setMaximumBarCount(2);
 
@@ -791,5 +793,77 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         assertEquals(2, pnl.getBeginIndex());
         assertNumEquals(10d, pnl.getValue(2));
         assertNumEquals(10d, pnl.getValue(3));
+    }
+
+    @Test
+    public void matchesEquivalentLogicalWindowAcrossModesHandlingAndIncrementalPricing() {
+        for (EquityCurveMode mode : EquityCurveMode.values()) {
+            for (OpenPositionHandling handling : OpenPositionHandling.values()) {
+                BarSeries series = ConstrainedSeriesSupport.offsetSeries("bounded-pnl", numFactory, 2, 4, 0, 100d, 80d,
+                        120d, 90d, 110d, 55d);
+                BarSeries freshSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                        .withData(120d, 90d, 110d)
+                        .build();
+
+                BaseTradingRecord record = boundedRecord(2, 5);
+                record.enter(0, numFactory.numOf(100d), numFactory.one());
+                record.exit(1, numFactory.numOf(80d), numFactory.one());
+                record.enter(1, numFactory.numOf(80d), numFactory.one());
+                record.exit(3, numFactory.numOf(90d), numFactory.one());
+                record.enter(4, numFactory.numOf(110d), numFactory.one());
+                record.exit(4, numFactory.numOf(110d), numFactory.one());
+
+                BaseTradingRecord equivalentRecord = boundedRecord(0, 2);
+                Num entryPrice = mode == EquityCurveMode.MARK_TO_MARKET ? numFactory.numOf(120d)
+                        : numFactory.numOf(80d);
+                equivalentRecord.enter(0, entryPrice, numFactory.one());
+                equivalentRecord.exit(1, numFactory.numOf(90d), numFactory.one());
+                equivalentRecord.enter(2, numFactory.numOf(110d), numFactory.one());
+                equivalentRecord.exit(2, numFactory.numOf(110d), numFactory.one());
+
+                CumulativePnL actual = new CumulativePnL(series, record, 4, mode, handling);
+                CumulativePnL expected = new CumulativePnL(freshSeries, equivalentRecord, 2, mode, handling);
+                String context = "mode=" + mode + ", handling=" + handling;
+                assertEquals(context, expected.stream().toList(), actual.stream().toList());
+
+                CumulativePnL incremental = new CumulativePnL(series, boundedRecord(2, 5), 4, mode, handling);
+                incremental.calculatePosition(record.getPositions().get(1), 4);
+                incremental.calculatePosition(record.getPositions().get(2), 4);
+                assertEquals(context + " incremental", actual.stream().toList(), incremental.stream().toList());
+            }
+        }
+    }
+
+    @Test
+    public void treatsAnExitAfterTheLogicalEndAsOpenAtTheWindowClose() {
+        for (EquityCurveMode mode : EquityCurveMode.values()) {
+            for (OpenPositionHandling handling : OpenPositionHandling.values()) {
+                BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("late-exit-pnl", numFactory, 4,
+                        100d, 80d, 120d, 90d, 110d, 55d);
+                BarSeries freshSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                        .withData(120d, 90d, 110d)
+                        .build();
+                BaseTradingRecord record = boundedRecord(2, 5);
+                record.enter(3, numFactory.numOf(90d), numFactory.one());
+                record.exit(5, numFactory.numOf(55d), numFactory.one());
+                BaseTradingRecord equivalentRecord = boundedRecord(0, 3);
+                equivalentRecord.enter(1, numFactory.numOf(90d), numFactory.one());
+
+                CumulativePnL actual = new CumulativePnL(series, record, 4, mode, handling);
+                CumulativePnL expected = new CumulativePnL(freshSeries, equivalentRecord, 2, mode, handling);
+                String context = "mode=" + mode + ", handling=" + handling;
+                assertEquals(context, expected.stream().toList(), actual.stream().toList());
+
+                CumulativePnL incremental = new CumulativePnL(series, boundedRecord(2, 5), 4, mode, handling);
+                if (handling != OpenPositionHandling.IGNORE) {
+                    incremental.calculatePosition(record.getPositions().get(0), 4);
+                }
+                assertEquals(context + " incremental", actual.stream().toList(), incremental.stream().toList());
+            }
+        }
+    }
+
+    private BaseTradingRecord boundedRecord(int startIndex, int endIndex) {
+        return new BaseTradingRecord(TradeType.BUY, startIndex, endIndex, new ZeroCostModel(), new ZeroCostModel());
     }
 }

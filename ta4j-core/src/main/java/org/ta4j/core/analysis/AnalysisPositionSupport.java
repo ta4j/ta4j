@@ -34,8 +34,8 @@ final class AnalysisPositionSupport {
 
         /** Captures the complete bars under the series read scope. */
         Window withBars(BarSeries series) {
-            return new Window(beginIndex, bufferEndIndex, endIndex, finalIndex, carryStartIndex,
-                    carriesPrunedHistory, BarWindowSnapshot.capture(series, beginIndex, bufferEndIndex));
+            return new Window(beginIndex, bufferEndIndex, endIndex, finalIndex, carryStartIndex, carriesPrunedHistory,
+                    BarWindowSnapshot.capture(series, beginIndex, bufferEndIndex));
         }
     }
 
@@ -75,8 +75,8 @@ final class AnalysisPositionSupport {
             return new Window(beginIndex, beginIndex - 1, beginIndex - 1, finalIndex, carryStartIndex,
                     carriesPrunedHistory, null);
         }
-        return new Window(beginIndex, bufferEndIndex, Math.min(finalIndex, bufferEndIndex), finalIndex,
-                carryStartIndex, carriesPrunedHistory, null);
+        return new Window(beginIndex, bufferEndIndex, Math.min(finalIndex, bufferEndIndex), finalIndex, carryStartIndex,
+                carriesPrunedHistory, null);
     }
 
     /**
@@ -185,16 +185,16 @@ final class AnalysisPositionSupport {
     }
 
     /**
-     * Returns the holding cost a curve charges a position, or {@code null} when
-     * the position does not reach the captured window. Historical realized
-     * positions are priced only by curves that carry retained history.
+     * Returns the holding cost a curve charges a position, or {@code null} when the
+     * position does not reach the captured window. Historical realized positions
+     * are priced only by curves that carry retained history.
      *
-     * @param curve the curve supplying the end-index convention
-     * @param position the position
-     * @param finalIndex index open positions are marked through
-     * @param window the captured window
+     * @param curve              the curve supplying the end-index convention
+     * @param position           the position
+     * @param finalIndex         index open positions are marked through
+     * @param window             the captured window
      * @param carryPrunedHistory whether realized positions lost to pruning are
-     *        carried into the curve
+     *                           carried into the curve
      * @return the holding cost through the position's end in the window, or null
      */
     static Num holdingCostInWindow(PerformanceIndicator curve, Position position, int finalIndex, Window window,
@@ -205,8 +205,7 @@ final class AnalysisPositionSupport {
         }
         int endIndex = curve.determineEndIndex(position, finalIndex, window.bufferEndIndex());
         if (endIndex < window.beginIndex()) {
-            return carryPrunedHistory && window.carriesBeforeWindow(position)
-                    ? holdingCostThrough(position, endIndex)
+            return carryPrunedHistory && window.carriesBeforeWindow(position) ? holdingCostThrough(position, endIndex)
                     : null;
         }
         return holdingCostThrough(position, endIndex);
