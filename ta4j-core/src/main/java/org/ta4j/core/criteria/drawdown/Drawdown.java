@@ -129,10 +129,20 @@ public final class Drawdown {
         int peakIndex = begin;
         // An empty series reports [-1, -1]; never read a curve at a negative index.
         if (begin >= 0 && begin <= end && (curve instanceof PerformanceIndicator || !series.isEmpty())) {
+            if (curve instanceof PerformanceIndicator performanceCurve) {
+                // The equity entering the window is the first peak: a result realized in
+                // the first slot (a trade closed on the window's first bar) is a move
+                // away from it, not a new starting level. A record narrowing the window
+                // starts from the slot before it.
+                peak = begin == performanceCurve.getBeginIndex() ? performanceCurve.getBaselineValue()
+                        : curve.getValue(begin - 1);
+                peakIndex = begin - 1;
+            }
             for (long i = begin; i <= end; i++) {
                 int index = (int) i;
                 Num value = curve.getValue(index);
-                if (value.isGreaterThan(peak)) {
+                // A first slot level with the baseline is the peak itself: no move preceded it.
+                if (value.isGreaterThan(peak) || (index == begin && value.isEqual(peak))) {
                     peak = value;
                     peakIndex = index;
                 }

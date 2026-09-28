@@ -252,13 +252,10 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
                 continue;
             }
             List<Num> block = new ArrayList<>();
-            Num previousEquity = one;
-            if (blockStart == cashFlow.getBeginIndex() && blockStart > 0) {
-                // The captured baseline includes realized P&L carried from pruned positions.
-                previousEquity = cashFlow.getValue(blockStart);
-            } else if (blockStart > 0) {
-                previousEquity = cashFlow.getValue(blockStart - 1);
-            }
+            // The window's baseline includes P&L carried from pruned positions but not the
+            // first slot: a result realized there is a block return like any other.
+            Num previousEquity = blockStart == cashFlow.getBeginIndex() ? cashFlow.getBaselineValue()
+                    : cashFlow.getValue(blockStart - 1);
             for (long cursor = blockStart; cursor <= blockEnd; cursor++) {
                 int i = (int) cursor;
                 Num currentEquity = cashFlow.getValue(i);

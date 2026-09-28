@@ -136,6 +136,19 @@ public class MaximumDrawdownCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void lossRealizedAtTheConstrainedBeginIsADrawdownFromTheWindowStart() {
+        var series = ConstrainedSeriesSupport.offsetSeries("mdd-seeded-begin", numFactory, 1, 3, 0, 100d, 100d, 100d,
+                110d);
+        var record = new BaseTradingRecord();
+        record.enter(0, numFactory.hundred(), numFactory.one());
+        record.exit(1, numFactory.numOf(95), numFactory.one());
+
+        // The first slot already holds the 0.95 realized at the window start; the
+        // equity fell from the neutral 1 that entered the window.
+        assertNumEquals(0.05, getCriterion().calculate(series, record));
+    }
+
+    @Test
     public void betterThan() {
         var criterion = getCriterion();
         assertTrue(criterion.betterThan(numOf(0.9), numOf(1.5)));

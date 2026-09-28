@@ -58,6 +58,25 @@ public interface PerformanceIndicator extends Indicator<Num> {
     }
 
     /**
+     * Returns the curve's value entering its window, that is, just before the first
+     * slot at {@link #getBeginIndex()}. It is the curve's neutral value unless the
+     * window carries realized results of positions closed before it (history pruned
+     * from a rolling series), which it then includes. Slots at or after the begin
+     * index, including the first, hold results realized inside the window, so a
+     * window return or drawdown is measured from this value rather than from the
+     * first slot.
+     * <p>
+     * The default is zero, the neutral value of an additive curve; curves with
+     * another neutral value override it.
+     *
+     * @return the value entering the window
+     * @since 0.25.1
+     */
+    default Num getBaselineValue() {
+        return getBarSeries().numFactory().zero();
+    }
+
+    /**
      * Calculates indicator values for a single position.
      *
      * @param position   the position

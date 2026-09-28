@@ -68,6 +68,19 @@ public class MaximumDrawdownBarLengthCriterionTest extends AbstractCriterionTest
     }
 
     @Test
+    public void lossRealizedAtTheConstrainedBeginFallsOneBarFromTheWindowStart() {
+        var series = ConstrainedSeriesSupport.offsetSeries("mdd-length-seeded-begin", numFactory, 1, 3, 0, 100d, 100d,
+                100d, 110d);
+        var record = new BaseTradingRecord();
+        record.enter(0, numFactory.hundred(), numFactory.one());
+        record.exit(1, numFactory.numOf(95), numFactory.one());
+
+        // The equity entered the window at the neutral 1 and stood at 0.95 in the first
+        // slot.
+        assertNumEquals(1, getCriterion().calculate(series, record));
+    }
+
+    @Test
     public void calculateWithOpenPositionHandlingChangesDrawdownLength() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 80).build();
         var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),

@@ -195,7 +195,9 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
             return cashFlow.getBarSeries().numFactory().zero();
         }
         Num one = cashFlow.getBarSeries().numFactory().one();
-        Num startValue = cashFlow.getValue(beginIndex);
+        // Realized results in the first slot count; only carried pre-window equity is
+        // excluded.
+        Num startValue = cashFlow.getBaselineValue();
         Num terminalValue = cashFlow.getValue(terminalIndex);
         if (startValue.isNaN() || startValue.isZero() || terminalValue.isNaN()) {
             return NaN.NaN;

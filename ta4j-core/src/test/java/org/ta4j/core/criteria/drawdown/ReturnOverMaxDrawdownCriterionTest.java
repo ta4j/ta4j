@@ -25,6 +25,10 @@ import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
+
 public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
     private AnalysisCriterion returnOverMaxDrawDown;
@@ -440,6 +444,31 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
         assertNumEquals(returnOverMaxDrawDown.calculate(fresh, freshRecord),
                 returnOverMaxDrawDown.calculate(pruned, prunedRecord));
+    }
+
+    @Test
+    public void sameBarRoundTripInASingleBarWindowKeepsItsRealizedReturn() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d).build();
+        BaseTradingRecord gain = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel());
+        gain.enter(0, numFactory.hundred(), numFactory.one());
+        gain.exit(0, numFactory.numOf(110), numFactory.one());
+
+        // The realized ratio fills the only slot; there is no earlier slot to rebase
+        // on.
+        assertNumEquals(0.1, returnOverMaxDrawDown.calculate(series, gain));
+    }
+
+    @Test
+    public void exitSeededAtTheConstrainedBeginCountsAsWindowReturn() {
+        BarSeries series = ConstrainedSeriesSupport.offsetSeries("romad-seeded-begin", numFactory, 1, 3, 0, 100d, 100d,
+                100d, 110d);
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel());
+        record.enter(0, numFactory.hundred(), numFactory.one());
+        record.exit(1, numFactory.numOf(105), numFactory.one());
+
+        // Exiting at 105 on the first retained bar (close 100) realizes +5% inside the
+        // window; nothing was pruned, so that is not carried pre-window equity.
+        assertNumEquals(0.05, returnOverMaxDrawDown.calculate(series, record));
     }
 
     @Test

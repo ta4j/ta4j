@@ -243,6 +243,7 @@ public class CashFlow implements PerformanceIndicator {
             Num netExitPrice = addCost(exit.getNetPrice(), holdingCost, isLongTrade);
             Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
             buffer.multiplyRange(windowStartIndex, windowEndIndex, ratio);
+            buffer.multiplyBaseline(ratio);
             return;
         }
 
@@ -334,6 +335,16 @@ public class CashFlow implements PerformanceIndicator {
     @Override
     public int getEndIndex() {
         return window.endIndex();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.25.1
+     */
+    @Override
+    public Num getBaselineValue() {
+        return values.baseline();
     }
 
     /**

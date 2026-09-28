@@ -401,6 +401,42 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
     }
 
     @Test
+    public void lossRealizedAtConstrainedBeginIsTheFirstBlockReturn() {
+        var series = ConstrainedSeriesSupport.offsetSeries("mc-seeded-begin", numFactory, 1, 7, 0, 100d, 100d, 100d,
+                110d, 120d, 130d, 140d, 150d);
+        var record = new BaseTradingRecord();
+        record.enter(0, numFactory.hundred(), numFactory.one());
+        record.exit(1, numFactory.numOf(95), numFactory.one());
+        record.enter(2, numFactory.hundred(), numFactory.one());
+        record.exit(3, numFactory.numOf(110), numFactory.one());
+        record.enter(4, numFactory.numOf(120), numFactory.one());
+        record.exit(5, numFactory.numOf(130), numFactory.one());
+        class FirstBlockRandom implements RandomGenerator {
+            @Override
+            public int nextInt() {
+                return 0;
+            }
+
+            @Override
+            public int nextInt(int bound) {
+                return 0;
+            }
+
+            @Override
+            public long nextLong() {
+                return 0L;
+            }
+        }
+        var criterion = new MonteCarloMaximumDrawdownCriterion(1, 1, FirstBlockRandom::new, Statistics.MAX,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        // The first block's return is the 0.95 realized in the first slot, measured
+        // from the
+        // neutral 1 entering the window; nothing was pruned, so nothing is carried.
+        assertNumEquals(0.05, criterion.calculate(series, record));
+    }
+
+    @Test
     public void matchesFreshSeriesAcrossWindowShapesAndEquitySettings() {
         for (ConstrainedSeriesSupport.CriterionWindowFixture fixture : ConstrainedSeriesSupport
                 .criterionWindowFixtures(numFactory)) {

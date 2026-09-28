@@ -756,6 +756,27 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
+    public void baselineValueIsTheCarriedRatioOfPositionsClosedBeforeTheWindow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 110d, 121d, 133.1d)
+                .build();
+        TradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(3, series));
+        CashFlow fullHistory = new CashFlow(series, record);
+        series.setMaximumBarCount(2);
+
+        CashFlow retained = new CashFlow(series, record);
+
+        assertEquals(2, retained.getBeginIndex());
+        // The first trade closed before the window: its 1.1 enters the window.
+        assertNumEquals(numFactory.numOf(1.1d), retained.getBaselineValue());
+        assertNumEquals(numFactory.numOf(1.1d), retained.getValue(2));
+        assertNumEquals(fullHistory.getValue(3), retained.getValue(3));
+        // Without pruned history nothing enters the window.
+        assertNumEquals(1, fullHistory.getBaselineValue());
+    }
+
+    @Test
     public void markToMarketPreWindowEntryMatchesEntryAtTheRetainedWindowStart() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100d, 110d, 99d, 121d, 110d, 132d)

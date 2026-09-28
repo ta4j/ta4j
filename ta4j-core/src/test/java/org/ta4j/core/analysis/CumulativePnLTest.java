@@ -118,6 +118,26 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
     }
 
     @Test
+    public void baselineValueIsTheCarriedPnLOfPositionsClosedBeforeTheWindow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 110d, 121d, 131d)
+                .build();
+        var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series), Trade.buyAt(2, series),
+                Trade.sellAt(3, series));
+        CumulativePnL fullHistory = new CumulativePnL(series, record);
+        series.setMaximumBarCount(2);
+
+        CumulativePnL retained = new CumulativePnL(series, record);
+
+        assertEquals(2, retained.getBeginIndex());
+        // The first trade closed before the window: its 10 enters the window.
+        assertNumEquals(10, retained.getBaselineValue());
+        assertNumEquals(10, retained.getValue(2));
+        assertNumEquals(fullHistory.getValue(3), retained.getValue(3));
+        assertNumEquals(0, fullHistory.getBaselineValue());
+    }
+
+    @Test
     public void retainedHeadNetsPreWindowHoldingPeriodsOutOfTheValuationBasis() {
         BarSeries rolling = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         rolling.setMaximumBarCount(2);

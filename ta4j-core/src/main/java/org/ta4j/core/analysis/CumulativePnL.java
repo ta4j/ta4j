@@ -209,6 +209,7 @@ public final class CumulativePnL implements PerformanceIndicator {
             Num netExit = addCost(exit.getNetPrice(), holdingCost, isLong);
             Num deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
             buffer.addRange(seriesBegin, lastCapturedIndex, deltaExit);
+            buffer.addBaseline(deltaExit);
             return;
         }
 
@@ -295,6 +296,16 @@ public final class CumulativePnL implements PerformanceIndicator {
     @Override
     public int getEndIndex() {
         return window.endIndex();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.25.1
+     */
+    @Override
+    public Num getBaselineValue() {
+        return values.baseline();
     }
 
     /**

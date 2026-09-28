@@ -39,6 +39,7 @@ final class OffsetNumBuffer {
     private final int endIndex;
     private final List<Num> values;
     private final Num neutral;
+    private Num baseline;
 
     /**
      * Constructor.
@@ -53,6 +54,7 @@ final class OffsetNumBuffer {
         this.endIndex = endIndex;
         this.neutral = Objects.requireNonNull(neutral);
         this.values = new ArrayList<>(Collections.nCopies(sizeOf(startIndex, endIndex), initialValue));
+        this.baseline = initialValue;
     }
 
     private OffsetNumBuffer(OffsetNumBuffer source) {
@@ -60,6 +62,7 @@ final class OffsetNumBuffer {
         this.endIndex = source.endIndex;
         this.neutral = source.neutral;
         this.values = new ArrayList<>(source.values);
+        this.baseline = source.baseline;
     }
 
     /**
@@ -81,6 +84,35 @@ final class OffsetNumBuffer {
         for (int position = 0; position < values.size(); position++) {
             values.set(position, source.values.get(position));
         }
+        this.baseline = source.baseline;
+    }
+
+    /**
+     * Returns the value entering the window: the initial value, adjusted by any
+     * result carried in from before the window's first slot.
+     *
+     * @return the baseline
+     */
+    Num baseline() {
+        return baseline;
+    }
+
+    /**
+     * Multiplies the baseline, carrying a realized ratio in from before the window.
+     *
+     * @param factor the carried ratio
+     */
+    void multiplyBaseline(Num factor) {
+        baseline = baseline.multipliedBy(factor);
+    }
+
+    /**
+     * Adds to the baseline, carrying a realized delta in from before the window.
+     *
+     * @param delta the carried delta
+     */
+    void addBaseline(Num delta) {
+        baseline = baseline.plus(delta);
     }
 
     /**
