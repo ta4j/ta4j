@@ -3,7 +3,6 @@
  */
 package org.ta4j.core.analysis;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -64,11 +63,15 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
         Objects.requireNonNull(series, "series cannot be null");
         Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
-        // Only the bounds come from the series, read together in one short scope;
-        // the record is traversed afterwards without holding the series lock.
-        int[] bounds = series.withReadLock(() -> new int[] { series.getBeginIndex(), series.getEndIndex() });
-        materializedBeginIndex = bounds[0];
-        investedIntervals = buildInvestedIntervals(tradingRecord, openPositionHandling, bounds[0], bounds[1]);
+        // The record's bounds are read before the series lock, and only the bounds
+        // come from the series inside it; the record is traversed afterwards without
+        // holding the series lock.
+        Integer recordStartIndex = tradingRecord.getStartIndex();
+        Integer recordEndIndex = tradingRecord.getEndIndex();
+        AnalysisPositionSupport.Window window = series.withReadLock(() -> AnalysisPositionSupport.captureWindow(series,
+                recordStartIndex, recordEndIndex, 0, 0, true, false, true));
+        materializedBeginIndex = window.beginIndex();
+        investedIntervals = buildInvestedIntervals(tradingRecord, openPositionHandling, window);
     }
 
     /**
@@ -102,40 +105,30 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
     }
 
     private boolean[] buildInvestedIntervals(TradingRecord tradingRecord, OpenPositionHandling openPositionHandling,
-            int beginIndex, int analysisEndIndex) {
-        if (beginIndex < 0) {
+            AnalysisPositionSupport.Window window) {
+        int beginIndex = window.beginIndex();
+        if (beginIndex < 0 || window.isEmpty()) {
             return new boolean[0];
         }
-        long span = (long) analysisEndIndex - beginIndex + 1L;
-        if (span <= 0L) {
-            return new boolean[0];
-        }
+        long span = (long) window.bufferEndIndex() - beginIndex + 1L;
         if (span >= Integer.MAX_VALUE) {
             throw new IllegalArgumentException("Invested interval range is too large to materialize: [" + beginIndex
-                    + ", " + analysisEndIndex + "]");
+                    + ", " + window.bufferEndIndex() + "]");
         }
-        int size = (int) span;
-        boolean[] invested = new boolean[size];
-        tradingRecord.getPositions().forEach(position -> markInvestedIntervals(position, invested, beginIndex));
-        if (openPositionHandling == OpenPositionHandling.MARK_TO_MARKET) {
-            List<Position> openPositions = AnalysisPositionSupport.openPositions(tradingRecord, analysisEndIndex);
-            openPositions.forEach(position -> markInvestedIntervals(position, invested, beginIndex));
+        boolean[] invested = new boolean[(int) span];
+        // Same position selection as the curves: bound to the logical end, treat exits
+        // after it as open there, and drop those under IGNORE.
+        for (Position position : AnalysisPositionSupport.positionsForAnalysis(tradingRecord, window.finalIndex(),
+                openPositionHandling, EquityCurveMode.MARK_TO_MARKET)) {
+            markInvestedIntervals(position, invested, beginIndex, window.endIndex());
         }
         return invested;
     }
 
-    private void markInvestedIntervals(Position position, boolean[] invested, int beginIndex) {
-        if (position == null || position.getEntry() == null) {
-            return;
-        }
-        long investedEndIndex = (long) beginIndex + invested.length - 1L;
-        long startLong = Math.max((long) position.getEntry().getIndex() + 1, (long) beginIndex + 1);
-        if (startLong > investedEndIndex) {
-            return;
-        }
-        long exitIndex = position.isClosed() ? position.getExit().getIndex() : investedEndIndex;
-        long endIndex = Math.min(exitIndex, investedEndIndex);
-        for (long i = startLong; i <= endIndex; i++) {
+    private void markInvestedIntervals(Position position, boolean[] invested, int beginIndex, int endIndex) {
+        long startIndex = Math.max((long) position.getEntry().getIndex() + 1, (long) beginIndex + 1);
+        long lastIndex = position.isClosed() ? Math.min(position.getExit().getIndex(), endIndex) : endIndex;
+        for (long i = startIndex; i <= lastIndex; i++) {
             invested[(int) (i - beginIndex)] = true;
         }
     }

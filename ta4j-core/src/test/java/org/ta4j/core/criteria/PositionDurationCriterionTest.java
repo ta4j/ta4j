@@ -7,6 +7,7 @@ import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.Trade;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
@@ -37,6 +38,23 @@ public class PositionDurationCriterionTest extends AbstractCriterionTest {
 
         var criterion = getCriterion();
         assertNumEquals(0, criterion.calculate(series, new BaseTradingRecord()));
+    }
+
+    @Test
+    public void calculateIgnoresPositionsExitingAfterTheRecordEnd() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 100, 95, 105)
+                .build();
+        var tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, 0, 3, new ZeroCostModel(), new ZeroCostModel());
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), series.numFactory().one());
+        tradingRecord.exit(1, series.getBar(1).getClosePrice(), series.numFactory().one());
+        tradingRecord.enter(2, series.getBar(2).getClosePrice(), series.numFactory().one());
+        tradingRecord.exit(5, series.getBar(5).getClosePrice(), series.numFactory().one());
+        var secondsPerBar = series.getBar(series.getBeginIndex()).getTimePeriod().toSeconds();
+
+        // The second position is still open at the record end, so only the first one
+        // counts
+        assertNumEquals(secondsPerBar * 1d, getCriterion().calculate(series, tradingRecord));
     }
 
     @Test

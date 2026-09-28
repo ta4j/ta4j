@@ -17,6 +17,8 @@ import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.BarSeries;
@@ -258,5 +260,77 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
         assertThat(indicator.getValue(1)).as("anchored invested interval").isTrue();
         assertThat(indicator.getValue(2)).as("never-calculated bar stays uninvested").isFalse();
         assertThat(indicator.stream().toList()).containsExactly(false, true);
+    }
+
+    private BaseTradingRecord boundedRecord(BarSeries series, Integer startIndex, Integer endIndex, int[][] positions) {
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, startIndex, endIndex, new ZeroCostModel(),
+                new ZeroCostModel());
+        Num price = series.numFactory().one();
+        for (int[] position : positions) {
+            record.enter(position[0], price, price);
+            if (position[1] >= 0) {
+                record.exit(position[1], price, price);
+            }
+        }
+        return record;
+    }
+
+    @Test
+    public void dropsPositionsExitingAfterTheRecordEndWhenIgnoringOpenPositions() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1, 1, 1, 1, 1).build();
+        BaseTradingRecord record = boundedRecord(series, 0, 3, new int[][] { { 0, 1 }, { 2, 5 } });
+
+        InvestedInterval ignored = new InvestedInterval(series, record, OpenPositionHandling.IGNORE);
+
+        assertThat(ignored.stream().toList()).containsExactly(false, true, false, false, false, false, false);
+    }
+
+    @Test
+    public void marksPositionsExitingAfterTheRecordEndOnlyThroughTheRecordEnd() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1, 1, 1, 1, 1).build();
+        BaseTradingRecord record = boundedRecord(series, 0, 3, new int[][] { { 0, 1 }, { 2, 5 } });
+
+        InvestedInterval marked = new InvestedInterval(series, record, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertThat(marked.stream().toList()).containsExactly(false, true, false, true, false, false, false);
+    }
+
+    @Test
+    public void boundsOpenPositionsToTheRecordEnd() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1, 1, 1, 1, 1).build();
+        BaseTradingRecord record = boundedRecord(series, 0, 3, new int[][] { { 1, -1 } });
+
+        InvestedInterval marked = new InvestedInterval(series, record, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertThat(marked.stream().toList()).containsExactly(false, false, true, true, false, false, false);
+    }
+
+    @Test
+    public void doesNotMarkBarsBeforeTheRecordStart() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1, 1, 1, 1, 1).build();
+        BaseTradingRecord record = boundedRecord(series, 2, null, new int[][] { { 0, 4 } });
+
+        InvestedInterval marked = new InvestedInterval(series, record, OpenPositionHandling.MARK_TO_MARKET);
+
+        boolean[] expected = { false, false, false, true, true, false, false };
+        for (int index = 0; index < expected.length; index++) {
+            assertThat(marked.getValue(index)).as("interval %d", index).isEqualTo(expected[index]);
+        }
+    }
+
+    @Test
+    public void doesNotMarkRetainedBarsForPositionsClosedBeforeThePrunedBegin() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1, 1, 1, 1).build();
+        BaseTradingRecord record = boundedRecord(series, null, null, new int[][] { { 0, 2 }, { 1, 4 } });
+        series.setMaximumBarCount(3);
+
+        InvestedInterval marked = new InvestedInterval(series, record, OpenPositionHandling.MARK_TO_MARKET);
+
+        // Retained window [3, 5]: the first position closed before it, the second spans
+        // it
+        boolean[] expected = { false, true, false };
+        for (int index = 0; index < expected.length; index++) {
+            assertThat(marked.getValue(3 + index)).as("interval %d", 3 + index).isEqualTo(expected[index]);
+        }
     }
 }
