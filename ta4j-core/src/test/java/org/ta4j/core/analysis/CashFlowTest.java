@@ -1511,6 +1511,32 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         }
     }
 
+    @Test
+    public void recapturesWhenABarBeforeTheWindowChangesDuringHoldingCostEvaluation() {
+        PreWindowCostRace race = new PreWindowCostRace(numFactory);
+
+        CashFlow raced = new CashFlow(race.series(), race.recordWithPosition(), PreWindowCostRace.WINDOW_BEGIN,
+                PreWindowCostRace.WINDOW_END, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        CashFlow settled = new CashFlow(race.series(), race.recordWithPosition(), PreWindowCostRace.WINDOW_BEGIN,
+                PreWindowCostRace.WINDOW_END, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertNumEquals(150d, race.entryClose());
+        assertEquals(settled.stream().toList(), raced.stream().toList());
+    }
+
+    @Test
+    public void rejectsAnIncrementalPositionWhoseHoldingCostReadsABarThatChangedBeforeTheWindow() {
+        PreWindowCostRace race = new PreWindowCostRace(numFactory);
+        CashFlow curve = new CashFlow(race.series(), race.emptyRecord(), PreWindowCostRace.WINDOW_BEGIN,
+                PreWindowCostRace.WINDOW_END, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        List<Num> before = curve.stream().toList();
+
+        assertThrows(IllegalStateException.class,
+                () -> curve.calculatePosition(race.position(), PreWindowCostRace.WINDOW_END));
+
+        assertEquals(before, curve.stream().toList());
+    }
+
     private BaseTradingRecord boundedRecord(int startIndex, int endIndex) {
         return new BaseTradingRecord(TradeType.BUY, startIndex, endIndex, new ZeroCostModel(), new ZeroCostModel());
     }

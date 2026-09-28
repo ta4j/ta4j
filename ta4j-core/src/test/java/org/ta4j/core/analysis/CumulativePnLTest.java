@@ -866,4 +866,27 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
     private BaseTradingRecord boundedRecord(int startIndex, int endIndex) {
         return new BaseTradingRecord(TradeType.BUY, startIndex, endIndex, new ZeroCostModel(), new ZeroCostModel());
     }
+
+    @Test
+    public void recapturesWhenABarBeforeTheWindowChangesDuringHoldingCostEvaluation() {
+        PreWindowCostRace race = new PreWindowCostRace(numFactory);
+
+        CumulativePnL raced = new CumulativePnL(race.series(), race.recordWithPosition());
+        CumulativePnL settled = new CumulativePnL(race.series(), race.recordWithPosition());
+
+        assertNumEquals(150d, race.entryClose());
+        assertEquals(settled.stream().toList(), raced.stream().toList());
+    }
+
+    @Test
+    public void rejectsAnIncrementalPositionWhoseHoldingCostReadsABarThatChangedBeforeTheWindow() {
+        PreWindowCostRace race = new PreWindowCostRace(numFactory);
+        CumulativePnL curve = new CumulativePnL(race.series(), race.emptyRecord());
+        List<Num> before = curve.stream().toList();
+
+        assertThrows(IllegalStateException.class,
+                () -> curve.calculatePosition(race.position(), PreWindowCostRace.WINDOW_END));
+
+        assertEquals(before, curve.stream().toList());
+    }
 }

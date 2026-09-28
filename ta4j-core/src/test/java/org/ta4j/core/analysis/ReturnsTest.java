@@ -736,4 +736,27 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertTrue(returns.getValue(2).isNaN());
         assertNumEquals(numFactory.zero(), returns.getValue(3));
     }
+
+    @Test
+    public void recapturesWhenABarBeforeTheWindowChangesDuringHoldingCostEvaluation() {
+        PreWindowCostRace race = new PreWindowCostRace(numFactory);
+
+        Returns raced = new Returns(race.series(), race.recordWithPosition(), ReturnRepresentation.DECIMAL);
+        Returns settled = new Returns(race.series(), race.recordWithPosition(), ReturnRepresentation.DECIMAL);
+
+        assertNumEquals(150d, race.entryClose());
+        assertEquals(settled.getValues(), raced.getValues());
+    }
+
+    @Test
+    public void rejectsAnIncrementalPositionWhoseHoldingCostReadsABarThatChangedBeforeTheWindow() {
+        PreWindowCostRace race = new PreWindowCostRace(numFactory);
+        Returns curve = new Returns(race.series(), race.emptyRecord(), ReturnRepresentation.DECIMAL);
+        List<Num> before = curve.getValues();
+
+        assertThrows(IllegalStateException.class,
+                () -> curve.calculatePosition(race.position(), PreWindowCostRace.WINDOW_END));
+
+        assertEquals(before, curve.getValues());
+    }
 }

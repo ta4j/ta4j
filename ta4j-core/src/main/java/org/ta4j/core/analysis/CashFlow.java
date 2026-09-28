@@ -205,10 +205,11 @@ public class CashFlow implements PerformanceIndicator {
      */
     @Override
     public void calculatePosition(Position position, int finalIndex) {
-        Num holdingCost = AnalysisPositionSupport.holdingCostInWindow(this, position, finalIndex, window, true);
-        if (holdingCost != null) {
-            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, values,
-                    staged -> calculatePosition(position, finalIndex, window, staged, holdingCost));
+        AnalysisPositionSupport.PricedPosition priced = AnalysisPositionSupport.pricePosition(this, barSeries, position,
+                finalIndex, window, true);
+        if (priced != null) {
+            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values,
+                    staged -> calculatePosition(position, finalIndex, window, staged, priced.holdingCost()));
         }
     }
 

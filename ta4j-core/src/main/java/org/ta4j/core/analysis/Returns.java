@@ -368,13 +368,14 @@ public class Returns implements PerformanceIndicator {
      */
     @Override
     public void calculatePosition(Position position, int finalIndex) {
-        Num holdingCost = AnalysisPositionSupport.holdingCostInWindow(this, position, finalIndex, window, false);
-        if (holdingCost == null) {
+        AnalysisPositionSupport.PricedPosition priced = AnalysisPositionSupport.pricePosition(this, barSeries, position,
+                finalIndex, window, false);
+        if (priced == null) {
             return;
         }
         boolean[] seeded = new boolean[1];
-        AnalysisPositionSupport.updateCapturedCurve(barSeries, window, returnFactors,
-                staged -> seeded[0] = calculatePosition(position, finalIndex, window, staged, holdingCost));
+        AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, returnFactors,
+                staged -> seeded[0] = calculatePosition(position, finalIndex, window, staged, priced.holdingCost()));
         // Reached only once the staged factors were verified and published.
         firstRetainedSlotSeeded |= seeded[0];
         rawValues.clear();
