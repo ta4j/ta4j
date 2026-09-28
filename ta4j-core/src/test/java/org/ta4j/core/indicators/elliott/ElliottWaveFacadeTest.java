@@ -10,6 +10,7 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -40,6 +41,29 @@ class ElliottWaveFacadeTest {
 
         assertThat(suite.confluence()).isNotNull();
         assertThat(suite.invalidation()).isNotNull();
+    }
+
+    @Test
+    void constrainedFacadeMatchesFreshLogicalSeriesWithOriginalIndices() {
+        double[] logicalCloses = { 10, 50, 5, 40 };
+        BarSeries logicalOnly = new MockBarSeriesBuilder().withData(logicalCloses).build();
+        int beginIndex = 3;
+        BarSeries window = ConstrainedSeriesSupport.offsetSeries("facade-window", logicalOnly.numFactory(), beginIndex,
+                beginIndex + logicalCloses.length - 1, 2, 999, 10, 50, 5, 40, 777);
+        ElliottWaveFacade facade = ElliottWaveFacade.fractal(window, 1, ElliottDegree.MINOR);
+        ElliottWaveFacade equivalentFacade = ElliottWaveFacade.fractal(logicalOnly, 1, ElliottDegree.MINOR);
+        List<ElliottSwing> expectedSwings = equivalentFacade.swing()
+                .getValue(logicalOnly.getEndIndex())
+                .stream()
+                .map(swing -> new ElliottSwing(swing.fromIndex() + beginIndex, swing.toIndex() + beginIndex,
+                        swing.fromPrice(), swing.toPrice(), swing.degree()))
+                .toList();
+
+        assertThat(facade.series()).isSameAs(window);
+        assertThat(facade.series().getBeginIndex()).isEqualTo(beginIndex);
+        assertThat(facade.swing().getBarSeries().getBeginIndex()).isEqualTo(beginIndex);
+        assertThat(facade.phase().getBarSeries().getEndIndex()).isEqualTo(window.getEndIndex());
+        assertThat(facade.swing().getValue(window.getEndIndex())).isEqualTo(expectedSwings);
     }
 
     @Test

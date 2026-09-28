@@ -56,6 +56,7 @@ import org.ta4j.core.bars.TimeBarBuilderFactory;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.mocks.MockBarBuilderFactory;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
@@ -1364,6 +1365,46 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                 .withReadLock(() -> series.getBarSeriesChangeSnapshot(initialRevision));
         assertEquals(initialRevision + 1, snapshot.revision());
         assertEquals(0, snapshot.earliestChangedIndex());
+    }
+
+    @Test
+    public void readScopeKeepsWindowAndSnapshotStableAgainstWaitingWriter() throws Exception {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100).build();
+        ReentrantReadWriteLock seriesLock = new ReentrantReadWriteLock();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source, seriesLock);
+        BarSeriesChangeSnapshot before = series.getBarSeriesChangeSnapshot(-1L);
+        CountDownLatch writerStarted = new CountDownLatch(1);
+        Future<?>[] writer = new Future<?>[1];
+        Bar appended = streamingBar(Duration.ofMinutes(1), Instant.parse("2024-01-01T00:01:00Z"), 101, 101, 101, 101,
+                1);
+
+        series.withReadLock(() -> {
+            boolean writeLockAcquired = seriesLock.writeLock().tryLock();
+            if (writeLockAcquired) {
+                seriesLock.writeLock().unlock();
+            }
+            assertFalse("read scope must hold the series read lock", writeLockAcquired);
+            assertEquals(0, series.getBeginIndex());
+            assertEquals(0, series.getEndIndex());
+            assertEquals(1, series.getBarCount());
+            assertEquals(before, series.getBarSeriesChangeSnapshot(-1L));
+
+            writer[0] = executorService.submit(() -> {
+                writerStarted.countDown();
+                series.addBar(appended);
+            });
+            try {
+                assertTrue("writer did not start", writerStarted.await(2, TimeUnit.SECONDS));
+            } catch (InterruptedException interruption) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError("writer did not start", interruption);
+            }
+            assertEquals(before, series.getBarSeriesChangeSnapshot(-1L));
+        });
+
+        writer[0].get(2, TimeUnit.SECONDS);
+        assertEquals(1, series.getEndIndex());
+        assertEquals(1, series.getBarCount());
     }
 
     @Test

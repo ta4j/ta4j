@@ -54,6 +54,52 @@ class FractalSwingDetectorTest {
     }
 
     @Test
+    void logicalWindowsMatchFreshSeriesAtAndOutsideBounds() {
+        final double[] logicalCloses = { 10, 50, 5, 40 };
+        final BarSeries logicalOnly = new MockBarSeriesBuilder().withData(logicalCloses).build();
+        final NumFactory numFactory = logicalOnly.numFactory();
+        final List<BarSeries> windows = List.of(
+                ConstrainedSeriesSupport.offsetSeries("constrained", numFactory, 2, 5, 0, 999, 888, 10, 50, 5, 40, 777),
+                ConstrainedSeriesSupport.offsetSeries("pruned", numFactory, 2, 5, 2, 10, 50, 5, 40, 777),
+                ConstrainedSeriesSupport.offsetSeries("constrained-pruned", numFactory, 3, 6, 2, 999, 10, 50, 5, 40,
+                        777),
+                ConstrainedSeriesSupport.emptyLogicalSeries("empty", numFactory),
+                ConstrainedSeriesSupport.offsetSeries("single", numFactory, 5, 5, 4, 999, 7, 888, 777, 666));
+
+        for (BarSeries window : windows) {
+            FractalSwingDetector incremental = new FractalSwingDetector(1);
+            int beginIndex = window.getBeginIndex();
+            int endIndex = window.getEndIndex();
+            if (window.isEmpty()) {
+                assertThat(incremental.detectPivots(window, endIndex)).as(window.getName()).isEmpty();
+                continue;
+            }
+            for (int index = beginIndex; index <= endIndex; index++) {
+                List<SwingPivot> expected = new FractalSwingDetector(1).detectPivots(logicalOnly, index - beginIndex)
+                        .stream()
+                        .map(pivot -> new SwingPivot(pivot.index() + beginIndex, pivot.price(), pivot.type()))
+                        .toList();
+                assertThat(incremental.detectPivots(window, index)).as(window.getName() + " at " + index)
+                        .isEqualTo(expected);
+                assertThat(new FractalSwingDetector(1).detectPivots(window, index))
+                        .as(window.getName() + " fresh replay at " + index)
+                        .isEqualTo(expected);
+            }
+            for (int requestedIndex : new int[] { beginIndex - 1, endIndex + 1 }) {
+                int clampedIndex = Math.max(beginIndex, Math.min(requestedIndex, endIndex));
+                List<SwingPivot> expected = new FractalSwingDetector(1)
+                        .detectPivots(logicalOnly, clampedIndex - beginIndex)
+                        .stream()
+                        .map(pivot -> new SwingPivot(pivot.index() + beginIndex, pivot.price(), pivot.type()))
+                        .toList();
+                assertThat(incremental.detectPivots(window, requestedIndex))
+                        .as(window.getName() + " outside logical bounds at " + requestedIndex)
+                        .isEqualTo(expected);
+            }
+        }
+    }
+
+    @Test
     void repeatedPivotQueriesReuseIncrementalPivotView() {
         final BarSeries series = noisySeries(200, 43L);
         final FractalSwingDetector detector = new FractalSwingDetector(2);

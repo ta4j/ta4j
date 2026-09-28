@@ -1000,4 +1000,18 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         }
     }
 
+    @Test
+    public void defaultReadScopesExecuteCallbacksAndPropagateResultsAndFailures() {
+        int[] calls = { 0 };
+        seriesWithBars.withReadLock((Runnable) () -> calls[0]++);
+
+        assertEquals(1, calls[0]);
+        assertEquals(17, (int) seriesWithBars.withReadLock(() -> 17));
+
+        IllegalStateException failure = new IllegalStateException("callback failure");
+        assertSame(failure,
+                assertThrows(IllegalStateException.class, () -> seriesWithBars.withReadLock((Runnable) () -> {
+                    throw failure;
+                })));
+    }
 }

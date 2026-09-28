@@ -72,6 +72,9 @@ public interface Indicator<T> {
     default Stream<T> stream() {
         int beginIndex = getBarSeries().getBeginIndex();
         int endIndex = getBarSeries().getEndIndex();
+        if (beginIndex < 0 || endIndex < beginIndex) {
+            return Stream.empty();
+        }
         return LongStream.range((long) beginIndex, (long) endIndex + 1L).mapToObj(index -> getValue((int) index));
     }
 

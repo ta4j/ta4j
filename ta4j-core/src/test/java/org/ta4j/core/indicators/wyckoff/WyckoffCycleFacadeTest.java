@@ -9,6 +9,7 @@ import static org.junit.Assert.assertThrows;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -69,8 +70,48 @@ public class WyckoffCycleFacadeTest extends AbstractIndicatorTest<BarSeries, Num
     }
 
     /**
-     * Verifies that the facade exposes the borrowed live series and that fresh
-     * phase indicator instances stay bound to it across revisions.
+     * Compares a constrained and pruned facade with a fresh series of its logical
+     * bars.
+     */
+    @Test
+    public void constrainedAndPrunedFacadeMatchesFreshLogicalSeries() {
+        double[] logicalCloses = { 10, 50, 5, 40 };
+        BarSeries logicalOnly = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(logicalCloses).build();
+        int beginIndex = 3;
+        BarSeries window = ConstrainedSeriesSupport.offsetSeries("wyckoff-window", numFactory, beginIndex,
+                beginIndex + logicalCloses.length - 1, 2, 999, 10, 50, 5, 40, 777);
+        WyckoffCycleFacade windowFacade = WyckoffCycleFacade.builder(window)
+                .withSwingConfiguration(1, 1, 0)
+                .withVolumeWindows(1, 4)
+                .build();
+        WyckoffCycleFacade equivalentFacade = WyckoffCycleFacade.builder(logicalOnly)
+                .withSwingConfiguration(1, 1, 0)
+                .withVolumeWindows(1, 4)
+                .build();
+
+        assertThat(windowFacade.series()).isSameAs(window);
+        assertThat(windowFacade.phase().getBarSeries().getBeginIndex()).isEqualTo(beginIndex);
+        assertThat(windowFacade.phase().getBarSeries().getEndIndex()).isEqualTo(window.getEndIndex());
+        for (int index = beginIndex; index <= window.getEndIndex(); index++) {
+            int logicalIndex = index - beginIndex;
+            assertThat(windowFacade.phase().getValue(index)).as("phase at logical index " + logicalIndex)
+                    .isEqualTo(equivalentFacade.phase().getValue(logicalIndex));
+            assertThat(windowFacade.tradingRangeLow(index)).as("range low at logical index " + logicalIndex)
+                    .isEqualTo(equivalentFacade.tradingRangeLow(logicalIndex));
+            assertThat(windowFacade.tradingRangeHigh(index)).as("range high at logical index " + logicalIndex)
+                    .isEqualTo(equivalentFacade.tradingRangeHigh(logicalIndex));
+            int equivalentTransition = equivalentFacade.lastPhaseTransitionIndex(logicalIndex);
+            int expectedTransition = equivalentTransition < 0 ? equivalentTransition
+                    : equivalentTransition + beginIndex;
+            assertThat(windowFacade.lastPhaseTransitionIndex(index))
+                    .as("transition index at logical index " + logicalIndex)
+                    .isEqualTo(expectedTransition);
+        }
+    }
+
+    /**
+     * Verifies that the facade exposes the borrowed live series and fresh phase
+     * indicators stay bound to it.
      */
     @Test
     public void returnsLiveSeriesAndPhaseIndicatorsBoundToIt() {
