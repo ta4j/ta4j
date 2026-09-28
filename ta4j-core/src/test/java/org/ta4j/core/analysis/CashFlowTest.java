@@ -42,6 +42,7 @@ import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -1362,5 +1363,77 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                 }
             };
         }
+    }
+    @Test
+    public void carriesRealizedPositionAcrossPrunedBeginButNotAnExplicitLaterStart() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 110d, 120d, 130d).build();
+        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series));
+        series.setMaximumBarCount(2);
+
+        CashFlow retainedHistory = new CashFlow(series, record);
+        CashFlow laterWindow = new CashFlow(series, record, 2, 3, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        assertEquals(2, retainedHistory.getBeginIndex());
+        assertNumEquals(1.1d, retainedHistory.getValue(2));
+        assertNumEquals(1.1d, retainedHistory.getValue(3));
+        assertNumEquals(1d, laterWindow.getValue(2));
+        assertNumEquals(1d, laterWindow.getValue(3));
+    }
+
+    @Test
+    public void recapturesWhenAHighPriceChangesDuringHoldingCostEvaluation() {
+        List<Bar> bars = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 110d, 120d).build().getBarData();
+        Bar last = bars.get(2);
+        Num[] lastHigh = { numFactory.numOf(125d) };
+        Bar mutableLast = new BaseBar(last.getTimePeriod(), last.getBeginTime(), last.getEndTime(), last.getOpenPrice(),
+                lastHigh[0], last.getLowPrice(), last.getClosePrice(), last.getVolume(), last.getAmount(),
+                last.getTrades()) {
+            @Override
+            public Num getHighPrice() {
+                return lastHigh[0];
+            }
+        };
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(List.of(bars.get(0), bars.get(1), mutableLast)).build();
+        long revision = series.getBarHistoryRevision();
+        AtomicBoolean updateOnNextCost = new AtomicBoolean(true);
+        CostModel highBackedCost = new CostModel() {
+            @Override
+            public Num calculate(Position position, int finalIndex) {
+                Num high = new HighPriceIndicator(series).getValue(finalIndex);
+                Num cost = high.multipliedBy(numFactory.numOf(0.1d));
+                if (updateOnNextCost.compareAndSet(true, false)) {
+                    lastHigh[0] = numFactory.numOf(150d);
+                }
+                return cost;
+            }
+
+            @Override
+            public Num calculate(Position position) {
+                return calculate(position, position.getExit().getIndex());
+            }
+
+            @Override
+            public Num calculate(Num price, Num amount) {
+                return numFactory.zero();
+            }
+
+            @Override
+            public boolean equals(CostModel otherModel) {
+                return otherModel == this;
+            }
+        };
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), highBackedCost);
+        record.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
+
+        CashFlow raced = new CashFlow(series, record);
+        CashFlow settled = new CashFlow(series, record);
+
+        assertNumEquals(150d, series.getBar(2).getHighPrice());
+        assertEquals(revision, series.getBarHistoryRevision());
+        assertEquals(settled.stream().toList(), raced.stream().toList());
     }
 }

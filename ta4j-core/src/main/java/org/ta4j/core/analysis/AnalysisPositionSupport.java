@@ -18,35 +18,24 @@ final class AnalysisPositionSupport {
     private AnalysisPositionSupport() {
     }
 
-    /**
-     * Bounds a curve captures once, under the series read scope, when it
-     * materializes.
-     *
-     * @param beginIndex     first absolute index of the curve
-     * @param bufferEndIndex last absolute index materialized, never after the
-     *                       logical series end; record-driven curves pad through
-     *                       the series end so later indices carry the final value
-     *                       forward. No position is priced after it, so bars the
-     *                       curve did not capture never reach it
-     * @param endIndex       last absolute index of the analysis window: the
-     *                       record's logical end or requested final index; below
-     *                       {@code beginIndex} when empty
-     * @param finalIndex     index open positions are marked through
-     * @param bars           the close prices of
-     *                       {@code [beginIndex, bufferEndIndex]} captured with the
-     *                       bounds, or {@code null} before materialization captures
-     *                       them
-     */
-    record Window(int beginIndex, int bufferEndIndex, int endIndex, int finalIndex, BarWindowSnapshot bars) {
+    /** Bounds and source data captured for one curve materialization. */
+    record Window(int beginIndex, int bufferEndIndex, int endIndex, int finalIndex, int carryStartIndex,
+            boolean carriesPrunedHistory, BarWindowSnapshot bars) {
 
         boolean isEmpty() {
             return bufferEndIndex < beginIndex;
         }
 
-        /** Captures the closes the curve reads; runs inside the series read scope. */
+        boolean carriesBeforeWindow(Position position) {
+            Trade exit = position.getExit();
+            return carriesPrunedHistory && exit != null && exit.getIndex() < beginIndex
+                    && exit.getIndex() >= carryStartIndex;
+        }
+
+        /** Captures the complete bars under the series read scope. */
         Window withBars(BarSeries series) {
-            return new Window(beginIndex, bufferEndIndex, endIndex, finalIndex,
-                    BarWindowSnapshot.capture(series, beginIndex, bufferEndIndex, false));
+            return new Window(beginIndex, bufferEndIndex, endIndex, finalIndex, carryStartIndex,
+                    carriesPrunedHistory, BarWindowSnapshot.capture(series, beginIndex, bufferEndIndex));
         }
     }
 
@@ -59,10 +48,9 @@ final class AnalysisPositionSupport {
      * every bound describes one state of the series.
      *
      * @param series         the analysed series
-     * @param recordEndIndex the record's logical end, read before the series scope
-     *                       so no record lock is taken under it; {@code null} when
-     *                       the record is open-ended
-     * @param startIndex     requested first index, clamped to the series begin
+     * @param recordStart    the record's logical start
+     * @param recordEnd      the record's logical end, or {@code null} if open-ended
+     * @param startIndex     requested first index
      * @param requestedFinal final index used unless a record or series end is
      *                       requested
      * @param useRecordEnd   use the record's logical end, clamped to the series
@@ -71,18 +59,24 @@ final class AnalysisPositionSupport {
      * @param padToSeriesEnd materialize through the series end even when the
      *                       analysis window ends earlier
      */
-    static Window captureWindow(BarSeries series, Integer recordEndIndex, int startIndex, int requestedFinal,
-            boolean useRecordEnd, boolean useSeriesEnd, boolean padToSeriesEnd) {
+    static Window captureWindow(BarSeries series, Integer recordStart, Integer recordEnd, int startIndex,
+            int requestedFinal, boolean useRecordEnd, boolean useSeriesEnd, boolean padToSeriesEnd) {
+        int seriesBegin = series.getBeginIndex();
         int seriesEndIndex = series.getEndIndex();
-        int recordFinal = recordEndIndex == null ? seriesEndIndex : Math.min(recordEndIndex, seriesEndIndex);
+        int recordFinal = recordEnd == null ? seriesEndIndex : Math.min(recordEnd, seriesEndIndex);
         int finalIndex = useRecordEnd ? recordFinal : useSeriesEnd ? seriesEndIndex : requestedFinal;
-        int beginIndex = Math.max(Math.max(0, startIndex), series.getBeginIndex());
+        int beginIndex = Math.max(Math.max(Math.max(0, startIndex), seriesBegin),
+                recordStart == null ? 0 : recordStart);
+        int carryStartIndex = Math.max(Math.max(0, startIndex), recordStart == null ? 0 : recordStart);
+        boolean carriesPrunedHistory = seriesBegin > 0 && series.getRemovedBarsCount() == seriesBegin;
         int requestedEnd = padToSeriesEnd ? Math.max(seriesEndIndex, finalIndex) : finalIndex;
         int bufferEndIndex = Math.min(requestedEnd, seriesEndIndex);
         if (bufferEndIndex < beginIndex) {
-            return new Window(beginIndex, beginIndex - 1, beginIndex - 1, finalIndex, null);
+            return new Window(beginIndex, beginIndex - 1, beginIndex - 1, finalIndex, carryStartIndex,
+                    carriesPrunedHistory, null);
         }
-        return new Window(beginIndex, bufferEndIndex, Math.min(finalIndex, bufferEndIndex), finalIndex, null);
+        return new Window(beginIndex, bufferEndIndex, Math.min(finalIndex, bufferEndIndex), finalIndex,
+                carryStartIndex, carriesPrunedHistory, null);
     }
 
     /**
@@ -112,15 +106,10 @@ final class AnalysisPositionSupport {
 
     /**
      * Materializes a curve without evaluating user code under the series read lock.
-     * The record's logical end is read first, with no lock held; the window is
-     * captured in one short read scope; holding costs, whose cost models are user
-     * code that may evaluate indicators, are computed with no lock held; the curve
-     * is then built from bar data in a second short read scope while the window's
-     * bars are still retained with the close prices captured first. The window is
-     * verified again after the build: a bar may change its fields before its
-     * mutation is published, so the build itself can read a changed close. Appended
-     * bars leave the captured window valid; if a bar of it was evicted, replaced or
-     * updated in between, capture repeats.
+     * The record bounds are read first, with no lock held; the window is captured
+     * in one short read scope; holding costs are computed unlocked; the curve is
+     * built under a second short read scope while every captured bar value is
+     * verified. A changed or evicted window is captured again.
      *
      * @throws IllegalStateException if the window was evicted or changed during
      *                               every attempt
@@ -129,16 +118,16 @@ final class AnalysisPositionSupport {
             int requestedFinal, boolean useRecordEnd, boolean useSeriesEnd, boolean padToSeriesEnd,
             OpenPositionHandling handling, CurveBuilder<T> builder) {
         for (int attempt = 0; attempt < MAX_MATERIALIZE_ATTEMPTS; attempt++) {
+            Integer recordStartIndex = record.getStartIndex();
             Integer recordEndIndex = useRecordEnd ? record.getEndIndex() : null;
-            // Only the closes the curve reads, [beginIndex, bufferEndIndex], are
-            // captured and verified; later bars may change freely.
-            Window window = series.withReadLock(() -> captureWindow(series, recordEndIndex, startIndex, requestedFinal,
-                    useRecordEnd, useSeriesEnd, padToSeriesEnd).withBars(series));
+            Window window = series.withReadLock(() -> captureWindow(series, recordStartIndex, recordEndIndex,
+                    startIndex, requestedFinal, useRecordEnd, useSeriesEnd, padToSeriesEnd).withBars(series));
             List<Position> positions = positionsForAnalysis(record, window.finalIndex(), handling,
                     curve.getEquityCurveMode());
             Map<Position, Num> holdingCosts = new IdentityHashMap<>();
             for (Position position : positions) {
-                Num holdingCost = holdingCostInWindow(curve, position, window.finalIndex(), window);
+                Num holdingCost = holdingCostInWindow(curve, position, window.finalIndex(), window,
+                        curve instanceof CashFlow || curve instanceof CumulativePnL);
                 if (holdingCost != null) {
                     holdingCosts.put(position, holdingCost);
                 }
@@ -196,27 +185,31 @@ final class AnalysisPositionSupport {
     }
 
     /**
-     * Returns the holding cost a curve charges a position, or {@code null} when the
-     * position does not reach the captured window: it has no entry, enters after
-     * {@code finalIndex} or the last captured bar, or ends before the window. The
-     * range is checked first so a cost model is never evaluated for a position the
-     * curve ignores. Pricing stops at the last captured bar, so a later request on
-     * a bounded curve never reads bars the curve did not capture and verify.
+     * Returns the holding cost a curve charges a position, or {@code null} when
+     * the position does not reach the captured window. Historical realized
+     * positions are priced only by curves that carry retained history.
      *
-     * @param curve      the curve supplying the end-index convention
-     * @param position   the position
+     * @param curve the curve supplying the end-index convention
+     * @param position the position
      * @param finalIndex index open positions are marked through
-     * @param window     the captured window
-     * @return the holding cost through the position's end in the window, or
-     *         {@code null}
+     * @param window the captured window
+     * @param carryPrunedHistory whether realized positions lost to pruning are
+     *        carried into the curve
+     * @return the holding cost through the position's end in the window, or null
      */
-    static Num holdingCostInWindow(PerformanceIndicator curve, Position position, int finalIndex, Window window) {
+    static Num holdingCostInWindow(PerformanceIndicator curve, Position position, int finalIndex, Window window,
+            boolean carryPrunedHistory) {
         Trade entry = position.getEntry();
         if (entry == null || entry.getIndex() > finalIndex || entry.getIndex() > window.bufferEndIndex()) {
             return null;
         }
         int endIndex = curve.determineEndIndex(position, finalIndex, window.bufferEndIndex());
-        return endIndex < window.beginIndex() ? null : holdingCostThrough(position, endIndex);
+        if (endIndex < window.beginIndex()) {
+            return carryPrunedHistory && window.carriesBeforeWindow(position)
+                    ? holdingCostThrough(position, endIndex)
+                    : null;
+        }
+        return holdingCostThrough(position, endIndex);
     }
 
     /**

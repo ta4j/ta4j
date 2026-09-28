@@ -368,7 +368,7 @@ public class Returns implements PerformanceIndicator {
      */
     @Override
     public void calculatePosition(Position position, int finalIndex) {
-        Num holdingCost = AnalysisPositionSupport.holdingCostInWindow(this, position, finalIndex, window);
+        Num holdingCost = AnalysisPositionSupport.holdingCostInWindow(this, position, finalIndex, window, false);
         if (holdingCost == null) {
             return;
         }

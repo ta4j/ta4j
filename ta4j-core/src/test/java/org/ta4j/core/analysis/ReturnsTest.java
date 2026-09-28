@@ -717,6 +717,21 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertEquals(expected.getRawValues(), curve.getRawValues());
         assertEquals(expected.stream().toList(), curve.stream().toList());
         assertNumEquals(0.1d, curve.getValue(1));
-        assertEquals(expected.getSize(), curve.getSize());
+         assertEquals(expected.getSize(), curve.getSize());
+    }
+    @Test
+    public void recordStartExcludesACompletedEarlierTrade() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 80d, 90d, 100d, 110d).build();
+        TradingRecord record = new BaseTradingRecord(TradeType.BUY, 2, 4, null, null);
+        record.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
+        record.exit(1, series.getBar(1).getClosePrice(), numFactory.one());
+
+        Returns returns = new Returns(series, record, ReturnRepresentation.DECIMAL);
+
+        assertEquals(2, returns.getBeginIndex());
+        assertTrue(returns.getValue(1).isNaN());
+        assertTrue(returns.getValue(2).isNaN());
+        assertNumEquals(numFactory.zero(), returns.getValue(3));
     }
 }

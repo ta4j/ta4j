@@ -178,7 +178,7 @@ public final class CumulativePnL implements PerformanceIndicator {
      */
     @Override
     public void calculatePosition(Position position, int finalIndex) {
-        Num holdingCost = AnalysisPositionSupport.holdingCostInWindow(this, position, finalIndex, window);
+        Num holdingCost = AnalysisPositionSupport.holdingCostInWindow(this, position, finalIndex, window, true);
         if (holdingCost != null) {
             AnalysisPositionSupport.updateCapturedCurve(barSeries, window, values,
                     staged -> calculatePosition(position, finalIndex, window, staged, holdingCost));
@@ -191,8 +191,6 @@ public final class CumulativePnL implements PerformanceIndicator {
         if (entry == null) {
             return;
         }
-        // Priced only through the last captured bar, even when a later final index
-        // is requested of a bounded curve.
         int lastCapturedIndex = captured.bufferEndIndex();
         int entryIndex = entry.getIndex();
         if (entryIndex > finalIndex || entryIndex > lastCapturedIndex) {
@@ -200,12 +198,19 @@ public final class CumulativePnL implements PerformanceIndicator {
         }
         int endIndex = determineEndIndex(position, finalIndex, lastCapturedIndex);
         int seriesBegin = captured.beginIndex();
+        boolean isLong = entry.isBuy();
+        Num netEntryPrice = entry.getNetPrice();
         if (endIndex < seriesBegin) {
+            if (!captured.carriesBeforeWindow(position)) {
+                return;
+            }
+            Trade exit = position.getExit();
+            Num netExit = addCost(exit.getNetPrice(), holdingCost, isLong);
+            Num deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
+            buffer.addRange(seriesBegin, lastCapturedIndex, deltaExit);
             return;
         }
 
-        boolean isLong = entry.isBuy();
-        Num netEntryPrice = entry.getNetPrice();
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
             Num basis = AnalysisPositionSupport.valuationBasis(this, barSeries, position, holdingCost, endIndex,
                     seriesBegin);

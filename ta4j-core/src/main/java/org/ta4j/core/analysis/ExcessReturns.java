@@ -130,8 +130,8 @@ public final class ExcessReturns {
         // always describe the same bar history even on a live series.
         for (int attempt = 0; attempt < MAX_CAPTURE_ATTEMPTS; attempt++) {
             BarWindowSnapshot snapshot = series
-                    .withReadLock(() -> series.isEmpty() ? BarWindowSnapshot.capture(series, 0, -1, true)
-                            : BarWindowSnapshot.capture(series, series.getBeginIndex(), series.getEndIndex(), true));
+                    .withReadLock(() -> series.isEmpty() ? BarWindowSnapshot.capture(series, 0, -1)
+                            : BarWindowSnapshot.capture(series, series.getBeginIndex(), series.getEndIndex()));
             InvestedInterval invested = new InvestedInterval(series, tradingRecord, effectiveOpenPositionHandling);
             CashFlow flow = new CashFlow(series, tradingRecord, equityCurveMode, effectiveOpenPositionHandling);
             if (snapshot.covers(flow.getBeginIndex(), flow.getEndIndex())

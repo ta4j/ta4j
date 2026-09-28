@@ -205,7 +205,7 @@ public class CashFlow implements PerformanceIndicator {
      */
     @Override
     public void calculatePosition(Position position, int finalIndex) {
-        Num holdingCost = AnalysisPositionSupport.holdingCostInWindow(this, position, finalIndex, window);
+        Num holdingCost = AnalysisPositionSupport.holdingCostInWindow(this, position, finalIndex, window, true);
         if (holdingCost != null) {
             AnalysisPositionSupport.updateCapturedCurve(barSeries, window, values,
                     staged -> calculatePosition(position, finalIndex, window, staged, holdingCost));
@@ -218,8 +218,6 @@ public class CashFlow implements PerformanceIndicator {
         if (entry == null) {
             return;
         }
-        // Priced only through the last captured bar, even when a later final index
-        // is requested of a bounded curve.
         int windowStartIndex = captured.beginIndex();
         int windowEndIndex = captured.bufferEndIndex();
         int entryIndex = entry.getIndex();
@@ -227,12 +225,26 @@ public class CashFlow implements PerformanceIndicator {
             return;
         }
         int endIndex = determineEndIndex(position, finalIndex, windowEndIndex);
-        if (windowStartIndex > windowEndIndex || endIndex < windowStartIndex) {
+        if (windowStartIndex > windowEndIndex) {
+            return;
+        }
+        boolean isLongTrade = entry.isBuy();
+        Num netEntryPrice = entry.getNetPrice();
+        if (endIndex < windowStartIndex) {
+            if (!captured.carriesBeforeWindow(position)) {
+                return;
+            }
+            Num entryEquity = buffer.get(windowStartIndex);
+            if (!entryEquity.isGreaterThan(barSeries.numFactory().zero())) {
+                return;
+            }
+            Trade exit = position.getExit();
+            Num netExitPrice = addCost(exit.getNetPrice(), holdingCost, isLongTrade);
+            Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
+            buffer.multiplyRange(windowStartIndex, windowEndIndex, ratio);
             return;
         }
 
-        boolean isLongTrade = entry.isBuy();
-        Num netEntryPrice = entry.getNetPrice();
         Num entryEquity = buffer.get(Math.max(entryIndex, windowStartIndex));
         if (!entryEquity.isGreaterThan(barSeries.numFactory().zero())) {
             return;

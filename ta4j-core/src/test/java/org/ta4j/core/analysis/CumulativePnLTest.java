@@ -779,5 +779,17 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         // from the replaced bar would mix two bar histories.
         assertThrows(IllegalStateException.class, () -> curve.calculatePosition(later, 2));
     }
+    @Test
+    public void carriesRealizedPnlAcrossPrunedBegin() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 110d, 120d, 130d).build();
+        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series));
+        series.setMaximumBarCount(2);
 
+        CumulativePnL pnl = new CumulativePnL(series, record);
+
+        assertEquals(2, pnl.getBeginIndex());
+        assertNumEquals(10d, pnl.getValue(2));
+        assertNumEquals(10d, pnl.getValue(3));
+    }
 }
