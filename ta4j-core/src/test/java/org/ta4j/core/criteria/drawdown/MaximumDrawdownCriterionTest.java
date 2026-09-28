@@ -154,7 +154,10 @@ public class MaximumDrawdownCriterionTest extends AbstractCriterionTest {
                     assertNumEquals(expected, actual, 1e-10);
                     Position expectedPosition = fixture.equivalentPosition(mode);
                     if (fixture.position() != null && expectedPosition != null) {
-                        assertNumEquals(criterion.calculate(fixture.equivalentSeries(), expectedPosition),
+                        var expectedPositionValue = !fixture.position().isOpened() && expectedPosition.isOpened()
+                                ? criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord(mode))
+                                : criterion.calculate(fixture.equivalentSeries(), expectedPosition);
+                        assertNumEquals(expectedPositionValue,
                                 criterion.calculate(fixture.series(), fixture.position()), 1e-10);
                     }
                 }

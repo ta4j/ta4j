@@ -3,12 +3,14 @@
  */
 package org.ta4j.core.criteria.drawdown;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
@@ -109,6 +111,23 @@ public class MaximumDrawdownBarLengthCriterionTest extends AbstractCriterionTest
             var explicit = new MaximumDrawdownBarLengthCriterion(EquityCurveMode.MARK_TO_MARKET, handling);
 
             assertNumEquals(explicit.calculate(series, tradingRecord), singleArg.calculate(series, tradingRecord));
+        }
+    }
+
+    @Test
+    public void matchesRecordCalculationAcrossWindowShapesAndPositionBoundaries() {
+        for (var fixture : ConstrainedSeriesSupport.criterionWindowFixtures(numFactory)) {
+            if (fixture.position() == null || fixture.position().isOpened()) {
+                continue;
+            }
+            for (var mode : EquityCurveMode.values()) {
+                for (var handling : OpenPositionHandling.values()) {
+                    var criterion = new MaximumDrawdownBarLengthCriterion(mode, handling);
+                    double expected = criterion.calculate(fixture.series(), fixture.tradingRecord()).doubleValue();
+                    double actual = criterion.calculate(fixture.series(), fixture.position()).doubleValue();
+                    assertEquals(fixture.name() + " " + mode + "/" + handling, expected, actual, 1e-10);
+                }
+            }
         }
     }
 

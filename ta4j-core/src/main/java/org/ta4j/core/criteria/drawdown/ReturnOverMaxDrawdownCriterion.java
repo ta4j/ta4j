@@ -6,6 +6,7 @@ package org.ta4j.core.criteria.drawdown;
 import java.util.Objects;
 import java.util.Optional;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
@@ -60,12 +61,14 @@ import org.ta4j.core.num.Num;
  * </ul>
  *
  * <p>
- * <b>Open positions:</b> When using {@link EquityCurveMode#MARK_TO_MARKET}, the
- * {@link OpenPositionHandling} setting controls whether open positions
- * contribute to the return calculation. {@link EquityCurveMode#REALIZED} always
- * ignores open positions regardless of the requested handling. A null or still
- * open position has no completed equity path and yields the configured
- * representation's neutral value (for example, 1.0 under MULTIPLICATIVE).
+ * <b>Open positions:</b> For trading records in
+ * {@link EquityCurveMode#MARK_TO_MARKET}, the {@link OpenPositionHandling}
+ * setting controls whether open positions contribute to the return calculation.
+ * {@link EquityCurveMode#REALIZED} always ignores open positions regardless of
+ * the requested handling. The position overload returns neutral for a position
+ * without a recorded exit; a recorded exit beyond the effective analysis end is
+ * treated as open at that end. A null position yields the configured
+ * representation's neutral value.
  *
  * @see ReturnRepresentation
  * @see ReturnRepresentationPolicy
@@ -152,12 +155,10 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        if (position == null || position.isOpened()) {
-            // No completed equity path exists yet, so report the representation's
-            // neutral value (0 for DECIMAL, 1 for MULTIPLICATIVE) instead of a raw zero.
+        if (position == null || position.getEntry() == null || position.isOpened()) {
             return returnRepresentation.toRepresentationFromRateOfReturn(series.numFactory().zero());
         }
-        return calculatePosition(series, position);
+        return calculateTradingRecord(series, new BaseTradingRecord(position));
     }
 
     @Override
@@ -178,12 +179,6 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
-    }
-
-    private Num calculatePosition(BarSeries series, Position position) {
-        CashFlow cashFlow = new CashFlow(series, position, equityCurveMode);
-        Num maxDrawdown = Drawdown.amount(series, null, cashFlow);
-        return toRepresentation(calculateNetReturn(cashFlow), maxDrawdown);
     }
 
     private Num calculateTradingRecord(BarSeries series, TradingRecord tradingRecord) {

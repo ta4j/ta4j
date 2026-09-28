@@ -308,8 +308,15 @@ public final class ConstrainedSeriesSupport {
             int windowSize = end - begin + 1;
             List<Bar> logicalBars = shape.equals("constrained-end") ? fullBars.subList(0, windowSize)
                     : shape.equals("pruned") ? windowedSeries.getBarData() : fullBars.subList(begin, end + 1);
-            BarSeries equivalentSeries = new BaseBarSeries(shape + "-equivalent", new ArrayList<>(logicalBars), 0,
-                    windowSize - 1, false, numFactory, new TimeBarBuilderFactory());
+            BarSeries equivalentSeries;
+            if (shape.equals("pruned")) {
+                equivalentSeries = new BaseBarSeries(shape + "-equivalent",
+                        new ArrayList<>(windowedSeries.getBarData()), begin, end, begin, false, numFactory,
+                        new TimeBarBuilderFactory());
+            } else {
+                equivalentSeries = new BaseBarSeries(shape + "-equivalent", new ArrayList<>(logicalBars), 0,
+                        windowSize - 1, false, numFactory, new TimeBarBuilderFactory());
+            }
             int[] entries = { begin - 2, begin - 1, begin, end, end - 1, end - 1, end + 1 };
             int[] exits = { begin - 1, begin + 1, begin, end, end + 1, noExit, noExit };
 
@@ -318,6 +325,7 @@ public final class ConstrainedSeriesSupport {
                     continue;
                 }
                 boolean beforeBegin = i == 0;
+                boolean carriesPrunedHistory = shape.equals("pruned");
                 int entryIndex = entries[i];
                 int exitIndex = exits[i];
                 double entryPrice = closeAt(entryIndex, closes);
@@ -330,26 +338,29 @@ public final class ConstrainedSeriesSupport {
                 if (shiftedExit >= windowSize) {
                     shiftedExit = noExit;
                 }
+                int equivalentEntry = carriesPrunedHistory ? entryIndex : shiftedEntry;
+                int equivalentExit = carriesPrunedHistory ? exitIndex : shiftedExit;
+                double equivalentEntryPrice = carriesPrunedHistory ? entryPrice : shiftedEntryPrice;
                 BaseTradingRecord equivalentRecord;
                 BaseTradingRecord markedEquivalentRecord;
-                if (beforeBegin) {
+                if (beforeBegin && !carriesPrunedHistory) {
                     equivalentRecord = boundedRecord
                             ? new BaseTradingRecord(TradeType.BUY, 0, windowSize - 1, new ZeroCostModel(),
                                     new ZeroCostModel())
                             : new BaseTradingRecord();
                     markedEquivalentRecord = equivalentRecord;
                 } else {
-                    equivalentRecord = criterionRecord(numFactory, shiftedEntry, entryPrice, shiftedExit, exitPrice,
-                            boundedRecord ? 0 : null, boundedRecord ? windowSize - 1 : null);
-                    markedEquivalentRecord = criterionRecord(numFactory, shiftedEntry, shiftedEntryPrice, shiftedExit,
+                    equivalentRecord = criterionRecord(numFactory, equivalentEntry, entryPrice, equivalentExit,
                             exitPrice, boundedRecord ? 0 : null, boundedRecord ? windowSize - 1 : null);
+                    markedEquivalentRecord = criterionRecord(numFactory, equivalentEntry, equivalentEntryPrice,
+                            equivalentExit, exitPrice, boundedRecord ? 0 : null, boundedRecord ? windowSize - 1 : null);
                 }
                 Position position = boundedRecord ? null
                         : record.getPositions().isEmpty() ? record.getCurrentPosition() : record.getPositions().get(0);
-                Position equivalentPosition = boundedRecord || beforeBegin ? null
+                Position equivalentPosition = boundedRecord || (beforeBegin && !carriesPrunedHistory) ? null
                         : equivalentRecord.getPositions().isEmpty() ? equivalentRecord.getCurrentPosition()
                                 : equivalentRecord.getPositions().get(0);
-                Position markedEquivalentPosition = boundedRecord || beforeBegin ? null
+                Position markedEquivalentPosition = boundedRecord || (beforeBegin && !carriesPrunedHistory) ? null
                         : markedEquivalentRecord.getPositions().isEmpty() ? markedEquivalentRecord.getCurrentPosition()
                                 : markedEquivalentRecord.getPositions().get(0);
                 fixtures.add(new CriterionWindowFixture(shape + "/" + placements[i], windowedSeries, record, position,

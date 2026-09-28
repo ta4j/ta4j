@@ -581,8 +581,9 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
                         Position expectedPosition = fixture.equivalentPosition(mode);
                         if (fixture.position() != null && expectedPosition != null) {
                             Num actualPosition = criterion.calculate(fixture.series(), fixture.position());
-                            Num expectedPositionValue = criterion.calculate(fixture.equivalentSeries(),
-                                    expectedPosition);
+                            Num expectedPositionValue = !fixture.position().isOpened() && expectedPosition.isOpened()
+                                    ? criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord(mode))
+                                    : criterion.calculate(fixture.equivalentSeries(), expectedPosition);
                             assertEquals(fixture.name() + ": position " + mode + "/" + handling + "/" + representation,
                                     expectedPositionValue.doubleValue(), actualPosition.doubleValue(), 1e-10);
                         }
