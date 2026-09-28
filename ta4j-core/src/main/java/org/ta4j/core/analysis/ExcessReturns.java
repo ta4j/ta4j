@@ -148,6 +148,41 @@ public final class ExcessReturns {
     }
 
     /**
+     * Returns the first index included in this calculator's captured cash-flow
+     * window.
+     *
+     * @return the captured begin index
+     * @since 0.26
+     */
+    public int getBeginIndex() {
+        return cashFlow.getBeginIndex();
+    }
+
+    /**
+     * Returns the last index included in this calculator's captured cash-flow
+     * window.
+     *
+     * @return the captured end index
+     * @since 0.26
+     */
+    public int getEndIndex() {
+        return cashFlow.getEndIndex();
+    }
+
+    /**
+     * Returns the end time captured for a bar index, or {@code null} outside
+     * captured history.
+     *
+     * @param index the absolute bar index
+     * @return the captured end time, or {@code null} when the index was not
+     *         captured
+     * @since 0.26
+     */
+    public Instant getCapturedEndTime(int index) {
+        return bars.endTime(index);
+    }
+
+    /**
      * Computes the compounded excess return using the configured cash flow.
      *
      * @param previousIndex the start index

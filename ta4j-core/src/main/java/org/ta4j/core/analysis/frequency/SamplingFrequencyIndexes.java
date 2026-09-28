@@ -10,6 +10,7 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.WeekFields;
 import java.util.Objects;
+import java.util.function.IntFunction;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.ta4j.core.BarSeries;
@@ -65,6 +66,22 @@ public final class SamplingFrequencyIndexes {
      * @since 0.22.2
      */
     public Stream<IndexPair> sample(BarSeries series, int anchorIndex, int start, int end) {
+        return sample(index -> series.getBar(index).getEndTime(), anchorIndex, start, end);
+    }
+
+    /**
+     * Returns index pairs using end times supplied by an immutable analysis
+     * snapshot.
+     *
+     * @param endTimeAtIndex returns the captured end time for an absolute bar index
+     * @param anchorIndex    the starting anchor index for the first sampled pair
+     * @param start          the first index eligible for sampling
+     * @param end            the last index eligible for sampling
+     * @return a stream of index pairs describing each sampling interval
+     * @since 0.26
+     */
+    public Stream<IndexPair> sample(IntFunction<Instant> endTimeAtIndex, int anchorIndex, int start, int end) {
+        Objects.requireNonNull(endTimeAtIndex, "endTimeAtIndex must not be null");
         if (start > end || end - start < 1) {
             return Stream.empty();
         }
@@ -72,29 +89,29 @@ public final class SamplingFrequencyIndexes {
             return IntStream.rangeClosed(start, end).mapToObj(i -> new IndexPair(i - 1, i));
         }
 
-        var periodEndIndices = periodEndIndices(series, start, end).toArray();
+        int[] periodEndIndices = periodEndIndices(endTimeAtIndex, start, end).toArray();
         if (periodEndIndices.length == 0) {
             return Stream.empty();
         }
 
-        var firstPair = Stream.of(new IndexPair(anchorIndex, periodEndIndices[0]));
-        var consecutivePairs = IntStream.range(1, periodEndIndices.length)
+        Stream<IndexPair> firstPair = Stream.of(new IndexPair(anchorIndex, periodEndIndices[0]));
+        Stream<IndexPair> consecutivePairs = IntStream.range(1, periodEndIndices.length)
                 .mapToObj(k -> new IndexPair(periodEndIndices[k - 1], periodEndIndices[k]));
 
         return Stream.concat(firstPair, consecutivePairs);
     }
 
-    private IntStream periodEndIndices(BarSeries series, int start, int end) {
-        return IntStream.rangeClosed(start, end).filter(i -> isPeriodEnd(series, i, end));
+    private IntStream periodEndIndices(IntFunction<Instant> endTimeAtIndex, int start, int end) {
+        return IntStream.rangeClosed(start, end).filter(i -> isPeriodEnd(endTimeAtIndex, i, end));
     }
 
-    private boolean isPeriodEnd(BarSeries series, int index, int endIndex) {
+    private boolean isPeriodEnd(IntFunction<Instant> endTimeAtIndex, int index, int endIndex) {
         if (index == endIndex) {
             return true;
         }
 
-        var now = endTimeZoned(series, index);
-        var next = endTimeZoned(series, index + 1);
+        ZonedDateTime now = endTimeZoned(endTimeAtIndex, index);
+        ZonedDateTime next = endTimeZoned(endTimeAtIndex, index + 1);
 
         return switch (samplingFrequency) {
         case SECOND -> crossesChronoUnitBoundary(now, next, ChronoUnit.SECONDS);
@@ -120,12 +137,8 @@ public final class SamplingFrequencyIndexes {
         return weekA == weekB && yearA == yearB;
     }
 
-    private ZonedDateTime endTimeZoned(BarSeries series, int index) {
-        return endTimeInstant(series, index).atZone(groupingZoneId);
-    }
-
-    private Instant endTimeInstant(BarSeries series, int index) {
-        return series.getBar(index).getEndTime();
+    private ZonedDateTime endTimeZoned(IntFunction<Instant> endTimeAtIndex, int index) {
+        return endTimeAtIndex.apply(index).atZone(groupingZoneId);
     }
 
 }
