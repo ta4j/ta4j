@@ -93,6 +93,24 @@ public class DecimalNumTest {
         assertEquals(120, ((DecimalNum) result).getMathContext().getPrecision());
     }
 
+    @Test(timeout = 2000)
+    public void testPowLargeFractionalExponentStaysWithinPrecision() {
+        // Annualizing a short span raises a return to about 1/years; the whole part of
+        // that exponent must be computed at the working precision, not exactly.
+        final Num x = precision32Func.numOf("1.01");
+        final Num result = x.pow(precision32Func.numOf("262800.5"));
+        final BigDecimal power = (BigDecimal) result.getDelegate();
+        assertEquals(32, power.precision());
+        // log10(1.01^262800.5) = 1135.6..., so the leading digit sits at 10^1135.
+        assertEquals(1135, power.precision() - power.scale() - 1);
+    }
+
+    @Test
+    public void testPowNegativeFractionalExponent() {
+        final Num x = precision32Func.numOf("4");
+        assertNumEquals(precision32Func.numOf("0.03125"), x.pow(precision32Func.numOf("-2.5")));
+    }
+
     @Test
     public void decimalNumTest() {
         init();

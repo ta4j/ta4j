@@ -36,6 +36,11 @@ public final class DecimalNum implements Num {
     private static final long serialVersionUID = 1L;
     private static final Logger log = LoggerFactory.getLogger(DecimalNum.class);
     private static final RoundingMode DEFAULT_ROUNDING_MODE = RoundingMode.HALF_UP;
+    /**
+     * Extra digits {@link #pow(Num)} carries so its whole-number power rounds like
+     * an exact one.
+     */
+    private static final int POW_GUARD_DIGITS = 10;
     private static final AtomicReference<MathContext> DEFAULT_MATH_CONTEXT = new AtomicReference<>(
             new MathContext(DEFAULT_PRECISION, DEFAULT_ROUNDING_MODE));
 
@@ -778,8 +783,11 @@ public final class DecimalNum implements Num {
         final BigDecimal a = aplusb.subtract(b);
         // convert a to an int, fails on overflow
         final int aInt = a.intValueExact();
-        // use BigDecimal pow(int)
-        final BigDecimal xpowa = this.delegate.pow(aInt);
+        // x^a at the working precision plus guard digits: an exact power grows by
+        // digits(x) * a digits, which stalls large exponents, and the result is
+        // rounded to mathContext anyway. Also accepts negative whole parts.
+        final BigDecimal xpowa = this.delegate.pow(aInt, new MathContext(
+                this.mathContext.getPrecision() + POW_GUARD_DIGITS, this.mathContext.getRoundingMode()));
         // use double pow(double, double)
         final double xpowb = Math.pow(this.delegate.doubleValue(), bDouble);
         // use PrecisionNum.multiply(PrecisionNum)
