@@ -391,7 +391,7 @@ Restore supported components with `Indicator.fromJson(series, json)` and `Strate
 
 ### Specialized research tools
 
-Beyond the basic strategy loop, ta4j includes building blocks for batch backtests, static target-weight multi-asset portfolio backtests, parameter research, position sizing, causal swing detection, rolling correlations, regime-aware rules, candlestick patterns, Elliott Wave analysis, LPPL residuals, streaming trade ingestion, and fill-aware live records.
+Beyond the basic strategy loop, ta4j includes building blocks for batch backtests, static target-weight multi-asset portfolio backtests, portfolio correlation clustering and minimum-variance allocation, parameter research, position sizing, causal swing detection, rolling correlations, regime-aware rules, candlestick patterns, Elliott Wave analysis, LPPL residuals, streaming trade ingestion, and fill-aware live records.
 
 These capabilities are intentionally not expanded into mini-manuals here. Use the [examples index](ta4j-examples/README.md), [core API guide](ta4j-core/README.md), [Javadoc](https://ta4j.github.io/ta4j/), and [wiki](https://ta4j.github.io/ta4j-wiki/) to go deeper without losing the onboarding path.
 
