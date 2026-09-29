@@ -311,7 +311,7 @@ public final class FractalSwingDetector implements SwingDetector {
          * @throws IllegalStateException if the history changed during every attempt
          */
         private void replayCoherentlyTo(final int index) {
-            boolean historyChanged = seriesHistoryChanged(index, false);
+            boolean historyChanged = seriesHistoryChanged();
             for (int attempt = 1;; attempt++) {
                 if (historyChanged || index < lastScannedIndex) {
                     reset(true);
@@ -325,7 +325,7 @@ public final class FractalSwingDetector implements SwingDetector {
                     // this was a race or a genuine failure.
                     evaluationFailure = exception;
                 }
-                historyChanged = seriesHistoryChanged(index, true);
+                historyChanged = seriesHistoryChanged();
                 if (!historyChanged && evaluationFailure == null) {
                     return;
                 }
@@ -605,21 +605,20 @@ public final class FractalSwingDetector implements SwingDetector {
          * themselves discard. Revision-aware series changes remain O(1). For legacy
          * series whose revisions cannot observe direct {@link Bar} mutations, the
          * retained OHLC snapshots are validated when revisions are unavailable.
-         * Untrackable bars are rescanned on every query; tracked bars retain
-         * incremental replay.
+         * Untrackable bars are rescanned on every query. Tracked bars keep an
+         * incremental replay, validating the closed part of the window by value.
          *
          * <p>
          * The check reads bars only, so it runs inside the series' short read scope.
-         * When {@code verifyingReplay} is set it verifies a replay that just ended at
-         * {@code requestedIndex}: legacy snapshots are then revalidated only for
-         * appended bars, as for the next ascending query, instead of rescanning every
-         * retained bar after each replay.
+         * Legacy series with no revisions always revalidate their retained snapshots,
+         * including the replay that just read those bars, because nothing else can
+         * publish an in-place mutation of a retained bar.
          */
-        private boolean seriesHistoryChanged(final int requestedIndex, final boolean verifyingReplay) {
-            return series.withReadLock(() -> seriesHistoryChangedUnderReadLock(requestedIndex, verifyingReplay));
+        private boolean seriesHistoryChanged() {
+            return series.withReadLock(this::seriesHistoryChangedUnderReadLock);
         }
 
-        private boolean seriesHistoryChangedUnderReadLock(final int requestedIndex, final boolean verifyingReplay) {
+        private boolean seriesHistoryChangedUnderReadLock() {
             // Read the revision and series bounds through one coherent change
             // snapshot, then verify the begin index was still read under that
             // same revision. Reading them as separate calls would let an
@@ -647,8 +646,9 @@ public final class FractalSwingDetector implements SwingDetector {
                 boolean changed = currentBeginIndex != observedBeginIndex
                         || (!revisionUnavailable && currentRevision != observedRevision)
                         || currentEndIndex < observedEndIndex;
-                final boolean validateLegacySnapshots = revisionUnavailable && (currentEndIndex > observedEndIndex
-                        || (!verifyingReplay && requestedIndex <= lastScannedIndex));
+                // Without a revision nothing publishes an in-place mutation of a retained
+                // bar, so every query revalidates the snapshots it has already read.
+                final boolean validateLegacySnapshots = revisionUnavailable;
                 final boolean validateUntrackableSnapshots = !observedUntrackableBars.isEmpty();
                 if (!changed && (validateLegacySnapshots || validateUntrackableSnapshots)) {
                     if (validateLegacySnapshots) {

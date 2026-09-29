@@ -273,6 +273,43 @@ class FractalSwingDetectorTest {
     }
 
     @Test
+    void earlierBarMutationDuringUnlockedReplayOnRevisionlessSeriesRetriesTheReplay() {
+        // The replay confirms HIGH@1 at price 6, then bar 1's high is raised to 20 when
+        // it
+        // first reads bar 4. Without a series revision only value snapshots can notice;
+        // the
+        // replay must be re-verified against every retained bar, not just the last one.
+        final RevisionlessSeries series = new RevisionlessSeries(
+                seriesWithHighsAndLows(new double[] { 5, 6, 5, 7, 5, 6 }, new double[] { 4, 5, 3, 6, 4, 5 })
+                        .getBarData());
+        final FractalSwingDetector detector = new FractalSwingDetector(1);
+        assertThat(detector.detectPivots(series, 0)).isEmpty();
+
+        series.mutateOnFirstRead(4, () -> series.getBar(1).addPrice(series.numFactory().numOf(20)));
+        final List<SwingPivot> replayed = detector.detectPivots(series, series.getEndIndex());
+
+        assertThat(series.getBar(1).getHighPrice()).isEqualTo(series.numFactory().numOf(20));
+        assertThat(replayed).isEqualTo(new FractalSwingDetector(1).detectPivots(series, series.getEndIndex()));
+        assertThat(replayed).contains(new SwingPivot(1, series.numFactory().numOf(20), SwingPivotType.HIGH));
+    }
+
+    @Test
+    void earlierBarMutationBetweenAscendingQueriesOnRevisionlessSeriesRebuildsTheReplay() {
+        final RevisionlessSeries series = new RevisionlessSeries(
+                seriesWithHighsAndLows(new double[] { 5, 6, 5, 7, 5, 6 }, new double[] { 4, 5, 3, 6, 4, 5 })
+                        .getBarData());
+        final FractalSwingDetector detector = new FractalSwingDetector(1);
+        assertThat(detector.detectPivots(series, 3))
+                .contains(new SwingPivot(1, series.numFactory().numOf(6), SwingPivotType.HIGH));
+
+        series.getBar(1).addPrice(series.numFactory().numOf(20));
+        final List<SwingPivot> ascending = detector.detectPivots(series, series.getEndIndex());
+
+        assertThat(ascending).isEqualTo(new FractalSwingDetector(1).detectPivots(series, series.getEndIndex()));
+        assertThat(ascending).contains(new SwingPivot(1, series.numFactory().numOf(20), SwingPivotType.HIGH));
+    }
+
+    @Test
     void descendingQueryAfterRetractionRebuildsIndicatorScanState() {
         // The equal-high plateau [2..3] truncates differently as later bars
         // arrive: HIGH@2 confirms at bar 4, purges at bar 5 when the plateau
@@ -733,6 +770,45 @@ class FractalSwingDetectorTest {
                 paused.countDown();
                 awaitLatch(release);
             }
+        }
+    }
+
+    /**
+     * Legacy series that publishes no bar-history revision and can run one action
+     * when a chosen bar index is first read.
+     */
+    private static final class RevisionlessSeries extends BaseBarSeries {
+        private static final long serialVersionUID = 1L;
+        private transient int triggerIndex = -1;
+        private transient Runnable trigger;
+
+        private RevisionlessSeries(final List<Bar> bars) {
+            super("revisionless", new ArrayList<>(bars));
+        }
+
+        private void mutateOnFirstRead(final int index, final Runnable action) {
+            triggerIndex = index;
+            trigger = action;
+        }
+
+        @Override
+        public long getBarHistoryRevision() {
+            return -1L;
+        }
+
+        @Override
+        public synchronized BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
+            return new BarSeriesChangeSnapshot(-1L, -1, getRemovedBarsCount() - 1, getMaximumBarCount(), getEndIndex());
+        }
+
+        @Override
+        public Bar getBar(final int index) {
+            if (index == triggerIndex && trigger != null) {
+                final Runnable action = trigger;
+                trigger = null;
+                action.run();
+            }
+            return super.getBar(index);
         }
     }
 
