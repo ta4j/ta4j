@@ -3,17 +3,15 @@
  */
 package org.ta4j.core.analysis;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Objects;
+import java.util.stream.Stream;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * Allows to follow the money cash flow involved by a list of positions over a
@@ -22,41 +20,19 @@ import org.ta4j.core.num.NumFactory;
 public class CashFlow implements PerformanceIndicator {
 
     /**
-     * The series' retained bounds and close prices, captured at construction so
-     * later in-place bar edits cannot reach this curve.
+     * The bar series.
      */
-    private final SeriesSnapshots.CapturedSeries series;
+    private final BarSeries barSeries;
 
     /**
      * The (accrued) cash flow sequence (without trading costs).
      */
-    private final List<Num> values;
+    private final OffsetNumBuffer values;
 
     /**
-     * Whether a sweep already composed positions into {@link #values}. Once data is
-     * present, further public calculations fall back to per-position application so
-     * the multiplication order (and therefore the finite-precision results) matches
-     * the legacy recipe exactly.
+     * The window captured when the cash flow was materialized.
      */
-    private volatile boolean materialized;
-
-    /**
-     * Realized ratios of positions closed before the retained history, with the
-     * index each takes effect at, in processing order. Their bars are gone, so
-     * these are the only record of the curve before the retained begin.
-     */
-    private final List<Integer> carriedRatioIndices = new ArrayList<>();
-    private final List<Num> carriedRatios = new ArrayList<>();
-
-    /**
-     * The first logical bar index materialized in {@link #values}.
-     */
-    private final int valueStartIndex;
-
-    /**
-     * The last logical bar index materialized in {@link #values}.
-     */
-    private final int valueEndIndex;
+    private final AnalysisPositionSupport.Window window;
 
     /**
      * The equity curve calculation mode.
@@ -76,18 +52,17 @@ public class CashFlow implements PerformanceIndicator {
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex, EquityCurveMode equityCurveMode,
             OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, 0, barSeries.getEndIndex(), finalIndex, equityCurveMode, openPositionHandling);
+        this(barSeries, tradingRecord, 0, finalIndex, equityCurveMode, openPositionHandling, false, false, true);
     }
 
     /**
      * Constructor materializing only a bounded logical window on the original
-     * series. The window starts at one: positions closed before {@code startIndex}
-     * are ignored, and positions open across it compound from their entry price.
+     * series.
      *
      * @param barSeries            the bar series
      * @param tradingRecord        the trading record
-     * @param startIndex           first logical bar index to materialize
-     * @param finalIndex           last logical bar index to materialize and to
+     * @param startIndex           first absolute bar index to materialize
+     * @param finalIndex           last absolute bar index to materialize and to
      *                             consider for open positions
      * @param equityCurveMode      the calculation mode
      * @param openPositionHandling how to handle open positions
@@ -95,7 +70,8 @@ public class CashFlow implements PerformanceIndicator {
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int startIndex, int finalIndex,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, startIndex, finalIndex, finalIndex, equityCurveMode, openPositionHandling);
+        this(barSeries, tradingRecord, startIndex, finalIndex, equityCurveMode, openPositionHandling, false, false,
+                false);
     }
 
     /**
@@ -107,7 +83,8 @@ public class CashFlow implements PerformanceIndicator {
      * @since 0.22.2
      */
     public CashFlow(BarSeries barSeries, Position position, EquityCurveMode equityCurveMode) {
-        this(barSeries, new BaseTradingRecord(position), barSeries.getEndIndex(), equityCurveMode);
+        this(barSeries, new BaseTradingRecord(position), 0, 0, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET,
+                false, true, true);
     }
 
     /**
@@ -141,8 +118,8 @@ public class CashFlow implements PerformanceIndicator {
      * @param tradingRecord the trading record
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), EquityCurveMode.MARK_TO_MARKET,
-                OpenPositionHandling.MARK_TO_MARKET);
+        this(barSeries, tradingRecord, 0, 0, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET, true,
+                false, true);
     }
 
     /**
@@ -154,8 +131,7 @@ public class CashFlow implements PerformanceIndicator {
      * @since 0.22.2
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, EquityCurveMode equityCurveMode) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), equityCurveMode,
-                OpenPositionHandling.MARK_TO_MARKET);
+        this(barSeries, tradingRecord, 0, 0, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET, true, false, true);
     }
 
     /**
@@ -169,7 +145,7 @@ public class CashFlow implements PerformanceIndicator {
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, EquityCurveMode equityCurveMode,
             OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), equityCurveMode, openPositionHandling);
+        this(barSeries, tradingRecord, 0, 0, equityCurveMode, openPositionHandling, true, false, true);
     }
 
     /**
@@ -193,249 +169,28 @@ public class CashFlow implements PerformanceIndicator {
      * @since 0.22.2
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), EquityCurveMode.MARK_TO_MARKET,
-                openPositionHandling);
+        this(barSeries, tradingRecord, 0, 0, EquityCurveMode.MARK_TO_MARKET, openPositionHandling, true, false, true);
     }
 
-    /**
-     * Internal constructor. Captures the series' close prices so calculated values
-     * stay isolated from later mutations of the caller's series.
-     */
-    private CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int startIndex, int endIndex, int finalIndex,
-            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
-        this.series = SeriesSnapshots.capture(barSeries);
+    private CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int startIndex, int requestedFinalIndex,
+            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling, boolean useRecordEnd,
+            boolean useSeriesEnd, boolean padToSeriesEnd) {
+        this.barSeries = Objects.requireNonNull(barSeries, "barSeries");
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        int seriesEnd = this.series.endIndex();
-        this.valueStartIndex = Math.max(Math.max(0, startIndex), this.series.beginIndex());
-        this.valueEndIndex = seriesEnd < 0 ? -1 : Math.min(Math.max(endIndex, this.valueStartIndex), seriesEnd);
-        int size = this.valueEndIndex < this.valueStartIndex ? 0 : this.valueEndIndex - this.valueStartIndex + 1;
-        this.values = new ArrayList<>(Collections.nCopies(size, this.series.numFactory().one()));
-        sweep(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
-    }
-
-    /**
-     * Calculates the cash flow for all positions of the trading record in a single
-     * forward sweep over the window.
-     *
-     * <p>
-     * Positions are processed in analysis order while a running product
-     * {@code realized} carries each closed position's exit ratio forward. This
-     * reproduces, per bar index, the exact multiplication sequence of per-position
-     * processing (held-bar ratios followed by exit ratios), but avoids
-     * re-multiplying the flat tail after every position: complexity is O(window +
-     * held bars) instead of O(positions &times; window). An exit whose effective
-     * index falls behind the sweep cursor (an out-of-order close under LIFO) is
-     * applied in place to the already-materialized cells instead.
-     *
-     * @param tradingRecord        the trading record
-     * @param finalIndex           index up until values of open positions are
-     *                             considered
-     * @param openPositionHandling how to handle open positions
-     * @since 0.25.1
-     */
-    @Override
-    public void calculate(TradingRecord tradingRecord, int finalIndex, OpenPositionHandling openPositionHandling) {
-        Objects.requireNonNull(tradingRecord);
-        Objects.requireNonNull(openPositionHandling);
-        if (materialized) {
-            // Composing a combined factor onto already-materialized cells would
-            // reassociate the per-position multiplication order, which changes
-            // finite-precision results; apply each position separately instead.
-            PerformanceIndicator.super.calculate(tradingRecord, finalIndex, openPositionHandling);
-            return;
-        }
-        sweep(tradingRecord, finalIndex, openPositionHandling);
-    }
-
-    private void sweep(TradingRecord tradingRecord, int finalIndex, OpenPositionHandling openPositionHandling) {
-        OpenPositionHandling effectiveOpenPositionHandling = equityCurveMode == EquityCurveMode.REALIZED
-                ? OpenPositionHandling.IGNORE
-                : openPositionHandling;
-        List<Position> positions = AnalysisPositionSupport.positionsForAnalysis(tradingRecord, finalIndex,
-                effectiveOpenPositionHandling, equityCurveMode);
-        int seriesBegin = series.beginIndex();
-        int seriesEnd = series.endIndex();
-        int windowStartIndex = Math.max(valueStartIndex, seriesBegin);
-        int windowEndIndex = Math.min(valueEndIndex, seriesEnd);
-        if (windowStartIndex > windowEndIndex) {
-            return;
-        }
-        NumFactory numFactory = series.numFactory();
-        Num zero = numFactory.zero();
-        Num realized = numFactory.one();
-        int cursor = windowStartIndex;
-
-        for (int p = 0; p < positions.size(); p++) {
-            Position position = positions.get(p);
-            Trade entry = position == null ? null : position.getEntry();
-            if (entry == null) {
-                continue;
-            }
-            int entryIndex = entry.getIndex();
-            if (entryIndex > finalIndex || entryIndex > seriesEnd) {
-                continue;
-            }
-            int endIndex = determineEndIndex(position, finalIndex, seriesEnd);
-            if (endIndex < windowStartIndex) {
-                // Only history lost to pruning carries forward; an explicit later
-                // window starts at one and ignores earlier closes.
-                Num ratio = windowStartIndex == seriesBegin ? carryBeforeRetainedHistory(position, endIndex) : null;
-                if (ratio != null) {
-                    multiplyRange(windowStartIndex, cursor - 1, ratio);
-                    realized = realized.multipliedBy(ratio);
-                }
-                continue;
-            }
-            boolean isLongTrade = entry.isBuy();
-            Num netEntryPrice = entry.getNetPrice();
-            int entryEquityIndex = Math.max(entryIndex, windowStartIndex);
-            cursor = fillRange(cursor, entryEquityIndex, realized);
-            Num entryEquity = getStoredValue(entryEquityIndex);
-            if (!entryEquity.isGreaterThan(zero)) {
-                continue;
-            }
-            int ratioIndex = endIndex;
-            if (ratioIndex == entryIndex && entryIndex < seriesEnd) {
-                ratioIndex = entryIndex + 1;
-            }
-
-            if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
-                Num averageHoldingCostPerPeriod = averageHoldingCostPerPeriod(position, endIndex, numFactory);
-                boolean windowStartSeeded = false;
-                if (entryIndex < windowStartIndex) {
-                    Num windowStartPrice = windowStartIndex == endIndex ? series.exitPrice(position, endIndex)
-                            : series.closePrice(windowStartIndex);
-                    Num windowStartNetPrice = addCost(windowStartPrice, averageHoldingCostPerPeriod, isLongTrade);
-                    Num windowStartRatio = getIntermediateRatio(isLongTrade, netEntryPrice, windowStartNetPrice);
-                    multiplyValue(windowStartIndex, windowStartRatio);
-                    windowStartSeeded = true;
-                }
-                int start = Math.max(Math.max(entryIndex + 1, seriesBegin + 1), windowStartIndex + 1);
-                for (int barIndex = start; barIndex < endIndex && barIndex <= windowEndIndex; barIndex++) {
-                    cursor = fillRange(cursor, barIndex, realized);
-                    Num closePrice = series.closePrice(barIndex);
-                    Num intermediateNetPrice = addCost(closePrice, averageHoldingCostPerPeriod, isLongTrade);
-                    Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
-                    setOrMultiply(barIndex, ratio);
-                }
-                Num exitPrice = series.exitPrice(position, endIndex);
-                Num netExitPrice = addCost(exitPrice, averageHoldingCostPerPeriod, isLongTrade);
-                Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
-                if (ratioIndex <= windowEndIndex && !(windowStartSeeded && ratioIndex == windowStartIndex)) {
-                    if (ratioIndex < cursor) {
-                        // A later-iterated position may close at an earlier bar
-                        // than the sweep cursor. Those cells are already
-                        // materialized with earlier marks, so apply this exit
-                        // ratio in place instead of rewinding the cursor.
-                        multiplyRange(ratioIndex, cursor - 1, ratio);
-                    } else {
-                        cursor = fillRange(cursor, ratioIndex, realized);
-                        setOrMultiply(ratioIndex, ratio);
-                        cursor = ratioIndex + 1;
+        TradingRecord record = Objects.requireNonNull(tradingRecord);
+        OpenPositionHandling handling = Objects.requireNonNull(openPositionHandling);
+        AnalysisPositionSupport.Curve curve = AnalysisPositionSupport.materialize(this, barSeries, record, startIndex,
+                requestedFinalIndex, useRecordEnd, useSeriesEnd, padToSeriesEnd, handling,
+                (captured, positions, costs) -> {
+                    Num one = this.barSeries.numFactory().one();
+                    OffsetNumBuffer buffer = AnalysisPositionSupport.buffer(captured, one, one);
+                    for (Position position : positions) {
+                        calculatePosition(position, captured.finalIndex(), captured, buffer, costs.get(position));
                     }
-                } else if (ratioIndex <= windowEndIndex) {
-                    // The window-start cell already received this ratio through
-                    // the seed above, but any later cells materialized by other
-                    // positions still need this position's realized ratio.
-                    if (cursor > ratioIndex + 1) {
-                        multiplyRange(ratioIndex + 1, cursor - 1, ratio);
-                    }
-                    cursor = Math.max(cursor, ratioIndex + 1);
-                }
-                realized = realized.multipliedBy(ratio);
-                continue;
-            }
-
-            Trade exit = position.getExit();
-            if (exit != null && endIndex >= exit.getIndex()) {
-                Num holdingCost = position.getHoldingCost(endIndex);
-                Num netExitPrice = addCost(exit.getNetPrice(), holdingCost, isLongTrade);
-                Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
-                int from = Math.max(ratioIndex, windowStartIndex);
-                if (from <= windowEndIndex) {
-                    if (from < cursor) {
-                        // A later-iterated position may close at an earlier bar
-                        // than the sweep cursor (e.g. a zero-duration lot closed
-                        // ahead of an older lot under LIFO). Those cells are
-                        // already materialized, so apply this exit ratio in
-                        // place instead of deferring it through the running
-                        // product.
-                        multiplyRange(from, cursor - 1, ratio);
-                    } else {
-                        cursor = fillRange(cursor, from - 1, realized);
-                    }
-                    realized = realized.multipliedBy(ratio);
-                }
-            }
-        }
-        fillRange(cursor, windowEndIndex, realized);
-        if (!positions.isEmpty()) {
-            materialized = true;
-        }
-    }
-
-    /**
-     * Returns the realized ratio a position closed before the retained history
-     * contributes, or {@code null} when it contributes nothing. Mirrors the full
-     * curve's entry-equity guard: the position is skipped when the equity at its
-     * entry, the product of the already-carried ratios that took effect by then, is
-     * not positive. Mark-to-market marks before the retained begin are unavailable,
-     * so only realized ratios form that equity.
-     */
-    private Num carryBeforeRetainedHistory(Position position, int endIndex) {
-        Trade entry = position.getEntry();
-        Trade exit = position.getExit();
-        if (exit == null || exit.getIndex() > endIndex) {
-            return null;
-        }
-        NumFactory numFactory = series.numFactory();
-        int entryIndex = entry.getIndex();
-        Num entryEquity = numFactory.one();
-        for (int i = 0; i < carriedRatios.size(); i++) {
-            if (carriedRatioIndices.get(i) <= entryIndex) {
-                entryEquity = entryEquity.multipliedBy(carriedRatios.get(i));
-            }
-        }
-        if (!entryEquity.isGreaterThan(numFactory.zero())) {
-            return null;
-        }
-        Num holdingCost = equityCurveMode == EquityCurveMode.MARK_TO_MARKET
-                ? averageHoldingCostPerPeriod(position, endIndex, numFactory)
-                : position.getHoldingCost(endIndex);
-        Num netExitPrice = addCost(series.exitPrice(position, endIndex), holdingCost, entry.isBuy());
-        Num ratio = getIntermediateRatio(entry.isBuy(), entry.getNetPrice(), netExitPrice);
-        // A zero-duration position's ratio takes effect on the next bar, as in
-        // the full curve.
-        carriedRatioIndices.add(endIndex == entryIndex ? entryIndex + 1 : endIndex);
-        carriedRatios.add(ratio);
-        return ratio;
-    }
-
-    /**
-     * Composes {@code ratio} multiplicatively into the cell at {@code index}.
-     */
-    private void setOrMultiply(int index, Num ratio) {
-        int valueIndex = toValueIndex(index);
-        values.set(valueIndex, values.get(valueIndex).multipliedBy(ratio));
-    }
-
-    /**
-     * Composes {@code value} multiplicatively into every cell of the inclusive
-     * range {@code [from, to]} and returns the next unmaterialized index
-     * ({@code max(from, to) + 1}). Untouched cells hold the identity element, so
-     * composition equals replacement on a freshly constructed curve, while a
-     * repeated {@link #calculate} invocation accumulates on top of the data already
-     * present instead of discarding it.
-     */
-    private int fillRange(int from, int to, Num value) {
-        if (from > to) {
-            return from;
-        }
-        for (int i = from; i <= to; i++) {
-            int valueIndex = toValueIndex(i);
-            values.set(valueIndex, values.get(valueIndex).multipliedBy(value));
-        }
-        return to + 1;
+                    return new AnalysisPositionSupport.Curve(captured, buffer);
+                });
+        this.window = curve.window();
+        this.values = curve.values();
     }
 
     /**
@@ -444,107 +199,109 @@ public class CashFlow implements PerformanceIndicator {
      *
      * @param position   a single position
      * @param finalIndex index up until cash flow of open positions is considered
+     * @throws IllegalStateException if a bar this curve was materialized from was
+     *                               evicted, replaced or updated since
      * @since 0.22.2
      */
     @Override
     public void calculatePosition(Position position, int finalIndex) {
+        AnalysisPositionSupport.PricedPosition priced = AnalysisPositionSupport.pricePosition(this, barSeries, position,
+                finalIndex, window, true);
+        if (priced != null) {
+            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values,
+                    staged -> calculatePosition(position, finalIndex, window, staged, priced.holdingCost()));
+        }
+    }
+
+    private void calculatePosition(Position position, int finalIndex, AnalysisPositionSupport.Window captured,
+            OffsetNumBuffer buffer, Num holdingCost) {
         Trade entry = position.getEntry();
         if (entry == null) {
             return;
         }
-        int seriesEnd = series.endIndex();
+        int windowStartIndex = captured.beginIndex();
+        int windowEndIndex = captured.bufferEndIndex();
         int entryIndex = entry.getIndex();
-        if (entryIndex > finalIndex || entryIndex > seriesEnd) {
+        if (entryIndex > finalIndex || entryIndex > windowEndIndex) {
             return;
         }
-        int endIndex = determineEndIndex(position, finalIndex, seriesEnd);
-        int seriesBegin = series.beginIndex();
-        int windowStartIndex = Math.max(valueStartIndex, seriesBegin);
-        int windowEndIndex = Math.min(valueEndIndex, seriesEnd);
+        int endIndex = determineEndIndex(position, finalIndex, windowEndIndex);
+        if (windowStartIndex > windowEndIndex) {
+            return;
+        }
+        boolean isLongTrade = entry.isBuy();
+        Num netEntryPrice = entry.getNetPrice();
         if (endIndex < windowStartIndex) {
-            // Like the batch sweep, a position closed before the retained
-            // history carries its realized ratio into every retained cell; an
-            // explicit later window ignores earlier closes.
-            Num ratio = windowStartIndex == seriesBegin ? carryBeforeRetainedHistory(position, endIndex) : null;
-            if (ratio != null) {
-                multiplyRange(windowStartIndex, windowEndIndex, ratio);
-                // Per-position updates compose ratios one position at a time;
-                // flag the curve so a later batch sweep cannot reassociate the
-                // multiplication order over these cells.
-                materialized = true;
+            if (!captured.carriesBeforeWindow(position)) {
+                return;
             }
-            return;
-        }
-        if (windowStartIndex > windowEndIndex || endIndex < windowStartIndex) {
+            Num entryEquity = buffer.get(windowStartIndex);
+            if (!entryEquity.isGreaterThan(barSeries.numFactory().zero())) {
+                return;
+            }
+            Trade exit = position.getExit();
+            Num netExitPrice = addCost(exit.getNetPrice(), holdingCost, isLongTrade);
+            Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
+            buffer.multiplyRange(windowStartIndex, windowEndIndex, ratio);
+            buffer.multiplyBaseline(ratio);
             return;
         }
 
-        NumFactory numFactory = series.numFactory();
-        boolean isLongTrade = entry.isBuy();
-        Num netEntryPrice = entry.getNetPrice();
-        Num entryEquity = getStoredValue(Math.max(entryIndex, windowStartIndex));
-        if (!entryEquity.isGreaterThan(numFactory.zero())) {
+        Num entryEquity = buffer.get(Math.max(entryIndex, windowStartIndex));
+        if (!entryEquity.isGreaterThan(barSeries.numFactory().zero())) {
             return;
         }
         int ratioIndex = endIndex;
-        if (ratioIndex == entryIndex && entryIndex < seriesEnd) {
+        // A same-bar ratio moves to the next bar only inside the logical analysis
+        // window; the padded buffer can extend past it.
+        if (ratioIndex == entryIndex && entryIndex < captured.endIndex()) {
             ratioIndex = entryIndex + 1;
         }
-
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
-            Num averageHoldingCostPerPeriod = averageHoldingCostPerPeriod(position, endIndex, numFactory);
-            boolean windowStartSeeded = false;
-            if (entryIndex < windowStartIndex) {
-                Num windowStartPrice = windowStartIndex == endIndex ? series.exitPrice(position, endIndex)
-                        : series.closePrice(windowStartIndex);
-                Num windowStartNetPrice = addCost(windowStartPrice, averageHoldingCostPerPeriod, isLongTrade);
-                Num windowStartRatio = getIntermediateRatio(isLongTrade, netEntryPrice, windowStartNetPrice);
-                multiplyValue(windowStartIndex, windowStartRatio);
-                windowStartSeeded = true;
+            Num basis = AnalysisPositionSupport.valuationBasis(this, barSeries, position, holdingCost, endIndex,
+                    windowStartIndex);
+            Num netExitPrice = AnalysisPositionSupport.markToMarket(this, barSeries, position, holdingCost, endIndex,
+                    windowStartIndex, windowEndIndex, (index, netPrice, previousPrice) -> buffer.multiply(index,
+                            getIntermediateRatio(isLongTrade, basis, netPrice)))
+                    .netPrice();
+            Num ratio = getIntermediateRatio(isLongTrade, basis, netExitPrice);
+            if (ratioIndex <= windowEndIndex) {
+                buffer.multiply(ratioIndex, ratio);
             }
-            int start = Math.max(Math.max(entryIndex + 1, seriesBegin + 1), windowStartIndex + 1);
-            for (int barIndex = start; barIndex < endIndex && barIndex <= windowEndIndex; barIndex++) {
-                Num closePrice = series.closePrice(barIndex);
-                Num intermediateNetPrice = addCost(closePrice, averageHoldingCostPerPeriod, isLongTrade);
-                Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
-                multiplyValue(barIndex, ratio);
+            if (ratioIndex < windowEndIndex) {
+                // ratioIndex + 1 must stay representable: skip the empty
+                // successor range instead of letting the increment overflow.
+                buffer.multiplyRange(ratioIndex + 1, windowEndIndex, ratio);
             }
-            Num exitPrice = series.exitPrice(position, endIndex);
-            Num netExitPrice = addCost(exitPrice, averageHoldingCostPerPeriod, isLongTrade);
-            Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
-            if (ratioIndex <= windowEndIndex && !(windowStartSeeded && ratioIndex == windowStartIndex)) {
-                multiplyValue(ratioIndex, ratio);
-            }
-            multiplyRange(ratioIndex + 1, windowEndIndex, ratio);
-            materialized = true;
             return;
         }
 
         Trade exit = position.getExit();
         if (exit != null && endIndex >= exit.getIndex()) {
-            Num holdingCost = position.getHoldingCost(endIndex);
             Num netExitPrice = addCost(exit.getNetPrice(), holdingCost, isLongTrade);
             Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
-            multiplyRange(Math.max(ratioIndex, windowStartIndex), windowEndIndex, ratio);
-            materialized = true;
+            buffer.multiplyRange(Math.max(ratioIndex, windowStartIndex), windowEndIndex, ratio);
         }
     }
 
     /**
-     * Returns the cash flow at the given bar index. Like
-     * {@link BarSeries#getBar(int)}, a non-negative index before the retained begin
-     * of a pruned series resolves to the first retained value; a negative index, or
-     * one before an explicit window start, is rejected.
-     *
      * @param index the bar index
-     * @return the cash flow value at the index-th position
+     * @return the cash flow value at the index-th position, or the neutral value
+     *         one for indices outside the materialized window
      */
     @Override
     public Num getValue(int index) {
-        // Only indices pruned from the series resolve to the first retained value;
-        // negative indices and reads before an explicit window stay invalid.
-        int retainedBegin = Math.max(0, series.beginIndex());
-        return getStoredValue(index >= 0 && index < retainedBegin ? retainedBegin : index);
+        return values.get(index);
+    }
+
+    /**
+     * @return values over the captured materialized window, independent of later
+     *         changes to the borrowed series bounds
+     * @since 0.25.1
+     */
+    @Override
+    public Stream<Num> stream() {
+        return values.stream();
     }
 
     @Override
@@ -552,24 +309,50 @@ public class CashFlow implements PerformanceIndicator {
         return 0;
     }
 
-    /**
-     * Returns a fresh detached copy of the bars this curve was computed from, with
-     * the source series' absolute indexing. The bar set is the one retained at
-     * construction; bar contents are copied at each call (under the read lock of a
-     * {@code ConcurrentBarSeries}), so in-place bar edits made since construction
-     * are visible in the copy but never in this curve's values. Mutating the copy
-     * cannot reach the source series, this curve, or later copies.
-     */
     @Override
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the borrowed caller series by contract.")
     public BarSeries getBarSeries() {
-        return series.toDetachedSeries();
+        return barSeries;
     }
 
     /**
-     * @return the size of the bar series
+     * Returns the first absolute index of the captured curve, independent of later
+     * changes to the borrowed series.
+     *
+     * @return the captured begin index
+     * @since 0.25.1
+     */
+    @Override
+    public int getBeginIndex() {
+        return window.beginIndex();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.25.1
+     */
+    @Override
+    public int getEndIndex() {
+        return window.endIndex();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.25.1
+     */
+    @Override
+    public Num getBaselineValue() {
+        return values.baseline();
+    }
+
+    /**
+     * @return the number of values captured in the materialized window, unaffected
+     *         by later changes to the borrowed series
      */
     public int getSize() {
-        return series.barCount();
+        return values.size();
     }
 
     /**
@@ -579,41 +362,6 @@ public class CashFlow implements PerformanceIndicator {
     @Override
     public EquityCurveMode getEquityCurveMode() {
         return equityCurveMode;
-    }
-
-    private void multiplyValue(int index, Num ratio) {
-        if (!containsIndex(index)) {
-            return;
-        }
-        int valueIndex = toValueIndex(index);
-        values.set(valueIndex, values.get(valueIndex).multipliedBy(ratio));
-    }
-
-    private void multiplyRange(int startIndex, int endIndex, Num ratio) {
-        if (values.isEmpty()) {
-            return;
-        }
-        int start = Math.max(valueStartIndex, startIndex);
-        int end = Math.min(endIndex, valueEndIndex);
-        if (start > end) {
-            return;
-        }
-        for (int i = start; i <= end; i++) {
-            int valueIndex = toValueIndex(i);
-            values.set(valueIndex, values.get(valueIndex).multipliedBy(ratio));
-        }
-    }
-
-    private boolean containsIndex(int index) {
-        return index >= valueStartIndex && index <= valueEndIndex;
-    }
-
-    private Num getStoredValue(int index) {
-        return values.get(toValueIndex(index));
-    }
-
-    private int toValueIndex(int index) {
-        return index - valueStartIndex;
     }
 
     private static Num getIntermediateRatio(boolean isLongTrade, Num entryPrice, Num exitPrice) {

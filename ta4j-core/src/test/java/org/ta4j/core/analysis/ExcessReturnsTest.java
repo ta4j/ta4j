@@ -3,15 +3,26 @@
  */
 package org.ta4j.core.analysis;
 
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.IntStream;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Trade;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
@@ -22,6 +33,37 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     public ExcessReturnsTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test(timeout = 5000)
+    public void compoundsIntervalEndingAtMaximumIntegerIndex() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 50d).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(Integer.MAX_VALUE - 1)
+                .build();
+        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(Integer.MAX_VALUE - 1, series),
+                Trade.sellAt(Integer.MAX_VALUE, series));
+
+        Num value = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO, record)
+                .excessReturn(Integer.MAX_VALUE - 1, Integer.MAX_VALUE);
+
+        assertEquals(numFactory.numOf(-0.5), value);
+    }
+
+    @Test
+    public void ignoresTradesOutsideAnEmptyLogicalWindow() {
+        BarSeries series = ConstrainedSeriesSupport.emptyLogicalSeries("empty-window", numFactory, 100d, 100d);
+        Num one = numFactory.one();
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, numFactory.numOf(100d), one),
+                Trade.sellAt(1, numFactory.numOf(100d), one));
+
+        Num actual = new ExcessReturns(series, numFactory.numOf(0.05d), CashReturnPolicy.CASH_EARNS_RISK_FREE,
+                tradingRecord).excessReturn(0, 1);
+
+        // Both trades lie outside the (empty) logical window, so no invested
+        // interval exists to price against the risk-free rate.
+        assertNumEquals(0, actual);
     }
 
     @Test
@@ -96,6 +138,89 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
         assertEquals(expected, actual, 1e-12);
         assertTrue(actual < 0.0d);
+    }
+
+    @Test
+    public void riskFreeGrowthUsesBarTimesCapturedAtConstruction() {
+        var series = buildDailySeries(new double[] { 100d, 100d, 100d });
+        var annualRate = numFactory.numOf(0.1d);
+        var excessReturns = new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_ZERO,
+                new BaseTradingRecord());
+        var perBarRiskFree = Math.pow(1.0 + annualRate.doubleValue(),
+                Duration.ofDays(1).getSeconds() / TimeConstants.SECONDS_PER_YEAR);
+        var expected = (1.0d / (perBarRiskFree * perBarRiskFree)) - 1.0d;
+        assertEquals(expected, excessReturns.excessReturn(0, 2).doubleValue(), 1e-12);
+
+        // A live feed replaces the last bar with one ending a year later; the
+        // captured cash flow still describes the original bar, so the risk-free
+        // growth must too.
+        var lastBar = series.getLastBar();
+        series.addBar(series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(lastBar.getEndTime().plus(Duration.ofDays(365)))
+                .openPrice(100d)
+                .highPrice(100d)
+                .lowPrice(100d)
+                .closePrice(100d)
+                .volume(1)
+                .build(), true);
+
+        assertEquals(expected, excessReturns.excessReturn(0, 2).doubleValue(), 1e-12);
+    }
+
+    @Test
+    public void riskFreeGrowthAndEquityDescribeTheSameBarWhenABarIsReplacedDuringCapture() {
+        var daily = buildDailySeries(new double[] { 100d, 110d, 121d });
+        var lastBar = daily.getLastBar();
+        AtomicBoolean armed = new AtomicBoolean();
+        AtomicInteger outermostLeases = new AtomicInteger();
+        AtomicReference<Runnable> writer = new AtomicReference<>();
+        // Lets a feed writer replace the last bar before the fifth outermost read
+        // lease of the armed construction: after the invested interval and cash
+        // flow were built from the original bar, before anything else is read.
+        ReentrantReadWriteLock lock = new ReentrantReadWriteLock() {
+            private final ReadLock replacingReadLock = new ReadLock(this) {
+                @Override
+                public void lock() {
+                    if (armed.get() && getReadHoldCount() == 0 && outermostLeases.incrementAndGet() == 5) {
+                        armed.set(false);
+                        writer.get().run();
+                    }
+                    super.lock();
+                }
+            };
+
+            @Override
+            public ReadLock readLock() {
+                return replacingReadLock;
+            }
+        };
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(daily, lock);
+        // The replacement moves both the close and the end time, so equity and
+        // risk-free growth disagree unless both come from the same bar.
+        Bar replacement = series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(lastBar.getEndTime().plus(Duration.ofDays(365)))
+                .openPrice(150d)
+                .highPrice(150d)
+                .lowPrice(150d)
+                .closePrice(150d)
+                .volume(1)
+                .build();
+        writer.set(() -> series.addBar(replacement, true));
+        var tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
+        var annualRate = numFactory.numOf(0.1d);
+
+        armed.set(true);
+        var raced = new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_RISK_FREE, tradingRecord,
+                OpenPositionHandling.MARK_TO_MARKET);
+        armed.set(false);
+        var settled = new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_RISK_FREE, tradingRecord,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        assertNumEquals(150d, series.getBar(2).getClosePrice());
+        assertEquals(settled.excessReturn(0, 2), raced.excessReturn(0, 2));
     }
 
     @Test

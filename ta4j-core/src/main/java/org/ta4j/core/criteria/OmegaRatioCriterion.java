@@ -3,7 +3,6 @@
  */
 package org.ta4j.core.criteria;
 
-import java.util.List;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
@@ -198,25 +197,41 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
-        if (tradingRecord == null || series.isEmpty()) {
+        if (tradingRecord == null) {
             return zero;
         }
+        return calculateTradingRecord(series, tradingRecord, zero);
+    }
 
-        int beginIndex = tradingRecord.getStartIndex(series);
-        int endIndex = tradingRecord.getEndIndex(series);
-        if (endIndex <= beginIndex) {
+    private Num calculateTradingRecord(BarSeries series, TradingRecord tradingRecord, Num zero) {
+        if (series.isEmpty()) {
             return zero;
         }
 
         Returns returns = new Returns(series, tradingRecord, ReturnRepresentation.DECIMAL, equityCurveMode,
                 openPositionHandling);
-        Num thresholdNum = numFactory.numOf(threshold);
+        // Bounds come from the captured return window, not the live series, so a
+        // series that rolls after materialization cannot shift them.
+        Integer explicitStartIndex = tradingRecord.getStartIndex();
+        int beginIndex = explicitStartIndex == null ? returns.getBeginIndex()
+                : Math.max(explicitStartIndex, returns.getBeginIndex());
+        if (returns.getEndIndex() < beginIndex) {
+            return zero;
+        }
+
+        Num thresholdNum = series.numFactory().numOf(threshold);
         Num upsideExcess = zero;
         Num downsideShortfall = zero;
 
-        List<Num> returnRates = returns.getRawValues();
-        for (int i = beginIndex + 1; i <= endIndex; i++) {
-            Num returnRate = returnRates.get(i);
+        // Returns can seed a zero placeholder at their first index; include it only
+        // when the trading record has an exit or eligible mark at the window start.
+        boolean includeOpenPositionMarks = equityCurveMode != EquityCurveMode.REALIZED
+                && openPositionHandling != OpenPositionHandling.IGNORE;
+        long firstRateIndex = marksAt(tradingRecord, beginIndex, returns.getEndIndex(), includeOpenPositionMarks)
+                ? beginIndex
+                : beginIndex + 1L;
+        for (long i = firstRateIndex; i <= returns.getEndIndex(); i++) {
+            Num returnRate = returns.getValue((int) i);
             if (returnRate.isNaN()) {
                 continue;
             }
@@ -234,6 +249,24 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         }
         Num ratio = upsideExcess.dividedBy(downsideShortfall);
         return toRepresentation(ratio);
+    }
+
+    /** Returns whether the record has a mark or exit at the bounded start. */
+    private static boolean marksAt(TradingRecord tradingRecord, int index, int analysisEndIndex,
+            boolean includeOpenPositionMarks) {
+        for (Position position : tradingRecord.getPositions()) {
+            if (position.getExit() == null) {
+                continue;
+            }
+            int exitIndex = position.getExit().getIndex();
+            if (exitIndex == index || includeOpenPositionMarks && exitIndex > analysisEndIndex
+                    && analysisEndIndex == index && position.getEntry().getIndex() <= index) {
+                return true;
+            }
+        }
+        Position current = tradingRecord.getCurrentPosition();
+        return includeOpenPositionMarks && current != null && current.isOpened() && analysisEndIndex == index
+                && current.getEntry().getIndex() <= index;
     }
 
     @Override

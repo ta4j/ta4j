@@ -9,6 +9,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.EquityCurveMode;
@@ -28,6 +29,18 @@ public class MaximumAbsoluteDrawdownCriterionTest extends AbstractCriterionTest 
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
         var criterion = getCriterion();
         assertNumEquals(0, criterion.calculate(series, new BaseTradingRecord()));
+    }
+
+    @Test
+    public void ignoresAnExitAfterTheWindow() {
+        var series = ConstrainedSeriesSupport.trailingConstrainedSeries("absolute-drawdown-trailing-exit", numFactory,
+                1, 100d, 110d, 55d);
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+
+        // Profit is +10 at the window close; the later exit at 55 is unseen, so
+        // neither absolute nor relative drawdown may report its fall.
+        assertNumEquals(0, getCriterion().calculate(series, tradingRecord));
+        assertNumEquals(0, new MaximumDrawdownCriterion().calculate(series, tradingRecord));
     }
 
     @Test
@@ -105,5 +118,25 @@ public class MaximumAbsoluteDrawdownCriterionTest extends AbstractCriterionTest 
         var criterion = getCriterion();
         assertTrue(criterion.betterThan(numOf(1), numOf(2)));
         assertFalse(criterion.betterThan(numOf(2), numOf(1)));
+    }
+
+    @Test
+    public void matchesFreshSeriesAcrossWindowShapesAndPositionBoundaries() {
+        for (ConstrainedSeriesSupport.CriterionWindowFixture fixture : ConstrainedSeriesSupport
+                .criterionWindowFixtures(numFactory)) {
+            for (EquityCurveMode mode : EquityCurveMode.values()) {
+                for (OpenPositionHandling handling : OpenPositionHandling.values()) {
+                    var criterion = new MaximumAbsoluteDrawdownCriterion(mode, handling);
+                    var actual = criterion.calculate(fixture.series(), fixture.tradingRecord());
+                    var expected = criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord(mode));
+                    assertNumEquals(expected, actual, 1e-10);
+                    Position expectedPosition = fixture.equivalentPosition(mode);
+                    if (fixture.position() != null && expectedPosition != null) {
+                        assertNumEquals(criterion.calculate(fixture.equivalentSeries(), expectedPosition),
+                                criterion.calculate(fixture.series(), fixture.position()), 1e-10);
+                    }
+                }
+            }
+        }
     }
 }

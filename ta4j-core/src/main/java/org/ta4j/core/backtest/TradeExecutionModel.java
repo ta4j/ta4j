@@ -86,6 +86,21 @@ public interface TradeExecutionModel {
     }
 
     /**
+     * Finalizes model state when a {@link BarSeriesManager} run ends, with the
+     * series the run saw. {@link BarSeriesManager} calls this overload; the default
+     * delegates to {@link #onRunEnd(int, TradingRecord)}, so models that only
+     * expire pending orders need not override it.
+     *
+     * @param lastProcessedIndex last bar index examined during the run
+     * @param tradingRecord      trading record to mutate
+     * @param barSeries          the run's series, ending at its last index
+     * @since 0.25.1
+     */
+    default void onRunEnd(int lastProcessedIndex, TradingRecord tradingRecord, BarSeries barSeries) {
+        onRunEnd(lastProcessedIndex, tradingRecord);
+    }
+
+    /**
      * Estimates the bar index and price used by dynamic position sizing for a
      * strategy signal.
      *

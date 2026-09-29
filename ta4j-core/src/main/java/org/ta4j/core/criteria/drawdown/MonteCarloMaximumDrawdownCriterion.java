@@ -204,13 +204,9 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        CashFlow cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
-        // Scan the curve's own capture: a concurrently appended and pruned live
-        // series may already describe a newer window than the curve.
-        BarSeries curveSeries = cashFlow.getBarSeries();
-        List<List<Num>> blocks = buildBlocks(curveSeries, tradingRecord, cashFlow);
+        List<List<Num>> blocks = buildBlocks(series, tradingRecord);
         if (blocks.size() < 3) {
-            return Drawdown.amount(curveSeries, tradingRecord, cashFlow);
+            return maximumDrawdownCriterion.calculate(series, tradingRecord);
         }
         int blocksPerPath = pathBlocks != null ? pathBlocks : blocks.size();
         RandomGenerator random = randomSupplier.get();
@@ -240,43 +236,28 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
         return statistics.calculate(numFactory, maxDrawdowns);
     }
 
-    private List<List<Num>> buildBlocks(BarSeries series, TradingRecord record, CashFlow cashFlow) {
+    private List<List<Num>> buildBlocks(BarSeries series, TradingRecord record) {
         List<List<Num>> blocks = new ArrayList<>();
+        CashFlow cashFlow = new CashFlow(series, record, equityCurveMode, openPositionHandling);
         Num one = series.numFactory().one();
-        int retainedBegin = series.getBeginIndex();
-        int retainedEnd = series.getEndIndex();
         for (Position position : record.getPositions()) {
             if (!position.isClosed()) {
                 continue;
             }
-            int entryIndex = position.getEntry().getIndex();
-            int exitIndex = position.getExit().getIndex();
-            int blockStart = Math.max(entryIndex, retainedBegin);
-            int blockEnd = Math.min(exitIndex, retainedEnd);
-            if (blockStart > blockEnd) {
+            // Blocks cover only the cash flow's captured window: bars pruned
+            // before it carry no returns, and bars after it are never priced.
+            int blockStart = Math.max(position.getEntry().getIndex(), cashFlow.getBeginIndex());
+            int blockEnd = Math.min(position.getExit().getIndex(), cashFlow.getEndIndex());
+            if (blockEnd < blockStart) {
                 continue;
             }
             List<Num> block = new ArrayList<>();
-            int firstIndex = blockStart;
-            Num previousEquity;
-            if (blockStart > retainedBegin) {
-                previousEquity = cashFlow.getValue(blockStart - 1);
-            } else if (blockStart == 0) {
-                // The curve starts at one before the first bar.
-                previousEquity = one;
-            } else {
-                // Pruned bars leave no prior equity cell: start from the first
-                // retained bar's equity. A position entering exactly on that bar
-                // (rather than clipped from earlier history) keeps its entry-bar
-                // return, which is zero because marks start after the entry, like
-                // the same position at index 0 of an unpruned series.
-                previousEquity = cashFlow.getValue(blockStart);
-                firstIndex++;
-                if (entryIndex == blockStart) {
-                    block.add(series.numFactory().zero());
-                }
-            }
-            for (int i = firstIndex; i <= blockEnd; i++) {
+            // The window's baseline includes P&L carried from pruned positions but not the
+            // first slot: a result realized there is a block return like any other.
+            Num previousEquity = blockStart == cashFlow.getBeginIndex() ? cashFlow.getBaselineValue()
+                    : cashFlow.getValue(blockStart - 1);
+            for (long cursor = blockStart; cursor <= blockEnd; cursor++) {
+                int i = (int) cursor;
                 Num currentEquity = cashFlow.getValue(i);
                 block.add(currentEquity.dividedBy(previousEquity).minus(one));
                 previousEquity = currentEquity;

@@ -7,13 +7,12 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Position;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
-import org.ta4j.core.criteria.drawdown.MonteCarloMaximumDrawdownCriterion;
-import org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
@@ -21,17 +20,17 @@ import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.criteria.ExpectancyCriterion;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.reports.BaseTradingStatement;
-import java.util.Map;
-import java.util.LinkedHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.FixedRule;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -140,22 +139,325 @@ public class BacktestExecutionResultTest {
     }
 
     @Test
-    public void constructorCopiesBarSeriesAndAccessorReturnsDetachedCopies() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(5, 6, 7).build();
+    public void barSeriesAccessorOwnsStableImmutableValues() {
+        BaseBarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
 
         BacktestExecutionResult result = new BacktestExecutionResult(series, List.of(), BacktestRuntimeReport.empty());
-        BarSeries firstSnapshot = result.barSeries();
-        BarSeries secondSnapshot = result.barSeries();
-        series.barBuilder().closePrice(8).add();
+        BarSeries ownedSeries = result.barSeries();
+        series.getBar(1).addPrice(numFactory.numOf(99));
 
-        // Every accessor call hands back a fresh detached copy, so caller-side
-        // mutations can never reach the result's internal evaluation input.
-        assertNotSame(series, firstSnapshot);
-        assertNotSame(firstSnapshot, secondSnapshot);
-        assertEquals(3, firstSnapshot.getBarCount());
-        assertEquals(3, secondSnapshot.getBarCount());
-        assertEquals(4, series.getBarCount());
-        assertEquals(series.getName(), firstSnapshot.getName());
+        assertNotSame(series, ownedSeries);
+        assertEquals(numFactory.numOf(20), ownedSeries.getBar(1).getClosePrice());
+        assertThrows(UnsupportedOperationException.class, () -> ownedSeries.getBar(1).addPrice(numFactory.one()));
+    }
+
+    @Test
+    public void barSeriesSnapshotPreservesSeriesBeginIndexAndRemovedBarsOffset() {
+        BaseBarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BaseBarSeries offsetSeries = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBeginIndex(10)
+                .withBars(source.getBarData())
+                .build();
+
+        BacktestExecutionResult result = new BacktestExecutionResult(offsetSeries, List.of(),
+                BacktestRuntimeReport.empty());
+        BarSeries snapshot = result.barSeries();
+        offsetSeries.getBar(12).addPrice(numFactory.numOf(99));
+
+        assertNotSame(offsetSeries, snapshot);
+        assertEquals(10, snapshot.getBeginIndex());
+        assertEquals(12, snapshot.getEndIndex());
+        assertEquals(10, snapshot.getRemovedBarsCount());
+        assertEquals(3, snapshot.getBarData().size());
+        assertEquals(numFactory.numOf(30), snapshot.getBar(12).getClosePrice());
+    }
+
+    @Test
+    public void barSeriesSnapshotRetainsPrunedIndexFallbackAndLogicalCount() {
+        BarSeries pruned = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        pruned.setMaximumBarCount(2);
+        BacktestExecutionResult prunedResult = new BacktestExecutionResult(pruned, List.of(),
+                BacktestRuntimeReport.empty());
+
+        assertEquals(2, prunedResult.barSeries().getBarCount());
+        assertEquals(prunedResult.barSeries().getBar(1), prunedResult.barSeries().getBar(0));
+
+        BarSeries prunedView = prunedResult.barSeries().getSubSeries(0, 2);
+        assertEquals(1, prunedView.getBeginIndex());
+        assertEquals(1, prunedView.getBarCount());
+        assertEquals(numFactory.numOf(20), prunedView.getBar(0).getClosePrice());
+        assertThrows(UnsupportedOperationException.class, () -> prunedView.getLastBar().addPrice(numFactory.numOf(99)));
+
+        BarSeries constrained = ConstrainedSeriesSupport.trailingConstrainedSeries("constrained", numFactory, 1, 10d,
+                20d, 30d);
+        BacktestExecutionResult constrainedResult = new BacktestExecutionResult(constrained, List.of(),
+                BacktestRuntimeReport.empty());
+
+        assertEquals(2, constrainedResult.barSeries().getBarCount());
+        assertEquals(3, constrainedResult.barSeries().getBarData().size());
+        BarSeries constrainedView = constrainedResult.barSeries().getSubSeries(0, 3);
+        assertEquals(2, constrainedView.getBarCount());
+        assertEquals(numFactory.numOf(20), constrainedView.getLastBar().getClosePrice());
+    }
+
+    @Test
+    public void verifyUnchangedAllowsBarsAppendedBeyondTheWindow() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BarSeries baseline = BacktestExecutionResult.snapshot(source);
+
+        source.addBar(nextBar(source, 40d));
+        BacktestExecutionResult.verifyUnchanged(source, baseline);
+        source.addBar(nextBar(source, 41d), true);
+        BacktestExecutionResult.verifyUnchanged(source, baseline);
+
+        assertEquals(2, baseline.getEndIndex());
+    }
+
+    @Test
+    public void verifyUnchangedAllowsBarsAppendedToAnEmptyBaseline() {
+        BarSeries source = new BaseBarSeriesBuilder().withNumFactory(numFactory).build();
+        BarSeries baseline = BacktestExecutionResult.snapshot(source);
+
+        // The first append moves an empty series' begin from -1 to 0 without
+        // touching any captured bar.
+        source.addBar(source.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(Instant.parse("2024-01-02T00:00:00Z"))
+                .closePrice(10)
+                .build());
+        BacktestExecutionResult.verifyUnchanged(source, baseline);
+
+        assertTrue(baseline.isEmpty());
+    }
+
+    @Test
+    public void verifyUnchangedRejectsReplacedOrUpdatedWindowBars() {
+        BarSeries replaced = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BarSeries replacedBaseline = BacktestExecutionResult.snapshot(replaced);
+        replaced.addBar(nextBar(replaced, 31d), true);
+
+        IllegalStateException replacement = assertThrows(IllegalStateException.class,
+                () -> BacktestExecutionResult.verifyUnchanged(replaced, replacedBaseline));
+        assertTrue(replacement.getMessage(), replacement.getMessage().contains("window [0, 2]"));
+        assertTrue(replacement.getMessage(), replacement.getMessage().contains("bar 2 was replaced or updated"));
+
+        BarSeries updated = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        BarSeries updatedBaseline = BacktestExecutionResult.snapshot(updated);
+        updated.addPrice(numFactory.numOf(35));
+
+        assertThrows(IllegalStateException.class,
+                () -> BacktestExecutionResult.verifyUnchanged(updated, updatedBaseline));
+    }
+
+    @Test
+    public void verifyUnchangedIgnoresRawBarsAfterTheLogicalWindow() {
+        BarSeries trailing = ConstrainedSeriesSupport.trailingConstrainedSeries("hidden-trailing", numFactory, 1, 10d,
+                20d, 30d);
+        BarSeries trailingBaseline = BacktestExecutionResult.snapshot(trailing);
+
+        // Runs never read the raw bars retained after the logical end, and the
+        // earliest change reported after the window rules out changes inside it.
+        trailing.getBar(2).addPrice(numFactory.numOf(35));
+        BacktestExecutionResult.verifyUnchanged(trailing, trailingBaseline);
+
+        trailing.getBar(1).addPrice(numFactory.numOf(25));
+        IllegalStateException change = assertThrows(IllegalStateException.class,
+                () -> BacktestExecutionResult.verifyUnchanged(trailing, trailingBaseline));
+        assertTrue(change.getMessage(), change.getMessage().contains("bar 1 was replaced or updated"));
+    }
+
+    @Test
+    public void verifyUnchangedRejectsTrackedChangesBeforeTheLogicalWindow() {
+        BarSeries leading = ConstrainedSeriesSupport.offsetSeries("hidden-leading", numFactory, 1, 2, 0, 10d, 20d, 30d);
+        BarSeries baseline = BacktestExecutionResult.snapshot(leading);
+
+        // The revision reports only the earliest change, so a change to a hidden
+        // leading bar could mask an in-window change that was reverted since.
+        leading.getBar(0).addPrice(numFactory.numOf(15));
+
+        IllegalStateException change = assertThrows(IllegalStateException.class,
+                () -> BacktestExecutionResult.verifyUnchanged(leading, baseline));
+        assertTrue(change.getMessage(), change.getMessage().contains("bar 0 before the window changed"));
+    }
+
+    @Test
+    public void verifyUnchangedHandlesAWindowEndingAtTheTerminalIndex() {
+        BarSeries terminal = ConstrainedSeriesSupport.terminalOneBarSeries("terminal", numFactory, 10d);
+        BarSeries baseline = BacktestExecutionResult.snapshot(terminal);
+
+        // The comparison must stop after the terminal bar instead of wrapping.
+        BacktestExecutionResult.verifyUnchanged(terminal, baseline);
+    }
+
+    @Test
+    public void verifyUnchangedRejectsEvictedWindowBars() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        source.setMaximumBarCount(3);
+        BarSeries baseline = BacktestExecutionResult.snapshot(source);
+        source.addBar(nextBar(source, 40d));
+
+        IllegalStateException eviction = assertThrows(IllegalStateException.class,
+                () -> BacktestExecutionResult.verifyUnchanged(source, baseline));
+        assertTrue(eviction.getMessage(), eviction.getMessage().contains("bars before index 1 were evicted"));
+    }
+
+    @Test
+    public void verifyUnchangedComparesBarsWhenTheSeriesDoesNotTrackRevisions() {
+        List<Bar> bars = new ArrayList<>(
+                new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build().getBarData());
+        BarSeries untracked = new BaseBarSeries("untracked", bars) {
+            @Override
+            public synchronized long getBarHistoryRevision() {
+                return -1L;
+            }
+        };
+        BarSeries baseline = BacktestExecutionResult.snapshot(untracked);
+
+        untracked.addBar(nextBar(untracked, 40d));
+        BacktestExecutionResult.verifyUnchanged(untracked, baseline);
+        untracked.getBar(1).addPrice(numFactory.numOf(25));
+
+        IllegalStateException change = assertThrows(IllegalStateException.class,
+                () -> BacktestExecutionResult.verifyUnchanged(untracked, baseline));
+        assertTrue(change.getMessage(), change.getMessage().contains("bar 1 was replaced or updated"));
+    }
+
+    @Test
+    public void verifyUnchangedComparesCustomBarsWhoseMutationsTheRevisionMisses() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        List<Bar> customBars = new ArrayList<>();
+        for (Bar bar : source.getBarData()) {
+            customBars.add(new MutableCustomBar(bar));
+        }
+        BarSeries series = new BaseBarSeries("custom-bars", customBars);
+        BarSeries baseline = BacktestExecutionResult.snapshot(series);
+        long revision = series.getBarHistoryRevision();
+
+        series.getBar(1).addPrice(numFactory.numOf(25));
+
+        assertEquals("custom bars cannot publish their mutation", revision, series.getBarHistoryRevision());
+        IllegalStateException change = assertThrows(IllegalStateException.class,
+                () -> BacktestExecutionResult.verifyUnchanged(series, baseline));
+        assertTrue(change.getMessage(), change.getMessage().contains("bar 1 was replaced or updated"));
+    }
+
+    @Test
+    public void verifyUnchangedComparesTrackedBarsWhoseMutationIsNotYetPublished() {
+        List<Bar> bars = new ArrayList<>(
+                new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build().getBarData());
+        long[] pinnedRevision = { -1L };
+        // Pinning the revision simulates a BaseBar whose fields already changed
+        // while its mutation has not yet been published under the write lock.
+        BarSeries series = new BaseBarSeries("unpublished", bars) {
+            @Override
+            public synchronized long getBarHistoryRevision() {
+                return pinnedRevision[0] >= 0L ? pinnedRevision[0] : super.getBarHistoryRevision();
+            }
+        };
+        BarSeries baseline = BacktestExecutionResult.snapshot(series);
+        pinnedRevision[0] = series.getBarHistoryRevision();
+
+        series.getBar(1).addPrice(numFactory.numOf(25));
+
+        assertEquals(pinnedRevision[0], series.getBarHistoryRevision());
+        IllegalStateException change = assertThrows(IllegalStateException.class,
+                () -> BacktestExecutionResult.verifyUnchanged(series, baseline));
+        assertTrue(change.getMessage(), change.getMessage().contains("bar 1 was replaced or updated"));
+    }
+
+    /** A custom bar whose in-place price updates the series cannot observe. */
+    private static final class MutableCustomBar implements Bar {
+
+        private final Bar source;
+        private Num closePrice;
+
+        private MutableCustomBar(Bar source) {
+            this.source = source;
+            this.closePrice = source.getClosePrice();
+        }
+
+        @Override
+        public Duration getTimePeriod() {
+            return source.getTimePeriod();
+        }
+
+        @Override
+        public Instant getBeginTime() {
+            return source.getBeginTime();
+        }
+
+        @Override
+        public Instant getEndTime() {
+            return source.getEndTime();
+        }
+
+        @Override
+        public Num getOpenPrice() {
+            return source.getOpenPrice();
+        }
+
+        @Override
+        public Num getHighPrice() {
+            return source.getHighPrice();
+        }
+
+        @Override
+        public Num getLowPrice() {
+            return source.getLowPrice();
+        }
+
+        @Override
+        public Num getClosePrice() {
+            return closePrice;
+        }
+
+        @Override
+        public Num getVolume() {
+            return source.getVolume();
+        }
+
+        @Override
+        public Num getAmount() {
+            return source.getAmount();
+        }
+
+        @Override
+        public long getTrades() {
+            return source.getTrades();
+        }
+
+        @Override
+        public void addTrade(Num tradeVolume, Num tradePrice) {
+            closePrice = tradePrice;
+        }
+
+        @Override
+        public void addPrice(Num price) {
+            closePrice = price;
+        }
+    }
+
+    private Bar nextBar(BarSeries series, double close) {
+        Bar last = series.getLastBar();
+        return series.barBuilder()
+                .timePeriod(last.getTimePeriod())
+                .endTime(last.getEndTime().plus(last.getTimePeriod()))
+                .closePrice(close)
+                .build();
+    }
+
+    @Test
+    public void criterionScoreRemainsStableAfterSourceBarReplacement() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 50d, 110d).build();
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(2));
+        BacktestExecutionResult result = createBacktestResult(source, List.of(strategy), new int[] { 0, 2 });
+        TradingStatement statement = result.tradingStatements().getFirst();
+        MaximumDrawdownCriterion criterion = new MaximumDrawdownCriterion();
+
+        Num before = criterion.calculate(result.barSeries(), statement.getTradingRecord());
+        source.getBar(1).addPrice(numFactory.numOf(200));
+
+        assertEquals(before, criterion.calculate(result.barSeries(), statement.getTradingRecord()));
     }
 
     @Test
@@ -419,109 +721,6 @@ public class BacktestExecutionResultTest {
             assertEquals("Should have 2 criterion scores stored", 2, allScores.size());
             assertTrue("Should contain net profit criterion", allScores.containsKey(netProfitCriterion));
             assertTrue("Should contain expectancy criterion", allScores.containsKey(expectancyCriterion));
-        }
-    }
-
-    /**
-     * Verifies that the production selection workflow shares equity curves across
-     * the criteria it evaluates without changing any result: the reported order
-     * matches a plain sequential evaluation exactly, and an ordinary custom
-     * {@link AnalysisCriterion} keeps running its regular two-argument calculation
-     * exactly once per statement.
-     */
-    @Test
-    public void getTopStrategiesMatchesSequentialEvaluationOncePerStatement() {
-        BacktestExecutionResult result = createRankingBacktestResult();
-        List<AnalysisCriterion> criteria = new ArrayList<>();
-        criteria.add(new MaximumDrawdownCriterion());
-        criteria.add(new ReturnOverMaxDrawdownCriterion());
-        criteria.add(new MonteCarloMaximumDrawdownCriterion());
-        CountingCriterion countingCriterion = new CountingCriterion(DoubleNumFactory.getInstance());
-        criteria.add(countingCriterion);
-
-        Map<TradingStatement, Map<AnalysisCriterion, Num>> sequentialValues = new LinkedHashMap<>();
-        for (TradingStatement statement : result.tradingStatements()) {
-            Map<AnalysisCriterion, Num> values = new LinkedHashMap<>();
-            for (AnalysisCriterion criterion : criteria) {
-                values.put(criterion, criterion.calculate(result.barSeries(), statement.getTradingRecord()));
-            }
-            sequentialValues.put(statement, values);
-        }
-        int fallbackCallsBeforeRanking = countingCriterion.calculations.get();
-        List<TradingStatement> top = result.getTopStrategies(result.tradingStatements().size(), criteria);
-
-        List<String> expectedNames = expectedOrder(result.tradingStatements(), criteria, sequentialValues).stream()
-                .map(statement -> statement.getStrategy().getName())
-                .toList();
-        List<String> actualNames = top.stream().map(statement -> statement.getStrategy().getName()).toList();
-        assertEquals(expectedNames, actualNames);
-        assertEquals("the fallback criterion must run once per statement",
-                fallbackCallsBeforeRanking + result.tradingStatements().size(), countingCriterion.calculations.get());
-    }
-
-    private BacktestExecutionResult createRankingBacktestResult() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
-                .withData(1d, 2d, 3d, 2d, 4d, 3d, 5d, 4d, 6d, 5d, 7d)
-                .build();
-        Strategy strategyOne = new BaseStrategy("strategy-1", new FixedRule(0), new FixedRule(2));
-        Strategy strategyTwo = new BaseStrategy("strategy-2", new FixedRule(3), new FixedRule(5));
-        Strategy strategyThree = new BaseStrategy("strategy-3", new FixedRule(6), new FixedRule(9));
-        List<TradingStatement> statements = List.of(createRankingStatement(series, strategyOne, 0, 2),
-                createRankingStatement(series, strategyTwo, 3, 5), createRankingStatement(series, strategyThree, 6, 9));
-        return new BacktestExecutionResult(series, statements, BacktestRuntimeReport.empty());
-    }
-
-    private TradingStatement createRankingStatement(BarSeries series, Strategy strategy, int entryIndex,
-            int exitIndex) {
-        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(),
-                new ZeroCostModel());
-        tradingRecord.operate(entryIndex, series.getBar(entryIndex).getClosePrice(),
-                DoubleNumFactory.getInstance().one());
-        tradingRecord.operate(exitIndex, series.getBar(exitIndex).getClosePrice(),
-                DoubleNumFactory.getInstance().one());
-        return new BaseTradingStatement(strategy, tradingRecord, null, null);
-    }
-
-    private static List<TradingStatement> expectedOrder(List<TradingStatement> statements,
-            List<AnalysisCriterion> criteria, Map<TradingStatement, Map<AnalysisCriterion, Num>> valuesByStatement) {
-        List<TradingStatement> ordered = new ArrayList<>(statements);
-        ordered.sort((left, right) -> {
-            for (AnalysisCriterion criterion : criteria) {
-                Num leftValue = valuesByStatement.get(left).get(criterion);
-                Num rightValue = valuesByStatement.get(right).get(criterion);
-                if (!leftValue.equals(rightValue)) {
-                    return criterion.betterThan(leftValue, rightValue) ? -1 : 1;
-                }
-            }
-            return 0;
-        });
-        return ordered;
-    }
-
-    /** A criterion that counts how often its record-based calculate runs. */
-    private static final class CountingCriterion implements AnalysisCriterion {
-
-        private final AtomicInteger calculations = new AtomicInteger();
-        private final NumFactory numFactory;
-
-        CountingCriterion(NumFactory numFactory) {
-            this.numFactory = numFactory;
-        }
-
-        @Override
-        public Num calculate(BarSeries series, Position position) {
-            return numFactory.zero();
-        }
-
-        @Override
-        public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-            calculations.incrementAndGet();
-            return numFactory.one();
-        }
-
-        @Override
-        public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-            return criterionValue1.isGreaterThan(criterionValue2);
         }
     }
 }

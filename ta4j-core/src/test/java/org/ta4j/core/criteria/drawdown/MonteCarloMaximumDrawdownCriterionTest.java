@@ -11,17 +11,21 @@ import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ConstrainedSeriesSupport;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.BaseTrade;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.Trade;
+import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.criteria.Statistics;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.num.Num;
 import java.time.Instant;
@@ -32,6 +36,37 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         super(params -> new MonteCarloMaximumDrawdownCriterion(), numFactory);
     }
 
+    @Test(timeout = 5000)
+    public void pricesClosedBlockEndingAtMaximumIntegerIndex() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 50d).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(Integer.MAX_VALUE - 1)
+                .build();
+        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(Integer.MAX_VALUE - 1, series),
+                Trade.sellAt(Integer.MAX_VALUE, series));
+
+        assertNumEquals(0.5,
+                new MonteCarloMaximumDrawdownCriterion(1, null, 42L, Statistics.MAX).calculate(series, record));
+    }
+
+    @Test(timeout = 5000)
+    public void blocksStartAtTheCapturedWindowForPreWindowEntries() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 80d).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(source.getBarData())
+                .withBeginIndex(Integer.MAX_VALUE - 1)
+                .build();
+        // The entry predates the retained window by ~2^31 bars; only the two
+        // retained bars may become block returns.
+        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(0, numFactory.numOf(100d), numFactory.one()),
+                Trade.sellAt(Integer.MAX_VALUE, series));
+
+        Num drawdown = new MonteCarloMaximumDrawdownCriterion(1, null, 42L, Statistics.MAX).calculate(series, record);
+
+        assertNumEquals(0.2, drawdown);
+    }
+
     @Test
     public void calculateWithOnlyGains() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
@@ -39,6 +74,29 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
                 Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series));
         var criterion = new MonteCarloMaximumDrawdownCriterion(200, null, 123L, Statistics.P95);
         assertNumEquals(0d, criterion.calculate(series, record));
+    }
+
+    @Test
+    public void carriedPreWindowLossDoesNotBecomeRetainedBlockReturn() {
+        BarSeries pruned = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 1, 100, 110, 100, 80, 100, 105)
+                .build();
+        BaseTradingRecord prunedRecord = new BaseTradingRecord(Trade.buyAt(0, pruned), Trade.sellAt(1, pruned),
+                Trade.buyAt(2, pruned), Trade.sellAt(3, pruned), Trade.buyAt(4, pruned), Trade.sellAt(5, pruned),
+                Trade.buyAt(6, pruned), Trade.sellAt(7, pruned));
+        pruned.setMaximumBarCount(6);
+        assertNumEquals(0.01d, new CashFlow(pruned, prunedRecord).getValue(pruned.getBeginIndex()));
+
+        BarSeries fresh = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 110, 100, 80, 100, 105)
+                .build();
+        BaseTradingRecord freshRecord = new BaseTradingRecord(Trade.buyAt(0, fresh), Trade.sellAt(1, fresh),
+                Trade.buyAt(2, fresh), Trade.sellAt(3, fresh), Trade.buyAt(4, fresh), Trade.sellAt(5, fresh));
+        MonteCarloMaximumDrawdownCriterion criterion = new MonteCarloMaximumDrawdownCriterion(1000, null, 123L,
+                Statistics.P95);
+
+        assertEquals(criterion.calculate(fresh, freshRecord).doubleValue(),
+                criterion.calculate(pruned, prunedRecord).doubleValue(), 1e-12);
     }
 
     @Test
@@ -340,5 +398,58 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         assertEquals(criterion.calculate(unpruned, unprunedRecord).doubleValue(),
                 criterion.calculate(pruned, prunedRecord).doubleValue(), 1e-12);
         assertEquals(0.6033057851239669, criterion.calculate(pruned, prunedRecord).doubleValue(), 1e-12);
+    }
+
+    @Test
+    public void lossRealizedAtConstrainedBeginIsTheFirstBlockReturn() {
+        var series = ConstrainedSeriesSupport.offsetSeries("mc-seeded-begin", numFactory, 1, 7, 0, 100d, 100d, 100d,
+                110d, 120d, 130d, 140d, 150d);
+        var record = new BaseTradingRecord();
+        record.enter(0, numFactory.hundred(), numFactory.one());
+        record.exit(1, numFactory.numOf(95), numFactory.one());
+        record.enter(2, numFactory.hundred(), numFactory.one());
+        record.exit(3, numFactory.numOf(110), numFactory.one());
+        record.enter(4, numFactory.numOf(120), numFactory.one());
+        record.exit(5, numFactory.numOf(130), numFactory.one());
+        class FirstBlockRandom implements RandomGenerator {
+            @Override
+            public int nextInt() {
+                return 0;
+            }
+
+            @Override
+            public int nextInt(int bound) {
+                return 0;
+            }
+
+            @Override
+            public long nextLong() {
+                return 0L;
+            }
+        }
+        var criterion = new MonteCarloMaximumDrawdownCriterion(1, 1, FirstBlockRandom::new, Statistics.MAX,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        // The first block's return is the 0.95 realized in the first slot, measured
+        // from the
+        // neutral 1 entering the window; nothing was pruned, so nothing is carried.
+        assertNumEquals(0.05, criterion.calculate(series, record));
+    }
+
+    @Test
+    public void matchesFreshSeriesAcrossWindowShapesAndEquitySettings() {
+        for (ConstrainedSeriesSupport.CriterionWindowFixture fixture : ConstrainedSeriesSupport
+                .criterionWindowFixtures(numFactory)) {
+            for (EquityCurveMode mode : EquityCurveMode.values()) {
+                for (OpenPositionHandling handling : OpenPositionHandling.values()) {
+                    var criterion = new MonteCarloMaximumDrawdownCriterion(1, null, 42L, Statistics.MAX, mode,
+                            handling);
+                    Num actual = criterion.calculate(fixture.series(), fixture.tradingRecord());
+                    Num expected = criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord(mode));
+                    Assert.assertEquals(fixture.name() + ": " + mode + "/" + handling, expected.doubleValue(),
+                            actual.doubleValue(), 1e-10);
+                }
+            }
+        }
     }
 }

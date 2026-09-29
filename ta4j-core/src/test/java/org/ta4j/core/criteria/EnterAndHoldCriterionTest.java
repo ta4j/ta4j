@@ -6,6 +6,8 @@ package org.ta4j.core.criteria;
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
@@ -30,6 +32,15 @@ public class EnterAndHoldCriterionTest extends AbstractCriterionTest {
     public EnterAndHoldCriterionTest(NumFactory numFactory) {
         super(params -> params.length == 1 ? new EnterAndHoldCriterion((AnalysisCriterion) params[0])
                 : new EnterAndHoldCriterion((TradeType) params[0], (AnalysisCriterion) params[1]), numFactory);
+    }
+
+    @Test
+    public void benchmarkStopsAtLogicalEndDespiteTrailingRecordedExit() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("benchmark-end", numFactory, 1, 10d, 20d,
+                30d);
+        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+
+        assertNumEquals(2d, new EnterAndHoldCriterion(new GrossReturnCriterion()).calculate(series, record));
     }
 
     @Test
@@ -381,4 +392,19 @@ public class EnterAndHoldCriterionTest extends AbstractCriterionTest {
         assertThrows(IllegalArgumentException.class, () -> new EnterAndHoldCriterion(activeReturnVersusEnterAndHold));
     }
 
+    @Test
+    public void benchmarkMatchesFreshSeriesAcrossWindowShapesAndRecordBounds() {
+        for (ConstrainedSeriesSupport.CriterionWindowFixture fixture : ConstrainedSeriesSupport
+                .criterionWindowFixtures(numFactory)) {
+            for (TradeType type : TradeType.values()) {
+                for (ReturnRepresentation representation : ReturnRepresentation.values()) {
+                    AnalysisCriterion returnCriterion = new GrossReturnCriterion(representation);
+                    var criterion = new EnterAndHoldCriterion(type, returnCriterion);
+                    var actual = criterion.calculate(fixture.series(), fixture.tradingRecord());
+                    var expected = criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord());
+                    assertNumEquals(expected, actual, 1e-10);
+                }
+            }
+        }
+    }
 }

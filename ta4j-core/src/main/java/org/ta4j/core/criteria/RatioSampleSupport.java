@@ -41,19 +41,20 @@ final class RatioSampleSupport {
 
     private static Stream<Sample> timeBasedSamples(BarSeries series, SamplingFrequency samplingFrequency,
             ZoneId groupingZoneId, ExcessReturns excessReturns) {
-        int beginIndex = series.getBeginIndex();
+        int beginIndex = excessReturns.getBeginIndex();
         int startIndex = beginIndex + 1;
-        int endIndex = series.getEndIndex();
+        int endIndex = excessReturns.getEndIndex();
         SamplingFrequencyIndexes samplingFrequencyIndexes = new SamplingFrequencyIndexes(samplingFrequency,
                 groupingZoneId);
-        return samplingFrequencyIndexes.sample(series, beginIndex, startIndex, endIndex)
+        return samplingFrequencyIndexes.sample(excessReturns::getCapturedEndTime, beginIndex, startIndex, endIndex)
                 .map(indexPair -> toSample(series, indexPair, excessReturns));
     }
 
     private static Stream<Sample> tradeSamples(BarSeries series, TradingRecord tradingRecord,
             ExcessReturns excessReturns, OpenPositionHandling openPositionHandling) {
-        int finalIndex = series.getEndIndex();
-        return tradePairs(tradingRecord, Math.max(0, series.getBeginIndex()), finalIndex, openPositionHandling)
+        int beginIndex = excessReturns.getBeginIndex();
+        int finalIndex = excessReturns.getEndIndex();
+        return tradePairs(tradingRecord, Math.max(0, beginIndex), finalIndex, openPositionHandling)
                 .map(indexPair -> toSample(series, indexPair, excessReturns));
     }
 
@@ -61,6 +62,8 @@ final class RatioSampleSupport {
             OpenPositionHandling openPositionHandling) {
         Stream<IndexPair> closedPairs = tradingRecord.getPositions()
                 .stream()
+                .filter(position -> openPositionHandling != OpenPositionHandling.IGNORE || position != null
+                        && position.getExit() != null && position.getExit().getIndex() <= finalIndex)
                 .map(position -> toTradePair(position, beginIndex, finalIndex))
                 .filter(Objects::nonNull);
         if (openPositionHandling == OpenPositionHandling.IGNORE) {
@@ -118,6 +121,7 @@ final class RatioSampleSupport {
         int previousIndex = indexPair.previousIndex();
         int currentIndex = indexPair.currentIndex();
         return new Sample(excessReturns.excessReturn(previousIndex, currentIndex),
-                BarSeriesUtils.deltaYears(series, previousIndex, currentIndex));
+                BarSeriesUtils.deltaYears(excessReturns.getCapturedEndTime(previousIndex),
+                        excessReturns.getCapturedEndTime(currentIndex), series.numFactory()));
     }
 }

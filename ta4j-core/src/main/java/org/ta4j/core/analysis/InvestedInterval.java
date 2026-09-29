@@ -3,8 +3,11 @@
  */
 package org.ta4j.core.analysis;
 
-import java.util.List;
 import java.util.Objects;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
@@ -23,8 +26,13 @@ import org.ta4j.core.indicators.CachedIndicator;
 public class InvestedInterval extends CachedIndicator<Boolean> {
 
     private final boolean[] investedIntervals;
-    private final SeriesSnapshots.CapturedSeries capturedSeries;
-    private final int valueStartIndex;
+
+    /**
+     * The series begin index captured when the interval array was materialized.
+     * Later rolling advances of the borrowed series must not rebase the lookup, or
+     * intervals shift onto never-calculated bars.
+     */
+    private final int materializedBeginIndex;
 
     /**
      * Creates an indicator that reports invested intervals for the trading record.
@@ -33,6 +41,8 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
      * @param tradingRecord the trading record used to detect invested intervals
      * @since 0.22.2
      */
+    @SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Rejecting a window too large to "
+            + "materialize is a fail-fast constructor contract; no partially initialized instance escapes")
     public InvestedInterval(BarSeries series, TradingRecord tradingRecord) {
         this(series, tradingRecord, OpenPositionHandling.MARK_TO_MARKET);
     }
@@ -46,76 +56,80 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
      * @param openPositionHandling how open positions should be handled
      * @since 0.22.2
      */
+    @SuppressFBWarnings(value = "CT_CONSTRUCTOR_THROW", justification = "Rejecting a window too large to "
+            + "materialize is a fail-fast constructor contract; no partially initialized instance escapes")
     public InvestedInterval(BarSeries series, TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
         super(series);
+        Objects.requireNonNull(series, "series cannot be null");
         Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
-        capturedSeries = SeriesSnapshots.capture(series);
-        valueStartIndex = Math.max(0, capturedSeries.beginIndex());
-        investedIntervals = buildInvestedIntervals(tradingRecord, openPositionHandling);
-    }
-
-    @Override
-    protected Boolean calculate(int index) {
-        int offset = index - valueStartIndex;
-        if (offset < 0 || offset >= investedIntervals.length) {
-            return Boolean.FALSE;
-        }
-        return investedIntervals[offset];
+        // The record's bounds are read before the series lock, and only the bounds
+        // come from the series inside it; the record is traversed afterwards without
+        // holding the series lock.
+        Integer recordStartIndex = tradingRecord.getStartIndex();
+        Integer recordEndIndex = tradingRecord.getEndIndex();
+        AnalysisPositionSupport.Window window = series.withReadLock(() -> AnalysisPositionSupport.captureWindow(series,
+                recordStartIndex, recordEndIndex, 0, 0, true, false, true));
+        materializedBeginIndex = window.beginIndex();
+        investedIntervals = buildInvestedIntervals(tradingRecord, openPositionHandling, window);
     }
 
     /**
-     * Returns the precomputed invested flag for the given absolute bar index:
-     * {@code Boolean.TRUE} while a position was held over that bar,
-     * {@code Boolean.FALSE} otherwise, including for indices outside the series
-     * range captured at construction (bars already pruned, or bars appended later).
+     * Returns the captured flag without remapping pruned indices through the live
+     * series cache.
      *
      * @since 0.25.1
      */
     @Override
     public Boolean getValue(int index) {
-        // The flags are fully precomputed, so bypass the indicator cache.
         return calculate(index);
     }
 
+    @Override
+    protected Boolean calculate(int index) {
+        long position = (long) index - materializedBeginIndex;
+        if (position < 0 || position >= investedIntervals.length) {
+            return Boolean.FALSE;
+        }
+        return investedIntervals[(int) position];
+    }
+
     /**
-     * Returns a fresh detached copy of the bars the invested intervals were
-     * computed from, with the source series' absolute indexing. The bar set is the
-     * one retained at construction; bar contents are copied at each call (under the
-     * read lock of a {@code ConcurrentBarSeries}). Mutating the copy cannot reach
-     * the source series or later copies.
-     *
-     * @return the detached backing series snapshot
+     * @return invested flags over the captured materialized window, independent of
+     *         later changes to the borrowed series bounds
      * @since 0.25.1
      */
     @Override
-    public BarSeries getBarSeries() {
-        return capturedSeries.toDetachedSeries();
+    public Stream<Boolean> stream() {
+        return IntStream.range(0, investedIntervals.length).mapToObj(index -> investedIntervals[index]);
     }
 
-    private boolean[] buildInvestedIntervals(TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
-        int seriesBegin = Math.max(0, capturedSeries.beginIndex());
-        int seriesEnd = capturedSeries.endIndex();
-        int size = seriesEnd < seriesBegin ? 0 : seriesEnd - seriesBegin + 1;
-        boolean[] invested = new boolean[size];
-        tradingRecord.getPositions().forEach(position -> markInvestedIntervals(position, invested));
-        if (openPositionHandling == OpenPositionHandling.MARK_TO_MARKET) {
-            List<Position> openPositions = AnalysisPositionSupport.openPositions(tradingRecord, seriesEnd);
-            openPositions.forEach(position -> markInvestedIntervals(position, invested));
+    private boolean[] buildInvestedIntervals(TradingRecord tradingRecord, OpenPositionHandling openPositionHandling,
+            AnalysisPositionSupport.Window window) {
+        int beginIndex = window.beginIndex();
+        if (beginIndex < 0 || window.isEmpty()) {
+            return new boolean[0];
+        }
+        long span = (long) window.bufferEndIndex() - beginIndex + 1L;
+        if (span >= Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("Invested interval range is too large to materialize: [" + beginIndex
+                    + ", " + window.bufferEndIndex() + "]");
+        }
+        boolean[] invested = new boolean[(int) span];
+        // Same position selection as the curves: bound to the logical end, treat exits
+        // after it as open there, and drop those under IGNORE.
+        for (Position position : AnalysisPositionSupport.positionsForAnalysis(tradingRecord, window.finalIndex(),
+                openPositionHandling, EquityCurveMode.MARK_TO_MARKET)) {
+            markInvestedIntervals(position, invested, beginIndex, window.endIndex());
         }
         return invested;
     }
 
-    private void markInvestedIntervals(Position position, boolean[] invested) {
-        if (position == null || position.getEntry() == null) {
-            return;
-        }
-        int entryIndex = position.getEntry().getIndex();
-        int exitIndex = position.isClosed() ? position.getExit().getIndex() : capturedSeries.endIndex();
-        int start = Math.max(entryIndex + 1, capturedSeries.beginIndex() + 1);
-        int end = Math.min(exitIndex, capturedSeries.endIndex());
-        for (int i = start; i <= end; i++) {
-            invested[i - valueStartIndex] = true;
+    private void markInvestedIntervals(Position position, boolean[] invested, int beginIndex, int endIndex) {
+        long startIndex = Math.max((long) position.getEntry().getIndex() + 1, (long) beginIndex + 1);
+        long lastIndex = position.isClosed() ? Math.min(position.getExit().getIndex(), endIndex) : endIndex;
+        for (long i = startIndex; i <= lastIndex; i++) {
+            invested[(int) (i - beginIndex)] = true;
         }
     }
 

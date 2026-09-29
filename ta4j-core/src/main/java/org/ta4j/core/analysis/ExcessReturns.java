@@ -3,11 +3,12 @@
  */
 package org.ta4j.core.analysis;
 
+import java.time.Instant;
 import java.util.Objects;
 
-import org.ta4j.core.utils.BarSeriesUtils;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.utils.BarSeriesUtils;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -53,6 +54,13 @@ public final class ExcessReturns {
     private final BarSeries series;
     private final InvestedInterval investedInterval;
     private final CashFlow cashFlow;
+    private final BarWindowSnapshot bars;
+
+    /**
+     * Captures attempted before giving up on a series that keeps evicting the
+     * analysed window.
+     */
+    private static final int MAX_CAPTURE_ATTEMPTS = 8;
 
     /**
      * Creates an excess return calculator with invested interval detection from a
@@ -117,8 +125,61 @@ public final class ExcessReturns {
         OpenPositionHandling effectiveOpenPositionHandling = equityCurveMode == EquityCurveMode.REALIZED
                 ? OpenPositionHandling.IGNORE
                 : openPositionHandling;
-        this.investedInterval = new InvestedInterval(series, tradingRecord, effectiveOpenPositionHandling);
-        this.cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, effectiveOpenPositionHandling);
+        // Bar times are captured once, before the curves, and the retained
+        // bars are verified unchanged after them, so equity and risk-free growth
+        // always describe the same bar history even on a live series.
+        for (int attempt = 0; attempt < MAX_CAPTURE_ATTEMPTS; attempt++) {
+            BarWindowSnapshot snapshot = series
+                    .withReadLock(() -> series.isEmpty() ? BarWindowSnapshot.capture(series, 0, -1)
+                            : BarWindowSnapshot.capture(series, series.getBeginIndex(), series.getEndIndex()));
+            InvestedInterval invested = new InvestedInterval(series, tradingRecord, effectiveOpenPositionHandling);
+            CashFlow flow = new CashFlow(series, tradingRecord, equityCurveMode, effectiveOpenPositionHandling);
+            if (snapshot.covers(flow.getBeginIndex(), flow.getEndIndex())
+                    && series.withReadLock(() -> snapshot.isUnchangedIn(series))) {
+                this.investedInterval = invested;
+                this.cashFlow = flow;
+                this.bars = snapshot;
+                return;
+            }
+        }
+        throw new IllegalStateException(
+                "Bar series '" + series.getName() + "' evicted or changed the analysis window during each of "
+                        + MAX_CAPTURE_ATTEMPTS + " attempts; retry once retention is stable");
+    }
+
+    /**
+     * Returns the first index included in this calculator's captured cash-flow
+     * window.
+     *
+     * @return the captured begin index
+     * @since 0.25.1
+     */
+    public int getBeginIndex() {
+        return cashFlow.getBeginIndex();
+    }
+
+    /**
+     * Returns the last index included in this calculator's captured cash-flow
+     * window.
+     *
+     * @return the captured end index
+     * @since 0.25.1
+     */
+    public int getEndIndex() {
+        return cashFlow.getEndIndex();
+    }
+
+    /**
+     * Returns the end time captured for a bar index, or {@code null} outside
+     * captured history.
+     *
+     * @param index the absolute bar index
+     * @return the captured end time, or {@code null} when the index was not
+     *         captured
+     * @since 0.25.1
+     */
+    public Instant getCapturedEndTime(int index) {
+        return bars.endTime(index);
     }
 
     /**
@@ -138,7 +199,8 @@ public final class ExcessReturns {
         }
 
         Num excessGrowth = one;
-        for (int i = previousIndex + 1; i <= currentIndex; i++) {
+        for (long cursor = (long) previousIndex + 1L; cursor <= currentIndex; cursor++) {
+            int i = (int) cursor;
             Num previousEquity = cashFlow.getValue(i - 1);
             Num currentEquity = cashFlow.getValue(i);
             Num riskFreeGrowth = riskFreeGrowth(i - 1, i, one);
@@ -173,7 +235,7 @@ public final class ExcessReturns {
         }
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
-        Num deltaYears = BarSeriesUtils.deltaYears(series, previousIndex, currentIndex);
+        Num deltaYears = deltaYears(previousIndex, currentIndex, numFactory);
         if (deltaYears.isLessThanOrEqual(zero)) {
             return one;
         }
@@ -182,6 +244,19 @@ public final class ExcessReturns {
 
     private boolean isInvested(int index) {
         return investedInterval.getValue(index);
+    }
+
+    /**
+     * @return the years between two captured bar end times, or zero when either bar
+     *         was not captured or time does not advance
+     */
+    private Num deltaYears(int previousIndex, int currentIndex, NumFactory numFactory) {
+        Instant previousEnd = bars.endTime(previousIndex);
+        Instant currentEnd = bars.endTime(currentIndex);
+        if (previousEnd == null || currentEnd == null) {
+            return numFactory.zero();
+        }
+        return BarSeriesUtils.deltaYears(previousEnd, currentEnd, numFactory);
     }
 
 }
