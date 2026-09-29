@@ -164,4 +164,17 @@ class EvaluatedRuleExampleTest {
             assertFalse(rule.isSatisfied(i), "index " + i);
         }
     }
+
+    @Test
+    void probabilityRangeIsValidatedBeforeNormalization() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(1, 2)
+                .build();
+        Indicator<Num> score = new FixedIndicator<>(series, series.numFactory().one(), series.numFactory().one());
+        // Rounds to exactly 1.0 as a double, but the supplied probability is above 1.
+        Num aboveOne = DecimalNumFactory.getInstance(40).numOf("1.0000000000000001");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new ConfidenceGateRule(score, aboveOne, ScoreKind.CALIBRATED_PROBABILITY));
+    }
 }

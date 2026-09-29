@@ -111,15 +111,17 @@ public class EvaluatedRuleExample {
             if (!Num.isFinite(Objects.requireNonNull(threshold, "threshold"))) {
                 throw new IllegalArgumentException("threshold must be finite: " + threshold);
             }
+            // Validate the caller's value: normalization may round an out-of-range
+            // probability into range.
+            if (kind == ScoreKind.CALIBRATED_PROBABILITY
+                    && (threshold.isNegative() || threshold.isGreaterThan(threshold.getNumFactory().one()))) {
+                throw new IllegalArgumentException("probability threshold must be within [0, 1]: " + threshold);
+            }
             // Mixed Num types throw on comparison, so store the threshold in the score's
             // factory.
             this.threshold = score.getBarSeries().numFactory().numOf(threshold.bigDecimalValue());
             if (!Num.isFinite(this.threshold)) {
                 throw new IllegalArgumentException("threshold cannot be represented by the score NumFactory");
-            }
-            if (kind == ScoreKind.CALIBRATED_PROBABILITY && (this.threshold.isNegative()
-                    || this.threshold.isGreaterThan(this.threshold.getNumFactory().one()))) {
-                throw new IllegalArgumentException("probability threshold must be within [0, 1]: " + threshold);
             }
         }
 
