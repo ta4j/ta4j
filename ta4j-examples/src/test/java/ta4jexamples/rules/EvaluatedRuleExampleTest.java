@@ -10,12 +10,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -105,5 +108,60 @@ class EvaluatedRuleExampleTest {
     @Test
     void tradeBudgetMustBePositive() {
         assertThrows(IllegalArgumentException.class, () -> new FlatWithTradeBudgetRule(0));
+    }
+
+    @Test
+    void thresholdIsNormalizedToTheScoreNumFactory() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
+                .withData(1, 2)
+                .build();
+        NumFactory numFactory = series.numFactory();
+        Indicator<Num> score = new FixedIndicator<>(series, numFactory.numOf(0.4), numFactory.numOf(0.6));
+        ConfidenceGateRule rule = new ConfidenceGateRule(score, DoubleNumFactory.getInstance().numOf(0.5),
+                ScoreKind.CALIBRATED_PROBABILITY);
+
+        assertTrue(numFactory.produces(rule.evaluate(0).threshold()));
+        assertEquals(numFactory.numOf(0.5), rule.evaluate(0).threshold());
+        assertFalse(rule.isSatisfied(0));
+        assertTrue(rule.isSatisfied(1));
+    }
+
+    @Test
+    void warmUpBoundaryDoesNotOverflowNearIntegerMaxValue() {
+        int begin = Integer.MAX_VALUE - 10;
+        BarSeries series = new BaseBarSeries("high-index",
+                new MockBarSeriesBuilder().withData(new double[6]).build().getBarData()) {
+            @Override
+            public int getBeginIndex() {
+                return begin;
+            }
+
+            @Override
+            public int getEndIndex() {
+                return Integer.MAX_VALUE - 1;
+            }
+        };
+        Indicator<Num> score = new Indicator<>() {
+            @Override
+            public Num getValue(int index) {
+                return series.numFactory().one();
+            }
+
+            @Override
+            public BarSeries getBarSeries() {
+                return series;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 20;
+            }
+        };
+        ConfidenceGateRule rule = new ConfidenceGateRule(score, series.numFactory().zero(), ScoreKind.HEURISTIC_SCORE);
+
+        for (int i = begin; i <= series.getEndIndex(); i++) {
+            assertFalse(rule.evaluate(i).isAvailable(), "index " + i);
+            assertFalse(rule.isSatisfied(i), "index " + i);
+        }
     }
 }

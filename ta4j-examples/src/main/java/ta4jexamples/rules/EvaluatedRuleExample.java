@@ -97,21 +97,28 @@ public class EvaluatedRuleExample {
 
         /**
          * @param score     score indicator
-         * @param threshold inclusive threshold; must be within {@code [0, 1]} for
-         *                  {@link ScoreKind#CALIBRATED_PROBABILITY}
+         * @param threshold inclusive threshold, converted to the score series'
+         *                  {@link org.ta4j.core.num.NumFactory}; must be within
+         *                  {@code [0, 1]} for {@link ScoreKind#CALIBRATED_PROBABILITY}
          * @param kind      score interpretation
-         * @throws IllegalArgumentException if the threshold is NaN or outside
-         *                                  {@code [0, 1]} for a calibrated probability
+         * @throws IllegalArgumentException if the threshold is not finite in either
+         *                                  factory, or outside {@code [0, 1]} for a
+         *                                  calibrated probability
          */
         public ConfidenceGateRule(Indicator<Num> score, Num threshold, ScoreKind kind) {
             this.score = Objects.requireNonNull(score, "score");
-            this.threshold = Objects.requireNonNull(threshold, "threshold");
             this.kind = Objects.requireNonNull(kind, "kind");
-            if (threshold.isNaN()) {
-                throw new IllegalArgumentException("threshold must not be NaN");
+            if (!Num.isFinite(Objects.requireNonNull(threshold, "threshold"))) {
+                throw new IllegalArgumentException("threshold must be finite: " + threshold);
             }
-            if (kind == ScoreKind.CALIBRATED_PROBABILITY
-                    && (threshold.isNegative() || threshold.isGreaterThan(threshold.getNumFactory().one()))) {
+            // Mixed Num types throw on comparison, so store the threshold in the score's
+            // factory.
+            this.threshold = score.getBarSeries().numFactory().numOf(threshold.bigDecimalValue());
+            if (!Num.isFinite(this.threshold)) {
+                throw new IllegalArgumentException("threshold cannot be represented by the score NumFactory");
+            }
+            if (kind == ScoreKind.CALIBRATED_PROBABILITY && (this.threshold.isNegative()
+                    || this.threshold.isGreaterThan(this.threshold.getNumFactory().one()))) {
                 throw new IllegalArgumentException("probability threshold must be within [0, 1]: " + threshold);
             }
         }
@@ -119,7 +126,8 @@ public class EvaluatedRuleExample {
         @Override
         public ConfidenceEvaluation evaluate(int index, TradingRecord tradingRecord) {
             BarSeries series = score.getBarSeries();
-            boolean warmingUp = index < series.getBeginIndex() + score.getCountOfUnstableBars();
+            // long arithmetic: begin index + unstable bars can exceed Integer.MAX_VALUE.
+            boolean warmingUp = index < (long) series.getBeginIndex() + score.getCountOfUnstableBars();
             Num value = warmingUp ? NaN.NaN : score.getValue(index);
             return new ConfidenceEvaluation(index, value, threshold, kind);
         }
