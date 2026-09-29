@@ -792,7 +792,7 @@ class FractalSwingDetectorTest {
         }
 
         @Override
-        public long getBarHistoryRevision() {
+        public synchronized long getBarHistoryRevision() {
             return -1L;
         }
 
