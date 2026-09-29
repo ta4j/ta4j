@@ -37,7 +37,9 @@ import java.util.Optional;
  * utilities:
  * <ul>
  * <li>{@link CashFlow} to reuse the existing compounded equity curve and derive
- * CAGR from the evaluated start and end equity values.</li>
+ * CAGR from the equity entering the evaluated window
+ * ({@link CashFlow#getBaselineValue()}) to its end equity, annualized over the
+ * time between the window's first and last bar closes.</li>
  * <li>{@link Drawdown} for denominator calculation on that same curve.</li>
  * </ul>
  *
@@ -222,7 +224,10 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         if (years.isZero()) {
             return series.numFactory().zero();
         }
-        Num startValue = cashFlow.getValue(beginIndex);
+        // The CAGR starts from the equity entering the window: a result realized on
+        // its first bar (a pre-window position exiting there) belongs to the window.
+        Num startValue = beginIndex == cashFlow.getBeginIndex() ? cashFlow.getBaselineValue()
+                : cashFlow.getValue(beginIndex - 1);
         if (startValue.isNaN() || startValue.isZero()) {
             return NaN.NaN;
         }

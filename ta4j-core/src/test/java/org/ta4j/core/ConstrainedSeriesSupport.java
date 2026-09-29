@@ -131,6 +131,21 @@ public final class ConstrainedSeriesSupport {
     }
 
     /**
+     * Narrows a fully retained series to a logical window, keeping its bars and
+     * their times.
+     *
+     * @param name       the series name
+     * @param source     the series whose bars are reused, starting at index 0
+     * @param beginIndex first logical index
+     * @param endIndex   last logical index
+     * @return the offset series
+     */
+    public static BarSeries offsetSeries(String name, BarSeries source, int beginIndex, int endIndex) {
+        return new BaseBarSeries(name, List.copyOf(source.getBarData()), beginIndex, endIndex, 0, false,
+                source.numFactory(), new TimeBarBuilderFactory());
+    }
+
+    /**
      * Builds a constrained one-bar series whose single bar sits at
      * {@link Integer#MAX_VALUE}, exposing the terminal index to analyses that must
      * survive loop arithmetic on the last representable index.

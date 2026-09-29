@@ -139,6 +139,21 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void exitRealizedOnTheWindowsFirstBarCountsTowardsTheAnnualizedReturn() {
+        BarSeries series = ConstrainedSeriesSupport.offsetSeries("calmar-first-bar-exit",
+                buildYearlySeries("calmar-first-bar-exit-source", new double[] { 100d, 100d, 100d, 100d }), 1, 3);
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel());
+        record.enter(0, numFactory.hundred(), numFactory.one());
+        record.exit(1, numFactory.numOf(105), numFactory.one());
+
+        double years = Duration.between(series.getBar(1).getEndTime(), series.getBar(3).getEndTime()).getSeconds()
+                / TimeConstants.SECONDS_PER_YEAR;
+        double expected = Math.pow(1.05d, 1d / years) - 1d;
+
+        assertNumEquals(numFactory.numOf(expected), getCriterion().calculate(series, record), 1e-9);
+    }
+
+    @Test
     public void explicitRecordEndExcludesFlatCashFlowSuffixFromAnnualization() {
         double[] closes = new double[] { 100d, 80d, 120d, 120d, 120d, 120d };
         double[] recordedCloses = new double[] { 100d, 80d, 120d };
