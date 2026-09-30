@@ -106,6 +106,8 @@ final class ElliottResearch {
     private static final List<String> COMPETING_MODES = List.of("3+3", "5+5", "change-point-baseline");
     private static final List<String> DETECTOR_FACTORIES = List.of("fractal", "slopeChange", "prominence");
     private static final Pattern DATASET_ID = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._-]*");
+    // Windows device names are reserved as a file basename regardless of extension.
+    private static final Pattern WINDOWS_RESERVED = Pattern.compile("(?i)(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\\..*)?");
     private static final DateTimeFormatter STAMP = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'")
             .withZone(ZoneOffset.UTC);
     private static final String RUN_FILE = "run.json";
@@ -490,6 +492,10 @@ final class ElliottResearch {
             throw new IllegalArgumentException(
                     "recipe.datasetId must match " + DATASET_ID.pattern() + ", was '" + datasetId + "'");
         }
+        if (WINDOWS_RESERVED.matcher(datasetId).matches()) {
+            throw new IllegalArgumentException("recipe.datasetId '" + datasetId
+                    + "' is a reserved Windows device name and cannot name its report file");
+        }
         final String asset = text(required(root, "asset", "recipe"), "recipe.asset");
         final List<StudyRunner.Partition> partitions = new ArrayList<>();
         final JsonArray partitionArray = arrayOf(required(root, "partitions", "recipe"), "recipe.partitions");
@@ -730,8 +736,12 @@ final class ElliottResearch {
                 : Path.of("target", "elliott-research", options.recipe() + "-" + STAMP.format(Instant.now())))
                 .toAbsolutePath()
                 .normalize();
+        // Probe provenance before claiming the directory: an output path inside the
+        // checkout would otherwise mark a clean worktree dirty with our own lock file.
+        final String revision = gitRevision();
+        final String worktree = gitWorktreeState();
         try (FileChannel lock = reserveRunDirectory(dir, options.overwrite())) {
-            final Run run = new Run(dir, options, setup, recipe);
+            final Run run = new Run(dir, options, setup, recipe, revision, worktree);
             plan.execute(run);
             run.finish();
             out.println("Run directory: " + dir);
@@ -870,13 +880,14 @@ final class ElliottResearch {
         private String numFactory = "unknown";
         private String status = "running";
 
-        Run(final Path dir, final RunOptions options, final Setup setup, final Recipe recipe) {
+        Run(final Path dir, final RunOptions options, final Setup setup, final Recipe recipe, final String revision,
+                final String worktree) {
             this.dir = dir;
             this.options = options;
             this.setup = setup;
             this.recipe = recipe;
-            this.revision = gitRevision();
-            this.worktree = gitWorktreeState();
+            this.revision = revision;
+            this.worktree = worktree;
         }
 
         void register(final String id, final String asset, final JsonObject source) {
@@ -1491,11 +1502,16 @@ final class ElliottResearch {
 
         void print(final PrintStream out, final Integer asOf, final String candidate) throws IOException {
             // Real: retain the whole family so cross-mode rule disagreements stay visible.
-            final View real = load("real", findTrace(realSuffixMatcher()), this::sameFamily, this::inRealScope,
+            final View real = load("real", findTrace(realSuffixMatcher()),
+                    expectedHeader(ElliottResearchTrace.MODE_REAL, -1, -1), this::sameFamily, this::inRealScope,
                     ElliottResearch.recapture(dir, run, ElliottResearchTrace.MODE_REAL, null, null));
-            final View nullView = row.nullBlockLength() > 0
-                    ? load("null", findTrace(nullMatcher()), this::inNullScope, this::inNullScope, recaptureNull())
-                    : null;
+            // A run that selected no member captured no null trace, so -1 rejects any found
+            // one.
+            final JsonElement member = run.getAsJsonObject("trace").get("member");
+            final View nullView = row.nullBlockLength() > 0 ? load("null", findTrace(nullMatcher()),
+                    expectedHeader(ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER, row.nullBlockLength(),
+                            member == null || member.isJsonNull() ? -1 : member.getAsInt()),
+                    this::inNullScope, this::inNullScope, recaptureNull()) : null;
             if (real == null && nullView == null) {
                 throw new Diagnostic(
                         "no trace was captured for key " + row.key() + " in " + dir + ". Recapture with:\n  "
@@ -1761,7 +1777,20 @@ final class ElliottResearch {
             return member == null || member.isJsonNull() ? 0 : member.getAsInt();
         }
 
-        private View load(final String label, final String relative,
+        /**
+         * Header coordinates a trace must carry to belong to this row's dataset and
+         * capture.
+         */
+        private JsonObject expectedHeader(final String traceMode, final int blockLength, final int memberIndex) {
+            final JsonObject expected = new JsonObject();
+            expected.addProperty("dataset", row.dataset());
+            expected.addProperty("traceMode", traceMode);
+            expected.addProperty("nullBlockLength", blockLength);
+            expected.addProperty("nullMemberIndex", memberIndex);
+            return expected;
+        }
+
+        private View load(final String label, final String relative, final JsonObject expected,
                 final java.util.function.Predicate<JsonObject> retain,
                 final java.util.function.Predicate<JsonObject> scope, final String recapture) throws IOException {
             if (relative == null) {
@@ -1781,6 +1810,13 @@ final class ElliottResearch {
             if (!trace.complete()) {
                 throw new Diagnostic("truncated " + label + " trace " + relative + " (" + trace.recordCount()
                         + " records, no footer): the capturing run did not finish. Recapture with:\n  " + recapture);
+            }
+            for (final Map.Entry<String, JsonElement> field : expected.entrySet()) {
+                if (!field.getValue().equals(trace.header().get(field.getKey()))) {
+                    throw new Diagnostic(label + " trace " + relative + " was captured for " + field.getKey() + " "
+                            + trace.header().get(field.getKey()) + ", not this run's " + field.getValue()
+                            + ". Recapture with:\n  " + recapture);
+                }
             }
             return new View(label, relative, trace, trace.records().stream().filter(scope).toList());
         }

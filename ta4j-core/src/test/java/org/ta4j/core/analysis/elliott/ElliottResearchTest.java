@@ -491,4 +491,56 @@ class ElliottResearchTest {
         assertEquals(2, result.code());
         assertTrue(result.err().contains("footer complete flag [] is not a boolean"), result.err());
     }
+
+    @Test
+    void inspectRejectsTraceCapturedForAnotherDatasetOrMode() throws Exception {
+        // Regression: a complete trace from another dataset or null member at the
+        // expected path was trusted on schema and footer alone.
+        final List<java.util.function.Consumer<JsonObject>> foreign = List
+                .of(header -> header.addProperty("dataset", "other"), header -> {
+                    header.addProperty("traceMode", "selected-null-member");
+                    header.addProperty("nullBlockLength", 20);
+                    header.addProperty("nullMemberIndex", 3);
+                });
+        for (int index = 0; index < foreign.size(); index++) {
+            final Path copy = work.resolve("foreign-" + index);
+            copyTree(smokeRun, copy);
+            final Path trace = copy.resolve("traces/smoke-real.jsonl");
+            final List<String> lines = new java.util.ArrayList<>(Files.readAllLines(trace, StandardCharsets.UTF_8));
+            final JsonObject header = JsonParser.parseString(lines.get(0)).getAsJsonObject();
+            foreign.get(index).accept(header);
+            lines.set(0, header.toString());
+            Files.write(trace, lines, StandardCharsets.UTF_8);
+
+            final Result result = launch("inspect", copy.toString(), OCCUPANCY_KEY);
+            assertEquals(2, result.code(), "mutation " + index);
+            assertTrue(result.err().contains("was captured for"), result.err());
+            assertTrue(result.err().contains("Recapture"), result.err());
+        }
+    }
+
+    @Test
+    void exploreRecipeRejectsWindowsReservedDatasetIdBeforeRunning() throws Exception {
+        final Path candles = work.resolve("reserved-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 300, date -> true);
+        for (final String id : List.of("CON", "nul", "Com1", "lpt9.a", "aux.")) {
+            final Path recipe = work.resolve("reserved-recipe.json");
+            Files.writeString(recipe, """
+                    {"datasetId":"%s","asset":"TOY",
+                     "partitions":[{"name":"calibration","start":"2020-01-01","end":"2020-06-30"},
+                                   {"name":"validation","start":"2020-07-01","end":"2020-09-30"},
+                                   {"name":"holdout","start":"2020-10-01","end":"2020-12-31"}],
+                     "forbiddenCalibrationStart":"2024-01-01",
+                     "detector":{"name":"fractal-w3","factory":"fractal","params":[3]},
+                     "momentum":{"type":"RSI","barCount":14},
+                     "null":{"blockLengths":[10],"ensembleSize":2,"seed":7}}
+                    """.formatted(id));
+            final Path out = work.resolve("explore-reserved");
+            final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe",
+                    recipe.toString(), "--out", out.toString());
+            assertEquals(1, result.code(), id);
+            assertTrue(result.err().contains("reserved Windows device name"), result.err());
+            assertFalse(Files.exists(out), id);
+        }
+    }
 }
