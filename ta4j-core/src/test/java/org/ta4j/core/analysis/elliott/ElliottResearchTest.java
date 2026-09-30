@@ -15,7 +15,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -106,6 +105,14 @@ class ElliottResearchTest {
         assertEquals("reports/smoke.json", dataset.get("report").getAsString());
         assertFalse(run.toString().contains(smokeRun.toString()), "artifact paths must stay relative");
         assertFalse(ElliottResearchReport.readCsv(smokeRun.resolve("comparisons.csv")).isEmpty());
+        // Regression: a run from uncommitted sources recorded only HEAD, so it
+        // looked reproducible from a revision that never produced it.
+        final String worktree = run.get("worktree").getAsString();
+        assertTrue(List.of("clean", "dirty", "unknown").contains(worktree), worktree);
+        assertEquals(0, launch("summarize", smokeRun.toString()).code());
+        final String summary = Files.readString(smokeRun.resolve("summary.md"));
+        assertTrue(summary.contains("- worktree: " + worktree), summary);
+        assertEquals(!"clean".equals(worktree), summary.contains("results may not reproduce from it"), summary);
 
         final long denominator = rowDenominator(smokeRun, OCCUPANCY_KEY);
         final Result inspect = launch("inspect", smokeRun.toString(), OCCUPANCY_KEY);
@@ -329,22 +336,7 @@ class ElliottResearchTest {
     @Test
     void exploreRunUsesRecipeAndRecordsNarrowCoverageAsPartial() throws Exception {
         final Path candles = work.resolve("candles.json");
-        final JsonArray array = new JsonArray();
-        final Instant start = LocalDate.of(2020, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant();
-        for (int index = 0; index < 300; index++) {
-            final double close = 100.0d + 15.0d * StrictMath.sin(0.2d * index) + 6.0d * StrictMath.sin(0.7d * index);
-            final JsonObject candle = new JsonObject();
-            candle.addProperty("start", start.plusSeconds(index * 86_400L).getEpochSecond());
-            candle.addProperty("open", Double.toString(close - 0.5d));
-            candle.addProperty("high", Double.toString(close + 2.0d));
-            candle.addProperty("low", Double.toString(close - 2.0d));
-            candle.addProperty("close", Double.toString(close));
-            candle.addProperty("volume", "1");
-            array.add(candle);
-        }
-        final JsonObject candleFile = new JsonObject();
-        candleFile.add("candles", array);
-        Files.writeString(candles, candleFile.toString());
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 300, date -> true);
         final Path recipe = work.resolve("recipe.json");
         Files.writeString(recipe, """
                 {"datasetId":"toy","asset":"TOY",
@@ -372,6 +364,63 @@ class ElliottResearchTest {
         assertFalse(Files.exists(out.resolve("traces/toy-real.jsonl")), "explore defaults to trace off");
         assertNotNull(run.getAsJsonObject("identity").get("fingerprint"));
         assertTrue(run.getAsJsonObject("identity").get("fingerprint").getAsString().startsWith("explore-"));
+    }
+
+    @Test
+    void exploreRunMarksCoveragePartialWhenAMiddlePartitionHasNoBars() throws Exception {
+        // Regression: coverage compared only the first and last bar with the
+        // requested window, so a tape missing the whole validation partition
+        // was reported complete while that partition's metrics were empty.
+        final Path candles = work.resolve("gap-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 366,
+                date -> date.isBefore(LocalDate.of(2020, 7, 1)) || date.isAfter(LocalDate.of(2020, 9, 30)));
+        final Path recipe = work.resolve("gap-recipe.json");
+        Files.writeString(recipe, """
+                {"datasetId":"gap","asset":"GAP",
+                 "partitions":[{"name":"calibration","start":"2020-01-01","end":"2020-06-30"},
+                               {"name":"validation","start":"2020-07-01","end":"2020-09-30"},
+                               {"name":"holdout","start":"2020-10-01","end":"2020-12-31"}],
+                 "forbiddenCalibrationStart":"2024-01-01",
+                 "detector":{"name":"fractal-w3","factory":"fractal","params":[3]},
+                 "activeRules":["wave2-origin"],
+                 "momentum":{"type":"RSI","barCount":14},
+                 "competingModes":["3+3"],
+                 "null":{"blockLengths":[10],"ensembleSize":2,"seed":7}}
+                """);
+        final Path out = work.resolve("explore-gap");
+        final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(),
+                "--out", out.toString());
+        assertEquals(0, result.code(), result.err());
+        final JsonObject coverage = readJson(out.resolve("run.json")).getAsJsonArray("datasets")
+                .get(0)
+                .getAsJsonObject()
+                .getAsJsonObject("coverage");
+        assertEquals("partial", coverage.get("status").getAsString(), coverage.toString());
+        assertEquals("partition validation (2020-07-01..2020-09-30) has no bars",
+                coverage.get("message").getAsString());
+    }
+
+    private static void writeCandles(final Path file, final LocalDate first, final int days,
+            final java.util.function.Predicate<LocalDate> keep) throws IOException {
+        final JsonArray array = new JsonArray();
+        for (int index = 0; index < days; index++) {
+            final LocalDate date = first.plusDays(index);
+            if (!keep.test(date)) {
+                continue;
+            }
+            final double close = 100.0d + 15.0d * StrictMath.sin(0.2d * index) + 6.0d * StrictMath.sin(0.7d * index);
+            final JsonObject candle = new JsonObject();
+            candle.addProperty("start", date.atStartOfDay(ZoneOffset.UTC).toEpochSecond());
+            candle.addProperty("open", Double.toString(close - 0.5d));
+            candle.addProperty("high", Double.toString(close + 2.0d));
+            candle.addProperty("low", Double.toString(close - 2.0d));
+            candle.addProperty("close", Double.toString(close));
+            candle.addProperty("volume", "1");
+            array.add(candle);
+        }
+        final JsonObject candleFile = new JsonObject();
+        candleFile.add("candles", array);
+        Files.writeString(file, candleFile.toString());
     }
 
     @Test

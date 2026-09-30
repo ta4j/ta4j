@@ -620,11 +620,16 @@ final class StudyRunner {
                 // Null ensemble members are rebased sub-series; the offset restores
                 // source coordinates so null and real metric bounds are comparable.
                 final int recordedIndex = index + recordedIndexOffset;
+                final boolean observed = observer != null
+                        && (observedPartition == ALL_PARTITIONS || observedPartition == partitionIndex);
+                // Observers see one coordinate system: pivots and placements move
+                // with the as-of index, never mixing rebased and source positions.
+                final List<ConfirmedPivot> observedVisible = observed ? translate(visible, recordedIndexOffset) : null;
+                final TopologyAnalysis observedAnalysis = observed ? translate(analysis, recordedIndexOffset) : null;
                 for (final TopologyRecording recording : recordings) {
-                    if (observer != null
-                            && (observedPartition == ALL_PARTITIONS || observedPartition == partitionIndex)) {
+                    if (observed) {
                         observer.topology(recording.scope(), partitions.entries().get(partitionIndex).name(),
-                                recordedIndex, series.getBar(index).getEndTime(), visible, analysis,
+                                recordedIndex, series.getBar(index).getEndTime(), observedVisible, observedAnalysis,
                                 candidateEvidence(analysis, recording.activeRules(), series));
                     }
                     recording.accumulators()
@@ -636,6 +641,33 @@ final class StudyRunner {
                 break;
             }
         }
+    }
+
+    private static List<ConfirmedPivot> translate(final List<ConfirmedPivot> pivots, final int offset) {
+        if (offset == 0) {
+            return pivots;
+        }
+        final List<ConfirmedPivot> translated = new ArrayList<>(pivots.size());
+        for (final ConfirmedPivot pivot : pivots) {
+            translated.add(new ConfirmedPivot(pivot.pivotIndex() + offset, pivot.confirmationIndex() + offset,
+                    pivot.price(), pivot.type()));
+        }
+        return translated;
+    }
+
+    private static TopologyAnalysis translate(final TopologyAnalysis analysis, final int offset) {
+        if (offset == 0) {
+            return analysis;
+        }
+        final List<TopologyCandidate> candidates = new ArrayList<>(analysis.candidates().size());
+        for (final TopologyCandidate candidate : analysis.candidates()) {
+            candidates.add(new TopologyCandidate(candidate.grammar(), candidate.direction(),
+                    translate(candidate.pivots(), offset)));
+        }
+        final boolean forming = analysis.status() == TopologyStatus.FORMING;
+        return new TopologyAnalysis(analysis.status(), analysis.direction(), candidates, analysis.explanation(),
+                forming ? analysis.formingStartBarIndex() + offset : -1,
+                forming ? analysis.formingEndBarIndex() + offset : -1);
     }
 
     private static List<List<RuleEvidence>> candidateEvidence(final TopologyAnalysis analysis,

@@ -327,7 +327,8 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
 
     /**
      * Reads a trace file. A file without a footer, or whose final line is a partial
-     * write, is returned with {@code complete == false}.
+     * write before any footer, is returned with {@code complete == false}; any
+     * content after a footer is corrupt.
      *
      * @param path trace file
      * @return parsed file
@@ -356,7 +357,7 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
             try {
                 object = parseObject(path, lineNumber, lines[i]);
             } catch (final IllegalArgumentException e) {
-                if (unterminatedTail) {
+                if (unterminatedTail && !complete) {
                     break;
                 }
                 throw e;

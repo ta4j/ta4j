@@ -1046,6 +1046,30 @@ class StudyRunnerTest {
                 () -> runner.replayNullMember(series, 0, 23, 2, ensembleSize, null));
     }
 
+    @Test
+    void replayedNullMemberReportsPivotsInSourceCoordinatesOnRollingSeries() {
+        // A rolling series starts past index 0 while null members are rebased
+        // to 0; every observed pivot must share the as-of index's coordinates.
+        final StudyRunner.Partitions partitions = new StudyRunner.Partitions(
+                List.of(new StudyRunner.Partition("calibration", LocalDate.of(2018, 1, 1), LocalDate.of(2018, 3, 31))),
+                LocalDate.of(2024, 1, 1));
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
+                configuration(partitions, 1));
+        final BarSeries series = buildRollingWindowSeries(40, 24);
+        final RecordingObserver observer = new RecordingObserver();
+
+        runner.replayNullMember(series, series.getBeginIndex(), series.getEndIndex(), 2, 0, observer);
+
+        assertTrue(series.getBeginIndex() > 0);
+        assertFalse(observer.pivots.isEmpty());
+        for (int i = 0; i < observer.pivots.size(); i++) {
+            final ConfirmedPivot pivot = observer.pivots.get(i);
+            final int asOf = observer.pivotAsOf.get(i);
+            assertTrue(pivot.pivotIndex() >= series.getBeginIndex() && pivot.confirmationIndex() <= asOf,
+                    pivot + " as of " + asOf);
+        }
+    }
+
     private static List<StudyReport.NullMemberMetrics> expectedNullMembers(final StudyReport report,
             final StudyRunner.NullMemberReplay replay, final int memberIndex) {
         final StudyReport.NullReport nullReport = report.nulls()
@@ -1068,6 +1092,8 @@ class StudyRunnerTest {
         private final List<StudyObserver.Scope> scopes = new ArrayList<>();
         private final List<Integer> recordedIndices = new ArrayList<>();
         private final List<String> partitions = new ArrayList<>();
+        private final List<ConfirmedPivot> pivots = new ArrayList<>();
+        private final List<Integer> pivotAsOf = new ArrayList<>();
 
         long countFor(final String grammar, final String mode, final String partition) {
             long count = 0L;
@@ -1087,6 +1113,10 @@ class StudyRunnerTest {
                 final List<ConfirmedPivot> visiblePivots, final TopologyAnalysis analysis,
                 final List<List<RuleEvidence>> candidateEvidence) {
             record(scope, partition, recordedIndex);
+            final List<ConfirmedPivot> observed = new ArrayList<>(visiblePivots);
+            analysis.candidates().forEach(candidate -> observed.addAll(candidate.pivots()));
+            pivots.addAll(observed);
+            observed.forEach(ignored -> pivotAsOf.add(recordedIndex));
         }
 
         @Override

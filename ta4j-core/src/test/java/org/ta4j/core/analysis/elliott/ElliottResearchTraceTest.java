@@ -299,6 +299,14 @@ class ElliottResearchTraceTest {
         final IllegalArgumentException countError = assertThrows(IllegalArgumentException.class,
                 () -> ElliottResearchTrace.read(wrongCount));
         assertTrue(countError.getMessage().contains("line " + lines.size()), countError.getMessage());
+
+        // A partial write is tolerated only before the footer; after it the
+        // trace is corrupt, not complete.
+        final Path tailAfterFooter = directory.resolve("tail-after-footer.jsonl");
+        Files.writeString(tailAfterFooter, String.join("\n", lines) + "\n{\"dataset\":", StandardCharsets.UTF_8);
+        final IllegalArgumentException tailError = assertThrows(IllegalArgumentException.class,
+                () -> ElliottResearchTrace.read(tailAfterFooter));
+        assertTrue(tailError.getMessage().contains("line " + (lines.size() + 1)), tailError.getMessage());
     }
 
     private void traceEvaluation(final Path file, final BarSeries series, final int from, final int to)

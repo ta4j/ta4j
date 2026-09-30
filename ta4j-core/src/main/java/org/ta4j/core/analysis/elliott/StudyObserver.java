@@ -32,8 +32,10 @@ interface StudyObserver {
      * @param partition         locked partition name
      * @param recordedIndex     bar index in source coordinates
      * @param asOfEnd           end time of the evaluated bar
-     * @param visiblePivots     confirmed pivots visible as of the bar
-     * @param analysis          topology analysis folded into the metrics
+     * @param visiblePivots     confirmed pivots visible as of the bar, in source
+     *                          coordinates
+     * @param analysis          topology analysis folded into the metrics, with
+     *                          candidate placements in source coordinates
      * @param candidateEvidence active-rule evidence per analysis candidate, in
      *                          candidate order; empty inner lists for topology-only
      *                          modes

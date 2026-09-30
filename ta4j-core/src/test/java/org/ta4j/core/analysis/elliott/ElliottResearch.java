@@ -829,6 +829,7 @@ final class ElliottResearch {
         private final Setup setup;
         private final Recipe recipe;
         private final String revision;
+        private final String worktree;
         private final Map<String, DatasetEntry> entries = new LinkedHashMap<>();
         private final List<Row> rows = new ArrayList<>();
         private final Map<String, ElliottResearchTrace> openTraces = new HashMap<>();
@@ -841,6 +842,7 @@ final class ElliottResearch {
             this.setup = setup;
             this.recipe = recipe;
             this.revision = gitRevision();
+            this.worktree = gitWorktreeState();
         }
 
         void register(final String id, final String asset, final JsonObject source) {
@@ -940,6 +942,8 @@ final class ElliottResearch {
             LocalDate first = null;
             LocalDate last = null;
             int count = 0;
+            final List<StudyRunner.Partition> partitions = setup.partitions().entries();
+            final boolean[] populated = new boolean[partitions.size()];
             for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
                 final LocalDate date = series.getBar(index).getBeginTime().atZone(ZoneOffset.UTC).toLocalDate();
                 if (date.isBefore(from) || date.isAfter(to)) {
@@ -948,21 +952,31 @@ final class ElliottResearch {
                 first = first == null || date.isBefore(first) ? date : first;
                 last = last == null || date.isAfter(last) ? date : last;
                 count++;
+                for (int partition = 0; partition < partitions.size(); partition++) {
+                    final StudyRunner.Partition window = partitions.get(partition);
+                    populated[partition] |= !date.isBefore(window.start()) && !date.isAfter(window.end());
+                }
             }
             entry.effectiveFrom = first;
             entry.effectiveTo = last;
             entry.bars = count;
+            // Extremes alone would call a tape complete while an entire middle
+            // partition is missing and its metrics are empty.
+            final List<String> gaps = new ArrayList<>();
             if (first == null) {
-                entry.coverageStatus = "partial";
-                entry.coverageMessage = "no bars inside the requested window";
+                gaps.add("no bars inside the requested window");
             } else if (first.isAfter(from) || last.isBefore(to)) {
-                entry.coverageStatus = "partial";
-                entry.coverageMessage = "data cover " + first + ".." + last + ", narrower than requested " + from + ".."
-                        + to;
-            } else {
-                entry.coverageStatus = "complete";
-                entry.coverageMessage = "";
+                gaps.add("data cover " + first + ".." + last + ", narrower than requested " + from + ".." + to);
             }
+            for (int partition = 0; first != null && partition < partitions.size(); partition++) {
+                if (!populated[partition]) {
+                    final StudyRunner.Partition missing = partitions.get(partition);
+                    gaps.add("partition " + missing.name() + " (" + missing.start() + ".." + missing.end()
+                            + ") has no bars");
+                }
+            }
+            entry.coverageStatus = gaps.isEmpty() ? "complete" : "partial";
+            entry.coverageMessage = String.join("; ", gaps);
         }
 
         private void fail(final String id, final Exception failure) {
@@ -1023,6 +1037,7 @@ final class ElliottResearch {
             final JsonObject json = new JsonObject();
             json.addProperty("artifactSchemaVersion", SCHEMA);
             json.addProperty("revision", revision);
+            json.addProperty("worktree", worktree);
             final JsonObject recipeJson = new JsonObject();
             recipeJson.addProperty("name", recipe.name());
             recipeJson.add("source", recipe.source() == null ? JsonNull.INSTANCE : new JsonPrimitive(recipe.source()));
@@ -1084,21 +1099,40 @@ final class ElliottResearch {
     }
 
     private static String gitRevision() {
+        final String output = git("rev-parse", "HEAD");
+        return output != null && output.trim().matches("[0-9a-f]{40}") ? output.trim() : "unknown";
+    }
+
+    /**
+     * Whether tracked or untracked sources differ from the recorded revision: a
+     * dirty run cannot be reproduced by checking that revision out.
+     */
+    private static String gitWorktreeState() {
+        final String output = git("status", "--porcelain", "--untracked-files=normal");
+        if (output == null) {
+            return "unknown";
+        }
+        return output.isBlank() ? "clean" : "dirty";
+    }
+
+    /** @return the command's standard output, or {@code null} when git failed */
+    private static String git(final String... args) {
+        final List<String> command = new ArrayList<>(args.length + 1);
+        command.add("git");
+        command.addAll(List.of(args));
         try {
-            final Process process = new ProcessBuilder("git", "rev-parse", "HEAD")
-                    .redirectError(ProcessBuilder.Redirect.DISCARD)
-                    .start();
-            final String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8).trim();
-            if (process.waitFor(10, TimeUnit.SECONDS) && process.exitValue() == 0 && output.matches("[0-9a-f]{40}")) {
+            final Process process = new ProcessBuilder(command).redirectError(ProcessBuilder.Redirect.DISCARD).start();
+            final String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            if (process.waitFor(10, TimeUnit.SECONDS) && process.exitValue() == 0) {
                 return output;
             }
             process.destroyForcibly();
         } catch (final IOException e) {
-            return "unknown";
+            return null;
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-        return "unknown";
+        return null;
     }
 
     private static String sha256(final byte[] bytes) {
@@ -1174,6 +1208,12 @@ final class ElliottResearch {
         markdown.append("\n## Run\n\n");
         markdown.append("- status: ").append(run.get("status").getAsString()).append('\n');
         markdown.append("- revision: ").append(run.get("revision").getAsString()).append('\n');
+        final String worktree = run.get("worktree").getAsString();
+        markdown.append("- worktree: ").append(worktree);
+        if (!"clean".equals(worktree)) {
+            markdown.append(" (sources may differ from the revision; results may not reproduce from it)");
+        }
+        markdown.append('\n');
         markdown.append("- fingerprint: ")
                 .append(run.getAsJsonObject("identity").get("fingerprint").getAsString())
                 .append('\n');

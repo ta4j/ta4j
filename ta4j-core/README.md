@@ -150,16 +150,16 @@ Unix shells:
 
 ```bash
 mvn -q -pl ta4j-core test-compile exec:java -Dexec.args="run smoke --out target/elliott-research/smoke"
-mvn -q -pl ta4j-core exec:java -Dexec.args="summarize target/elliott-research/smoke"
-mvn -q -pl ta4j-core exec:java -Dexec.args="inspect target/elliott-research/smoke '<key from comparisons.csv>'"
+mvn -q -pl ta4j-core test-compile exec:java -Dexec.args="summarize target/elliott-research/smoke"
+mvn -q -pl ta4j-core test-compile exec:java -Dexec.args="inspect target/elliott-research/smoke '<key from comparisons.csv>'"
 ```
 
 PowerShell (quote the whole `-D` argument):
 
 ```powershell
 mvn -q -pl ta4j-core test-compile exec:java "-Dexec.args=run smoke --out target/elliott-research/smoke"
-mvn -q -pl ta4j-core exec:java "-Dexec.args=summarize target/elliott-research/smoke"
-mvn -q -pl ta4j-core exec:java "-Dexec.args=inspect target/elliott-research/smoke '<key from comparisons.csv>'"
+mvn -q -pl ta4j-core test-compile exec:java "-Dexec.args=summarize target/elliott-research/smoke"
+mvn -q -pl ta4j-core test-compile exec:java "-Dexec.args=inspect target/elliott-research/smoke '<key from comparisons.csv>'"
 ```
 
 Relative paths resolve against the directory you run Maven from, here the
@@ -170,7 +170,8 @@ candles and study settings). `--trace off|real|selected-null-member` with
 `--block L --member M` controls evidence capture; `--overwrite` reuses an existing
 run directory. `help` lists every option.
 
-A run directory holds `run.json` (revision, recipe, configuration, dataset
+A run directory holds `run.json` (revision and whether the worktree was dirty,
+recipe, configuration, dataset
 sources and status), `reports/` (one study report per dataset),
 `comparisons.csv` (one row per dataset, section, mode, detector, partition,
 metric and null block length), `coverage.csv`, `summary.md` and `traces/`
