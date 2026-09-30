@@ -261,12 +261,19 @@ class ElliottResearchReportTest {
         final List<CoverageRow> coverage = List.of(new CoverageRow("d1", "A", "2020-01-01", "2020-12-31", "2020-01-02",
                 "2020-12-30", 364, "partial", "gap | missing"));
 
-        final String off = ElliottResearchReport.summaryMarkdown("Run", coverage, List.of(available, omitted), false,
+        final Row otherDataset = new Row("d2", "B", "h1", "topology-only", "MOTIVE_5", List.of(), "p",
+                "kernel-topology", "cal", "completeOccupancyRate", 2, 0.5d, 5L, 10L, 2, 2, 0, 0.25d, 0.2d, 0.3d, 0.25d,
+                1.0d / 3.0d, ElliottResearchReport.AVAILABLE);
+        final List<Row> rows = List.of(available, omitted, otherDataset);
+
+        final String off = ElliottResearchReport.summaryMarkdown("Run", coverage, rows, Set.of(),
                 "research recapture --trace real d1");
-        final String on = ElliottResearchReport.summaryMarkdown("Run", coverage, List.of(available, omitted), true,
-                "unused");
+        final String mixed = ElliottResearchReport.summaryMarkdown("Run", coverage, rows, Set.of("d2"),
+                "research recapture --trace real d1");
+        final String on = ElliottResearchReport.summaryMarkdown("Run", coverage, rows, Set.of("d1", "d2"), "unused");
 
         assertTrue(off.contains("evidence not captured"));
+        assertTrue(off.contains("Evidence not captured for d1, d2."));
         assertTrue(off.contains("research recapture --trace real d1"));
         assertTrue(off.contains("not a confidence interval"));
         assertTrue(off.contains("not a p-value"));
@@ -274,10 +281,18 @@ class ElliottResearchReportTest {
         assertTrue(off.contains("gap \\| missing"));
         assertTrue(off.contains("1 unavailable or not-comparable row(s) omitted"));
         assertFalse(off.contains("noMatchRate"));
+        // Evidence is judged per dataset: one verified trace does not vouch for
+        // another.
+        final String d1Section = mixed.substring(mixed.indexOf("### d1"), mixed.indexOf("### d2"));
+        final String d2Section = mixed.substring(mixed.indexOf("### d2"), mixed.indexOf("## Evidence"));
+        assertTrue(d1Section.contains("evidence not captured"), d1Section);
+        assertTrue(d2Section.contains("trace captured"), d2Section);
+        assertFalse(d2Section.contains("evidence not captured"), d2Section);
+        assertTrue(mixed.contains("Evidence not captured for d1."), mixed);
         assertFalse(on.contains("evidence not captured"));
         assertFalse(on.contains("unused"));
         assertThrows(IllegalArgumentException.class,
-                () -> ElliottResearchReport.summaryMarkdown("Run", coverage, List.of(available), false, " "));
+                () -> ElliottResearchReport.summaryMarkdown("Run", coverage, List.of(available), Set.of("d2"), " "));
     }
 
     @Test

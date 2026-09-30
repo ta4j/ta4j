@@ -504,15 +504,17 @@ class ElliottResearchTest {
     }
 
     @Test
-    void inspectRejectsTraceCapturedForAnotherDatasetOrMode() throws Exception {
-        // Regression: a complete trace from another dataset or null member at the
-        // expected path was trusted on schema and footer alone.
+    void inspectRejectsTraceCapturedForAnotherDatasetModeOrRun() throws Exception {
+        // Regression: a complete trace from another dataset, null member, or run
+        // (other configuration or source) at the expected path was trusted on
+        // schema, footer and coordinates alone.
         final List<java.util.function.Consumer<JsonObject>> foreign = List
                 .of(header -> header.addProperty("dataset", "other"), header -> {
                     header.addProperty("traceMode", "selected-null-member");
                     header.addProperty("nullBlockLength", 20);
                     header.addProperty("nullMemberIndex", 3);
-                });
+                }, header -> header.addProperty("fingerprint", "other-configuration"),
+                        header -> header.addProperty("sourceSha256", "other-source"));
         for (int index = 0; index < foreign.size(); index++) {
             final Path copy = work.resolve("foreign-" + index);
             copyTree(smokeRun, copy);
@@ -527,6 +529,39 @@ class ElliottResearchTest {
             assertEquals(2, result.code(), "mutation " + index);
             assertTrue(result.err().contains("was captured for"), result.err());
             assertTrue(result.err().contains("Recapture"), result.err());
+        }
+    }
+
+    @Test
+    void summaryReportsEvidenceNotCapturedWhenTheTraceIsMissingOrTruncated() throws Exception {
+        // Regression: summarize labelled every row "trace captured" from the run's
+        // trace mode alone, even after the trace file was deleted or truncated.
+        final List<java.util.function.Consumer<Path>> damage = List.of(trace -> {
+            try {
+                Files.delete(trace);
+            } catch (final IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        }, trace -> {
+            try {
+                final List<String> lines = Files.readAllLines(trace, StandardCharsets.UTF_8);
+                Files.write(trace, lines.subList(0, lines.size() - 1), StandardCharsets.UTF_8);
+            } catch (final IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        });
+        assertTrue(Files.readString(smokeRun.resolve("summary.md")).contains("trace captured"));
+        for (int index = 0; index < damage.size(); index++) {
+            final Path copy = work.resolve("summary-damage-" + index);
+            copyTree(smokeRun, copy);
+            damage.get(index).accept(copy.resolve("traces/smoke-real.jsonl"));
+
+            final Result result = launch("summarize", copy.toString());
+            assertEquals(0, result.code(), result.err());
+            final String summary = Files.readString(copy.resolve("summary.md"));
+            assertFalse(summary.contains("trace captured"), "damage " + index);
+            assertTrue(summary.contains("Evidence not captured for smoke."), summary);
+            assertTrue(summary.contains("run smoke --trace real"), summary);
         }
     }
 

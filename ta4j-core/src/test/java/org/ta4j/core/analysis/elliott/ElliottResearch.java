@@ -27,6 +27,7 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -938,9 +939,17 @@ final class ElliottResearch {
                 return null;
             }
             final ElliottResearchTrace trace = ElliottResearchTrace.open(dir.resolve(realTraceName(id)), id,
-                    ElliottResearchTrace.MODE_REAL, -1, -1);
+                    setup.fingerprint(), sourceSha256(id), ElliottResearchTrace.MODE_REAL, -1, -1);
             openTraces.put(id, trace);
             return trace;
+        }
+
+        /**
+         * Digest of the dataset's source candles, or {@code null} for generated data.
+         */
+        private String sourceSha256(final String id) {
+            final JsonElement sha256 = entries.get(id).source.get("sha256");
+            return sha256 == null ? null : sha256.getAsString();
         }
 
         void evaluateSeries(final String id, final String asset, final StudyRunner runner, final BarSeries series)
@@ -999,8 +1008,9 @@ final class ElliottResearch {
                 }
                 if (ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER.equals(options.trace())) {
                     final Path file = dir.resolve(nullTraceName(id, options.block(), options.member()));
-                    try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, id,
-                            ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER, options.block(), options.member())) {
+                    try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, id, setup.fingerprint(),
+                            sourceSha256(id), ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER, options.block(),
+                            options.member())) {
                         runner.replayNullMember(series, series.getBeginIndex(), series.getEndIndex(), options.block(),
                                 options.member(), trace);
                     }
@@ -1320,10 +1330,9 @@ final class ElliottResearch {
     private static String renderSummary(final Path dir, final JsonObject run, final List<Row> rows) {
         final JsonObject trace = run.getAsJsonObject("trace");
         final String mode = trace.get("mode").getAsString();
-        final boolean realCaptured = ElliottResearchTrace.MODE_REAL.equals(mode);
         final StringBuilder markdown = new StringBuilder(ElliottResearchReport.summaryMarkdown(
                 "Elliott research run: " + run.getAsJsonObject("recipe").get("name").getAsString(), coverage(run), rows,
-                realCaptured, recaptureCommand(dir, run, ElliottResearchTrace.MODE_REAL, null, null)));
+                verifiedRealTraces(dir, run), recaptureCommand(dir, run, ElliottResearchTrace.MODE_REAL, null, null)));
         markdown.append("\n## Run\n\n");
         markdown.append("- status: ").append(run.get("status").getAsString()).append('\n');
         markdown.append("- revision: ").append(run.get("revision").getAsString()).append('\n');
@@ -1347,6 +1356,41 @@ final class ElliottResearch {
         }
         markdown.append("\nInspect any key with `inspect ").append(displayPath(dir)).append(" <key>`.\n");
         return markdown.toString();
+    }
+
+    /**
+     * Datasets whose real trace is listed in the run, present, complete and
+     * captured by this run's configuration and source; only their rows may claim
+     * captured evidence. A deleted, truncated, corrupt or foreign trace is treated
+     * as not captured.
+     */
+    private static Set<String> verifiedRealTraces(final Path dir, final JsonObject run) {
+        final JsonElement fingerprint = run.getAsJsonObject("identity").get("fingerprint");
+        final Set<String> traced = new HashSet<>();
+        for (final JsonElement element : run.getAsJsonArray("datasets")) {
+            final JsonObject dataset = element.getAsJsonObject();
+            final String id = dataset.get("id").getAsString();
+            final String name = realTraceName(id);
+            final Path file = dir.resolve(name);
+            if (!dataset.getAsJsonArray("traces").contains(new JsonPrimitive(name)) || !Files.isRegularFile(file)) {
+                continue;
+            }
+            final JsonElement sourceSha256 = dataset.getAsJsonObject("source").get("sha256");
+            try {
+                final ElliottResearchTrace.TraceFile parsed = ElliottResearchTrace.read(file, record -> false);
+                final JsonObject header = parsed.header();
+                if (parsed.complete() && new JsonPrimitive(id).equals(header.get("dataset"))
+                        && fingerprint.equals(header.get("fingerprint"))
+                        && (sourceSha256 == null ? JsonNull.INSTANCE : sourceSha256)
+                                .equals(header.get("sourceSha256"))) {
+                    traced.add(id);
+                }
+            } catch (final IOException | IllegalArgumentException unreadable) {
+                // An unreadable or corrupt trace is not evidence; the summary offers a
+                // recapture.
+            }
+        }
+        return traced;
     }
 
     /**
@@ -1844,12 +1888,15 @@ final class ElliottResearch {
         }
 
         /**
-         * Header coordinates a trace must carry to belong to this row's dataset and
-         * capture.
+         * Header fields a trace must carry to belong to this run, this row's dataset
+         * and this capture: configuration fingerprint and source digest bind it to the
+         * run, so a trace copied in from another run with equal coordinates is refused.
          */
         private JsonObject expectedHeader(final String traceMode, final int blockLength, final int memberIndex) {
             final JsonObject expected = new JsonObject();
             expected.addProperty("dataset", row.dataset());
+            expected.add("fingerprint", run.getAsJsonObject("identity").get("fingerprint"));
+            expected.add("sourceSha256", dataset.getAsJsonObject("source").get("sha256"));
             expected.addProperty("traceMode", traceMode);
             expected.addProperty("nullBlockLength", blockLength);
             expected.addProperty("nullMemberIndex", memberIndex);

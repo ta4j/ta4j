@@ -578,15 +578,22 @@ final class ElliottResearchReport {
      * @param title            document title
      * @param coverage         dataset coverage entries
      * @param rows             comparison rows of all datasets
-     * @param traceCaptured    whether the observation trace was captured
+     * @param tracedDatasets   datasets whose observation trace was captured and
+     *                         verified; rows of other datasets report evidence as
+     *                         not captured
      * @param recaptureCommand exact command that captures the trace; required when
-     *                         {@code traceCaptured} is false
+     *                         any row's dataset is not in {@code tracedDatasets}
      * @return Markdown text
      */
     static String summaryMarkdown(final String title, final List<CoverageRow> coverage, final List<Row> rows,
-            final boolean traceCaptured, final String recaptureCommand) {
-        if (!traceCaptured && (recaptureCommand == null || recaptureCommand.isBlank())) {
-            throw new IllegalArgumentException("recaptureCommand is required when the trace was not captured");
+            final Set<String> tracedDatasets, final String recaptureCommand) {
+        final List<String> untraced = rows.stream()
+                .map(Row::dataset)
+                .distinct()
+                .filter(dataset -> !tracedDatasets.contains(dataset))
+                .toList();
+        if (!untraced.isEmpty() && (recaptureCommand == null || recaptureCommand.isBlank())) {
+            throw new IllegalArgumentException("recaptureCommand is required when a trace was not captured");
         }
         final StringBuilder markdown = new StringBuilder();
         markdown.append("# ").append(title).append("\n\n");
@@ -651,7 +658,7 @@ final class ElliottResearchReport {
                         .append("/")
                         .append(row.requestedNullMembers())
                         .append(" | ")
-                        .append(traceCaptured ? "trace captured" : EVIDENCE_NOT_CAPTURED)
+                        .append(tracedDatasets.contains(row.dataset()) ? "trace captured" : EVIDENCE_NOT_CAPTURED)
                         .append(" |\n");
             }
             final int others = entry.getValue().size() - available.size();
@@ -661,8 +668,10 @@ final class ElliottResearchReport {
                         .append(" unavailable or not-comparable row(s) omitted; see comparisons.csv.\n");
             }
         }
-        if (!traceCaptured) {
-            markdown.append("\n## Evidence\n\nEvidence not captured for these rows. Recapture with:\n\n```\n")
+        if (!untraced.isEmpty()) {
+            markdown.append("\n## Evidence\n\nEvidence not captured for ")
+                    .append(String.join(", ", untraced))
+                    .append(". Recapture with:\n\n```\n")
                     .append(recaptureCommand)
                     .append("\n```\n");
         }

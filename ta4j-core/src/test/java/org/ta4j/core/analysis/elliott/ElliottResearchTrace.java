@@ -41,26 +41,28 @@ import com.google.gson.JsonPrimitive;
  * <p>
  * The trace is a {@link StudyObserver}: it serialises the exact analyses, rule
  * evidence, and alternative outcomes the runner hands it and never recomputes
- * recognition. Each observation is written as one line as soon as it arrives,
- * so memory stays bounded by the number of distinct candidate versions rather
- * than by members times bars. A file is complete only when its footer line
- * exists; a crashed run leaves a readable but truncated file.
+ * recognition. Each observation is written as one line as soon as it arrives
+ * and the writer keeps no per-candidate state, so memory stays bounded by one
+ * observation rather than by members times bars or distinct candidates. A file
+ * is complete only when its footer line exists; a crashed run leaves a readable
+ * but truncated file.
  * </p>
  *
  * <p>
- * Layout: a header line, one object per observation, then the footer
- * {@code {"complete":true,"records":N}}.
+ * Layout: a header line naming the dataset, the capture coordinates and the
+ * originating run's configuration fingerprint and source digest, one object per
+ * observation, then the footer {@code {"complete":true,"records":N}}.
  * </p>
  *
  * <p>
  * A candidate's identity ({@code candidateKey}) hashes grammar, direction and
  * the full pivot placement (indices, types, price text), so a placement that
  * shares only its start and end with another is a different candidate. Its
- * {@code version} is {@code <candidateKey>@v<n>}: versions are numbered in
- * first-emission order within one file, and a new version is minted only when
- * the candidate's rule-evidence content differs from every content already
- * emitted for it. Earlier lines are never rewritten. Instances are not
- * thread-safe.
+ * {@code version} is {@code <candidateKey>@<evidenceKey>}, where the evidence
+ * key hashes the candidate's serialised rule evidence: identical evidence
+ * always yields the same version, in any file and in any emission order, and
+ * changed evidence yields a new one. Earlier lines are never rewritten.
+ * Instances are not thread-safe.
  * </p>
  *
  * @since 0.25.1
@@ -83,7 +85,6 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
     private final int nullBlockLength;
     private final int nullMemberIndex;
     private final BufferedWriter writer;
-    private final Map<String, Map<String, Integer>> versionsByCandidate = new HashMap<>();
     private long records;
     private boolean closed;
 
@@ -101,16 +102,21 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
      *
      * @param file            trace destination
      * @param datasetId       dataset identifier stored on every record
+     * @param fingerprint     configuration fingerprint of the originating run
+     * @param sourceSha256    SHA-256 of the dataset's source candles, or
+     *                        {@code null} for generated data
      * @param traceMode       {@code real} or {@code selected-null-member}
      * @param nullBlockLength null block length, or {@code -1} for real traces
      * @param nullMemberIndex null member index, or {@code -1} for real traces
      * @return open trace; close it to write the footer
      * @throws IOException on filesystem failure
      */
-    static ElliottResearchTrace open(final Path file, final String datasetId, final String traceMode,
-            final int nullBlockLength, final int nullMemberIndex) throws IOException {
+    static ElliottResearchTrace open(final Path file, final String datasetId, final String fingerprint,
+            final String sourceSha256, final String traceMode, final int nullBlockLength, final int nullMemberIndex)
+            throws IOException {
         Objects.requireNonNull(file, "file");
         Objects.requireNonNull(datasetId, "datasetId");
+        Objects.requireNonNull(fingerprint, "fingerprint");
         Objects.requireNonNull(traceMode, "traceMode");
         if (MODE_REAL.equals(traceMode)) {
             if (nullBlockLength != -1 || nullMemberIndex != -1) {
@@ -134,6 +140,8 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
             final JsonObject header = new JsonObject();
             header.addProperty("schema", SCHEMA);
             header.addProperty("dataset", datasetId);
+            header.addProperty("fingerprint", fingerprint);
+            header.addProperty("sourceSha256", sourceSha256);
             header.addProperty("traceMode", traceMode);
             header.addProperty("nullBlockLength", nullBlockLength);
             header.addProperty("nullMemberIndex", nullMemberIndex);
@@ -284,11 +292,9 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
             json.addProperty("explanation", rule.explanation());
             rules.add(json);
         }
-        final Map<String, Integer> versions = versionsByCandidate.computeIfAbsent(key, ignored -> new HashMap<>());
-        final int version = versions.computeIfAbsent(rules.toString(), ignored -> versions.size() + 1);
         final JsonObject json = new JsonObject();
         json.addProperty("candidateKey", key);
-        json.addProperty("version", key + "@v" + version);
+        json.addProperty("version", key + "@" + digest(rules.toString()));
         json.addProperty("direction", candidate.direction().name());
         json.add("placement", placement);
         json.add("rules", rules);
@@ -310,9 +316,13 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
                     .append(':')
                     .append(pivot.price());
         }
+        return digest(identity.toString());
+    }
+
+    /** First 128 bits of the text's SHA-256, as lowercase hex. */
+    private static String digest(final String text) {
         try {
-            final byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(identity.toString().getBytes(StandardCharsets.UTF_8));
+            final byte[] digest = MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(digest, 0, 16);
         } catch (final NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 unavailable", e);
