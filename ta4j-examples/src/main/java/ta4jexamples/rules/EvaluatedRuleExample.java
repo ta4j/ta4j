@@ -20,6 +20,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.AbstractEvaluatedRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
@@ -96,32 +97,26 @@ public class EvaluatedRuleExample {
         private final ScoreKind kind;
 
         /**
-         * @param score     score indicator
-         * @param threshold inclusive threshold, converted to the score series'
-         *                  {@link org.ta4j.core.num.NumFactory}; must be within
-         *                  {@code [0, 1]} for {@link ScoreKind#CALIBRATED_PROBABILITY}
+         * @param score     score indicator; its series' {@link NumFactory} converts the
+         *                  threshold
+         * @param threshold inclusive threshold; must be within {@code [0, 1]} for
+         *                  {@link ScoreKind#CALIBRATED_PROBABILITY}
          * @param kind      score interpretation
-         * @throws IllegalArgumentException if the threshold is not finite in either
-         *                                  factory, or outside {@code [0, 1]} for a
-         *                                  calibrated probability
+         * @throws IllegalArgumentException if the converted threshold is not finite, or
+         *                                  outside {@code [0, 1]} for a calibrated
+         *                                  probability
          */
-        public ConfidenceGateRule(Indicator<Num> score, Num threshold, ScoreKind kind) {
+        public ConfidenceGateRule(Indicator<Num> score, Number threshold, ScoreKind kind) {
             this.score = Objects.requireNonNull(score, "score");
             this.kind = Objects.requireNonNull(kind, "kind");
-            if (!Num.isFinite(Objects.requireNonNull(threshold, "threshold"))) {
+            NumFactory numFactory = score.getBarSeries().numFactory();
+            this.threshold = numFactory.numOf(Objects.requireNonNull(threshold, "threshold"));
+            if (!Num.isFinite(this.threshold)) {
                 throw new IllegalArgumentException("threshold must be finite: " + threshold);
             }
-            // Validate the caller's value: normalization may round an out-of-range
-            // probability into range.
             if (kind == ScoreKind.CALIBRATED_PROBABILITY
-                    && (threshold.isNegative() || threshold.isGreaterThan(threshold.getNumFactory().one()))) {
+                    && (this.threshold.isNegative() || this.threshold.isGreaterThan(numFactory.one()))) {
                 throw new IllegalArgumentException("probability threshold must be within [0, 1]: " + threshold);
-            }
-            // Mixed Num types throw on comparison, so store the threshold in the score's
-            // factory.
-            this.threshold = score.getBarSeries().numFactory().numOf(threshold.bigDecimalValue());
-            if (!Num.isFinite(this.threshold)) {
-                throw new IllegalArgumentException("threshold cannot be represented by the score NumFactory");
             }
         }
 
@@ -189,8 +184,7 @@ public class EvaluatedRuleExample {
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         NumericIndicator heuristicScore = NumericIndicator.of(new RSIIndicator(close, 14)).dividedBy(100);
 
-        ConfidenceGateRule confidenceGate = new ConfidenceGateRule(heuristicScore, series.numFactory().numOf(0.6),
-                ScoreKind.HEURISTIC_SCORE);
+        ConfidenceGateRule confidenceGate = new ConfidenceGateRule(heuristicScore, 0.6, ScoreKind.HEURISTIC_SCORE);
         confidenceGate.setName("RSI score >= 0.6");
         FlatWithTradeBudgetRule tradeBudget = new FlatWithTradeBudgetRule(5);
         tradeBudget.setName("Flat with trade budget");

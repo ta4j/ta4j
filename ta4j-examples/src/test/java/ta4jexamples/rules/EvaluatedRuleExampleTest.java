@@ -38,14 +38,16 @@ class EvaluatedRuleExampleTest {
         Indicator<Num> score = new FixedIndicator<>(series, numFactory.zero(), numFactory.one());
 
         assertThrows(IllegalArgumentException.class,
-                () -> new ConfidenceGateRule(score, NaN.NaN, ScoreKind.HEURISTIC_SCORE));
+                () -> new ConfidenceGateRule(score, Double.NaN, ScoreKind.HEURISTIC_SCORE));
         assertThrows(IllegalArgumentException.class,
-                () -> new ConfidenceGateRule(score, numFactory.numOf(1.01), ScoreKind.CALIBRATED_PROBABILITY));
+                () -> new ConfidenceGateRule(score, Double.POSITIVE_INFINITY, ScoreKind.HEURISTIC_SCORE));
         assertThrows(IllegalArgumentException.class,
-                () -> new ConfidenceGateRule(score, numFactory.numOf(-0.01), ScoreKind.CALIBRATED_PROBABILITY));
+                () -> new ConfidenceGateRule(score, 1.01, ScoreKind.CALIBRATED_PROBABILITY));
+        assertThrows(IllegalArgumentException.class,
+                () -> new ConfidenceGateRule(score, -0.01, ScoreKind.CALIBRATED_PROBABILITY));
         // Heuristic scores are not probabilities, so the [0, 1] bound does not apply.
-        new ConfidenceGateRule(score, numFactory.numOf(55), ScoreKind.HEURISTIC_SCORE);
-        new ConfidenceGateRule(score, numFactory.one(), ScoreKind.CALIBRATED_PROBABILITY);
+        new ConfidenceGateRule(score, 55, ScoreKind.HEURISTIC_SCORE);
+        new ConfidenceGateRule(score, 1, ScoreKind.CALIBRATED_PROBABILITY);
     }
 
     @Test
@@ -53,7 +55,7 @@ class EvaluatedRuleExampleTest {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
         NumFactory numFactory = series.numFactory();
         Indicator<Num> score = new FixedIndicator<>(series, numFactory.zero(), NaN.NaN, numFactory.numOf(0.49));
-        ConfidenceGateRule rule = new ConfidenceGateRule(score, numFactory.zero(), ScoreKind.CALIBRATED_PROBABILITY);
+        ConfidenceGateRule rule = new ConfidenceGateRule(score, 0, ScoreKind.CALIBRATED_PROBABILITY);
 
         ConfidenceEvaluation zero = rule.evaluate(0);
         assertTrue(zero.isAvailable());
@@ -64,8 +66,7 @@ class EvaluatedRuleExampleTest {
         assertFalse(rule.toBoolean(missing));
         assertFalse(rule.isSatisfied(1));
 
-        ConfidenceGateRule strict = new ConfidenceGateRule(score, numFactory.numOf(0.5),
-                ScoreKind.CALIBRATED_PROBABILITY);
+        ConfidenceGateRule strict = new ConfidenceGateRule(score, 0.5, ScoreKind.CALIBRATED_PROBABILITY);
         assertFalse(strict.isSatisfied(2));
         assertEquals(numFactory.numOf(0.5), strict.evaluate(2).threshold());
     }
@@ -74,7 +75,7 @@ class EvaluatedRuleExampleTest {
     void warmUpBarsAreUnavailableFromTheSeriesBeginIndex() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 2, 3, 4, 5, 4, 5, 6).build();
         RSIIndicator rsi = new RSIIndicator(new ClosePriceIndicator(series), 3);
-        ConfidenceGateRule rule = new ConfidenceGateRule(rsi, series.numFactory().zero(), ScoreKind.HEURISTIC_SCORE);
+        ConfidenceGateRule rule = new ConfidenceGateRule(rsi, 0, ScoreKind.HEURISTIC_SCORE);
         int firstStable = series.getBeginIndex() + rsi.getCountOfUnstableBars();
 
         for (int i = series.getBeginIndex(); i < firstStable; i++) {
@@ -111,19 +112,17 @@ class EvaluatedRuleExampleTest {
     }
 
     @Test
-    void thresholdIsNormalizedToTheScoreNumFactory() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
-                .withData(1, 2)
-                .build();
-        NumFactory numFactory = series.numFactory();
-        Indicator<Num> score = new FixedIndicator<>(series, numFactory.numOf(0.4), numFactory.numOf(0.6));
-        ConfidenceGateRule rule = new ConfidenceGateRule(score, DoubleNumFactory.getInstance().numOf(0.5),
-                ScoreKind.CALIBRATED_PROBABILITY);
+    void thresholdIsProducedByTheScoreNumFactory() {
+        for (NumFactory numFactory : new NumFactory[] { DecimalNumFactory.getInstance(),
+                DoubleNumFactory.getInstance() }) {
+            BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+            Indicator<Num> score = new FixedIndicator<>(series, numFactory.numOf(0.4), numFactory.numOf(0.6));
+            ConfidenceGateRule rule = new ConfidenceGateRule(score, 0.5, ScoreKind.CALIBRATED_PROBABILITY);
 
-        assertTrue(numFactory.produces(rule.evaluate(0).threshold()));
-        assertEquals(numFactory.numOf(0.5), rule.evaluate(0).threshold());
-        assertFalse(rule.isSatisfied(0));
-        assertTrue(rule.isSatisfied(1));
+            assertTrue(numFactory.produces(rule.evaluate(0).threshold()), numFactory.toString());
+            assertFalse(rule.isSatisfied(0));
+            assertTrue(rule.isSatisfied(1));
+        }
     }
 
     @Test
@@ -157,24 +156,11 @@ class EvaluatedRuleExampleTest {
                 return 20;
             }
         };
-        ConfidenceGateRule rule = new ConfidenceGateRule(score, series.numFactory().zero(), ScoreKind.HEURISTIC_SCORE);
+        ConfidenceGateRule rule = new ConfidenceGateRule(score, 0, ScoreKind.HEURISTIC_SCORE);
 
         for (int i = begin; i <= series.getEndIndex(); i++) {
             assertFalse(rule.evaluate(i).isAvailable(), "index " + i);
             assertFalse(rule.isSatisfied(i), "index " + i);
         }
-    }
-
-    @Test
-    void probabilityRangeIsValidatedBeforeNormalization() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
-                .withData(1, 2)
-                .build();
-        Indicator<Num> score = new FixedIndicator<>(series, series.numFactory().one(), series.numFactory().one());
-        // Rounds to exactly 1.0 as a double, but the supplied probability is above 1.
-        Num aboveOne = DecimalNumFactory.getInstance(40).numOf("1.0000000000000001");
-
-        assertThrows(IllegalArgumentException.class,
-                () -> new ConfidenceGateRule(score, aboveOne, ScoreKind.CALIBRATED_PROBABILITY));
     }
 }

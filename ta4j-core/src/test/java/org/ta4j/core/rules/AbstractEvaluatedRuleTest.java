@@ -50,7 +50,7 @@ public class AbstractEvaluatedRuleTest {
 
     @Test
     public void booleanBridgeEvaluatesProjectsAndTracesOnce() {
-        ThresholdGateRule rule = new ThresholdGateRule(close, series.numFactory().numOf(3));
+        ThresholdGateRule rule = new ThresholdGateRule(close, 3);
         rule.setName("Rich gate");
         traceLogger.clear();
 
@@ -63,7 +63,7 @@ public class AbstractEvaluatedRuleTest {
 
     @Test
     public void directEvaluationDoesNotEmitBooleanTrace() {
-        ThresholdGateRule rule = new ThresholdGateRule(close, series.numFactory().numOf(3));
+        ThresholdGateRule rule = new ThresholdGateRule(close, 3);
         rule.setName("Rich gate");
         traceLogger.clear();
 
@@ -75,7 +75,7 @@ public class AbstractEvaluatedRuleTest {
 
     @Test
     public void summaryTraceModeSuppressesEvaluatedChildTrace() {
-        ThresholdGateRule rich = new ThresholdGateRule(close, series.numFactory().numOf(3));
+        ThresholdGateRule rich = new ThresholdGateRule(close, 3);
         rich.setName("Rich gate");
         Rule composite = BooleanRule.TRUE.and(rich);
         composite.setName("Composite");
@@ -103,7 +103,7 @@ public class AbstractEvaluatedRuleTest {
 
     @Test
     public void namingFollowsAbstractRuleConventions() {
-        ThresholdGateRule rule = new ThresholdGateRule(close, series.numFactory().one());
+        ThresholdGateRule rule = new ThresholdGateRule(close, 1);
 
         assertEquals("ThresholdGateRule", rule.getName());
         assertFalse(rule.hasCustomName());
@@ -115,7 +115,7 @@ public class AbstractEvaluatedRuleTest {
 
     @Test
     public void capturedSnapshotIgnoresCurrentBarMutationAndFreshEvaluationSeesIt() {
-        ThresholdGateRule rule = new ThresholdGateRule(close, series.numFactory().numOf(5));
+        ThresholdGateRule rule = new ThresholdGateRule(close, 5);
         int endIndex = series.getEndIndex();
         Gate beforeMutation = rule.evaluate(endIndex);
 
@@ -132,7 +132,7 @@ public class AbstractEvaluatedRuleTest {
     public void thresholdEndpointIsInclusiveFromNonZeroBeginIndex() {
         series.setMaximumBarCount(3);
         int beginIndex = series.getBeginIndex();
-        ThresholdGateRule rule = new ThresholdGateRule(close, series.numFactory().numOf(3));
+        ThresholdGateRule rule = new ThresholdGateRule(close, 3);
 
         assertEquals(2, beginIndex);
         assertTrue(rule.isSatisfied(beginIndex));
@@ -142,7 +142,7 @@ public class AbstractEvaluatedRuleTest {
 
     @Test
     public void constructorBackedRuleRoundTripsConfigurationButNotSnapshots() {
-        ThresholdGateRule rule = new ThresholdGateRule(close, series.numFactory().numOf(3));
+        ThresholdGateRule rule = new ThresholdGateRule(close, 3);
         rule.setName("Close gate");
         rule.isSatisfied(4);
 
@@ -169,7 +169,7 @@ public class AbstractEvaluatedRuleTest {
 
     @Test
     public void ruleCopiesReconstructsSupportedEvaluatedRules() {
-        ThresholdGateRule rule = new ThresholdGateRule(close, series.numFactory().numOf(3));
+        ThresholdGateRule rule = new ThresholdGateRule(close, 3);
         rule.setName("Close gate");
 
         Rule copy = RuleCopies.copy(rule);
@@ -250,9 +250,9 @@ final class ThresholdGateRule extends AbstractEvaluatedRule<AbstractEvaluatedRul
     final transient AtomicInteger evaluations = new AtomicInteger();
     final transient AtomicInteger coercions = new AtomicInteger();
 
-    ThresholdGateRule(Indicator<Num> indicator, Num threshold) {
+    ThresholdGateRule(Indicator<Num> indicator, Number threshold) {
         this.indicator = indicator;
-        this.threshold = threshold;
+        this.threshold = indicator.getBarSeries().numFactory().numOf(threshold);
     }
 
     @Override
