@@ -110,6 +110,7 @@ final class FrozenProtocolStudy {
                     protocol.ablationSet());
             BarSeries series;
             StudyReport report;
+            Path target = reportDir.resolve(dataset.id() + ".json");
             try {
                 StudyObserver observer = openObserver(listener, dataset.id());
                 series = OssifiedElliottWaveSeriesLoader.loadSeries(FrozenProtocolStudy.class, dataset.resource(),
@@ -123,12 +124,11 @@ final class FrozenProtocolStudy {
                         protocol.nullEnsemble().blockLengths(), competingModes);
                 report = runner.evaluate(dataset.asset(), series, series.getBeginIndex(), series.getEndIndex(),
                         observer);
+                writeReport(target, report);
             } catch (RuntimeException failure) {
                 listener.failed(dataset.id(), failure);
                 continue;
             }
-            Path target = reportDir.resolve(dataset.id() + ".json");
-            Files.writeString(target, report.toJson());
             LOG.info("wrote study report {} for {}", target, dataset.asset());
             listener.completed(dataset.id(), runner, series, report, target);
         }
@@ -143,6 +143,18 @@ final class FrozenProtocolStudy {
             return listener.observer(datasetId);
         } catch (IOException e) {
             throw new UncheckedIOException("cannot open study observer for " + datasetId + ": " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Writes one dataset's report, rethrowing an I/O failure unchecked so it fails
+     * only that dataset.
+     */
+    private static void writeReport(final Path target, final StudyReport report) {
+        try {
+            Files.writeString(target, report.toJson());
+        } catch (IOException e) {
+            throw new UncheckedIOException("cannot write study report " + target + ": " + e.getMessage(), e);
         }
     }
 
