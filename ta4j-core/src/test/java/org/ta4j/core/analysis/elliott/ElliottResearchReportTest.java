@@ -158,6 +158,12 @@ class ElliottResearchReportTest {
                 () -> ElliottResearchReport.readCsv(file));
         assertTrue(tampered.getMessage().contains(file + ":2"));
 
+        ElliottResearchReport.writeCsv(file, List.of(row));
+        Files.writeString(file, read(file).replace(",0.5,", ",half,"), StandardCharsets.UTF_8);
+        final IllegalArgumentException malformedNumber = assertThrows(IllegalArgumentException.class,
+                () -> ElliottResearchReport.readCsv(file));
+        assertTrue(malformedNumber.getMessage().startsWith(file + ":2: "), malformedNumber.getMessage());
+
         Files.writeString(file, "wrong,header\r\n", StandardCharsets.UTF_8);
         assertTrue(assertThrows(IllegalArgumentException.class, () -> ElliottResearchReport.readCsv(file)).getMessage()
                 .contains(file + ":1"));

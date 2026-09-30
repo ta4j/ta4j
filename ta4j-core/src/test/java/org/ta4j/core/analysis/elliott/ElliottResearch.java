@@ -660,27 +660,42 @@ final class ElliottResearch {
         final RunOptions options = parseRunOptions(args);
         final Setup setup;
         final Recipe recipe;
-        final ElliottStudyProtocol protocol;
-        BarSeries exploreSeries = null;
-        ExploreRecipe explore = null;
-        byte[] sourceBytes = null;
+        final RunPlan plan;
         switch (options.recipe()) {
         case RECIPE_SMOKE -> {
             setup = smokeSetup();
             recipe = new Recipe(RECIPE_SMOKE, null, null, null);
-            protocol = null;
+            plan = run -> {
+                final JsonObject source = new JsonObject();
+                source.addProperty("kind", "synthetic");
+                source.addProperty("description", "deterministic StrictMath sine mix, " + SMOKE_BARS + " daily bars");
+                run.register(SMOKE_DATASET, SMOKE_ASSET, source);
+                run.start();
+                run.evaluateSeries(SMOKE_DATASET, SMOKE_ASSET, setup.runner(), smokeSeries());
+            };
         }
         case RECIPE_FROZEN -> {
-            protocol = ElliottStudyProtocol.load();
+            final ElliottStudyProtocol protocol = ElliottStudyProtocol.load();
             setup = frozenSetup(protocol);
             recipe = new Recipe(RECIPE_FROZEN, null, null, null);
+            plan = run -> {
+                for (final ElliottStudyProtocol.DatasetSpec dataset : protocol.datasets()) {
+                    final JsonObject source = new JsonObject();
+                    source.addProperty("kind", "bundled-resource");
+                    source.addProperty("resource", dataset.resource());
+                    source.addProperty("sha256", dataset.sha256());
+                    run.register(dataset.id(), dataset.asset(), source);
+                }
+                run.start();
+                run.evaluateFrozen(protocol);
+            };
         }
         default -> {
-            protocol = null;
             final Path recipePath = options.recipeFile().toAbsolutePath().normalize();
             final Path sourcePath = options.source().toAbsolutePath().normalize();
-            explore = parseExplore(readBytes(recipePath, "recipe"));
-            sourceBytes = readBytes(sourcePath, "source candles");
+            final ExploreRecipe explore = parseExplore(readBytes(recipePath, "recipe"));
+            final byte[] sourceBytes = readBytes(sourcePath, "source candles");
+            final BarSeries exploreSeries;
             try {
                 exploreSeries = OssifiedElliottWaveSeriesLoader.parseCandles(sourceBytes, explore.asset());
             } catch (final RuntimeException e) {
@@ -691,6 +706,15 @@ final class ElliottResearch {
             }
             setup = explore.setup();
             recipe = new Recipe(RECIPE_EXPLORE, sourcePath.toString(), recipePath.toString(), explore.definition());
+            plan = run -> {
+                final JsonObject source = new JsonObject();
+                source.addProperty("kind", "file");
+                source.addProperty("path", recipe.source());
+                source.addProperty("sha256", sha256(sourceBytes));
+                run.register(explore.datasetId(), explore.asset(), source);
+                run.start();
+                run.evaluateSeries(explore.datasetId(), explore.asset(), setup.runner(), exploreSeries);
+            };
         }
         }
         setup.validateSelection(options.block(), options.member());
@@ -701,36 +725,7 @@ final class ElliottResearch {
                 .normalize();
         prepareRunDirectory(dir, options.overwrite());
         final Run run = new Run(dir, options, setup, recipe);
-        switch (options.recipe()) {
-        case RECIPE_SMOKE -> {
-            final JsonObject source = new JsonObject();
-            source.addProperty("kind", "synthetic");
-            source.addProperty("description", "deterministic StrictMath sine mix, " + SMOKE_BARS + " daily bars");
-            run.register(SMOKE_DATASET, SMOKE_ASSET, source);
-            run.start();
-            run.evaluateSeries(SMOKE_DATASET, SMOKE_ASSET, setup.runner(), smokeSeries());
-        }
-        case RECIPE_FROZEN -> {
-            for (final ElliottStudyProtocol.DatasetSpec dataset : protocol.datasets()) {
-                final JsonObject source = new JsonObject();
-                source.addProperty("kind", "bundled-resource");
-                source.addProperty("resource", dataset.resource());
-                source.addProperty("sha256", dataset.sha256());
-                run.register(dataset.id(), dataset.asset(), source);
-            }
-            run.start();
-            run.evaluateFrozen(protocol);
-        }
-        default -> {
-            final JsonObject source = new JsonObject();
-            source.addProperty("kind", "file");
-            source.addProperty("path", recipe.source());
-            source.addProperty("sha256", sha256(sourceBytes));
-            run.register(explore.datasetId(), explore.asset(), source);
-            run.start();
-            run.evaluateSeries(explore.datasetId(), explore.asset(), setup.runner(), exploreSeries);
-        }
-        }
+        plan.execute(run);
         run.finish();
         out.println("Run directory: " + dir);
         out.println("Summary: " + dir.resolve(SUMMARY_FILE));
@@ -741,6 +736,13 @@ final class ElliottResearch {
             }
         }
         return "complete".equals(run.status) ? 0 : 1;
+    }
+
+    /** Registers a recipe's datasets on a prepared run and evaluates them. */
+    @FunctionalInterface
+    private interface RunPlan {
+
+        void execute(Run run) throws IOException;
     }
 
     private static byte[] readBytes(final Path path, final String what) {
@@ -877,18 +879,18 @@ final class ElliottResearch {
         void evaluateFrozen(final ElliottStudyProtocol protocol) throws IOException {
             final FrozenProtocolStudy.DatasetListener listener = new FrozenProtocolStudy.DatasetListener() {
                 @Override
-                public StudyObserver observer(final String datasetId, final String asset) throws IOException {
+                public StudyObserver observer(final String datasetId) throws IOException {
                     return Run.this.observer(datasetId);
                 }
 
                 @Override
-                public void completed(final String datasetId, final String asset, final StudyRunner runner,
-                        final BarSeries series, final StudyReport report, final Path reportFile) {
+                public void completed(final String datasetId, final StudyRunner runner, final BarSeries series,
+                        final StudyReport report, final Path reportFile) {
                     Run.this.completed(datasetId, runner, series, report, reportFile);
                 }
 
                 @Override
-                public void failed(final String datasetId, final String asset, final RuntimeException failure) {
+                public void failed(final String datasetId, final RuntimeException failure) {
                     fail(datasetId, failure);
                 }
             };
@@ -1484,7 +1486,7 @@ final class ElliottResearch {
         }
 
         private void printDisagreements(final PrintStream out, final ElliottResearchTrace.TraceFile file) {
-            final Map<String, Map<String, List<String>>> states = new TreeMap<>();
+            final Map<RuleAt, Map<String, List<String>>> states = new TreeMap<>(RuleAt.ORDER);
             for (final JsonObject record : file.records()) {
                 if (!sameFamily(record)) {
                     continue;
@@ -1497,9 +1499,8 @@ final class ElliottResearch {
                     final JsonObject candidate = candidateElement.getAsJsonObject();
                     for (final JsonElement ruleElement : candidate.getAsJsonArray("rules")) {
                         final JsonObject rule = ruleElement.getAsJsonObject();
-                        final String at = String.format(Locale.ROOT, "%09d", record.get("asOfIndex").getAsInt())
-                                + " candidate " + candidate.get("candidateKey").getAsString() + " rule "
-                                + rule.get("id").getAsString();
+                        final RuleAt at = new RuleAt(record.get("asOfIndex").getAsInt(),
+                                candidate.get("candidateKey").getAsString(), rule.get("id").getAsString());
                         states.computeIfAbsent(at, ignored -> new TreeMap<>())
                                 .computeIfAbsent(rule.get("state").getAsString(), ignored -> new ArrayList<>())
                                 .add(record.get("mode").getAsString());
@@ -1509,8 +1510,9 @@ final class ElliottResearch {
             final List<String> disagreements = states.entrySet()
                     .stream()
                     .filter(entry -> entry.getValue().size() > 1)
-                    .map(entry -> "  as-of " + Integer.parseInt(entry.getKey().substring(0, 9))
-                            + entry.getKey().substring(9) + ": " + entry.getValue())
+                    .map(entry -> "  as-of " + entry.getKey().asOfIndex() + " candidate "
+                            + entry.getKey().candidateKey() + " rule " + entry.getKey().ruleId() + ": "
+                            + entry.getValue())
                     .toList();
             if (disagreements.isEmpty()) {
                 out.println("Rule disagreements across modes: none");
@@ -1519,6 +1521,14 @@ final class ElliottResearch {
                         + Math.min(limit, disagreements.size()) + "):");
                 disagreements.stream().limit(limit).forEach(out::println);
             }
+        }
+
+        /** One rule evaluation site, ordered by as-of index, candidate and rule. */
+        private record RuleAt(int asOfIndex, String candidateKey, String ruleId) {
+
+            private static final Comparator<RuleAt> ORDER = Comparator.comparingInt(RuleAt::asOfIndex)
+                    .thenComparing(RuleAt::candidateKey)
+                    .thenComparing(RuleAt::ruleId);
         }
 
         private void printAsOf(final PrintStream out, final View view, final int asOf) {

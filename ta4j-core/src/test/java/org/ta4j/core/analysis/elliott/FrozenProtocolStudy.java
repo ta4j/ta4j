@@ -107,7 +107,7 @@ final class FrozenProtocolStudy {
             StudyRunner.Configuration configuration = configuration(protocol, robustness);
             StudyRunner runner = StudyRunner.frozenPreregistered(primaryDetector, momentumFactory, configuration,
                     protocol.ablationSet());
-            StudyObserver observer = listener.observer(dataset.id(), dataset.asset());
+            StudyObserver observer = listener.observer(dataset.id());
             BarSeries series;
             StudyReport report;
             try {
@@ -123,13 +123,13 @@ final class FrozenProtocolStudy {
                 report = runner.evaluate(dataset.asset(), series, series.getBeginIndex(), series.getEndIndex(),
                         observer);
             } catch (RuntimeException failure) {
-                listener.failed(dataset.id(), dataset.asset(), failure);
+                listener.failed(dataset.id(), failure);
                 continue;
             }
             Path target = reportDir.resolve(dataset.id() + ".json");
             Files.writeString(target, report.toJson());
             LOG.info("wrote study report {} for {}", target, dataset.asset());
-            listener.completed(dataset.id(), dataset.asset(), runner, series, report, target);
+            listener.completed(dataset.id(), runner, series, report, target);
         }
     }
 
@@ -163,11 +163,10 @@ final class FrozenProtocolStudy {
          * Supplies the optional observer for one dataset's real-data evaluation.
          *
          * @param datasetId protocol dataset id
-         * @param asset     dataset asset identifier
          * @return observer, or {@code null} for no capture
          * @throws IOException when the observer cannot be opened
          */
-        default StudyObserver observer(final String datasetId, final String asset) throws IOException {
+        default StudyObserver observer(final String datasetId) throws IOException {
             return null;
         }
 
@@ -175,27 +174,24 @@ final class FrozenProtocolStudy {
          * Receives one completed dataset evaluation after its report was written.
          *
          * @param datasetId  protocol dataset id
-         * @param asset      dataset asset identifier
          * @param runner     runner that produced the report
          * @param series     evaluated source series
          * @param report     completed report
          * @param reportFile written report file
          * @throws IOException when follow-up artifacts cannot be written
          */
-        default void completed(final String datasetId, final String asset, final StudyRunner runner,
-                final BarSeries series, final StudyReport report, final Path reportFile) throws IOException {
+        default void completed(final String datasetId, final StudyRunner runner, final BarSeries series,
+                final StudyReport report, final Path reportFile) throws IOException {
         }
 
         /**
          * Receives one dataset that failed to load or evaluate.
          *
          * @param datasetId protocol dataset id
-         * @param asset     dataset asset identifier
          * @param failure   load or evaluation failure
          * @throws IOException when failure artifacts cannot be written
          */
-        default void failed(final String datasetId, final String asset, final RuntimeException failure)
-                throws IOException {
+        default void failed(final String datasetId, final RuntimeException failure) throws IOException {
             throw failure;
         }
     }
