@@ -274,6 +274,25 @@ class ElliottResearchTraceTest {
         assertFalse(partial.complete());
         assertEquals(recordCount - 1, partial.records().size());
 
+        // Only an unterminated final line counts as a partial write; a terminated
+        // corrupt line is corruption.
+        final Path terminatedTail = directory.resolve("terminated-tail.jsonl");
+        Files.writeString(terminatedTail, String.join("\n", partialLines) + "\n{\"dataset\":\n",
+                StandardCharsets.UTF_8);
+        final IllegalArgumentException terminatedError = assertThrows(IllegalArgumentException.class,
+                () -> ElliottResearchTrace.read(terminatedTail));
+        assertTrue(terminatedError.getMessage().contains("line " + (partialLines.size() + 1)),
+                terminatedError.getMessage());
+
+        // The retention filter bounds kept records without changing validation or the
+        // footer count.
+        final ElliottResearchTrace.TraceFile firstOnly = ElliottResearchTrace.read(file,
+                record -> record.get("asOfIndex").getAsInt() == 0);
+        assertTrue(firstOnly.complete());
+        assertEquals(recordCount, firstOnly.recordCount());
+        assertTrue(firstOnly.records().size() < recordCount, firstOnly.records().size() + " of " + recordCount);
+        assertTrue(firstOnly.records().stream().allMatch(record -> record.get("asOfIndex").getAsInt() == 0));
+
         final Path corrupt = directory.resolve("corrupt.jsonl");
         final List<String> corruptLines = new ArrayList<>(lines);
         corruptLines.set(2, "{\"dataset\":");

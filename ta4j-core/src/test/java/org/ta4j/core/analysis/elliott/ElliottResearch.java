@@ -1115,24 +1115,42 @@ final class ElliottResearch {
         return output.isBlank() ? "clean" : "dirty";
     }
 
-    /** @return the command's standard output, or {@code null} when git failed */
+    /**
+     * Runs git with a ten-second limit. Output goes to a temporary file rather than
+     * a pipe so a stalled git cannot block the caller before the limit applies.
+     *
+     * @return the command's standard output, or {@code null} when git failed or
+     *         timed out
+     */
     private static String git(final String... args) {
         final List<String> command = new ArrayList<>(args.length + 1);
         command.add("git");
         command.addAll(List.of(args));
+        Path output = null;
         try {
-            final Process process = new ProcessBuilder(command).redirectError(ProcessBuilder.Redirect.DISCARD).start();
-            final String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-            if (process.waitFor(10, TimeUnit.SECONDS) && process.exitValue() == 0) {
-                return output;
+            output = Files.createTempFile("elliott-research-git", ".out");
+            final Process process = new ProcessBuilder(command).redirectError(ProcessBuilder.Redirect.DISCARD)
+                    .redirectOutput(output.toFile())
+                    .start();
+            if (!process.waitFor(10, TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+                return null;
             }
-            process.destroyForcibly();
+            return process.exitValue() == 0 ? Files.readString(output, StandardCharsets.UTF_8) : null;
         } catch (final IOException e) {
             return null;
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
+            return null;
+        } finally {
+            if (output != null) {
+                try {
+                    Files.deleteIfExists(output);
+                } catch (final IOException ignored) {
+                    // best effort: a leftover temp file does not affect the probe
+                }
+            }
         }
-        return null;
     }
 
     private static String sha256(final byte[] bytes) {
@@ -1414,16 +1432,20 @@ final class ElliottResearch {
             this.limit = limit;
         }
 
-        /** One loaded trace restricted to the row's scope. */
+        /**
+         * One loaded trace: {@code file.records()} holds only the records the loader
+         * retained, and {@code scope} the subset in the row's scope.
+         */
         private record View(String label, String relative, ElliottResearchTrace.TraceFile file,
                 List<JsonObject> scope) {
         }
 
         void print(final PrintStream out, final Integer asOf, final String candidate) throws IOException {
-            final View real = load("real", findTrace(realSuffixMatcher()), this::inRealScope,
+            // Real: retain the whole family so cross-mode rule disagreements stay visible.
+            final View real = load("real", findTrace(realSuffixMatcher()), this::sameFamily, this::inRealScope,
                     ElliottResearch.recapture(dir, run, ElliottResearchTrace.MODE_REAL, null, null));
             final View nullView = row.nullBlockLength() > 0
-                    ? load("null", findTrace(nullMatcher()), this::inNullScope, recaptureNull())
+                    ? load("null", findTrace(nullMatcher()), this::inNullScope, this::inNullScope, recaptureNull())
                     : null;
             if (real == null && nullView == null) {
                 throw new Diagnostic(
@@ -1487,7 +1509,7 @@ final class ElliottResearch {
         }
 
         private void printReal(final PrintStream out, final View real) {
-            out.println("Real trace: " + real.relative() + " (complete, " + real.file().records().size() + " records, "
+            out.println("Real trace: " + real.relative() + " (complete, " + real.file().recordCount() + " records, "
                     + real.scope().size() + " in this row's scope)");
             out.println("Status tallies: " + tally(real.scope()));
             final Attribution attribution = attribute(real.scope());
@@ -1514,9 +1536,8 @@ final class ElliottResearch {
         private void printNull(final PrintStream out, final View nullView) {
             out.println("Selected null member trace: " + nullView.relative() + " (block "
                     + nullView.file().header().get("nullBlockLength").getAsInt() + ", member "
-                    + nullView.file().header().get("nullMemberIndex").getAsInt() + ", "
-                    + nullView.file().records().size() + " records, " + nullView.scope().size()
-                    + " in this row's scope)");
+                    + nullView.file().header().get("nullMemberIndex").getAsInt() + ", " + nullView.file().recordCount()
+                    + " records, " + nullView.scope().size() + " in this row's scope)");
             out.println("Null member status tallies: " + tally(nullView.scope()));
             final Attribution attribution = attribute(nullView.scope());
             if (attribution != null && attribution.denominator > 0) {
@@ -1692,6 +1713,7 @@ final class ElliottResearch {
         }
 
         private View load(final String label, final String relative,
+                final java.util.function.Predicate<JsonObject> retain,
                 final java.util.function.Predicate<JsonObject> scope, final String recapture) throws IOException {
             if (relative == null) {
                 return null;
@@ -1702,13 +1724,13 @@ final class ElliottResearch {
             }
             final ElliottResearchTrace.TraceFile trace;
             try {
-                trace = ElliottResearchTrace.read(file);
+                trace = ElliottResearchTrace.read(file, retain);
             } catch (final IllegalArgumentException corrupt) {
                 throw new Diagnostic("corrupt " + label + " trace " + relative + ": " + corrupt.getMessage()
                         + ". Recapture with:\n  " + recapture);
             }
             if (!trace.complete()) {
-                throw new Diagnostic("truncated " + label + " trace " + relative + " (" + trace.records().size()
+                throw new Diagnostic("truncated " + label + " trace " + relative + " (" + trace.recordCount()
                         + " records, no footer): the capturing run did not finish. Recapture with:\n  " + recapture);
             }
             return new View(label, relative, trace, trace.records().stream().filter(scope).toList());

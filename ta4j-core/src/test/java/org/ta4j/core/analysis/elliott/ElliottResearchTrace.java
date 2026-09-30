@@ -3,10 +3,13 @@
  */
 package org.ta4j.core.analysis.elliott;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -21,6 +24,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Predicate;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -313,12 +317,13 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
     /**
      * Parsed trace file.
      *
-     * @param header   header object
-     * @param records  observation records in file order
-     * @param complete whether the footer was present and consistent
+     * @param header      header object
+     * @param records     retained observation records in file order
+     * @param recordCount number of observation records in the file, retained or not
+     * @param complete    whether the footer was present and consistent
      * @since 0.25.1
      */
-    record TraceFile(JsonObject header, List<JsonObject> records, boolean complete) {
+    record TraceFile(JsonObject header, List<JsonObject> records, long recordCount, boolean complete) {
         TraceFile {
             Objects.requireNonNull(header, "header");
             records = List.copyOf(records);
@@ -326,61 +331,100 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
     }
 
     /**
-     * Reads a trace file. A file without a footer, or whose final line is a partial
-     * write before any footer, is returned with {@code complete == false}; any
-     * content after a footer is corrupt.
+     * Reads a trace file, retaining every record.
      *
      * @param path trace file
      * @return parsed file
      * @throws IOException              when the file cannot be read
      * @throws IllegalArgumentException naming file and line when the schema is
      *                                  unsupported or a line is corrupt
+     * @see #read(Path, Predicate)
      */
     static TraceFile read(final Path path) throws IOException {
-        final String[] lines = Files.readString(path, StandardCharsets.UTF_8).split("\n", -1);
-        // A newline-terminated file ends with one empty element.
-        final int lastLine = lines[lines.length - 1].isEmpty() ? lines.length - 1 : lines.length;
-        if (lastLine == 0) {
-            throw corrupt(path, 1, "missing header");
-        }
-        final JsonObject header = parseObject(path, 1, lines[0]);
-        final JsonElement schema = header.get("schema");
-        if (schema == null || !schema.isJsonPrimitive() || !SCHEMA.equals(schema.getAsString())) {
-            throw corrupt(path, 1, "unsupported schema " + schema);
-        }
-        final List<JsonObject> records = new ArrayList<>();
-        boolean complete = false;
-        for (int i = 1; i < lastLine; i++) {
-            final int lineNumber = i + 1;
-            final boolean unterminatedTail = i == lines.length - 1;
-            final JsonObject object;
-            try {
-                object = parseObject(path, lineNumber, lines[i]);
-            } catch (final IllegalArgumentException e) {
-                if (unterminatedTail && !complete) {
-                    break;
-                }
-                throw e;
-            }
-            if (complete) {
-                throw corrupt(path, lineNumber, "content after footer");
-            }
-            if (object.has("complete") && !object.has("kind")) {
-                final JsonElement count = object.get("records");
-                if (count == null || !count.isJsonPrimitive() || count.getAsLong() != records.size()) {
-                    throw corrupt(path, lineNumber, "footer record count " + count + " but read " + records.size());
-                }
-                complete = object.get("complete").getAsBoolean();
-            } else if (object.has("kind")) {
-                records.add(object);
-            } else {
-                throw corrupt(path, lineNumber, "line is neither a record nor a footer");
-            }
-        }
-        return new TraceFile(header, records, complete);
+        return read(path, record -> true);
     }
 
-    private static JsonObject parseObject(final Path path, final int lineNumber, final String text) {
+    /**
+     * Streams a trace file line by line, validating every line but retaining only
+     * the records {@code retain} accepts, so memory is bounded by the retained
+     * records rather than the file size. A file without a footer, or whose final
+     * unterminated line is a partial write before any footer, is returned with
+     * {@code complete == false}; any content after a footer is corrupt.
+     *
+     * @param path   trace file
+     * @param retain records to keep in {@link TraceFile#records()}
+     * @return parsed file
+     * @throws IOException              when the file cannot be read
+     * @throws IllegalArgumentException naming file and line when the schema is
+     *                                  unsupported or a line is corrupt
+     */
+    static TraceFile read(final Path path, final Predicate<JsonObject> retain) throws IOException {
+        Objects.requireNonNull(retain, "retain");
+        final boolean newlineTerminated = endsWithNewline(path);
+        try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
+            final String headerLine = reader.readLine();
+            if (headerLine == null) {
+                throw corrupt(path, 1, "missing header");
+            }
+            final JsonObject header = parseObject(path, 1, headerLine);
+            final JsonElement schema = header.get("schema");
+            if (schema == null || !schema.isJsonPrimitive() || !SCHEMA.equals(schema.getAsString())) {
+                throw corrupt(path, 1, "unsupported schema " + schema);
+            }
+            final List<JsonObject> records = new ArrayList<>();
+            long recordCount = 0;
+            boolean complete = false;
+            long lineNumber = 1;
+            String line = reader.readLine();
+            while (line != null) {
+                lineNumber++;
+                final String next = reader.readLine();
+                final boolean unterminatedTail = next == null && !newlineTerminated;
+                final JsonObject object;
+                try {
+                    object = parseObject(path, lineNumber, line);
+                } catch (final IllegalArgumentException e) {
+                    if (unterminatedTail && !complete) {
+                        break;
+                    }
+                    throw e;
+                }
+                if (complete) {
+                    throw corrupt(path, lineNumber, "content after footer");
+                }
+                if (object.has("complete") && !object.has("kind")) {
+                    final JsonElement count = object.get("records");
+                    if (count == null || !count.isJsonPrimitive() || count.getAsLong() != recordCount) {
+                        throw corrupt(path, lineNumber, "footer record count " + count + " but read " + recordCount);
+                    }
+                    complete = object.get("complete").getAsBoolean();
+                } else if (object.has("kind")) {
+                    recordCount++;
+                    if (retain.test(object)) {
+                        records.add(object);
+                    }
+                } else {
+                    throw corrupt(path, lineNumber, "line is neither a record nor a footer");
+                }
+                line = next;
+            }
+            return new TraceFile(header, records, recordCount, complete);
+        }
+    }
+
+    private static boolean endsWithNewline(final Path path) throws IOException {
+        try (SeekableByteChannel channel = Files.newByteChannel(path)) {
+            final long size = channel.size();
+            if (size == 0) {
+                return false;
+            }
+            channel.position(size - 1);
+            final ByteBuffer last = ByteBuffer.allocate(1);
+            return channel.read(last) == 1 && last.get(0) == '\n';
+        }
+    }
+
+    private static JsonObject parseObject(final Path path, final long lineNumber, final String text) {
         try {
             final JsonElement element = JsonParser.parseString(text);
             if (!element.isJsonObject()) {
@@ -392,7 +436,7 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         }
     }
 
-    private static IllegalArgumentException corrupt(final Path path, final int lineNumber, final String reason) {
+    private static IllegalArgumentException corrupt(final Path path, final long lineNumber, final String reason) {
         return new IllegalArgumentException(path + ": line " + lineNumber + ": " + reason);
     }
 }

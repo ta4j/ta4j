@@ -258,16 +258,27 @@ final class ElliottResearchReport {
             }
         }
         final String block = parts[6];
-        final int blockLength;
-        if ("b-".equals(block)) {
-            blockLength = -1;
-        } else if (block.matches("b[1-9][0-9]{0,8}")) {
-            blockLength = Integer.parseInt(block.substring(1));
-        } else {
+        final int blockLength = "b-".equals(block) ? -1 : blockLength(block);
+        if (blockLength == 0) {
             throw new IllegalArgumentException(
                     "Malformed comparison key '" + text + "': bad block token '" + block + "'; " + expected);
         }
         return new Key(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5], blockLength);
+    }
+
+    /**
+     * @return the positive block length of a {@code b<n>} token, or 0 when
+     *         malformed or out of int range
+     */
+    private static int blockLength(final String block) {
+        if (!block.matches("b[1-9][0-9]*")) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(block.substring(1));
+        } catch (final NumberFormatException outOfRange) {
+            return 0;
+        }
     }
 
     /**

@@ -177,9 +177,11 @@ class ElliottResearchReportTest {
         assertEquals("+first", parsed.mode());
         assertEquals(key, parsed.toString());
         assertEquals(-1, ElliottResearchReport.parseKey("a|b|c|d|e|f|b-").nullBlockLength());
+        assertEquals(Integer.MAX_VALUE,
+                ElliottResearchReport.parseKey("a|b|c|d|e|f|b" + Integer.MAX_VALUE).nullBlockLength());
 
         for (final String malformed : new String[] { "a|b|c|d|e|f", "a|b|c|d|e|f|b0", "a|b|c|d|e|f|8", "a||c|d|e|f|b8",
-                "a|b|c|d|e|f|g|b8" }) {
+                "a|b|c|d|e|f|g|b8", "a|b|c|d|e|f|b2147483648" }) {
             final IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
                     () -> ElliottResearchReport.parseKey(malformed), malformed);
             assertTrue(failure.getMessage().contains("dataset|section|mode|detector|partition|metric|b<blockLength>"));
