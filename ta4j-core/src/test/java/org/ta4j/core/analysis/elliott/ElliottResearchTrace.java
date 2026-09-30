@@ -394,10 +394,15 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
                 }
                 if (object.has("complete") && !object.has("kind")) {
                     final JsonElement count = object.get("records");
-                    if (count == null || !count.isJsonPrimitive() || count.getAsLong() != recordCount) {
+                    if (count == null || !count.isJsonPrimitive() || !count.getAsJsonPrimitive().isNumber()
+                            || count.getAsLong() != recordCount) {
                         throw corrupt(path, lineNumber, "footer record count " + count + " but read " + recordCount);
                     }
-                    complete = object.get("complete").getAsBoolean();
+                    final JsonElement flag = object.get("complete");
+                    if (!flag.isJsonPrimitive() || !flag.getAsJsonPrimitive().isBoolean()) {
+                        throw corrupt(path, lineNumber, "footer complete flag " + flag + " is not a boolean");
+                    }
+                    complete = flag.getAsBoolean();
                 } else if (object.has("kind")) {
                     recordCount++;
                     if (retain.test(object)) {

@@ -8,10 +8,14 @@ import java.io.PrintStream;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.channels.OverlappingFileLockException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
@@ -110,6 +114,7 @@ final class ElliottResearch {
     private static final String SUMMARY_FILE = "summary.md";
     private static final String REPORTS_DIR = "reports";
     private static final String TRACES_DIR = "traces";
+    private static final String LOCK_FILE = ".run.lock";
     private static final int DEFAULT_LIMIT = 10;
     private static final int SMOKE_BARS = 912;
     private static final String SMOKE_DATASET = "smoke";
@@ -492,8 +497,9 @@ final class ElliottResearch {
             final String where = "recipe.partitions[" + index + "]";
             final JsonObject entry = objectOf(partitionArray.get(index), where);
             rejectUnknown(entry, where, Set.of("name", "start", "end"));
-            partitions.add(new StudyRunner.Partition(text(required(entry, "name", where), where + ".name"),
-                    date(required(entry, "start", where), where + ".start"),
+            final String name = text(required(entry, "name", where), where + ".name");
+            ElliottResearchReport.requireKeyPart(name, where + ".name");
+            partitions.add(new StudyRunner.Partition(name, date(required(entry, "start", where), where + ".start"),
                     date(required(entry, "end", where), where + ".end")));
         }
         final StudyRunner.Partitions runnerPartitions;
@@ -565,8 +571,9 @@ final class ElliottResearch {
                 params.add(integer(array.get(index), where + ".params[" + index + "]"));
             }
         }
-        return new DetectorRecipe(text(required(object, "name", where), where + ".name"),
-                text(required(object, "factory", where), where + ".factory"), params);
+        final String name = text(required(object, "name", where), where + ".name");
+        ElliottResearchReport.requireKeyPart(name, where + ".name");
+        return new DetectorRecipe(name, text(required(object, "factory", where), where + ".factory"), params);
     }
 
     private static List<String> strings(final JsonElement element, final String where, final List<String> allowed) {
@@ -723,19 +730,20 @@ final class ElliottResearch {
                 : Path.of("target", "elliott-research", options.recipe() + "-" + STAMP.format(Instant.now())))
                 .toAbsolutePath()
                 .normalize();
-        prepareRunDirectory(dir, options.overwrite());
-        final Run run = new Run(dir, options, setup, recipe);
-        plan.execute(run);
-        run.finish();
-        out.println("Run directory: " + dir);
-        out.println("Summary: " + dir.resolve(SUMMARY_FILE));
-        out.println("Status: " + run.status + " (" + run.rows.size() + " comparison rows)");
-        for (final DatasetEntry entry : run.entries.values()) {
-            if ("failed".equals(entry.status)) {
-                err.println("dataset " + entry.id + " failed: " + entry.message);
+        try (FileChannel lock = reserveRunDirectory(dir, options.overwrite())) {
+            final Run run = new Run(dir, options, setup, recipe);
+            plan.execute(run);
+            run.finish();
+            out.println("Run directory: " + dir);
+            out.println("Summary: " + dir.resolve(SUMMARY_FILE));
+            out.println("Status: " + run.status + " (" + run.rows.size() + " comparison rows)");
+            for (final DatasetEntry entry : run.entries.values()) {
+                if ("failed".equals(entry.status)) {
+                    err.println("dataset " + entry.id + " failed: " + entry.message);
+                }
             }
+            return "complete".equals(run.status) ? 0 : 1;
         }
-        return "complete".equals(run.status) ? 0 : 1;
     }
 
     /** Registers a recipe's datasets on a prepared run and evaluates them. */
@@ -753,37 +761,63 @@ final class ElliottResearch {
         }
     }
 
-    private static void prepareRunDirectory(final Path dir, final boolean overwrite) throws IOException {
+    /**
+     * Claims {@code dir} for one run: an exclusive lock on its lock file, held
+     * until the returned channel closes (or the process exits), stops a second
+     * launcher from writing into the same directory; the emptiness check that
+     * follows ignores the lock file itself.
+     */
+    private static FileChannel reserveRunDirectory(final Path dir, final boolean overwrite) throws IOException {
         if (Files.exists(dir) && !Files.isDirectory(dir)) {
             throw new IllegalArgumentException("output path exists and is not a directory: " + dir);
         }
-        if (Files.isDirectory(dir)) {
-            final boolean empty;
-            try (Stream<Path> children = Files.list(dir)) {
-                empty = children.findAny().isEmpty();
+        Files.createDirectories(dir);
+        final FileChannel channel = FileChannel.open(dir.resolve(LOCK_FILE), StandardOpenOption.CREATE,
+                StandardOpenOption.WRITE);
+        try {
+            final FileLock lock;
+            try {
+                lock = channel.tryLock();
+            } catch (final OverlappingFileLockException e) {
+                throw new IllegalArgumentException("another run is writing to " + dir + "; choose another --out");
             }
-            if (!empty) {
-                if (!overwrite) {
-                    throw new IllegalArgumentException("output directory is not empty: " + dir
-                            + " (choose another --out, or pass --overwrite to replace a previous run)");
-                }
-                final JsonObject previous;
-                try {
-                    previous = loadRun(dir);
-                } catch (final IllegalArgumentException e) {
-                    throw new IllegalArgumentException("refusing to overwrite " + dir
-                            + ": it is not a previous research run (" + e.getMessage() + ")");
-                }
-                if (previous.get("recipe") == null || !previous.get("recipe").isJsonObject()) {
-                    throw new IllegalArgumentException(
-                            "refusing to overwrite " + dir + ": " + RUN_FILE + " holds no research recipe");
-                }
-                for (final String file : List.of(RUN_FILE, COMPARISONS_FILE, COVERAGE_FILE, SUMMARY_FILE)) {
-                    Files.deleteIfExists(dir.resolve(file));
-                }
-                deleteTree(dir.resolve(REPORTS_DIR));
-                deleteTree(dir.resolve(TRACES_DIR));
+            if (lock == null) {
+                throw new IllegalArgumentException("another run is writing to " + dir + "; choose another --out");
             }
+            prepareRunDirectory(dir, overwrite);
+            return channel;
+        } catch (final IOException | RuntimeException e) {
+            channel.close();
+            throw e;
+        }
+    }
+
+    private static void prepareRunDirectory(final Path dir, final boolean overwrite) throws IOException {
+        final boolean empty;
+        try (Stream<Path> children = Files.list(dir)) {
+            empty = children.allMatch(child -> LOCK_FILE.equals(child.getFileName().toString()));
+        }
+        if (!empty) {
+            if (!overwrite) {
+                throw new IllegalArgumentException("output directory is not empty: " + dir
+                        + " (choose another --out, or pass --overwrite to replace a previous run)");
+            }
+            final JsonObject previous;
+            try {
+                previous = loadRun(dir);
+            } catch (final IllegalArgumentException e) {
+                throw new IllegalArgumentException("refusing to overwrite " + dir
+                        + ": it is not a previous research run (" + e.getMessage() + ")");
+            }
+            if (previous.get("recipe") == null || !previous.get("recipe").isJsonObject()) {
+                throw new IllegalArgumentException(
+                        "refusing to overwrite " + dir + ": " + RUN_FILE + " holds no research recipe");
+            }
+            for (final String file : List.of(RUN_FILE, COMPARISONS_FILE, COVERAGE_FILE, SUMMARY_FILE)) {
+                Files.deleteIfExists(dir.resolve(file));
+            }
+            deleteTree(dir.resolve(REPORTS_DIR));
+            deleteTree(dir.resolve(TRACES_DIR));
         }
         Files.createDirectories(dir.resolve(REPORTS_DIR));
         Files.createDirectories(dir.resolve(TRACES_DIR));
@@ -1260,33 +1294,48 @@ final class ElliottResearch {
                 : absolute.toString();
     }
 
-    /** Single-quotes one exec.args value so spaces cannot split it. */
-    private static String quoted(final String value) {
-        return "'" + value + "'";
+    /**
+     * Quotes one value for the exec plugin's argument parser, which honours single
+     * and double quotes without escapes and joins adjacent quoted segments into one
+     * argument, so any path survives intact.
+     */
+    private static String execQuoted(final String value) {
+        if (value.indexOf('"') < 0) {
+            return "\"" + value + "\"";
+        }
+        if (value.indexOf('\'') < 0) {
+            return "'" + value + "'";
+        }
+        return "\"" + value.replace("\"", "\"'\"'\"") + "\"";
+    }
+
+    /** Single-quotes one POSIX shell word so no character in it is interpreted. */
+    private static String shellQuoted(final String value) {
+        return "'" + value.replace("'", "'\\''") + "'";
     }
 
     /**
      * Builds the exact command that captures a missing trace kind for the same
-     * recipe into a sibling directory. Paths are single-quoted; the run directory
-     * is taken from where the caller currently reads it, never from a stored
-     * absolute location.
+     * recipe into a sibling directory. Paths are quoted for the exec argument
+     * parser and the whole argument string for a POSIX shell; the run directory is
+     * taken from where the caller currently reads it, never from a stored absolute
+     * location.
      */
     private static String recaptureCommand(final Path dir, final JsonObject run, final String mode, final Integer block,
             final Integer member) {
         final JsonObject recipe = run.getAsJsonObject("recipe");
-        final StringBuilder command = new StringBuilder(
-                "mvn -q -pl ta4j-core test-compile exec:java -Dexec.args=\"run ")
-                .append(recipe.get("name").getAsString())
+        final StringBuilder args = new StringBuilder("run ").append(recipe.get("name").getAsString())
                 .append(" --trace ")
                 .append(mode);
         if (ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER.equals(mode)) {
-            command.append(" --block ").append(block).append(" --member ").append(member);
+            args.append(" --block ").append(block).append(" --member ").append(member);
         }
         if (!recipe.get("source").isJsonNull()) {
-            command.append(" --source ").append(quoted(recipe.get("source").getAsString()));
-            command.append(" --recipe ").append(quoted(recipe.get("recipeFile").getAsString()));
+            args.append(" --source ").append(execQuoted(recipe.get("source").getAsString()));
+            args.append(" --recipe ").append(execQuoted(recipe.get("recipeFile").getAsString()));
         }
-        return command.append(" --out ").append(quoted(displayPath(dir) + "-recapture")).append("\"").toString();
+        args.append(" --out ").append(execQuoted(displayPath(dir) + "-recapture"));
+        return "mvn -q -pl ta4j-core test-compile exec:java " + shellQuoted("-Dexec.args=" + args);
     }
 
     private static int summarizeCommand(final List<String> args, final PrintStream out) throws IOException {

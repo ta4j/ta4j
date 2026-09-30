@@ -4,6 +4,7 @@
 package org.ta4j.core.analysis.elliott;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -107,10 +108,10 @@ final class FrozenProtocolStudy {
             StudyRunner.Configuration configuration = configuration(protocol, robustness);
             StudyRunner runner = StudyRunner.frozenPreregistered(primaryDetector, momentumFactory, configuration,
                     protocol.ablationSet());
-            StudyObserver observer = listener.observer(dataset.id());
             BarSeries series;
             StudyReport report;
             try {
+                StudyObserver observer = openObserver(listener, dataset.id());
                 series = OssifiedElliottWaveSeriesLoader.loadSeries(FrozenProtocolStudy.class, dataset.resource(),
                         dataset.asset(), dataset.sha256(), LOG);
                 if (series == null) {
@@ -130,6 +131,18 @@ final class FrozenProtocolStudy {
             Files.writeString(target, report.toJson());
             LOG.info("wrote study report {} for {}", target, dataset.asset());
             listener.completed(dataset.id(), runner, series, report, target);
+        }
+    }
+
+    /**
+     * Opens the dataset's observer, rethrowing an I/O failure unchecked so it fails
+     * only that dataset.
+     */
+    private static StudyObserver openObserver(final DatasetListener listener, final String datasetId) {
+        try {
+            return listener.observer(datasetId);
+        } catch (IOException e) {
+            throw new UncheckedIOException("cannot open study observer for " + datasetId + ": " + e.getMessage(), e);
         }
     }
 

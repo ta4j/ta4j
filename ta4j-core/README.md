@@ -174,13 +174,14 @@ A run directory holds `run.json` (revision and whether the worktree was dirty,
 recipe, configuration, dataset
 sources and status), `reports/` (one study report per dataset),
 `comparisons.csv` (one row per dataset, section, mode, detector, partition,
-metric and null block length), `coverage.csv`, `summary.md` and `traces/`
-(JSON lines per as-of bar). Each comparison sets the observed value against a
+metric and null block length), `coverage.csv`, `summary.md`, `traces/`
+(JSON lines per as-of bar) and `.run.lock`, which a run holds while it writes so
+a second run into the same directory is refused. Each comparison sets the observed value against a
 null reference band of member-level 2.5%-97.5% quantiles and an empirical
 reference rank; neither is a confidence interval or a p-value, and partitions
 are never pooled. `inspect` rebuilds a row's support from its trace and lists
 counterexamples and rule disagreements; when the trace is missing or truncated
-it exits with status 2 and prints the recapture command.
+it exits with status 2 and prints the recapture command, quoted for a POSIX shell.
 
 ## Companion user guides
 

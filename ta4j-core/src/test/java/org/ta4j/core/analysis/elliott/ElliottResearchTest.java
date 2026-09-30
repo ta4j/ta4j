@@ -163,7 +163,7 @@ class ElliottResearchTest {
         assertEquals(2, result.code());
         assertTrue(result.err().contains("exec:java"), result.err());
         assertTrue(result.err().contains("run smoke --trace real"), result.err());
-        assertTrue(result.err().contains("--out '" + copy + "-recapture'"), result.err());
+        assertTrue(result.err().contains("--out \"" + copy + "-recapture\""), result.err());
     }
 
     @Test
@@ -435,5 +435,60 @@ class ElliottResearchTest {
         assertEquals(1, result.code());
         assertTrue(result.err().contains("unknown field recipe.unexpected"), result.err());
         assertFalse(Files.exists(out));
+    }
+
+    @Test
+    void exploreRecipeRejectsKeySeparatorInDetectorNameBeforeRunning() throws Exception {
+        final Path candles = work.resolve("sep-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 300, date -> true);
+        final Path recipe = work.resolve("sep-recipe.json");
+        Files.writeString(recipe, """
+                {"datasetId":"toy","asset":"TOY",
+                 "partitions":[{"name":"calibration","start":"2020-01-01","end":"2020-06-30"},
+                               {"name":"validation","start":"2020-07-01","end":"2020-09-30"},
+                               {"name":"holdout","start":"2020-10-01","end":"2020-12-31"}],
+                 "forbiddenCalibrationStart":"2024-01-01",
+                 "detector":{"name":"fractal-w3","factory":"fractal","params":[3]},
+                 "robustnessDetectors":[{"name":"fractal|w5","factory":"fractal","params":[5]}],
+                 "momentum":{"type":"RSI","barCount":14},
+                 "null":{"blockLengths":[10],"ensembleSize":2,"seed":7}}
+                """);
+        final Path out = work.resolve("explore-sep");
+        final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(),
+                "--out", out.toString());
+        assertEquals(1, result.code());
+        assertTrue(result.err().contains("recipe.robustnessDetectors[0].name must not contain '|'"), result.err());
+        assertFalse(Files.exists(out));
+    }
+
+    @Test
+    void runRefusesDirectoryHeldByAnotherRun() throws Exception {
+        final Path held = work.resolve("held");
+        Files.createDirectories(held);
+        try (java.nio.channels.FileChannel channel = java.nio.channels.FileChannel.open(held.resolve(".run.lock"),
+                java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.WRITE);
+                java.nio.channels.FileLock lock = channel.lock()) {
+            final Result result = launch("run", "smoke", "--out", held.toString());
+            assertEquals(1, result.code());
+            assertTrue(result.err().contains("another run is writing to"), result.err());
+            assertFalse(Files.exists(held.resolve("run.json")));
+        }
+        assertEquals(0, launch("run", "smoke", "--out", held.toString()).code(), "released lock frees the directory");
+    }
+
+    @Test
+    void traceFooterWithNonBooleanCompleteIsCorrupt() throws Exception {
+        final Path copy = work.resolve("bad-footer");
+        copyTree(smokeRun, copy);
+        final Path trace = copy.resolve("traces/smoke-real.jsonl");
+        final List<String> lines = new java.util.ArrayList<>(Files.readAllLines(trace, StandardCharsets.UTF_8));
+        final JsonObject footer = JsonParser.parseString(lines.get(lines.size() - 1)).getAsJsonObject();
+        footer.add("complete", new JsonArray());
+        lines.set(lines.size() - 1, footer.toString());
+        Files.write(trace, lines, StandardCharsets.UTF_8);
+
+        final Result result = launch("inspect", copy.toString(), OCCUPANCY_KEY);
+        assertEquals(2, result.code());
+        assertTrue(result.err().contains("footer complete flag [] is not a boolean"), result.err());
     }
 }

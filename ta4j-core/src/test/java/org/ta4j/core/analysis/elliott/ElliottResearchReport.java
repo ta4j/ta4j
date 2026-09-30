@@ -796,7 +796,8 @@ final class ElliottResearchReport {
         return table;
     }
 
-    private static void requireKeyPart(final String value, final String name) {
+    /** Rejects a blank comparison-key component or one holding the separator. */
+    static void requireKeyPart(final String value, final String name) {
         requireText(value, name);
         if (value.indexOf('|') >= 0) {
             throw new IllegalArgumentException(name + " must not contain '|' (comparison key separator): " + value);
