@@ -40,6 +40,7 @@ import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
@@ -116,6 +117,17 @@ final class ElliottResearch {
     private static final String SUMMARY_FILE = "summary.md";
     private static final String REPORTS_DIR = "reports";
     private static final String TRACES_DIR = "traces";
+    /**
+     * Consecutive in-window bars further apart than this many bar periods mark
+     * coverage partial.
+     */
+    private static final int INTERNAL_GAP_BAR_PERIODS = 7;
+    // Longest artifact basename a dataset id feeds is its selected-null-member
+    // trace; keep it within the
+    // 255-byte basename limit common to supported file systems (ids are ASCII, so
+    // chars equal bytes).
+    private static final int MAX_DATASET_ID_LENGTH = 255
+            - nullTraceName("", Integer.MAX_VALUE, Integer.MAX_VALUE).length() + TRACES_DIR.length() + 1;
     private static final String LOCK_FILE = ".run.lock";
     private static final int DEFAULT_LIMIT = 10;
     private static final int SMOKE_BARS = 912;
@@ -193,6 +205,8 @@ final class ElliottResearch {
                 "      --trace MODE         off | real | selected-null-member (default real for smoke, else off)",
                 "      --block L --member M null block length and member index (selected-null-member only)",
                 "      --source FILE --recipe FILE   candle JSON and recipe JSON (explore only, both required)",
+                "      --expect-fingerprint FP       fail unless the run's configuration fingerprint is FP",
+                "      --expect-source-sha256 SHA    fail unless the explore source candles hash to SHA",
                 "  summarize <runDir>       regenerate summary.md from the recorded artifacts",
                 "  inspect <runDir> <key> [--as-of IDX] [--candidate KEY] [--limit N]",
                 "                           list the recorded observations behind one comparison key", "",
@@ -215,7 +229,7 @@ final class ElliottResearch {
     // ------------------------------------------------------------------ run
 
     private record RunOptions(String recipe, Path out, boolean overwrite, String trace, Integer block, Integer member,
-            Path source, Path recipeFile) {
+            Path source, Path recipeFile, String expectFingerprint, String expectSourceSha256) {
     }
 
     private static RunOptions parseRunOptions(final List<String> args) {
@@ -235,7 +249,10 @@ final class ElliottResearch {
                     throw new IllegalArgumentException("option --overwrite given twice");
                 }
                 overwrite = true;
-            } else if (Set.of("--out", "--trace", "--block", "--member", "--source", "--recipe").contains(option)) {
+            } else if (Set
+                    .of("--out", "--trace", "--block", "--member", "--source", "--recipe", "--expect-fingerprint",
+                            "--expect-source-sha256")
+                    .contains(option)) {
                 if (index + 1 >= args.size() || args.get(index + 1).startsWith("--")) {
                     throw new IllegalArgumentException("option " + option + " requires a value");
                 }
@@ -266,12 +283,15 @@ final class ElliottResearch {
         if (explore && (!values.containsKey("--source") || !values.containsKey("--recipe"))) {
             throw new IllegalArgumentException("recipe explore requires both --source and --recipe");
         }
-        if (!explore && (values.containsKey("--source") || values.containsKey("--recipe"))) {
-            throw new IllegalArgumentException("--source and --recipe are only valid with the explore recipe");
+        if (!explore && (values.containsKey("--source") || values.containsKey("--recipe")
+                || values.containsKey("--expect-source-sha256"))) {
+            throw new IllegalArgumentException(
+                    "--source, --recipe and --expect-source-sha256 are only valid with the explore recipe");
         }
         return new RunOptions(recipe, values.containsKey("--out") ? Path.of(values.get("--out")) : null, overwrite,
                 trace, block, member, values.containsKey("--source") ? Path.of(values.get("--source")) : null,
-                values.containsKey("--recipe") ? Path.of(values.get("--recipe")) : null);
+                values.containsKey("--recipe") ? Path.of(values.get("--recipe")) : null,
+                values.get("--expect-fingerprint"), values.get("--expect-source-sha256"));
     }
 
     private static Integer integerOption(final Map<String, String> values, final String option) {
@@ -496,6 +516,10 @@ final class ElliottResearch {
             throw new IllegalArgumentException("recipe.datasetId '" + datasetId
                     + "' is a reserved Windows device name and cannot name its report file");
         }
+        if (datasetId.length() > MAX_DATASET_ID_LENGTH) {
+            throw new IllegalArgumentException("recipe.datasetId is " + datasetId.length() + " characters; at most "
+                    + MAX_DATASET_ID_LENGTH + " keeps every artifact file name within 255 bytes");
+        }
         final String asset = text(required(root, "asset", "recipe"), "recipe.asset");
         final List<StudyRunner.Partition> partitions = new ArrayList<>();
         final JsonArray partitionArray = arrayOf(required(root, "partitions", "recipe"), "recipe.partitions");
@@ -708,6 +732,13 @@ final class ElliottResearch {
             final Path sourcePath = options.source().toAbsolutePath().normalize();
             final ExploreRecipe explore = parseExplore(readBytes(recipePath, "recipe"));
             final byte[] sourceBytes = readBytes(sourcePath, "source candles");
+            final String sourceSha256 = sha256(sourceBytes);
+            // A recapture names the original paths; refuse edited inputs instead of
+            // pairing a new trace with the old run's statistics.
+            if (options.expectSourceSha256() != null && !options.expectSourceSha256().equals(sourceSha256)) {
+                throw new IllegalArgumentException("source candles " + sourcePath + " hash to " + sourceSha256
+                        + ", not the expected " + options.expectSourceSha256() + "; the file changed since the run");
+            }
             final BarSeries exploreSeries;
             try {
                 exploreSeries = OssifiedElliottWaveSeriesLoader.parseCandles(sourceBytes, explore.asset());
@@ -723,12 +754,16 @@ final class ElliottResearch {
                 final JsonObject source = new JsonObject();
                 source.addProperty("kind", "file");
                 source.addProperty("path", recipe.source());
-                source.addProperty("sha256", sha256(sourceBytes));
+                source.addProperty("sha256", sourceSha256);
                 run.register(explore.datasetId(), explore.asset(), source);
                 run.start();
                 run.evaluateSeries(explore.datasetId(), explore.asset(), setup.runner(), exploreSeries);
             };
         }
+        }
+        if (options.expectFingerprint() != null && !options.expectFingerprint().equals(setup.fingerprint())) {
+            throw new IllegalArgumentException("configuration fingerprint is " + setup.fingerprint()
+                    + ", not the expected " + options.expectFingerprint() + "; the recipe changed since the run");
         }
         setup.validateSelection(options.block(), options.member());
 
@@ -989,8 +1024,13 @@ final class ElliottResearch {
             int count = 0;
             final List<StudyRunner.Partition> partitions = setup.partitions().entries();
             final boolean[] populated = new boolean[partitions.size()];
+            Instant previous = null;
+            int internalGaps = 0;
+            Instant widestFrom = null;
+            Instant widestTo = null;
             for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
-                final LocalDate date = series.getBar(index).getBeginTime().atZone(ZoneOffset.UTC).toLocalDate();
+                final Bar bar = series.getBar(index);
+                final LocalDate date = bar.getBeginTime().atZone(ZoneOffset.UTC).toLocalDate();
                 if (date.isBefore(from) || date.isAfter(to)) {
                     continue;
                 }
@@ -1001,6 +1041,18 @@ final class ElliottResearch {
                     final StudyRunner.Partition window = partitions.get(partition);
                     populated[partition] |= !date.isBefore(window.start()) && !date.isAfter(window.end());
                 }
+                // Missing bars inside a populated partition shift every as-of
+                // window yet leave the extremes and partition bits intact.
+                final Duration tolerance = bar.getTimePeriod().multipliedBy(INTERNAL_GAP_BAR_PERIODS);
+                if (previous != null && Duration.between(previous, bar.getBeginTime()).compareTo(tolerance) > 0) {
+                    internalGaps++;
+                    if (widestFrom == null || Duration.between(previous, bar.getBeginTime())
+                            .compareTo(Duration.between(widestFrom, widestTo)) > 0) {
+                        widestFrom = previous;
+                        widestTo = bar.getBeginTime();
+                    }
+                }
+                previous = bar.getBeginTime();
             }
             entry.effectiveFrom = first;
             entry.effectiveTo = last;
@@ -1019,6 +1071,10 @@ final class ElliottResearch {
                     gaps.add("partition " + missing.name() + " (" + missing.start() + ".." + missing.end()
                             + ") has no bars");
                 }
+            }
+            if (internalGaps > 0) {
+                gaps.add(internalGaps + " internal gap(s) longer than " + INTERNAL_GAP_BAR_PERIODS
+                        + " bar periods, widest " + widestFrom + ".." + widestTo);
             }
             entry.coverageStatus = gaps.isEmpty() ? "complete" : "partial";
             entry.coverageMessage = String.join("; ", gaps);
@@ -1344,7 +1400,17 @@ final class ElliottResearch {
         if (!recipe.get("source").isJsonNull()) {
             args.append(" --source ").append(execQuoted(recipe.get("source").getAsString()));
             args.append(" --recipe ").append(execQuoted(recipe.get("recipeFile").getAsString()));
+            final String sourceSha256 = run.getAsJsonArray("datasets")
+                    .get(0)
+                    .getAsJsonObject()
+                    .getAsJsonObject("source")
+                    .get("sha256")
+                    .getAsString();
+            args.append(" --expect-source-sha256 ").append(sourceSha256);
         }
+        // The recorded identity makes the recapture fail on edited inputs instead of
+        // pairing a trace from different data or settings with this run's rows.
+        args.append(" --expect-fingerprint ").append(run.getAsJsonObject("identity").get("fingerprint").getAsString());
         args.append(" --out ").append(execQuoted(displayPath(dir) + "-recapture"));
         return "mvn -q -pl ta4j-core test-compile exec:java " + shellQuoted("-Dexec.args=" + args);
     }

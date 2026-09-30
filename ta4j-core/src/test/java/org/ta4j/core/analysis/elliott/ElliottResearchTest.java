@@ -164,6 +164,16 @@ class ElliottResearchTest {
         assertTrue(result.err().contains("exec:java"), result.err());
         assertTrue(result.err().contains("run smoke --trace real"), result.err());
         assertTrue(result.err().contains("--out \"" + copy + "-recapture\""), result.err());
+        final String fingerprint = readJson(copy.resolve("run.json")).getAsJsonObject("identity")
+                .get("fingerprint")
+                .getAsString();
+        assertTrue(result.err().contains("--expect-fingerprint " + fingerprint), result.err());
+        final Path stale = work.resolve("stale-smoke");
+        final Result mismatch = launch("run", "smoke", "--expect-fingerprint", "0" + fingerprint, "--out",
+                stale.toString());
+        assertEquals(1, mismatch.code());
+        assertTrue(mismatch.err().contains("the recipe changed since the run"), mismatch.err());
+        assertFalse(Files.exists(stale));
     }
 
     @Test
@@ -396,8 +406,9 @@ class ElliottResearchTest {
                 .getAsJsonObject()
                 .getAsJsonObject("coverage");
         assertEquals("partial", coverage.get("status").getAsString(), coverage.toString());
-        assertEquals("partition validation (2020-07-01..2020-09-30) has no bars",
-                coverage.get("message").getAsString());
+        assertTrue(coverage.get("message")
+                .getAsString()
+                .contains("partition validation (2020-07-01..2020-09-30) has no bars"), coverage.toString());
     }
 
     private static void writeCandles(final Path file, final LocalDate first, final int days,
@@ -542,5 +553,117 @@ class ElliottResearchTest {
             assertTrue(result.err().contains("reserved Windows device name"), result.err());
             assertFalse(Files.exists(out), id);
         }
+    }
+
+    private static String toyRecipe(final String datasetId) {
+        return """
+                {"datasetId":"%s","asset":"TOY",
+                 "partitions":[{"name":"calibration","start":"2020-01-01","end":"2020-06-30"},
+                               {"name":"validation","start":"2020-07-01","end":"2020-09-30"},
+                               {"name":"holdout","start":"2020-10-01","end":"2020-12-31"}],
+                 "forbiddenCalibrationStart":"2024-01-01",
+                 "detector":{"name":"fractal-w3","factory":"fractal","params":[3]},
+                 "momentum":{"type":"RSI","barCount":14},
+                 "null":{"blockLengths":[10],"ensembleSize":2,"seed":7}}
+                """.formatted(datasetId);
+    }
+
+    private static JsonObject exploreCoverage(final Path out) throws IOException {
+        return readJson(out.resolve("run.json")).getAsJsonArray("datasets")
+                .get(0)
+                .getAsJsonObject()
+                .getAsJsonObject("coverage");
+    }
+
+    @Test
+    void exploreCoverageFlagsMissingBarsInsideAPopulatedPartition() throws Exception {
+        // Regression: coverage only asked whether each partition held any bar, so
+        // weeks missing inside a partition were reported complete.
+        final Path recipe = work.resolve("internal-gap-recipe.json");
+        Files.writeString(recipe, toyRecipe("gappy"));
+        final Path tolerated = work.resolve("week-candles.json");
+        writeCandles(tolerated, LocalDate.of(2020, 1, 1), 366,
+                date -> date.isBefore(LocalDate.of(2020, 5, 2)) || date.isAfter(LocalDate.of(2020, 5, 7)));
+        final Path toleratedOut = work.resolve("explore-week");
+        assertEquals(0, launch("run", "explore", "--source", tolerated.toString(), "--recipe", recipe.toString(),
+                "--out", toleratedOut.toString()).code());
+        assertEquals("complete", exploreCoverage(toleratedOut).get("status").getAsString(),
+                "a gap of exactly seven bar periods stays within tolerance");
+
+        final Path gappy = work.resolve("gappy-candles.json");
+        writeCandles(gappy, LocalDate.of(2020, 1, 1), 366,
+                date -> date.isBefore(LocalDate.of(2020, 3, 1)) || date.isAfter(LocalDate.of(2020, 3, 20)));
+        final Path gappyOut = work.resolve("explore-gappy");
+        assertEquals(0, launch("run", "explore", "--source", gappy.toString(), "--recipe", recipe.toString(), "--out",
+                gappyOut.toString()).code());
+        final JsonObject coverage = exploreCoverage(gappyOut);
+        assertEquals("partial", coverage.get("status").getAsString(), coverage.toString());
+        assertEquals("1 internal gap(s) longer than 7 bar periods, widest 2020-02-29T00:00:00Z..2020-03-21T00:00:00Z",
+                coverage.get("message").getAsString());
+    }
+
+    @Test
+    void exploreRecipeRejectsDatasetIdTooLongForArtifactNames() throws Exception {
+        final Path candles = work.resolve("long-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
+        final Path recipe = work.resolve("long-recipe.json");
+        Files.writeString(recipe, toyRecipe("a".repeat(221)));
+        final Path out = work.resolve("explore-long");
+        final Result rejected = launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(),
+                "--out", out.toString());
+        assertEquals(1, rejected.code());
+        assertTrue(rejected.err().contains("recipe.datasetId is 221 characters; at most 220"), rejected.err());
+        assertFalse(Files.exists(out));
+
+        Files.writeString(recipe, toyRecipe("a".repeat(220)));
+        final Result accepted = launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(),
+                "--trace", "selected-null-member", "--block", "10", "--member", "1", "--out", out.toString());
+        assertEquals(0, accepted.code(), accepted.err());
+        assertTrue(Files.isRegularFile(out.resolve("traces/" + "a".repeat(220) + "-null-b10-m1.jsonl")));
+    }
+
+    @Test
+    void exploreRecaptureRefusesInputsEditedSinceTheRun() throws Exception {
+        // Regression: the recapture command re-read the recorded paths without
+        // checking them, pairing a trace of edited inputs with the old rows.
+        final Path candles = work.resolve("recapture-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
+        final Path recipe = work.resolve("recapture-recipe.json");
+        Files.writeString(recipe, toyRecipe("recap"));
+        final Path out = work.resolve("explore-recap");
+        assertEquals(0, launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(), "--out",
+                out.toString()).code());
+        final JsonObject run = readJson(out.resolve("run.json"));
+        final String sourceSha256 = run.getAsJsonArray("datasets")
+                .get(0)
+                .getAsJsonObject()
+                .getAsJsonObject("source")
+                .get("sha256")
+                .getAsString();
+        final String fingerprint = run.getAsJsonObject("identity").get("fingerprint").getAsString();
+        final String key = ElliottResearchReport.readCsv(out.resolve("comparisons.csv")).get(0).key();
+        final Result inspect = launch("inspect", out.toString(), key);
+        assertEquals(2, inspect.code());
+        assertTrue(inspect.err().contains("--expect-source-sha256 " + sourceSha256), inspect.err());
+        assertTrue(inspect.err().contains("--expect-fingerprint " + fingerprint), inspect.err());
+
+        writeCandles(candles, LocalDate.of(2020, 1, 2), 366, date -> true);
+        final Path editedSource = work.resolve("recap-edited-source");
+        final Result sourceChanged = launch("run", "explore", "--source", candles.toString(), "--recipe",
+                recipe.toString(), "--expect-source-sha256", sourceSha256, "--expect-fingerprint", fingerprint, "--out",
+                editedSource.toString());
+        assertEquals(1, sourceChanged.code());
+        assertTrue(sourceChanged.err().contains("the file changed since the run"), sourceChanged.err());
+        assertFalse(Files.exists(editedSource));
+
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
+        Files.writeString(recipe, toyRecipe("recap").replace("\"seed\":7", "\"seed\":8"));
+        final Path editedRecipe = work.resolve("recap-edited-recipe");
+        final Result recipeChanged = launch("run", "explore", "--source", candles.toString(), "--recipe",
+                recipe.toString(), "--expect-source-sha256", sourceSha256, "--expect-fingerprint", fingerprint, "--out",
+                editedRecipe.toString());
+        assertEquals(1, recipeChanged.code());
+        assertTrue(recipeChanged.err().contains("the recipe changed since the run"), recipeChanged.err());
+        assertFalse(Files.exists(editedRecipe));
     }
 }

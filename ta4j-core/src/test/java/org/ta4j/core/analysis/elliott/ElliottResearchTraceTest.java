@@ -26,6 +26,7 @@ import java.util.Set;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -326,6 +327,44 @@ class ElliottResearchTraceTest {
         final IllegalArgumentException tailError = assertThrows(IllegalArgumentException.class,
                 () -> ElliottResearchTrace.read(tailAfterFooter));
         assertTrue(tailError.getMessage().contains("line " + (lines.size() + 1)), tailError.getMessage());
+    }
+
+    @Test
+    void recordLinesMissingWrittenFieldsAreRejectedWithLocation() throws Exception {
+        // Regression: any object with a "kind" member counted as an observation,
+        // so a hand-edited line matched the footer count and fed inspection.
+        final Path file = directory.resolve("BTC.real.jsonl");
+        traceEvaluation(file, buildSeries(24), 0, 19);
+        final List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+        final JsonObject original = JsonParser.parseString(lines.get(1)).getAsJsonObject();
+        final List<String> damages = List.of("dataset", "asOfIndex", "activeRules", "candidates", "status");
+        for (final String field : damages) {
+            final JsonObject damaged = original.deepCopy();
+            damaged.remove(field);
+            assertMalformedAtLine2(lines, damaged, field);
+        }
+        final JsonObject wrongKind = original.deepCopy();
+        wrongKind.addProperty("kind", "summary");
+        assertMalformedAtLine2(lines, wrongKind, "kind");
+        final JsonObject fractionalIndex = original.deepCopy();
+        fractionalIndex.addProperty("asOfIndex", 1.5);
+        assertMalformedAtLine2(lines, fractionalIndex, "asOfIndex");
+        final JsonObject alternative = original.deepCopy();
+        alternative.addProperty("kind", "alternative");
+        alternative.remove("labels");
+        assertMalformedAtLine2(lines, alternative, "labels");
+    }
+
+    private void assertMalformedAtLine2(final List<String> lines, final JsonObject damaged, final String field)
+            throws IOException {
+        final Path copy = directory.resolve("damaged-" + field + ".jsonl");
+        final List<String> damagedLines = new ArrayList<>(lines);
+        damagedLines.set(1, damaged.toString());
+        Files.write(copy, damagedLines, StandardCharsets.UTF_8);
+        final IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> ElliottResearchTrace.read(copy), field);
+        assertTrue(error.getMessage().contains("line 2"), error.getMessage());
+        assertTrue(error.getMessage().contains(field), error.getMessage());
     }
 
     private void traceEvaluation(final Path file, final BarSeries series, final int from, final int to)

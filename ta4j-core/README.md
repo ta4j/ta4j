@@ -182,6 +182,10 @@ reference rank; neither is a confidence interval or a p-value, and partitions
 are never pooled. `inspect` rebuilds a row's support from its trace and lists
 counterexamples and rule disagreements; when the trace is missing or truncated
 it exits with status 2 and prints the recapture command, quoted for a POSIX shell.
+The command carries `--expect-fingerprint` (and, for `explore`, `--expect-source-sha256`),
+so a recapture against a changed configuration or edited candles fails instead of
+tracing different data. Coverage marks a partition `partial` when it has no bars or
+a gap longer than seven bar periods.
 
 ## Companion user guides
 

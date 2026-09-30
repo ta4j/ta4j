@@ -71,6 +71,11 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
     static final String MODE_REAL = "real";
     static final String MODE_SELECTED_NULL_MEMBER = "selected-null-member";
 
+    private static final List<String> RECORD_TEXT_FIELDS = List.of("dataset", "section", "mode", "grammar", "detector",
+            "partition", "asOfTime", "status");
+    private static final List<String> RECORD_INTEGER_FIELDS = List.of("nullBlockLength", "nullMemberIndex",
+            "asOfIndex");
+
     private static final Gson JSON = new GsonBuilder().disableHtmlEscaping().serializeNulls().create();
 
     private final Path file;
@@ -404,6 +409,7 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
                     }
                     complete = flag.getAsBoolean();
                 } else if (object.has("kind")) {
+                    validateRecord(path, lineNumber, object);
                     recordCount++;
                     if (retain.test(object)) {
                         records.add(object);
@@ -439,6 +445,44 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         } catch (final JsonParseException | UnsupportedOperationException | IllegalStateException e) {
             throw corrupt(path, lineNumber, "invalid JSON: " + e.getMessage());
         }
+    }
+
+    /**
+     * Rejects an observation line missing a field {@link #base} or the kind's
+     * writer always emits, so a hand-edited or foreign line cannot count toward the
+     * footer or feed inspection as if it were a recorded observation.
+     */
+    private static void validateRecord(final Path path, final long lineNumber, final JsonObject record) {
+        final String kind = text(record, "kind");
+        if (!"topology".equals(kind) && !"alternative".equals(kind)) {
+            throw corrupt(path, lineNumber, "record kind " + record.get("kind") + " is not topology or alternative");
+        }
+        for (final String field : RECORD_TEXT_FIELDS) {
+            if (text(record, field) == null) {
+                throw corrupt(path, lineNumber, kind + " record field " + field + " is missing or not a string");
+            }
+        }
+        for (final String field : RECORD_INTEGER_FIELDS) {
+            final JsonElement value = record.get(field);
+            if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()
+                    || value.getAsBigDecimal().stripTrailingZeros().scale() > 0) {
+                throw corrupt(path, lineNumber, kind + " record field " + field + " is missing or not an integer");
+            }
+        }
+        final List<String> arrays = "topology".equals(kind) ? List.of("activeRules", "pivots", "candidates")
+                : List.of("activeRules", "pivots", "candidates", "labels");
+        for (final String field : arrays) {
+            final JsonElement value = record.get(field);
+            if (value == null || !value.isJsonArray()) {
+                throw corrupt(path, lineNumber, kind + " record field " + field + " is missing or not an array");
+            }
+        }
+    }
+
+    private static String text(final JsonObject record, final String field) {
+        final JsonElement value = record.get(field);
+        return value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isString() ? value.getAsString()
+                : null;
     }
 
     private static IllegalArgumentException corrupt(final Path path, final long lineNumber, final String reason) {
