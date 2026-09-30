@@ -206,6 +206,31 @@ class StudyRunnerTest {
     }
 
     @Test
+    void identicalRuleScoresKeepTheirMeanInsideTheObservedRange() {
+        // Regression: summing a repeated 0.1 score drifts one ulp above 0.1, and
+        // the resulting mean used to fail the ordered score-range check.
+        final RelationshipRule constantScore = new RelationshipRule() {
+            @Override
+            public String id() {
+                return "constant";
+            }
+
+            @Override
+            public RuleEvidence evaluate(final TopologyCandidate candidate) {
+                return RuleEvidence.scored("constant", 0.1, List.of("synthetic"), "constant score");
+            }
+        };
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), List.of(constantScore),
+                configuration(StudyRunner.Partitions.lockedDefault(), 1));
+
+        final StudyReport report = runner.evaluate("BTC", buildSeries(40), 0, 39);
+
+        final String json = report.toJson();
+        assertTrue(json.contains("\"constant\""), json);
+        assertFalse(json.contains("0.10000000000000002"), json);
+    }
+
+    @Test
     void rejectsBlankAssetIdsBeforeEvaluation() {
         final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
                 configuration(StudyRunner.Partitions.lockedDefault(), 1));
@@ -955,6 +980,127 @@ class StudyRunnerTest {
                                     && member.partitions().get(0).insufficientHistoryCount() == 1L));
                 }
             }
+        }
+    }
+
+    @Test
+    void observerLeavesReportUnchangedAndSeesOnlyRealDataSections() {
+        final StudyRunner.Configuration configuration = configuration(StudyRunner.Partitions.lockedDefault(), 2);
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
+                configuration);
+        final RecordingObserver observer = new RecordingObserver();
+
+        final String withoutObserver = runner.evaluate("BTC", buildSeries(24), 0, 23).toJson();
+        final String withObserver = runner.evaluate("BTC", buildSeries(24), 0, 23, observer).toJson();
+
+        assertEquals(withoutObserver, withObserver);
+        assertEquals(Set.of("h1", "h2", "competing", "robustness"), Set.copyOf(observer.sections));
+        assertTrue(observer.scopes.stream()
+                .allMatch(scope -> scope.nullBlockLength() == -1 && scope.nullMemberIndex() == -1));
+        assertTrue(observer.recordedIndices.stream().allMatch(index -> index >= 0 && index <= 23));
+    }
+
+    @Test
+    void replayedNullMemberMatchesItsFullEnsembleEntries() {
+        // The single-bar calibration partition exercises the degenerate
+        // one-bar null path alongside ordinary multi-bar prefixes.
+        final StudyRunner.Partitions partitions = new StudyRunner.Partitions(
+                List.of(new StudyRunner.Partition("calibration", LocalDate.of(2018, 1, 1), LocalDate.of(2018, 1, 1)),
+                        new StudyRunner.Partition("validation", LocalDate.of(2018, 1, 2), LocalDate.of(2018, 1, 12)),
+                        new StudyRunner.Partition("holdout", LocalDate.of(2018, 1, 13), LocalDate.of(2018, 2, 28))),
+                LocalDate.of(2024, 1, 1));
+        final int ensembleSize = 3;
+        final StudyRunner runner = new StudyRunner(StudyRunnerTest::detectorFactory, grammars(), rules(),
+                configuration(partitions, ensembleSize));
+        final BarSeries series = buildSeries(24);
+        final StudyReport report = runner.evaluate("BTC", series, 0, 23);
+
+        for (int memberIndex = 0; memberIndex < ensembleSize; memberIndex++) {
+            final RecordingObserver observer = new RecordingObserver();
+            final List<StudyRunner.NullMemberReplay> replays = runner.replayNullMember(series, 0, 23, 2, memberIndex,
+                    observer);
+
+            assertFalse(replays.isEmpty());
+            for (final StudyRunner.NullMemberReplay replay : replays) {
+                final String label = replay.grammar() + "/" + replay.mode() + " member " + memberIndex;
+                assertEquals(expectedNullMembers(report, replay, memberIndex), replay.partitions(), label);
+                assertTrue(replay.partitions()
+                        .stream()
+                        .anyMatch(member -> "calibration".equals(member.partition())
+                                && member.partitions().get(0).evaluationCount() == 1L),
+                        label);
+                for (final StudyReport.NullMemberMetrics member : replay.partitions()) {
+                    final long observed = observer.countFor(replay.grammar(), replay.mode(), member.partition());
+                    assertEquals(member.partitions().get(0).evaluationCount(), observed,
+                            label + " partition " + member.partition() + " trace records");
+                }
+            }
+            final int member = memberIndex;
+            assertFalse(observer.scopes.isEmpty());
+            assertTrue(observer.scopes.stream()
+                    .allMatch(scope -> "null".equals(scope.section()) && scope.nullBlockLength() == 2
+                            && scope.nullMemberIndex() == member));
+        }
+        assertThrows(IllegalArgumentException.class, () -> runner.replayNullMember(series, 0, 23, 3, 0, null));
+        assertThrows(IllegalArgumentException.class,
+                () -> runner.replayNullMember(series, 0, 23, 2, ensembleSize, null));
+    }
+
+    private static List<StudyReport.NullMemberMetrics> expectedNullMembers(final StudyReport report,
+            final StudyRunner.NullMemberReplay replay, final int memberIndex) {
+        final StudyReport.NullReport nullReport = report.nulls()
+                .stream()
+                .filter(candidate -> candidate.grammar().equals(replay.grammar()) && candidate.blockLength() == 2)
+                .findFirst()
+                .orElseThrow();
+        final List<StudyReport.NullMemberMetrics> members = replay.mode() == null ? nullReport.members()
+                : nullReport.modes()
+                        .stream()
+                        .filter(mode -> mode.mode().equals(replay.mode()))
+                        .findFirst()
+                        .orElseThrow()
+                        .members();
+        return members.stream().filter(member -> member.memberIndex() == memberIndex).toList();
+    }
+
+    private static final class RecordingObserver implements StudyObserver {
+        private final List<String> sections = new ArrayList<>();
+        private final List<StudyObserver.Scope> scopes = new ArrayList<>();
+        private final List<Integer> recordedIndices = new ArrayList<>();
+        private final List<String> partitions = new ArrayList<>();
+
+        long countFor(final String grammar, final String mode, final String partition) {
+            long count = 0L;
+            for (int i = 0; i < scopes.size(); i++) {
+                final StudyObserver.Scope scope = scopes.get(i);
+                final String expectedMode = mode == null ? grammar : mode;
+                if (scope.grammar().equals(grammar) && scope.mode().equals(expectedMode)
+                        && partitions.get(i).equals(partition)) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        @Override
+        public void topology(final Scope scope, final String partition, final int recordedIndex, final Instant asOfEnd,
+                final List<ConfirmedPivot> visiblePivots, final TopologyAnalysis analysis,
+                final List<List<RuleEvidence>> candidateEvidence) {
+            record(scope, partition, recordedIndex);
+        }
+
+        @Override
+        public void alternative(final Scope scope, final String partition, final int recordedIndex,
+                final Instant asOfEnd, final List<ConfirmedPivot> visiblePivots, final String outcome,
+                final Set<String> labels) {
+            record(scope, partition, recordedIndex);
+        }
+
+        private void record(final Scope scope, final String partition, final int recordedIndex) {
+            sections.add(scope.section());
+            scopes.add(scope);
+            partitions.add(partition);
+            recordedIndices.add(recordedIndex);
         }
     }
 

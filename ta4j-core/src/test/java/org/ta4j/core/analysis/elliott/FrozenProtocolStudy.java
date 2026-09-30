@@ -67,6 +67,28 @@ final class FrozenProtocolStudy {
      * @throws IOException when reports cannot be written
      */
     static void run(final ElliottStudyProtocol protocol, final Path reportDir) throws IOException {
+        run(protocol, reportDir, DatasetListener.NONE);
+    }
+
+    /**
+     * Evaluates every dataset of the supplied verified protocol, writes one JSON
+     * report per dataset, and reports each dataset outcome to a listener.
+     *
+     * <p>
+     * The listener may attach an observer and receives each completed report; it
+     * can never change the protocol's analytical configuration. A dataset that
+     * fails to load or evaluate is handed to {@link DatasetListener#failed}; the
+     * default listener rethrows, preserving the fail-fast frozen path.
+     * </p>
+     *
+     * @param protocol  verified study protocol
+     * @param reportDir directory receiving {@code <dataset>.json} reports
+     * @param listener  dataset outcome listener
+     * @throws IOException when reports cannot be written
+     * @since 0.25.1
+     */
+    static void run(final ElliottStudyProtocol protocol, final Path reportDir, final DatasetListener listener)
+            throws IOException {
         validateExecutableProtocol(protocol);
         Supplier<SwingDetector> primaryDetector = resolveDetector(protocol, protocol.primaryDetector());
         List<DetectorRobustnessMatrix.DetectorSpec> robustness = new ArrayList<>();
@@ -79,28 +101,102 @@ final class FrozenProtocolStudy {
 
         Files.createDirectories(reportDir);
         for (ElliottStudyProtocol.DatasetSpec dataset : protocol.datasets()) {
-            BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(FrozenProtocolStudy.class, dataset.resource(),
-                    dataset.asset(), dataset.sha256(), LOG);
-            if (series == null) {
-                throw new IllegalStateException("protocol dataset could not be loaded: " + dataset.id());
-            }
             // The frozen protocol executes exactly its declared competing
             // set; undeclared kernel experiments stay out of the report.
             List<String> competingModes = protocol.competingGrammars();
-            StudyRunner.Configuration configuration = new StudyRunner.Configuration(partitions(protocol),
-                    protocol.fingerprintSha256(), protocol.nullEnsemble().seed(),
-                    protocol.nullEnsemble().blockLengths(), protocol.nullEnsemble().ensembleSize(),
-                    List.copyOf(robustness), protocol.primaryDetector(), competingModes);
+            StudyRunner.Configuration configuration = configuration(protocol, robustness);
             StudyRunner runner = StudyRunner.frozenPreregistered(primaryDetector, momentumFactory, configuration,
                     protocol.ablationSet());
-            LOG.info(
-                    "evaluating dataset {} ({}): study design {}, ensemble {} members per block length {}, competing modes {}",
-                    dataset.id(), dataset.asset(), protocol.studyDesign(), protocol.nullEnsemble().ensembleSize(),
-                    protocol.nullEnsemble().blockLengths(), competingModes);
-            StudyReport report = runner.evaluate(dataset.asset(), series, series.getBeginIndex(), series.getEndIndex());
+            StudyObserver observer = listener.observer(dataset.id(), dataset.asset());
+            BarSeries series;
+            StudyReport report;
+            try {
+                series = OssifiedElliottWaveSeriesLoader.loadSeries(FrozenProtocolStudy.class, dataset.resource(),
+                        dataset.asset(), dataset.sha256(), LOG);
+                if (series == null) {
+                    throw new IllegalStateException("protocol dataset could not be loaded: " + dataset.id());
+                }
+                LOG.info(
+                        "evaluating dataset {} ({}): study design {}, ensemble {} members per block length {}, competing modes {}",
+                        dataset.id(), dataset.asset(), protocol.studyDesign(), protocol.nullEnsemble().ensembleSize(),
+                        protocol.nullEnsemble().blockLengths(), competingModes);
+                report = runner.evaluate(dataset.asset(), series, series.getBeginIndex(), series.getEndIndex(),
+                        observer);
+            } catch (RuntimeException failure) {
+                listener.failed(dataset.id(), dataset.asset(), failure);
+                continue;
+            }
             Path target = reportDir.resolve(dataset.id() + ".json");
             Files.writeString(target, report.toJson());
             LOG.info("wrote study report {} for {}", target, dataset.asset());
+            listener.completed(dataset.id(), dataset.asset(), runner, series, report, target);
+        }
+    }
+
+    /**
+     * Builds the locked runner configuration the frozen protocol executes.
+     *
+     * @param protocol   verified study protocol
+     * @param robustness resolved robustness detector matrix
+     * @return frozen runner configuration
+     */
+    private static StudyRunner.Configuration configuration(final ElliottStudyProtocol protocol,
+            final List<DetectorRobustnessMatrix.DetectorSpec> robustness) {
+        return new StudyRunner.Configuration(partitions(protocol), protocol.fingerprintSha256(),
+                protocol.nullEnsemble().seed(), protocol.nullEnsemble().blockLengths(),
+                protocol.nullEnsemble().ensembleSize(), List.copyOf(robustness), protocol.primaryDetector(),
+                protocol.competingGrammars());
+    }
+
+    /**
+     * Receives per-dataset outcomes of a frozen protocol run.
+     *
+     * @since 0.25.1
+     */
+    interface DatasetListener {
+
+        /** Listener without observation capture that rethrows dataset failures. */
+        DatasetListener NONE = new DatasetListener() {
+        };
+
+        /**
+         * Supplies the optional observer for one dataset's real-data evaluation.
+         *
+         * @param datasetId protocol dataset id
+         * @param asset     dataset asset identifier
+         * @return observer, or {@code null} for no capture
+         * @throws IOException when the observer cannot be opened
+         */
+        default StudyObserver observer(final String datasetId, final String asset) throws IOException {
+            return null;
+        }
+
+        /**
+         * Receives one completed dataset evaluation after its report was written.
+         *
+         * @param datasetId  protocol dataset id
+         * @param asset      dataset asset identifier
+         * @param runner     runner that produced the report
+         * @param series     evaluated source series
+         * @param report     completed report
+         * @param reportFile written report file
+         * @throws IOException when follow-up artifacts cannot be written
+         */
+        default void completed(final String datasetId, final String asset, final StudyRunner runner,
+                final BarSeries series, final StudyReport report, final Path reportFile) throws IOException {
+        }
+
+        /**
+         * Receives one dataset that failed to load or evaluate.
+         *
+         * @param datasetId protocol dataset id
+         * @param asset     dataset asset identifier
+         * @param failure   load or evaluation failure
+         * @throws IOException when failure artifacts cannot be written
+         */
+        default void failed(final String datasetId, final String asset, final RuntimeException failure)
+                throws IOException {
+            throw failure;
         }
     }
 
