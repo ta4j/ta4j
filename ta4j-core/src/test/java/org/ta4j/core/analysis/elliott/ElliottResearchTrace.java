@@ -102,6 +102,7 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
      *
      * @param file            trace destination
      * @param datasetId       dataset identifier stored on every record
+     * @param revision        code revision of the originating run
      * @param fingerprint     configuration fingerprint of the originating run
      * @param sourceSha256    SHA-256 of the dataset's source candles, or
      *                        {@code null} for generated data
@@ -111,11 +112,12 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
      * @return open trace; close it to write the footer
      * @throws IOException on filesystem failure
      */
-    static ElliottResearchTrace open(final Path file, final String datasetId, final String fingerprint,
-            final String sourceSha256, final String traceMode, final int nullBlockLength, final int nullMemberIndex)
-            throws IOException {
+    static ElliottResearchTrace open(final Path file, final String datasetId, final String revision,
+            final String fingerprint, final String sourceSha256, final String traceMode, final int nullBlockLength,
+            final int nullMemberIndex) throws IOException {
         Objects.requireNonNull(file, "file");
         Objects.requireNonNull(datasetId, "datasetId");
+        Objects.requireNonNull(revision, "revision");
         Objects.requireNonNull(fingerprint, "fingerprint");
         Objects.requireNonNull(traceMode, "traceMode");
         if (MODE_REAL.equals(traceMode)) {
@@ -140,6 +142,7 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
             final JsonObject header = new JsonObject();
             header.addProperty("schema", SCHEMA);
             header.addProperty("dataset", datasetId);
+            header.addProperty("revision", revision);
             header.addProperty("fingerprint", fingerprint);
             header.addProperty("sourceSha256", sourceSha256);
             header.addProperty("traceMode", traceMode);

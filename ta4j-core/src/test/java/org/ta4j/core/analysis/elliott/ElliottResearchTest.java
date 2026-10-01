@@ -506,24 +506,20 @@ class ElliottResearchTest {
     @Test
     void inspectRejectsTraceCapturedForAnotherDatasetModeOrRun() throws Exception {
         // Regression: a complete trace from another dataset, null member, or run
-        // (other configuration or source) at the expected path was trusted on
-        // schema, footer and coordinates alone.
+        // (other revision, configuration or source) at the expected path was trusted
+        // on schema, footer and coordinates alone.
         final List<java.util.function.Consumer<JsonObject>> foreign = List
                 .of(header -> header.addProperty("dataset", "other"), header -> {
                     header.addProperty("traceMode", "selected-null-member");
                     header.addProperty("nullBlockLength", 20);
                     header.addProperty("nullMemberIndex", 3);
-                }, header -> header.addProperty("fingerprint", "other-configuration"),
+                }, header -> header.addProperty("revision", "other-revision"),
+                        header -> header.addProperty("fingerprint", "other-configuration"),
                         header -> header.addProperty("sourceSha256", "other-source"));
         for (int index = 0; index < foreign.size(); index++) {
             final Path copy = work.resolve("foreign-" + index);
             copyTree(smokeRun, copy);
-            final Path trace = copy.resolve("traces/smoke-real.jsonl");
-            final List<String> lines = new java.util.ArrayList<>(Files.readAllLines(trace, StandardCharsets.UTF_8));
-            final JsonObject header = JsonParser.parseString(lines.get(0)).getAsJsonObject();
-            foreign.get(index).accept(header);
-            lines.set(0, header.toString());
-            Files.write(trace, lines, StandardCharsets.UTF_8);
+            rewriteTraceHeader(copy.resolve("traces/smoke-real.jsonl"), foreign.get(index));
 
             final Result result = launch("inspect", copy.toString(), OCCUPANCY_KEY);
             assertEquals(2, result.code(), "mutation " + index);
@@ -533,9 +529,10 @@ class ElliottResearchTest {
     }
 
     @Test
-    void summaryReportsEvidenceNotCapturedWhenTheTraceIsMissingOrTruncated() throws Exception {
+    void summaryReportsEvidenceNotCapturedWhenTheTraceIsMissingTruncatedOrForeign() throws Exception {
         // Regression: summarize labelled every row "trace captured" from the run's
-        // trace mode alone, even after the trace file was deleted or truncated.
+        // trace mode alone, even after the trace file was deleted, truncated, or
+        // replaced by a null-member trace or one captured at another revision.
         final List<java.util.function.Consumer<Path>> damage = List.of(trace -> {
             try {
                 Files.delete(trace);
@@ -549,7 +546,11 @@ class ElliottResearchTest {
             } catch (final IOException e) {
                 throw new java.io.UncheckedIOException(e);
             }
-        });
+        }, trace -> rewriteTraceHeader(trace, header -> {
+            header.addProperty("traceMode", "selected-null-member");
+            header.addProperty("nullBlockLength", 20);
+            header.addProperty("nullMemberIndex", 3);
+        }), trace -> rewriteTraceHeader(trace, header -> header.addProperty("revision", "other-revision")));
         assertTrue(Files.readString(smokeRun.resolve("summary.md")).contains("trace captured"));
         for (int index = 0; index < damage.size(); index++) {
             final Path copy = work.resolve("summary-damage-" + index);
@@ -700,5 +701,17 @@ class ElliottResearchTest {
         assertEquals(1, recipeChanged.code());
         assertTrue(recipeChanged.err().contains("the recipe changed since the run"), recipeChanged.err());
         assertFalse(Files.exists(editedRecipe));
+    }
+
+    private static void rewriteTraceHeader(final Path trace, final java.util.function.Consumer<JsonObject> edit) {
+        try {
+            final List<String> lines = new java.util.ArrayList<>(Files.readAllLines(trace, StandardCharsets.UTF_8));
+            final JsonObject header = JsonParser.parseString(lines.get(0)).getAsJsonObject();
+            edit.accept(header);
+            lines.set(0, header.toString());
+            Files.write(trace, lines, StandardCharsets.UTF_8);
+        } catch (final IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
     }
 }

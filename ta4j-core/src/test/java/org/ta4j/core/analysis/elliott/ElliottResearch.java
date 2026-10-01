@@ -938,7 +938,7 @@ final class ElliottResearch {
             if (!ElliottResearchTrace.MODE_REAL.equals(options.trace())) {
                 return null;
             }
-            final ElliottResearchTrace trace = ElliottResearchTrace.open(dir.resolve(realTraceName(id)), id,
+            final ElliottResearchTrace trace = ElliottResearchTrace.open(dir.resolve(realTraceName(id)), id, revision,
                     setup.fingerprint(), sourceSha256(id), ElliottResearchTrace.MODE_REAL, -1, -1);
             openTraces.put(id, trace);
             return trace;
@@ -1008,7 +1008,7 @@ final class ElliottResearch {
                 }
                 if (ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER.equals(options.trace())) {
                     final Path file = dir.resolve(nullTraceName(id, options.block(), options.member()));
-                    try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, id, setup.fingerprint(),
+                    try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, id, revision, setup.fingerprint(),
                             sourceSha256(id), ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER, options.block(),
                             options.member())) {
                         runner.replayNullMember(series, series.getBeginIndex(), series.getEndIndex(), options.block(),
@@ -1359,13 +1359,12 @@ final class ElliottResearch {
     }
 
     /**
-     * Datasets whose real trace is listed in the run, present, complete and
-     * captured by this run's configuration and source; only their rows may claim
-     * captured evidence. A deleted, truncated, corrupt or foreign trace is treated
-     * as not captured.
+     * Datasets whose real trace is listed in the run, present, complete and matches
+     * {@link #expectedTraceHeader} for a real capture; only their rows may claim
+     * captured evidence. A deleted, truncated, corrupt, null-member or foreign
+     * trace is treated as not captured.
      */
     private static Set<String> verifiedRealTraces(final Path dir, final JsonObject run) {
-        final JsonElement fingerprint = run.getAsJsonObject("identity").get("fingerprint");
         final Set<String> traced = new HashSet<>();
         for (final JsonElement element : run.getAsJsonArray("datasets")) {
             final JsonObject dataset = element.getAsJsonObject();
@@ -1375,14 +1374,10 @@ final class ElliottResearch {
             if (!dataset.getAsJsonArray("traces").contains(new JsonPrimitive(name)) || !Files.isRegularFile(file)) {
                 continue;
             }
-            final JsonElement sourceSha256 = dataset.getAsJsonObject("source").get("sha256");
+            final JsonObject expected = expectedTraceHeader(run, dataset, ElliottResearchTrace.MODE_REAL, -1, -1);
             try {
                 final ElliottResearchTrace.TraceFile parsed = ElliottResearchTrace.read(file, record -> false);
-                final JsonObject header = parsed.header();
-                if (parsed.complete() && new JsonPrimitive(id).equals(header.get("dataset"))
-                        && fingerprint.equals(header.get("fingerprint"))
-                        && (sourceSha256 == null ? JsonNull.INSTANCE : sourceSha256)
-                                .equals(header.get("sourceSha256"))) {
+                if (parsed.complete() && headerMismatch(parsed.header(), expected) == null) {
                     traced.add(id);
                 }
             } catch (final IOException | IllegalArgumentException unreadable) {
@@ -1391,6 +1386,36 @@ final class ElliottResearch {
             }
         }
         return traced;
+    }
+
+    /**
+     * Header fields a trace must carry to belong to this run, this dataset and this
+     * capture: code revision, configuration fingerprint and source digest bind it
+     * to the run, so a trace copied in from another run with equal coordinates is
+     * refused.
+     */
+    private static JsonObject expectedTraceHeader(final JsonObject run, final JsonObject dataset,
+            final String traceMode, final int blockLength, final int memberIndex) {
+        final JsonObject expected = new JsonObject();
+        expected.add("dataset", dataset.get("id"));
+        expected.add("revision", run.get("revision"));
+        expected.add("fingerprint", run.getAsJsonObject("identity").get("fingerprint"));
+        final JsonElement sourceSha256 = dataset.getAsJsonObject("source").get("sha256");
+        expected.add("sourceSha256", sourceSha256 == null ? JsonNull.INSTANCE : sourceSha256);
+        expected.addProperty("traceMode", traceMode);
+        expected.addProperty("nullBlockLength", blockLength);
+        expected.addProperty("nullMemberIndex", memberIndex);
+        return expected;
+    }
+
+    /** @return the first expected header field the trace does not carry, or null */
+    private static String headerMismatch(final JsonObject header, final JsonObject expected) {
+        for (final Map.Entry<String, JsonElement> field : expected.entrySet()) {
+            if (!field.getValue().equals(header.get(field.getKey()))) {
+                return field.getKey();
+            }
+        }
+        return null;
     }
 
     /**
@@ -1613,14 +1638,14 @@ final class ElliottResearch {
         void print(final PrintStream out, final Integer asOf, final String candidate) throws IOException {
             // Real: retain the whole family so cross-mode rule disagreements stay visible.
             final View real = load("real", findTrace(realSuffixMatcher()),
-                    expectedHeader(ElliottResearchTrace.MODE_REAL, -1, -1), this::sameFamily, this::inRealScope,
-                    ElliottResearch.recapture(dir, run, ElliottResearchTrace.MODE_REAL, null, null));
+                    expectedTraceHeader(run, dataset, ElliottResearchTrace.MODE_REAL, -1, -1), this::sameFamily,
+                    this::inRealScope, ElliottResearch.recapture(dir, run, ElliottResearchTrace.MODE_REAL, null, null));
             // A run that selected no member captured no null trace, so -1 rejects any found
             // one.
             final JsonElement member = run.getAsJsonObject("trace").get("member");
             final View nullView = row.nullBlockLength() > 0 ? load("null", findTrace(nullMatcher()),
-                    expectedHeader(ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER, row.nullBlockLength(),
-                            member == null || member.isJsonNull() ? -1 : member.getAsInt()),
+                    expectedTraceHeader(run, dataset, ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER,
+                            row.nullBlockLength(), member == null || member.isJsonNull() ? -1 : member.getAsInt()),
                     this::inNullScope, this::inNullScope, recaptureNull()) : null;
             if (real == null && nullView == null) {
                 throw new Diagnostic(
@@ -1887,22 +1912,6 @@ final class ElliottResearch {
             return member == null || member.isJsonNull() ? 0 : member.getAsInt();
         }
 
-        /**
-         * Header fields a trace must carry to belong to this run, this row's dataset
-         * and this capture: configuration fingerprint and source digest bind it to the
-         * run, so a trace copied in from another run with equal coordinates is refused.
-         */
-        private JsonObject expectedHeader(final String traceMode, final int blockLength, final int memberIndex) {
-            final JsonObject expected = new JsonObject();
-            expected.addProperty("dataset", row.dataset());
-            expected.add("fingerprint", run.getAsJsonObject("identity").get("fingerprint"));
-            expected.add("sourceSha256", dataset.getAsJsonObject("source").get("sha256"));
-            expected.addProperty("traceMode", traceMode);
-            expected.addProperty("nullBlockLength", blockLength);
-            expected.addProperty("nullMemberIndex", memberIndex);
-            return expected;
-        }
-
         private View load(final String label, final String relative, final JsonObject expected,
                 final java.util.function.Predicate<JsonObject> retain,
                 final java.util.function.Predicate<JsonObject> scope, final String recapture) throws IOException {
@@ -1924,12 +1933,11 @@ final class ElliottResearch {
                 throw new Diagnostic("truncated " + label + " trace " + relative + " (" + trace.recordCount()
                         + " records, no footer): the capturing run did not finish. Recapture with:\n  " + recapture);
             }
-            for (final Map.Entry<String, JsonElement> field : expected.entrySet()) {
-                if (!field.getValue().equals(trace.header().get(field.getKey()))) {
-                    throw new Diagnostic(label + " trace " + relative + " was captured for " + field.getKey() + " "
-                            + trace.header().get(field.getKey()) + ", not this run's " + field.getValue()
-                            + ". Recapture with:\n  " + recapture);
-                }
+            final String mismatch = headerMismatch(trace.header(), expected);
+            if (mismatch != null) {
+                throw new Diagnostic(label + " trace " + relative + " was captured for " + mismatch + " "
+                        + trace.header().get(mismatch) + ", not this run's " + expected.get(mismatch)
+                        + ". Recapture with:\n  " + recapture);
             }
             return new View(label, relative, trace, trace.records().stream().filter(scope).toList());
         }

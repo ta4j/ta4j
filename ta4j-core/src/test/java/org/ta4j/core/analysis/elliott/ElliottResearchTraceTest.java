@@ -50,7 +50,7 @@ class ElliottResearchTraceTest {
         final StudyRunner runner = runner(StudyRunner.Partitions.lockedDefault(), 2);
         final Path file = directory.resolve("traces/BTC.real.jsonl");
         final StudyReport report;
-        try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "fp", null,
+        try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "rev", "fp", null,
                 ElliottResearchTrace.MODE_REAL, -1, -1)) {
             report = runner.evaluate("BTC", buildSeries(24), 0, 23, trace);
         }
@@ -129,7 +129,7 @@ class ElliottResearchTraceTest {
                             : RuleEvidence.fail("second", List.of("raw-" + i), "fail")));
         }
         final Path file = directory.resolve("ambiguous.jsonl");
-        try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "fp", null,
+        try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "rev", "fp", null,
                 ElliottResearchTrace.MODE_REAL, -1, -1)) {
             trace.topology(StudyObserver.Scope.real("h2", "all-rules", "MOTIVE_5", List.of("first", "second"), "d"),
                     "calibration", 11, Instant.parse("2018-01-12T00:00:00Z"), alternating(10, 20, 14), analysis,
@@ -192,7 +192,7 @@ class ElliottResearchTraceTest {
         final StudyObserver.Scope scope = StudyObserver.Scope.real("h2", "all-rules", "MOTIVE_5", List.of("first"),
                 "d");
         final Path file = directory.resolve(name);
-        try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "fp", null,
+        try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "rev", "fp", null,
                 ElliottResearchTrace.MODE_REAL, -1, -1)) {
             for (final List<RuleEvidence> rules : emissions) {
                 trace.topology(scope, "calibration", 5, Instant.parse("2018-01-06T00:00:00Z"), candidate.pivots(),
@@ -232,7 +232,7 @@ class ElliottResearchTraceTest {
                 LocalDate.of(2024, 1, 1));
         final StudyRunner runner = runner(partitions, 3);
         final Path file = directory.resolve("BTC.null-b2-m1.jsonl");
-        try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "fp-1", "abc123",
+        try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "rev-1", "fp-1", "abc123",
                 ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER, 2, 1)) {
             runner.replayNullMember(buildSeries(24), 0, 23, 2, 1, trace);
             assertTrue(trace.records() > 0);
@@ -241,6 +241,7 @@ class ElliottResearchTraceTest {
         final ElliottResearchTrace.TraceFile parsed = ElliottResearchTrace.read(file);
         assertTrue(parsed.complete());
         assertEquals("selected-null-member", parsed.header().get("traceMode").getAsString());
+        assertEquals("rev-1", parsed.header().get("revision").getAsString());
         assertEquals("fp-1", parsed.header().get("fingerprint").getAsString());
         assertEquals("abc123", parsed.header().get("sourceSha256").getAsString());
         assertEquals(2, parsed.header().get("nullBlockLength").getAsInt());
@@ -256,7 +257,7 @@ class ElliottResearchTraceTest {
     @Test
     void traceRejectsObservationsFromAnotherMemberOrMode() throws Exception {
         final Path file = directory.resolve("guard.jsonl");
-        try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "fp", null,
+        try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "rev", "fp", null,
                 ElliottResearchTrace.MODE_REAL, -1, -1)) {
             final StudyObserver.Scope nullScope = new StudyObserver.Scope("null", "topology-only", "MOTIVE_5",
                     List.of(), "d", 2, 0);
@@ -264,8 +265,8 @@ class ElliottResearchTraceTest {
                     Instant.parse("2018-01-02T00:00:00Z"), List.of(), "no-match", Set.of("no-match")));
             assertEquals(0L, trace.records());
         }
-        assertThrows(IllegalArgumentException.class,
-                () -> ElliottResearchTrace.open(directory.resolve("bad.jsonl"), "BTC", "fp", null, "all-null", -1, -1));
+        assertThrows(IllegalArgumentException.class, () -> ElliottResearchTrace.open(directory.resolve("bad.jsonl"),
+                "BTC", "rev", "fp", null, "all-null", -1, -1));
     }
 
     @Test
@@ -386,7 +387,7 @@ class ElliottResearchTraceTest {
     private void traceEvaluation(final Path file, final BarSeries series, final int from, final int to)
             throws IOException {
         final StudyRunner runner = runner(StudyRunner.Partitions.lockedDefault(), 2);
-        try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "fp", null,
+        try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, "BTC", "rev", "fp", null,
                 ElliottResearchTrace.MODE_REAL, -1, -1)) {
             runner.evaluate("BTC", series, from, to, trace);
         }
