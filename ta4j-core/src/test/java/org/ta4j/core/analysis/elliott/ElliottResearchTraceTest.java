@@ -27,6 +27,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -370,6 +371,52 @@ class ElliottResearchTraceTest {
         alternative.addProperty("kind", "alternative");
         alternative.remove("labels");
         assertMalformedAtLine2(lines, alternative, "labels");
+
+        // Regression: nested entries were unchecked, so a malformed candidate or rule
+        // crashed inspection instead of reporting the corrupt line.
+        final JsonObject nested = lines.stream()
+                .skip(1)
+                .map(line -> JsonParser.parseString(line).getAsJsonObject())
+                .filter(record -> record.has("candidates") && !record.getAsJsonArray("candidates").isEmpty()
+                        && !record.getAsJsonArray("pivots").isEmpty()
+                        && !firstCandidate(record).getAsJsonArray("rules").isEmpty()
+                        && !firstCandidate(record).getAsJsonArray("placement").isEmpty())
+                .findFirst()
+                .orElseThrow();
+        final JsonObject emptyCandidate = nested.deepCopy();
+        emptyCandidate.getAsJsonArray("candidates").set(0, new JsonObject());
+        assertMalformedAtLine2(lines, emptyCandidate, "candidates[0].candidateKey");
+        final JsonObject scalarRules = nested.deepCopy();
+        firstCandidate(scalarRules).addProperty("rules", "none");
+        assertMalformedAtLine2(lines, scalarRules, "candidates[0].rules");
+        final JsonObject stateless = nested.deepCopy();
+        firstCandidate(stateless).getAsJsonArray("rules").get(0).getAsJsonObject().remove("state");
+        assertMalformedAtLine2(lines, stateless, "candidates[0].rules[0].state");
+        final JsonObject textScore = nested.deepCopy();
+        firstCandidate(textScore).getAsJsonArray("rules").get(0).getAsJsonObject().addProperty("score", "high");
+        assertMalformedAtLine2(lines, textScore, "candidates[0].rules[0].score");
+        final JsonObject scalarPlacement = nested.deepCopy();
+        firstCandidate(scalarPlacement).getAsJsonArray("placement").set(0, new JsonPrimitive(3));
+        assertMalformedAtLine2(lines, scalarPlacement, "candidates[0].placement[0]");
+        final JsonObject pivotWithoutIndex = nested.deepCopy();
+        pivotWithoutIndex.getAsJsonArray("pivots").get(0).getAsJsonObject().remove("index");
+        assertMalformedAtLine2(lines, pivotWithoutIndex, "pivots[0].index");
+        final JsonObject numericRule = nested.deepCopy();
+        numericRule.getAsJsonArray("activeRules").set(0, new JsonPrimitive(1));
+        assertMalformedAtLine2(lines, numericRule, "activeRules[0]");
+        final JsonObject arrayDirection = nested.deepCopy();
+        arrayDirection.add("direction", new JsonArray());
+        assertMalformedAtLine2(lines, arrayDirection, "direction");
+        final JsonObject objectLabel = original.deepCopy();
+        objectLabel.addProperty("kind", "alternative");
+        final JsonArray labels = new JsonArray();
+        labels.add(new JsonObject());
+        objectLabel.add("labels", labels);
+        assertMalformedAtLine2(lines, objectLabel, "labels[0]");
+    }
+
+    private static JsonObject firstCandidate(final JsonObject record) {
+        return record.getAsJsonArray("candidates").get(0).getAsJsonObject();
     }
 
     private void assertMalformedAtLine2(final List<String> lines, final JsonObject damaged, final String field)

@@ -463,34 +463,114 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
     }
 
     /**
-     * Rejects an observation line missing a field {@link #base} or the kind's
-     * writer always emits, so a hand-edited or foreign line cannot count toward the
-     * footer or feed inspection as if it were a recorded observation.
+     * Rejects an observation line that deviates from the shape {@link #base} and
+     * the kind's writer emit, down to every nested pivot, candidate, rule and
+     * label, so a hand-edited or foreign line cannot count toward the footer or
+     * crash inspection that reads those elements.
      */
     private static void validateRecord(final Path path, final long lineNumber, final JsonObject record) {
         final String kind = text(record, "kind");
         if (!"topology".equals(kind) && !"alternative".equals(kind)) {
             throw corrupt(path, lineNumber, "record kind " + record.get("kind") + " is not topology or alternative");
         }
+        final String where = kind + " record field ";
         for (final String field : RECORD_TEXT_FIELDS) {
-            if (text(record, field) == null) {
-                throw corrupt(path, lineNumber, kind + " record field " + field + " is missing or not a string");
-            }
+            requireText(path, lineNumber, record, field, where);
         }
         for (final String field : RECORD_INTEGER_FIELDS) {
-            final JsonElement value = record.get(field);
-            if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()
-                    || value.getAsBigDecimal().stripTrailingZeros().scale() > 0) {
-                throw corrupt(path, lineNumber, kind + " record field " + field + " is missing or not an integer");
+            requireInteger(path, lineNumber, record, field, where);
+        }
+        final JsonElement direction = record.get("direction");
+        if (direction == null || !direction.isJsonNull() && text(record, "direction") == null) {
+            throw corrupt(path, lineNumber, where + "direction is missing or not a string or null");
+        }
+        requireTexts(path, lineNumber, record, "activeRules", where);
+        final JsonArray pivots = requireArray(path, lineNumber, record, "pivots", where);
+        for (int i = 0; i < pivots.size(); i++) {
+            final JsonObject pivot = requirePlacement(path, lineNumber, pivots.get(i), where + "pivots[" + i + "]");
+            requireInteger(path, lineNumber, pivot, "confirmationIndex", where + "pivots[" + i + "].");
+        }
+        final JsonArray candidates = requireArray(path, lineNumber, record, "candidates", where);
+        for (int i = 0; i < candidates.size(); i++) {
+            final String at = where + "candidates[" + i + "]";
+            final JsonObject candidate = requireObject(path, lineNumber, candidates.get(i), at);
+            for (final String field : List.of("candidateKey", "version", "direction")) {
+                requireText(path, lineNumber, candidate, field, at + ".");
+            }
+            final JsonArray placement = requireArray(path, lineNumber, candidate, "placement", at + ".");
+            for (int p = 0; p < placement.size(); p++) {
+                requirePlacement(path, lineNumber, placement.get(p), at + ".placement[" + p + "]");
+            }
+            final JsonArray rules = requireArray(path, lineNumber, candidate, "rules", at + ".");
+            for (int r = 0; r < rules.size(); r++) {
+                final String ruleAt = at + ".rules[" + r + "]";
+                final JsonObject rule = requireObject(path, lineNumber, rules.get(r), ruleAt);
+                for (final String field : List.of("id", "state", "explanation")) {
+                    requireText(path, lineNumber, rule, field, ruleAt + ".");
+                }
+                final JsonElement score = rule.get("score");
+                if (score == null
+                        || !score.isJsonNull() && !(score.isJsonPrimitive() && score.getAsJsonPrimitive().isNumber())) {
+                    throw corrupt(path, lineNumber, ruleAt + ".score is missing or not a number or null");
+                }
+                requireTexts(path, lineNumber, rule, "observations", ruleAt + ".");
             }
         }
-        final List<String> arrays = "topology".equals(kind) ? List.of("activeRules", "pivots", "candidates")
-                : List.of("activeRules", "pivots", "candidates", "labels");
-        for (final String field : arrays) {
-            final JsonElement value = record.get(field);
-            if (value == null || !value.isJsonArray()) {
-                throw corrupt(path, lineNumber, kind + " record field " + field + " is missing or not an array");
+        if ("alternative".equals(kind)) {
+            requireTexts(path, lineNumber, record, "labels", where);
+        }
+    }
+
+    private static JsonObject requirePlacement(final Path path, final long lineNumber, final JsonElement element,
+            final String at) {
+        final JsonObject placement = requireObject(path, lineNumber, element, at);
+        requireInteger(path, lineNumber, placement, "index", at + ".");
+        requireText(path, lineNumber, placement, "price", at + ".");
+        requireText(path, lineNumber, placement, "type", at + ".");
+        return placement;
+    }
+
+    private static JsonObject requireObject(final Path path, final long lineNumber, final JsonElement element,
+            final String at) {
+        if (element == null || !element.isJsonObject()) {
+            throw corrupt(path, lineNumber, at + " is not an object");
+        }
+        return element.getAsJsonObject();
+    }
+
+    private static JsonArray requireArray(final Path path, final long lineNumber, final JsonObject owner,
+            final String field, final String where) {
+        final JsonElement value = owner.get(field);
+        if (value == null || !value.isJsonArray()) {
+            throw corrupt(path, lineNumber, where + field + " is missing or not an array");
+        }
+        return value.getAsJsonArray();
+    }
+
+    private static void requireTexts(final Path path, final long lineNumber, final JsonObject owner, final String field,
+            final String where) {
+        final JsonArray values = requireArray(path, lineNumber, owner, field, where);
+        for (int i = 0; i < values.size(); i++) {
+            final JsonElement value = values.get(i);
+            if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) {
+                throw corrupt(path, lineNumber, where + field + "[" + i + "] is not a string");
             }
+        }
+    }
+
+    private static void requireText(final Path path, final long lineNumber, final JsonObject owner, final String field,
+            final String where) {
+        if (text(owner, field) == null) {
+            throw corrupt(path, lineNumber, where + field + " is missing or not a string");
+        }
+    }
+
+    private static void requireInteger(final Path path, final long lineNumber, final JsonObject owner,
+            final String field, final String where) {
+        final JsonElement value = owner.get(field);
+        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()
+                || value.getAsBigDecimal().stripTrailingZeros().scale() > 0) {
+            throw corrupt(path, lineNumber, where + field + " is missing or not an integer");
         }
     }
 

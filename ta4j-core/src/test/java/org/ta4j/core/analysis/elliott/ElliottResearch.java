@@ -811,17 +811,20 @@ final class ElliottResearch {
      * Claims {@code dir} for one run: an exclusive lock on its lock file, held
      * until the returned channel closes (or the process exits), stops a second
      * launcher from writing into the same directory; the emptiness check that
-     * follows ignores the lock file itself. A refused reservation removes the lock
-     * file it created, so a refused directory is left as it was found.
+     * follows ignores the lock file itself. The refusal checks run read-only before
+     * the lock file exists, so a refused directory gains no lock file, and repeat
+     * under the lock before anything is replaced. The lock file is never deleted:
+     * unlinking it could strand another process's lock on an orphaned inode and
+     * admit a second writer.
      */
     private static FileChannel reserveRunDirectory(final Path dir, final boolean overwrite) throws IOException {
         if (Files.exists(dir) && !Files.isDirectory(dir)) {
             throw new IllegalArgumentException("output path exists and is not a directory: " + dir);
         }
+        checkRunDirectory(dir, overwrite);
         Files.createDirectories(dir);
-        final Path lockFile = dir.resolve(LOCK_FILE);
-        final boolean createdLockFile = !Files.exists(lockFile);
-        final FileChannel channel = FileChannel.open(lockFile, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+        final FileChannel channel = FileChannel.open(dir.resolve(LOCK_FILE), StandardOpenOption.CREATE,
+                StandardOpenOption.WRITE);
         try {
             final FileLock lock;
             try {
@@ -836,38 +839,48 @@ final class ElliottResearch {
             return channel;
         } catch (final IOException | RuntimeException e) {
             channel.close();
-            if (createdLockFile) {
-                try {
-                    Files.deleteIfExists(lockFile);
-                } catch (final IOException cleanup) {
-                    e.addSuppressed(cleanup);
-                }
-            }
             throw e;
         }
     }
 
-    private static void prepareRunDirectory(final Path dir, final boolean overwrite) throws IOException {
+    /**
+     * Read-only refusal checks for {@code dir}.
+     *
+     * @return {@code true} when {@code dir} holds a previous run that
+     *         {@code --overwrite} may replace; {@code false} when it is absent or
+     *         empty apart from the lock file
+     */
+    private static boolean checkRunDirectory(final Path dir, final boolean overwrite) throws IOException {
+        if (!Files.isDirectory(dir)) {
+            return false;
+        }
         final boolean empty;
         try (Stream<Path> children = Files.list(dir)) {
             empty = children.allMatch(child -> LOCK_FILE.equals(child.getFileName().toString()));
         }
-        if (!empty) {
-            if (!overwrite) {
-                throw new IllegalArgumentException("output directory is not empty: " + dir
-                        + " (choose another --out, or pass --overwrite to replace a previous run)");
-            }
-            final JsonObject previous;
-            try {
-                previous = loadRun(dir);
-            } catch (final IllegalArgumentException e) {
-                throw new IllegalArgumentException("refusing to overwrite " + dir
-                        + ": it is not a previous research run (" + e.getMessage() + ")");
-            }
-            if (previous.get("recipe") == null || !previous.get("recipe").isJsonObject()) {
-                throw new IllegalArgumentException(
-                        "refusing to overwrite " + dir + ": " + RUN_FILE + " holds no research recipe");
-            }
+        if (empty) {
+            return false;
+        }
+        if (!overwrite) {
+            throw new IllegalArgumentException("output directory is not empty: " + dir
+                    + " (choose another --out, or pass --overwrite to replace a previous run)");
+        }
+        final JsonObject previous;
+        try {
+            previous = loadRun(dir);
+        } catch (final IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                    "refusing to overwrite " + dir + ": it is not a previous research run (" + e.getMessage() + ")");
+        }
+        if (previous.get("recipe") == null || !previous.get("recipe").isJsonObject()) {
+            throw new IllegalArgumentException(
+                    "refusing to overwrite " + dir + ": " + RUN_FILE + " holds no research recipe");
+        }
+        return true;
+    }
+
+    private static void prepareRunDirectory(final Path dir, final boolean overwrite) throws IOException {
+        if (checkRunDirectory(dir, overwrite)) {
             for (final String file : List.of(RUN_FILE, COMPARISONS_FILE, COVERAGE_FILE, SUMMARY_FILE)) {
                 Files.deleteIfExists(dir.resolve(file));
             }
