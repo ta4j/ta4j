@@ -230,6 +230,7 @@ class ElliottResearchTest {
 
     @Test
     void overwriteRefusesDirectoryThatIsNotAPreviousRun() throws Exception {
+        // Regression: a refused reservation must not leave its lock file behind.
         final Path other = work.resolve("foreign");
         Files.createDirectories(other);
         Files.writeString(other.resolve("precious.txt"), "keep");
@@ -238,6 +239,12 @@ class ElliottResearchTest {
         assertEquals(1, result.code());
         assertTrue(result.err().contains("not a previous research run"), result.err());
         assertEquals("keep", Files.readString(other.resolve("precious.txt")));
+        assertFalse(Files.exists(other.resolve(".run.lock")), "refused --overwrite left a lock file");
+
+        final Result plain = launch("run", "smoke", "--out", other.toString());
+        assertEquals(1, plain.code());
+        assertTrue(plain.err().contains("not empty"), plain.err());
+        assertFalse(Files.exists(other.resolve(".run.lock")), "refused non-empty run left a lock file");
     }
 
     @Test
@@ -488,11 +495,12 @@ class ElliottResearchTest {
     }
 
     @Test
-    void traceFooterWithNonBooleanCompleteIsCorrupt() throws Exception {
+    void traceFooterWithNonTrueCompleteIsCorrupt() throws Exception {
         final Path copy = work.resolve("bad-footer");
         copyTree(smokeRun, copy);
         final Path trace = copy.resolve("traces/smoke-real.jsonl");
-        final List<String> lines = new java.util.ArrayList<>(Files.readAllLines(trace, StandardCharsets.UTF_8));
+        final List<String> original = Files.readAllLines(trace, StandardCharsets.UTF_8);
+        final List<String> lines = new java.util.ArrayList<>(original);
         final JsonObject footer = JsonParser.parseString(lines.get(lines.size() - 1)).getAsJsonObject();
         footer.add("complete", new JsonArray());
         lines.set(lines.size() - 1, footer.toString());
@@ -500,7 +508,21 @@ class ElliottResearchTest {
 
         final Result result = launch("inspect", copy.toString(), OCCUPANCY_KEY);
         assertEquals(2, result.code());
-        assertTrue(result.err().contains("footer complete flag [] is not a boolean"), result.err());
+        assertTrue(result.err().contains("footer complete flag [] is not true"), result.err());
+
+        // Regression: a complete:false marker mid-file must not let later records and a
+        // valid footer pass as a complete trace.
+        final List<String> spliced = new java.util.ArrayList<>(original.subList(0, original.size() - 1));
+        final JsonObject falseFooter = new JsonObject();
+        falseFooter.addProperty("complete", false);
+        falseFooter.addProperty("records", spliced.size() - 1);
+        spliced.add(falseFooter.toString());
+        spliced.add(original.get(original.size() - 1));
+        Files.write(trace, spliced, StandardCharsets.UTF_8);
+
+        final Result falseMarker = launch("inspect", copy.toString(), OCCUPANCY_KEY);
+        assertEquals(2, falseMarker.code());
+        assertTrue(falseMarker.err().contains("footer complete flag false is not true"), falseMarker.err());
     }
 
     @Test

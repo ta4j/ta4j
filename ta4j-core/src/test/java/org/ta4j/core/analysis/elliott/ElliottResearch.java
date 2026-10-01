@@ -811,15 +811,17 @@ final class ElliottResearch {
      * Claims {@code dir} for one run: an exclusive lock on its lock file, held
      * until the returned channel closes (or the process exits), stops a second
      * launcher from writing into the same directory; the emptiness check that
-     * follows ignores the lock file itself.
+     * follows ignores the lock file itself. A refused reservation removes the lock
+     * file it created, so a refused directory is left as it was found.
      */
     private static FileChannel reserveRunDirectory(final Path dir, final boolean overwrite) throws IOException {
         if (Files.exists(dir) && !Files.isDirectory(dir)) {
             throw new IllegalArgumentException("output path exists and is not a directory: " + dir);
         }
         Files.createDirectories(dir);
-        final FileChannel channel = FileChannel.open(dir.resolve(LOCK_FILE), StandardOpenOption.CREATE,
-                StandardOpenOption.WRITE);
+        final Path lockFile = dir.resolve(LOCK_FILE);
+        final boolean createdLockFile = !Files.exists(lockFile);
+        final FileChannel channel = FileChannel.open(lockFile, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
         try {
             final FileLock lock;
             try {
@@ -834,6 +836,13 @@ final class ElliottResearch {
             return channel;
         } catch (final IOException | RuntimeException e) {
             channel.close();
+            if (createdLockFile) {
+                try {
+                    Files.deleteIfExists(lockFile);
+                } catch (final IOException cleanup) {
+                    e.addSuppressed(cleanup);
+                }
+            }
             throw e;
         }
     }

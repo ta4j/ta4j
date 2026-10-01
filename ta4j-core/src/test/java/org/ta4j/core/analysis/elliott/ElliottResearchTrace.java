@@ -416,11 +416,13 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
                             || count.getAsLong() != recordCount) {
                         throw corrupt(path, lineNumber, "footer record count " + count + " but read " + recordCount);
                     }
+                    // The writer only emits complete:true; any other flag would let records
+                    // follow a footer marker unchecked.
                     final JsonElement flag = object.get("complete");
-                    if (!flag.isJsonPrimitive() || !flag.getAsJsonPrimitive().isBoolean()) {
-                        throw corrupt(path, lineNumber, "footer complete flag " + flag + " is not a boolean");
+                    if (!flag.isJsonPrimitive() || !flag.getAsJsonPrimitive().isBoolean() || !flag.getAsBoolean()) {
+                        throw corrupt(path, lineNumber, "footer complete flag " + flag + " is not true");
                     }
-                    complete = flag.getAsBoolean();
+                    complete = true;
                 } else if (object.has("kind")) {
                     validateRecord(path, lineNumber, object);
                     recordCount++;
