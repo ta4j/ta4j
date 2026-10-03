@@ -27,7 +27,8 @@ import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
  * and close values before and after evaluation. A changed history rebuilds the
  * detector's dependent indicators; supported revisions keep constant-size
  * history checks. Indicator evaluation runs outside the detector's series read
- * scopes.
+ * scopes. Queries retry until the before/after observations agree; continuous
+ * mutation can prevent a query from completing.
  *
  * @since 0.23.1
  */

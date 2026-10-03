@@ -39,6 +39,10 @@ import org.ta4j.core.num.Num;
  * history checks. Indicator evaluation runs outside the detector's series read
  * scopes.
  *
+ * <p>
+ * Queries retry until the before/after history observations agree; continuous
+ * mutation can prevent a query from completing.
+ *
  * @since 0.22.2
  */
 public final class AdaptiveZigZagSwingDetector implements SwingDetector {

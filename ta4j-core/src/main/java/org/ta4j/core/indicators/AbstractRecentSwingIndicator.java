@@ -29,7 +29,11 @@ import static org.ta4j.core.num.NaN.NaN;
  * Revisionless series validate consumed retained bar values before cached
  * queries and after scanning without the series read lock. A mismatch clears
  * the tracker and its cached source graph before replay; revision-aware history
- * checks remain constant-time.
+ * checks remain constant-time. Queries retry until the history observations
+ * agree; continuous mutation can prevent completion. Each revisionless history
+ * comparison is linear in retained bars. A detector-backed first or replayed
+ * scan may perform one such comparison per scanned index, giving quadratic
+ * validation work in addition to the detector algorithm's cost.
  *
  * @since 0.20
  */
@@ -285,7 +289,18 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
             if (targetIndex <= lastScannedIndex) {
                 return false;
             }
-            final HistorySnapshot before = series.withReadLock(() -> HistorySnapshot.capture(series, targetIndex));
+            if (series.getBarHistoryRevision() < 0L && observedHistory != null
+                    && targetIndex > observedHistory.endIndex()) {
+                // Public price-source readers may have cached new bars before the
+                // tracker observes them. Clear those sources before consuming the
+                // extension, while preserving confirmed swings from the unchanged
+                // prefix. Pin values first so a mutation during invalidation still
+                // causes the normal full reset on the next iteration.
+                observedHistory = series.withReadLock(() -> HistorySnapshot.capture(series, series.getEndIndex()));
+                sourceInvalidationPending = true;
+                return true;
+            }
+            final HistorySnapshot before = series.withReadLock(() -> HistorySnapshot.capture(series, endIndex));
             final long firstIndex = Math.max((long) beginIndex, (long) lastScannedIndex + 1L);
             for (long currentIndex = firstIndex; currentIndex <= targetIndex; currentIndex++) {
                 final int currentBarIndex = (int) currentIndex;

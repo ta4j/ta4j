@@ -555,12 +555,12 @@ class AdaptiveZigZagSwingDetectorTest {
         }
 
         @Override
-        public long getBarHistoryRevision() {
+        public synchronized long getBarHistoryRevision() {
             return -1L;
         }
 
         @Override
-        public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
+        public synchronized BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
             return new BarSeriesChangeSnapshot(-1L, -1, getRemovedBarsCount() - 1, getMaximumBarCount(), getEndIndex());
         }
 

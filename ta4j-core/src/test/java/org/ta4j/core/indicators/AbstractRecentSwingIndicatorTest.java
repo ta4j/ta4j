@@ -8,6 +8,8 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -25,6 +27,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -363,6 +366,50 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
     }
 
     @Test
+    public void shouldResetIndependentlyCachedPricesBeforeExtendingAShortScan() {
+        final BarSeries series = revisionlessSeriesFromCloses(5, 10, 5, 1, 1);
+        final RecentFractalSwingHighIndicator indicator = new RecentFractalSwingHighIndicator(
+                new CachedHighPriceIndicator(series), 1, 1, 0);
+        indicator.getLatestSwingIndex(1);
+        assertThat(indicator.getPriceIndicator().getValue(2)).isEqualByComparingTo(series.numFactory().numOf(5));
+        series.getBar(2).addPrice(series.numFactory().numOf(20));
+        final RecentFractalSwingHighIndicator fresh = new RecentFractalSwingHighIndicator(series, 1);
+        assertThat(indicator.getValue(3)).isEqualByComparingTo(fresh.getValue(3));
+        assertThat(indicator.getLatestSwingIndex(3)).isEqualTo(fresh.getLatestSwingIndex(3));
+        assertThat(indicator.getLatestSwingConfirmationIndex(3)).isEqualTo(fresh.getLatestSwingConfirmationIndex(3));
+    }
+
+    @Test
+    public void shouldResetIndependentlyCachedPricesInAnAppendedRange() {
+        final BarSeries series = revisionlessSeriesFromCloses(5, 10, 5);
+        final RecentFractalSwingHighIndicator indicator = new RecentFractalSwingHighIndicator(
+                new CachedHighPriceIndicator(series), 1, 1, 0);
+        indicator.getLatestSwingIndex(2);
+        addTimedBar(series, 1);
+        addTimedBar(series, 1);
+        assertThat(indicator.getPriceIndicator().getValue(3)).isEqualByComparingTo(series.numFactory().numOf(1));
+        series.getBar(3).addPrice(series.numFactory().numOf(20));
+        final RecentFractalSwingHighIndicator fresh = new RecentFractalSwingHighIndicator(series, 1);
+        assertThat(indicator.getValue(4)).isEqualByComparingTo(fresh.getValue(4));
+        assertThat(indicator.getSwingPointIndexesUpTo(4)).isEqualTo(fresh.getSwingPointIndexesUpTo(4));
+    }
+
+    @Test
+    public void shouldResetBuiltInMovingAverageSourcesAfterRetainedValueMutation() {
+        final BarSeries series = revisionlessSeriesFromCloses(5, 10, 5, 1, 1);
+        final RecentFractalSwingHighIndicator indicator = new RecentFractalSwingHighIndicator(
+                new SMAIndicator(new HighPriceIndicator(series), 1), 1, 1, 0);
+        assertThat(indicator.getValue(3)).isEqualByComparingTo(series.numFactory().numOf(10));
+        series.getBar(2).addPrice(series.numFactory().numOf(20));
+        final RecentFractalSwingHighIndicator fresh = new RecentFractalSwingHighIndicator(
+                new SMAIndicator(new HighPriceIndicator(series), 1), 1, 1, 0);
+        assertThat(indicator.getValue(3)).isEqualByComparingTo(fresh.getValue(3));
+        assertThat(indicator.getSwingPointIndexesUpTo(3)).isEqualTo(fresh.getSwingPointIndexesUpTo(3));
+        addTimedBar(series, 1);
+        assertThat(indicator.getValue(series.getEndIndex())).isEqualByComparingTo(fresh.getValue(series.getEndIndex()));
+    }
+
+    @Test
     public void shouldValidateEachNumericReadAgainstItsOwnHistoryObservation() {
         final ReadBoundaryBarSeries series = new ReadBoundaryBarSeries();
         for (int close : new int[] { 5, 10, 5, 1, 1 }) {
@@ -406,6 +453,30 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
             seriesBuilder.barBuilder().openPrice(close).closePrice(close).highPrice(close).lowPrice(close).add();
         }
         return seriesBuilder;
+    }
+
+    private BarSeries revisionlessSeriesFromCloses(double... closes) {
+        final BarSeries delegate = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (double close : closes) {
+            addTimedBar(delegate, close);
+        }
+        return (BarSeries) Proxy.newProxyInstance(BarSeries.class.getClassLoader(), new Class<?>[] { BarSeries.class },
+                (proxy, method, arguments) -> {
+                    if (method.getName().equals("getBarHistoryRevision")) {
+                        return -1L;
+                    }
+                    if (method.getName().equals("getBarSeriesChangeSnapshot")) {
+                        synchronized (delegate) {
+                            return new BarSeriesChangeSnapshot(-1L, -1, delegate.getRemovedBarsCount() - 1,
+                                    delegate.getMaximumBarCount(), delegate.getEndIndex());
+                        }
+                    }
+                    try {
+                        return method.invoke(delegate, arguments);
+                    } catch (InvocationTargetException failure) {
+                        throw failure.getCause();
+                    }
+                });
     }
 
     private void addTimedBar(final BarSeries series, final Number close) {
@@ -486,12 +557,12 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
         }
 
         @Override
-        public long getBarHistoryRevision() {
+        public synchronized long getBarHistoryRevision() {
             return -1L;
         }
 
         @Override
-        public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long sinceRevision) {
+        public synchronized BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long sinceRevision) {
             return new BarSeriesChangeSnapshot(-1L, -1, getRemovedBarsCount() - 1, getMaximumBarCount(), getEndIndex());
         }
     }

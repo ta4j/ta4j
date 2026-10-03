@@ -126,6 +126,29 @@ public class RecentSwingIndicatorsTest extends AbstractIndicatorTest<Indicator<N
     }
 
     @Test
+    public void shouldKeepRevisionlessFactoryHistoricalIndexesCausal() {
+        final double[] closes = { 100, 130, 90, 140, 80, 150, 70, 160 };
+        final AdaptiveZigZagConfig config = new AdaptiveZigZagConfig(1, 1.0, 0.0, 20.0, 1);
+        final Pair fullHistory = RecentSwingIndicators.adaptiveZigZag(new RevisionlessSeries(seriesFromCloses(closes)),
+                config);
+        // Visit backwards as well as forwards: later confirmations must not be
+        // substituted for the detector result at an earlier evaluation index.
+        for (int index = closes.length - 1; index >= 0; index--) {
+            final double[] prefix = java.util.Arrays.copyOf(closes, index + 1);
+            final Pair causal = RecentSwingIndicators.adaptiveZigZag(new RevisionlessSeries(seriesFromCloses(prefix)),
+                    config);
+            assertThat(fullHistory.highs().getLatestSwingIndex(index))
+                    .isEqualTo(causal.highs().getLatestSwingIndex(index));
+            assertThat(fullHistory.lows().getLatestSwingIndex(index))
+                    .isEqualTo(causal.lows().getLatestSwingIndex(index));
+            assertThat(fullHistory.highs().getLatestSwingConfirmationIndex(index))
+                    .isEqualTo(causal.highs().getLatestSwingConfirmationIndex(index));
+            assertThat(fullHistory.lows().getLatestSwingConfirmationIndex(index))
+                    .isEqualTo(causal.lows().getLatestSwingConfirmationIndex(index));
+        }
+    }
+
+    @Test
     public void shouldRevalidateDetectorFactoryViewsAfterRevisionlessRetainedMutation() {
         final BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (double close : new double[] { 100, 130, 90, 140, 80, 150 }) {
@@ -185,12 +208,12 @@ public class RecentSwingIndicatorsTest extends AbstractIndicatorTest<Indicator<N
         }
 
         @Override
-        public long getBarHistoryRevision() {
+        public synchronized long getBarHistoryRevision() {
             return -1L;
         }
 
         @Override
-        public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
+        public synchronized BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
             return new BarSeriesChangeSnapshot(-1L, -1, getRemovedBarsCount() - 1, getMaximumBarCount(), getEndIndex());
         }
     }
