@@ -6,15 +6,19 @@ package org.ta4j.core.indicators;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RecentSwingIndicators.Confirmation;
 import org.ta4j.core.indicators.RecentSwingIndicators.Method;
 import org.ta4j.core.indicators.RecentSwingIndicators.Pair;
 import org.ta4j.core.indicators.RecentSwingIndicators.SwingPoint;
+import org.ta4j.core.analysis.elliott.swing.AdaptiveZigZagConfig;
 import org.ta4j.core.analysis.elliott.swing.SwingDetector;
 import org.ta4j.core.analysis.elliott.swing.SwingDetectorResult;
 import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
@@ -119,6 +123,76 @@ public class RecentSwingIndicatorsTest extends AbstractIndicatorTest<Indicator<N
         assertThatThrownBy(() -> new Pair(new RecentFractalSwingHighIndicator(highSeries, 1),
                 new RecentFractalSwingLowIndicator(lowSeries, 1))).isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("highs and lows must share the same bar series instance");
+    }
+
+    @Test
+    public void shouldRevalidateDetectorFactoryViewsAfterRevisionlessRetainedMutation() {
+        final BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (double close : new double[] { 100, 130, 90, 140, 80, 150 }) {
+            source.barBuilder().openPrice(close).highPrice(close + 1).lowPrice(close - 1).closePrice(close).add();
+        }
+        final BarSeries series = new RevisionlessSeries(source);
+        final AdaptiveZigZagConfig config = new AdaptiveZigZagConfig(1, 1.0, 0.0, 20.0, 1);
+        final Pair warmed = RecentSwingIndicators.adaptiveZigZag(series, config);
+        final int index = series.getEndIndex() - 1;
+        final Num previousPrice = warmed.highs().getPriceIndicator().getValue(2);
+        final Num previousHigh = warmed.highs().getValue(index);
+        warmed.lows().getValue(index);
+        final Bar interior = series.getBar(2);
+        final Bar terminal = series.getLastBar();
+        final int begin = series.getBeginIndex();
+        final int end = series.getEndIndex();
+
+        interior.addPrice(series.numFactory().numOf(170));
+
+        assertThat(series.getBar(2)).isSameAs(interior);
+        assertThat(series.getLastBar()).isSameAs(terminal);
+        assertThat(series.getBeginIndex()).isEqualTo(begin);
+        assertThat(series.getEndIndex()).isEqualTo(end);
+        assertThat(series.getBarHistoryRevision()).isEqualTo(-1L);
+        final Pair fresh = RecentSwingIndicators.adaptiveZigZag(series, config);
+        final Num expectedPrice = fresh.highs().getPriceIndicator().getValue(2);
+        final Num expectedHigh = fresh.highs().getValue(index);
+        assertThat(expectedPrice).isNotEqualTo(previousPrice);
+        assertThat(expectedHigh).isNotEqualTo(previousHigh);
+        // Direct source reads must also reach the detector, without first resetting
+        // the enclosing recent-swing tracker.
+        assertThat(warmed.highs().getPriceIndicator().getValue(2)).isEqualByComparingTo(expectedPrice);
+        for (int query = 0; query < 2; query++) {
+            assertThat(warmed.highs().getValue(index)).isEqualTo(expectedHigh);
+            assertThat(warmed.lows().getValue(index)).isEqualTo(fresh.lows().getValue(index));
+            assertThat(warmed.highs().getLatestSwingIndex(index)).isEqualTo(fresh.highs().getLatestSwingIndex(index));
+            assertThat(warmed.lows().getLatestSwingIndex(index)).isEqualTo(fresh.lows().getLatestSwingIndex(index));
+            assertThat(warmed.highs().getSwingPointIndexesUpTo(index))
+                    .isEqualTo(fresh.highs().getSwingPointIndexesUpTo(index));
+            assertThat(warmed.lows().getSwingPointIndexesUpTo(index))
+                    .isEqualTo(fresh.lows().getSwingPointIndexesUpTo(index));
+        }
+    }
+
+    private static final class RevisionlessSeries extends BaseBarSeries {
+
+        private final NumFactory sourceNumFactory;
+
+        private RevisionlessSeries(final BarSeries source) {
+            super("revisionless-swing-factory", new ArrayList<>(source.getBarData()));
+            sourceNumFactory = source.numFactory();
+        }
+
+        @Override
+        public NumFactory numFactory() {
+            return sourceNumFactory;
+        }
+
+        @Override
+        public long getBarHistoryRevision() {
+            return -1L;
+        }
+
+        @Override
+        public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
+            return new BarSeriesChangeSnapshot(-1L, -1, getRemovedBarsCount() - 1, getMaximumBarCount(), getEndIndex());
+        }
     }
 
     private SwingDetector fixedHighDetector(final int pivotIndex, final Number price) {

@@ -476,7 +476,7 @@ public final class RecentSwingIndicators {
 
         private DetectorRecentSwingIndicator(final Indicator<Num> priceIndicator,
                 final Indicator<List<SwingPivot>> pivots, final SwingPivotType type) {
-            super(priceIndicator, 0);
+            super(priceIndicator, 0, pivots);
             this.pivots = pivots;
             this.type = type;
         }
@@ -517,6 +517,10 @@ public final class RecentSwingIndicators {
 
         @Override
         public Num getValue(final int index) {
+            if (getBarSeries().getBarHistoryRevision() < 0L) {
+                // Let the detector validate values instead of serving an outer cache hit.
+                return calculate(index);
+            }
             resetIfHistoryChanged();
             return super.getValue(index);
         }
@@ -576,6 +580,9 @@ public final class RecentSwingIndicators {
 
         @Override
         public synchronized List<SwingPivot> getValue(final int index) {
+            if (getBarSeries().getBarHistoryRevision() < 0L) {
+                return calculate(index);
+            }
             invalidateIfHistoryChanged();
             final List<SwingPivot> result = super.getValue(index);
             final BarSeries series = getBarSeries();
