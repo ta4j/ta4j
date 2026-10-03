@@ -1112,6 +1112,35 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
     }
 
     /**
+     * Clears this cache and the registered cached source graph after an owner has
+     * detected a retained-value change that the series cannot publish. Clearing
+     * only the enclosing cache would allow its replay to consume stale source
+     * values. Shared nodes and cycles are visited once, without evaluating sources.
+     *
+     * <p>
+     * Call outside the series read scope and any owner monitor acquired by cache
+     * calculations. The caller owns resetting its additional recursive state and
+     * verifying that the history remains stable across the subsequent replay.
+     *
+     * @since 0.25.1
+     */
+    protected final void invalidateCacheIncludingDependencies() {
+        Set<Indicator<?>> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+        Deque<Indicator<?>> pending = new ArrayDeque<>();
+        pending.add(this);
+        while (!pending.isEmpty()) {
+            Indicator<?> indicator = pending.removeLast();
+            if (!visited.add(indicator)) {
+                continue;
+            }
+            if (indicator instanceof CachedIndicator<?> cached) {
+                cached.invalidateCache();
+            }
+            pending.addAll(indicator.getDependencies());
+        }
+    }
+
+    /**
      * Clears cached values from the specified index (inclusive) to the end of the
      * cache. Values before the index remain cached.
      *

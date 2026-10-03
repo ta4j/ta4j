@@ -5,8 +5,8 @@ package org.ta4j.core.analysis.elliott.swing;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.locks.ReentrantLock;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.RecentProminenceSwingHighIndicator;
 import org.ta4j.core.indicators.RecentProminenceSwingLowIndicator;
@@ -21,17 +21,23 @@ import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
  * and reversal-distance ZigZag: candidates must be local extrema and must stand
  * materially above or below their surrounding baselines.
  *
+ * <p>
+ * Series without bar-history revisions are revalidated by retained high, low
+ * and close values before and after evaluation. A changed history rebuilds the
+ * detector's dependent indicators; supported revisions keep constant-size
+ * history checks. Indicator evaluation runs outside the detector's series read
+ * scopes.
+ *
  * @since 0.23.1
  */
 public final class ProminenceSwingDetector implements SwingDetector {
 
     private final ProminenceSwingConfig config;
+    private final ReentrantLock detectionLock = new ReentrantLock();
     private transient BarSeries cachedSeries;
     private transient ElliottDegree cachedDegree;
     private transient ElliottSwingIndicator cachedIndicator;
-    private transient long observedRevision;
-    private transient int observedEndIndex;
-    private transient Bar observedLastBar;
+    private SwingHistorySnapshot observedHistory;
 
     /**
      * Creates a detector with {@link ProminenceSwingConfig#defaults()}.
@@ -53,16 +59,59 @@ public final class ProminenceSwingDetector implements SwingDetector {
     }
 
     @Override
-    public synchronized SwingDetectorResult detect(final BarSeries series, final int index,
-            final ElliottDegree degree) {
+    public SwingDetectorResult detect(final BarSeries series, final int index, final ElliottDegree degree) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(degree, "degree");
-        if (series.isEmpty()) {
-            return new SwingDetectorResult(List.of(), List.of());
+        // Never wait for an owner that may itself be waiting to read this series.
+        // A caller can already hold the series lock; contention uses a fresh graph.
+        if (!detectionLock.tryLock()) {
+            return new ProminenceSwingDetector(config).detect(series, index, degree);
         }
-        final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
-        final ElliottSwingIndicator indicator = indicatorFor(series, degree);
-        return SwingDetectorResult.fromSwings(indicator.getValue(clampedIndex));
+        try {
+            while (true) {
+                final boolean changed = series.withReadLock(() -> {
+                    final boolean historyChanged = cachedIndicator != null && cachedSeries == series
+                            && observedHistory.hasChangedIn(series, false);
+                    observedHistory = SwingHistorySnapshot.capture(series);
+                    return historyChanged;
+                });
+                if (observedHistory.endIndex() < observedHistory.beginIndex()) {
+                    cachedIndicator = null;
+                    return new SwingDetectorResult(List.of(), List.of());
+                }
+                final int clampedIndex = Math.max(observedHistory.beginIndex(),
+                        Math.min(index, observedHistory.endIndex()));
+                if (cachedIndicator == null || cachedSeries != series || cachedDegree != degree || changed) {
+                    cachedSeries = series;
+                    cachedDegree = degree;
+                    cachedIndicator = new ElliottSwingIndicator(new RecentProminenceSwingHighIndicator(series, config),
+                            new RecentProminenceSwingLowIndicator(series, config), degree);
+                }
+                SwingDetectorResult result = null;
+                IndexOutOfBoundsException evaluationFailure = null;
+                try {
+                    // Indicator caches acquire their own locks before reading bars.
+                    // The graph must run outside our short series read scopes.
+                    result = SwingDetectorResult.fromSwings(cachedIndicator.getValue(clampedIndex));
+                } catch (IndexOutOfBoundsException exception) {
+                    evaluationFailure = exception;
+                }
+                final boolean changedDuringEvaluation = series
+                        .withReadLock(() -> observedHistory.hasChangedIn(series, true));
+                if (!changedDuringEvaluation && evaluationFailure == null) {
+                    return result;
+                }
+                // Discard the complete dependent graph, including ATR and recursive
+                // state, so a retry cannot inherit values from another history.
+                cachedIndicator = null;
+                observedHistory = null;
+                if (!changedDuringEvaluation) {
+                    throw evaluationFailure;
+                }
+            }
+        } finally {
+            detectionLock.unlock();
+        }
     }
 
     /**
@@ -73,25 +122,4 @@ public final class ProminenceSwingDetector implements SwingDetector {
         return config;
     }
 
-    private ElliottSwingIndicator indicatorFor(final BarSeries series, final ElliottDegree degree) {
-        if (cachedIndicator == null || cachedSeries != series || cachedDegree != degree || historyChanged(series)) {
-            cachedSeries = series;
-            cachedDegree = degree;
-            cachedIndicator = new ElliottSwingIndicator(new RecentProminenceSwingHighIndicator(series, config),
-                    new RecentProminenceSwingLowIndicator(series, config), degree);
-        }
-        observedRevision = series.getBarHistoryRevision();
-        observedEndIndex = series.getEndIndex();
-        observedLastBar = observedRevision < 0L && !series.isEmpty() ? series.getLastBar() : null;
-        return cachedIndicator;
-    }
-
-    private boolean historyChanged(final BarSeries series) {
-        final long currentRevision = series.getBarHistoryRevision();
-        final int currentEndIndex = series.getEndIndex();
-        final Bar currentLastBar = currentRevision < 0L && !series.isEmpty() ? series.getLastBar() : null;
-        return currentRevision >= 0L && observedRevision >= 0L && currentRevision != observedRevision
-                || currentRevision < 0L && (currentEndIndex < observedEndIndex
-                        || currentEndIndex == observedEndIndex && currentLastBar != observedLastBar);
-    }
 }

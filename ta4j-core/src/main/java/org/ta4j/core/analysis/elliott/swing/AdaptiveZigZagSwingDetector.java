@@ -6,8 +6,8 @@ package org.ta4j.core.analysis.elliott.swing;
 import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.locks.ReentrantLock;
 
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.ATRIndicator;
@@ -32,21 +32,24 @@ import org.ta4j.core.num.Num;
  * full history. Historical queries that move backward rebuild the pipeline to
  * preserve causal pivot confirmation.
  *
+ * <p>
+ * Series without bar-history revisions are revalidated by retained high, low
+ * and close values before and after evaluation. A changed history rebuilds the
+ * detector's dependent indicators; supported revisions keep constant-size
+ * history checks. Indicator evaluation runs outside the detector's series read
+ * scopes.
+ *
  * @since 0.22.2
  */
 public final class AdaptiveZigZagSwingDetector implements SwingDetector {
 
     private final AdaptiveZigZagConfig config;
+    private final ReentrantLock detectionLock = new ReentrantLock();
     private WeakReference<BarSeries> cachedSeries = new WeakReference<>(null);
     private ElliottDegree cachedDegree;
     private ElliottSwingIndicator cachedIndicator;
     private int cachedIndex = -1;
-    private Bar cachedFirstBar;
-    private Bar cachedLastBar;
-    private List<Bar> cachedBars = List.of();
-    private long cachedBarHistoryRevision = -1L;
-    private int cachedBeginIndex = -1;
-    private int cachedEndIndex = -1;
+    private SwingHistorySnapshot observedHistory;
 
     /**
      * Creates a detector using the supplied configuration.
@@ -59,64 +62,68 @@ public final class AdaptiveZigZagSwingDetector implements SwingDetector {
     }
 
     @Override
-    public synchronized SwingDetectorResult detect(final BarSeries series, final int index,
-            final ElliottDegree degree) {
+    public SwingDetectorResult detect(final BarSeries series, final int index, final ElliottDegree degree) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(degree, "degree");
-        if (series.isEmpty()) {
-            return new SwingDetectorResult(List.of(), List.of());
+        // Never wait for an owner that may itself be waiting to read this series.
+        // A caller can already hold the series lock; contention uses a fresh graph.
+        if (!detectionLock.tryLock()) {
+            return new AdaptiveZigZagSwingDetector(config).detect(series, index, degree);
         }
-        final int currentBeginIndex = series.getBeginIndex();
-        final int currentEndIndex = series.getEndIndex();
-        final Bar currentLastBar = series.getBar(currentEndIndex);
-        final long currentBarHistoryRevision = series.getBarHistoryRevision();
-        final boolean tracksBarHistoryRevision = currentBarHistoryRevision >= 0L;
-        // Revision-unaware implementations may expose a stable mutable list. Preserve
-        // the comparison baseline so in-place replacements invalidate the cache.
-        final List<Bar> currentBars = tracksBarHistoryRevision ? List.of() : List.copyOf(series.getBarData());
-        final int clampedIndex = Math.max(currentBeginIndex, Math.min(index, currentEndIndex));
-        final boolean revisedBarHistory = tracksBarHistoryRevision && cachedBarHistoryRevision >= 0L
-                && currentBarHistoryRevision != cachedBarHistoryRevision;
-        final boolean historyReplaced = cachedIndicator != null && cachedSeries.get() == series
-                && (currentEndIndex < cachedEndIndex
-                        || (currentBeginIndex <= cachedBeginIndex && series.getBar(currentBeginIndex) != cachedFirstBar)
-                        || revisedBarHistory || (currentEndIndex == cachedEndIndex
-                                && (currentLastBar != cachedLastBar || !hasSameBars(currentBars))));
-        if (cachedIndicator == null || cachedSeries.get() != series || cachedDegree != degree || historyReplaced
-                || clampedIndex < cachedIndex) {
-            final Indicator<Num> highPrice = new HighPriceIndicator(series);
-            final Indicator<Num> lowPrice = new LowPriceIndicator(series);
-            final Indicator<Num> atr = new ATRIndicator(series, config.atrPeriod());
-            final Indicator<Num> smoothedAtr = config.smoothingPeriod() > 1
-                    ? new SMAIndicator(atr, config.smoothingPeriod())
-                    : atr;
-            final Indicator<Num> threshold = new AdaptiveZigZagThresholdIndicator(smoothedAtr, config);
-            final ZigZagStateIndicator state = new ZigZagStateIndicator(highPrice, lowPrice, threshold);
-            cachedSeries = new WeakReference<>(series);
-            cachedDegree = degree;
-            cachedIndicator = ElliottSwingIndicator.zigZag(state, highPrice, lowPrice, degree);
-            cachedFirstBar = series.getBar(currentBeginIndex);
-            cachedBeginIndex = currentBeginIndex;
-        }
-        final SwingDetectorResult result = SwingDetectorResult.fromSwings(cachedIndicator.getValue(clampedIndex));
-        cachedIndex = clampedIndex;
-        cachedEndIndex = currentEndIndex;
-        cachedLastBar = currentLastBar;
-        cachedBars = currentBars;
-        cachedBarHistoryRevision = currentBarHistoryRevision;
-        return result;
-    }
-
-    private boolean hasSameBars(final List<Bar> bars) {
-        if (cachedBars.size() != bars.size()) {
-            return false;
-        }
-        for (int index = 0; index < bars.size(); index++) {
-            if (cachedBars.get(index) != bars.get(index)) {
-                return false;
+        try {
+            while (true) {
+                final boolean changed = series.withReadLock(() -> {
+                    final boolean historyChanged = cachedIndicator != null && cachedSeries.get() == series
+                            && observedHistory.hasChangedIn(series, false);
+                    observedHistory = SwingHistorySnapshot.capture(series);
+                    return historyChanged;
+                });
+                if (observedHistory.endIndex() < observedHistory.beginIndex()) {
+                    cachedIndicator = null;
+                    return new SwingDetectorResult(List.of(), List.of());
+                }
+                final int clampedIndex = Math.max(observedHistory.beginIndex(),
+                        Math.min(index, observedHistory.endIndex()));
+                if (cachedIndicator == null || cachedSeries.get() != series || cachedDegree != degree || changed
+                        || clampedIndex < cachedIndex) {
+                    final Indicator<Num> highPrice = new HighPriceIndicator(series);
+                    final Indicator<Num> lowPrice = new LowPriceIndicator(series);
+                    final Indicator<Num> atr = new ATRIndicator(series, config.atrPeriod());
+                    final Indicator<Num> smoothedAtr = config.smoothingPeriod() > 1
+                            ? new SMAIndicator(atr, config.smoothingPeriod())
+                            : atr;
+                    final Indicator<Num> threshold = new AdaptiveZigZagThresholdIndicator(smoothedAtr, config);
+                    final ZigZagStateIndicator state = new ZigZagStateIndicator(highPrice, lowPrice, threshold);
+                    cachedSeries = new WeakReference<>(series);
+                    cachedDegree = degree;
+                    cachedIndicator = ElliottSwingIndicator.zigZag(state, highPrice, lowPrice, degree);
+                }
+                SwingDetectorResult result = null;
+                IndexOutOfBoundsException evaluationFailure = null;
+                try {
+                    // Indicator caches acquire their own locks before reading bars.
+                    // The graph must run outside our short series read scopes.
+                    result = SwingDetectorResult.fromSwings(cachedIndicator.getValue(clampedIndex));
+                } catch (IndexOutOfBoundsException exception) {
+                    evaluationFailure = exception;
+                }
+                final boolean changedDuringEvaluation = series
+                        .withReadLock(() -> observedHistory.hasChangedIn(series, true));
+                if (!changedDuringEvaluation && evaluationFailure == null) {
+                    cachedIndex = clampedIndex;
+                    return result;
+                }
+                // Discard the complete dependent graph, including ATR and recursive
+                // state, so a retry cannot inherit values from another history.
+                cachedIndicator = null;
+                observedHistory = null;
+                if (!changedDuringEvaluation) {
+                    throw evaluationFailure;
+                }
             }
+        } finally {
+            detectionLock.unlock();
         }
-        return true;
     }
 
     /**

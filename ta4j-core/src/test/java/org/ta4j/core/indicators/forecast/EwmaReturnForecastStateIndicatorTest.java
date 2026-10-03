@@ -10,10 +10,15 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -24,6 +29,7 @@ import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.indicators.statistics.EwmaVarianceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -285,6 +291,167 @@ public class EwmaReturnForecastStateIndicatorTest
         assertTrue(reference.isStable());
         assertNumEquals(reference.mean(), result.mean());
         assertNumEquals(reference.variance(), result.variance());
+    }
+
+    @Test
+    public void revisionlessInteriorCloseMutationRefreshesSameIndexState() {
+        BarSeries series = revisionlessSeries(100, 110, 121, 133.1, 146.41, 161.051);
+        EwmaReturnForecastStateIndicator warmed = rollingMeanState(new LogReturnIndicator(series));
+        assertTrue(warmed.getValue(4).isStable());
+        Bar interiorBar = series.getBar(2);
+        Bar endBar = series.getLastBar();
+
+        interiorBar.addPrice(series.numFactory().numOf(150));
+
+        assertSame(interiorBar, series.getBar(2));
+        assertSame(endBar, series.getLastBar());
+        assertEquals(0, series.getBeginIndex());
+        assertEquals(5, series.getEndIndex());
+        assertEquals(-1L, series.getBarHistoryRevision());
+        assertEquals(-1L, series.getBarSeriesChangeSnapshot(-1L).revision());
+        assertStateEquals(rollingMeanState(new LogReturnIndicator(series)).getValue(4), warmed.getValue(4));
+    }
+
+    @Test
+    public void revisionlessInvalidInteriorCloseMutationRefreshesStateAfterAppend() {
+        BarSeries series = revisionlessSeries(100, 110, 121, 133.1, 146.41, 161.051);
+        EwmaReturnForecastStateIndicator warmed = rollingMeanState(new LogReturnIndicator(series));
+        assertEquals(5, warmed.getValue(5).observationCount());
+        series.getBar(2).addPrice(series.numFactory().zero());
+        appendClose(series, 177.1561);
+
+        ReturnForecastState fresh = rollingMeanState(new LogReturnIndicator(series)).getValue(6);
+        assertTrue(fresh.isStable());
+        assertEquals(3, fresh.observationCount());
+        assertStateEquals(fresh, warmed.getValue(6));
+    }
+
+    @Test
+    public void revisionlessInteriorMutationDuringMomentReadsRetriesCoherentState() {
+        AtomicBoolean inReadScope = new AtomicBoolean();
+        BarSeries series = instrumentedSeries(true, new AtomicInteger(), inReadScope, 100, 110, 121, 133.1, 146.41,
+                161.051);
+        ReturnIndicator mutatingReturns = new ReturnIndicator() {
+            private int targetReads;
+
+            @Override
+            public Num getValue(int index) {
+                assertFalse("Return graph evaluated inside source read scope", inReadScope.get());
+                // Count and shared mean consume the original prefix first.
+                // Change an interior close when variance starts reading it.
+                if (index == 4 && ++targetReads == 3) {
+                    series.getBar(2).addPrice(series.numFactory().numOf(150));
+                }
+                if (index < 1) {
+                    return NaN.NaN;
+                }
+                return series.getBar(index).getClosePrice().dividedBy(series.getBar(index - 1).getClosePrice()).log();
+            }
+
+            @Override
+            public BarSeries getBarSeries() {
+                return series;
+            }
+
+            @Override
+            public ReturnRepresentation getReturnRepresentation() {
+                return ReturnRepresentation.LOG;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 1;
+            }
+        };
+
+        ReturnForecastState result = rollingMeanState(mutatingReturns).getValue(4);
+
+        assertNumEquals(150, series.getBar(2).getClosePrice());
+        assertStateEquals(rollingMeanState(new LogReturnIndicator(series)).getValue(4), result);
+    }
+
+    @Test
+    public void revisionAwareCachedReadsDoNotScanRetainedHistory() {
+        assertEquals(cachedReadBarCount(6), cachedReadBarCount(40));
+    }
+
+    private int cachedReadBarCount(int barCount) {
+        double[] closes = new double[barCount];
+        for (int index = 0; index < barCount; index++) {
+            closes[index] = 100 + index;
+        }
+        AtomicInteger barReads = new AtomicInteger();
+        BarSeries series = instrumentedSeries(false, barReads, new AtomicBoolean(), closes);
+        EwmaReturnForecastStateIndicator indicator = rollingMeanState(new LogReturnIndicator(series));
+        indicator.getValue(barCount - 2);
+        barReads.set(0);
+
+        for (int read = 0; read < 3; read++) {
+            indicator.getValue(barCount - 2);
+        }
+        return barReads.get();
+    }
+
+    private EwmaReturnForecastStateIndicator rollingMeanState(ReturnIndicator returns) {
+        return new EwmaReturnForecastStateIndicator(returns, 2, 0.5,
+                EwmaReturnForecastStateIndicator.DriftMode.ROLLING_MEAN);
+    }
+
+    private static void assertStateEquals(ReturnForecastState expected, ReturnForecastState actual) {
+        assertEquals(expected.isStable(), actual.isStable());
+        assertEquals(expected.observationCount(), actual.observationCount());
+        assertNumEquals(expected.mean(), actual.mean());
+        assertNumEquals(expected.drift(), actual.drift());
+        assertNumEquals(expected.variance(), actual.variance());
+    }
+
+    private BarSeries revisionlessSeries(double... closes) {
+        return instrumentedSeries(true, new AtomicInteger(), new AtomicBoolean(), closes);
+    }
+
+    private BarSeries instrumentedSeries(boolean revisionless, AtomicInteger barReads, AtomicBoolean inReadScope,
+            double... closes) {
+        BarSeries delegate = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closes).build();
+        // Adapt the public series contract only; both revision entry points must
+        // report unsupported changes, even though the backing fixture tracks them.
+        return (BarSeries) Proxy.newProxyInstance(BarSeries.class.getClassLoader(), new Class<?>[] { BarSeries.class },
+                (proxy, method, arguments) -> {
+                    if (revisionless && method.getName().equals("getBarHistoryRevision")) {
+                        return -1L;
+                    }
+                    if (revisionless && method.getName().equals("getBarSeriesChangeSnapshot")) {
+                        return new BarSeries.BarSeriesChangeSnapshot(-1L, -1, delegate.getRemovedBarsCount() - 1,
+                                delegate.getMaximumBarCount(), delegate.getEndIndex());
+                    }
+                    if (method.getName().equals("getBar")) {
+                        barReads.incrementAndGet();
+                    }
+                    boolean readScope = method.getName().equals("withReadLock");
+                    boolean previousReadScope = inReadScope.get();
+                    if (readScope) {
+                        inReadScope.set(true);
+                    }
+                    try {
+                        return method.invoke(delegate, arguments);
+                    } catch (InvocationTargetException failure) {
+                        throw failure.getCause();
+                    } finally {
+                        if (readScope) {
+                            inReadScope.set(previousReadScope);
+                        }
+                    }
+                });
+    }
+
+    private static void appendClose(BarSeries series, double close) {
+        series.addBar(series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
+                .openPrice(close)
+                .highPrice(close)
+                .lowPrice(close)
+                .closePrice(close)
+                .build());
     }
 
     private static final class MutatingReturnIndicator implements ReturnIndicator {
