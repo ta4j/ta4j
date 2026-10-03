@@ -6,13 +6,15 @@ package org.ta4j.core.indicators;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.ArrayList;
+import java.time.Duration;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RecentSwingIndicators.Confirmation;
 import org.ta4j.core.indicators.RecentSwingIndicators.Method;
@@ -24,6 +26,9 @@ import org.ta4j.core.analysis.elliott.swing.SwingDetectorResult;
 import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
 import org.ta4j.core.analysis.elliott.swing.SwingPivot;
 import org.ta4j.core.analysis.elliott.swing.SwingPivotType;
+import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingHighIndicator;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingLowIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -129,13 +134,13 @@ public class RecentSwingIndicatorsTest extends AbstractIndicatorTest<Indicator<N
     public void shouldKeepRevisionlessFactoryHistoricalIndexesCausal() {
         final double[] closes = { 100, 130, 90, 140, 80, 150, 70, 160 };
         final AdaptiveZigZagConfig config = new AdaptiveZigZagConfig(1, 1.0, 0.0, 20.0, 1);
-        final Pair fullHistory = RecentSwingIndicators.adaptiveZigZag(new RevisionlessSeries(seriesFromCloses(closes)),
+        final Pair fullHistory = RecentSwingIndicators.adaptiveZigZag(revisionlessSeries(seriesFromCloses(closes)),
                 config);
         // Visit backwards as well as forwards: later confirmations must not be
         // substituted for the detector result at an earlier evaluation index.
         for (int index = closes.length - 1; index >= 0; index--) {
             final double[] prefix = java.util.Arrays.copyOf(closes, index + 1);
-            final Pair causal = RecentSwingIndicators.adaptiveZigZag(new RevisionlessSeries(seriesFromCloses(prefix)),
+            final Pair causal = RecentSwingIndicators.adaptiveZigZag(revisionlessSeries(seriesFromCloses(prefix)),
                     config);
             assertThat(fullHistory.highs().getLatestSwingIndex(index))
                     .isEqualTo(causal.highs().getLatestSwingIndex(index));
@@ -154,7 +159,7 @@ public class RecentSwingIndicatorsTest extends AbstractIndicatorTest<Indicator<N
         for (double close : new double[] { 100, 130, 90, 140, 80, 150 }) {
             source.barBuilder().openPrice(close).highPrice(close + 1).lowPrice(close - 1).closePrice(close).add();
         }
-        final BarSeries series = new RevisionlessSeries(source);
+        final BarSeries series = revisionlessSeries(source);
         final AdaptiveZigZagConfig config = new AdaptiveZigZagConfig(1, 1.0, 0.0, 20.0, 1);
         final Pair warmed = RecentSwingIndicators.adaptiveZigZag(series, config);
         final int index = series.getEndIndex() - 1;
@@ -193,29 +198,87 @@ public class RecentSwingIndicatorsTest extends AbstractIndicatorTest<Indicator<N
         }
     }
 
-    private static final class RevisionlessSeries extends BaseBarSeries {
+    @Test
+    public void shouldRefreshExposedNonPivotFallbackPricesAfterRevisionlessMutation() {
+        final BarSeries series = revisionlessSeries(seriesFromCloses(10, 12, 14, 16, 18));
+        final SwingDetector detector = (bars, index, degree) -> new SwingDetectorResult(List.of(), List.of());
+        final Pair warmed = RecentSwingIndicators.fromDetector(new SMAIndicator(new HighPriceIndicator(series), 2),
+                new SMAIndicator(new LowPriceIndicator(series), 2), detector);
+        final Indicator<Num> highPrices = warmed.highs().getPriceIndicator();
+        final Indicator<Num> lowPrices = warmed.lows().getPriceIndicator();
+        assertThat(highPrices.getValue(2)).isEqualByComparingTo(numOf(13));
+        assertThat(lowPrices.getValue(2)).isEqualByComparingTo(numOf(13));
+        final Bar interior = series.getBar(2);
+        final Bar terminal = series.getLastBar();
 
-        private final NumFactory sourceNumFactory;
+        interior.addPrice(numOf(20));
+        interior.addPrice(numOf(5));
 
-        private RevisionlessSeries(final BarSeries source) {
-            super("revisionless-swing-factory", new ArrayList<>(source.getBarData()));
-            sourceNumFactory = source.numFactory();
+        assertThat(series.getBar(2)).isSameAs(interior);
+        assertThat(series.getLastBar()).isSameAs(terminal);
+        assertThat(series.getBeginIndex()).isZero();
+        assertThat(series.getEndIndex()).isEqualTo(4);
+        assertThat(series.getBarHistoryRevision()).isEqualTo(-1L);
+        final Pair fresh = RecentSwingIndicators.fromDetector(new SMAIndicator(new HighPriceIndicator(series), 2),
+                new SMAIndicator(new LowPriceIndicator(series), 2), detector);
+        for (int read = 0; read < 2; read++) {
+            assertThat(highPrices.getValue(2)).isEqualByComparingTo(fresh.highs().getPriceIndicator().getValue(2));
+            assertThat(lowPrices.getValue(2)).isEqualByComparingTo(fresh.lows().getPriceIndicator().getValue(2));
+        }
+        series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
+                .openPrice(22)
+                .highPrice(22)
+                .lowPrice(22)
+                .closePrice(22)
+                .add();
+        assertThat(highPrices.getValue(2)).isEqualByComparingTo(numOf(16));
+        assertThat(lowPrices.getValue(2)).isEqualByComparingTo(numOf(8.5));
+    }
+
+    @Test
+    public void shouldKeepRevisionAwareExposedFallbackPriceReadsCached() {
+        final BarSeries series = seriesFromCloses(10, 12, 14, 16, 18);
+        final AtomicInteger detectorCalls = new AtomicInteger();
+        final SwingDetector detector = (bars, index, degree) -> {
+            detectorCalls.incrementAndGet();
+            return new SwingDetectorResult(List.of(), List.of());
+        };
+        final Pair pair = RecentSwingIndicators.fromDetector(series, detector);
+        final Indicator<Num> prices = pair.highs().getPriceIndicator();
+        assertThat(prices.getValue(2)).isEqualByComparingTo(numOf(14));
+        detectorCalls.set(0);
+
+        for (int read = 0; read < 3; read++) {
+            assertThat(prices.getValue(2)).isEqualByComparingTo(numOf(14));
         }
 
-        @Override
-        public NumFactory numFactory() {
-            return sourceNumFactory;
-        }
+        assertThat(detectorCalls.get()).isZero();
+        series.barBuilder().openPrice(22).highPrice(22).lowPrice(22).closePrice(22).add();
+        assertThat(prices.getValue(2)).isEqualByComparingTo(numOf(14));
+    }
 
-        @Override
-        public synchronized long getBarHistoryRevision() {
-            return -1L;
-        }
-
-        @Override
-        public synchronized BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
-            return new BarSeriesChangeSnapshot(-1L, -1, getRemovedBarsCount() - 1, getMaximumBarCount(), getEndIndex());
-        }
+    private static BarSeries revisionlessSeries(final BarSeries source) {
+        // Preserve the configured builder and NumFactory while adapting only the
+        // public revision contract. A default BaseBarSeries would append DecimalNum
+        // bars even when the supplied fixture uses DoubleNum.
+        return (BarSeries) Proxy.newProxyInstance(BarSeries.class.getClassLoader(), new Class<?>[] { BarSeries.class },
+                (proxy, method, arguments) -> {
+                    if (method.getName().equals("getBarHistoryRevision")) {
+                        return -1L;
+                    }
+                    if (method.getName().equals("getBarSeriesChangeSnapshot")) {
+                        final BarSeries.BarSeriesChangeSnapshot snapshot = source.getBarSeriesChangeSnapshot(-1L);
+                        return new BarSeries.BarSeriesChangeSnapshot(-1L, -1, snapshot.removedThroughIndex(),
+                                snapshot.maximumBarCount(), snapshot.endIndex());
+                    }
+                    try {
+                        return method.invoke(source, arguments);
+                    } catch (InvocationTargetException failure) {
+                        throw failure.getCause();
+                    }
+                });
     }
 
     private SwingDetector fixedHighDetector(final int pivotIndex, final Number price) {

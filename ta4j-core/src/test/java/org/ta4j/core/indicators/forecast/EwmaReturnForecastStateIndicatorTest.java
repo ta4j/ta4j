@@ -20,6 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.ReturnIndicator;
@@ -324,6 +325,102 @@ public class EwmaReturnForecastStateIndicatorTest
         assertTrue(fresh.isStable());
         assertEquals(3, fresh.observationCount());
         assertStateEquals(fresh, warmed.getValue(6));
+    }
+
+    @Test
+    public void revisionlessAppendedReturnCachedBeforeMutationRefreshesExtendedState() {
+        assertAppendedReturnRefreshesState(false, 0);
+    }
+
+    @Test
+    public void revisionlessFiniteAppendedReturnMutationRefreshesMeanDriftAndVariance() {
+        assertAppendedReturnRefreshesState(false, 180);
+    }
+
+    @Test
+    public void revisionlessEarlierStateReadDoesNotAcceptStaleAppendedReturn() {
+        assertAppendedReturnRefreshesState(true, 0);
+    }
+
+    private void assertAppendedReturnRefreshesState(boolean readEarlierState, double changedClose) {
+        BarSeries series = revisionlessSeries(100, 110, 121, 133.1);
+        LogReturnIndicator returns = new LogReturnIndicator(series);
+        EwmaReturnForecastStateIndicator warmed = rollingMeanState(returns);
+        ReturnForecastState prefix = warmed.getValue(3);
+        appendClose(series, 146.41);
+        appendClose(series, 161.051);
+        appendClose(series, 177.1561);
+        assertNumEquals(Math.log(1.1), returns.getValue(4));
+        assertNumEquals(Math.log(1.1), returns.getValue(5));
+        Bar interiorBar = series.getBar(4);
+        Bar endBar = series.getLastBar();
+
+        interiorBar.addPrice(series.numFactory().numOf(changedClose));
+        if (readEarlierState) {
+            assertStateEquals(prefix, warmed.getValue(3));
+        }
+
+        assertSame(interiorBar, series.getBar(4));
+        assertSame(endBar, series.getLastBar());
+        assertEquals(0, series.getBeginIndex());
+        assertEquals(6, series.getEndIndex());
+        assertEquals(-1L, series.getBarHistoryRevision());
+        ReturnForecastState fresh = rollingMeanState(new LogReturnIndicator(series)).getValue(6);
+        assertEquals(changedClose == 0 ? 1 : 6, fresh.observationCount());
+        for (int read = 0; read < 2; read++) {
+            assertStateEquals(fresh, warmed.getValue(6));
+        }
+        appendClose(series, 194.87171);
+        assertStateEquals(rollingMeanState(new LogReturnIndicator(series)).getValue(7), warmed.getValue(7));
+    }
+
+    @Test
+    public void revisionlessAppendDuringReadDoesNotAcceptStaleUnconsumedReturns() {
+        BarSeries series = revisionlessSeries(100, 110, 121, 133.1);
+        LogReturnIndicator delegate = new LogReturnIndicator(series);
+        ReturnIndicator returns = new ReturnIndicator() {
+            private boolean appended;
+
+            @Override
+            public Num getValue(int index) {
+                if (index == 4 && !appended) {
+                    appended = true;
+                    appendClose(series, 161.051);
+                    appendClose(series, 177.1561);
+                    assertNumEquals(Math.log(1.1), delegate.getValue(5));
+                    series.getBar(5).addPrice(series.numFactory().zero());
+                }
+                return delegate.getValue(index);
+            }
+
+            @Override
+            public BarSeries getBarSeries() {
+                return series;
+            }
+
+            @Override
+            public ReturnRepresentation getReturnRepresentation() {
+                return ReturnRepresentation.LOG;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return delegate.getCountOfUnstableBars();
+            }
+
+            @Override
+            public List<Indicator<?>> getDependencies() {
+                return List.of(delegate);
+            }
+        };
+        EwmaReturnForecastStateIndicator warmed = rollingMeanState(returns);
+        assertTrue(warmed.getValue(3).isStable());
+        appendClose(series, 146.41);
+
+        assertTrue(warmed.getValue(4).isStable());
+
+        assertEquals(6, series.getEndIndex());
+        assertStateEquals(rollingMeanState(new LogReturnIndicator(series)).getValue(5), warmed.getValue(5));
     }
 
     @Test

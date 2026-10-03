@@ -38,7 +38,9 @@ import org.ta4j.core.num.Num;
  * bar that was replaced mid-read. Series without bar-history revisions instead
  * validate retained bar values before and after each read, rebuilding the
  * owner-local recursive estimators and cached return dependencies when those
- * values change. Revision-aware reads retain constant-time validation.
+ * values change. Before accepting an appended range, cached return dependencies
+ * are cleared while preserving moments and counts from the unchanged prefix.
+ * Revision-aware reads retain constant-time validation.
  *
  * @since 0.22.9
  */
@@ -121,6 +123,11 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
             if (retainedValues != null
                     && (observedRetainedValues == null || !observedRetainedValues.matchesPrefixOf(retainedValues))) {
                 resetForChangedValues();
+            } else if (retainedValues != null && retainedValues.endIndex() > observedRetainedValues.endIndex()) {
+                // Shared return readers may have cached appended bars before this
+                // owner observed them. Clear those sources before accepting the
+                // extension, preserving moments and counts from the unchanged prefix.
+                invalidateCacheIncludingDependencies();
             }
             ReturnForecastState value = super.getValue(index);
             if (series.getRemovedBarsCount() == removedBarsCount
@@ -131,7 +138,9 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
                 }
                 RetainedValues afterRead = series.withReadLock(() -> RetainedValues.capture(series));
                 if (retainedValues.matchesPrefixOf(afterRead)) {
-                    observedRetainedValues = afterRead;
+                    // Appends raced during this read have not passed the source
+                    // reset boundary yet; keep them outside the accepted baseline.
+                    observedRetainedValues = retainedValues;
                     return value;
                 }
             }
@@ -248,7 +257,8 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
 
     // A ReturnIndicator may read any bar field. Capture bar data only while in
     // the source read scope; evaluating its graph there would invert cache/series
-    // lock order. Appends preserve the existing prefix and need no reset.
+    // lock order. Appends preserve owner-local moments and counts, but source
+    // caches must be cleared before accepting a previously unobserved extension.
     private record RetainedValues(int beginIndex, int endIndex, BarValues[] bars) {
 
         private static RetainedValues capture(BarSeries series) {
