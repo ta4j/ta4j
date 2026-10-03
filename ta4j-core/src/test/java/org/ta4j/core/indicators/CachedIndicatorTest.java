@@ -1088,6 +1088,34 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     }
 
     @Test
+    public void invalidateCachedDependencyGraphVisitsSharedAndCyclicNodesOnceWithoutEvaluation() {
+        final BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        final GraphResetIndicator owner = new GraphResetIndicator(series);
+        final GraphResetIndicator shared = new GraphResetIndicator(series);
+        final GraphResetIndicator left = new GraphResetIndicator(series);
+        final GraphResetIndicator right = new GraphResetIndicator(series);
+        owner.dependencies = List.of(left, right);
+        left.dependencies = List.of(new DependencyWrapper(series, shared));
+        right.dependencies = List.of(shared);
+        shared.dependencies = List.of(owner);
+        final List<GraphResetIndicator> graph = List.of(owner, left, right, shared);
+        for (GraphResetIndicator node : graph) {
+            node.getValue(0);
+            node.getValue(series.getEndIndex());
+        }
+
+        owner.invalidateCacheIncludingDependencies();
+
+        for (GraphResetIndicator node : graph) {
+            assertThat(node.invalidations).isEqualTo(1);
+            assertThat(node.calculations).isEqualTo(2);
+            node.getValue(0);
+            node.getValue(series.getEndIndex());
+            assertThat(node.calculations).isEqualTo(4);
+        }
+    }
+
+    @Test
     public void invalidateFromClearsTailOnly() {
         final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d).build();
         final var indicator = new CountingInvalidatableIndicator(series);
@@ -1663,6 +1691,38 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             }
 
             return getBarSeries().numFactory().numOf(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+    }
+
+    private static final class GraphResetIndicator extends CachedIndicator<Num> {
+        private List<Indicator<?>> dependencies = List.of();
+        private int invalidations;
+        private int calculations;
+
+        private GraphResetIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        protected Num calculate(int index) {
+            calculations++;
+            return getBarSeries().numFactory().numOf(calculations);
+        }
+
+        @Override
+        protected void invalidateCache() {
+            invalidations++;
+            super.invalidateCache();
+        }
+
+        @Override
+        public List<Indicator<?>> getDependencies() {
+            return dependencies;
         }
 
         @Override
