@@ -363,6 +363,24 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
     }
 
     @Test
+    public void shouldValidateEachNumericReadAgainstItsOwnHistoryObservation() {
+        final ReadBoundaryBarSeries series = new ReadBoundaryBarSeries();
+        for (int close : new int[] { 5, 10, 5, 1, 1 }) {
+            addTimedBar(series, close);
+        }
+        final RecentFractalSwingHighIndicator indicator = new RecentFractalSwingHighIndicator(series, 1);
+        assertThat(indicator.getValue(3)).isEqualByComparingTo(series.numFactory().numOf(10));
+        series.afterTrackerValidation = () -> {
+            series.getBar(2).addPrice(series.numFactory().numOf(20));
+            // Refresh the shared tracker after the outer query fetched its cached value.
+            assertThat(indicator.getValue(3)).isEqualByComparingTo(series.numFactory().numOf(20));
+        };
+        final Num value = indicator.getValue(3);
+        assertThat(series.afterTrackerValidation).isNull();
+        assertThat(value).isEqualByComparingTo(new RecentFractalSwingHighIndicator(series, 1).getValue(3));
+    }
+
+    @Test
     public void shouldKeepRevisionAwareValidationIndependentOfRetainedHistorySize() {
         assertThat(repeatedQueryBarReads(40)).isEqualTo(repeatedQueryBarReads(5)).isLessThan(20);
     }
@@ -490,6 +508,26 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
             } finally {
                 inReadScope = previous;
             }
+        }
+    }
+
+    private static final class ReadBoundaryBarSeries extends UntrackedBarSeries {
+        private Runnable afterTrackerValidation;
+        private boolean validatedTracker;
+
+        @Override
+        public <T> T withReadLock(Supplier<T> action) {
+            if (validatedTracker && afterTrackerValidation != null) {
+                final Runnable refresh = afterTrackerValidation;
+                afterTrackerValidation = null;
+                validatedTracker = false;
+                refresh.run();
+            }
+            final T result = action.get();
+            if (afterTrackerValidation != null && Boolean.FALSE.equals(result)) {
+                validatedTracker = true;
+            }
+            return result;
         }
     }
 

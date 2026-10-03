@@ -199,7 +199,7 @@ public final class EwmaReturnForecastStateIndicator extends CachedIndicator<Retu
     }
 
     @Override
-    protected ReturnForecastState calculate(int index) {
+    protected synchronized ReturnForecastState calculate(int index) {
         int observationCount = observationCountIndicator.getValue(index);
         if (index < getCountOfUnstableBars()) {
             return ReturnForecastState.unstable(index, observationCount, ReturnRepresentation.LOG);

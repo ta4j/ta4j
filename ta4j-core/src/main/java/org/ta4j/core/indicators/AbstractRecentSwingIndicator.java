@@ -79,10 +79,13 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
      */
     @Override
     public Num getValue(int index) {
+        final BarSeries series = getBarSeries();
         while (true) {
+            final HistorySnapshot before = series
+                    .withReadLock(() -> HistorySnapshot.capture(series, series.getEndIndex()));
             swingPoints.getLatestSwingIndex(index);
             final Num value = super.getValue(index);
-            if (swingPoints.historyStillCurrent()) {
+            if (series.withReadLock(() -> before.matches(series))) {
                 return value;
             }
         }
@@ -233,12 +236,6 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
                 }
                 invalidateCacheAfterHistoryReset(true);
             }
-        }
-
-        private synchronized boolean historyStillCurrent() {
-            return series.withReadLock(() -> observedRevision == series.getBarHistoryRevision()
-                    && observedBeginIndex == series.getBeginIndex() && observedEndIndex == series.getEndIndex()
-                    && (observedHistory == null || observedHistory.retainedValuesMatch(series)));
         }
 
         /**

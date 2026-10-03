@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis.elliott.swing;
 
+import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
@@ -34,7 +35,7 @@ public final class ProminenceSwingDetector implements SwingDetector {
 
     private final ProminenceSwingConfig config;
     private final ReentrantLock detectionLock = new ReentrantLock();
-    private transient BarSeries cachedSeries;
+    private transient WeakReference<BarSeries> cachedSeries = new WeakReference<>(null);
     private transient ElliottDegree cachedDegree;
     private transient ElliottSwingIndicator cachedIndicator;
     private SwingHistorySnapshot observedHistory;
@@ -70,7 +71,7 @@ public final class ProminenceSwingDetector implements SwingDetector {
         try {
             while (true) {
                 final boolean changed = series.withReadLock(() -> {
-                    final boolean historyChanged = cachedIndicator != null && cachedSeries == series
+                    final boolean historyChanged = cachedIndicator != null && cachedSeries.get() == series
                             && observedHistory.hasChangedIn(series, false);
                     observedHistory = SwingHistorySnapshot.capture(series);
                     return historyChanged;
@@ -81,8 +82,8 @@ public final class ProminenceSwingDetector implements SwingDetector {
                 }
                 final int clampedIndex = Math.max(observedHistory.beginIndex(),
                         Math.min(index, observedHistory.endIndex()));
-                if (cachedIndicator == null || cachedSeries != series || cachedDegree != degree || changed) {
-                    cachedSeries = series;
+                if (cachedIndicator == null || cachedSeries.get() != series || cachedDegree != degree || changed) {
+                    cachedSeries = new WeakReference<>(series);
                     cachedDegree = degree;
                     cachedIndicator = new ElliottSwingIndicator(new RecentProminenceSwingHighIndicator(series, config),
                             new RecentProminenceSwingLowIndicator(series, config), degree);
