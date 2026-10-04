@@ -13,6 +13,8 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
+// This owner intentionally verifies the deprecated compatibility indicator.
+@SuppressWarnings("deprecation")
 public class RealBodyIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     private BarSeries series;
