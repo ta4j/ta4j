@@ -3,6 +3,9 @@
  */
 package org.ta4j.core.analysis.montecarlo;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -28,8 +31,35 @@ final class MonteCarloArithmetic {
         if (!Num.isFinite(value)) {
             return null;
         }
+        if (value.getNumFactory() == numFactory) {
+            return value;
+        }
         Num converted = numFactory.numOf(value.bigDecimalValue());
         return Num.isFinite(converted) && (!converted.isZero() || value.isZero()) ? converted : null;
+    }
+
+    /**
+     * Validates an inner technique's result against the seam contract and coerces
+     * every sample to the context factory.
+     *
+     * @return the coerced samples, or {@code null} when the result is missing, has
+     *         the wrong size, or contains a sample that is absent, non-finite, or
+     *         not representable by the context factory
+     */
+    static List<Num> normalizeSamples(List<Num> samples, MonteCarloContext context) {
+        if (samples == null || samples.size() != context.iterationCount()) {
+            return null;
+        }
+        NumFactory numFactory = context.numFactory();
+        List<Num> normalized = new ArrayList<>(samples.size());
+        for (Num sample : samples) {
+            Num value = normalize(sample, numFactory);
+            if (value == null) {
+                return null;
+            }
+            normalized.add(value);
+        }
+        return normalized;
     }
 
     /**

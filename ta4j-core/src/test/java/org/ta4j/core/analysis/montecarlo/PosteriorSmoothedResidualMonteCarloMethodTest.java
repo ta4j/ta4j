@@ -31,6 +31,8 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
 
     private static final NumFactory FACTORY = DoubleNumFactory.getInstance();
     private static final NumFactory DECIMAL = DecimalNumFactory.getInstance();
+    private static final NormalInverseGammaForecastMethod POSTERIOR = NormalInverseGammaForecastMethod
+            .withEmpiricalPriors();
 
     private static final double[] WINDOW_FINITE = { 0.012, -0.008, 0.02, -0.015, 0.005, 0.03, -0.022, 0.011, -0.004,
             0.017, -0.03, 0.009, 0.002, -0.012, 0.024, -0.007 };
@@ -42,9 +44,8 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
                 FACTORY.zero(), FACTORY.numOf(1e308), FACTORY.numOf(1e308));
         ReturnMoments standardizedMoments = ReturnMoments.stable(100, history.size(), ReturnRepresentation.LOG,
                 FACTORY.zero(), FACTORY.zero(), FACTORY.one());
-        MonteCarloMethod extreme = new PosteriorSmoothedResidualMonteCarloMethod(fixedInner(FACTORY.numOf(-1e308)));
-        MonteCarloMethod standardized = new PosteriorSmoothedResidualMonteCarloMethod(
-                fixedInner(FACTORY.numOf(-2e154)));
+        MonteCarloMethod extreme = POSTERIOR.overResiduals(fixedInner(FACTORY.numOf(-1e308)));
+        MonteCarloMethod standardized = POSTERIOR.overResiduals(fixedInner(FACTORY.numOf(-2e154)));
 
         List<Num> expected = standardized.terminalReturns(context(1, 2, history, standardizedMoments, 7L, FACTORY));
         List<Num> actual = extreme.terminalReturns(context(1, 2, history, extremeMoments, 7L, FACTORY));
@@ -66,16 +67,15 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
 
     @Test
     public void rejectsSampleThatUnderflowsContextFactory() {
-        MonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
-                fixedInner(DECIMAL.numOf(new java.math.BigDecimal("1E-400"))));
+        MonteCarloMethod method = POSTERIOR
+                .overResiduals(fixedInner(DECIMAL.numOf(new java.math.BigDecimal("1E-400"))));
 
         assertNull(method.terminalReturns(context(1, 1, window(new double[] { 0.01d, 0.02d }), 7L)));
     }
 
     @Test
     public void sameSeedReproducesIdenticalSamples() {
-        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
-                fixedInner(FACTORY.numOf(0.5d)));
+        MonteCarloMethod method = POSTERIOR.overResiduals(fixedInner(FACTORY.numOf(0.5d)));
         List<Num> first = method.terminalReturns(context(4, 200, window(WINDOW_FINITE), 7L));
         List<Num> second = method.terminalReturns(context(4, 200, window(WINDOW_FINITE), 7L));
 
@@ -86,8 +86,7 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
 
     @Test
     public void differentSeedProducesDifferentSamples() {
-        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
-                fixedInner(FACTORY.one()));
+        MonteCarloMethod method = POSTERIOR.overResiduals(fixedInner(FACTORY.one()));
         List<Num> first = method.terminalReturns(context(4, 100, window(WINDOW_FINITE), 7L));
         List<Num> second = method.terminalReturns(context(4, 100, window(WINDOW_FINITE), 8L));
 
@@ -103,8 +102,7 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
         // sigma) to zero, so every path is the posterior mean drift over the
         // horizon, independent of the inner residual path.
         List<Num> constantWindow = List.of(FACTORY.numOf(0.01d), FACTORY.numOf(0.01d), FACTORY.numOf(0.01d));
-        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
-                fixedInner(FACTORY.one()));
+        MonteCarloMethod method = POSTERIOR.overResiduals(fixedInner(FACTORY.one()));
         List<Num> samples = method.terminalReturns(context(3, 10, constantWindow, 7L));
 
         assertNotNull(samples);
@@ -119,7 +117,7 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
         List<Num> constantWindow = List.of(FACTORY.numOf(0.01d), FACTORY.numOf(0.01d), FACTORY.numOf(0.01d));
         ReturnMoments flatMoments = ReturnMoments.stable(100, 3, ReturnRepresentation.LOG, FACTORY.zero(),
                 FACTORY.numOf(0.01d), FACTORY.zero());
-        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(null);
+        MonteCarloMethod method = POSTERIOR.overSmoothedResiduals();
 
         List<Num> samples = method.terminalReturns(context(3, 10, constantWindow, flatMoments, 7L, FACTORY));
 
@@ -135,8 +133,7 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
         List<Num> constantWindow = List.of(tinyReturn, tinyReturn);
         ReturnMoments flatMoments = ReturnMoments.stable(100, constantWindow.size(), ReturnRepresentation.LOG,
                 DECIMAL.zero(), DECIMAL.zero(), DECIMAL.zero());
-        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
-                fixedInner(DECIMAL.one()));
+        MonteCarloMethod method = POSTERIOR.overResiduals(fixedInner(DECIMAL.one()));
 
         List<Num> samples = method.terminalReturns(context(3, 2, constantWindow, flatMoments, 7L, DECIMAL));
 
@@ -161,8 +158,7 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
                 DECIMAL.numOf(new java.math.BigDecimal("2E-400")));
         ReturnMoments flatMoments = ReturnMoments.stable(100, variableWindow.size(), ReturnRepresentation.LOG,
                 DECIMAL.zero(), DECIMAL.zero(), DECIMAL.zero());
-        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
-                fixedInner(DECIMAL.one()));
+        MonteCarloMethod method = POSTERIOR.overResiduals(fixedInner(DECIMAL.one()));
 
         assertNull(method.terminalReturns(context(1, 1, variableWindow, flatMoments, 7L, DECIMAL)));
     }
@@ -171,7 +167,7 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
     public void zeroVolatilityRejectsNonzeroPosteriorScale() {
         ReturnMoments flatMoments = ReturnMoments.stable(100, 2, ReturnRepresentation.LOG, FACTORY.zero(),
                 FACTORY.zero(), FACTORY.zero());
-        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(null);
+        MonteCarloMethod method = POSTERIOR.overSmoothedResiduals();
 
         assertNull(method.terminalReturns(
                 context(3, 10, List.of(FACTORY.numOf(-0.01d), FACTORY.numOf(0.01d)), flatMoments, 7L, FACTORY)));
@@ -182,8 +178,7 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
         // A non-degenerate window with positive variance should make the terminal
         // distribution wider than a zero-variance panel, detected by sample
         // variance being strictly positive across draws.
-        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
-                fixedInner(FACTORY.zero()));
+        MonteCarloMethod method = POSTERIOR.overResiduals(fixedInner(FACTORY.zero()));
         List<Num> samples = method.terminalReturns(context(4, 4000, window(WINDOW_FINITE), 42L));
 
         assertNotNull(samples);
@@ -207,8 +202,7 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
         List<Num> window = List.of(DECIMAL.numOf(0.01d), DECIMAL.numOf(-0.01d));
         ReturnMoments moments = ReturnMoments.stable(100, 2, ReturnRepresentation.LOG, DECIMAL.zero(), DECIMAL.zero(),
                 DECIMAL.one());
-        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
-                fixedInner(DECIMAL.numOf(new java.math.BigDecimal("1E400"))));
+        MonteCarloMethod method = POSTERIOR.overResiduals(fixedInner(DECIMAL.numOf(new java.math.BigDecimal("1E400"))));
 
         List<Num> samples = method.terminalReturns(context(1, 2, window, moments, 7L, DECIMAL));
 
@@ -220,29 +214,25 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
 
     @Test
     public void emptyWindowYieldsNoSamples() {
-        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
-                fixedInner(FACTORY.one()));
+        MonteCarloMethod method = POSTERIOR.overResiduals(fixedInner(FACTORY.one()));
         assertNull(method.terminalReturns(context(1, 5, List.of(), 1L)));
     }
 
     @Test
     public void innerNullPropagatesAsUnstable() {
-        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
-                context -> null);
+        MonteCarloMethod method = POSTERIOR.overResiduals(context -> null);
         assertNull(method.terminalReturns(context(4, 10, window(WINDOW_FINITE), 7L)));
     }
 
     @Test
     public void innerWrongCountPropagatesAsUnstable() {
-        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
-                context -> List.of(FACTORY.zero()));
+        MonteCarloMethod method = POSTERIOR.overResiduals(context -> List.of(FACTORY.zero()));
         assertNull(method.terminalReturns(context(4, 10, window(WINDOW_FINITE), 7L)));
     }
 
     @Test
     public void guaranteesExactCountAndFiniteSamples() {
-        PosteriorSmoothedResidualMonteCarloMethod method = new PosteriorSmoothedResidualMonteCarloMethod(
-                fixedInner(FACTORY.one()));
+        MonteCarloMethod method = POSTERIOR.overResiduals(fixedInner(FACTORY.one()));
         int count = 987;
         List<Num> samples = method.terminalReturns(context(4, count, window(WINDOW_FINITE), 99L));
 

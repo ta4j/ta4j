@@ -6,6 +6,7 @@ package org.ta4j.core.analysis.montecarlo;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.random.RandomGenerator;
 
 import org.ta4j.core.indicators.forecast.state.ReturnMoments;
@@ -13,86 +14,49 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * Composition decorator that fattens the tails of an inner technique's centered
- * samples with a mean-normalized Student-t scale mixing factor.
+ * Student-t scale mixing behind
+ * {@link MonteCarloMethod#withStudentTScaleMixing}.
  *
  * <p>
- * Each sample is rescaled around the drift path by an independent factor
- * {@code f = sqrt(df / chiSq(df)) / E[sqrt(df / chiSq(df))]} drawn from the
- * Student-t scale distribution with {@code degreesOfFreedom}:
+ * Each inner sample is rescaled around the drift path by an independent
+ * mean-one factor {@code f = sqrt(df / chiSq(df)) / E[sqrt(df / chiSq(df))]}:
  *
  * <pre>
  * path = h * drift + f * (sample - h * drift)
  * </pre>
  *
- * <p>
- * The factor has expectation 1 (no central-scale shift) but a heavy right tail,
- * so the quantile spread grows where it matters for coverage in high-volatility
- * regimes, while the mean and the calm-regime center are preserved. Higher
- * degrees of freedom approximate the unchanged gaussian case; lower values
- * permit more extreme scale draws. The numerator {@code sqrt(df / chiSq(df))}
- * draws its chi-square denominator from the exact gamma representation
- * {@code chiSq(df) = 2 * Gamma(df/2)} via the shared
- * {@link RandomSamplers#nextChiSquared(RandomGenerator, int)} sampler, so the
- * per-sample draw count never depends on {@code degreesOfFreedom} and
- * arbitrarily large values stay constant-time. Each inner sample is coerced
- * through the context's {@link NumFactory} so cross-factory inner techniques
- * compose without throwing.
- *
- * <p>
- * This decorator stresses the seam contract: it draws exclusively from
- * {@link MonteCarloContext#random()}, returns exactly
- * {@code context.iterationCount()} finite samples, propagates a {@code null}
- * (unstable) result from the inner method, and declares the forecast unstable
- * when the inner method returns the wrong sample count or the drift is not
- * finite.
- *
- * @see MonteCarloMethod
- * @since 0.25.1
+ * The chi-square denominator comes from
+ * {@link RandomSamplers#nextChiSquared(RandomGenerator, int)}, whose cost is
+ * independent of {@code degreesOfFreedom}. The forecast is unstable when the
+ * inner technique breaks the seam contract or the moments are unstable or carry
+ * a drift the context factory cannot represent.
  */
-public final class StudentTScaleMixingMonteCarloMethod implements MonteCarloMethod {
+final class StudentTScaleMixingMonteCarloMethod implements MonteCarloMethod {
 
     /** Default degrees of freedom of the mixing scale. */
-    public static final int DEFAULT_DEGREES_OF_FREEDOM = 5;
+    static final int DEFAULT_DEGREES_OF_FREEDOM = 5;
 
     private final MonteCarloMethod inner;
     private final int degreesOfFreedom;
     private final double scaleMean;
 
-    /**
-     * Wraps an inner technique with the default degrees of freedom
-     * ({@value #DEFAULT_DEGREES_OF_FREEDOM}).
-     *
-     * @param inner technique whose centered samples are tail-mixed
-     * @since 0.25.1
-     */
-    public StudentTScaleMixingMonteCarloMethod(MonteCarloMethod inner) {
+    StudentTScaleMixingMonteCarloMethod(MonteCarloMethod inner) {
         this(inner, DEFAULT_DEGREES_OF_FREEDOM);
     }
 
-    /**
-     * Wraps an inner technique with a configurable degrees of freedom.
-     *
-     * @param inner            technique whose centered samples are rescaled
-     * @param degreesOfFreedom of the mixing Student-t scale, must be &gt;= 2
-     * @since 0.25.1
-     */
-    public StudentTScaleMixingMonteCarloMethod(MonteCarloMethod inner, int degreesOfFreedom) {
-        if (inner == null) {
-            throw new IllegalArgumentException("inner must not be null");
-        }
+    StudentTScaleMixingMonteCarloMethod(MonteCarloMethod inner, int degreesOfFreedom) {
         if (degreesOfFreedom < 2) {
             throw new IllegalArgumentException("degreesOfFreedom must be >= 2");
         }
-        this.inner = inner;
+        this.inner = Objects.requireNonNull(inner, "inner");
         this.degreesOfFreedom = degreesOfFreedom;
         this.scaleMean = tScaleMean(degreesOfFreedom);
     }
 
     @Override
     public List<Num> terminalReturns(MonteCarloContext context) {
-        List<Num> samples = inner.terminalReturns(context);
-        if (samples == null || samples.size() != context.iterationCount()) {
+        List<Num> samples = MonteCarloArithmetic.normalizeSamples(inner.terminalReturns(context), context);
+        if (samples == null) {
             return null;
         }
         ReturnMoments moments = context.moments();
@@ -100,40 +64,29 @@ public final class StudentTScaleMixingMonteCarloMethod implements MonteCarloMeth
             return null;
         }
         NumFactory numFactory = context.numFactory();
-        Num drift = moments.drift();
-        if (!Num.isFinite(drift)) {
+        Num drift = MonteCarloArithmetic.normalize(moments.drift(), numFactory);
+        if (drift == null) {
             return null;
         }
         Num driftPath = drift.multipliedBy(numFactory.numOf(context.horizon()));
+        // The drift path itself need not fit when its affine contribution does.
+        // Keep that center wide until after weighting and addition.
         BigDecimal extendedDriftPath = Num.isFinite(driftPath) ? null
                 : drift.bigDecimalValue().multiply(BigDecimal.valueOf(context.horizon()));
         RandomGenerator random = context.random();
-        List<Num> mixed = new ArrayList<>(context.iterationCount());
+        List<Num> mixed = new ArrayList<>(samples.size());
         for (Num sample : samples) {
-            // Coerce cross-factory inner samples through the context factory so the
-            // arithmetic never throws (the seam explicitly supports foreign Num types).
-            Num converted = MonteCarloArithmetic.normalize(sample, numFactory);
-            if (converted == null) {
-                return null;
-            }
-            double factor = tScaleDraw(random) / scaleMean;
-            Num scale = numFactory.numOf(factor);
+            Num scale = numFactory.numOf(tScaleDraw(random) / scaleMean);
             if (!Num.isFinite(scale)) {
                 return null;
             }
-            // Keep the affine transform in the active numeric domain. The shared
-            // implementation avoids overflowing endpoint differences during both
-            // contraction and expansion, and uses FMA for DoubleNum cancellation.
             Num scaled;
             if (extendedDriftPath == null) {
-                scaled = MonteCarloArithmetic.affine(driftPath, converted, scale, numFactory);
+                scaled = MonteCarloArithmetic.affine(driftPath, sample, scale, numFactory);
             } else {
-                // The drift path itself need not fit when its affine contribution
-                // does. Keep that center wide until after weighting and addition.
                 BigDecimal weight = scale.bigDecimalValue();
-                BigDecimal value = extendedDriftPath.multiply(BigDecimal.ONE.subtract(weight))
-                        .add(converted.bigDecimalValue().multiply(weight));
-                scaled = numFactory.numOf(value);
+                scaled = numFactory.numOf(extendedDriftPath.multiply(BigDecimal.ONE.subtract(weight))
+                        .add(sample.bigDecimalValue().multiply(weight)));
             }
             if (!Num.isFinite(scaled)) {
                 return null;

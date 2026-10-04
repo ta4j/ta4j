@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.random.RandomGenerator;
 
+import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.ShockModel;
+import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.VolatilityUpdateMode;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -42,9 +44,9 @@ import org.ta4j.core.num.NumFactory;
  * {@code mu + sigma * z}.
  *
  * <p>
- * The posterior hyper-parameter computation is shared, package-private
- * {@link #posterior(MonteCarloContext)}, the single source of posterior draws
- * used by this method and {@link PosteriorSmoothedResidualMonteCarloMethod}.
+ * {@link #overResiduals(MonteCarloMethod)} reuses the same posterior to add
+ * parameter uncertainty on top of another technique's standardized residual
+ * paths instead of iid gaussian steps.
  *
  * @see MonteCarloMethod
  * @since 0.24.2
@@ -123,9 +125,54 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
     }
 
     /**
+     * Returns a technique that composes this posterior with the kernel-smoothed
+     * standardized-empirical residual shape: {@code overResiduals} of a
+     * {@link ShockPathMonteCarloMethod} with {@link ShockModel#SMOOTHED_EMPIRICAL
+     * SMOOTHED_EMPIRICAL} shocks and {@link VolatilityUpdateMode#CONSTANT CONSTANT}
+     * volatility.
+     *
+     * @return posterior over smoothed residuals
+     * @see #overResiduals(MonteCarloMethod)
+     * @since 0.25.1
+     */
+    public MonteCarloMethod overSmoothedResiduals() {
+        // The decay factor is validated but ignored under CONSTANT volatility.
+        return overResiduals(
+                new ShockPathMonteCarloMethod(ShockModel.SMOOTHED_EMPIRICAL, VolatilityUpdateMode.CONSTANT, 0.5d));
+    }
+
+    /**
+     * Returns a technique that draws location and scale from this posterior and the
+     * residual shape from {@code residualMethod}.
+     *
+     * <p>
+     * The residual technique is expected to produce constant-volatility paths
+     * {@code h * drift + volatility * shocks} from the context state. Each of its
+     * samples is standardized back to {@code shocks} and re-composed with one
+     * posterior parameter draw per iteration:
+     *
+     * <pre>
+     * path = h * mu + sigma * (sample - h * drift) / volatility
+     * </pre>
+     *
+     * So the forecast keeps the residual technique's shape (for example fat-tailed
+     * empirical shocks) while gaining this method's parameter uncertainty. When the
+     * posterior scale is zero, every path is the deterministic posterior-mean
+     * return; a zero state volatility with a nonzero posterior scale yields an
+     * unstable result.
+     *
+     * @param residualMethod technique generating the residual path shape
+     * @return posterior over the residual technique
+     * @since 0.25.1
+     */
+    public MonteCarloMethod overResiduals(MonteCarloMethod residualMethod) {
+        return new PosteriorSmoothedResidualMonteCarloMethod(this, residualMethod);
+    }
+
+    /**
      * Computes the Normal-Inverse-Gamma posterior hyper-parameters for the context
      * window, shared as the single source of posterior draws between this method
-     * and {@link PosteriorSmoothedResidualMonteCarloMethod}.
+     * and {@link #overResiduals(MonteCarloMethod)}.
      *
      * @param context validated simulation inputs
      * @return posterior hyper-parameters, or {@code null} when the window is empty
@@ -263,8 +310,7 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
     /**
      * Draws {@code (sigmaSquared, mu)} from the posterior predictive conditional,
      * shared as the single source of parameter draws between this method and
-     * {@link PosteriorSmoothedResidualMonteCarloMethod} for identical seeds and
-     * windows.
+     * {@link #overResiduals(MonteCarloMethod)} for identical seeds and windows.
      *
      * @param posterior fitted posterior hyper-parameters
      * @param random    deterministic seeded random generator

@@ -8,6 +8,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.SplittableRandom;
 
@@ -52,7 +53,7 @@ public class EnsembleMonteCarloMethodTest {
         int[] secondCount = { -1 };
         MonteCarloMethod first = context -> {
             firstCount[0] = context.iterationCount();
-            return null;
+            return Collections.nCopies(context.iterationCount(), FACTORY.zero());
         };
         MonteCarloMethod second = context -> {
             secondCount[0] = context.iterationCount();

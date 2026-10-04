@@ -206,7 +206,7 @@ public class StudentTScaleMixingMonteCarloMethodTest {
 
     @Test
     public void rejectsInvalidConstructorArguments() {
-        assertThrows(IllegalArgumentException.class, () -> new StudentTScaleMixingMonteCarloMethod(null));
+        assertThrows(NullPointerException.class, () -> new StudentTScaleMixingMonteCarloMethod(null));
         assertThrows(IllegalArgumentException.class,
                 () -> new StudentTScaleMixingMonteCarloMethod(fixedSamples(0.5d), 1));
     }

@@ -6,84 +6,46 @@ package org.ta4j.core.analysis.montecarlo;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.random.RandomGenerator;
 
-import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.ShockModel;
-import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.VolatilityUpdateMode;
 import org.ta4j.core.indicators.forecast.state.ReturnMoments;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * Composition decorator that blends posterior parameter uncertainty with
- * kernel-smoothed residual paths.
+ * Posterior parameter uncertainty over another technique's residual shape,
+ * behind
+ * {@link NormalInverseGammaForecastMethod#overResiduals(MonteCarloMethod)}.
  *
  * <p>
- * Each path draws {@code (sigmaSquared, mu)} from the shared
- * Normal-Inverse-Gamma posterior
- * ({@link NormalInverseGammaForecastMethod#posterior(MonteCarloContext)} and
- * {@link NormalInverseGammaForecastMethod#drawParameters}) and adds that
- * posterior scale and drift on top of the standardized kernel-smoothed residual
- * path produced by an inner {@link MonteCarloMethod}:
+ * The residual technique is read as constant-volatility paths
+ * {@code h * drift + volatility * shocks}; each sample is standardized back to
+ * {@code shocks} and re-composed with one posterior draw {@code (mu, sigma)}
+ * from {@link NormalInverseGammaForecastMethod#posterior(MonteCarloContext)}
+ * and {@link NormalInverseGammaForecastMethod#drawParameters}:
  *
  * <pre>
- * path = mu * horizon + sigma * standardizedResidualPath
+ * path = h * mu + sigma * (sample - h * drift) / volatility
  * </pre>
  *
- * <p>
- * Specifically, the inner technique is read with a constant volatility update
- * so its terminal path is {@code h * drift + volatility * shocks}; the
- * decorator recovers {@code shocks = (path - h*drift) / volatility}, the
- * standardized residual shape, and re-composes it at the nascent posterior
- * scale and drift. This is the composability claim of the seam: one technique's
- * parameter uncertainty decorates another's residual distribution without
- * either knowing the other.
- *
- * <p>
- * The decorator stresses the seam contract: it draws exclusively from
- * {@link MonteCarloContext#random()}, returns exactly
- * {@code context.iterationCount()} finite samples, propagates a {@code null}
- * (unstable) result from the inner method, and declares the forecast unstable
- * when the inner method returns the wrong sample count or the posterior cannot
- * be fitted. A zero state volatility with a zero-scale posterior instead
- * produces the deterministic posterior-mean terminal return.
- *
- * @see MonteCarloMethod
- * @see NormalInverseGammaForecastMethod
- * @since 0.25.1
+ * The forecast is unstable when the residual technique breaks the seam contract
+ * or the posterior cannot be fitted. A zero-scale posterior produces the
+ * deterministic posterior-mean terminal return.
  */
-public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCarloMethod {
+final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCarloMethod {
 
-    private final MonteCarloMethod inner;
     private final NormalInverseGammaForecastMethod posteriorSource;
+    private final MonteCarloMethod residualMethod;
 
-    /**
-     * Wraps an inner technique that generates the kernel-smoothed residual path
-     * shape. Defaults to plain kernel-smoothed standardized-empirical resampling
-     * ({@link ShockModel#SMOOTHED_EMPIRICAL} with a constant volatility update).
-     *
-     * @param inner kernel-smoothed residual path generator, or {@code null} to use
-     *              the default smoothed-empirical technique
-     * @since 0.25.1
-     */
-    public PosteriorSmoothedResidualMonteCarloMethod(MonteCarloMethod inner) {
-        this.inner = inner != null ? inner
-                : new ShockPathMonteCarloMethod(ShockModel.SMOOTHED_EMPIRICAL, VolatilityUpdateMode.CONSTANT, 0.5d);
-        this.posteriorSource = NormalInverseGammaForecastMethod.withEmpiricalPriors();
+    PosteriorSmoothedResidualMonteCarloMethod(NormalInverseGammaForecastMethod posteriorSource,
+            MonteCarloMethod residualMethod) {
+        this.posteriorSource = Objects.requireNonNull(posteriorSource, "posteriorSource");
+        this.residualMethod = Objects.requireNonNull(residualMethod, "residualMethod");
     }
 
-    /**
-     * Composes one posterior parameter draw with the inner technique's standardized
-     * residual path per iteration. See class Javadoc for the exact transform.
-     *
-     * @param context validated simulation inputs including the seeded random
-     *                generator
-     * @return exactly {@code context.iterationCount()} finite cumulative log-return
-     *         samples, or {@code null} when the posterior or the inner technique
-     *         cannot produce a stable result
-     * @since 0.25.1
-     */
     @Override
     public List<Num> terminalReturns(MonteCarloContext context) {
         NormalInverseGammaForecastMethod.Posterior posterior = posteriorSource.posterior(context);
@@ -105,8 +67,9 @@ public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCar
             return null;
         }
 
-        List<Num> innerSamples = inner.terminalReturns(context);
-        if (innerSamples == null || innerSamples.size() != context.iterationCount()) {
+        List<Num> residualSamples = MonteCarloArithmetic.normalizeSamples(residualMethod.terminalReturns(context),
+                context);
+        if (residualSamples == null) {
             return null;
         }
         if (posterior.scale().isZero()) {
@@ -116,10 +79,10 @@ public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCar
             return null;
         }
         RandomGenerator random = context.random();
-        List<Num> terminalReturns = new ArrayList<>(context.iterationCount());
+        List<Num> terminalReturns = new ArrayList<>(residualSamples.size());
         Num horizon = numFactory.numOf(context.horizon());
         Num driftPath = drift.multipliedBy(horizon);
-        for (int iteration = 0; iteration < context.iterationCount(); iteration++) {
+        for (Num residualSample : residualSamples) {
             NormalInverseGammaForecastMethod.ParameterDraw draw = NormalInverseGammaForecastMethod
                     .drawParameters(posterior, random);
             if (draw == null) {
@@ -129,19 +92,16 @@ public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCar
             if (!Double.isFinite(draw.mu()) || !Double.isFinite(sigma)) {
                 return null;
             }
-            // Coerce the inner sample through the context factory so cross-factory
-            // inner techniques compose without throwing.
-            Num innerSample = MonteCarloArithmetic.normalize(innerSamples.get(iteration), numFactory);
             Num posteriorDrift = numFactory.numOf(BigDecimal.valueOf(draw.mu()));
             Num posteriorScale = numFactory.numOf(BigDecimal.valueOf(sigma));
-            if (innerSample == null || !Num.isFinite(posteriorDrift) || !Num.isFinite(posteriorScale)) {
+            if (!Num.isFinite(posteriorDrift) || !Num.isFinite(posteriorScale)) {
                 return null;
             }
-            Num residualPath = innerSample.minus(driftPath).dividedBy(volatility);
+            Num residualPath = residualSample.minus(driftPath).dividedBy(volatility);
             if (!Num.isFinite(residualPath)) {
                 // Finite endpoints can overflow before division makes the
                 // standardized difference representable. Narrow only afterwards.
-                BigDecimal difference = innerSample.bigDecimalValue()
+                BigDecimal difference = residualSample.bigDecimalValue()
                         .subtract(drift.bigDecimalValue().multiply(BigDecimal.valueOf(context.horizon())));
                 residualPath = numFactory
                         .numOf(difference.divide(volatility.bigDecimalValue(), MathContext.DECIMAL128));
@@ -158,24 +118,20 @@ public final class PosteriorSmoothedResidualMonteCarloMethod implements MonteCar
     private static List<Num> deterministicPosteriorReturns(NormalInverseGammaForecastMethod.Posterior posterior,
             MonteCarloContext context) {
         NumFactory numFactory = context.numFactory();
-        List<Num> terminalReturns = new ArrayList<>(context.iterationCount());
-        Num horizon = numFactory.numOf(context.horizon());
         Num posteriorMean = MonteCarloArithmetic.normalize(posterior.mean(), numFactory);
         if (posteriorMean == null) {
             return null;
         }
-        Num cumulativeReturn = posteriorMean.multipliedBy(horizon);
+        Num cumulativeReturn = posteriorMean.multipliedBy(numFactory.numOf(context.horizon()));
         if (!Num.isFinite(cumulativeReturn)) {
             return null;
         }
-        for (int iteration = 0; iteration < context.iterationCount(); iteration++) {
-            terminalReturns.add(cumulativeReturn);
-        }
-        return terminalReturns;
+        return Collections.nCopies(context.iterationCount(), cumulativeReturn);
     }
 
     @Override
     public String toString() {
-        return "PosteriorSmoothedResidualMonteCarloMethod[" + inner + "]";
+        return "PosteriorSmoothedResidualMonteCarloMethod[posterior=" + posteriorSource + ", residuals="
+                + residualMethod + "]";
     }
 }

@@ -8,29 +8,23 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.SplittableRandom;
-import java.util.random.RandomGenerator;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.analysis.montecarlo.EnsembleMonteCarloMethod;
 import org.ta4j.core.analysis.montecarlo.MonteCarloContext;
 import org.ta4j.core.analysis.montecarlo.MonteCarloMethod;
-import org.ta4j.core.analysis.montecarlo.MonteCarloSeed;
 import org.ta4j.core.analysis.montecarlo.NormalInverseGammaForecastMethod;
-import org.ta4j.core.analysis.montecarlo.PosteriorSmoothedResidualMonteCarloMethod;
-import org.ta4j.core.analysis.montecarlo.RecentVolatilityWideningMonteCarloMethod;
 import org.ta4j.core.analysis.montecarlo.ShockPathMonteCarloMethod;
-import org.ta4j.core.analysis.montecarlo.StudentTScaleMixingMonteCarloMethod;
 import org.ta4j.core.indicators.forecast.EwmaReturnForecastStateIndicator;
+import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.ShockModel;
 import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.VolatilityUpdateMode;
+import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastState;
 import org.ta4j.core.indicators.forecast.state.ReturnMoments;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -38,24 +32,23 @@ import com.google.gson.GsonBuilder;
 import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 
 /**
- * Walk-forward calibration bake-off of the swappable Monte Carlo techniques and
- * composition decorators introduced by the {@code MonteCarloMethod} seam (PR
- * #1616).
+ * Walk-forward calibration bake-off of swappable Monte Carlo techniques and
+ * their fluent compositions.
  *
  * <p>
- * Each arm is one technique built through the public seam: the four
- * {@link ShockPathMonteCarloMethod} shock/volatility combinations, the
- * Normal-Inverse-Gamma posterior-predictive method, the
- * {@link PosteriorSmoothedResidualMonteCarloMethod} residual-smoothing
- * decorator, and combinations of the
- * {@link RecentVolatilityWideningMonteCarloMethod},
- * {@link StudentTScaleMixingMonteCarloMethod}, and
- * {@link EnsembleMonteCarloMethod} composition decorators. Every arm shares the
- * same EWMA state, lookback window, horizon, iteration count, and per-origin
- * random seed, so the comparison is paired. The experiment drives the seam
- * directly (each origin builds a {@link MonteCarloContext} mirroring the shared
- * simulation engine's window assembly and deterministic seed derivation) so the
- * raw terminal cumulative log-return samples are available for a genuine
+ * Each arm is one {@link MonteCarloMethod} plugged into
+ * {@link MonteCarloReturnProjectionIndicator.Builder#monteCarloMethod(MonteCarloMethod)}:
+ * the four {@link ShockPathMonteCarloMethod} shock/volatility combinations, the
+ * Normal-Inverse-Gamma posterior-predictive method, that posterior over
+ * smoothed residuals
+ * ({@link NormalInverseGammaForecastMethod#overSmoothedResiduals()}), and
+ * compositions built with
+ * {@link MonteCarloMethod#pooledWith(MonteCarloMethod)},
+ * {@link MonteCarloMethod#widenedByRecentVolatility()}, and
+ * {@link MonteCarloMethod#withStudentTScaleMixing()}. Every arm shares the same
+ * EWMA state, lookback window, horizon, iteration count, and seed, so the
+ * comparison is paired. Each arm is wrapped in a capturing method so the raw
+ * terminal cumulative log-return samples remain available for a genuine
  * sample-based CRPS.
  *
  * <p>
@@ -99,7 +92,7 @@ public final class WalkForwardCalibrationBakeoffExample {
     static final double[] PINBALL_QUANTILES = new double[] { 0.05d, 0.5d, 0.95d };
     static final int CHECKPOINT_EVERY = 250;
     private static final Logger LOG = LogManager.getLogger(WalkForwardCalibrationBakeoffExample.class);
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
     private static final List<DatasetSpec> DATASETS = List.of(new DatasetSpec(SP500_RESOURCE, "SP500-weekly", "sp500"),
             new DatasetSpec(ETH_RESOURCE, "ETH-USD-daily", "eth"));
 
@@ -191,39 +184,37 @@ public final class WalkForwardCalibrationBakeoffExample {
     }
 
     private static List<ArmSpec> arms() {
+        MonteCarloMethod posteriorOverSmoothed = NormalInverseGammaForecastMethod.withEmpiricalPriors()
+                .overSmoothedResiduals();
+        MonteCarloMethod posteriorOverNormal = NormalInverseGammaForecastMethod.withEmpiricalPriors()
+                .overResiduals(
+                        new ShockPathMonteCarloMethod(ShockModel.NORMAL, VolatilityUpdateMode.CONSTANT, EWMA_DECAY));
+        MonteCarloMethod bootstrapEwma = new ShockPathMonteCarloMethod(ShockModel.HISTORICAL_BOOTSTRAP,
+                VolatilityUpdateMode.EWMA, EWMA_DECAY);
         return List.of(
                 new ArmSpec("standardized-empirical-ewma", "STANDARDIZED_EMPIRICAL+EWMA",
                         new ShockPathMonteCarloMethod(ShockModel.STANDARDIZED_EMPIRICAL, VolatilityUpdateMode.EWMA,
                                 EWMA_DECAY)),
                 new ArmSpec("normal-constant", "NORMAL+CONSTANT",
                         new ShockPathMonteCarloMethod(ShockModel.NORMAL, VolatilityUpdateMode.CONSTANT, EWMA_DECAY)),
-                new ArmSpec("historical-bootstrap-ewma", "HISTORICAL_BOOTSTRAP+EWMA",
-                        new ShockPathMonteCarloMethod(ShockModel.HISTORICAL_BOOTSTRAP, VolatilityUpdateMode.EWMA,
-                                EWMA_DECAY)),
+                new ArmSpec("historical-bootstrap-ewma", "HISTORICAL_BOOTSTRAP+EWMA", bootstrapEwma),
                 new ArmSpec("smoothed-empirical-ewma", "SMOOTHED_EMPIRICAL+EWMA",
                         new ShockPathMonteCarloMethod(ShockModel.SMOOTHED_EMPIRICAL, VolatilityUpdateMode.EWMA,
                                 EWMA_DECAY)),
                 new ArmSpec("nig-empirical-priors", "NI-GAMMA", NormalInverseGammaForecastMethod.withEmpiricalPriors()),
-                new ArmSpec("posterior-smoothed-empirical", "NIG-COMPOSED",
-                        new PosteriorSmoothedResidualMonteCarloMethod(null)),
+                new ArmSpec("posterior-smoothed-empirical", "NIG-COMPOSED", posteriorOverSmoothed),
                 new ArmSpec("nig-composed-recentvol", "NIG-COMPOSED+RECENTVOL",
-                        new RecentVolatilityWideningMonteCarloMethod(
-                                new PosteriorSmoothedResidualMonteCarloMethod(null))),
+                        posteriorOverSmoothed.widenedByRecentVolatility()),
                 new ArmSpec("nig-composed-ttail", "NIG-COMPOSED+TTAIL",
-                        new StudentTScaleMixingMonteCarloMethod(new PosteriorSmoothedResidualMonteCarloMethod(null))),
+                        posteriorOverSmoothed.withStudentTScaleMixing()),
                 new ArmSpec("nig-composed-recentvol-ttail", "NIG-COMPOSED+RECENTVOL+TTAIL",
-                        new StudentTScaleMixingMonteCarloMethod(new RecentVolatilityWideningMonteCarloMethod(
-                                new PosteriorSmoothedResidualMonteCarloMethod(null)))),
+                        posteriorOverSmoothed.widenedByRecentVolatility().withStudentTScaleMixing()),
                 new ArmSpec("nig-normal-composed-recentvol-ttail", "NIG-NORMAL+RECENTVOL+TTAIL",
-                        new StudentTScaleMixingMonteCarloMethod(new RecentVolatilityWideningMonteCarloMethod(
-                                new PosteriorSmoothedResidualMonteCarloMethod(new ShockPathMonteCarloMethod(
-                                        ShockModel.NORMAL, VolatilityUpdateMode.CONSTANT, EWMA_DECAY))))),
+                        posteriorOverNormal.widenedByRecentVolatility().withStudentTScaleMixing()),
                 new ArmSpec("ensemble-boot-nig-recentvol-ttail", "ENSEMBLE-BOOT+NIG+RECENTVOL+TTAIL",
-                        new StudentTScaleMixingMonteCarloMethod(
-                                new RecentVolatilityWideningMonteCarloMethod(new EnsembleMonteCarloMethod(
-                                        new ShockPathMonteCarloMethod(ShockModel.HISTORICAL_BOOTSTRAP,
-                                                VolatilityUpdateMode.EWMA, EWMA_DECAY),
-                                        new PosteriorSmoothedResidualMonteCarloMethod(null))))));
+                        bootstrapEwma.pooledWith(posteriorOverSmoothed)
+                                .widenedByRecentVolatility()
+                                .withStudentTScaleMixing()));
     }
 
     /**
@@ -233,15 +224,22 @@ public final class WalkForwardCalibrationBakeoffExample {
     private static Accumulator evaluateArm(ArmSpec arm, LogReturnIndicator returns,
             EwmaReturnForecastStateIndicator state, List<Integer> usableOrigins, double[] tercileBounds,
             Path checkpoint) {
-        NumFactory numFactory = returns.getBarSeries().numFactory();
+        SampleCapture capture = new SampleCapture(arm.method());
+        MonteCarloReturnProjectionIndicator projection = MonteCarloReturnProjectionIndicator.builder(state)
+                .horizon(HORIZON)
+                .iterationCount(ITERATION_COUNT)
+                .lookbackBarCount(LOOKBACK)
+                .seed(SEED)
+                .monteCarloMethod(capture)
+                .build();
         Accumulator acc = new Accumulator();
         List<OriginRow> rows = new ArrayList<>();
         int logged = 0;
         for (int index : usableOrigins) {
             Num realizedReturn = realizedReturn(returns, index, HORIZON);
-            MonteCarloContext context = context(index, returns, state, numFactory);
-            List<Num> terminalSamples = arm.method().terminalReturns(context);
-            if (terminalSamples == null || terminalSamples.size() != ITERATION_COUNT || !allFinite(terminalSamples)) {
+            Forecast forecast = projection.getValue(index);
+            List<Num> terminalSamples = capture.take();
+            if (!forecast.isStable() || terminalSamples == null) {
                 acc.unstableCount++;
             } else {
                 double[] samples = toPrimitiveDoubles(terminalSamples);
@@ -301,17 +299,6 @@ public final class WalkForwardCalibrationBakeoffExample {
         return true;
     }
 
-    private static MonteCarloContext context(int index, LogReturnIndicator returns,
-            EwmaReturnForecastStateIndicator state, NumFactory numFactory) {
-        List<Num> window = new ArrayList<>(LOOKBACK);
-        for (int i = index - LOOKBACK + 1; i <= index; i++) {
-            window.add(numFactory.numOf(returns.getValue(i).bigDecimalValue()));
-        }
-        ReturnMoments moments = Objects.requireNonNull(stableMoments(state, index));
-        RandomGenerator random = new SplittableRandom(MonteCarloSeed.mix(SEED, index, HORIZON));
-        return new MonteCarloContext(index, HORIZON, ITERATION_COUNT, window, moments, random, numFactory);
-    }
-
     private static Num realizedReturn(LogReturnIndicator returns, int index, int horizon) {
         Num sum = returns.getBarSeries().numFactory().zero();
         for (int i = index + 1; i <= index + horizon; i++) {
@@ -339,15 +326,6 @@ public final class WalkForwardCalibrationBakeoffExample {
             sumSquares += r * r;
         }
         return Math.sqrt(sumSquares / horizon);
-    }
-
-    private static boolean allFinite(List<Num> samples) {
-        for (Num sample : samples) {
-            if (!Num.isFinite(sample)) {
-                return false;
-            }
-        }
-        return true;
     }
 
     private static double[] toPrimitiveDoubles(List<Num> samples) {
@@ -457,6 +435,34 @@ public final class WalkForwardCalibrationBakeoffExample {
     }
 
     private record ArmSpec(String token, String name, MonteCarloMethod method) {
+    }
+
+    /**
+     * Records the samples of the most recent call so the engine's seeding and
+     * window assembly stay authoritative while the raw distribution remains
+     * available for CRPS.
+     */
+    private static final class SampleCapture implements MonteCarloMethod {
+
+        private final MonteCarloMethod delegate;
+        private List<Num> samples;
+
+        private SampleCapture(MonteCarloMethod delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public List<Num> terminalReturns(MonteCarloContext context) {
+            samples = delegate.terminalReturns(context);
+            return samples;
+        }
+
+        /** Returns and clears the samples recorded since the previous call. */
+        private List<Num> take() {
+            List<Num> taken = samples;
+            samples = null;
+            return taken;
+        }
     }
 
     /** Incremental per-arm evidence, written to the arm checkpoint file. */

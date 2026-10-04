@@ -27,10 +27,13 @@ final class RandomSamplers {
      * uniform never produces a zero multiplier.
      *
      * <p>
-     * Consumption: one {@code nextGaussian()} plus one {@code nextDouble()} per
-     * rejection attempt (the {@code shape < 1} branch additionally consumes one
-     * {@code nextDouble()}); the number of attempts depends only on the random
-     * stream, never on the shape.
+     * Consumption: each rejection attempt redraws {@code nextGaussian()} until
+     * {@code 1 + c * x > 0}, then draws one {@code nextDouble()}; the
+     * {@code shape < 1} branch adds one {@code nextDouble()}. Both the Gaussian
+     * redraws and the acceptance probability depend on {@code shape} through
+     * {@code c = 1 / sqrt(9 * (shape - 1/3))}, so the draw count varies with the
+     * shape as well as the stream, while the expected count stays bounded for every
+     * shape.
      *
      * @param random deterministic seeded random generator
      * @param shape  gamma shape parameter, must be &gt; 0
@@ -62,9 +65,10 @@ final class RandomSamplers {
 
     /**
      * Exact chi-square variate with {@code degreesOfFreedom} via the gamma
-     * representation {@code chiSq(k) = 2 * Gamma(k/2)}. The draw count does not
-     * depend on {@code degreesOfFreedom}, so arbitrarily large degrees of freedom
-     * remain constant-time.
+     * representation {@code chiSq(k) = 2 * Gamma(k/2)}. The draw count follows
+     * {@link #nextGamma(RandomGenerator, double)}: it varies with
+     * {@code degreesOfFreedom} but its expectation stays bounded, so arbitrarily
+     * large degrees of freedom remain expected constant-time.
      *
      * @param random           deterministic seeded random generator
      * @param degreesOfFreedom degrees of freedom, must be &gt;= 2

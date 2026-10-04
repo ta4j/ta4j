@@ -167,7 +167,7 @@ public class RecentVolatilityWideningMonteCarloMethodTest {
 
     @Test
     public void rejectsInvalidConstructorArguments() {
-        assertThrows(IllegalArgumentException.class, () -> new RecentVolatilityWideningMonteCarloMethod(null));
+        assertThrows(NullPointerException.class, () -> new RecentVolatilityWideningMonteCarloMethod(null));
         assertThrows(IllegalArgumentException.class,
                 () -> new RecentVolatilityWideningMonteCarloMethod(fixedSamples(0.5d), 1, 4d));
         assertThrows(IllegalArgumentException.class,

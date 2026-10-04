@@ -5,108 +5,65 @@ package org.ta4j.core.analysis.montecarlo;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.ta4j.core.indicators.forecast.state.ReturnMoments;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * Composition decorator that widens an inner technique's samples when recent
- * realized volatility exceeds the state estimate.
+ * Recent-volatility widening behind
+ * {@link MonteCarloMethod#widenedByRecentVolatility(int, double)}.
  *
  * <p>
- * The state {@link ReturnMoments#volatility()} is an EWMA-smoothed estimate of
- * the carry volatility and therefore lags a spike in the market. When the RMS
- * of the {@linkplain MonteCarloContext#historicalLogReturns() trailing log
- * returns} in the {@code recentBarCount}-bar window exceeds the state
- * volatility, each sample is scaled outward around the inner technique's
- * empirical center (its sample mean) by the ratio:
+ * The state {@link ReturnMoments#volatility()} is a smoothed estimate that lags
+ * a volatility spike. When the RMS of the trailing {@code recentBarCount}
+ * historical log returns exceeds it, the inner samples are scaled outward
+ * around their own mean:
  *
  * <pre>
  * factor = min(maxWiden, max(1, recentRealizedVol / stateVol))
- * center = mean(samples)
- * path   = center + factor * (sample - center)
+ * path   = mean(samples) + factor * (sample - mean(samples))
  * </pre>
  *
- * <p>
- * Widening around the inner sample mean scales dispersion only and never shifts
- * the forecast location, so decorators that re-locate the inner technique (for
- * example the Normal-Inverse-Gamma and posterior-composed methods, whose center
- * is {@code h * mu}, not {@code h * drift}) stay unbiased while their quantile
- * spread grows. The factor is never below 1, so calm regimes are left
- * untouched; only the regime where the realized window is wilder than the state
- * estimate is widened. Widening is capped at {@code maxWiden} to bound the
- * effect. When the lookback window is shorter than {@code recentBarCount}, the
- * whole window is used.
- *
- * <p>
- * This decorator stresses the seam contract: it performs no random draws of its
- * own (the factor is deterministic in the window), returns exactly
- * {@code context.iterationCount()} finite samples, coerces each inner sample
- * through the context's {@link NumFactory} so cross-factory inner techniques
- * compose without throwing, propagates a {@code null} (unstable) result from
- * the inner method, and declares the forecast unstable when the inner method
- * returns the wrong sample count, the moments are not stable, the recent window
- * does not contain at least two finite returns, or the state volatility is zero
- * or non-finite.
- *
- * @see MonteCarloMethod
- * @see org.ta4j.core.indicators.forecast.state.ReturnMoments#volatility()
- * @since 0.25.1
+ * Widening around the sample mean never shifts location, so re-locating inner
+ * techniques (whose center is not {@code h * drift}) stay unbiased. The
+ * forecast is unstable when the inner technique breaks the seam contract, the
+ * moments are unstable, the recent window holds fewer than two finite returns,
+ * or the state volatility is zero or non-finite.
  */
-public final class RecentVolatilityWideningMonteCarloMethod implements MonteCarloMethod {
+final class RecentVolatilityWideningMonteCarloMethod implements MonteCarloMethod {
 
     /** Default width of the trailing realized-volatility window in bars. */
-    public static final int DEFAULT_RECENT_BAR_COUNT = 10;
+    static final int DEFAULT_RECENT_BAR_COUNT = 10;
 
     /** Default upper bound on the widening factor. */
-    public static final double DEFAULT_MAX_WIDEN = 4d;
+    static final double DEFAULT_MAX_WIDEN = 4d;
 
     private final MonteCarloMethod inner;
     private final int recentBarCount;
     private final double maxWiden;
 
-    /**
-     * Wraps an inner technique with the default recent window
-     * ({@value #DEFAULT_RECENT_BAR_COUNT} bars) and widening bound
-     * ({@value #DEFAULT_MAX_WIDEN}).
-     *
-     * @param inner technique whose samples are widened
-     * @since 0.25.1
-     */
-    public RecentVolatilityWideningMonteCarloMethod(MonteCarloMethod inner) {
+    RecentVolatilityWideningMonteCarloMethod(MonteCarloMethod inner) {
         this(inner, DEFAULT_RECENT_BAR_COUNT, DEFAULT_MAX_WIDEN);
     }
 
-    /**
-     * Wraps an inner technique with a configurable recent window and widening
-     * bound.
-     *
-     * @param inner          technique whose samples are widened
-     * @param recentBarCount trailing window length in bars for the realized
-     *                       volatility, must be at least 2
-     * @param maxWiden       upper bound on the widening factor, must be &gt;= 1
-     * @since 0.25.1
-     */
-    public RecentVolatilityWideningMonteCarloMethod(MonteCarloMethod inner, int recentBarCount, double maxWiden) {
-        if (inner == null) {
-            throw new IllegalArgumentException("inner must not be null");
-        }
+    RecentVolatilityWideningMonteCarloMethod(MonteCarloMethod inner, int recentBarCount, double maxWiden) {
         if (recentBarCount < 2) {
             throw new IllegalArgumentException("recentBarCount must be >= 2");
         }
         if (maxWiden < 1d || !Double.isFinite(maxWiden)) {
             throw new IllegalArgumentException("maxWiden must be a finite value >= 1");
         }
-        this.inner = inner;
+        this.inner = Objects.requireNonNull(inner, "inner");
         this.recentBarCount = recentBarCount;
         this.maxWiden = maxWiden;
     }
 
     @Override
     public List<Num> terminalReturns(MonteCarloContext context) {
-        List<Num> samples = inner.terminalReturns(context);
-        if (samples == null || samples.size() != context.iterationCount()) {
+        List<Num> samples = MonteCarloArithmetic.normalizeSamples(inner.terminalReturns(context), context);
+        if (samples == null) {
             return null;
         }
         ReturnMoments moments = context.moments();
@@ -114,38 +71,26 @@ public final class RecentVolatilityWideningMonteCarloMethod implements MonteCarl
             return null;
         }
         NumFactory numFactory = context.numFactory();
-        Num stateVolatility = moments.volatility();
-        if (!Num.isFinite(stateVolatility) || stateVolatility.isNegative() || stateVolatility.isZero()) {
+        Num stateVolatility = MonteCarloArithmetic.normalize(moments.volatility(), numFactory);
+        if (stateVolatility == null || stateVolatility.isNegative() || stateVolatility.isZero()) {
             return null;
         }
         Num recentRealized = recentVolatilityRms(context.historicalLogReturns(), numFactory);
         if (recentRealized == null || !Num.isFinite(recentRealized)) {
             return null;
         }
-        Num normalizedStateVolatility = numFactory.numOf(stateVolatility.bigDecimalValue());
-        if (!Num.isFinite(normalizedStateVolatility) || normalizedStateVolatility.isZero()) {
-            return null;
-        }
-        Num ratio = recentRealized.dividedBy(normalizedStateVolatility);
-        Num factor = ratio.compareTo(numFactory.one()) < 0 ? numFactory.one()
-                : ratio.compareTo(numFactory.numOf(maxWiden)) > 0 ? numFactory.numOf(maxWiden) : ratio;
-
-        // Coerce to the context factory. A factor of one leaves every sample
-        // unchanged, so no empirical center is necessary (or safe to accumulate).
-        List<Num> converted = new ArrayList<>(context.iterationCount());
-        for (Num sample : samples) {
-            Num normalized = MonteCarloArithmetic.normalize(sample, numFactory);
-            if (normalized == null) {
-                return null;
-            }
-            converted.add(normalized);
-        }
-        if (factor.compareTo(numFactory.one()) == 0) {
-            return converted;
+        Num ratio = recentRealized.dividedBy(stateVolatility);
+        Num one = numFactory.one();
+        Num cap = numFactory.numOf(maxWiden);
+        Num factor = ratio.compareTo(one) < 0 ? one : ratio.compareTo(cap) > 0 ? cap : ratio;
+        // A factor of one leaves every sample unchanged, so no empirical center is
+        // necessary (or safe to accumulate).
+        if (factor.compareTo(one) == 0) {
+            return samples;
         }
         Num center = numFactory.zero();
         int count = 0;
-        for (Num sample : converted) {
+        for (Num sample : samples) {
             Num divisor = numFactory.numOf(++count);
             // Same-sign subtraction cannot overflow. Opposite signs need a
             // weighted sum instead, since their difference may exceed Num's range.
@@ -156,8 +101,8 @@ public final class RecentVolatilityWideningMonteCarloMethod implements MonteCarl
             return null;
         }
 
-        List<Num> widened = new ArrayList<>(context.iterationCount());
-        for (Num sample : converted) {
+        List<Num> widened = new ArrayList<>(samples.size());
+        for (Num sample : samples) {
             Num scaled = MonteCarloArithmetic.affine(center, sample, factor, numFactory);
             if (scaled == null) {
                 return null;
