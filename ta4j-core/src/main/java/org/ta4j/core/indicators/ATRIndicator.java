@@ -48,11 +48,15 @@ public class ATRIndicator extends CachedIndicator<Num> {
     }
 
     private ATRIndicator(Config config) {
-        super(config.trueRangeIndicator());
+        this(config, new MMAIndicator(config.trueRangeIndicator(), config.barCount()));
+    }
+
+    private ATRIndicator(Config config, MMAIndicator averageTrueRangeIndicator) {
+        super(averageTrueRangeIndicator);
         this.tr = config.trueRangeIndicator();
         this.trueRangeUnstableBars = config.trueRangeUnstableBars();
         this.barCount = config.barCount();
-        this.averageTrueRangeIndicator = new MMAIndicator(config.trueRangeIndicator(), config.barCount());
+        this.averageTrueRangeIndicator = averageTrueRangeIndicator;
     }
 
     private static Config validatedConfig(TRIndicator tr, int barCount) {

@@ -6,6 +6,7 @@ package org.ta4j.core.criteria;
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -15,6 +16,7 @@ import org.junit.runners.Parameterized;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.ExcessReturns;
@@ -92,6 +94,32 @@ public class RatioSampleSupportTest {
     }
 
     @Test
+    public void futureExitPositionsRespectIgnoreAtLogicalEnd() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("future_exit_sample", numFactory, 5, 100d,
+                110d, 110d, 110d, 110d, 120d, 120d, 120d, 130d);
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
+        tradingRecord.exit(8, numFactory.numOf(130), numFactory.one());
+        ExcessReturns markToMarketReturns = new ExcessReturns(series, numFactory.zero(),
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, tradingRecord, OpenPositionHandling.MARK_TO_MARKET);
+        ExcessReturns ignoreReturns = new ExcessReturns(series, numFactory.zero(),
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, tradingRecord, OpenPositionHandling.IGNORE);
+
+        List<Sample> markToMarketSamples = RatioSampleSupport
+                .samples(series, tradingRecord, SamplingFrequency.TRADE, ZoneOffset.UTC, markToMarketReturns,
+                        OpenPositionHandling.MARK_TO_MARKET)
+                .toList();
+        List<Sample> ignoreSamples = RatioSampleSupport
+                .samples(series, tradingRecord, SamplingFrequency.TRADE, ZoneOffset.UTC, ignoreReturns,
+                        OpenPositionHandling.IGNORE)
+                .toList();
+
+        assertEquals(1, markToMarketSamples.size());
+        assertEquals(0, ignoreSamples.size());
+        assertNumEquals(0.2d, markToMarketSamples.get(0).value());
+    }
+
+    @Test
     public void tradeSamplingSupportsShortEntries() {
         BarSeries series = buildDailySeries("short_trade_sampling_series", new double[] { 100d, 90d, 99d });
         BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.SELL);
@@ -132,6 +160,84 @@ public class RatioSampleSupportTest {
         assertNumEquals(numFactory.zero(), samples.get(0).value(), 0d);
         assertNumEquals(numFactory.zero(), samples.get(0).deltaYears(), 0d);
         assertNumEquals(numFactory.numOf(0.1d), samples.get(1).value(), 1e-12);
+    }
+
+    @Test
+    public void timeSamplingUsesCapturedBoundsAfterSeriesAppend() {
+        BarSeries series = buildDailySeries("captured_time_sampling_series", new double[] { 100d, 110d, 121d });
+        TradingRecord tradingRecord = RatioCriterionTestSupport.alwaysInvested(series);
+        ExcessReturns excessReturns = new ExcessReturns(series, numFactory.zero(),
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, tradingRecord, OpenPositionHandling.MARK_TO_MARKET);
+        BarSeries appendedBars = buildDailySeriesAt("appended_time_sampling_bars",
+                new double[] { 100d, 110d, 121d, 133.1d }, Instant.parse("2024-01-01T00:00:00Z"));
+        series.addBar(appendedBars.getBar(3));
+
+        List<Sample> samples = RatioSampleSupport
+                .samples(series, tradingRecord, SamplingFrequency.DAY, ZoneOffset.UTC, excessReturns,
+                        OpenPositionHandling.MARK_TO_MARKET)
+                .toList();
+
+        assertEquals(2, samples.size());
+        assertNumEquals(0.1d, samples.get(0).value());
+        assertNumEquals(0.1d, samples.get(1).value());
+        assertNumEquals(BarSeriesUtils.deltaYears(series, 0, 1), samples.get(0).deltaYears(), 1e-12);
+        assertNumEquals(BarSeriesUtils.deltaYears(series, 1, 2), samples.get(1).deltaYears(), 1e-12);
+    }
+
+    @Test
+    public void tradeSamplingUsesCapturedEndTimeAfterSeriesAppend() {
+        BarSeries series = buildDailySeries("captured_trade_sampling_series", new double[] { 100d, 110d, 121d });
+        TradingRecord tradingRecord = buildRecordWithOneOpenPosition(series);
+        ExcessReturns excessReturns = new ExcessReturns(series, numFactory.zero(),
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, tradingRecord, OpenPositionHandling.MARK_TO_MARKET);
+        BarSeries appendedBars = buildDailySeriesAt("appended_trade_sampling_bars",
+                new double[] { 100d, 110d, 121d, 133.1d }, Instant.parse("2024-01-01T00:00:00Z"));
+        series.addBar(appendedBars.getBar(3));
+
+        List<Sample> samples = RatioSampleSupport
+                .samples(series, tradingRecord, SamplingFrequency.TRADE, ZoneOffset.UTC, excessReturns,
+                        OpenPositionHandling.MARK_TO_MARKET)
+                .toList();
+
+        assertEquals(3, samples.size());
+        assertNumEquals(BarSeriesUtils.deltaYears(series, 2, 2), samples.get(2).deltaYears(), 0d);
+    }
+
+    @Test
+    public void samplingUsesCapturedEndTimesAfterBarReplacement() {
+        BarSeries series = buildDailySeries("captured_time_replacement_series", new double[] { 100d, 110d, 121d });
+        TradingRecord tradingRecord = RatioCriterionTestSupport.alwaysInvested(series);
+        ExcessReturns excessReturns = new ExcessReturns(series, numFactory.zero(),
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, tradingRecord, OpenPositionHandling.MARK_TO_MARKET);
+        Instant capturedEnd = excessReturns.getCapturedEndTime(2);
+        series.addBar(series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(capturedEnd.plus(Duration.ofDays(7)))
+                .openPrice(121d)
+                .highPrice(121d)
+                .lowPrice(121d)
+                .closePrice(121d)
+                .volume(1)
+                .build(), true);
+
+        List<Sample> timeSamples = RatioSampleSupport
+                .samples(series, tradingRecord, SamplingFrequency.DAY, ZoneOffset.UTC, excessReturns,
+                        OpenPositionHandling.MARK_TO_MARKET)
+                .toList();
+        List<Sample> tradeSamples = RatioSampleSupport
+                .samples(series, tradingRecord, SamplingFrequency.TRADE, ZoneOffset.UTC, excessReturns,
+                        OpenPositionHandling.MARK_TO_MARKET)
+                .toList();
+        var capturedDailyYears = BarSeriesUtils.deltaYears(excessReturns.getCapturedEndTime(1), capturedEnd,
+                series.numFactory());
+
+        assertNumEquals(capturedDailyYears, timeSamples.get(1).deltaYears(), 1e-12);
+        assertNumEquals(capturedDailyYears, tradeSamples.get(1).deltaYears(), 1e-12);
+    }
+
+    private BarSeries buildDailySeriesAt(String name, double[] closes, Instant start) {
+        BarSeries series = new BaseBarSeriesBuilder().withName(name).withNumFactory(numFactory).build();
+        return RatioCriterionTestSupport.buildDailySeries(series, closes, start);
     }
 
     private TradingRecord buildRecordWithOneOpenPosition(BarSeries series) {

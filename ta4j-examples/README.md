@@ -31,6 +31,9 @@ Use these quick checks before moving to the next track:
 - `ta4jexamples.Quickstart`: prints step-by-step run stages and trade/return metrics
 - `ta4jexamples.backtesting.TradingRecordParityBacktest`: logs execution-model comparison and parity check success
 - `ta4jexamples.backtesting.TradeFillRecordingExample`: logs streamed-vs-grouped fill handling and lot-matching outcomes
+- `ta4jexamples.portfolio.StaticPortfolioBacktest`: logs buy-and-hold versus monthly-rebalanced summaries, each rebalance's turnover and cost, and a criteria-computed net return that matches the result's total return
+- `ta4jexamples.portfolio.PortfolioCorrelationAnalysis`: prints price, simple-return, and log-return matrices plus complete-linkage clusters for anonymous sample universes
+- `ta4jexamples.portfolio.DiversifiedPortfolioAnalysis`: writes adjusted-data correlation charts, allocation comparisons, HTML, CSV tables, and an optional external-AI response
 
 If chart windows do not appear, you are likely in a headless environment; switch to chart file output or run on a GUI-enabled machine.
 
@@ -75,12 +78,28 @@ the harness and optimization commits are in place. The JSON artifacts include a
 hashed `hostId` plus JVM/OS metadata so reports can be shared without exposing a
 raw machine hostname.
 
-### 4) Live-style workflows
+### 4) Portfolio simulation
+
+- `ta4jexamples.portfolio.StaticPortfolioBacktest`: `PortfolioSeries` -> `PortfolioAllocation` -> `PortfolioSeriesManager.run(...)`, with a cash sleeve, calendar rebalancing, and the equity curve fed to existing criteria
+- `ta4jexamples.portfolio.PortfolioCorrelationAnalysis`
+- `ta4jexamples.portfolio.DiversifiedPortfolioAnalysis`
+
+Generate the complete YTD report:
+
+```bash
+./mvnw -pl ta4j-examples -am compile
+./mvnw -pl ta4j-examples exec:java \
+  -Dexec.mainClass=ta4jexamples.portfolio.DiversifiedPortfolioAnalysis
+```
+
+The default output directory is `ta4j-examples/target/portfolio-analysis`. To embed a response from an external model safely in the HTML report, rerun with `-Dexec.args="--ai-analysis=/path/to/response.md"`.
+
+### 5) Live-style workflows
 
 - `ta4jexamples.bots.TradingBotOnMovingBarSeries`
 - `ta4jexamples.backtesting.TradeFillRecordingExample`
 
-### 5) Charting and diagnostics
+### 6) Charting and diagnostics
 
 - `ta4jexamples.indicators.IndicatorsToChart`
 - `ta4jexamples.indicators.CandlestickChart`
@@ -90,6 +109,7 @@ raw machine hostname.
 
 - `ta4jexamples.analysis.forecast.RollingConformalForecastExample`
 - `ta4jexamples.analysis.forecast.KinematicKalmanForecastExample`
+- `ta4jexamples.analysis.forecast.AdaptiveKalmanNoiseExample`
 - `ta4jexamples.analysis.forecast.CorrentropyKalmanExample`
 
 Run the ossified BTC daily analog and rolling-conformal walkthrough:
@@ -113,6 +133,22 @@ measurement-variance regime, shares one cached state across one-, four-, and
 thirteen-week forecasts, and applies rolling conformal calibration to the
 four-week interval. The bundled Yahoo Finance snapshot is fixed through July
 30, 2026; its final July 27 weekly aggregate is an as-of partial week.
+
+Run the adaptive ATR/relative-volume Kalman noise comparison:
+
+```bash
+./mvnw -pl ta4j-examples -am install \
+  && ./mvnw -pl ta4j-examples exec:java \
+  -Dexec.mainClass=ta4jexamples.analysis.forecast.AdaptiveKalmanNoiseExample
+```
+
+This opt-in recipe scores fixed-noise, ATR-squared, and ATR/relative-volume
+models against a last-close baseline on identical one-step forecast origins.
+Add `-Dexec.args="--lag-noise"` to use prior-bar dynamic noise. It excludes the
+snapshot's incomplete terminal week from scoring and does not fit parameters or
+claim automatic calibration. The
+[adaptive Kalman noise walkthrough](adaptive-kalman-noise.md) explains units,
+warm-up, missing versus zero volume, clipping, and evaluation.
 
 Run the robust correntropy Kalman walkthrough over the same ossified S&P 500
 weekly series:
@@ -144,8 +180,10 @@ Finite extreme endpoint innovations are whitened before subtraction, so
 2. `ta4jexamples.backtesting.TradingRecordParityBacktest`
 3. `ta4jexamples.backtesting.TradeFillRecordingExample`
 4. `ta4jexamples.backtesting.SimpleMovingAverageRangeBacktest`
-5. `ta4jexamples.backtesting.YahooFinanceBacktest` or `ta4jexamples.backtesting.CoinbaseBacktest`
-6. `ta4jexamples.bots.TradingBotOnMovingBarSeries`
+5. `ta4jexamples.portfolio.StaticPortfolioBacktest`
+6. `ta4jexamples.portfolio.DiversifiedPortfolioAnalysis`
+7. `ta4jexamples.backtesting.YahooFinanceBacktest` or `ta4jexamples.backtesting.CoinbaseBacktest`
+8. `ta4jexamples.bots.TradingBotOnMovingBarSeries`
 
 ## Companion guides
 

@@ -936,12 +936,7 @@ public final class StrategySerialization {
         if (type == null || type.isBlank()) {
             throw new IllegalArgumentException("Rule descriptor missing type: " + descriptor);
         }
-        Class<?> clazz = resolveRuleClass(type);
-        if (!Rule.class.isAssignableFrom(clazz)) {
-            throw new IllegalArgumentException("Descriptor type does not implement Rule: " + type);
-        }
-        @SuppressWarnings("unchecked")
-        Class<? extends Rule> ruleType = (Class<? extends Rule>) clazz;
+        Class<? extends Rule> ruleType = RuleSerialization.resolveRuleType(type);
 
         Optional<Rule> instance = invokeFactory(ruleType, series, descriptor);
         if (instance.isPresent()) {
@@ -1055,43 +1050,21 @@ public final class StrategySerialization {
         return Optional.empty();
     }
 
-    @SuppressWarnings("unchecked")
-    private static Class<? extends Rule> resolveRuleClass(String type) {
-        try {
-            return (Class<? extends Rule>) Class.forName(type);
-        } catch (ClassNotFoundException ex) {
-            // try ta4j core rules package
-        }
-        try {
-            return (Class<? extends Rule>) Class.forName("org.ta4j.core.rules." + type);
-        } catch (ClassNotFoundException ex) {
-            throw new IllegalArgumentException("Unknown rule type: " + type, ex);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
+    /**
+     * Resolves a descriptor strategy type without initializing non-strategy
+     * classes. A missing class and a class that does not implement {@link Strategy}
+     * produce the same failure so descriptor input cannot probe the classpath.
+     */
     private static Class<? extends Strategy> resolveStrategyClass(String type) {
         if (type == null || type.isBlank()) {
             return BaseStrategy.class;
         }
-        try {
-            Class<?> clazz = Class.forName(type);
-            if (Strategy.class.isAssignableFrom(clazz)) {
-                return (Class<? extends Strategy>) clazz;
-            }
-            throw new IllegalArgumentException("Descriptor type does not implement Strategy: " + type);
-        } catch (ClassNotFoundException ex) {
-            // ignore and try package-local lookup
+        Class<? extends Strategy> strategyType = ComponentDescriptor.resolveSubtype(type, Strategy.class,
+                STRATEGY_PACKAGE);
+        if (strategyType == null) {
+            throw new IllegalArgumentException("Unknown strategy type: " + type);
         }
-        try {
-            Class<?> clazz = Class.forName(STRATEGY_PACKAGE + '.' + type);
-            if (Strategy.class.isAssignableFrom(clazz)) {
-                return (Class<? extends Strategy>) clazz;
-            }
-            throw new IllegalArgumentException("Descriptor type does not implement Strategy: " + type);
-        } catch (ClassNotFoundException ex) {
-            throw new IllegalArgumentException("Unknown strategy type: " + type, ex);
-        }
+        return strategyType;
     }
 
     /**

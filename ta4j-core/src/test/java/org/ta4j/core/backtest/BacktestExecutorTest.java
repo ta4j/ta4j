@@ -11,14 +11,19 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Duration;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
@@ -30,7 +35,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Position;
@@ -48,7 +56,9 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.FixedRule;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.walkforward.WalkForwardConfig;
@@ -101,7 +111,8 @@ public class BacktestExecutorTest {
         List<Strategy> strategies = List.of(strategyOne, strategyTwo, strategyThree);
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1));
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1), Trade.TradeType.BUY,
+                2);
 
         assertEquals(strategies.size(), result.tradingStatements().size());
         assertEquals(strategies.size(), result.runtimeReport().strategyCount());
@@ -134,7 +145,7 @@ public class BacktestExecutorTest {
         PositionSizer positionSizer = context -> numFactory.numOf(context.signalIndex() + 1);
 
         BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), positionSizer,
-                Trade.TradeType.BUY);
+                Trade.TradeType.BUY, 1);
         TradingRecord tradingRecord = result.tradingStatements().getFirst().getTradingRecord();
         Position position = tradingRecord.getPositions().getFirst();
 
@@ -162,6 +173,80 @@ public class BacktestExecutorTest {
         assertEquals(result.runtimeReport().overallRuntime(), result.runtimeReport().maxStrategyRuntime());
         assertEquals(result.runtimeReport().overallRuntime(), result.runtimeReport().averageStrategyRuntime());
         assertEquals(result.runtimeReport().overallRuntime(), result.runtimeReport().medianStrategyRuntime());
+    }
+
+    @Test
+    public void executeWithRuntimeReportBoundedRejectsNonPositiveParallelism() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(5, 6, 7).build();
+        BacktestExecutor executor = new BacktestExecutor(series);
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        PositionSizer positionSizer = context -> numFactory.one();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> executor.executeWithRuntimeReport(List.of(strategy), numOf(1), Trade.TradeType.BUY, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> executor.executeWithRuntimeReport(List.of(strategy), positionSizer, Trade.TradeType.BUY, -1));
+    }
+
+    @Test
+    public void boundedWorkerInterruptionRejectsIncompleteResults() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(5, 6, 7).build();
+        BacktestExecutor executor = new BacktestExecutor(series);
+        Strategy first = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        Strategy second = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        Strategy failing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1),
+                new IllegalStateException("previous execution"));
+        assertThrows(IllegalStateException.class,
+                () -> executor.executeWithRuntimeReport(List.of(failing), numFactory.one(), Trade.TradeType.BUY, 1));
+        assertSame(failing, executor.getStrategyFailures().getFirst().strategy());
+        PositionSizer interruptingSizer = context -> {
+            Thread.currentThread().interrupt();
+            return numFactory.one();
+        };
+
+        assertThrows(IllegalStateException.class, () -> executor.executeWithRuntimeReport(List.of(first, second),
+                interruptingSizer, Trade.TradeType.BUY, 1));
+        assertTrue(executor.getStrategyFailures().isEmpty());
+    }
+
+    @Test
+    public void boundedWorkerFailureInterruptsBlockedPeer() throws Exception {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(5, 6, 7, 8).build();
+        BacktestExecutor executor = new BacktestExecutor(series);
+        CountDownLatch blocked = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        AtomicBoolean interrupted = new AtomicBoolean();
+        AssertionError failure = new AssertionError("worker failure");
+        PositionSizer sizer = context -> {
+            try {
+                if (context.signalIndex() == 0) {
+                    blocked.countDown();
+                    release.await();
+                    return numFactory.one();
+                }
+                if (!blocked.await(5, TimeUnit.SECONDS)) {
+                    throw new AssertionError("peer did not start");
+                }
+                throw failure;
+            } catch (InterruptedException e) {
+                interrupted.set(true);
+                Thread.currentThread().interrupt();
+                return numFactory.one();
+            }
+        };
+        Strategy first = new BaseStrategy(new FixedRule(0), new FixedRule(2));
+        Strategy second = new BaseStrategy(new FixedRule(1), new FixedRule(2));
+        ExecutorService caller = Executors.newSingleThreadExecutor();
+        try {
+            Future<AssertionError> execution = caller.submit(() -> assertThrows(AssertionError.class,
+                    () -> executor.executeWithRuntimeReport(List.of(first, second), sizer, Trade.TradeType.BUY, 2)));
+            assertSame(failure, execution.get(5, TimeUnit.SECONDS));
+            assertTrue(interrupted.get());
+        } finally {
+            release.countDown();
+            caller.shutdownNow();
+            caller.close();
+        }
     }
 
     @Test
@@ -194,6 +279,135 @@ public class BacktestExecutorTest {
         assertEquals(strategies.size(), result.tradingStatements().size());
         assertEquals(strategies.size(), callbackCount.get());
         assertEquals(strategies.size(), lastCompletedCount.get());
+    }
+
+    @Test
+    public void resultCaptureFailsWhenSeriesChangesDuringExecution() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        BacktestExecutor executor = new BacktestExecutor(series);
+
+        assertThrows(IllegalStateException.class, () -> executor.executeWithRuntimeReport(List.of(strategy), numOf(1),
+                Trade.TradeType.BUY, completed -> series.getLastBar().addPrice(numOf(99))));
+
+    }
+
+    @Test
+    public void resultCaptureFailsWhenMaximumBarCountChangesDuringExecution() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        BacktestExecutor executor = new BacktestExecutor(series);
+
+        assertThrows(IllegalStateException.class, () -> executor.executeWithRuntimeReport(List.of(strategy), numOf(1),
+                Trade.TradeType.BUY, completed -> series.setMaximumBarCount(2)));
+    }
+
+    @Test
+    public void allowsChangesStrictlyAfterTheCapturedWindowDuringBatchExecution() {
+        BarSeries series = ConstrainedSeriesSupport.offsetSeries("outside_window", numFactory, 0, 2, 0, 10d, 11d, 12d,
+                13d);
+        long revision = series.getBarHistoryRevision();
+        Strategy strategy = new BaseStrategy(new FixedRule(), new FixedRule());
+
+        BacktestExecutionResult result = new BacktestExecutor(series).executeWithRuntimeReport(List.of(strategy),
+                numOf(1), Trade.TradeType.BUY, completed -> series.getBarData().get(3).addPrice(numOf(99)));
+
+        assertTrue(series.getBarHistoryRevision() > revision);
+        assertEquals(2, result.barSeries().getEndIndex());
+        assertEquals(3, result.barSeries().getBarCount());
+    }
+
+    @Test
+    public void batchReportsMatchFreshSeriesForConstrainedAndPrunedWindows() {
+        int[][] windows = { { 2, 4, 0 }, { 4, 6, 4 }, { 4, 6, 2 } };
+        double[][] rawCloses = { { 10, 11, 12, 13, 14, 15 }, { 12, 13, 14 }, { 10, 11, 12, 13, 14, 15 } };
+        String[] scenarios = { "constrained", "pruned", "constrained and pruned" };
+        BarSeries freshSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(12, 13, 14).build();
+        TradingRecord freshRecord = new BarSeriesManager(freshSeries, new TradeOnCurrentCloseModel())
+                .run(new BaseStrategy(new FixedRule(0), new FixedRule(2)), Trade.TradeType.BUY, numOf(1));
+        Position freshPosition = freshRecord.getPositions().get(0);
+
+        for (int scenario = 0; scenario < windows.length; scenario++) {
+            int begin = windows[scenario][0];
+            int end = windows[scenario][1];
+            BarSeries window = ConstrainedSeriesSupport.offsetSeries(scenarios[scenario], numFactory, begin, end,
+                    windows[scenario][2], rawCloses[scenario]);
+            Strategy boundarySignals = new BaseStrategy(new FixedRule(begin - 1, begin), new FixedRule(end, end + 1));
+            BacktestExecutionResult result = new BacktestExecutor(window, new TradeOnCurrentCloseModel())
+                    .executeWithRuntimeReport(List.of(boundarySignals), numOf(1), Trade.TradeType.BUY, 1);
+
+            assertEquals(scenarios[scenario], begin, result.barSeries().getBeginIndex());
+            assertEquals(scenarios[scenario], end, result.barSeries().getEndIndex());
+            List<Position> positions = result.tradingStatements().get(0).getTradingRecord().getPositions();
+            assertEquals(scenarios[scenario], 1, positions.size());
+            Position actual = positions.get(0);
+            assertEquals(scenarios[scenario], begin, actual.getEntry().getIndex());
+            assertEquals(scenarios[scenario], end, actual.getExit().getIndex());
+            assertEquals(scenarios[scenario], freshPosition.getEntry().getPricePerAsset(),
+                    actual.getEntry().getPricePerAsset());
+            assertEquals(scenarios[scenario], freshPosition.getExit().getPricePerAsset(),
+                    actual.getExit().getPricePerAsset());
+        }
+    }
+
+    @Test
+    public void boundedExecutionOfConcurrentSeriesUsesWorkerThreads() {
+        ConcurrentBarSeries series = buildConcurrentSeries();
+        Set<Thread> runnerThreads = ConcurrentHashMap.newKeySet();
+        Rule recordsThread = (index, tradingRecord) -> {
+            runnerThreads.add(Thread.currentThread());
+            return false;
+        };
+        List<Strategy> strategies = List.of(new BaseStrategy(recordsThread, new FixedRule(1)),
+                new BaseStrategy(recordsThread, new FixedRule(2)));
+
+        BacktestExecutionResult result = new BacktestExecutor(series).executeWithRuntimeReport(strategies,
+                numFactory.one(), Trade.TradeType.BUY, 2);
+
+        assertEquals(2, result.tradingStatements().size());
+        assertFalse(runnerThreads.isEmpty());
+        assertFalse("bounded workers were bypassed", runnerThreads.contains(Thread.currentThread()));
+    }
+
+    @Test
+    public void executeWithRuntimeReportLetsLiveWritersAppendWhileStrategiesRun() {
+        ConcurrentBarSeries series = buildConcurrentSeries();
+        series.setMaximumBarCount(Integer.MAX_VALUE);
+        Strategy appending = strategyAppendingFromFeedThread(series, buildAppendedBar(series));
+        Strategy other = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+
+        BacktestExecutionResult result = new BacktestExecutor(series)
+                .executeWithRuntimeReport(List.of(appending, other), numFactory.one(), Trade.TradeType.BUY);
+
+        assertEquals("the feed append must not fail a strategy: " + result.strategyFailures(), 2,
+                result.tradingStatements().size());
+        assertEquals(3, series.getEndIndex());
+        assertEquals(0, result.barSeries().getBeginIndex());
+        assertEquals(2, result.barSeries().getEndIndex());
+        assertEquals(3, result.barSeries().getBarCount());
+        for (TradingStatement statement : result.tradingStatements()) {
+            assertEquals(0, statement.getTradingRecord().getStartIndex().intValue());
+            assertEquals(2, statement.getTradingRecord().getEndIndex().intValue());
+            for (Position position : statement.getTradingRecord().getPositions()) {
+                assertTrue("a fill used a bar appended after the window was captured",
+                        position.getExit() == null || position.getExit().getIndex() <= 2);
+            }
+        }
+    }
+
+    @Test
+    public void executeAndKeepTopKFailsWhenLiveWriterEvictsWindowBars() {
+        ConcurrentBarSeries series = buildConcurrentSeries();
+        Strategy appending = strategyAppendingFromFeedThread(series, buildAppendedBar(series));
+        Strategy other = new BaseStrategy(new FixedRule(0), new FixedRule(2));
+        BacktestExecutor executor = new BacktestExecutor(series);
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> executor.executeAndKeepTopK(List.of(appending, other), numFactory.one(), Trade.TradeType.BUY,
+                        new NumberOfBarsCriterion(), 2, null));
+
+        assertTrue(failure.getMessage(), failure.getMessage().contains("bars before index 1 were evicted"));
+        assertEquals(1, series.getBeginIndex());
     }
 
     @Test
@@ -610,8 +824,8 @@ public class BacktestExecutorTest {
         Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1), new IllegalStateException("boom"));
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor
-                .executeWithRuntimeReport(List.of(oneTrade, throwing, threeTrades, twoTrades), numOf(1));
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(
+                List.of(oneTrade, throwing, threeTrades, twoTrades), numOf(1), Trade.TradeType.BUY, 2);
 
         assertEquals(3, result.tradingStatements().size());
         assertEquals(3, result.runtimeReport().strategyCount());
@@ -692,8 +906,8 @@ public class BacktestExecutorTest {
                 new IllegalStateException("boom-two"));
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> executor.executeWithRuntimeReport(List.of(throwingOne, throwingTwo), numOf(1)));
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> executor
+                .executeWithRuntimeReport(List.of(throwingOne, throwingTwo), numOf(1), Trade.TradeType.BUY, 2));
 
         assertTrue(exception.getMessage().contains("All 2 strategies failed"));
         assertEquals(2, executor.getStrategyFailures().size());
@@ -745,6 +959,65 @@ public class BacktestExecutorTest {
     }
 
     @Test
+    public void rejectsEndContractionDuringBatchExecutionEvenWhenRawBarsRemain() {
+        BarSeries delegate = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
+        AtomicInteger beginIndex = new AtomicInteger(0);
+        AtomicInteger endIndex = new AtomicInteger(3);
+        BarSeries series = withMutableLogicalBounds(delegate, beginIndex, endIndex);
+        Rule contractEndAtFirstBar = (index, tradingRecord) -> {
+            if (index == 0) {
+                endIndex.set(2);
+            }
+            return false;
+        };
+        Strategy mutating = new BaseStrategy(contractEndAtFirstBar, new FixedRule());
+        Strategy stable = new BaseStrategy(new FixedRule(), new FixedRule());
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class, () -> new BacktestExecutor(series)
+                .executeWithRuntimeReport(List.of(mutating, stable), numOf(1), Trade.TradeType.BUY, 1));
+
+        assertTrue(failure.getMessage(), failure.getMessage().contains("end moved"));
+    }
+
+    @Test
+    public void rejectsBeginAdvanceDuringBatchExecution() {
+        BarSeries delegate = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
+        AtomicInteger beginIndex = new AtomicInteger(0);
+        AtomicInteger endIndex = new AtomicInteger(3);
+        BarSeries series = withMutableLogicalBounds(delegate, beginIndex, endIndex);
+        Rule advanceBeginAtFirstBar = (index, tradingRecord) -> {
+            if (index == 0) {
+                beginIndex.set(1);
+            }
+            return false;
+        };
+        Strategy mutating = new BaseStrategy(advanceBeginAtFirstBar, new FixedRule());
+        Strategy stable = new BaseStrategy(new FixedRule(), new FixedRule());
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class, () -> new BacktestExecutor(series)
+                .executeWithRuntimeReport(List.of(mutating, stable), numOf(1), Trade.TradeType.BUY, 1));
+
+        assertTrue(failure.getMessage(), failure.getMessage().contains("begin moved"));
+    }
+
+    private BarSeries withMutableLogicalBounds(BarSeries delegate, AtomicInteger beginIndex, AtomicInteger endIndex) {
+        return (BarSeries) Proxy.newProxyInstance(BarSeries.class.getClassLoader(), new Class<?>[] { BarSeries.class },
+                (proxy, method, arguments) -> {
+                    if (method.getName().equals("getBeginIndex")) {
+                        return beginIndex.get();
+                    }
+                    if (method.getName().equals("getEndIndex")) {
+                        return endIndex.get();
+                    }
+                    try {
+                        return method.invoke(delegate, arguments);
+                    } catch (InvocationTargetException exception) {
+                        throw exception.getCause();
+                    }
+                });
+    }
+
+    @Test
     public void emptyExecutionClearsPreviousFailures() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
         Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1), new IllegalStateException("boom"));
@@ -754,6 +1027,41 @@ public class BacktestExecutorTest {
         executor.executeWithRuntimeReport(List.of(), numOf(1));
 
         assertTrue(executor.getStrategyFailures().isEmpty());
+    }
+
+    private ConcurrentBarSeries buildConcurrentSeries() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
+        return ConstrainedSeriesSupport.seriesWithReadWriteLock(source, new ReentrantReadWriteLock());
+    }
+
+    private Bar buildAppendedBar(ConcurrentBarSeries series) {
+        return series.barBuilder().timePeriod(Duration.ofMinutes(1)).closePrice(13).build();
+    }
+
+    /**
+     * Strategy whose first evaluation appends a bar from a separate feed thread and
+     * requires that write to complete while the strategy is still running.
+     */
+    private Strategy strategyAppendingFromFeedThread(ConcurrentBarSeries series, Bar appendedBar) {
+        AtomicBoolean appended = new AtomicBoolean();
+        Rule appendOnce = (index, tradingRecord) -> {
+            if (appended.compareAndSet(false, true)) {
+                Thread feed = new Thread(() -> series.addBar(appendedBar), "backtest-live-feed");
+                feed.setDaemon(true);
+                feed.start();
+                try {
+                    feed.join(5_000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("Interrupted while waiting for the feed writer", e);
+                }
+                assertFalse("the feed writer was blocked by the running backtest", feed.isAlive());
+            }
+            return index == 0;
+        };
+        // Exits on the window's last bar, after the append completed: a next-open
+        // fill there must not use the appended bar.
+        return new BaseStrategy(appendOnce, new FixedRule(2));
     }
 
     /**
@@ -828,7 +1136,6 @@ public class BacktestExecutorTest {
                 config);
 
         BarSeries resultSeries = result.barSeries();
-        assertNotSame(series, resultSeries);
         assertEquals(series.getBarCount(), resultSeries.getBarCount());
         assertFalse(result.folds().isEmpty());
         assertEquals(result.folds().size(), result.runtimeReport().foldRuntimes().size());
@@ -887,7 +1194,6 @@ public class BacktestExecutorTest {
         assertFalse(result.walkForward().folds().isEmpty());
         BarSeries backtestSeries = result.backtest().barSeries();
         BarSeries walkForwardSeries = result.walkForward().barSeries();
-        assertNotSame(backtestSeries, walkForwardSeries);
         assertEquals(backtestSeries.getBarCount(), walkForwardSeries.getBarCount());
         assertEquals(backtestSeries.getName(), walkForwardSeries.getName());
     }

@@ -13,6 +13,8 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.Trade;
+import org.ta4j.core.analysis.AnalysisWindow;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 
@@ -85,6 +87,50 @@ public class InPositionPercentageCriterionTest extends AbstractCriterionTest {
         var expected = numFactory.numOf(expectedPercentage);
 
         assertNumEquals(expected, result);
+    }
+
+    @Test
+    public void recordVariantIgnoresPositionsExitingAfterTheRecordEnd() {
+        var series = buildSeries(6, Duration.ofHours(1));
+        var amount = numFactory.one();
+        var record = new BaseTradingRecord(Trade.TradeType.BUY, 0, 3, new ZeroCostModel(), new ZeroCostModel());
+        record.enter(0, series.getBar(0).getClosePrice(), amount);
+        record.exit(1, series.getBar(1).getClosePrice(), amount);
+        record.enter(2, series.getBar(2).getClosePrice(), amount);
+        record.exit(5, series.getBar(5).getClosePrice(), amount);
+
+        var result = getCriterion().calculate(series, record);
+
+        // Bars 0..1 of the logical window 0..3
+        assertNumEquals(numFactory.numOf(0.5), result);
+    }
+
+    @Test
+    public void recordVariantMeasuresOnlyTheRecordStartOnward() {
+        var series = buildSeries(6, Duration.ofHours(1));
+        var amount = numFactory.one();
+        var record = new BaseTradingRecord(Trade.TradeType.BUY, 2, null, new ZeroCostModel(), new ZeroCostModel());
+        record.enter(0, series.getBar(0).getClosePrice(), amount);
+        record.exit(4, series.getBar(4).getClosePrice(), amount);
+
+        var result = getCriterion().calculate(series, record);
+
+        // Bars 2..4 of the logical window 2..5
+        assertNumEquals(numFactory.numOf(0.75), result);
+    }
+
+    @Test
+    public void windowedCalculationMeasuresTheRequestedWindow() {
+        var series = buildSeries(6, Duration.ofHours(1));
+        var amount = numFactory.one();
+        var record = new BaseTradingRecord();
+        record.enter(1, series.getBar(1).getClosePrice(), amount);
+        record.exit(2, series.getBar(2).getClosePrice(), amount);
+
+        var result = getCriterion().calculate(series, record, AnalysisWindow.barRange(1, 3));
+
+        // Bars 1..2 of the requested window 1..3
+        assertNumEquals(numFactory.two().dividedBy(numFactory.three()), result);
     }
 
     @Test

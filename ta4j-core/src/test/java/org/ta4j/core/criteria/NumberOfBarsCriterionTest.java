@@ -11,6 +11,7 @@ import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -42,6 +43,22 @@ public class NumberOfBarsCriterionTest extends AbstractCriterionTest {
 
         AnalysisCriterion numberOfBars = getCriterion();
         assertNumEquals(6, numberOfBars.calculate(series, tradingRecord));
+    }
+
+    @Test
+    public void calculateIgnoresPositionsExitingAfterTheRecordEnd() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 105, 110, 100, 95, 105)
+                .build();
+        var tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, 0, 3, new ZeroCostModel(), new ZeroCostModel());
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), series.numFactory().one());
+        tradingRecord.exit(2, series.getBar(2).getClosePrice(), series.numFactory().one());
+        tradingRecord.enter(3, series.getBar(3).getClosePrice(), series.numFactory().one());
+        tradingRecord.exit(5, series.getBar(5).getClosePrice(), series.numFactory().one());
+
+        // The second position is still open at the record end, so only 3 bars are
+        // counted
+        assertNumEquals(3, getCriterion().calculate(series, tradingRecord));
     }
 
     @Test

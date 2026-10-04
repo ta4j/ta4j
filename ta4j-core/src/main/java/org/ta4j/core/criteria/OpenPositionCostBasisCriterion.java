@@ -25,8 +25,29 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
+        return calculateAt(series, position, series.getEndIndex());
+    }
+
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        int finalIndex = Math.min(series.getEndIndex(), tradingRecord.getEndIndex(series));
+        Num totalCostBasis = series.numFactory().zero();
+        for (Position position : tradingRecord.getPositions()) {
+            if (isOpenAt(position, finalIndex)) {
+                totalCostBasis = totalCostBasis.plus(calculateAt(series, position, finalIndex));
+            }
+        }
+        for (Position openLot : OpenPositionUnrealizedProfitCriterion.openLots(tradingRecord)) {
+            if (isOpenAt(openLot, finalIndex)) {
+                totalCostBasis = totalCostBasis.plus(calculateAt(series, openLot, finalIndex));
+            }
+        }
+        return totalCostBasis;
+    }
+
+    private Num calculateAt(BarSeries series, Position position, int finalIndex) {
         NumFactory factory = series.numFactory();
-        if (!position.isOpened()) {
+        if (finalIndex < series.getBeginIndex() || !isOpenAt(position, finalIndex)) {
             return factory.zero();
         }
         Trade entry = position.getEntry();
@@ -35,17 +56,11 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
         return toSeriesNum(factory, entryCost);
     }
 
-    @Override
-    public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        NumFactory factory = series.numFactory();
-        Position current = tradingRecord.getCurrentPosition();
-        if (!current.isOpened()) {
-            return factory.zero();
+    private boolean isOpenAt(Position position, int finalIndex) {
+        if (position == null || position.getEntry() == null || position.getEntry().getIndex() > finalIndex) {
+            return false;
         }
-        Trade entry = current.getEntry();
-        Num entryPrice = entry.getPricePerAsset(series);
-        Num entryCost = entryPrice.multipliedBy(entry.getAmount()).plus(entry.getCost());
-        return toSeriesNum(factory, entryCost);
+        return position.getExit() == null || position.getExit().getIndex() > finalIndex;
     }
 
     @Override

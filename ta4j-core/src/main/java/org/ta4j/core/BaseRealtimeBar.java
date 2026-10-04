@@ -169,9 +169,15 @@ public class BaseRealtimeBar extends BaseBar implements RealtimeBar {
 
     @Override
     public void addTrade(final Num tradeVolume, final Num tradePrice, final Side side, final Liquidity liquidity) {
-        super.addTrade(tradeVolume, tradePrice);
-        addSideData(tradeVolume, tradePrice, side);
-        addLiquidityData(tradeVolume, tradePrice, liquidity);
+        applyTrade(tradeVolume, tradePrice);
+        try {
+            addSideData(tradeVolume, tradePrice, side);
+            addLiquidityData(tradeVolume, tradePrice, liquidity);
+        } catch (RuntimeException | Error failure) {
+            publishRetainedBarMutationAfterFailure(failure);
+            throw failure;
+        }
+        publishRetainedBarMutation();
     }
 
     private void addSideData(final Num tradeVolume, final Num tradePrice, final Side side) {

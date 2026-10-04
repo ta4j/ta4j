@@ -1062,26 +1062,26 @@ class ParameterResearchTest {
     }
 
     @Test
-    void windowBarsAreFrozenCopiesOfSourceBars() {
+    void windowBarsAreFrozenCopiesAndSourceMutationsAreRejected() {
         // Mutating the caller's original series mid-run must not leak into the
         // already-built research window: its bars are copies, not views.
         BarSeries series = series(1d, 2d, 3d, 4d);
         AtomicInteger evaluations = new AtomicInteger();
-        ParameterResearchReport report = ParameterResearch.<Integer>builder(series)
+        AtomicInteger observedWindowClose = new AtomicInteger();
+        ParameterResearch.CandidateStage<Integer> builder = ParameterResearch.<Integer>builder(series)
                 .integer("a", 1, 2)
                 .candidate((window, parameters) -> parameters.intValue("a"))
                 .maximize((candidate, window) -> {
                     if (evaluations.incrementAndGet() == 1) {
                         series.getBar(1).addPrice(DecimalNum.valueOf(999));
                     }
+                    observedWindowClose.set(window.series().getBar(1).getClosePrice().intValue());
                     return ParameterResearch.ObjectiveEvaluation.of(window.series().getBar(1).getClosePrice());
                 })
-                .search(SearchPlan.grid(2))
-                .run();
+                .search(SearchPlan.grid(2));
 
-        assertThat(report.counts().successful()).isEqualTo(2);
-        assertThat(report.trainingLeaderboard())
-                .allSatisfy(ranked -> assertThat(ranked.trainingScore().doubleValue()).isEqualTo(2d));
+        assertThrows(IllegalStateException.class, builder::run);
+        assertThat(observedWindowClose).hasValue(2);
         assertThat(series.getBar(1).getClosePrice().doubleValue()).isEqualTo(999d);
     }
 
