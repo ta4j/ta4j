@@ -224,7 +224,9 @@ public final class RecentSwingIndicators {
      * Detector-backed indicators return detector-supplied
      * {@link SwingPivot#price()} values for pivots detected through the current
      * series end. The custom price sources define the shared bar series and remain
-     * the fallback values for bars that are not known detector pivots.
+     * the fallback values for bars that are not known detector pivots. Revisionless
+     * price reads clear registered fallback caches before evaluation so retained
+     * in-place edits are visible even without a recent-swing query.
      *
      * @param highPrice swing-high price source
      * @param lowPrice  swing-low price source
@@ -476,7 +478,7 @@ public final class RecentSwingIndicators {
 
         private DetectorRecentSwingIndicator(final Indicator<Num> priceIndicator,
                 final Indicator<List<SwingPivot>> pivots, final SwingPivotType type) {
-            super(priceIndicator, 0);
+            super(priceIndicator, 0, pivots);
             this.pivots = pivots;
             this.type = type;
         }
@@ -517,6 +519,12 @@ public final class RecentSwingIndicators {
 
         @Override
         public Num getValue(final int index) {
+            if (getBarSeries().getBarHistoryRevision() < 0L) {
+                // Exposed non-pivot reads can bypass the recent-swing tracker.
+                // Refresh cached fallback sources as well as validating the detector.
+                invalidateCacheIncludingDependencies();
+                return calculate(index);
+            }
             resetIfHistoryChanged();
             return super.getValue(index);
         }
@@ -576,6 +584,9 @@ public final class RecentSwingIndicators {
 
         @Override
         public synchronized List<SwingPivot> getValue(final int index) {
+            if (getBarSeries().getBarHistoryRevision() < 0L) {
+                return calculate(index);
+            }
             invalidateIfHistoryChanged();
             final List<SwingPivot> result = super.getValue(index);
             final BarSeries series = getBarSeries();
