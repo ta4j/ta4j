@@ -26,10 +26,10 @@ import org.ta4j.core.num.NumFactory;
  * </pre>
  *
  * The chi-square denominator comes from
- * {@link RandomSamplers#nextChiSquared(RandomGenerator, int)}, whose cost is
- * independent of {@code degreesOfFreedom}. The forecast is unstable when the
- * inner technique breaks the seam contract or the moments are unstable or carry
- * a drift the context factory cannot represent.
+ * {@link RandomSamplers#nextChiSquared(RandomGenerator, int)}, whose expected
+ * cost stays bounded for every {@code degreesOfFreedom}. The forecast is
+ * unstable when the inner technique breaks the seam contract or the moments are
+ * unstable or carry a drift the context factory cannot represent.
  */
 final class StudentTScaleMixingMonteCarloMethod implements MonteCarloMethod {
 
