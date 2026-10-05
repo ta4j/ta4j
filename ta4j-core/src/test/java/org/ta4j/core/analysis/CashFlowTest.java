@@ -2374,4 +2374,27 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(0.998, flow.getValue(3));
     }
 
+    @Test
+    public void realizedHistoricalComponentLossSeedsRetainedBaseline() {
+        BarSeries retained = FuturesAnalysisTestSupport.series(numFactory, 100, 1e16 + 100, 100, 100);
+        retained.setMaximumBarCount(2);
+        BaseTradingRecord record = FuturesAnalysisTestSupport.roundedPreWindowProfitRecord(numFactory);
+        assertNumEquals(0, record.getPositions().getFirst().getRealizedProfit(1));
+        CashFlow cash = new CashFlow(retained, record, EquityCurveMode.REALIZED, OpenPositionHandling.MARK_TO_MARKET);
+        assertNumEquals(0.998, cash.getValue(2));
+        assertNumEquals(0.998, cash.getBaselineValue());
+        assertTrue(!cash.hasInitialReturn());
+    }
+
+    @Test
+    public void mixedFactoryComponentsHaveOneRepresentableEquityTotal() {
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100);
+        for (boolean reverse : new boolean[] { false, true }) {
+            CashFlow cash = new CashFlow(series,
+                    FuturesAnalysisTestSupport.mixedFactoryRecord(numFactory, reverse, true));
+            assertNumEquals(1.002, cash.getValue(0));
+            assertNumEquals(1.002, cash.getValue(1));
+        }
+    }
+
 }

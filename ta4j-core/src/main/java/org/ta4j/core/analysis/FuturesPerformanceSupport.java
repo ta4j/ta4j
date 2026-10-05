@@ -4,6 +4,7 @@
 package org.ta4j.core.analysis;
 
 import java.util.ArrayList;
+import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -131,9 +132,19 @@ final class FuturesPerformanceSupport {
         if (position == null) {
             return false;
         }
-        return (hasPreWindowExecution(position, seriesBegin)
-                && (markExposure || !position.getRealizedProfit(seriesBegin - 1).isZero()))
-                || hasPreWindowCashFlow(position, seriesBegin);
+        if (hasPreWindowExecution(position, seriesBegin)) {
+            if (markExposure) {
+                return true;
+            }
+            ProfitSum realized = new ProfitSum();
+            for (Num component : position.getProfitComponents(seriesBegin - 1, null)) {
+                realized.add(component);
+            }
+            if (!realized.isZero()) {
+                return true;
+            }
+        }
+        return hasPreWindowCashFlow(position, seriesBegin);
     }
 
     static boolean hasActivityAtIndex(Position position, int index) {
@@ -432,7 +443,6 @@ final class FuturesPerformanceSupport {
         private final boolean markExposure;
         private final Indicator<Num> markPrice;
         private final NumFactory numFactory;
-        private final NumFactory profitFactory;
         private int activeCount;
         private final boolean[] settledPositions;
         private final ProfitSum settledRealized;
@@ -446,9 +456,7 @@ final class FuturesPerformanceSupport {
             this.markExposure = markExposure;
             this.markPrice = markPrice;
             this.numFactory = series.numFactory();
-            this.profitFactory = positions.isEmpty() ? this.numFactory
-                    : positions.getFirst().getEntry().getPricePerAsset().getNumFactory();
-            this.settledRealized = new ProfitSum(profitFactory.zero(), profitFactory.zero());
+            this.settledRealized = new ProfitSum();
             this.settledPositions = new boolean[positions.size()];
         }
 
@@ -480,7 +488,7 @@ final class FuturesPerformanceSupport {
                 }
             }
             Num mark = markExposure && hasResidualExposure ? markAt(effectiveIndex) : null;
-            ProfitSum total = new ProfitSum(settledRealized.sum, settledRealized.compensation);
+            ProfitSum total = new ProfitSum(settledRealized);
             for (int i = 0; i < activeCount; i++) {
                 if (settledPositions[i]) {
                     continue;
@@ -493,7 +501,7 @@ final class FuturesPerformanceSupport {
                     total.add(component);
                 }
             }
-            return toFactory(numFactory, total.sum.plus(total.compensation));
+            return total.value(numFactory);
         }
 
         private static boolean hasResidualExposure(Position position, int finalIndex) {
@@ -579,28 +587,6 @@ final class FuturesPerformanceSupport {
             return true;
         }
 
-        /**
-         * Retains the raw sum and residue when settled lots are folded into later bars.
-         */
-        private final class ProfitSum {
-            private Num sum;
-            private Num compensation;
-
-            private ProfitSum(Num sum, Num compensation) {
-                this.sum = sum;
-                this.compensation = compensation;
-            }
-
-            private void add(Num component) {
-                Num value = toFactory(profitFactory, component);
-                Num next = toFactory(profitFactory, sum.plus(value));
-                Num correction = sum.abs().isGreaterThanOrEqual(value.abs()) ? sum.minus(next).plus(value)
-                        : value.minus(next).plus(sum);
-                compensation = toFactory(profitFactory, compensation.plus(correction));
-                sum = next;
-            }
-        }
-
         private Num markAt(int index) {
             int seriesEnd = series.getEndIndex();
             int seriesBegin = series.getBeginIndex();
@@ -611,4 +597,42 @@ final class FuturesPerformanceSupport {
             return toFactory(numFactory, markPrice.getValue(boundedIndex));
         }
     }
+
+    /**
+     * Adds already validated economic components exactly before converting the
+     * account total. Custom TradingRecords can mix position factories, so neither a
+     * position's factory nor a rounded lot subtotal defines account precision. The
+     * same sum determines pre-window eligibility and cursor settlement.
+     */
+    private static final class ProfitSum {
+        private BigDecimal sum;
+
+        private ProfitSum() {
+            this.sum = BigDecimal.ZERO;
+        }
+
+        private ProfitSum(ProfitSum previous) {
+            this.sum = previous.sum;
+        }
+
+        private void add(Num component) {
+            sum = sum.add(component.bigDecimalValue());
+        }
+
+        private boolean isZero() {
+            return sum.signum() == 0;
+        }
+
+        private Num value(NumFactory factory) {
+            Num value = factory.numOf(sum);
+            if (!Num.isFinite(value)) {
+                throw new IllegalArgumentException("profit total must be finite in analysis number factory");
+            }
+            if (value.isZero() && !isZero()) {
+                throw new IllegalArgumentException("profit total cannot be represented in analysis number factory");
+            }
+            return value;
+        }
+    }
+
 }

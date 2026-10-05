@@ -1540,4 +1540,29 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(0, returns.getValue(3));
     }
 
+    @Test
+    public void realizedHistoricalComponentLossIsExcludedFromNewReturnSamples() {
+        BarSeries retained = FuturesAnalysisTestSupport.series(numFactory, 100, 1e16 + 100, 100, 100);
+        retained.setMaximumBarCount(2);
+        BaseTradingRecord record = FuturesAnalysisTestSupport.roundedPreWindowProfitRecord(numFactory);
+        Returns returns = new Returns(retained, record, ReturnRepresentation.DECIMAL, EquityCurveMode.REALIZED,
+                OpenPositionHandling.MARK_TO_MARKET);
+        assertNumEquals(-0.002, returns.getValue(2));
+        assertTrue(returns.hasSeededFirstBarReturn());
+        assertNumEquals(0, returns.getValue(3));
+    }
+
+    @Test
+    public void mixedFactoryComponentsPreserveCapitalSampleInEitherOrder() {
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100);
+        for (boolean reverse : new boolean[] { false, true }) {
+            Returns returns = new Returns(series,
+                    FuturesAnalysisTestSupport.mixedFactoryRecord(numFactory, reverse, true),
+                    ReturnRepresentation.DECIMAL);
+            assertTrue(returns.getValue(0).isNaN());
+            // Absolute index zero retains the existing capital-based next sample.
+            assertNumEquals(0.002, returns.getValue(1));
+        }
+    }
+
 }

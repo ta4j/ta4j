@@ -15,6 +15,7 @@ import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.TradeFee;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
@@ -150,6 +151,81 @@ final class FuturesAnalysisTestSupport {
             record.operate(fill(contract, 3, exitSide, 1, 100, List.of()));
         }
         return record;
+    }
+
+    static BaseTradingRecord roundedPreWindowProfitRecord(NumFactory factory) {
+        FuturesContract contract = linearBtcPerpetual(factory).toBuilder().contractSize(factory.one()).build();
+        BaseTradingRecord record = fundedRecord(contract, factory, 500);
+        record.operate(fill(contract, 0, ExecutionSide.BUY, 1, 100, List.of()));
+        record.operate(fill(contract, 1, ExecutionSide.SELL, 1, 1e16 + 100,
+                List.of(commission(factory, 1e16), commission(factory, 1))));
+        record.operate(fill(contract, 2, ExecutionSide.BUY, 1, 100, List.of()));
+        return record;
+    }
+
+    static TradingRecord mixedFactoryRecord(NumFactory analysisFactory, boolean reverse, boolean closed) {
+        NumFactory doubles = DoubleNumFactory.getInstance();
+        NumFactory decimals = DecimalNumFactory.getInstance();
+        FuturesContract contract = linearBtcPerpetual(doubles).toBuilder().contractSize(doubles.one()).build();
+        Position zero = factoryPosition(contract, doubles, 0, closed);
+        Position gain = factoryPosition(contract, decimals, 1, closed);
+        List<Position> positions = reverse ? List.of(gain, zero) : List.of(zero, gain);
+        return new BaseTradingRecord() {
+            @Override
+            public FuturesContract getFuturesContract() {
+                return contract;
+            }
+
+            @Override
+            public Num getInitialCapital() {
+                return analysisFactory.numOf(500);
+            }
+
+            @Override
+            public List<Position> getPositions() {
+                return closed ? positions : List.of();
+            }
+
+            @Override
+            public List<Position> getOpenPositions() {
+                return closed ? List.of() : positions;
+            }
+
+            @Override
+            public Position getCurrentPosition() {
+                return new Position();
+            }
+        };
+    }
+
+    private static Position factoryPosition(FuturesContract contract, NumFactory factory, double gain, boolean closed) {
+        TradeFee fee = TradeFee.builder()
+                .type(TradeFee.Type.COMMISSION)
+                .currency("USD")
+                .amount(factory.numOf(gain == 0 ? "0" : "1e-400"))
+                .build();
+        Trade entry = Trade.fromFill(TradeFill.builder()
+                .futuresContract(contract)
+                .index(0)
+                .time(T0)
+                .price(factory.numOf(closed ? 100 : 100 - gain))
+                .amount(factory.one())
+                .side(ExecutionSide.BUY)
+                .fees(closed ? List.of() : List.of(fee))
+                .build(), RecordedTradeCostModel.INSTANCE);
+        if (!closed) {
+            return new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        }
+        Trade exit = Trade.fromFill(TradeFill.builder()
+                .futuresContract(contract)
+                .index(0)
+                .time(T0.plusNanos(1))
+                .price(factory.numOf(100 + gain))
+                .amount(factory.one())
+                .side(ExecutionSide.SELL)
+                .fees(List.of(fee))
+                .build(), RecordedTradeCostModel.INSTANCE);
+        return new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
     }
 
 }

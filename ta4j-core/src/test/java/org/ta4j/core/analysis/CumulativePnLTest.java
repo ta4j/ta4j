@@ -1480,4 +1480,17 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         assertNumEquals(1, pnl.getValue(1));
     }
 
+    @Test
+    public void mixedFactoryAccountTotalDoesNotDependOnPositionOrder() {
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100);
+        for (boolean closed : new boolean[] { false, true }) {
+            for (boolean reverse : new boolean[] { false, true }) {
+                TradingRecord record = FuturesAnalysisTestSupport.mixedFactoryRecord(numFactory, reverse, closed);
+                CumulativePnL pnl = new CumulativePnL(series, record);
+                assertNumEquals(1, pnl.getValue(0));
+                assertNumEquals(1, pnl.getValue(1));
+            }
+        }
+    }
+
 }
