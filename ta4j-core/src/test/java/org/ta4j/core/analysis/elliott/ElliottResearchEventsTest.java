@@ -91,6 +91,7 @@ final class ElliottResearchEventsTest {
         final ElliottResearchEvents recorder = new ElliottResearchEvents("all-rules", 10);
         ElliottResearchOutcomesTest.runner(ElliottResearchEventsTest::localExtrema)
                 .replayNullMember(series, 0, 159, 2, 1, recorder);
+        assertFalse(recorder.streams().isEmpty(), "null member replay must create a stream");
         for (final Stream stream : recorder.streams()) {
             assertFalse(stream.key().real());
             assertEquals(2, stream.key().nullBlockLength());
