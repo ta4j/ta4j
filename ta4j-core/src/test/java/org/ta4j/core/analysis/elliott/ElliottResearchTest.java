@@ -868,6 +868,235 @@ class ElliottResearchTest {
         }
     }
 
+    private static final String TWO_SCALES = "{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w3\"}]}";
+
+    private Result runWithFamilies(final String name, final String hierarchy, final String families) throws Exception {
+        return runWithFamilies(name, hierarchy, families, "off");
+    }
+
+    private Result runWithFamilies(final String name, final String hierarchy, final String families, final String trace)
+            throws Exception {
+        final Path candles = work.resolve(name + "-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
+        final Path recipe = work.resolve(name + "-recipe.json");
+        Files.writeString(recipe, hierarchyRecipe(hierarchy).replace("\"null\":{",
+                (families == null ? "" : "\"families\":" + families + ",") + "\"null\":{"));
+        return launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(), "--trace", trace,
+                "--out", work.resolve(name).toString());
+    }
+
+    /** Candidate rule outcomes {@code state -> count} across a run's real trace. */
+    private static Map<String, Integer> ruleStates(final Path trace) throws IOException {
+        final Map<String, Integer> counts = new java.util.TreeMap<>();
+        int candidates = 0;
+        for (final JsonObject record : ElliottResearchTrace.read(trace).records()) {
+            for (final com.google.gson.JsonElement candidate : record.getAsJsonArray("candidates")) {
+                candidates++;
+                for (final com.google.gson.JsonElement rule : candidate.getAsJsonObject().getAsJsonArray("rules")) {
+                    counts.merge(rule.getAsJsonObject().get("state").getAsString(), 1, Integer::sum);
+                }
+            }
+        }
+        counts.put("candidates", candidates);
+        return counts;
+    }
+
+    @Test
+    void failedBaseRuleCandidatesStayVisibleAndCountedWhenFamiliesAreEnabled() throws Exception {
+        assertEquals(0, runWithFamilies("base-plain", TWO_SCALES, null, "real").code());
+        assertEquals(0,
+                runWithFamilies("base-fam", TWO_SCALES,
+                        "{\"profiles\":[{\"id\":\"zigzag\"},{\"id\":\"regular-flat\"},{\"id\":\"expanded-flat\"}]}",
+                        "real").code());
+        final Path plainTrace = work.resolve("base-plain/traces/toy-real.jsonl");
+        final Path familyTrace = work.resolve("base-fam/traces/toy-real.jsonl");
+
+        final Map<String, Integer> plain = ruleStates(plainTrace);
+        assertTrue(plain.getOrDefault("FAIL", 0) > 0,
+                "the launcher's configured rules must fail some toy candidate: " + plain);
+        assertEquals(plain, ruleStates(familyTrace));
+        assertEquals(fingerprintless(Files.readString(plainTrace, StandardCharsets.UTF_8)),
+                fingerprintless(Files.readString(familyTrace, StandardCharsets.UTF_8)));
+        assertEquals(Files.readString(work.resolve("base-plain/comparisons.csv"), StandardCharsets.UTF_8),
+                Files.readString(work.resolve("base-fam/comparisons.csv"), StandardCharsets.UTF_8));
+
+        final String key = ElliottResearchReport.readCsv(work.resolve("base-fam/comparisons.csv"))
+                .stream()
+                .filter(row -> !row.activeRules().isEmpty())
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no row evaluated the launcher's rules"))
+                .key();
+        final Result inspectPlain = launch("inspect", work.resolve("base-plain").toString(), key);
+        final Result inspectFamilies = launch("inspect", work.resolve("base-fam").toString(), key);
+        assertEquals(0, inspectPlain.code(), inspectPlain.err());
+        assertEquals(0, inspectFamilies.code(), inspectFamilies.err());
+        for (final String prefix : List.of("Status tallies:", "Rule disagreements across modes:", "Support check:")) {
+            assertEquals(lineStartingWith(inspectPlain.out(), prefix), lineStartingWith(inspectFamilies.out(), prefix),
+                    prefix);
+        }
+        assertTrue(families("base-fam").get("frames").getAsLong() > 0);
+    }
+
+    private static String lineStartingWith(final String text, final String prefix) {
+        return text.lines()
+                .filter(line -> line.startsWith(prefix))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no '" + prefix + "' line in " + text));
+    }
+
+    private JsonObject families(final String name) throws IOException {
+        return readJson(work.resolve(name).resolve("run.json")).getAsJsonArray("datasets")
+                .get(0)
+                .getAsJsonObject()
+                .getAsJsonObject("families");
+    }
+
+    @Test
+    void familyRecipeWritesFamilyArtifactAndOperatorCanReplayIt() throws Exception {
+        final Result run = runWithFamilies("fam", TWO_SCALES,
+                "{\"profiles\":[{\"id\":\"zigzag\"},{\"id\":\"regular-flat\",\"minRetracement\":\"0.8\"},"
+                        + "{\"id\":\"expanded-flat\"},{\"id\":\"contracting-triangle\"}],\"maxCompositions\":4}");
+        assertEquals(0, run.code(), run.err());
+        final Path out = work.resolve("fam");
+        assertTrue(Files.isRegularFile(out.resolve("families/toy.jsonl")));
+        assertTrue(Files.isRegularFile(out.resolve("relations/toy.jsonl")));
+
+        final JsonObject recipeJson = readJson(out.resolve("run.json")).getAsJsonObject("configuration");
+        final JsonObject declared = recipeJson.getAsJsonObject("families");
+        assertEquals(4, declared.getAsJsonArray("profiles").size());
+        assertEquals(4, declared.get("maxCompositions").getAsInt());
+        assertEquals("0.8",
+                declared.getAsJsonArray("profiles").get(1).getAsJsonObject().get("minRetracement").getAsString());
+        final JsonObject families = readJson(out.resolve("run.json")).getAsJsonArray("datasets")
+                .get(0)
+                .getAsJsonObject()
+                .getAsJsonObject("families");
+        assertEquals("families/toy.jsonl", families.get("file").getAsString());
+        assertTrue(families.get("frames").getAsLong() > 0, families.toString());
+        final String summary = Files.readString(out.resolve("summary.md"));
+        assertTrue(summary.contains("## Corrective families (experimental)"), summary);
+        assertTrue(summary.contains("regular-flat/1{minRetracement=0.8"), summary);
+
+        final Result print = launch("families", out.toString(), "toy", "--limit", "5");
+        assertEquals(0, print.code(), print.err());
+        assertTrue(print.out().contains("Families: "), print.out());
+        assertTrue(print.out().contains("not a forecast"), print.out());
+        assertTrue(print.out().contains("As of index"), print.out());
+
+        final Result early = launch("families", out.toString(), "toy", "--as-of", "1");
+        assertEquals(0, early.code(), early.err());
+        assertTrue(early.out().contains("no verdict was observable yet"), early.out());
+        assertEquals(1, launch("families", out.toString(), "nope").code());
+    }
+
+    @Test
+    void enablingFamiliesLeavesEveryOtherArtifactByteIdentical() throws Exception {
+        assertEquals(0, runWithFamilies("plain", TWO_SCALES, null).code());
+        assertEquals(0, runWithFamilies("with", TWO_SCALES, "{\"profiles\":[{\"id\":\"zigzag\"}]}").code());
+        final Path plain = work.resolve("plain");
+        final Path with = work.resolve("with");
+
+        assertFalse(Files.exists(plain.resolve("families")));
+        assertFalse(readJson(plain.resolve("run.json")).getAsJsonArray("datasets")
+                .get(0)
+                .getAsJsonObject()
+                .has("families"));
+        assertFalse(Files.readString(plain.resolve("summary.md")).contains("Corrective families"));
+        try (Stream<Path> paths = Files.walk(plain)) {
+            for (final Path file : paths.filter(Files::isRegularFile).toList()) {
+                final Path relative = plain.relativize(file);
+                final String name = relative.toString().replace('\\', '/');
+                if (name.equals("run.json") || name.equals("summary.md")) {
+                    continue;
+                }
+                assertEquals(fingerprintless(Files.readString(file, StandardCharsets.UTF_8)),
+                        fingerprintless(Files.readString(with.resolve(relative.toString()), StandardCharsets.UTF_8)),
+                        name);
+            }
+        }
+        final Result none = launch("families", plain.toString(), "toy");
+        assertEquals(2, none.code());
+        assertTrue(none.err().contains("the recipe declares no families"), none.err());
+    }
+
+    /**
+     * The recipe fingerprint legitimately covers the families block; everything
+     * else must match byte for byte.
+     */
+    private static String fingerprintless(final String text) {
+        return text.replaceAll("explore-[0-9a-f]+", "explore-FINGERPRINT");
+    }
+
+    @Test
+    void familyRecipeIsRejectedBeforeCreatingArtifacts() throws Exception {
+        final Map<String, String[]> cases = new java.util.LinkedHashMap<>();
+        cases.put("families without hierarchy", new String[] { null, "{\"profiles\":[{\"id\":\"zigzag\"}]}",
+                "recipe.families requires recipe.hierarchy" });
+        cases.put("unknown profile",
+                new String[] { TWO_SCALES, "{\"profiles\":[{\"id\":\"diagonal\"}]}", "recipe.families.profiles[0]" });
+        cases.put("bands on a bandless profile", new String[] { TWO_SCALES,
+                "{\"profiles\":[{\"id\":\"zigzag\",\"minRetracement\":0.5}]}", "has no tolerance bands" });
+        cases.put("duplicate profile", new String[] { TWO_SCALES,
+                "{\"profiles\":[{\"id\":\"zigzag\"},{\"id\":\"zigzag\"}]}", "recipe.families.profiles" });
+        cases.put("non-positive composition bound", new String[] { TWO_SCALES,
+                "{\"profiles\":[{\"id\":\"zigzag\"}],\"maxCompositions\":0}", "maxCompositions must be positive" });
+        cases.put("unknown field", new String[] { TWO_SCALES, "{\"profiles\":[{\"id\":\"zigzag\"}],\"extra\":1}",
+                "unknown field recipe.families.extra" });
+        cases.put("missing profiles", new String[] { TWO_SCALES, "{}", "recipe.families" });
+        int index = 0;
+        for (final Map.Entry<String, String[]> entry : cases.entrySet()) {
+            final String name = "fam-bad-" + index++;
+            final Result result = runWithFamilies(name, entry.getValue()[0], entry.getValue()[1]);
+            assertEquals(1, result.code(), entry.getKey());
+            assertTrue(result.err().contains(entry.getValue()[2]), entry.getKey() + ": " + result.err());
+            assertFalse(Files.exists(work.resolve(name)), entry.getKey());
+        }
+    }
+
+    @Test
+    void familiesRefuseSkippedInteriorPivotsButHierarchyAloneStillAllowsThem() throws Exception {
+        final String skipping = "{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w3\"}],"
+                + "\"interiorAnchors\":\"allow-skipped\"}";
+        final Result rejected = runWithFamilies("fam-skip", skipping, "{\"profiles\":[{\"id\":\"zigzag\"}]}");
+        assertEquals(1, rejected.code());
+        assertTrue(rejected.err().contains("recipe.families requires recipe.hierarchy.interiorAnchors"),
+                rejected.err());
+        assertTrue(rejected.err().contains("contiguous"), rejected.err());
+        assertFalse(Files.exists(work.resolve("fam-skip")));
+
+        final Result relationsOnly = runWithFamilies("hier-skip", skipping, null);
+        assertEquals(0, relationsOnly.code(), relationsOnly.err());
+        assertTrue(Files.isRegularFile(work.resolve("hier-skip/relations/toy.jsonl")));
+        assertFalse(Files.exists(work.resolve("hier-skip/families")));
+    }
+
+    @Test
+    void incompleteOrForeignFamilyFileIsReportedNotTrusted() throws Exception {
+        assertEquals(0, runWithFamilies("fam-damage", TWO_SCALES, "{\"profiles\":[{\"id\":\"zigzag\"}]}").code());
+        final Path out = work.resolve("fam-damage");
+        final Path file = out.resolve("families/toy.jsonl");
+        final List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+
+        Files.write(file, lines.subList(0, lines.size() - 1), StandardCharsets.UTF_8);
+        final Result truncated = launch("families", out.toString(), "toy");
+        assertEquals(2, truncated.code());
+        assertTrue(truncated.out().contains("no footer"), truncated.out());
+        assertEquals(0, launch("summarize", out.toString()).code());
+        assertTrue(Files.readString(out.resolve("summary.md")).contains("family file is incomplete"));
+
+        final List<String> foreign = new java.util.ArrayList<>(lines);
+        final JsonObject header = JsonParser.parseString(foreign.get(0)).getAsJsonObject();
+        header.addProperty("fingerprint", "someone-else");
+        foreign.set(0, header.toString());
+        Files.write(file, foreign, StandardCharsets.UTF_8);
+        assertEquals(2, launch("families", out.toString(), "toy").code());
+        assertEquals(0, launch("summarize", out.toString()).code());
+        assertTrue(Files.readString(out.resolve("summary.md")).contains("does not belong to this run"));
+
+        Files.writeString(file, "not json\n");
+        assertEquals(2, launch("families", out.toString(), "toy").code());
+    }
+
     private Result runRecipeWithRobustnessDetector(final String name, final String detector) throws Exception {
         final Path candles = work.resolve(name + "-candles.json");
         writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
