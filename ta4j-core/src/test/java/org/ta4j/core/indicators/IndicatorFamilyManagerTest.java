@@ -32,6 +32,92 @@ import org.ta4j.core.num.NumFactory;
 public class IndicatorFamilyManagerTest {
 
     @Test
+    public void analysisApiLivesOutsideIndicatorsAndOwnsConstruction() {
+        assertThat(IndicatorFamilyManager.class.getPackageName()).isEqualTo("org.ta4j.core.analysis");
+        assertThat(IndicatorFamilyResult.class.getConstructors()).isEmpty();
+        assertThat(IndicatorFamilyResult.Family.class.getConstructors()).isEmpty();
+        assertThat(IndicatorFamilyResult.PairSimilarity.class.getConstructors()).isEmpty();
+    }
+
+    @Test
+    public void sameCatalogHasCanonicalResultsAcrossMapOrders() {
+        BarSeries series = increasingSeries(3);
+        Indicator<Num> source = mockIndicator(series, index -> index);
+        IndicatorFamilyManager manager = new IndicatorFamilyManager(series, (left, right) -> constantIndicator(series, "0.95"));
+        Map<String, Indicator<Num>> forward = namedIndicators(testIndicator("a", source), testIndicator("b", source), testIndicator("c", source));
+        Map<String, Indicator<Num>> reverse = namedIndicators(testIndicator("c", source), testIndicator("b", source), testIndicator("a", source));
+        IndicatorFamilyResult first = manager.analyze(forward);
+        IndicatorFamilyResult second = manager.analyze(reverse);
+        assertThat(second).isEqualTo(first);
+        assertThat(second.familyByIndicator().keySet()).containsExactlyElementsOf(first.familyByIndicator().keySet());
+    }
+
+    @Test
+    public void rejectsQuadraticWorkBeforeCatalogTraversalOrMetricConstruction() {
+        BarSeries series = increasingSeries(2);
+        AtomicInteger calls = new AtomicInteger();
+        Map<String, Indicator<Num>> oversized = new java.util.AbstractMap<>() {
+            @Override public int size() { return 46_342; }
+            @Override public boolean isEmpty() { return false; }
+            @Override public java.util.Set<Entry<String, Indicator<Num>>> entrySet() {
+                throw new AssertionError("Oversized catalog must be rejected before traversal");
+            }
+        };
+        IndicatorFamilyManager manager = new IndicatorFamilyManager(series, (left, right) -> {
+            calls.incrementAndGet();
+            return constantIndicator(series, "0.95");
+        });
+        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class, () -> manager.analyze(oversized));
+        assertThat(failure).hasMessageContaining("pair budget");
+        assertThat(calls).hasValue(0);
+    }
+
+    @Test
+    public void inclusiveScanVisitsTerminalIntIndexExactlyOnce() {
+        NumFactory factory = seriesOf(1).numFactory();
+        BarSeries series = new org.ta4j.core.BaseBarSeries("terminal", List.of()) {
+            @Override public NumFactory numFactory() { return factory; }
+            @Override public int getBeginIndex() { return Integer.MAX_VALUE; }
+            @Override public int getEndIndex() { return Integer.MAX_VALUE; }
+            @Override public int getBarCount() { return 1; }
+            @Override public boolean isEmpty() { return false; }
+            @Override public int getMaximumBarCount() { return 1; }
+            @Override public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long revision) {
+                return new BarSeriesChangeSnapshot(0, Integer.MAX_VALUE, Integer.MAX_VALUE - 1, 1, Integer.MAX_VALUE);
+            }
+        };
+        AtomicInteger reads = new AtomicInteger();
+        Indicator<Num> metric = new AbstractIndicator<>(series) {
+            @Override public Num getValue(int index) {
+                assertThat(index).isEqualTo(Integer.MAX_VALUE);
+                reads.incrementAndGet();
+                return factory.one();
+            }
+            @Override public int getCountOfUnstableBars() { return Integer.MAX_VALUE; }
+        };
+        IndicatorFamilyResult result = new IndicatorFamilyManager(series, (left, right) -> metric)
+                .analyze(Map.of("a", metric, "b", metric));
+        assertThat(reads).hasValue(1);
+        assertThat(result.pairSimilarities().get(0).sampleCount()).isEqualTo(1);
+    }
+
+    @Test
+    public void unavailablePairAtZeroThresholdRecoversAfterAppendingFullWindow() {
+        BarSeries series = seriesOf(1, 2);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        Indicator<Num> inverse = BinaryOperationIndicator.product(close, -1);
+        IndicatorFamilyManager manager = new IndicatorFamilyManager(series, 3);
+        Map<String, Indicator<Num>> catalog = Map.of("close", close, "inverse", inverse);
+        IndicatorFamilyResult absent = manager.analyze(catalog, 0);
+        assertThat(absent.families()).hasSize(2);
+        assertThat(absent.pairSimilarities().get(0).similarity().isNaN()).isTrue();
+        series.barBuilder().closePrice(3).add();
+        IndicatorFamilyResult available = manager.analyze(catalog, 0);
+        assertThat(available.families()).hasSize(1);
+        assertThat(available.pairSimilarities().get(0).similarity()).isEqualByComparingTo(series.numFactory().one());
+    }
+
+    @Test
     public void analyzesNamedIndicatorsInCallerOrder() {
         BarSeries series = seriesOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
         ClosePriceIndicator close = new ClosePriceIndicator(series);
@@ -46,16 +132,16 @@ public class IndicatorFamilyManagerTest {
         assertThat(series.numFactory().produces(result.similarityThreshold())).isTrue();
         assertThat(result.stableIndex()).isEqualTo(121);
         assertThat(result.families()).extracting(IndicatorFamilyResult.Family::indicatorNames)
-                .containsExactly(List.of("close"), List.of("sma"), List.of("closeInverse"));
-        assertThat(result.familyByIndicator().keySet()).containsExactly("close", "sma", "closeInverse");
+                .containsExactly(List.of("close"), List.of("closeInverse"), List.of("sma"));
+        assertThat(result.familyByIndicator().keySet()).containsExactly("close", "closeInverse", "sma");
         assertThat(result.pairSimilarities())
                 .extracting(IndicatorFamilyResult.PairSimilarity::firstIndicatorName,
                         IndicatorFamilyResult.PairSimilarity::secondIndicatorName)
-                .containsExactly(org.assertj.core.groups.Tuple.tuple("close", "sma"),
-                        org.assertj.core.groups.Tuple.tuple("close", "closeInverse"),
-                        org.assertj.core.groups.Tuple.tuple("sma", "closeInverse"));
+                .containsExactly(org.assertj.core.groups.Tuple.tuple("close", "closeInverse"),
+                        org.assertj.core.groups.Tuple.tuple("close", "sma"),
+                        org.assertj.core.groups.Tuple.tuple("closeInverse", "sma"));
         assertThat(result.families()).extracting(IndicatorFamilyResult.Family::representativeIndicatorName)
-                .containsExactly("close", "sma", "closeInverse");
+                .containsExactly("close", "closeInverse", "sma");
         assertThat(result.families()).extracting(IndicatorFamilyResult.Family::averageInternalSimilarity)
                 .allSatisfy(similarity -> assertThat(similarity).isEqualByComparingTo(series.numFactory().one()));
         assertThat(result.families()).extracting(IndicatorFamilyResult.Family::minimumInternalSimilarity)
@@ -106,28 +192,28 @@ public class IndicatorFamilyManagerTest {
                 .analyze(namedIndicators(testIndicator("close", close), testIndicator("inverse", inverse)), 0.99);
 
         assertThat(series.getBeginIndex()).isEqualTo(150);
-        assertThat(result.stableIndex()).isEqualTo(series.getBeginIndex());
-        assertThat(result.families()).hasSize(1);
-        assertThat(result.pairSimilarities().get(0).similarity()).isEqualByComparingTo(series.numFactory().one());
+        assertThat(result.stableIndex()).isEqualTo(269);
+        assertThat(result.families()).hasSize(2);
+        assertThat(result.pairSimilarities().get(0).similarity().isNaN()).isTrue();
     }
 
     @Test
-    public void returnsZeroSimilarityWhenNoStableSamplesExist() {
+    public void returnsUnavailableSimilarityWhenNoStableSamplesExist() {
         BarSeries series = seriesOf(1, 2, 3);
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         Indicator<Num> inverse = BinaryOperationIndicator.product(close, -1);
 
         IndicatorFamilyResult result = new IndicatorFamilyManager(series)
-                .analyze(namedIndicators(testIndicator("close", close), testIndicator("inverse", inverse)), 0.01);
+                .analyze(namedIndicators(testIndicator("close", close), testIndicator("inverse", inverse)), 0);
 
         assertThat(result.pairSimilarities()).hasSize(1);
         IndicatorFamilyResult.PairSimilarity pair = result.pairSimilarities().get(0);
-        assertThat(pair.similarity()).isEqualByComparingTo(series.numFactory().zero());
-        assertThat(pair.signedAverageSimilarity()).isEqualByComparingTo(series.numFactory().zero());
-        assertThat(pair.latestSignedSimilarity()).isEqualByComparingTo(series.numFactory().zero());
+        assertThat(pair.similarity().isNaN()).isTrue();
+        assertThat(pair.signedAverageSimilarity().isNaN()).isTrue();
+        assertThat(pair.latestSignedSimilarity().isNaN()).isTrue();
         assertThat(pair.sampleCount()).isZero();
-        assertThat(pair.minimumSignedSimilarity()).isEqualByComparingTo(series.numFactory().zero());
-        assertThat(pair.maximumSignedSimilarity()).isEqualByComparingTo(series.numFactory().zero());
+        assertThat(pair.minimumSignedSimilarity().isNaN()).isTrue();
+        assertThat(pair.maximumSignedSimilarity().isNaN()).isTrue();
         assertThat(result.families()).hasSize(2);
         assertThat(result.stableIndex()).isEqualTo(119);
     }
@@ -258,13 +344,14 @@ public class IndicatorFamilyManagerTest {
         IndicatorFamilyResult result = new IndicatorFamilyManager(series, metricFactory)
                 .analyze(namedIndicators(testIndicator("a", a), testIndicator("b", b), testIndicator("c", c)), 0.90);
 
-        assertThat(result.families()).hasSize(1);
+        assertThat(result.families()).hasSize(2);
+        assertThat(result.familyByIndicator().get("a")).isNotEqualTo(result.familyByIndicator().get("c"));
         IndicatorFamilyResult.Family family = result.families().get(0);
-        assertThat(family.indicatorNames()).containsExactly("a", "b", "c");
-        assertThat(family.representativeIndicatorName()).isEqualTo("b");
-        Num expectedAverage = series.numFactory().numOf("2.30").dividedBy(series.numFactory().three());
+        assertThat(family.indicatorNames()).containsExactly("a", "b");
+        assertThat(family.representativeIndicatorName()).isEqualTo("a");
+        Num expectedAverage = series.numFactory().numOf("0.95");
         assertThat(family.averageInternalSimilarity()).isEqualByComparingTo(expectedAverage);
-        assertThat(family.minimumInternalSimilarity()).isEqualByComparingTo(series.numFactory().numOf("0.40"));
+        assertThat(family.minimumInternalSimilarity()).isEqualByComparingTo(series.numFactory().numOf("0.95"));
     }
 
     @Test

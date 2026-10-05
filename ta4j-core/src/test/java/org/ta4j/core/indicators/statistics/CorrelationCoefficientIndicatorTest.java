@@ -182,6 +182,7 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
     @Test
     @SuppressWarnings("unchecked")
     public void roundTripSerializationPreservesSampleTypeSelection() {
+        BarSeries series = close.getBarSeries();
         CorrelationCoefficientIndicator sample = CorrelationCoefficientIndicator.ofSample(close, volume, 5);
         ComponentDescriptor sampleDescriptor = sample.toDescriptor();
 

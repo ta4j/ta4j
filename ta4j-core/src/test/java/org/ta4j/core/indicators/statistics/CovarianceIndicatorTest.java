@@ -3,6 +3,10 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Instant;
@@ -134,5 +138,39 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         // Perfectly linear pairs (2,5), (4,10), (6,15), (8,20), (10,25):
         // population covariance = sum((x - 6)(y - 15)) / 5 = 100 / 5
         assertNumEquals(20, covar.getValue(4));
+    }
+
+    @Test
+    public void retainedWindowBoundaryRequiresFullStableHistory() {
+        BarSeries retained = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
+        retained.setMaximumBarCount(4);
+        ClosePriceIndicator source = new ClosePriceIndicator(retained);
+        CovarianceIndicator metric = new CovarianceIndicator(source, source, 3);
+        assertThat(metric.getCountOfUnstableBars()).isEqualTo(4);
+        assertThat(metric.getValue(3).isNaN()).isTrue();
+        assertNumEquals(2.0 / 3, metric.getValue(4));
+    }
+
+    @Test
+    public void terminalIndexWindowVisitsSourceExactlyOnce() {
+        BarSeries terminalSeries = new org.ta4j.core.BaseBarSeries("terminal", List.of()) {
+            @Override public NumFactory numFactory() { return numFactory; }
+            @Override public int getBeginIndex() { return Integer.MAX_VALUE; }
+            @Override public int getEndIndex() { return Integer.MAX_VALUE; }
+            @Override public int getBarCount() { return 1; }
+            @Override public boolean isEmpty() { return false; }
+            @Override public int getMaximumBarCount() { return 1; }
+            @Override public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long revision) {
+                return new BarSeriesChangeSnapshot(0, Integer.MAX_VALUE, Integer.MAX_VALUE - 1, 1, Integer.MAX_VALUE);
+            }
+        };
+        Indicator<Num> source = new org.ta4j.core.indicators.helpers.ConstantIndicator<>(terminalSeries, numFactory.one()) {
+            @Override public Num getValue(int index) {
+                assertThat(index).isEqualTo(Integer.MAX_VALUE);
+                return numFactory.one();
+            }
+        };
+        CovarianceIndicator metric = new CovarianceIndicator(source, source, 1);
+        assertNumEquals(0, metric.calculate(Integer.MAX_VALUE));
     }
 }
