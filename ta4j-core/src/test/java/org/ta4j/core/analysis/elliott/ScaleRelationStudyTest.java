@@ -171,6 +171,66 @@ class ScaleRelationStudyTest {
     }
 
     @Test
+    void truncatedSearchWithoutACandidateIsUnavailableNotNegative() {
+        final List<Pt> crowded = with(CHILD, pt(4, 110, 'H'), pt(5, 105, 'L'));
+        final ScaleRelation.Policy starved = DEFAULTS.withInterior(ScaleRelation.Interior.ALLOW_SKIPPED)
+                .withDecompositionBounds(8, 1);
+
+        final List<ScaleRelationStudy.Frame> frames = run(study(twoScales(PARENT, crowded), starved), 60, 59);
+
+        final List<ScaleRelation.Edge> firstLeg = activeAt(frames, 59).stream()
+                .filter(edge -> edge.parentLeg() == 0)
+                .toList();
+        assertFalse(firstLeg.isEmpty());
+        for (final ScaleRelation.Edge edge : firstLeg) {
+            assertEquals(ScaleRelation.State.CONTAINED_ONLY, edge.state());
+            assertTrue(edge.predicates()
+                    .stream()
+                    .anyMatch(p -> p.id().equals("interior-shape") && p.state() == EvidenceState.UNAVAILABLE),
+                    edge.predicates().toString());
+        }
+        assertTrue(frames.get(frames.size() - 1).coverage().decompositionLegsTruncated() > 0);
+    }
+
+    @Test
+    void anchorWitnessConfirmationBoundsWhenARelationBecomesAvailable() {
+        // The child pivot on the parent's bar-30 anchor carries the wrong price and
+        // is confirmed only at bar 55, after the parent completed at 52.
+        final List<Pt> repriced = replacing(CHILD, 30, pt(30, 149, 'H'));
+        final List<ScaleRelationStudy.ScaleInput> inputs = List.of(input("coarse", PARENT, PARENT_LAG),
+                input("fine", scripted(visibleAfter(repriced, pivot -> pivot.index() == 30 ? 25 : CHILD_LAG))));
+
+        final List<ScaleRelationStudy.Frame> frames = run(study(inputs, DEFAULTS), 60, 59);
+
+        final ScaleRelation.Edge edge = leg(activeAt(frames, 59), 2);
+        assertEquals(ScaleRelation.State.NOT_NESTED, edge.state());
+        assertEquals(55, edge.availableAt());
+        assertTrue(edge.childPivots().stream().anyMatch(pivot -> pivot.pivotIndex() == 30));
+    }
+
+    @Test
+    void retiredParentOnOneScaleDoesNotEndRelationsOfAnotherScaleSharingItsPlacement() {
+        // "coarse" and "middle" confirm the same pivots, so their parent candidates
+        // share a key; only "coarse" later loses its final pivot.
+        final List<ScaleRelationStudy.ScaleInput> inputs = List.of(
+                input("coarse", scripted(asOf -> visibleAfter(asOf >= 58 ? without(PARENT, 50) : PARENT,
+                        pivot -> PARENT_LAG).apply(asOf))),
+                input("middle", PARENT, PARENT_LAG), input("fine", CHILD, CHILD_LAG));
+
+        final List<ScaleRelationStudy.Frame> frames = run(study(inputs, DEFAULTS.withEdgeCap(20)), 60, 59);
+
+        final List<ScaleRelation.Event> ended = events(frames).stream()
+                .filter(event -> event.lifecycle() == ScaleRelation.Lifecycle.ENDED)
+                .toList();
+        assertFalse(ended.isEmpty());
+        assertTrue(ended.stream().allMatch(event -> event.edge().parentScale().equals("coarse")),
+                ended.toString());
+        assertTrue(ended.stream().allMatch(event -> event.reason() == ScaleRelation.Reason.PARENT_RETIRED),
+                ended.toString());
+        assertTrue(activeAt(frames, 59).stream().anyMatch(edge -> edge.parentScale().equals("middle")));
+    }
+
+    @Test
     void failingChildRuleIsConflictingEvidence() {
         final ScaleRelationStudy failing = new ScaleRelationStudy(twoScales(PARENT, CHILD), DEFAULTS,
                 List.of(ScaleRelationFixtures.rule("synthetic-fail", false)), ScaleRelationFixtures.identity(),

@@ -8,6 +8,8 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -161,7 +163,7 @@ final class ElliottResearchRelations {
     static Totals write(final Path file, final String datasetId, final String revision, final String fingerprint,
             final String sourceSha256, final Hierarchy hierarchy, final List<ScaleRelationStudy.ScaleInput> inputs,
             final List<RelationshipRule> childRules, final StudyRunner.Partitions partitions, final BarSeries series,
-            final int start, final int end) throws IOException {
+            final int start, final int end, final DetectorReplays replays) throws IOException {
         final ScaleRelation.Policy policy = ScaleRelation.Policy.defaults()
                 .withInterior(hierarchy.interior())
                 .withEdgeCap(hierarchy.edgeCap());
@@ -187,7 +189,7 @@ final class ElliottResearchRelations {
             header.add("childRules", rules);
             writeLine(writer, header);
             try {
-                study.run(series, start, end, frame -> {
+                study.run(series, start, end, replays, frame -> {
                     try {
                         writeLine(writer, frameJson(datasetId, frame));
                     } catch (final IOException e) {
@@ -413,9 +415,17 @@ final class ElliottResearchRelations {
         return new IllegalArgumentException(path + ": line " + line + ": " + message);
     }
 
+    /** Reads only the final byte, so the check costs O(1) memory and I/O. */
     private static boolean endsWithNewline(final Path path) throws IOException {
-        final byte[] bytes = Files.readAllBytes(path);
-        return bytes.length > 0 && bytes[bytes.length - 1] == '\n';
+        try (SeekableByteChannel channel = Files.newByteChannel(path)) {
+            final long size = channel.size();
+            if (size == 0) {
+                return false;
+            }
+            channel.position(size - 1);
+            final ByteBuffer last = ByteBuffer.allocate(1);
+            return channel.read(last) == 1 && last.get(0) == '\n';
+        }
     }
 
     // --------------------------------------------------------------- replay
@@ -533,6 +543,7 @@ final class ElliottResearchRelations {
                 break;
             }
             out.println(describe(edge));
+            evidence(edge, "      ").forEach(out::println);
         }
         if (edgeKey != null) {
             out.println("History of edge " + edgeKey + ":");
@@ -545,6 +556,7 @@ final class ElliottResearchRelations {
                         + " " + event.get("reason").getAsString() + " state=" + edge.get("state").getAsString()
                         + " version=" + edge.get("version").getAsString() + " availableAt="
                         + edge.get("availableAt").getAsInt());
+                evidence(edge, "      ").forEach(out::println);
             }
         }
         return meta.complete();
@@ -586,6 +598,35 @@ final class ElliottResearchRelations {
             line.append(" [").append(String.join(", ", notable)).append(']');
         }
         return line.toString();
+    }
+
+    /**
+     * Evidence lines of one stored edge version: the child pivot sequence with each
+     * pivot's confirmation time, then every predicate with its explanation.
+     */
+    private static List<String> evidence(final JsonObject edge, final String indent) {
+        final List<String> lines = new ArrayList<>();
+        final JsonArray pivots = edge.getAsJsonArray("childPivots");
+        final int count = edge.get("childPivotCount").getAsInt();
+        final List<String> rendered = new ArrayList<>();
+        for (final JsonElement element : pivots) {
+            final JsonObject pivot = element.getAsJsonObject();
+            rendered.add(pivot.get("index").getAsInt() + " " + pivot.get("type").getAsString() + " "
+                    + pivot.get("price").getAsString() + " (confirmed @" + pivot.get("confirmationIndex").getAsInt()
+                    + ")");
+        }
+        lines.add(indent + "child pivots: " + (rendered.isEmpty() ? "(none)" : String.join(" -> ", rendered)));
+        if (count > pivots.size()) {
+            lines.add(indent + "note: " + count + " child pivots rely on this edge but only the first "
+                    + pivots.size() + " are stored (limit " + ScaleRelation.MAX_STORED_CHILD_PIVOTS
+                    + "); the sequence above is truncated");
+        }
+        for (final JsonElement element : edge.getAsJsonArray("predicates")) {
+            final JsonObject predicate = element.getAsJsonObject();
+            lines.add(indent + "predicate " + predicate.get("id").getAsString() + " "
+                    + predicate.get("state").getAsString() + ": " + predicate.get("detail").getAsString());
+        }
+        return lines;
     }
 
     private static String scaleNames(final JsonObject header) {

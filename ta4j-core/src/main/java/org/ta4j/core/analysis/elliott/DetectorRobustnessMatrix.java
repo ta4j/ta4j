@@ -46,10 +46,12 @@ final class DetectorRobustnessMatrix {
      * @param partitions locked study partitions
      * @param detectors  detector configurations
      * @param observer   optional observation sink, or {@code null}
+     * @param replays    replay cache the detectors' causal replays are drawn from
      * @return deterministic detector matrix report
      */
     static StudyReport.RobustnessReport evaluate(final BarSeries series, final int fromIndex, final int toIndex,
-            final StudyRunner.Partitions partitions, final List<DetectorSpec> detectors, final StudyObserver observer) {
+            final StudyRunner.Partitions partitions, final List<DetectorSpec> detectors, final StudyObserver observer,
+            final DetectorReplays replays) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(partitions, "partitions");
         Objects.requireNonNull(detectors, "detectors");
@@ -58,7 +60,8 @@ final class DetectorRobustnessMatrix {
             final StudyReport.ModeReport mode = StudyRunner.evaluateTopologyMode(series, fromIndex, toIndex, partitions,
                     detector.factory(), TopologyGrammar.MOTIVE_5, "topology-only", observer,
                     StudyObserver.Scope.real("robustness", "topology-only", TopologyGrammar.MOTIVE_5.name(), List.of(),
-                            detector.name()));
+                            detector.name()),
+                    replays);
             results.add(new StudyReport.DetectorResult(detector.name(), mode));
         }
         return new StudyReport.RobustnessReport(results);

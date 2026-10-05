@@ -868,6 +868,35 @@ class ElliottResearchTest {
         }
     }
 
+    private Result runRecipeWithRobustnessDetector(final String name, final String detector) throws Exception {
+        final Path candles = work.resolve(name + "-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
+        final Path recipe = work.resolve(name + "-recipe.json");
+        Files.writeString(recipe, hierarchyRecipe(null).replace(
+                "{\"name\":\"fractal-w5\",\"factory\":\"fractal\",\"params\":[5]}", detector));
+        return launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(), "--out",
+                work.resolve(name).toString());
+    }
+
+    @Test
+    void sameDetectorNameWithAnotherDefinitionIsRejectedBeforeCreatingArtifacts() throws Exception {
+        final Result result = runRecipeWithRobustnessDetector("clash",
+                "{\"name\":\"fractal-w3\",\"factory\":\"fractal\",\"params\":[5]}");
+
+        assertEquals(1, result.code());
+        assertTrue(result.err().contains("already used by recipe.detector with a different definition"),
+                result.err());
+        assertFalse(Files.exists(work.resolve("clash")));
+    }
+
+    @Test
+    void sameDetectorNameWithTheIdenticalDefinitionIsAccepted() throws Exception {
+        final Result result = runRecipeWithRobustnessDetector("twin",
+                "{\"name\":\"fractal-w3\",\"factory\":\"fractal\",\"params\":[3]}");
+
+        assertEquals(0, result.code(), result.err());
+    }
+
     @Test
     void incompleteOrForeignRelationFileIsReportedNotTrusted() throws Exception {
         final Path out = hierarchyRun("hier-damage",

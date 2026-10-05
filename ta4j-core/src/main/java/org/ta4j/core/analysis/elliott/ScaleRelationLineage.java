@@ -30,10 +30,26 @@ final class ScaleRelationLineage {
     private final Map<String, String> parentSlotByEdgeKey = new TreeMap<>();
 
     /**
+     * Presence key of a parent candidate. Two scales may report the same
+     * placement, so the candidate key alone never identifies a scale's parent.
+     *
+     * @param scale        parent scale name
+     * @param candidateKey parent candidate key
+     * @return composite key
+     */
+    static String parentRef(final String scale, final String candidateKey) {
+        return scale + "|" + candidateKey;
+    }
+
+    private static String parentRef(final ScaleRelation.Edge edge) {
+        return parentRef(edge.parentScale(), edge.parentCandidateKey());
+    }
+
+    /**
      * What the extraction layer knows about the current observation.
      *
      * @param currentParentSlots    slot of every parent candidate present now,
-     *                              keyed by parent candidate key
+     *                              keyed by {@link #parentRef(String, String)}
      * @param invalidatedScales     parent scales whose topology analysis reported
      *                              an explicit invalidation at this observation
      * @param omittedEdgeKeys       keys of edges generated but dropped by the cap
@@ -90,7 +106,7 @@ final class ScaleRelationLineage {
             }
         }
         for (final ScaleRelation.Edge edge : next.values()) {
-            final String slot = observation.currentParentSlots().get(edge.parentCandidateKey());
+            final String slot = observation.currentParentSlots().get(parentRef(edge));
             if (slot != null) {
                 parentSlotByEdgeKey.put(edge.key(), slot);
             }
@@ -106,7 +122,7 @@ final class ScaleRelationLineage {
     }
 
     private ScaleRelation.Reason endReason(final ScaleRelation.Edge ended, final Observation observation) {
-        if (observation.currentParentSlots().containsKey(ended.parentCandidateKey())) {
+        if (observation.currentParentSlots().containsKey(parentRef(ended))) {
             if (observation.omittedEdgeKeys().contains(ended.key())) {
                 return ScaleRelation.Reason.CAP_RETIRED;
             }

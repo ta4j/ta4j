@@ -53,7 +53,8 @@ class ElliottResearchRelationsTest {
                         ScaleRelationFixtures.PARENT_LAG),
                         ScaleRelationFixtures.input("child", ScaleRelationFixtures.CHILD,
                                 ScaleRelationFixtures.CHILD_LAG)),
-                ScaleRelationFixtures.passingRules(), ScaleRelationFixtures.PARTITIONS, series, 0, BARS - 1);
+                ScaleRelationFixtures.passingRules(), ScaleRelationFixtures.PARTITIONS, series, 0, BARS - 1,
+                DetectorReplays.uncached());
     }
 
     @Test
@@ -114,6 +115,52 @@ class ElliottResearchRelationsTest {
 
         final String before = printed(-1, 10, null);
         assertTrue(before.contains("no relation was observable yet"), before);
+    }
+
+    @Test
+    void printShowsChildPivotsConfirmationsAndPredicateDetails() throws IOException {
+        final String printed = printed(null, 100, null);
+
+        assertTrue(printed.contains("child pivots: 0 LOW 100"), printed);
+        assertTrue(printed.contains("(confirmed @"), printed);
+        assertTrue(printed.contains("predicate "), printed);
+        assertFalse(printed.contains("only the first"), printed);
+    }
+
+    @Test
+    void printNamesTruncatedChildPivotSequences() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        boolean changed = false;
+        for (int index = 0; index < lines.size() && !changed; index++) {
+            final JsonObject line = JsonParser.parseString(lines.get(index)).getAsJsonObject();
+            if (!line.has("kind") || !"frame".equals(line.get("kind").getAsString())) {
+                continue;
+            }
+            for (final var event : line.getAsJsonArray("events")) {
+                final JsonObject edge = event.getAsJsonObject().getAsJsonObject("edge");
+                edge.addProperty("childPivotCount", edge.getAsJsonArray("childPivots").size() + 7);
+                changed = true;
+            }
+            lines.set(index, line.toString());
+        }
+        assertTrue(changed);
+        Files.write(file, lines, StandardCharsets.UTF_8);
+
+        final String printed = printed(null, 100, null);
+
+        assertTrue(printed.contains("only the first"), printed);
+        assertTrue(printed.contains("truncated"), printed);
+    }
+
+    @Test
+    void newlineTerminatedFileWithAGarbledLastLineIsCorruptNotTorn() throws IOException {
+        final List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+        lines.set(lines.size() - 1, "{\"complete\":tru");
+        Files.write(file, lines, StandardCharsets.UTF_8);
+
+        assertTrue(Files.readString(file, StandardCharsets.UTF_8).endsWith("\n"));
+        assertThrows(IllegalArgumentException.class, () -> ElliottResearchRelations.read(file, frame -> {
+        }));
     }
 
     @Test

@@ -35,6 +35,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -320,6 +321,8 @@ final class ElliottResearch {
     /** One detector configuration resolvable to a fresh detector per use. */
     private record DetectorRecipe(String name, String factory, List<Integer> params) {
 
+        private static final Map<DetectorRecipe, Supplier<SwingDetector>> SUPPLIERS = new ConcurrentHashMap<>();
+
         DetectorRecipe {
             if (!DETECTOR_FACTORIES.contains(factory)) {
                 throw new IllegalArgumentException(
@@ -333,12 +336,17 @@ final class ElliottResearch {
             }
         }
 
+        /**
+         * The detector supplier of this definition. Identical definitions share one
+         * supplier instance, which is what lets the study runner and the hierarchy
+         * draw the same causal replay from one {@link DetectorReplays}.
+         */
         Supplier<SwingDetector> supplier() {
-            return switch (factory) {
-            case "fractal" -> () -> SwingDetectors.fractal(params.get(0));
-            case "slopeChange" -> () -> SwingDetectors.slopeChange(params.get(0));
+            return SUPPLIERS.computeIfAbsent(this, recipe -> switch (recipe.factory) {
+            case "fractal" -> () -> SwingDetectors.fractal(recipe.params.get(0));
+            case "slopeChange" -> () -> SwingDetectors.slopeChange(recipe.params.get(0));
             default -> SwingDetectors::prominence;
-            };
+            });
         }
 
         JsonObject toJson() {
@@ -584,7 +592,14 @@ final class ElliottResearch {
         if (root.has("robustnessDetectors")) {
             final JsonArray array = arrayOf(root.get("robustnessDetectors"), "recipe.robustnessDetectors");
             for (int index = 0; index < array.size(); index++) {
-                robustness.add(detector(array.get(index), "recipe.robustnessDetectors[" + index + "]"));
+                final DetectorRecipe candidate = detector(array.get(index), "recipe.robustnessDetectors[" + index + "]");
+                if (candidate.name().equals(primary.name()) && !candidate.equals(primary)) {
+                    throw new IllegalArgumentException("recipe.robustnessDetectors[" + index + "]: detector name '"
+                            + candidate.name() + "' is already used by recipe.detector with a different definition ("
+                            + primary.factory() + primary.params() + " vs " + candidate.factory()
+                            + candidate.params() + "); a name must identify exactly one observation stream");
+                }
+                robustness.add(candidate);
             }
         }
         final List<String> activeRules = root.has("activeRules")
@@ -1085,10 +1100,12 @@ final class ElliottResearch {
             final Path reportFile = dir.resolve(REPORTS_DIR).resolve(id + ".json");
             try {
                 final StudyObserver observer = observer(id);
-                report = runner.evaluate(asset, series, series.getBeginIndex(), series.getEndIndex(), observer);
+                final DetectorReplays replays = DetectorReplays.forSeries(series, series.getEndIndex());
+                report = runner.evaluate(asset, series, series.getBeginIndex(), series.getEndIndex(), observer,
+                        replays);
                 Files.writeString(reportFile, report.toJson(), StandardCharsets.UTF_8);
                 if (setup.hierarchy() != null) {
-                    writeRelations(id, series);
+                    writeRelations(id, series, replays);
                 }
             } catch (final IOException | RuntimeException failure) {
                 fail(id, failure);
@@ -1097,12 +1114,13 @@ final class ElliottResearch {
             completed(id, runner, series, report, reportFile);
         }
 
-        private void writeRelations(final String id, final BarSeries series) throws IOException {
+        private void writeRelations(final String id, final BarSeries series, final DetectorReplays replays)
+                throws IOException {
             final Path file = dir.resolve(ElliottResearchRelations.fileName(id));
             final DatasetEntry entry = entries.get(id);
             entry.relationTotals = ElliottResearchRelations.write(file, id, revision, setup.fingerprint(),
                     sourceSha256(id), setup.hierarchy(), setup.hierarchyInputs(), setup.rules(), setup.partitions(),
-                    series, series.getBeginIndex(), series.getEndIndex());
+                    series, series.getBeginIndex(), series.getEndIndex(), replays);
             entry.relations = relative(file);
         }
 

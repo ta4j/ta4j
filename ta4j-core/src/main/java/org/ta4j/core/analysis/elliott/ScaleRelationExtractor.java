@@ -9,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 
 import org.ta4j.core.BarSeries;
 
@@ -146,7 +147,8 @@ final class ScaleRelationExtractor {
         final TopologyCandidate candidate = parent.candidate();
         final ConfirmedPivot a = candidate.pivots().get(leg);
         final ConfirmedPivot b = candidate.pivots().get(leg + 1);
-        final LegContext context = new LegContext(parentScale, childScale, parent, leg, a, b);
+        final LegContext context = new LegContext(parentScale, childScale, parent, leg, a, b,
+                anchorWitnesses(tape, a, b));
 
         final int aPosition = positionOf(tape, a.pivotIndex());
         final int bPosition = positionOf(tape, b.pivotIndex());
@@ -207,6 +209,17 @@ final class ScaleRelationExtractor {
         for (final TopologyGrammar grammar : grammars) {
             final Decompositions found = decompositions(grammar, atA, inside, atB);
             truncated |= found.truncated();
+            if (found.candidates().isEmpty() && found.truncated()) {
+                // The bounded search stopped before it could examine every
+                // sequence, so "no valid sequence" has not been established.
+                final List<ScaleRelation.Predicate> predicates = new ArrayList<>(anchorPredicates);
+                predicates.add(new ScaleRelation.Predicate("interior-shape", EvidenceState.UNAVAILABLE,
+                        "bounded " + grammar + " search over " + inside.size()
+                                + " interior pivots stopped at its budget before finding a sequence"));
+                out.add(context.edge(ScaleRelation.State.CONTAINED_ONLY, grammar, inside, predicates, null, null,
+                        List.of(), tape));
+                continue;
+            }
             if (found.candidates().isEmpty()) {
                 final List<ScaleRelation.Predicate> predicates = new ArrayList<>(anchorPredicates);
                 predicates.add(new ScaleRelation.Predicate("interior-shape",
@@ -222,6 +235,32 @@ final class ScaleRelationExtractor {
             }
         }
         return truncated;
+    }
+
+    /**
+     * The child pivots the anchor and absence predicates read: whatever sits on
+     * either parent anchor, plus the first pivot past the parent end that proves
+     * a missing end anchor.
+     */
+    private static List<ConfirmedPivot> anchorWitnesses(final List<ConfirmedPivot> tape, final ConfirmedPivot a,
+            final ConfirmedPivot b) {
+        final List<ConfirmedPivot> witnesses = new ArrayList<>(3);
+        final int aPosition = positionOf(tape, a.pivotIndex());
+        if (aPosition >= 0) {
+            witnesses.add(tape.get(aPosition));
+        }
+        final int bPosition = positionOf(tape, b.pivotIndex());
+        if (bPosition >= 0) {
+            witnesses.add(tape.get(bPosition));
+        } else {
+            for (final ConfirmedPivot pivot : tape) {
+                if (pivot.pivotIndex() > b.pivotIndex()) {
+                    witnesses.add(pivot);
+                    break;
+                }
+            }
+        }
+        return witnesses;
     }
 
     private ScaleRelation.Edge pending(final LegContext context, final TopologyGrammar grammar,
@@ -480,15 +519,18 @@ final class ScaleRelationExtractor {
         private final int leg;
         private final ConfirmedPivot start;
         private final ConfirmedPivot end;
+        private final List<ConfirmedPivot> witnesses;
 
         LegContext(final ScaleRelation.Scale parentScale, final ScaleRelation.Scale childScale, final Parent parent,
-                final int leg, final ConfirmedPivot start, final ConfirmedPivot end) {
+                final int leg, final ConfirmedPivot start, final ConfirmedPivot end,
+                final List<ConfirmedPivot> witnesses) {
             this.parentScale = parentScale;
             this.childScale = childScale;
             this.parent = parent;
             this.leg = leg;
             this.start = start;
             this.end = end;
+            this.witnesses = witnesses;
         }
 
         /**
@@ -496,7 +538,8 @@ final class ScaleRelationExtractor {
          *
          * @param state          relation state
          * @param grammar        tested child grammar, or {@code null}
-         * @param used           child pivots the edge relies on, excluding anchors
+         * @param used           child pivots the edge relies on besides the anchor
+         *                       witnesses
          * @param predicates     tested predicates
          * @param childKey       child candidate key, or {@code null}
          * @param childVersion   child candidate version, or {@code null}
@@ -507,7 +550,19 @@ final class ScaleRelationExtractor {
                 final List<ConfirmedPivot> used, final List<ScaleRelation.Predicate> predicates,
                 final String childKey, final String childVersion, final List<ConfirmedPivot> fullSequence,
                 final List<ConfirmedPivot> tape) {
-            final List<ConfirmedPivot> evidence = fullSequence.isEmpty() ? used : fullSequence;
+            final List<ConfirmedPivot> evidence;
+            if (fullSequence.isEmpty()) {
+                final TreeMap<Integer, ConfirmedPivot> byIndex = new TreeMap<>();
+                for (final ConfirmedPivot pivot : used) {
+                    byIndex.put(pivot.pivotIndex(), pivot);
+                }
+                for (final ConfirmedPivot pivot : witnesses) {
+                    byIndex.putIfAbsent(pivot.pivotIndex(), pivot);
+                }
+                evidence = List.copyOf(byIndex.values());
+            } else {
+                evidence = fullSequence;
+            }
             final int count = evidence.size();
             final List<ConfirmedPivot> stored = count > ScaleRelation.MAX_STORED_CHILD_PIVOTS
                     ? evidence.subList(0, ScaleRelation.MAX_STORED_CHILD_PIVOTS)

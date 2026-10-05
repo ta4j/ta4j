@@ -99,16 +99,33 @@ final class ScaleRelationStudy {
      * @return number of observations emitted
      */
     int run(final BarSeries series, final int start, final int end, final Consumer<Frame> sink) {
+        return run(series, start, end, DetectorReplays.uncached(), sink);
+    }
+
+    /**
+     * As {@link #run(BarSeries, int, int, Consumer)}, drawing each scale's causal
+     * replay from {@code replays} so scales a study runner already observed are not
+     * detected again.
+     *
+     * @param series  series every scale is detected on
+     * @param start   first observed bar
+     * @param end     last observed bar
+     * @param replays replay cache; shared only for the series and end it is bound to
+     * @param sink    receives each changed observation in bar order
+     * @return number of observations emitted
+     */
+    int run(final BarSeries series, final int start, final int end, final DetectorReplays replays,
+            final Consumer<Frame> sink) {
         Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(replays, "replays");
         Objects.requireNonNull(sink, "sink");
         if (start > end) {
             return 0;
         }
-        final List<ConfirmationTracker.CausalReplay> replays = new ArrayList<>(inputs.size());
+        final List<ConfirmationTracker.CausalReplay> replayList = new ArrayList<>(inputs.size());
         for (final ScaleInput input : inputs) {
-            final SwingDetector detector = Objects.requireNonNull(input.detector().get(),
-                    "detector supplier returned null for scale " + input.name());
-            replays.add(new ConfirmationTracker(detector).observeReplay(series, end));
+            replayList.add(replays.replay(series,
+                    Objects.requireNonNull(input.detector(), "detector supplier for scale " + input.name()), end));
         }
         final TopologyAnalyzer analyzer = new TopologyAnalyzer();
         final ScaleRelationExtractor extractor = new ScaleRelationExtractor(policy, childRules, identity);
@@ -121,7 +138,7 @@ final class ScaleRelationStudy {
                 final LocalDate date = StudyRunner.barDate(series, index);
                 partitions.assertCalibrationDateAllowed(date);
                 final List<List<ConfirmedPivot>> tapes = new ArrayList<>(inputs.size());
-                for (final ConfirmationTracker.CausalReplay replay : replays) {
+                for (final ConfirmationTracker.CausalReplay replay : replayList) {
                     tapes.add(replay.at(index));
                 }
                 final Observed observed = observe(analyzer, extractor, series, index, tapes);
@@ -165,7 +182,8 @@ final class ScaleRelationStudy {
             for (final TopologyCandidate candidate : analysis.candidates()) {
                 final String key = identity.key(candidate);
                 parents.add(new ScaleRelationExtractor.Parent(candidate, key, identity.version(candidate, List.of())));
-                parentSlots.put(key, parentScale.name() + "|" + candidate.startBarIndex() + "|"
+                parentSlots.put(ScaleRelationLineage.parentRef(parentScale.name(), key), parentScale.name() + "|"
+                        + candidate.startBarIndex() + "|"
                         + candidate.direction() + "|" + candidate.grammar());
             }
             parentCandidates += parents.size();

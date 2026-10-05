@@ -204,9 +204,13 @@ is subdivided at a finer scale:
 ```
 
 Scales are ordered coarse to fine (at most three); each `detector` names the
-recipe's primary or a robustness detector. `degree` and `timeframe` (an ISO-8601
-duration that must match the dataset's bar period) are optional labels that are
-checked, not inferred. For every completed parent motive leg the run records the
+recipe's primary or a robustness detector; a name used by both must carry one
+identical definition, otherwise the recipe is rejected. `degree` is an optional
+informational label that is recorded as given and never validated or inferred.
+`timeframe` (an ISO-8601 duration) is optional and, when present, must match the
+dataset's bar period; scales are not resampled. The scales share one detector
+replay per detector with the study sections, so enabling a hierarchy does not
+re-run detection. For every completed parent motive leg the run records the
 child pivots strictly inside it and the child grammar they form, tests the
 interior with the wave rules (wave 2 origin, wave 3 not shortest, wave 4
 non-overlap, wave 5 divergence) and stores an edge with a state:
@@ -224,7 +228,9 @@ unexamined counts. Relations are research evidence only, not trading signals.
 Artifacts: `relations/<dataset>.jsonl` (header, `frame` lines, footer with totals)
 and a "Scale relations" section in `summary.md`. Inspect with
 `ElliottResearch relations <runDir> <dataset> [--as-of IDX] [--limit N] [--edge KEY]`
-(exit 2 when the file is missing, incomplete or from another run). Runs without a
+(exit 2 when the file is missing, incomplete or from another run). Each printed edge
+lists its child pivots with their confirmation bars and every predicate with its
+explanation, and says so when more child pivots exist than the sidecar stores. Runs without a
 `hierarchy` write no `relations/` directory.
 
 ## Companion user guides

@@ -175,6 +175,26 @@ final class StudyRunner {
      */
     StudyReport evaluate(final String assetId, final BarSeries series, final int fromIndex, final int toIndex,
             final StudyObserver observer) {
+        return evaluate(assetId, series, fromIndex, toIndex, observer, DetectorReplays.uncached());
+    }
+
+    /**
+     * As {@link #evaluate(String, BarSeries, int, int, StudyObserver)}, drawing
+     * every detector replay of {@code series} from {@code replays} so a caller that
+     * needs the same causal observations afterwards reuses them instead of
+     * detecting again.
+     *
+     * @param assetId   report asset identifier
+     * @param series    source bars
+     * @param fromIndex first requested index, inclusive
+     * @param toIndex   last requested index, inclusive
+     * @param observer  optional observation sink, or {@code null}
+     * @param replays   replay cache bound to {@code series}
+     * @return immutable study report
+     * @since 0.26.1
+     */
+    StudyReport evaluate(final String assetId, final BarSeries series, final int fromIndex, final int toIndex,
+            final StudyObserver observer, final DetectorReplays replays) {
         if (assetId == null || assetId.isBlank()) {
             throw new IllegalArgumentException("assetId must not be blank");
         }
@@ -190,7 +210,7 @@ final class StudyRunner {
         // must never appear under the motive-labeled hypothesis report.
         h1Modes.add(evaluateTopologyMode(series, start, end, configuration.partitions(), detectorFactory,
                 TopologyGrammar.MOTIVE_5, "topology-only", observer,
-                realScope("h1", "topology-only", TopologyGrammar.MOTIVE_5.name(), List.of())));
+                realScope("h1", "topology-only", TopologyGrammar.MOTIVE_5.name(), List.of()), replays));
 
         final List<StudyReport.ModeReport> ablations = new ArrayList<>();
         final List<StudyReport.AmbiguousCandidateEvidence> ambiguousCandidateEvidence = new ArrayList<>();
@@ -198,7 +218,8 @@ final class StudyRunner {
             ablations.add(evaluateMode(series, start, end, configuration.partitions(), detectorFactory,
                     TopologyGrammar.CYCLE_5_3, mode.name(), mode.rules(),
                     "classical-all".equals(mode.name()) ? ambiguousCandidateEvidence : null, observer,
-                    realScope("h2", mode.name(), TopologyGrammar.CYCLE_5_3.name(), activeRuleIds(mode.rules()))));
+                    realScope("h2", mode.name(), TopologyGrammar.CYCLE_5_3.name(), activeRuleIds(mode.rules())),
+                    replays));
         }
 
         final List<StudyReport.ModeReport> competing = new ArrayList<>();
@@ -226,18 +247,18 @@ final class StudyRunner {
                 if (grammar != null) {
                     mode = evaluateTopologyMode(series, start, end, configuration.partitions(), detectorFactory,
                             grammar, "competing-" + grammarName, observer,
-                            realScope("competing", "competing-" + grammarName, grammarName, List.of()));
+                            realScope("competing", "competing-" + grammarName, grammarName, List.of()), replays);
                 } else {
                     mode = evaluateAlternativeGrammar(series, start, end, configuration.partitions(), detectorFactory,
                             grammarName, observer,
-                            realScope("competing", "competing-" + grammarName, grammarName, List.of()));
+                            realScope("competing", "competing-" + grammarName, grammarName, List.of()), replays);
                 }
             }
             competing.add(mode);
         }
 
         final StudyReport.RobustnessReport robustness = DetectorRobustnessMatrix.evaluate(series, start, end,
-                configuration.partitions(), configuration.robustnessDetectors(), observer);
+                configuration.partitions(), configuration.robustnessDetectors(), observer, replays);
         final List<StudyReport.NullReport> nullReports = evaluateNulls(series, start, end);
         final StudyReport.HypothesisReport h1 = new StudyReport.HypothesisReport("H1", TopologyGrammar.MOTIVE_5.name(),
                 h1Modes);
@@ -567,9 +588,9 @@ final class StudyRunner {
             final Partitions partitions, final Supplier<SwingDetector> factory, final TopologyGrammar grammar,
             final String mode, final List<RelationshipRule> activeRules,
             final List<StudyReport.AmbiguousCandidateEvidence> ambiguousCandidateEvidence, final StudyObserver observer,
-            final StudyObserver.Scope scope) {
+            final StudyObserver.Scope scope, final DetectorReplays replays) {
         final List<MetricAccumulator> accumulators = newAccumulators(activeRules, ambiguousCandidateEvidence);
-        final ConfirmationTracker.CausalReplay replay = observeReplay(series, factory, end);
+        final ConfirmationTracker.CausalReplay replay = replays.replay(series, factory, end);
         recordTopologyWithRecordings(series, start, end, partitions, replay, grammar,
                 List.of(new TopologyRecording(activeRules, accumulators, scope)), 0, observer, ALL_PARTITIONS);
         return new StudyReport.ModeReport(mode, grammar.name(), activeRuleIds(activeRules),
@@ -578,12 +599,13 @@ final class StudyRunner {
 
     static StudyReport.ModeReport evaluateTopologyMode(final BarSeries series, final int start, final int end,
             final Partitions partitions, final Supplier<SwingDetector> factory, final TopologyGrammar grammar,
-            final String mode, final StudyObserver observer, final StudyObserver.Scope scope) {
+            final String mode, final StudyObserver observer, final StudyObserver.Scope scope,
+            final DetectorReplays replays) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(partitions, "partitions");
         Objects.requireNonNull(factory, "factory");
         final List<MetricAccumulator> accumulators = newAccumulators(List.of(), partitions);
-        final ConfirmationTracker.CausalReplay replay = observeReplay(series, factory, end);
+        final ConfirmationTracker.CausalReplay replay = replays.replay(series, factory, end);
         recordTopologyWithRecordings(series, start, end, partitions, replay, grammar,
                 List.of(new TopologyRecording(List.of(), accumulators, scope)), 0, observer, ALL_PARTITIONS);
         return new StudyReport.ModeReport(mode, grammar.name(), List.of(), metrics(accumulators, partitions));
@@ -682,10 +704,10 @@ final class StudyRunner {
 
     private static StudyReport.ModeReport evaluateAlternativeGrammar(final BarSeries series, final int start,
             final int end, final Partitions partitions, final Supplier<SwingDetector> factory, final String name,
-            final StudyObserver observer, final StudyObserver.Scope scope) {
+            final StudyObserver observer, final StudyObserver.Scope scope, final DetectorReplays replays) {
         final AlternativeGrammar grammar = AlternativeGrammar.of(name);
         final List<MetricAccumulator> accumulators = newAccumulators(List.of(), partitions);
-        final ConfirmationTracker.CausalReplay replay = observeReplay(series, factory, end);
+        final ConfirmationTracker.CausalReplay replay = replays.replay(series, factory, end);
         if (start <= end) {
             for (int index = start;; index++) {
                 final int partitionIndex = partitionIndex(series, index, partitions);
@@ -801,11 +823,7 @@ final class StudyRunner {
 
     private static ConfirmationTracker.CausalReplay observeReplay(final BarSeries series,
             final Supplier<SwingDetector> factory, final int endIndex) {
-        final SwingDetector detector = Objects.requireNonNull(factory, "detectorFactory").get();
-        final SwingDetector nonNullDetector = Objects.requireNonNull(detector, "detectorFactory returned null");
-        // Causally truncate: a detector contradiction on a bar beyond the
-        // requested range must not abort a report about an earlier interval.
-        return new ConfirmationTracker(nonNullDetector).observeReplay(series, endIndex);
+        return DetectorReplays.uncached().replay(series, factory, endIndex);
     }
 
     private List<MetricAccumulator> newAccumulators(final List<RelationshipRule> activeRules,
