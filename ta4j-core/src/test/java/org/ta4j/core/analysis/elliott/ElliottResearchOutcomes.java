@@ -70,7 +70,7 @@ import com.google.gson.JsonPrimitive;
  * only and no significance is computed. Nothing here is read by recognition.
  * </p>
  *
- * @since 0.25.1
+ * @since 0.26.1
  */
 final class ElliottResearchOutcomes {
 

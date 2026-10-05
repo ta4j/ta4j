@@ -48,7 +48,7 @@ import org.ta4j.core.analysis.elliott.swing.SwingPivotType;
  * Instances are not thread-safe.
  * </p>
  *
- * @since 0.25.1
+ * @since 0.26.1
  */
 final class ElliottResearchEvents implements StudyObserver {
 
