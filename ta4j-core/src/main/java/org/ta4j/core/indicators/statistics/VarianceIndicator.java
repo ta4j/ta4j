@@ -21,7 +21,9 @@ import org.ta4j.core.num.NumFactory;
  * Warm-up and partial retained windows preserve legacy calculation values. The
  * stability boundary still requires a full window of stable source values and
  * includes the retained begin; it does not suppress partial-window
- * calculations.
+ * calculations. In contrast, {@link CovarianceIndicator} returns an unavailable
+ * value for incomplete retained windows, so correlation remains unavailable
+ * until the full window is stable.
  */
 public class VarianceIndicator extends CachedIndicator<Num> {
 

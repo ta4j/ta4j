@@ -16,6 +16,9 @@ import org.ta4j.core.num.Num;
  * source loses history, incomplete retained windows return {@link NaN#NaN}. The
  * stability boundary includes both sources and their retained begin indexes.
  * Undefined source values return {@link NaN#NaN}, including singleton windows.
+ * Unlike {@link VarianceIndicator}, which preserves legacy partial retained
+ * calculation values, covariance is unavailable before its full retained/source
+ * stability boundary; correlation therefore remains unavailable there too.
  */
 public class CovarianceIndicator extends CachedIndicator<Num> {
 

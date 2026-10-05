@@ -275,7 +275,7 @@ public final class IndicatorFamilyManager
         } catch (RuntimeException exception) {
             throw new IllegalArgumentException("similarityThreshold must be between 0.0 and 1.0", exception);
         }
-        if (IndicatorUtils.isInvalid(threshold) || threshold.isNegative()
+        if (!Num.isFinite(threshold) || threshold.isNegative()
                 || threshold.isGreaterThan(barSeries.numFactory().one())) {
             throw new IllegalArgumentException("similarityThreshold must be between 0.0 and 1.0");
         }
@@ -389,7 +389,7 @@ public final class IndicatorFamilyManager
         int samples = 0;
         for (long index = startIndex; index <= (long) endIndex; index++) {
             Num value = similarityMetric.getValue((int) index);
-            if (IndicatorUtils.isInvalid(value)) {
+            if (!Num.isFinite(value)) {
                 continue;
             }
             requireSignedSimilarityValue(value);

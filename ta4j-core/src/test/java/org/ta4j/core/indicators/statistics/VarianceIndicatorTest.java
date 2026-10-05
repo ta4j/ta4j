@@ -218,7 +218,7 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
             }
 
             @Override
-            public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long revision) {
+            public synchronized BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long revision) {
                 return new BarSeriesChangeSnapshot(0, Integer.MAX_VALUE, Integer.MAX_VALUE - 1, 1, Integer.MAX_VALUE);
             }
         };
