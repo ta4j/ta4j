@@ -10,6 +10,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -208,9 +209,9 @@ final class CorrectiveFamilyStudy {
     static String groupId(final CorrectiveFamily.Profile profile) {
         final List<String> children = new ArrayList<>();
         for (final TopologyGrammar grammar : profile.childGrammars()) {
-            children.add(grammar.name().toLowerCase(java.util.Locale.ROOT).replace('_', '-'));
+            children.add(grammar.name().toLowerCase(Locale.ROOT).replace('_', '-'));
         }
-        return profile.parentGrammar().name().toLowerCase(java.util.Locale.ROOT).replace('_', '-') + ">"
+        return profile.parentGrammar().name().toLowerCase(Locale.ROOT).replace('_', '-') + ">"
                 + String.join(",", children);
     }
 

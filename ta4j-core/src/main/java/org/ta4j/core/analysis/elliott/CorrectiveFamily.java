@@ -5,6 +5,7 @@ package org.ta4j.core.analysis.elliott;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -133,7 +134,7 @@ final class CorrectiveFamily {
                 }
             }
             throw new IllegalArgumentException("unknown corrective-family profile '" + id + "'; expected one of "
-                    + java.util.Arrays.stream(values()).map(Profile::id).toList());
+                    + Arrays.stream(values()).map(Profile::id).toList());
         }
     }
 
