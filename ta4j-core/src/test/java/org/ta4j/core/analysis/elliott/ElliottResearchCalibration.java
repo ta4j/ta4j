@@ -1448,7 +1448,8 @@ final class ElliottResearchCalibration {
      * @param reliabilityCsv {@code calibration-reliability.csv}
      * @param dataset        dataset id
      * @param partition      partition of the inspected comparison row
-     * @param candidate      candidate key to focus on, or {@code null}
+     * @param candidate      candidate key prefix or exact version to focus on, or
+     *                       {@code null}
      * @param asOf           last decision index to show, or {@code null}
      * @param limit          maximum alternatives shown
      * @param rank           {@code enrollment} or {@code probability}
@@ -1470,7 +1471,8 @@ final class ElliottResearchCalibration {
                 record.put(PREDICTION_HEADER.get(at), cells.get(at));
             }
             if (record.get("dataset").equals(dataset) && record.get("partition").equals(partition)
-                    && (candidate == null || record.get("candidateKey").equals(candidate))
+                    && (candidate == null || ElliottResearchTrace.selects(candidate, record.get("candidateKey"),
+                            record.get("version")))
                     && (asOf == null || Integer.parseInt(record.get("enrollIndex")) <= asOf)) {
                 matching.add(record);
             }

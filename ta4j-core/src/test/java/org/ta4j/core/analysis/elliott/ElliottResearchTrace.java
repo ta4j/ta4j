@@ -324,6 +324,16 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
     }
 
     /**
+     * Whether an inspection selector names a candidate: a prefix of its
+     * {@code candidateKey} or its exact {@code version}.
+     *
+     * @since 0.26.1
+     */
+    static boolean selects(final String selector, final String candidateKey, final String version) {
+        return candidateKey.startsWith(selector) || version.equals(selector);
+    }
+
+    /**
      * Deterministic identity of a candidate's grammar, direction and full pivot
      * placement.
      */

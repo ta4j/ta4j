@@ -894,6 +894,42 @@ class ElliottResearchTest {
         final Result badRank = launch("inspect", run.toString(), key, "--rank", "luck");
         assertEquals(1, badRank.code());
         assertTrue(badRank.err().contains("--rank must be"), badRank.err());
+
+        final List<String> lines = Files.readAllLines(run.resolve(ElliottResearchCalibration.PREDICTIONS_FILE));
+        final List<String> header = List.of(lines.get(0).split(",", -1));
+        final String[] holdout = lines.subList(1, lines.size())
+                .stream()
+                .map(line -> line.split(",", -1))
+                .filter(cells -> cells[header.indexOf("partition")].equals("holdout"))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("the recipe must score holdout alternatives"));
+        final String candidateKey = holdout[header.indexOf("candidateKey")];
+        final String version = holdout[header.indexOf("version")];
+        final String listed = "- " + candidateKey + " (version " + version;
+        for (final String selector : List.of(candidateKey.substring(0, candidateKey.length() - 1), version)) {
+            final Result selected = launch("inspect", run.toString(), key, "--candidate", selector);
+            assertEquals(0, selected.code(), selected.err());
+            assertTrue(selected.out().contains(listed), selector + " must select like trace inspection does");
+        }
+    }
+
+    @Test
+    void calibratedRunWithAMissingDeclaredTraceStillExitsTwo() throws Exception {
+        final Path candles = work.resolve("declared-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
+        final Path recipe = work.resolve("declared-recipe.json");
+        Files.writeString(recipe, calibrationRecipe("cal", "{\"horizon\":5,\"minGroups\":1}"));
+        final Path run = work.resolve("declared");
+        final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(),
+                "--trace", "real", "--out", run.toString());
+        assertEquals(0, result.code(), result.err());
+        final String key = keyOfPartition(run, "holdout");
+        assertEquals(0, launch("inspect", run.toString(), key).code());
+        Files.delete(run.resolve("traces/cal-real.jsonl"));
+
+        final Result missing = launch("inspect", run.toString(), key);
+        assertEquals(2, missing.code());
+        assertTrue(missing.err().contains("no trace was captured"), missing.err());
     }
 
     @Test

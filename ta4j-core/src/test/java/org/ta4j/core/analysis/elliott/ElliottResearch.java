@@ -1843,17 +1843,22 @@ final class ElliottResearch {
 
         void print(final PrintStream out, final Integer asOf, final String candidate) throws IOException {
             // Real: retain the whole family so cross-mode rule disagreements stay visible.
-            final View real = load("real", findTrace(realSuffixMatcher()),
+            final String realTrace = findTrace(realSuffixMatcher());
+            final View real = load("real", realTrace,
                     expectedTraceHeader(run, dataset, ElliottResearchTrace.MODE_REAL, -1, -1), this::sameFamily,
                     this::inRealScope, ElliottResearch.recapture(dir, run, ElliottResearchTrace.MODE_REAL, null, null));
             // A run that selected no member captured no null trace, so -1 rejects any found
             // one.
             final JsonElement member = run.getAsJsonObject("trace").get("member");
-            final View nullView = row.nullBlockLength() > 0 ? load("null", findTrace(nullMatcher()),
+            final String nullTrace = row.nullBlockLength() > 0 ? findTrace(nullMatcher()) : null;
+            final View nullView = nullTrace != null ? load("null", nullTrace,
                     expectedTraceHeader(run, dataset, ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER,
                             row.nullBlockLength(), member == null || member.isJsonNull() ? -1 : member.getAsInt()),
                     this::inNullScope, this::inNullScope, recaptureNull()) : null;
-            if (real == null && nullView == null && !run.has("calibration")) {
+            // A calibrated run may be inspected without traces, but a declared trace
+            // that is missing is still an incomplete capture.
+            final boolean traceDeclared = realTrace != null || nullTrace != null;
+            if (real == null && nullView == null && (traceDeclared || !run.has("calibration"))) {
                 throw new Diagnostic(
                         "no trace was captured for key " + row.key() + " in " + dir + ". Recapture with:\n  "
                                 + ElliottResearch.recapture(dir, run, ElliottResearchTrace.MODE_REAL, null, null)
@@ -2044,8 +2049,8 @@ final class ElliottResearch {
                 }
                 for (final JsonElement candidateElement : candidates) {
                     final JsonObject candidate = candidateElement.getAsJsonObject();
-                    if (!candidate.get("candidateKey").getAsString().startsWith(candidateKey)
-                            && !candidate.get("version").getAsString().equals(candidateKey)) {
+                    if (!ElliottResearchTrace.selects(candidateKey, candidate.get("candidateKey").getAsString(),
+                            candidate.get("version").getAsString())) {
                         continue;
                     }
                     final StringBuilder states = new StringBuilder();
