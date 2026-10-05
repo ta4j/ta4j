@@ -66,9 +66,9 @@ class DetectorReplaysTest {
         final DetectorReplays replays = DetectorReplays.forSeries(series, BARS - 1);
         replays.replay(series, coarse, BARS - 1);
         replays.replay(series, fine, BARS - 1);
-        final ScaleRelationStudy study = ScaleRelationFixtures.study(List.of(
-                new ScaleRelationStudy.ScaleInput("coarse", coarse), new ScaleRelationStudy.ScaleInput("fine", fine)),
-                ScaleRelation.Policy.defaults());
+        final ScaleRelationStudy study = ScaleRelationFixtures
+                .study(List.of(new ScaleRelationStudy.ScaleInput("coarse", coarse),
+                        new ScaleRelationStudy.ScaleInput("fine", fine)), ScaleRelation.Policy.defaults());
         final List<ScaleRelationStudy.Frame> shared = new ArrayList<>();
         final List<ScaleRelationStudy.Frame> fresh = new ArrayList<>();
 

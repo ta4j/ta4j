@@ -17,9 +17,9 @@ import java.util.function.Predicate;
  * stops being active.
  *
  * <p>
- * Nothing is rewritten: a revised edge keeps its key and gets a new version, and
- * an ended edge keeps its last version. The end reason distinguishes a parent
- * that was revised, invalidated, or retired from a child pivot that was
+ * Nothing is rewritten: a revised edge keeps its key and gets a new version,
+ * and an ended edge keeps its last version. The end reason distinguishes a
+ * parent that was revised, invalidated, or retired from a child pivot that was
  * withdrawn and from a retained-edge cap that merely stopped listing the edge.
  * Disappearance of a parent never removes child evidence; the child scale's own
  * tape and candidates are untouched by this class.
@@ -30,8 +30,8 @@ final class ScaleRelationLineage {
     private final Map<String, String> parentSlotByEdgeKey = new TreeMap<>();
 
     /**
-     * Presence key of a parent candidate. Two scales may report the same
-     * placement, so the candidate key alone never identifies a scale's parent.
+     * Presence key of a parent candidate. Two scales may report the same placement,
+     * so the candidate key alone never identifies a scale's parent.
      *
      * @param scale        parent scale name
      * @param candidateKey parent candidate key
@@ -48,13 +48,13 @@ final class ScaleRelationLineage {
     /**
      * What the extraction layer knows about the current observation.
      *
-     * @param currentParentSlots    slot of every parent candidate present now,
-     *                              keyed by {@link #parentRef(String, String)}
-     * @param invalidatedScales     parent scales whose topology analysis reported
-     *                              an explicit invalidation at this observation
-     * @param omittedEdgeKeys       keys of edges generated but dropped by the cap
-     * @param childEvidencePresent  whether an edge's stored child pivots are all
-     *                              still confirmed, unchanged, on the child tape
+     * @param currentParentSlots   slot of every parent candidate present now, keyed
+     *                             by {@link #parentRef(String, String)}
+     * @param invalidatedScales    parent scales whose topology analysis reported an
+     *                             explicit invalidation at this observation
+     * @param omittedEdgeKeys      keys of edges generated but dropped by the cap
+     * @param childEvidencePresent whether an edge's stored child pivots are all
+     *                             still confirmed, unchanged, on the child tape
      */
     record Observation(Map<String, String> currentParentSlots, Set<String> invalidatedScales,
             Set<String> omittedEdgeKeys, Predicate<ScaleRelation.Edge> childEvidencePresent) {

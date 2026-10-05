@@ -33,10 +33,10 @@ import org.ta4j.core.analysis.elliott.swing.SwingDetector;
  * touch dates the protocol forbids.
  *
  * <p>
- * Bounds: at most {@value ScaleRelation#MAX_SCALES} scales, at most the policy's
- * edge cap of retained edges per observation (the exact generated, retained,
- * and omitted counts are reported), and a bounded decomposition search per
- * parent leg.
+ * Bounds: at most {@value ScaleRelation#MAX_SCALES} scales, at most the
+ * policy's edge cap of retained edges per observation (the exact generated,
+ * retained, and omitted counts are reported), and a bounded decomposition
+ * search per parent leg.
  */
 final class ScaleRelationStudy {
 
@@ -53,11 +53,11 @@ final class ScaleRelationStudy {
     /**
      * One observation that changed the relation set or its coverage.
      *
-     * @param partition  partition name of the bar
-     * @param asOfIndex  observation bar index
-     * @param asOfTime   observation bar end time
-     * @param coverage   exact extraction bookkeeping of this observation
-     * @param events     relation lifecycle events at this observation
+     * @param partition partition name of the bar
+     * @param asOfIndex observation bar index
+     * @param asOfTime  observation bar end time
+     * @param coverage  exact extraction bookkeeping of this observation
+     * @param events    relation lifecycle events at this observation
      */
     record Frame(String partition, int asOfIndex, Instant asOfTime, ScaleRelation.Coverage coverage,
             List<ScaleRelation.Event> events) {
@@ -110,7 +110,8 @@ final class ScaleRelationStudy {
      * @param series  series every scale is detected on
      * @param start   first observed bar
      * @param end     last observed bar
-     * @param replays replay cache; shared only for the series and end it is bound to
+     * @param replays replay cache; shared only for the series and end it is bound
+     *                to
      * @param sink    receives each changed observation in bar order
      * @return number of observations emitted
      */
@@ -159,8 +160,8 @@ final class ScaleRelationStudy {
         return emitted;
     }
 
-    private record Observed(List<ScaleRelation.Edge> retained, Set<String> omittedKeys,
-            Map<String, String> parentSlots, Set<String> invalidatedScales, ScaleRelation.Coverage coverage) {
+    private record Observed(List<ScaleRelation.Edge> retained, Set<String> omittedKeys, Map<String, String> parentSlots,
+            Set<String> invalidatedScales, ScaleRelation.Coverage coverage) {
     }
 
     private Observed observe(final TopologyAnalyzer analyzer, final ScaleRelationExtractor extractor,
@@ -183,8 +184,7 @@ final class ScaleRelationStudy {
                 final String key = identity.key(candidate);
                 parents.add(new ScaleRelationExtractor.Parent(candidate, key, identity.version(candidate, List.of())));
                 parentSlots.put(ScaleRelationLineage.parentRef(parentScale.name(), key), parentScale.name() + "|"
-                        + candidate.startBarIndex() + "|"
-                        + candidate.direction() + "|" + candidate.grammar());
+                        + candidate.startBarIndex() + "|" + candidate.direction() + "|" + candidate.grammar());
             }
             parentCandidates += parents.size();
             final ScaleRelationExtractor.Result result = extractor.extract(parentScale, childScale, parents,

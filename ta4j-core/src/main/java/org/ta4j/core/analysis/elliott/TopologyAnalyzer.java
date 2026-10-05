@@ -315,8 +315,8 @@ final class TopologyAnalyzer {
     }
 
     /**
-     * Builds the candidate a complete ordered pivot list forms under one grammar and
-     * direction, without searching or snapping.
+     * Builds the candidate a complete ordered pivot list forms under one grammar
+     * and direction, without searching or snapping.
      *
      * @param grammar   grammar to satisfy
      * @param direction declared trend direction

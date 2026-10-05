@@ -48,11 +48,9 @@ class ElliottResearchRelationsTest {
                 ScaleRelation.Interior.CONTIGUOUS, 20);
         final BarSeries series = ScaleRelationFixtures.series(BARS);
         hierarchy.validateSeries("toy", series);
-        totals = ElliottResearchRelations.write(file, "toy", "rev", "fp", "sha", hierarchy,
-                List.of(ScaleRelationFixtures.input("parent", ScaleRelationFixtures.PARENT,
-                        ScaleRelationFixtures.PARENT_LAG),
-                        ScaleRelationFixtures.input("child", ScaleRelationFixtures.CHILD,
-                                ScaleRelationFixtures.CHILD_LAG)),
+        totals = ElliottResearchRelations.write(file, "toy", "rev", "fp", "sha", hierarchy, List.of(
+                ScaleRelationFixtures.input("parent", ScaleRelationFixtures.PARENT, ScaleRelationFixtures.PARENT_LAG),
+                ScaleRelationFixtures.input("child", ScaleRelationFixtures.CHILD, ScaleRelationFixtures.CHILD_LAG)),
                 ScaleRelationFixtures.passingRules(), ScaleRelationFixtures.PARTITIONS, series, 0, BARS - 1,
                 DetectorReplays.uncached());
     }
@@ -74,8 +72,10 @@ class ElliottResearchRelationsTest {
         assertEquals(totals.events(), meta.footer().get("events").getAsLong());
         assertEquals("elliott-research-relations/1", meta.header().get("schema").getAsString());
         assertEquals("fp", meta.header().get("fingerprint").getAsString());
-        assertEquals("parent", meta.header().getAsJsonArray("scales").get(0).getAsJsonObject().get("name").getAsString());
-        assertEquals("PT24H", meta.header().getAsJsonArray("scales").get(0).getAsJsonObject().get("timeframe").getAsString());
+        assertEquals("parent",
+                meta.header().getAsJsonArray("scales").get(0).getAsJsonObject().get("name").getAsString());
+        assertEquals("PT24H",
+                meta.header().getAsJsonArray("scales").get(0).getAsJsonObject().get("timeframe").getAsString());
         assertEquals("contiguous", meta.header().get("interiorAnchors").getAsString());
     }
 

@@ -439,7 +439,8 @@ final class ElliottResearchRelations {
     /**
      * Replays frames up to and including {@code asOf}.
      *
-     * @param asOf    last as-of index to include, or {@code null} for the whole file
+     * @param asOf    last as-of index to include, or {@code null} for the whole
+     *                file
      * @param edgeKey edge whose events are collected into {@link Replay#history()},
      *                or {@code null}
      */
@@ -490,12 +491,11 @@ final class ElliottResearchRelations {
     /**
      * Prints the relation set at an as-of index.
      *
-     * @param out      destination
-     * @param path     relation file
-     * @param asOf     as-of index, or {@code null} for the last recorded frame
-     * @param limit    most edges printed
-     * @param edgeKey  edge whose full event history is also printed, or
-     *                 {@code null}
+     * @param out     destination
+     * @param path    relation file
+     * @param asOf    as-of index, or {@code null} for the last recorded frame
+     * @param limit   most edges printed
+     * @param edgeKey edge whose full event history is also printed, or {@code null}
      * @return {@code false} when the file is incomplete
      */
     static boolean print(final PrintStream out, final Path path, final Integer asOf, final int limit,
@@ -552,10 +552,9 @@ final class ElliottResearchRelations {
             }
             for (final JsonObject event : replay.history()) {
                 final JsonObject edge = event.getAsJsonObject("edge");
-                out.println("  @" + event.get("asOfIndex").getAsInt() + " " + event.get("lifecycle").getAsString()
-                        + " " + event.get("reason").getAsString() + " state=" + edge.get("state").getAsString()
-                        + " version=" + edge.get("version").getAsString() + " availableAt="
-                        + edge.get("availableAt").getAsInt());
+                out.println("  @" + event.get("asOfIndex").getAsInt() + " " + event.get("lifecycle").getAsString() + " "
+                        + event.get("reason").getAsString() + " state=" + edge.get("state").getAsString() + " version="
+                        + edge.get("version").getAsString() + " availableAt=" + edge.get("availableAt").getAsInt());
                 evidence(edge, "      ").forEach(out::println);
             }
         }
@@ -617,8 +616,8 @@ final class ElliottResearchRelations {
         }
         lines.add(indent + "child pivots: " + (rendered.isEmpty() ? "(none)" : String.join(" -> ", rendered)));
         if (count > pivots.size()) {
-            lines.add(indent + "note: " + count + " child pivots rely on this edge but only the first "
-                    + pivots.size() + " are stored (limit " + ScaleRelation.MAX_STORED_CHILD_PIVOTS
+            lines.add(indent + "note: " + count + " child pivots rely on this edge but only the first " + pivots.size()
+                    + " are stored (limit " + ScaleRelation.MAX_STORED_CHILD_PIVOTS
                     + "); the sequence above is truncated");
         }
         for (final JsonElement element : edge.getAsJsonArray("predicates")) {
@@ -638,8 +637,9 @@ final class ElliottResearchRelations {
     }
 
     /**
-     * Markdown lines summarising one dataset's relation file for {@code summary.md}.
-     * The file is cross-checked against the run before any claim is made.
+     * Markdown lines summarising one dataset's relation file for
+     * {@code summary.md}. The file is cross-checked against the run before any
+     * claim is made.
      *
      * @param expectedHeader header fields the file must carry to belong to the run
      */
@@ -664,8 +664,8 @@ final class ElliottResearchRelations {
             final JsonObject footer = meta.footer();
             lines.add("- `" + datasetId + "`: " + scaleNames(meta.header()) + ", " + meta.frames() + " frame(s), "
                     + footer.get("events").getAsLong() + " event(s); first observed by state "
-                    + (replay.observedByState().isEmpty() ? "(none)" : replay.observedByState())
-                    + "; ended by reason " + (replay.endedByReason().isEmpty() ? "(none)" : replay.endedByReason())
+                    + (replay.observedByState().isEmpty() ? "(none)" : replay.observedByState()) + "; ended by reason "
+                    + (replay.endedByReason().isEmpty() ? "(none)" : replay.endedByReason())
                     + "; frames with omitted edges " + footer.get("truncatedFrames").getAsLong()
                     + ", with an unexamined bound " + footer.get("incompleteFrames").getAsLong()
                     + "; peak retained edges " + footer.get("peakRetainedEdges").getAsInt() + " of cap "

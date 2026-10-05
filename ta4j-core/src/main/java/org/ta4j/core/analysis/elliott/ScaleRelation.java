@@ -61,7 +61,9 @@ final class ScaleRelation {
         PENDING_CONFIRMATION("pending-confirmation"),
         /** An exact, contiguous, rule-satisfying child decomposition exists. */
         SUBDIVISION_SUPPORTED("subdivision-supported"),
-        /** Child structure exists inside the leg and contradicts the declared grammar. */
+        /**
+         * Child structure exists inside the leg and contradicts the declared grammar.
+         */
         CONFLICTING_EVIDENCE("conflicting-evidence"),
         /** The child tape has no matching exact anchor or no interior structure. */
         NOT_NESTED("not-nested");
@@ -86,7 +88,9 @@ final class ScaleRelation {
         }
     }
 
-    /** Whether child interior anchors must be exactly the pivots between anchors. */
+    /**
+     * Whether child interior anchors must be exactly the pivots between anchors.
+     */
     enum Interior {
         /** The child tape between the anchors is exactly the grammar interior. */
         CONTIGUOUS,
@@ -157,13 +161,12 @@ final class ScaleRelation {
     /**
      * Extraction policy.
      *
-     * @param parentGrammar              grammar whose candidates act as parents
-     * @param interior                   interior-anchor policy
-     * @param edgeCap                    retained edges per observation
-     * @param maxDecompositionsPerLeg    decompositions kept per leg and child
-     *                                   grammar
-     * @param nodeBudgetPerLeg           search nodes per leg and child grammar
-     * @param childGrammars              child grammars declared per parent leg
+     * @param parentGrammar           grammar whose candidates act as parents
+     * @param interior                interior-anchor policy
+     * @param edgeCap                 retained edges per observation
+     * @param maxDecompositionsPerLeg decompositions kept per leg and child grammar
+     * @param nodeBudgetPerLeg        search nodes per leg and child grammar
+     * @param childGrammars           child grammars declared per parent leg
      */
     record Policy(TopologyGrammar parentGrammar, Interior interior, int edgeCap, int maxDecompositionsPerLeg,
             int nodeBudgetPerLeg, ChildGrammars childGrammars) {
@@ -183,8 +186,8 @@ final class ScaleRelation {
         }
 
         /**
-         * Default declaration: impulse legs (1, 3, 5) are tried as five-wave
-         * structures and counter legs (2, 4) as three-wave corrections.
+         * Default declaration: impulse legs (1, 3, 5) are tried as five-wave structures
+         * and counter legs (2, 4) as three-wave corrections.
          *
          * @return the default policy
          */
@@ -280,14 +283,14 @@ final class ScaleRelation {
     /**
      * Exact bookkeeping of one observation's extraction.
      *
-     * @param parentCandidates          parent candidates considered
-     * @param legsChecked               parent legs examined
-     * @param edgesGenerated            edges produced before the cap
-     * @param edgesRetained             edges kept
-     * @param edgesOmitted              edges dropped by the cap
-     * @param edgeCap                   configured cap
+     * @param parentCandidates           parent candidates considered
+     * @param legsChecked                parent legs examined
+     * @param edgesGenerated             edges produced before the cap
+     * @param edgesRetained              edges kept
+     * @param edgesOmitted               edges dropped by the cap
+     * @param edgeCap                    configured cap
      * @param decompositionLegsTruncated legs whose decomposition search hit the
-     *                                  per-leg bound or node budget
+     *                                   per-leg bound or node budget
      */
     record Coverage(int parentCandidates, int legsChecked, int edgesGenerated, int edgesRetained, int edgesOmitted,
             int edgeCap, int decompositionLegsTruncated) {
@@ -348,8 +351,8 @@ final class ScaleRelation {
      * Validates explicit links against a declared scale chain.
      *
      * <p>
-     * Checks run in a fixed order so the same input always fails the same way:
-     * self links, unknown scales, cycles, reversed links, then non-adjacent links.
+     * Checks run in a fixed order so the same input always fails the same way: self
+     * links, unknown scales, cycles, reversed links, then non-adjacent links.
      *
      * @param scales validated scale chain
      * @param links  links to check
@@ -389,8 +392,8 @@ final class ScaleRelation {
         }
     }
 
-    private static void detectCycle(final String node, final Map<String, List<String>> children,
-            final Set<String> path, final Set<String> done) {
+    private static void detectCycle(final String node, final Map<String, List<String>> children, final Set<String> path,
+            final Set<String> done) {
         if (done.contains(node)) {
             return;
         }

@@ -107,8 +107,7 @@ class ScaleRelationStudyTest {
     void missingChildAnchorIsNeverSnappedToANeighbour() {
         // The child has a pivot one bar before the parent's bar-10 anchor.
         final List<Pt> shifted = replacing(CHILD, 10, pt(9, 119, 'H'));
-        final List<ScaleRelation.Edge> edges = activeAt(run(study(twoScales(PARENT, shifted), DEFAULTS), 60, 59),
-                59);
+        final List<ScaleRelation.Edge> edges = activeAt(run(study(twoScales(PARENT, shifted), DEFAULTS), 60, 59), 59);
 
         assertEquals(ScaleRelation.State.NOT_NESTED, leg(edges, 0).state());
         assertEquals(ScaleRelation.State.CONTAINED_ONLY, leg(edges, 1).state());
@@ -121,8 +120,7 @@ class ScaleRelationStudyTest {
     @Test
     void wrongPriceAtAnAnchorIndexIsNotNested() {
         final List<Pt> repriced = replacing(CHILD, 30, pt(30, 149, 'H'));
-        final List<ScaleRelation.Edge> edges = activeAt(run(study(twoScales(PARENT, repriced), DEFAULTS), 60, 59),
-                59);
+        final List<ScaleRelation.Edge> edges = activeAt(run(study(twoScales(PARENT, repriced), DEFAULTS), 60, 59), 59);
 
         assertEquals(ScaleRelation.State.NOT_NESTED, leg(edges, 2).state());
         assertEquals(ScaleRelation.State.NOT_NESTED, leg(edges, 3).state());
@@ -184,9 +182,10 @@ class ScaleRelationStudyTest {
         assertFalse(firstLeg.isEmpty());
         for (final ScaleRelation.Edge edge : firstLeg) {
             assertEquals(ScaleRelation.State.CONTAINED_ONLY, edge.state());
-            assertTrue(edge.predicates()
-                    .stream()
-                    .anyMatch(p -> p.id().equals("interior-shape") && p.state() == EvidenceState.UNAVAILABLE),
+            assertTrue(
+                    edge.predicates()
+                            .stream()
+                            .anyMatch(p -> p.id().equals("interior-shape") && p.state() == EvidenceState.UNAVAILABLE),
                     edge.predicates().toString());
         }
         assertTrue(frames.get(frames.size() - 1).coverage().decompositionLegsTruncated() > 0);
@@ -212,9 +211,8 @@ class ScaleRelationStudyTest {
     void retiredParentOnOneScaleDoesNotEndRelationsOfAnotherScaleSharingItsPlacement() {
         // "coarse" and "middle" confirm the same pivots, so their parent candidates
         // share a key; only "coarse" later loses its final pivot.
-        final List<ScaleRelationStudy.ScaleInput> inputs = List.of(
-                input("coarse", scripted(asOf -> visibleAfter(asOf >= 58 ? without(PARENT, 50) : PARENT,
-                        pivot -> PARENT_LAG).apply(asOf))),
+        final List<ScaleRelationStudy.ScaleInput> inputs = List.of(input("coarse", scripted(
+                asOf -> visibleAfter(asOf >= 58 ? without(PARENT, 50) : PARENT, pivot -> PARENT_LAG).apply(asOf))),
                 input("middle", PARENT, PARENT_LAG), input("fine", CHILD, CHILD_LAG));
 
         final List<ScaleRelationStudy.Frame> frames = run(study(inputs, DEFAULTS.withEdgeCap(20)), 60, 59);
@@ -223,8 +221,7 @@ class ScaleRelationStudyTest {
                 .filter(event -> event.lifecycle() == ScaleRelation.Lifecycle.ENDED)
                 .toList();
         assertFalse(ended.isEmpty());
-        assertTrue(ended.stream().allMatch(event -> event.edge().parentScale().equals("coarse")),
-                ended.toString());
+        assertTrue(ended.stream().allMatch(event -> event.edge().parentScale().equals("coarse")), ended.toString());
         assertTrue(ended.stream().allMatch(event -> event.reason() == ScaleRelation.Reason.PARENT_RETIRED),
                 ended.toString());
         assertTrue(activeAt(frames, 59).stream().anyMatch(edge -> edge.parentScale().equals("middle")));
@@ -264,8 +261,7 @@ class ScaleRelationStudyTest {
                 ScaleRelation.adjacentLinks(chain));
         ScaleRelation.validateLinks(chain, ScaleRelation.adjacentLinks(chain));
         assertTrue(assertThrows(IllegalArgumentException.class,
-                () -> ScaleRelation.validateLinks(chain, List.of(new ScaleRelation.Link("a", "a"))))
-                .getMessage()
+                () -> ScaleRelation.validateLinks(chain, List.of(new ScaleRelation.Link("a", "a")))).getMessage()
                 .contains("self link"));
         assertTrue(assertThrows(IllegalArgumentException.class,
                 () -> ScaleRelation.validateLinks(chain,
@@ -273,16 +269,13 @@ class ScaleRelationStudyTest {
                 .getMessage()
                 .contains("cyclic link"));
         assertTrue(assertThrows(IllegalArgumentException.class,
-                () -> ScaleRelation.validateLinks(chain, List.of(new ScaleRelation.Link("c", "b"))))
-                .getMessage()
+                () -> ScaleRelation.validateLinks(chain, List.of(new ScaleRelation.Link("c", "b")))).getMessage()
                 .contains("reversed link"));
         assertTrue(assertThrows(IllegalArgumentException.class,
-                () -> ScaleRelation.validateLinks(chain, List.of(new ScaleRelation.Link("a", "c"))))
-                .getMessage()
+                () -> ScaleRelation.validateLinks(chain, List.of(new ScaleRelation.Link("a", "c")))).getMessage()
                 .contains("non-adjacent"));
         assertTrue(assertThrows(IllegalArgumentException.class,
-                () -> ScaleRelation.validateLinks(chain, List.of(new ScaleRelation.Link("a", "z"))))
-                .getMessage()
+                () -> ScaleRelation.validateLinks(chain, List.of(new ScaleRelation.Link("a", "z")))).getMessage()
                 .contains("undeclared"));
     }
 
@@ -303,8 +296,9 @@ class ScaleRelationStudyTest {
     void absentParentKeepsChildEvidenceAndEndsEdgesAsRetired() {
         // The parent's trailing pivot disappears at bar 56 before any successor.
         final List<ScaleRelationStudy.ScaleInput> inputs = List.of(
-                input("coarse", scripted(asOf -> asOf >= 56 ? without(PARENT, 50)
-                        : visibleAfter(PARENT, pivot -> PARENT_LAG).apply(asOf))),
+                input("coarse",
+                        scripted(asOf -> asOf >= 56 ? without(PARENT, 50)
+                                : visibleAfter(PARENT, pivot -> PARENT_LAG).apply(asOf))),
                 input("fine", CHILD, CHILD_LAG));
         final List<ScaleRelationStudy.Frame> frames = run(study(inputs, DEFAULTS), 60, 59);
 
@@ -316,7 +310,8 @@ class ScaleRelationStudyTest {
         assertEquals(5, ended.size());
         assertTrue(ended.stream().allMatch(event -> event.reason() == ScaleRelation.Reason.PARENT_RETIRED));
         assertTrue(ended.stream().allMatch(event -> event.asOfIndex() == 56));
-        // The retired edge keeps the version and child evidence it was last active with.
+        // The retired edge keeps the version and child evidence it was last active
+        // with.
         final List<ScaleRelation.Edge> last = activeAt(frames, 55);
         for (final ScaleRelation.Event event : ended) {
             final ScaleRelation.Edge before = last.stream()
@@ -343,7 +338,8 @@ class ScaleRelationStudyTest {
         // The parent's last pivot is revised from (50, 170) to (53, 175) at bar 56.
         final List<Pt> revised = replacing(PARENT, 50, pt(53, 175, 'H'));
         final List<ScaleRelationStudy.ScaleInput> inputs = List.of(
-                input("coarse", scripted(asOf -> visibleAfter(asOf >= 56 ? revised : PARENT, pivot -> PARENT_LAG).apply(asOf))),
+                input("coarse",
+                        scripted(asOf -> visibleAfter(asOf >= 56 ? revised : PARENT, pivot -> PARENT_LAG).apply(asOf))),
                 input("fine", CHILD, CHILD_LAG));
         final List<ScaleRelationStudy.Frame> frames = run(study(inputs, DEFAULTS), 60, 59);
 
@@ -429,8 +425,7 @@ class ScaleRelationStudyTest {
         final List<ScaleRelation.Edge> first = activeAt(run(study(twoScales(PARENT, CHILD), DEFAULTS), 60, 59), 59);
         final List<ScaleRelation.Edge> second = activeAt(run(study(twoScales(PARENT, CHILD), DEFAULTS), 60, 59), 59);
         final List<Pt> altered = replacing(CHILD, 7, pt(7, 117, 'H'));
-        final List<ScaleRelation.Edge> changed = activeAt(run(study(twoScales(PARENT, altered), DEFAULTS), 60, 59),
-                59);
+        final List<ScaleRelation.Edge> changed = activeAt(run(study(twoScales(PARENT, altered), DEFAULTS), 60, 59), 59);
 
         assertEquals(first, second);
         assertNotEquals(leg(first, 0).version(), leg(changed, 0).version());

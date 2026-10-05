@@ -46,9 +46,8 @@ final class ScaleRelationFixtures {
 
     static final List<Pt> CHILD = List.of(pt(0, 100, 'L'), pt(2, 108, 'H'), pt(3, 104, 'L'), pt(7, 116, 'H'),
             pt(8, 112, 'L'), pt(10, 120, 'H'), pt(11, 114, 'L'), pt(13, 118, 'H'), pt(15, 110, 'L'), pt(18, 120, 'H'),
-            pt(20, 114, 'L'), pt(26, 140, 'H'), pt(28, 130, 'L'), pt(30, 150, 'H'), pt(32, 140, 'L'),
-            pt(33, 145, 'H'), pt(36, 135, 'L'), pt(40, 150, 'H'), pt(42, 142, 'L'), pt(47, 165, 'H'),
-            pt(48, 158, 'L'), pt(50, 170, 'H'));
+            pt(20, 114, 'L'), pt(26, 140, 'H'), pt(28, 130, 'L'), pt(30, 150, 'H'), pt(32, 140, 'L'), pt(33, 145, 'H'),
+            pt(36, 135, 'L'), pt(40, 150, 'H'), pt(42, 142, 'L'), pt(47, 165, 'H'), pt(48, 158, 'L'), pt(50, 170, 'H'));
 
     private ScaleRelationFixtures() {
     }
@@ -57,7 +56,10 @@ final class ScaleRelationFixtures {
         return new Pt(index, price, type == 'H' ? SwingPivotType.HIGH : SwingPivotType.LOW);
     }
 
-    /** Copy of {@code base} with {@code replacement} in place of its same-index pivot. */
+    /**
+     * Copy of {@code base} with {@code replacement} in place of its same-index
+     * pivot.
+     */
     static List<Pt> replacing(final List<Pt> base, final int index, final Pt replacement) {
         final List<Pt> copy = new ArrayList<>();
         for (final Pt pivot : base) {
@@ -109,7 +111,9 @@ final class ScaleRelationFixtures {
         return asOf -> pivots.stream().filter(pivot -> pivot.index() + lag.applyAsInt(pivot) <= asOf).toList();
     }
 
-    /** Detector whose reported pivots are an arbitrary function of the as-of bar. */
+    /**
+     * Detector whose reported pivots are an arbitrary function of the as-of bar.
+     */
     static SwingDetector scripted(final IntFunction<List<Pt>> visibleAt) {
         return (series, index, degree) -> {
             final List<SwingPivot> pivots = new ArrayList<>();
@@ -174,7 +178,10 @@ final class ScaleRelationFixtures {
         return frames;
     }
 
-    /** Active edges of {@code frames}: every ACTIVE event up to {@code asOf}, replayed. */
+    /**
+     * Active edges of {@code frames}: every ACTIVE event up to {@code asOf},
+     * replayed.
+     */
     static List<ScaleRelation.Edge> activeAt(final List<ScaleRelationStudy.Frame> frames, final int asOf) {
         final java.util.Map<String, ScaleRelation.Edge> active = new java.util.TreeMap<>();
         for (final ScaleRelationStudy.Frame frame : frames) {

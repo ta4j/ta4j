@@ -338,8 +338,8 @@ final class ElliottResearch {
 
         /**
          * The detector supplier of this definition. Identical definitions share one
-         * supplier instance, which is what lets the study runner and the hierarchy
-         * draw the same causal replay from one {@link DetectorReplays}.
+         * supplier instance, which is what lets the study runner and the hierarchy draw
+         * the same causal replay from one {@link DetectorReplays}.
          */
         Supplier<SwingDetector> supplier() {
             return SUPPLIERS.computeIfAbsent(this, recipe -> switch (recipe.factory) {
@@ -592,12 +592,13 @@ final class ElliottResearch {
         if (root.has("robustnessDetectors")) {
             final JsonArray array = arrayOf(root.get("robustnessDetectors"), "recipe.robustnessDetectors");
             for (int index = 0; index < array.size(); index++) {
-                final DetectorRecipe candidate = detector(array.get(index), "recipe.robustnessDetectors[" + index + "]");
+                final DetectorRecipe candidate = detector(array.get(index),
+                        "recipe.robustnessDetectors[" + index + "]");
                 if (candidate.name().equals(primary.name()) && !candidate.equals(primary)) {
                     throw new IllegalArgumentException("recipe.robustnessDetectors[" + index + "]: detector name '"
                             + candidate.name() + "' is already used by recipe.detector with a different definition ("
-                            + primary.factory() + primary.params() + " vs " + candidate.factory()
-                            + candidate.params() + "); a name must identify exactly one observation stream");
+                            + primary.factory() + primary.params() + " vs " + candidate.factory() + candidate.params()
+                            + "); a name must identify exactly one observation stream");
                 }
                 robustness.add(candidate);
             }
@@ -715,8 +716,7 @@ final class ElliottResearch {
                     "recipe.hierarchy.interiorAnchors must be contiguous or allow-skipped, was '" + declared + "'");
             };
         }
-        final int edgeCap = object.has("edgeCap")
-                ? integer(object.get("edgeCap"), "recipe.hierarchy.edgeCap")
+        final int edgeCap = object.has("edgeCap") ? integer(object.get("edgeCap"), "recipe.hierarchy.edgeCap")
                 : ScaleRelation.DEFAULT_EDGE_CAP;
         return new ElliottResearchRelations.Hierarchy(scales, interior, edgeCap);
     }
@@ -1596,7 +1596,9 @@ final class ElliottResearch {
         return expected;
     }
 
-    /** Header fields a relation file must carry to belong to this run and dataset. */
+    /**
+     * Header fields a relation file must carry to belong to this run and dataset.
+     */
     private static JsonObject expectedRelationsHeader(final JsonObject run, final JsonObject dataset) {
         final JsonObject expected = new JsonObject();
         expected.add("dataset", dataset.get("id"));
@@ -1753,7 +1755,8 @@ final class ElliottResearch {
         final JsonObject dataset = findDataset(run, datasetId);
         if (!dataset.has("relations") || !dataset.get("relations").isJsonObject()) {
             throw new Diagnostic("dataset '" + datasetId + "' recorded no scale relations (status "
-                    + dataset.get("status").getAsString() + "); the recipe declares no hierarchy or the dataset failed");
+                    + dataset.get("status").getAsString()
+                    + "); the recipe declares no hierarchy or the dataset failed");
         }
         final Path file = dir.resolve(dataset.getAsJsonObject("relations").get("file").getAsString());
         if (!Files.isRegularFile(file)) {

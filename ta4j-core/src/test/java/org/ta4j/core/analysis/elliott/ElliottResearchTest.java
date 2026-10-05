@@ -826,10 +826,8 @@ class ElliottResearchTest {
     void runWithoutHierarchyWritesNoRelationArtifacts() throws Exception {
         final Path out = hierarchyRun("no-hier", null);
         assertFalse(Files.exists(out.resolve("relations")));
-        assertFalse(readJson(out.resolve("run.json")).getAsJsonArray("datasets")
-                .get(0)
-                .getAsJsonObject()
-                .has("relations"));
+        assertFalse(
+                readJson(out.resolve("run.json")).getAsJsonArray("datasets").get(0).getAsJsonObject().has("relations"));
         assertFalse(Files.readString(out.resolve("summary.md")).contains("Scale relations"));
         final Result none = launch("relations", out.toString(), "toy");
         assertEquals(2, none.code());
@@ -844,14 +842,16 @@ class ElliottResearchTest {
         cases.put("{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"ghost\"}]}",
                 "recipe.hierarchy.scales[1].detector 'ghost'");
         cases.put("{\"scales\":[{\"detector\":\"fractal-w5\"}]}", "needs 2 to");
-        cases.put("{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w5\"}]}", "a scale cannot be related");
+        cases.put("{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w5\"}]}",
+                "a scale cannot be related");
         cases.put("{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w3\",\"dataset\":\"other\"}]}",
                 "cross-source hierarchies are not supported");
         cases.put("{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w3\",\"timeframe\":\"PT1H\"}]}",
                 "does not match the bar period");
         cases.put("{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w3\"}],\"edgeCap\":0}",
                 "edgeCap must be positive");
-        cases.put("{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w3\"}],\"interiorAnchors\":\"x\"}",
+        cases.put(
+                "{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w3\"}],\"interiorAnchors\":\"x\"}",
                 "interiorAnchors must be contiguous or allow-skipped");
         cases.put("{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w3\"}],\"extra\":1}",
                 "unknown field recipe.hierarchy.extra");
@@ -872,8 +872,8 @@ class ElliottResearchTest {
         final Path candles = work.resolve(name + "-candles.json");
         writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
         final Path recipe = work.resolve(name + "-recipe.json");
-        Files.writeString(recipe, hierarchyRecipe(null).replace(
-                "{\"name\":\"fractal-w5\",\"factory\":\"fractal\",\"params\":[5]}", detector));
+        Files.writeString(recipe, hierarchyRecipe(null)
+                .replace("{\"name\":\"fractal-w5\",\"factory\":\"fractal\",\"params\":[5]}", detector));
         return launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(), "--out",
                 work.resolve(name).toString());
     }
@@ -884,8 +884,7 @@ class ElliottResearchTest {
                 "{\"name\":\"fractal-w3\",\"factory\":\"fractal\",\"params\":[5]}");
 
         assertEquals(1, result.code());
-        assertTrue(result.err().contains("already used by recipe.detector with a different definition"),
-                result.err());
+        assertTrue(result.err().contains("already used by recipe.detector with a different definition"), result.err());
         assertFalse(Files.exists(work.resolve("clash")));
     }
 

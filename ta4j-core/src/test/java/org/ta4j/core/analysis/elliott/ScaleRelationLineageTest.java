@@ -76,9 +76,8 @@ class ScaleRelationLineageTest {
         lineage.advance(10, List.of(capped, superseded, withdrawn),
                 observation(Map.of(ref("coarse", "p1"), "slot"), Set.of(), Set.of(), true));
 
-        final List<ScaleRelation.Event> events = lineage.advance(11, List.of(),
-                new ScaleRelationLineage.Observation(Map.of(ref("coarse", "p1"), "slot"), Set.of(), Set.of("k1"),
-                        edge -> !edge.key().equals("k3")));
+        final List<ScaleRelation.Event> events = lineage.advance(11, List.of(), new ScaleRelationLineage.Observation(
+                Map.of(ref("coarse", "p1"), "slot"), Set.of(), Set.of("k1"), edge -> !edge.key().equals("k3")));
 
         final Map<String, ScaleRelation.Reason> reasons = new java.util.TreeMap<>();
         events.forEach(event -> reasons.put(event.edge().key(), event.reason()));
@@ -136,8 +135,8 @@ class ScaleRelationLineageTest {
                 observation(Map.of(ref("middle", "p1"), "coarse|slot"), Set.of(), Set.of(), true));
 
         assertEquals(ScaleRelation.Reason.PARENT_REVISED, events.get(0).reason());
-        final List<ScaleRelation.Event> other = new ScaleRelationLineage().advance(11, List.of(), observation(
-                Map.of(ref("middle", "p1"), "middle|slot"), Set.of(), Set.of(), true));
+        final List<ScaleRelation.Event> other = new ScaleRelationLineage().advance(11, List.of(),
+                observation(Map.of(ref("middle", "p1"), "middle|slot"), Set.of(), Set.of(), true));
         assertTrue(other.isEmpty());
     }
 }
