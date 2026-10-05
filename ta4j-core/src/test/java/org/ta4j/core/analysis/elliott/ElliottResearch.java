@@ -35,6 +35,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -82,6 +83,7 @@ import com.google.gson.JsonPrimitive;
  *     [--source candles.json --recipe recipe.json]
  * summarize &lt;runDir&gt;
  * inspect &lt;runDir&gt; &lt;key&gt; [--as-of IDX] [--candidate KEY] [--limit N]
+ * relations &lt;runDir&gt; &lt;dataset&gt; [--as-of IDX] [--limit N] [--edge KEY]
  * </pre>
  *
  * <p>
@@ -182,6 +184,9 @@ final class ElliottResearch {
             case "inspect" -> {
                 return inspectCommand(List.of(args).subList(1, args.length), out);
             }
+            case "relations" -> {
+                return relationsCommand(List.of(args).subList(1, args.length), out);
+            }
             default -> throw new IllegalArgumentException("unknown command: " + args[0]);
             }
         } catch (final Diagnostic diagnostic) {
@@ -211,6 +216,8 @@ final class ElliottResearch {
                 "  summarize <runDir>       regenerate summary.md from the recorded artifacts",
                 "  inspect <runDir> <key> [--as-of IDX] [--candidate KEY] [--limit N]",
                 "                           list the recorded observations behind one comparison key", "",
+                "  relations <runDir> <dataset> [--as-of IDX] [--limit N] [--edge KEY]",
+                "                           list the parent/child scale relations recorded for a dataset",
                 "Run status: complete = every dataset evaluated (coverage.csv marks datasets whose data cover",
                 "less than the requested window as partial), partial = some dataset failed, failed = all failed.",
                 "Exit codes: 0 ok; 1 usage error or run failure; 2 missing, truncated or corrupt trace, or failed",
@@ -314,6 +321,8 @@ final class ElliottResearch {
     /** One detector configuration resolvable to a fresh detector per use. */
     private record DetectorRecipe(String name, String factory, List<Integer> params) {
 
+        private static final Map<DetectorRecipe, Supplier<SwingDetector>> SUPPLIERS = new ConcurrentHashMap<>();
+
         DetectorRecipe {
             if (!DETECTOR_FACTORIES.contains(factory)) {
                 throw new IllegalArgumentException(
@@ -327,12 +336,17 @@ final class ElliottResearch {
             }
         }
 
+        /**
+         * The detector supplier of this definition. Identical definitions share one
+         * supplier instance, which is what lets the study runner and the hierarchy draw
+         * the same causal replay from one {@link DetectorReplays}.
+         */
         Supplier<SwingDetector> supplier() {
-            return switch (factory) {
-            case "fractal" -> () -> SwingDetectors.fractal(params.get(0));
-            case "slopeChange" -> () -> SwingDetectors.slopeChange(params.get(0));
+            return SUPPLIERS.computeIfAbsent(this, recipe -> switch (recipe.factory) {
+            case "fractal" -> () -> SwingDetectors.fractal(recipe.params.get(0));
+            case "slopeChange" -> () -> SwingDetectors.slopeChange(recipe.params.get(0));
             default -> SwingDetectors::prominence;
-            };
+            });
         }
 
         JsonObject toJson() {
@@ -347,21 +361,48 @@ final class ElliottResearch {
     /** Effective analytical configuration of one run. */
     private record Setup(String fingerprint, StudyRunner.Partitions partitions, DetectorRecipe primary,
             List<DetectorRecipe> robustness, List<String> activeRules, int momentumBarCount,
-            List<String> competingModes, List<Integer> blockLengths, int ensembleSize, long seed) {
+            List<String> competingModes, List<Integer> blockLengths, int ensembleSize, long seed,
+            ElliottResearchRelations.Hierarchy hierarchy) {
 
-        StudyRunner runner() {
+        List<RelationshipRule> rules() {
             final Function<BarSeries, Indicator<Num>> momentum = series -> new RSIIndicator(
                     new ClosePriceIndicator(series), momentumBarCount);
-            final List<RelationshipRule> rules = ClassicalRelationshipRules.classicalRelationships(momentum)
+            return ClassicalRelationshipRules.classicalRelationships(momentum)
                     .stream()
                     .filter(rule -> activeRules.contains(rule.id()))
                     .toList();
+        }
+
+        StudyRunner runner() {
             final List<DetectorRobustnessMatrix.DetectorSpec> specs = robustness.stream()
                     .map(detector -> new DetectorRobustnessMatrix.DetectorSpec(detector.name(), detector.supplier()))
                     .toList();
             return new StudyRunner(primary.supplier(), List.of(TopologyGrammar.MOTIVE_5, TopologyGrammar.CYCLE_5_3),
-                    rules, new StudyRunner.Configuration(partitions, fingerprint, seed, blockLengths, ensembleSize,
+                    rules(), new StudyRunner.Configuration(partitions, fingerprint, seed, blockLengths, ensembleSize,
                             specs, primary.name(), competingModes));
+        }
+
+        /** The declared scales as replayable detector inputs, coarse to fine. */
+        List<ScaleRelationStudy.ScaleInput> hierarchyInputs() {
+            final List<ScaleRelationStudy.ScaleInput> inputs = new ArrayList<>();
+            for (final ElliottResearchRelations.HierarchyScale scale : hierarchy.scales()) {
+                final DetectorRecipe detector = detectorNamed(scale.detector());
+                inputs.add(new ScaleRelationStudy.ScaleInput(detector.name(), detector.supplier()));
+            }
+            return inputs;
+        }
+
+        DetectorRecipe detectorNamed(final String name) {
+            if (primary.name().equals(name)) {
+                return primary;
+            }
+            for (final DetectorRecipe detector : robustness) {
+                if (detector.name().equals(name)) {
+                    return detector;
+                }
+            }
+            throw new IllegalArgumentException("recipe.hierarchy names detector '" + name
+                    + "' which is neither recipe.detector nor in recipe.robustnessDetectors");
         }
 
         LocalDate requestedFrom() {
@@ -418,6 +459,9 @@ final class ElliottResearch {
             nulls.addProperty("ensembleSize", ensembleSize);
             nulls.addProperty("seed", seed);
             json.add("null", nulls);
+            if (hierarchy != null) {
+                json.add("hierarchy", hierarchy.toJson());
+            }
             return json;
         }
     }
@@ -438,7 +482,7 @@ final class ElliottResearch {
                 + " synthetic daily bars from 2020-01-01 (StrictMath sine mix); primary fractal-w5; robustness fractal-w3,fractal-w5; "
                 + "RSI14; competing 3+3,5+5,change-point-baseline; null block 20 ensemble 8 seed 5252026";
         return new Setup(sha256(description.getBytes(StandardCharsets.UTF_8)), partitions, w5, List.of(w3, w5),
-                RULE_IDS, 14, COMPETING_MODES, List.of(20), 8, 5_252_026L);
+                RULE_IDS, 14, COMPETING_MODES, List.of(20), 8, 5_252_026L, null);
     }
 
     private static BarSeries smokeSeries() {
@@ -488,12 +532,12 @@ final class ElliottResearch {
         return new Setup(protocol.fingerprintSha256(), runnerPartitions, primary, detectors, RULE_IDS,
                 protocol.momentumIndicator().barCount(), protocol.competingGrammars(),
                 protocol.nullEnsemble().blockLengths(), protocol.nullEnsemble().ensembleSize(),
-                protocol.nullEnsemble().seed());
+                protocol.nullEnsemble().seed(), null);
     }
 
     private static final Set<String> RECIPE_FIELDS = Set.of("datasetId", "asset", "partitions",
             "forbiddenCalibrationStart", "detector", "robustnessDetectors", "activeRules", "momentum", "competingModes",
-            "null");
+            "null", "hierarchy");
 
     /** Parsed explore recipe plus the setup it describes. */
     private record ExploreRecipe(String datasetId, String asset, Setup setup, JsonObject definition) {
@@ -548,7 +592,15 @@ final class ElliottResearch {
         if (root.has("robustnessDetectors")) {
             final JsonArray array = arrayOf(root.get("robustnessDetectors"), "recipe.robustnessDetectors");
             for (int index = 0; index < array.size(); index++) {
-                robustness.add(detector(array.get(index), "recipe.robustnessDetectors[" + index + "]"));
+                final DetectorRecipe candidate = detector(array.get(index),
+                        "recipe.robustnessDetectors[" + index + "]");
+                if (candidate.name().equals(primary.name()) && !candidate.equals(primary)) {
+                    throw new IllegalArgumentException("recipe.robustnessDetectors[" + index + "]: detector name '"
+                            + candidate.name() + "' is already used by recipe.detector with a different definition ("
+                            + primary.factory() + primary.params() + " vs " + candidate.factory() + candidate.params()
+                            + "); a name must identify exactly one observation stream");
+                }
+                robustness.add(candidate);
             }
         }
         final List<String> activeRules = root.has("activeRules")
@@ -578,8 +630,11 @@ final class ElliottResearch {
         }
         final int ensembleSize = integer(required(nulls, "ensembleSize", "recipe.null"), "recipe.null.ensembleSize");
         final long seed = longValue(required(nulls, "seed", "recipe.null"), "recipe.null.seed");
+        final ElliottResearchRelations.Hierarchy hierarchy = root.has("hierarchy")
+                ? hierarchy(root.get("hierarchy"), datasetId, primary, robustness)
+                : null;
         final Setup setup = new Setup("explore-" + sha256(recipeBytes), runnerPartitions, primary, robustness,
-                activeRules, barCount, competing, blockLengths, ensembleSize, seed);
+                activeRules, barCount, competing, blockLengths, ensembleSize, seed, hierarchy);
         try {
             setup.runner();
             primary.supplier().get();
@@ -605,6 +660,65 @@ final class ElliottResearch {
         final String name = text(required(object, "name", where), where + ".name");
         ElliottResearchReport.requireKeyPart(name, where + ".name");
         return new DetectorRecipe(name, text(required(object, "factory", where), where + ".factory"), params);
+    }
+
+    /**
+     * Parses the optional scale hierarchy: an explicit ordered (coarse to fine)
+     * chain of detectors already configured by the recipe. Order, interior policy
+     * and cap are declared, never inferred from observed fit or a degree label.
+     */
+    private static ElliottResearchRelations.Hierarchy hierarchy(final JsonElement element, final String datasetId,
+            final DetectorRecipe primary, final List<DetectorRecipe> robustness) {
+        final JsonObject object = objectOf(element, "recipe.hierarchy");
+        rejectUnknown(object, "recipe.hierarchy", Set.of("scales", "interiorAnchors", "edgeCap"));
+        final List<String> configured = new ArrayList<>();
+        configured.add(primary.name());
+        robustness.forEach(detector -> configured.add(detector.name()));
+        final JsonArray array = arrayOf(required(object, "scales", "recipe.hierarchy"), "recipe.hierarchy.scales");
+        final List<ElliottResearchRelations.HierarchyScale> scales = new ArrayList<>();
+        for (int index = 0; index < array.size(); index++) {
+            final String where = "recipe.hierarchy.scales[" + index + "]";
+            final JsonObject entry = objectOf(array.get(index), where);
+            rejectUnknown(entry, where, Set.of("detector", "degree", "dataset", "timeframe"));
+            final String detector = text(required(entry, "detector", where), where + ".detector");
+            if (!configured.contains(detector)) {
+                throw new IllegalArgumentException(where + ".detector '" + detector
+                        + "' is neither recipe.detector nor in recipe.robustnessDetectors " + configured);
+            }
+            final String degree = entry.has("degree") ? text(entry.get("degree"), where + ".degree") : null;
+            String dataset = null;
+            if (entry.has("dataset")) {
+                dataset = text(entry.get("dataset"), where + ".dataset");
+                if (!dataset.equals(datasetId)) {
+                    throw new IllegalArgumentException(where + ".dataset '" + dataset + "' is not the recipe dataset '"
+                            + datasetId + "'; cross-source hierarchies are not supported");
+                }
+            }
+            Duration timeframe = null;
+            if (entry.has("timeframe")) {
+                final String declared = text(entry.get("timeframe"), where + ".timeframe");
+                try {
+                    timeframe = Duration.parse(declared);
+                } catch (final DateTimeParseException e) {
+                    throw new IllegalArgumentException(
+                            where + ".timeframe must be an ISO-8601 duration such as PT1H, was '" + declared + "'");
+                }
+            }
+            scales.add(new ElliottResearchRelations.HierarchyScale(detector, degree, dataset, timeframe));
+        }
+        ScaleRelation.Interior interior = ScaleRelation.Interior.CONTIGUOUS;
+        if (object.has("interiorAnchors")) {
+            final String declared = text(object.get("interiorAnchors"), "recipe.hierarchy.interiorAnchors");
+            interior = switch (declared) {
+            case "contiguous" -> ScaleRelation.Interior.CONTIGUOUS;
+            case "allow-skipped" -> ScaleRelation.Interior.ALLOW_SKIPPED;
+            default -> throw new IllegalArgumentException(
+                    "recipe.hierarchy.interiorAnchors must be contiguous or allow-skipped, was '" + declared + "'");
+            };
+        }
+        final int edgeCap = object.has("edgeCap") ? integer(object.get("edgeCap"), "recipe.hierarchy.edgeCap")
+                : ScaleRelation.DEFAULT_EDGE_CAP;
+        return new ElliottResearchRelations.Hierarchy(scales, interior, edgeCap);
     }
 
     private static List<String> strings(final JsonElement element, final String where, final List<String> allowed) {
@@ -749,6 +863,9 @@ final class ElliottResearch {
             if (exploreSeries.isEmpty()) {
                 throw new IllegalArgumentException("source candles " + sourcePath + " contain no bars");
             }
+            if (explore.setup().hierarchy() != null) {
+                explore.setup().hierarchy().validateSeries(explore.datasetId(), exploreSeries);
+            }
             setup = explore.setup();
             recipe = new Recipe(RECIPE_EXPLORE, sourcePath.toString(), recipePath.toString(), explore.definition());
             plan = run -> {
@@ -886,6 +1003,7 @@ final class ElliottResearch {
             }
             deleteTree(dir.resolve(REPORTS_DIR));
             deleteTree(dir.resolve(TRACES_DIR));
+            deleteTree(dir.resolve(ElliottResearchRelations.RELATIONS_DIR));
         }
         Files.createDirectories(dir.resolve(REPORTS_DIR));
         Files.createDirectories(dir.resolve(TRACES_DIR));
@@ -916,6 +1034,8 @@ final class ElliottResearch {
         private int bars;
         private String report;
         private final List<String> traces = new ArrayList<>();
+        private String relations;
+        private ElliottResearchRelations.Totals relationTotals;
 
         DatasetEntry(final String id, final String asset, final JsonObject source) {
             this.id = id;
@@ -980,13 +1100,28 @@ final class ElliottResearch {
             final Path reportFile = dir.resolve(REPORTS_DIR).resolve(id + ".json");
             try {
                 final StudyObserver observer = observer(id);
-                report = runner.evaluate(asset, series, series.getBeginIndex(), series.getEndIndex(), observer);
+                final DetectorReplays replays = DetectorReplays.forSeries(series, series.getEndIndex());
+                report = runner.evaluate(asset, series, series.getBeginIndex(), series.getEndIndex(), observer,
+                        replays);
                 Files.writeString(reportFile, report.toJson(), StandardCharsets.UTF_8);
+                if (setup.hierarchy() != null) {
+                    writeRelations(id, series, replays);
+                }
             } catch (final IOException | RuntimeException failure) {
                 fail(id, failure);
                 return;
             }
             completed(id, runner, series, report, reportFile);
+        }
+
+        private void writeRelations(final String id, final BarSeries series, final DetectorReplays replays)
+                throws IOException {
+            final Path file = dir.resolve(ElliottResearchRelations.fileName(id));
+            final DatasetEntry entry = entries.get(id);
+            entry.relationTotals = ElliottResearchRelations.write(file, id, revision, setup.fingerprint(),
+                    sourceSha256(id), setup.hierarchy(), setup.hierarchyInputs(), setup.rules(), setup.partitions(),
+                    series, series.getBeginIndex(), series.getEndIndex(), replays);
+            entry.relations = relative(file);
         }
 
         void evaluateFrozen(final ElliottStudyProtocol protocol) throws IOException {
@@ -1132,12 +1267,15 @@ final class ElliottResearch {
                     Files.deleteIfExists(dir.resolve(nullTraceName(id, options.block(), options.member())));
                 }
                 Files.deleteIfExists(dir.resolve(REPORTS_DIR).resolve(id + ".json"));
+                Files.deleteIfExists(dir.resolve(ElliottResearchRelations.fileName(id)));
             } catch (final IOException ignored) {
                 // best effort: run.json records no trace or report for a failed dataset
             }
             rows.removeIf(row -> row.dataset().equals(id));
             entry.traces.clear();
             entry.report = null;
+            entry.relations = null;
+            entry.relationTotals = null;
             entry.bars = 0;
             entry.effectiveFrom = null;
             entry.effectiveTo = null;
@@ -1220,6 +1358,16 @@ final class ElliottResearch {
                 dataset.add("coverage", coverage);
                 dataset.add("report", entry.report == null ? JsonNull.INSTANCE : new JsonPrimitive(entry.report));
                 dataset.add("traces", stringArray(entry.traces));
+                if (entry.relations != null) {
+                    final JsonObject relations = new JsonObject();
+                    relations.addProperty("file", entry.relations);
+                    relations.addProperty("frames", entry.relationTotals.frames());
+                    relations.addProperty("events", entry.relationTotals.events());
+                    relations.addProperty("truncatedFrames", entry.relationTotals.truncatedFrames());
+                    relations.addProperty("incompleteFrames", entry.relationTotals.incompleteFrames());
+                    relations.addProperty("peakRetainedEdges", entry.relationTotals.peakRetainedEdges());
+                    dataset.add("relations", relations);
+                }
                 datasets.add(dataset);
             }
             json.add("datasets", datasets);
@@ -1380,6 +1528,20 @@ final class ElliottResearch {
             markdown.append("\n## Traces\n\n");
             traces.forEach(name -> markdown.append("- `").append(name).append("`\n"));
         }
+        final List<String> relationLines = new ArrayList<>();
+        for (final JsonElement element : run.getAsJsonArray("datasets")) {
+            final JsonObject dataset = element.getAsJsonObject();
+            if (dataset.has("relations") && dataset.get("relations").isJsonObject()) {
+                relationLines.addAll(ElliottResearchRelations.summaryLines(
+                        dir.resolve(dataset.getAsJsonObject("relations").get("file").getAsString()),
+                        dataset.get("id").getAsString(), expectedRelationsHeader(run, dataset)));
+            }
+        }
+        if (!relationLines.isEmpty()) {
+            markdown.append("\n## Scale relations\n\n");
+            relationLines.forEach(line -> markdown.append(line).append('\n'));
+            markdown.append("\nInspect a dataset with `relations ").append(displayPath(dir)).append(" <dataset>`.\n");
+        }
         markdown.append("\nInspect any key with `inspect ").append(displayPath(dir)).append(" <key>`.\n");
         return markdown.toString();
     }
@@ -1431,6 +1593,19 @@ final class ElliottResearch {
         expected.addProperty("traceMode", traceMode);
         expected.addProperty("nullBlockLength", blockLength);
         expected.addProperty("nullMemberIndex", memberIndex);
+        return expected;
+    }
+
+    /**
+     * Header fields a relation file must carry to belong to this run and dataset.
+     */
+    private static JsonObject expectedRelationsHeader(final JsonObject run, final JsonObject dataset) {
+        final JsonObject expected = new JsonObject();
+        expected.add("dataset", dataset.get("id"));
+        expected.add("revision", run.get("revision"));
+        expected.add("fingerprint", run.getAsJsonObject("identity").get("fingerprint"));
+        final JsonElement sourceSha256 = dataset.getAsJsonObject("source").get("sha256");
+        expected.add("sourceSha256", sourceSha256 == null ? JsonNull.INSTANCE : sourceSha256);
         return expected;
     }
 
@@ -1525,6 +1700,80 @@ final class ElliottResearch {
         Files.writeString(dir.resolve(SUMMARY_FILE), renderSummary(dir, run, rows), StandardCharsets.UTF_8);
         out.println("Summary: " + dir.resolve(SUMMARY_FILE));
         return 0;
+    }
+
+    // ------------------------------------------------------------ relations
+
+    private static int relationsCommand(final List<String> args, final PrintStream out) throws IOException {
+        Path dir = null;
+        String datasetId = null;
+        String edge = null;
+        Integer asOf = null;
+        int limit = DEFAULT_LIMIT;
+        for (int index = 0; index < args.size(); index++) {
+            final String argument = args.get(index);
+            if (Set.of("--as-of", "--edge", "--limit").contains(argument)) {
+                if (index + 1 >= args.size()) {
+                    throw new IllegalArgumentException("option " + argument + " requires a value");
+                }
+                final String value = args.get(++index);
+                if ("--edge".equals(argument)) {
+                    edge = value;
+                } else {
+                    final int number;
+                    try {
+                        number = Integer.parseInt(value);
+                    } catch (final NumberFormatException e) {
+                        throw new IllegalArgumentException(
+                                "option " + argument + " needs an integer, was '" + value + "'");
+                    }
+                    if ("--as-of".equals(argument)) {
+                        if (number < 0) {
+                            throw new IllegalArgumentException("--as-of must not be negative, was " + number);
+                        }
+                        asOf = number;
+                    } else if (number < 1) {
+                        throw new IllegalArgumentException("--limit must be positive, was " + number);
+                    } else {
+                        limit = number;
+                    }
+                }
+            } else if (argument.startsWith("--")) {
+                throw new IllegalArgumentException("unknown option " + argument);
+            } else if (dir == null) {
+                dir = Path.of(argument).toAbsolutePath().normalize();
+            } else if (datasetId == null) {
+                datasetId = argument;
+            } else {
+                throw new IllegalArgumentException("unexpected argument '" + argument + "'");
+            }
+        }
+        if (dir == null || datasetId == null) {
+            throw new IllegalArgumentException("relations needs a run directory and a dataset id");
+        }
+        final JsonObject run = loadRun(dir);
+        final JsonObject dataset = findDataset(run, datasetId);
+        if (!dataset.has("relations") || !dataset.get("relations").isJsonObject()) {
+            throw new Diagnostic("dataset '" + datasetId + "' recorded no scale relations (status "
+                    + dataset.get("status").getAsString()
+                    + "); the recipe declares no hierarchy or the dataset failed");
+        }
+        final Path file = dir.resolve(dataset.getAsJsonObject("relations").get("file").getAsString());
+        if (!Files.isRegularFile(file)) {
+            throw new Diagnostic("relation file " + file + " is missing; rerun the recipe");
+        }
+        try {
+            final ElliottResearchRelations.Meta meta = ElliottResearchRelations.read(file, frame -> {
+            });
+            final String mismatch = headerMismatch(meta.header(), expectedRelationsHeader(run, dataset));
+            if (mismatch != null) {
+                throw new Diagnostic("relation file " + file + " does not belong to this run (header " + mismatch
+                        + " differs); rerun the recipe");
+            }
+            return ElliottResearchRelations.print(out, file, asOf, limit, edge) ? 0 : 2;
+        } catch (final IllegalArgumentException corrupt) {
+            throw new Diagnostic(corrupt.getMessage() + "; rerun the recipe");
+        }
     }
 
     // -------------------------------------------------------------- inspect

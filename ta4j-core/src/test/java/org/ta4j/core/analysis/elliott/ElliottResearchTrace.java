@@ -283,6 +283,17 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         final String key = candidateKey(candidate);
         final JsonArray placement = new JsonArray();
         candidate.pivots().forEach(pivot -> placement.add(placementJson(pivot)));
+        final JsonArray rules = rulesJson(evidence);
+        final JsonObject json = new JsonObject();
+        json.addProperty("candidateKey", key);
+        json.addProperty("version", versionOf(key, rules));
+        json.addProperty("direction", candidate.direction().name());
+        json.add("placement", placement);
+        json.add("rules", rules);
+        return json;
+    }
+
+    private static JsonArray rulesJson(final List<RuleEvidence> evidence) {
         final JsonArray rules = new JsonArray();
         for (final RuleEvidence rule : evidence) {
             final JsonObject json = new JsonObject();
@@ -295,13 +306,24 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
             json.addProperty("explanation", rule.explanation());
             rules.add(json);
         }
-        final JsonObject json = new JsonObject();
-        json.addProperty("candidateKey", key);
-        json.addProperty("version", key + "@" + digest(rules.toString()));
-        json.addProperty("direction", candidate.direction().name());
-        json.add("placement", placement);
-        json.add("rules", rules);
-        return json;
+        return rules;
+    }
+
+    private static String versionOf(final String key, final JsonArray rules) {
+        return key + "@" + digest(rules.toString());
+    }
+
+    /**
+     * Deterministic version of a candidate under one rule-evidence ledger, exactly
+     * as written to the observation trace. Relation records reuse it so a parent or
+     * child version names the same evidence in both files.
+     *
+     * @param candidate candidate to version
+     * @param evidence  its rule evidence, empty for topology-only observations
+     * @return {@code <candidateKey>@<evidenceKey>}
+     */
+    static String candidateVersion(final TopologyCandidate candidate, final List<RuleEvidence> evidence) {
+        return versionOf(candidateKey(candidate), rulesJson(evidence));
     }
 
     /**
