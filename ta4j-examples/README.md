@@ -174,6 +174,61 @@ Finite extreme endpoint innovations are whitened before subtraction, so
 `DoubleNum` range limits do not turn a representable robust update into
 `NaN.NaN`.
 
+### 7) Replay an Elliott research run bar by bar
+
+`ElliottReplayInspector` replays what a research run (`ta4j-core/README.md`,
+"Run Elliott wave pattern research") knew at each bar. It reads only the run
+directory: it never recomputes a count, fetches data, or writes into the run, and
+it rejects a trace whose dataset, run revision, fingerprint, source digest or
+null block/member coordinates differ from `run.json`.
+
+Reproducible smoke walkthrough (synthetic data, no network):
+
+```bash
+./mvnw -q -pl ta4j-core test-compile exec:java "-Dexec.args=run smoke --out target/elliott-research/smoke --overwrite"
+./mvnw -q -pl ta4j-core test-compile exec:java "-Dexec.args=inspect target/elliott-research/smoke '<key from comparisons.csv>'"
+./mvnw -pl ta4j-examples -am install -DskipTests   # once, for exec:java
+./mvnw -q -pl ta4j-examples exec:java \
+  -Dexec.mainClass=ta4jexamples.charting.replay.ElliottReplayInspector \
+  "-Dexec.args=target/elliott-research/smoke --key '<key>' --commands 'tnext;select 1;history;seek 40;export' --out target/elliott-replay"
+```
+
+`inspect` prints the matching `Replay:` command for a comparison, so the key to
+replay is the one whose counterexample or rule disagreement you want to see. The
+cursor opens at `--at` when given, otherwise on the first ambiguous record of the
+stream (or the first record when none is ambiguous); `next`/`prev` step by bar,
+`tnext`/`tprev` jump to the next or previous recorded state change (the first
+record of a stream is an initial recorded state, not a change), `seek <bar|instant>` moves
+to the latest record at or before it, `select <candidate key|#>` follows one
+candidate across bars, `history` lists its recorded version changes (when the
+stream is longer than the 5,000-record lookback it says where the scanned history
+starts instead of inventing a change), and `export` writes
+`frame-<bar>.json`, `frame-<bar>.txt` and `frame-<bar>.jpg`. `--out` must not be
+the run directory or inside it, and none of the three frame files may be a
+symbolic link; the replay refuses before writing anything.
+`--interactive` starts a prompt (`help` lists the commands); `--display` opens the
+chart in a window.
+
+Real-data counterexample walkthrough: run the frozen study with trace capture
+(`run frozen-cf525 --trace real --out <dir>`; `frozen-cf525` traces nothing by
+default and replay needs the trace), `inspect <dir> '<key>'` for a row whose
+observed value sits outside its null band, replay that key with the printed
+command, jump to the listed counterexample bar with `seek`, `select` the candidate
+the report names, and `export` the frame as evidence.
+
+The frozen study replays many null-member tapes, and the trace records the full
+visible pivot history at every bar, so `--trace real` is a long run (expect far
+longer than the smoke run) and writes a large trace file; budget disk and time
+accordingly. Only the synthetic smoke walkthrough above is a seconds-scale run.
+
+To replay the resampled null member behind a null reference band, capture it
+with `run ... --trace selected-null-member --block <L> --member <M>` (`L` must be
+the row's null block length) and replay with
+`--trace selected-null-member`. Only `h1` and `h2` rows map to the producer's
+`null` stream (mode is the grammar for `h1`, the ablation mode for `h2`); other
+rows are refused with an explanation. The member's own recorded prices are shown,
+never the real series.
+
 ## Suggested progression
 
 1. `ta4jexamples.Quickstart`

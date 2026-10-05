@@ -518,6 +518,8 @@ final class StudyRunner {
 
     private void observeSingleBar(final StudyObserver observer, final BarSeries causalSource, final int partitionIndex,
             final int partitionLastBar, final int recordedIndex, final StudyObserver.Scope scope) {
+        observer.nullBar(scope, configuration.partitions().entries().get(partitionIndex).name(), recordedIndex,
+                causalSource.getBar(partitionLastBar));
         observer.topology(scope, configuration.partitions().entries().get(partitionIndex).name(), recordedIndex,
                 causalSource.getBar(partitionLastBar).getEndTime(), List.of(),
                 TopologyAnalysis.insufficientHistory("single-bar causal prefix cannot seed a bootstrap member"),
@@ -628,6 +630,10 @@ final class StudyRunner {
                 final TopologyAnalysis observedAnalysis = observed ? translate(analysis, recordedIndexOffset) : null;
                 for (final TopologyRecording recording : recordings) {
                     if (observed) {
+                        if (recording.scope().nullMemberIndex() >= 0) {
+                            observer.nullBar(recording.scope(), partitions.entries().get(partitionIndex).name(),
+                                    recordedIndex, series.getBar(index));
+                        }
                         observer.topology(recording.scope(), partitions.entries().get(partitionIndex).name(),
                                 recordedIndex, series.getBar(index).getEndTime(), observedVisible, observedAnalysis,
                                 candidateEvidence(analysis, recording.activeRules(), series));
