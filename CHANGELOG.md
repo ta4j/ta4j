@@ -1,5 +1,9 @@
 ## Unreleased
 
+- _No changes yet._
+
+## 0.26.0 (2026-10-05)
+
 > **Upgrading from 0.25.0: backtest and analysis results change, and backtesting a live series that changes mid-run now throws.** Runs no longer use prices from after their window, walk-forward folds close their open positions (paying the exit cost), and mark-to-market curves follow period-return conventions for holding costs and for positions opened before the window. Backtests and analyses of a `ConcurrentBarSeries` that changes underneath them now throw `IllegalStateException` instead of silently mixing old and new bars, and they no longer lock the series while strategies run, which removes a deadlock with live feeds. Read **Breaking** before upgrading.
 
 ### Breaking
