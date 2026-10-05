@@ -15,6 +15,7 @@ import org.ta4j.core.num.Num;
  * Zero-origin warm-up retains legacy partial-window calculations. After either
  * source loses history, incomplete retained windows return {@link NaN#NaN}. The
  * stability boundary includes both sources and their retained begin indexes.
+ * Undefined source values return {@link NaN#NaN}, including singleton windows.
  */
 public class CovarianceIndicator extends CachedIndicator<Num> {
 
@@ -60,15 +61,27 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
         final int numberOfObservations = index - startIndex + 1;
         Num firstAnchor = indicator1.getValue(startIndex);
         Num secondAnchor = indicator2.getValue(startIndex);
+        if (!Num.isFinite(firstAnchor) || !Num.isFinite(secondAnchor)) {
+            return NaN.NaN;
+        }
         Num firstAverageOffset = getBarSeries().numFactory().zero();
         Num secondAverageOffset = getBarSeries().numFactory().zero();
         Num coDeviationTotal = getBarSeries().numFactory().zero();
         int observations = 1;
         // The online co-moment uses the same retained window as variance, reads
-        // each source once, and avoids unrelated SMA warm-up and terminal loops.
+        // each source once on the ordinary path, and avoids unrelated SMA warm-up
+        // and terminal loops. Overflow retries the same window without anchors.
         for (long i = (long) startIndex + 1L; i <= (long) index; i++) {
-            Num firstOffset = indicator1.getValue((int) i).minus(firstAnchor);
-            Num secondOffset = indicator2.getValue((int) i).minus(secondAnchor);
+            Num firstValue = indicator1.getValue((int) i);
+            Num secondValue = indicator2.getValue((int) i);
+            if (!Num.isFinite(firstValue) || !Num.isFinite(secondValue)) {
+                return NaN.NaN;
+            }
+            Num firstOffset = firstValue.minus(firstAnchor);
+            Num secondOffset = secondValue.minus(secondAnchor);
+            if (!Num.isFinite(firstOffset) || !Num.isFinite(secondOffset)) {
+                return calculateWithoutAnchors(startIndex, index);
+            }
             observations++;
             Num firstDifference = firstOffset.minus(firstAverageOffset);
             Num secondDifference = secondOffset.minus(secondAverageOffset);
@@ -79,6 +92,48 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
                     .plus(firstDifference.multipliedBy(secondOffset.minus(secondAverageOffset)));
         }
         return coDeviationTotal.dividedBy(getBarSeries().numFactory().numOf(numberOfObservations));
+    }
+
+    private Num calculateWithoutAnchors(int startIndex, int index) {
+        Num firstMean = indicator1.getValue(startIndex);
+        Num secondMean = indicator2.getValue(startIndex);
+        Num covariance = getBarSeries().numFactory().zero();
+        int observations = 1;
+        for (long i = (long) startIndex + 1L; i <= (long) index; i++) {
+            Num firstValue = indicator1.getValue((int) i);
+            Num secondValue = indicator2.getValue((int) i);
+            if (!Num.isFinite(firstValue) || !Num.isFinite(secondValue)) {
+                return NaN.NaN;
+            }
+            observations++;
+            Num count = getBarSeries().numFactory().numOf(observations);
+            // Divide before subtracting: opposite finite extremes can have an
+            // unrepresentable difference but a representable population covariance.
+            Num firstDifference = firstValue.minus(firstMean);
+            Num secondDifference = secondValue.minus(secondMean);
+            boolean firstFinite = Num.isFinite(firstDifference);
+            boolean secondFinite = Num.isFinite(secondDifference);
+            Num firstMeanChange = firstFinite ? firstDifference.dividedBy(count)
+                    : firstValue.dividedBy(count).minus(firstMean.dividedBy(count));
+            Num secondMeanChange = secondFinite ? secondDifference.dividedBy(count)
+                    : secondValue.dividedBy(count).minus(secondMean.dividedBy(count));
+            Num previousWeight = getBarSeries().numFactory().numOf(observations - 1).dividedBy(count);
+            Num contribution;
+            // Scale the larger difference first so a tiny opposite source does
+            // not underflow before the two differences are multiplied.
+            if (secondFinite && (!firstFinite || firstDifference.abs().isGreaterThanOrEqual(secondDifference.abs()))) {
+                contribution = firstMeanChange.multipliedBy(secondDifference).multipliedBy(previousWeight);
+            } else if (firstFinite) {
+                contribution = firstDifference.multipliedBy(secondMeanChange).multipliedBy(previousWeight);
+            } else {
+                contribution = firstMeanChange.multipliedBy(secondMeanChange)
+                        .multipliedBy(getBarSeries().numFactory().numOf(observations - 1));
+            }
+            firstMean = firstMean.plus(firstMeanChange);
+            secondMean = secondMean.plus(secondMeanChange);
+            covariance = covariance.multipliedBy(previousWeight).plus(contribution);
+        }
+        return covariance;
     }
 
     @Override

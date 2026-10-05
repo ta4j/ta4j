@@ -17,9 +17,11 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.NumFactory;
 
 public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
@@ -97,6 +99,52 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         var covar = new CovarianceIndicator(close, volume, 1);
         assertNumEquals(0, covar.getValue(3));
         assertNumEquals(0, covar.getValue(8));
+    }
+
+    @Test
+    public void preservesFiniteCovarianceWhenAnchorDifferencesOverflow() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+        Indicator<Num> large = new FixedIndicator<>(series, numFactory.numOf(-1e308), numFactory.numOf(1e308));
+        Indicator<Num> small = new FixedIndicator<>(series, numFactory.numOf(-1e-308), numFactory.numOf(1e-308));
+
+        Num expected = numFactory.numOf(1e308).multipliedBy(numFactory.numOf(1e-308));
+        assertNumEquals(expected, new CovarianceIndicator(large, small, 2).getValue(1));
+        assertNumEquals(expected, new CovarianceIndicator(small, large, 2).getValue(1));
+
+        // Dividing the tiny source before multiplication would underflow for
+        // DoubleNum even though its covariance with the large source is finite.
+        small = new FixedIndicator<>(series, numFactory.numOf(-Double.MIN_VALUE), numFactory.numOf(Double.MIN_VALUE));
+        Num expectedTiny = numFactory.numOf(1e308).multipliedBy(numFactory.numOf(Double.MIN_VALUE));
+        assertNumEquals(1, new CovarianceIndicator(large, small, 2).getValue(1).dividedBy(expectedTiny));
+        assertNumEquals(1, new CovarianceIndicator(small, large, 2).getValue(1).dividedBy(expectedTiny));
+
+        BarSeries threeBars = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        large = new FixedIndicator<>(threeBars, numFactory.numOf(-1e308), numFactory.zero(), numFactory.numOf(1e308));
+        small = new FixedIndicator<>(threeBars, numFactory.numOf(-1e-308), numFactory.zero(), numFactory.numOf(1e-308));
+        Num expectedThree = expected.multipliedBy(numFactory.two()).dividedBy(numFactory.numOf(3));
+        assertNumEquals(expectedThree, new CovarianceIndicator(large, small, 3).getValue(2), 1e-14);
+        assertNumEquals(expectedThree, new CovarianceIndicator(small, large, 3).getValue(2), 1e-14);
+    }
+
+    @Test
+    public void missingSingletonAtRetainedIndexIsUnavailable() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+        series.setMaximumBarCount(1);
+        Indicator<Num> missing = new FixedIndicator<>(series, NaN.NaN, NaN.NaN);
+        Indicator<Num> valid = new FixedIndicator<>(series, numFactory.one(), numFactory.two());
+
+        assertThat(new CovarianceIndicator(missing, valid, 1).getValue(1).isNaN()).isTrue();
+        assertThat(new CovarianceIndicator(valid, missing, 1).getValue(1).isNaN()).isTrue();
+    }
+
+    @Test
+    public void missingSingletonDuringZeroOriginWarmupIsUnavailable() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1).build();
+        Indicator<Num> missing = new FixedIndicator<>(series, NaN.NaN);
+        Indicator<Num> valid = new FixedIndicator<>(series, numFactory.one());
+
+        assertThat(new CovarianceIndicator(missing, valid, 2).getValue(0).isNaN()).isTrue();
+        assertThat(new CovarianceIndicator(valid, missing, 2).getValue(0).isNaN()).isTrue();
     }
 
     @Test
