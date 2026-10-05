@@ -1692,6 +1692,12 @@ final class ElliottResearch {
                 if ("--candidate".equals(argument)) {
                     candidate = value;
                 } else if ("--rank".equals(argument)) {
+                    if (!ElliottResearchCalibration.RANK_ENROLLMENT.equals(value)
+                            && !ElliottResearchCalibration.RANK_PROBABILITY.equals(value)) {
+                        throw new IllegalArgumentException(
+                                "--rank must be " + ElliottResearchCalibration.RANK_ENROLLMENT + " or "
+                                        + ElliottResearchCalibration.RANK_PROBABILITY + ", was '" + value + "'");
+                    }
                     rank = value;
                 } else {
                     final int number;

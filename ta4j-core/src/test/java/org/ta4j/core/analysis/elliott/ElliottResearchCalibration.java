@@ -1459,10 +1459,6 @@ final class ElliottResearchCalibration {
     static void inspect(final PrintStream out, final Path predictionsCsv, final Path reliabilityCsv,
             final String dataset, final String partition, final String candidate, final Integer asOf, final int limit,
             final String rank, final boolean retrospective) {
-        if (!RANK_ENROLLMENT.equals(rank) && !RANK_PROBABILITY.equals(rank)) {
-            throw new IllegalArgumentException(
-                    "--rank must be " + RANK_ENROLLMENT + " or " + RANK_PROBABILITY + ", was '" + rank + "'");
-        }
         final List<List<String>> table = checked(predictionsCsv, PREDICTION_HEADER);
         final List<Map<String, String>> matching = new ArrayList<>();
         for (final List<String> cells : table.subList(1, table.size())) {

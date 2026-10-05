@@ -344,6 +344,9 @@ class ElliottResearchTest {
         assertTrue(option.err().contains("unknown option --frobnicate"), option.err());
         assertFalse(Files.exists(work.resolve("x")));
         assertEquals(1, launch("inspect", smokeRun.toString(), OCCUPANCY_KEY, "--bogus").code());
+        final Result rank = launch("inspect", smokeRun.toString(), OCCUPANCY_KEY, "--rank", "luck");
+        assertEquals(1, rank.code(), "an uncalibrated run must still reject an unknown rank");
+        assertTrue(rank.err().contains("--rank must be"), rank.err());
         assertEquals(1, launch("run", "smoke", "--block", "20", "--out", work.resolve("y").toString()).code());
         assertEquals(0, launch("help").code());
     }
@@ -862,6 +865,7 @@ class ElliottResearchTest {
         final Path run = runCalibrated("sparse", "{\"horizon\":5,\"minGroups\":100000}");
         final List<String> lines = Files.readAllLines(run.resolve(ElliottResearchCalibration.PREDICTIONS_FILE));
         final List<String> header = List.of(lines.get(0).split(",", -1));
+        assertTrue(lines.size() > 1, "the recipe must enroll scored alternatives");
         for (final String line : lines.subList(1, lines.size())) {
             final String[] cells = line.split(",", -1);
             assertEquals("", cells[header.indexOf("probability")], line);
