@@ -42,7 +42,7 @@ import org.ta4j.core.num.DecimalNum;
 class ElliottResearchOutcomesTest {
 
     private static final StreamKey REAL = new StreamKey(-1, -1, "calibration");
-    private static final Settings SETTINGS = new Settings(List.of(5), "classical-all", Invalidation.ORIGIN_PIVOT);
+    private static final Settings SETTINGS = new Settings(List.of(5), "all-rules", Invalidation.ORIGIN_PIVOT);
 
     // ------------------------------------------------------------ structural
 
@@ -139,7 +139,7 @@ class ElliottResearchOutcomesTest {
 
     @Test
     void originPriceInvalidationUsesTheBarBreachInsteadOfTheConfirmedPivot() {
-        final Settings priceSettings = new Settings(List.of(5), "classical-all", Invalidation.ORIGIN_PRICE);
+        final Settings priceSettings = new Settings(List.of(5), "all-rules", Invalidation.ORIGIN_PRICE);
         final Event event = bullishEvent(10);
         event.pivotInvalidationIndex = 14;
 
@@ -154,7 +154,7 @@ class ElliottResearchOutcomesTest {
 
     @Test
     void originPriceBreachBetweenTheMotiveEndAndLateEnrollmentIsNotAdministrativelyKnownBeforeEnrollment() {
-        final Settings priceSettings = new Settings(List.of(5), "classical-all", Invalidation.ORIGIN_PRICE);
+        final Settings priceSettings = new Settings(List.of(5), "all-rules", Invalidation.ORIGIN_PRICE);
         // Pivots sit at bars 4..9 but are only confirmed (and the event only enrolled)
         // at bar 20.
         final List<ConfirmedPivot> pivots = new ArrayList<>();
@@ -292,7 +292,7 @@ class ElliottResearchOutcomesTest {
             final org.ta4j.core.walkforward.RankedPrediction<org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult.BaseScenarioAssessment> prediction = new org.ta4j.core.walkforward.RankedPrediction<>(
                     scenario.id(), 1, tape.numFactory().numOf(0.7), tape.numFactory().numOf(0.8), assessment);
 
-            final var released = new org.ta4j.core.indicators.elliott.walkforward.ElliottWaveOutcomeLabeler()
+            final org.ta4j.core.indicators.elliott.walkforward.ElliottWaveOutcome.EventOutcome released = new org.ta4j.core.indicators.elliott.walkforward.ElliottWaveOutcomeLabeler()
                     .label(tape, 10, 5, prediction)
                     .eventOutcome();
 
@@ -413,11 +413,10 @@ class ElliottResearchOutcomesTest {
     @Test
     void settingsRejectUnsortedHorizonsUnknownModesAndUnknownFields() {
         assertThrows(IllegalArgumentException.class,
-                () -> new Settings(List.of(5, 5), "classical-all", Invalidation.ORIGIN_PIVOT));
+                () -> new Settings(List.of(5, 5), "all-rules", Invalidation.ORIGIN_PIVOT));
         assertThrows(IllegalArgumentException.class,
-                () -> new Settings(List.of(0), "classical-all", Invalidation.ORIGIN_PIVOT));
-        assertThrows(IllegalArgumentException.class,
-                () -> new Settings(List.of(5), "no-such-mode", Invalidation.ORIGIN_PIVOT));
+                () -> new Settings(List.of(0), "all-rules", Invalidation.ORIGIN_PIVOT));
+        assertThrows(IllegalArgumentException.class, () -> new Settings(List.of(5), " ", Invalidation.ORIGIN_PIVOT));
         assertThrows(IllegalArgumentException.class, () -> Invalidation.parse("close"));
         final com.google.gson.JsonObject unknown = com.google.gson.JsonParser.parseString("{\"horizon\":[5]}")
                 .getAsJsonObject();
@@ -435,7 +434,7 @@ class ElliottResearchOutcomesTest {
     @Test
     void recorderEnrollsEachPlacementOnceAtItsFirstFullObservationAndKeepsStreamsApart() {
         final BarSeries series = syntheticSeries(30);
-        final ElliottResearchEvents recorder = new ElliottResearchEvents("classical-all", 10);
+        final ElliottResearchEvents recorder = new ElliottResearchEvents("all-rules", 10);
         recorder.bindRealTape(series);
         runner().evaluate("syn", series, 0, 29, recorder);
 
@@ -476,7 +475,7 @@ class ElliottResearchOutcomesTest {
 
         assertFalse(first.isEmpty(), "null member must enroll events");
         assertEquals(first, second);
-        final ElliottResearchEvents recorder = new ElliottResearchEvents("classical-all", 10);
+        final ElliottResearchEvents recorder = new ElliottResearchEvents("all-rules", 10);
         runner(ElliottResearchOutcomesTest::localExtrema).replayNullMember(series, 0, 159, 2, 1, recorder);
         for (final Stream stream : recorder.streams()) {
             assertFalse(stream.key().real());
@@ -489,7 +488,7 @@ class ElliottResearchOutcomesTest {
 
     @Test
     void horizonArithmeticDoesNotOverflowForAnUnboundedMaxHorizon() {
-        final ElliottResearchEvents recorder = new ElliottResearchEvents("classical-all", Integer.MAX_VALUE);
+        final ElliottResearchEvents recorder = new ElliottResearchEvents("all-rules", Integer.MAX_VALUE);
         final List<ConfirmedPivot> cycle = bullishCyclePivots();
         observeMotive(recorder, 9, cycle.subList(0, 6));
         observeNoMatch(recorder, 10, cycle.subList(0, 7));
@@ -505,7 +504,7 @@ class ElliottResearchOutcomesTest {
     void withdrawnPlacementNeverCompletesAtOrAfterWithdrawalButKeepsEarlierCompletion() {
         final List<ConfirmedPivot> cycle = bullishCyclePivots();
 
-        final ElliottResearchEvents readmitted = new ElliottResearchEvents("classical-all", 10);
+        final ElliottResearchEvents readmitted = new ElliottResearchEvents("all-rules", 10);
         observeMotive(readmitted, 9, cycle.subList(0, 6));
         observeNoMatch(readmitted, 10, cycle.subList(0, 5));
         observeNoMatch(readmitted, 11, cycle.subList(0, 7));
@@ -514,7 +513,7 @@ class ElliottResearchOutcomesTest {
         assertEquals(10, withdrawn.withdrawnIndex);
         assertEquals(-1, withdrawn.completionIndex, "a withdrawn placement must not complete after withdrawal");
 
-        final ElliottResearchEvents completedFirst = new ElliottResearchEvents("classical-all", 10);
+        final ElliottResearchEvents completedFirst = new ElliottResearchEvents("all-rules", 10);
         observeMotive(completedFirst, 9, cycle.subList(0, 6));
         observeCycle(completedFirst, 10, cycle);
         observeNoMatch(completedFirst, 11, cycle.subList(0, 5));
@@ -568,15 +567,15 @@ class ElliottResearchOutcomesTest {
     }
 
     private static ElliottResearchOutcomes.Result evaluate(final BarSeries series) {
-        final ElliottResearchEvents recorder = new ElliottResearchEvents("classical-all", 20);
+        final ElliottResearchEvents recorder = new ElliottResearchEvents("all-rules", 20);
         recorder.bindRealTape(series);
         runner().evaluate("syn", series, 0, series.getEndIndex(), recorder);
         return ElliottResearchOutcomes.evaluate("syn", recorder,
-                new Settings(List.of(5, 20), "classical-all", Invalidation.ORIGIN_PIVOT));
+                new Settings(List.of(5, 20), "all-rules", Invalidation.ORIGIN_PIVOT));
     }
 
     private static List<String> nullLabels(final BarSeries series, final int block, final int member) {
-        final ElliottResearchEvents recorder = new ElliottResearchEvents("classical-all", 10);
+        final ElliottResearchEvents recorder = new ElliottResearchEvents("all-rules", 10);
         runner(ElliottResearchOutcomesTest::localExtrema).replayNullMember(series, 0, series.getEndIndex(), block,
                 member, recorder);
         return recorder.streams()
@@ -608,7 +607,7 @@ class ElliottResearchOutcomesTest {
             final List<ConfirmedPivot> visible) {
         final TopologyCandidate motive = new TopologyCandidate(TopologyGrammar.MOTIVE_5, WaveDirection.BULLISH,
                 visible.subList(0, 6));
-        recorder.topology(StudyObserver.Scope.real("h1", "classical-all", "MOTIVE_5", List.of(), "synthetic"),
+        recorder.topology(StudyObserver.Scope.real("h1", "all-rules", "MOTIVE_5", List.of(), "synthetic"),
                 "calibration", index, AS_OF, visible,
                 new TopologyAnalysis(TopologyStatus.COMPLETE, null, List.of(motive), "motive", -1, -1),
                 List.of(List.of()));
@@ -616,7 +615,7 @@ class ElliottResearchOutcomesTest {
 
     private static void observeNoMatch(final ElliottResearchEvents recorder, final int index,
             final List<ConfirmedPivot> visible) {
-        recorder.topology(StudyObserver.Scope.real("h1", "classical-all", "MOTIVE_5", List.of(), "synthetic"),
+        recorder.topology(StudyObserver.Scope.real("h1", "all-rules", "MOTIVE_5", List.of(), "synthetic"),
                 "calibration", index, AS_OF, visible, TopologyAnalysis.noMatch("none"), List.of());
     }
 
@@ -624,7 +623,7 @@ class ElliottResearchOutcomesTest {
             final List<ConfirmedPivot> visible) {
         final TopologyCandidate cycle = new TopologyCandidate(TopologyGrammar.CYCLE_5_3, WaveDirection.BULLISH,
                 visible);
-        recorder.topology(StudyObserver.Scope.real("h2", "classical-all", "CYCLE_5_3", List.of(), "synthetic"),
+        recorder.topology(StudyObserver.Scope.real("h2", "all-rules", "CYCLE_5_3", List.of(), "synthetic"),
                 "calibration", index, AS_OF, visible,
                 new TopologyAnalysis(TopologyStatus.COMPLETE, null, List.of(cycle), "cycle", -1, -1),
                 List.of(List.of()));

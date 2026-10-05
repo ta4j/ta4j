@@ -354,19 +354,33 @@ final class ElliottResearch {
             List<String> competingModes, List<Integer> blockLengths, int ensembleSize, long seed,
             ElliottResearchOutcomes.Settings outcomes) {
 
-        StudyRunner runner() {
-            final Function<BarSeries, Indicator<Num>> momentum = series -> new RSIIndicator(
-                    new ClosePriceIndicator(series), momentumBarCount);
-            final List<RelationshipRule> rules = ClassicalRelationshipRules.classicalRelationships(momentum)
+        Setup {
+            final List<String> structuralModes = RuleAblation.modes(rules(activeRules, momentumBarCount))
                     .stream()
-                    .filter(rule -> activeRules.contains(rule.id()))
+                    .map(RuleAblation.Mode::name)
                     .toList();
+            if (!structuralModes.contains(outcomes.structuralMode())) {
+                throw new IllegalArgumentException("outcomes.structuralMode '" + outcomes.structuralMode()
+                        + "' is not a mode this run evaluates; expected one of " + structuralModes);
+            }
+        }
+
+        StudyRunner runner() {
             final List<DetectorRobustnessMatrix.DetectorSpec> specs = robustness.stream()
                     .map(detector -> new DetectorRobustnessMatrix.DetectorSpec(detector.name(), detector.supplier()))
                     .toList();
             return new StudyRunner(primary.supplier(), List.of(TopologyGrammar.MOTIVE_5, TopologyGrammar.CYCLE_5_3),
-                    rules, new StudyRunner.Configuration(partitions, fingerprint, seed, blockLengths, ensembleSize,
-                            specs, primary.name(), competingModes));
+                    rules(activeRules, momentumBarCount), new StudyRunner.Configuration(partitions, fingerprint, seed,
+                            blockLengths, ensembleSize, specs, primary.name(), competingModes));
+        }
+
+        private static List<RelationshipRule> rules(final List<String> activeRules, final int momentumBarCount) {
+            final Function<BarSeries, Indicator<Num>> momentum = series -> new RSIIndicator(
+                    new ClosePriceIndicator(series), momentumBarCount);
+            return ClassicalRelationshipRules.classicalRelationships(momentum)
+                    .stream()
+                    .filter(rule -> activeRules.contains(rule.id()))
+                    .toList();
         }
 
         LocalDate requestedFrom() {
@@ -443,7 +457,7 @@ final class ElliottResearch {
         final String description = "elliott-research-smoke/1: " + SMOKE_BARS
                 + " synthetic daily bars from 2020-01-01 (StrictMath sine mix); primary fractal-w5; robustness fractal-w3,fractal-w5; "
                 + "RSI14; competing 3+3,5+5,change-point-baseline; null block 20 ensemble 8 seed 5252026; "
-                + "outcomes horizons 5,20,60 classical-all origin-pivot";
+                + "outcomes horizons 5,20,60 all-rules origin-pivot";
         return new Setup(sha256(description.getBytes(StandardCharsets.UTF_8)), partitions, w5, List.of(w3, w5),
                 RULE_IDS, 14, COMPETING_MODES, List.of(20), 8, 5_252_026L, ElliottResearchOutcomes.Settings.defaults());
     }
