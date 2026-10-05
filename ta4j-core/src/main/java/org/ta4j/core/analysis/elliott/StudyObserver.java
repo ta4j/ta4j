@@ -73,7 +73,7 @@ interface StudyObserver {
      * @param partition     locked partition name
      * @param recordedIndex bar index in source coordinates
      * @param bar           member bar evaluated at {@code recordedIndex}
-     * @since 0.25.1
+     * @since 0.26.1
      */
     default void nullBar(Scope scope, String partition, int recordedIndex, Bar bar) {
         // real-data observers have no use for member prices
