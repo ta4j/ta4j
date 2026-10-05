@@ -5,6 +5,7 @@ package org.ta4j.core.analysis.sampling;
 
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.ta4j.core.analysis.frequency.Sample;
 import org.ta4j.core.analysis.frequency.SampleSummary;
 import org.ta4j.core.criteria.AbstractCriterionTest;
@@ -72,12 +73,35 @@ public class SampleSummaryTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void skewnessAndKurtosisRemainZeroWithInsufficientCount() {
+    public void skewnessAndKurtosisAreNaNWithInsufficientCount() {
         var summary = SampleSummary.fromSamples(IntStream.range(0, 2).mapToObj(i -> new Sample(numOf(i), numOf(0.5d))),
                 numFactory);
 
         assertEquals(2, summary.count());
-        assertEquals(0d, summary.sampleSkewness(numFactory).doubleValue(), 0d);
-        assertEquals(0d, summary.sampleKurtosis(numFactory).doubleValue(), 0d);
+        assertEquals(0.5d, summary.sampleVariance(numFactory).doubleValue(), 1e-12);
+        assertTrue(summary.sampleSkewness(numFactory).isNaN());
+        assertTrue(summary.sampleKurtosis(numFactory).isNaN());
+    }
+
+    @Test
+    public void singleSampleStatisticsAreNaN() {
+        var summary = SampleSummary.fromSamples(Stream.of(new Sample(numOf(0.05d), numOf(1.0d))), numFactory);
+
+        assertEquals(1, summary.count());
+        assertEquals(0.05d, summary.mean().doubleValue(), 1e-12);
+        assertTrue(summary.sampleVariance(numFactory).isNaN());
+        assertTrue(summary.sampleSkewness(numFactory).isNaN());
+        assertTrue(summary.sampleKurtosis(numFactory).isNaN());
+    }
+
+    @Test
+    public void zeroVarianceWindowReturnsNaNSkewnessAndKurtosis() {
+        var summary = SampleSummary.fromValues(DoubleStream.of(1.0d, 1.0d, 1.0d, 1.0d, 1.0d).mapToObj(this::numOf),
+                numFactory);
+
+        assertEquals(5, summary.count());
+        assertEquals(0d, summary.sampleVariance(numFactory).doubleValue(), 0d);
+        assertTrue(summary.sampleSkewness(numFactory).isNaN());
+        assertTrue(summary.sampleKurtosis(numFactory).isNaN());
     }
 }

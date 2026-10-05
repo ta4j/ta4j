@@ -34,7 +34,7 @@ import java.util.List;
  *
  * @since 0.19
  */
-public class HourOfDayStrategy extends NamedStrategy {
+public final class HourOfDayStrategy extends NamedStrategy {
 
     static {
         registerImplementation(HourOfDayStrategy.class);

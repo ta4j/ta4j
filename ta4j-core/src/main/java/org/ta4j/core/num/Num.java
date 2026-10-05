@@ -328,6 +328,30 @@ public interface Num extends Comparable<Num>, Serializable {
     }
 
     /**
+     * Checks if a Num value is valid and finite.
+     *
+     * <p>
+     * This method extends {@link #isValid(Num)} by rejecting primitive-backed
+     * {@link Double} and {@link Float} infinities. It intentionally does not reject
+     * finite high-precision values, such as {@link java.math.BigDecimal}-backed
+     * {@link DecimalNum} instances, only because their primitive
+     * {@link #doubleValue()} representation overflows.
+     *
+     * @param value the value to check, may be null
+     * @return true if the value is non-null, not NaN, and not a primitive-backed
+     *         infinity; false otherwise
+     * @since 0.22.9
+     */
+    static boolean isFinite(Num value) {
+        if (!isValid(value)) {
+            return false;
+        }
+        Number delegate = value.getDelegate();
+        return !(delegate instanceof Double doubleValue && Double.isInfinite(doubleValue)
+                || delegate instanceof Float floatValue && Float.isInfinite(floatValue));
+    }
+
+    /**
      * Converts this {@code Num} to a {@code BigDecimal}.
      *
      * @return this {@code Num} converted to a {@code BigDecimal}

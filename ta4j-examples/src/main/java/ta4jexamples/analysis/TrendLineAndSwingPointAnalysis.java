@@ -6,6 +6,7 @@ package ta4jexamples.analysis;
 import java.awt.Color;
 import java.awt.GraphicsEnvironment;
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -19,6 +20,9 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RecentFractalSwingHighIndicator;
 import org.ta4j.core.indicators.RecentFractalSwingLowIndicator;
 import org.ta4j.core.indicators.RecentSwingIndicator;
+import org.ta4j.core.indicators.RecentSwingIndicators;
+import org.ta4j.core.indicators.RecentSwingIndicators.Method;
+import org.ta4j.core.indicators.RecentSwingIndicators.Pair;
 import org.ta4j.core.indicators.SwingPointMarkerIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
@@ -29,6 +33,7 @@ import org.ta4j.core.indicators.supportresistance.TrendLineSupportIndicator;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingHighIndicator;
 import org.ta4j.core.indicators.zigzag.RecentZigZagSwingLowIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.utils.BarSeriesUtils;
 
 import ta4jexamples.charting.builder.ChartPlan;
 import ta4jexamples.charting.workflow.ChartWorkflow;
@@ -41,11 +46,13 @@ import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
  * indicators.
  *
  * <p>
- * This runner performs two kinds of verification:
+ * This runner performs three kinds of verification:
  * <ul>
  * <li>Capacity headroom checks across bundled example datasets (fractal +
  * ZigZag, highs + lows) to ensure default caps remain comfortably above
  * real-world usage.</li>
+ * <li>Recent Coinbase ETH/USD comparison across five-minute, fifteen-minute,
+ * hourly, four-hour, and daily bars for every paired swing methodology.</li>
  * <li>Chart generation that overlays trendline indicators and swing point
  * markers on a representative dataset, enabling quick visual inspection after
  * large changes.</li>
@@ -59,6 +66,7 @@ import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
  * @see org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator
  * @see org.ta4j.core.indicators.RecentFractalSwingHighIndicator
  * @see org.ta4j.core.indicators.RecentFractalSwingLowIndicator
+ * @see org.ta4j.core.indicators.RecentSwingIndicators
  * @see org.ta4j.core.indicators.zigzag.RecentZigZagSwingHighIndicator
  * @see org.ta4j.core.indicators.zigzag.RecentZigZagSwingLowIndicator
  */
@@ -76,6 +84,10 @@ public class TrendLineAndSwingPointAnalysis {
 
     static final String DEFAULT_CHART_OUTPUT_DIRECTORY = "temp/charts";
     static final String DEFAULT_CHART_FILE_NAME = "trendline-swingpoint-analysis";
+    static final String RECENT_ETH_FIVE_MINUTE_RESOURCE = "Coinbase-ETH-USD-PT5M-20260721_20260723.json";
+    static final String RECENT_ETH_HOURLY_RESOURCE = "Coinbase-ETH-USD-PT1H-20260718_20260723.json";
+    static final String RECENT_ETH_FOUR_HOUR_RESOURCE = "Coinbase-ETH-USD-PT4H-20260401_20260723.json";
+    static final String RECENT_ETH_DAILY_RESOURCE = "Coinbase-ETH-USD-PT1D-20260101_20260723.json";
 
     private static final Logger LOG = LogManager.getLogger(TrendLineAndSwingPointAnalysis.class);
 
@@ -99,11 +111,7 @@ public class TrendLineAndSwingPointAnalysis {
     private record SwingStats(int maxSwings, int maxPairs) {
     }
 
-    private enum SwingMethod {
-        FRACTAL, ZIGZAG
-    }
-
-    private record HeadroomObservation(String datasetName, SwingMethod method, PriceSide side, int lookback,
+    private record HeadroomObservation(String datasetName, Method method, PriceSide side, int lookback,
             SwingStats stats) {
     }
 
@@ -115,15 +123,76 @@ public class TrendLineAndSwingPointAnalysis {
         SUPPORT, RESISTANCE
     }
 
+    record RecentEthSeries(Duration duration, BarSeries series) {
+    }
+
+    record SwingObservation(Duration duration, Method method, int highCount, int lowCount, int latestHighIndex,
+            int latestLowIndex, int latestHighConfirmationIndex, int latestLowConfirmationIndex) {
+    }
+
     public static void main(String[] args) {
         Config config = Config.fromArgs(args);
         TrendLineAndSwingPointAnalysis analysis = new TrendLineAndSwingPointAnalysis();
         analysis.verifyDefaultCapsHeadroomForBundledDatasets();
+        analysis.analyzeRecentEthSwings();
 
         BarSeries chartSeries = analysis.loadChartSeries(config.chartDatasetResource());
         AnalysisChartArtifacts artifacts = analysis.buildAnalysisChartArtifacts(chartSeries,
                 Math.min(chartSeries.getBarCount(), config.trendLineLookback()), config.surroundingBars());
         analysis.renderAnalysisChart(artifacts, config);
+    }
+
+    List<SwingObservation> analyzeRecentEthSwings() {
+        return analyzeRecentEthSwings(loadRecentEthSeries());
+    }
+
+    /**
+     * Analyzes the supplied ETH fixtures with every concrete swing method.
+     * Package-private so regression tests can bound immutable fixture windows
+     * without changing the example's default full-data flow.
+     *
+     * @param seriesByDuration ETH bar series grouped by duration
+     * @return one observation for every supplied duration and swing method
+     */
+    List<SwingObservation> analyzeRecentEthSwings(List<RecentEthSeries> seriesByDuration) {
+        final List<SwingObservation> observations = new ArrayList<>();
+        for (RecentEthSeries data : seriesByDuration) {
+            final int endIndex = data.series().getEndIndex();
+            for (Pair pair : buildSwingMethods(data.series())) {
+                final List<Integer> highs = pair.highs().getSwingPointIndexesUpTo(endIndex);
+                final List<Integer> lows = pair.lows().getSwingPointIndexesUpTo(endIndex);
+                final SwingObservation observation = new SwingObservation(data.duration(), pair.method(), highs.size(),
+                        lows.size(), pair.highs().getLatestSwingIndex(endIndex),
+                        pair.lows().getLatestSwingIndex(endIndex),
+                        pair.highs().getLatestSwingConfirmationIndex(endIndex),
+                        pair.lows().getLatestSwingConfirmationIndex(endIndex));
+                observations.add(observation);
+                LOG.info(
+                        "ETH/USD swing summary: duration={}, method={}, highs={}, lows={}, latestHigh={}, latestLow={}, highConfirmedAt={}, lowConfirmedAt={}",
+                        observation.duration(), observation.method(), observation.highCount(), observation.lowCount(),
+                        observation.latestHighIndex(), observation.latestLowIndex(),
+                        observation.latestHighConfirmationIndex(), observation.latestLowConfirmationIndex());
+            }
+        }
+        return List.copyOf(observations);
+    }
+
+    List<RecentEthSeries> loadRecentEthSeries() {
+        final BarSeries fiveMinute = loadRequiredJsonSeries(RECENT_ETH_FIVE_MINUTE_RESOURCE);
+        final BarSeries hourly = loadRequiredJsonSeries(RECENT_ETH_HOURLY_RESOURCE);
+        final BarSeries fourHour = loadRequiredJsonSeries(RECENT_ETH_FOUR_HOUR_RESOURCE);
+        final BarSeries daily = loadRequiredJsonSeries(RECENT_ETH_DAILY_RESOURCE);
+        return List.of(new RecentEthSeries(Duration.ofMinutes(5), fiveMinute),
+                new RecentEthSeries(Duration.ofMinutes(15),
+                        BarSeriesUtils.aggregateBars(fiveMinute, Duration.ofMinutes(15), "ETH-USD-PT15M")),
+                new RecentEthSeries(Duration.ofHours(1), hourly), new RecentEthSeries(Duration.ofHours(4), fourHour),
+                new RecentEthSeries(Duration.ofDays(1), daily));
+    }
+
+    List<Pair> buildSwingMethods(BarSeries series) {
+        return List.of(RecentSwingIndicators.defaultFor(series), RecentSwingIndicators.fractal(series),
+                RecentSwingIndicators.adaptiveZigZag(series), RecentSwingIndicators.slopeChange(series),
+                RecentSwingIndicators.prominence(series), RecentSwingIndicators.consensus(series));
     }
 
     void verifyDefaultCapsHeadroomForBundledDatasets() {
@@ -155,13 +224,13 @@ public class TrendLineAndSwingPointAnalysis {
         RecentSwingIndicator zigzagHighs = new RecentZigZagSwingHighIndicator(series);
 
         return List.of(
-                new HeadroomObservation(dataset.name(), SwingMethod.FRACTAL, PriceSide.SUPPORT, lookback,
+                new HeadroomObservation(dataset.name(), Method.FRACTAL, PriceSide.SUPPORT, lookback,
                         analyzeSwings(series, fractalLows, PriceSide.SUPPORT, lookback)),
-                new HeadroomObservation(dataset.name(), SwingMethod.FRACTAL, PriceSide.RESISTANCE, lookback,
+                new HeadroomObservation(dataset.name(), Method.FRACTAL, PriceSide.RESISTANCE, lookback,
                         analyzeSwings(series, fractalHighs, PriceSide.RESISTANCE, lookback)),
-                new HeadroomObservation(dataset.name(), SwingMethod.ZIGZAG, PriceSide.SUPPORT, lookback,
+                new HeadroomObservation(dataset.name(), Method.ZIGZAG, PriceSide.SUPPORT, lookback,
                         analyzeSwings(series, zigzagLows, PriceSide.SUPPORT, lookback)),
-                new HeadroomObservation(dataset.name(), SwingMethod.ZIGZAG, PriceSide.RESISTANCE, lookback,
+                new HeadroomObservation(dataset.name(), Method.ZIGZAG, PriceSide.RESISTANCE, lookback,
                         analyzeSwings(series, zigzagHighs, PriceSide.RESISTANCE, lookback)));
     }
 
@@ -273,6 +342,12 @@ public class TrendLineAndSwingPointAnalysis {
             return null;
         }
         return JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(stream);
+    }
+
+    private BarSeries loadRequiredJsonSeries(String resourceName) {
+        final BarSeries series = loadJsonSeries(resourceName);
+        requireTrue(series != null && !series.isEmpty(), "Required dataset '" + resourceName + "' is missing or empty");
+        return series;
     }
 
     private List<Dataset> loadRequiredDatasets() {

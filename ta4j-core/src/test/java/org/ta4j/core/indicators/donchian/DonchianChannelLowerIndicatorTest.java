@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators.donchian;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.junit.Assert.assertEquals;
 
 import org.junit.After;
@@ -87,4 +92,12 @@ public class DonchianChannelLowerIndicatorTest extends AbstractIndicatorTest<Bar
         assertEquals(numOf(95), subject.getValue(7));
         assertEquals(numOf(95), subject.getValue(8));
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List
+                .of(serializationFixture(series, new DonchianChannelLowerIndicator(series, 8), stableIndexes(series)));
+    }
+
 }

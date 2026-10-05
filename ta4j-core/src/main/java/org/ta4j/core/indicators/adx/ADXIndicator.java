@@ -21,8 +21,8 @@ public class ADXIndicator extends CachedIndicator<Num> {
 
     private final int diBarCount;
     private final int adxBarCount;
-    private final DXIndicator dxIndicator;
-    private final MMAIndicator averageDXIndicator;
+    private final transient DXIndicator dxIndicator;
+    private final transient MMAIndicator averageDXIndicator;
 
     /**
      * Constructor.

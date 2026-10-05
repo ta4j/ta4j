@@ -12,6 +12,7 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BarSeries;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import org.ta4j.core.analysis.frequency.IndexPair;
 import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexes;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
@@ -84,6 +85,24 @@ public class SamplingFrequencyIndexesTest {
         var pairs = sampler.sample(series, 0, 3, 1).toList();
 
         assertEquals(List.of(), pairs);
+    }
+
+    @Test
+    public void constructorRejectsTradeSampling() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> new SamplingFrequencyIndexes(SamplingFrequency.TRADE, ZoneOffset.UTC));
+
+        assertEquals("SamplingFrequency.TRADE requires a trading record; use a TradingRecord-aware sampling API",
+                exception.getMessage());
+    }
+
+    @Test
+    public void constructorRejectsTradeSamplingBeforeRequiringGroupingZone() {
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> new SamplingFrequencyIndexes(SamplingFrequency.TRADE, null));
+
+        assertEquals("SamplingFrequency.TRADE requires a trading record; use a TradingRecord-aware sampling API",
+                exception.getMessage());
     }
 
     private static BarSeries buildDailySeries() {

@@ -3,13 +3,6 @@
  */
 package org.ta4j.core.indicators;
 
-import org.apache.commons.math3.filter.DefaultMeasurementModel;
-import org.apache.commons.math3.filter.DefaultProcessModel;
-import org.apache.commons.math3.filter.KalmanFilter;
-import org.apache.commons.math3.linear.Array2DRowRealMatrix;
-import org.apache.commons.math3.linear.ArrayRealVector;
-import org.apache.commons.math3.linear.RealMatrix;
-import org.apache.commons.math3.linear.RealVector;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -23,15 +16,19 @@ import org.ta4j.core.num.Num;
  * This indicator is particularly useful for reducing noise and improving the
  * signal-to-noise ratio of an indicator, which can be beneficial for various
  * trading strategies and analysis.
+ * <p>
+ * The filter initializes at the first index with a finite measurement and
+ * usable process and measurement noise. Earlier unavailable inputs do not
+ * contribute a zero-valued observation. After initialization, unavailable
+ * inputs preserve the last usable state for later recovery.
  *
  * @since 0.17
  */
 public class KalmanFilterIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;
-    private final double processNoise;
-    private final double measurementNoise;
-    private transient KalmanFilter filter;
-    private transient int lastProcessedIndex;
+    private final Indicator<Num> processNoiseIndicator;
+    private final Indicator<Num> measurementNoiseIndicator;
+    private transient volatile StateIndicator stateIndicator;
 
     /**
      * Constructs a KalmanFilterIndicator with the given indicator and default noise
@@ -55,11 +52,30 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
      * @param measurementNoise the measurement noise parameter
      */
     public KalmanFilterIndicator(Indicator<Num> indicator, double processNoise, double measurementNoise) {
-        super(indicator);
+        this(indicator, KalmanNoiseIndicator.constant(indicator.getBarSeries(), processNoise),
+                KalmanNoiseIndicator.constant(indicator.getBarSeries(), measurementNoise));
+    }
+
+    /**
+     * Constructs a KalmanFilterIndicator with dynamic process and measurement
+     * noise.
+     *
+     * <p>
+     * Values for both noise indicators are read at the exact source index. An
+     * unavailable noise value makes that index unavailable without contaminating
+     * later valid state.
+     *
+     * @param indicator                 indicator whose values will be smoothed
+     * @param processNoiseIndicator     dynamic process-noise variance
+     * @param measurementNoiseIndicator dynamic measurement-noise variance
+     * @since 0.23.1
+     */
+    public KalmanFilterIndicator(Indicator<Num> indicator, KalmanNoiseIndicator processNoiseIndicator,
+            KalmanNoiseIndicator measurementNoiseIndicator) {
+        super(indicator, processNoiseIndicator, measurementNoiseIndicator);
         this.indicator = indicator;
-        this.processNoise = processNoise;
-        this.measurementNoise = measurementNoise;
-        this.lastProcessedIndex = -1;
+        this.processNoiseIndicator = processNoiseIndicator;
+        this.measurementNoiseIndicator = measurementNoiseIndicator;
     }
 
     /**
@@ -76,36 +92,12 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
 
-        if (filter == null || index < lastProcessedIndex) {
-            initializeFilter();
-        }
-
-        final var numFactory = getBarSeries().numFactory();
-
-        // Check if the current value is NaN - if so, return NaN immediately
-        double currentMeasurement = this.indicator.getValue(index).doubleValue();
-        if (Double.isNaN(currentMeasurement) || Double.isInfinite(currentMeasurement)) {
+        KalmanState state = stateIndicator().getValue(index);
+        if (!state.currentValuesValid()) {
             return NaN.NaN;
         }
 
-        for (int i = Math.max(0, lastProcessedIndex + 1); i <= index; i++) {
-            double measurement = this.indicator.getValue(i).doubleValue();
-
-            // Skip NaN or infinite values - only process valid measurements
-            if (!Double.isNaN(measurement) && !Double.isInfinite(measurement)) {
-                filter.predict();
-                filter.correct(new double[] { measurement });
-            }
-
-            lastProcessedIndex = i;
-        }
-
-        Double value = filter.getStateEstimation()[0];
-        if (value.isNaN()) {
-            return NaN.NaN;
-        }
-
-        return numFactory.numOf(value);
+        return state.estimate();
     }
 
     /**
@@ -117,27 +109,79 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
      */
     @Override
     public int getCountOfUnstableBars() {
-        return indicator.getCountOfUnstableBars();
+        return Math.max(indicator.getCountOfUnstableBars(), Math.max(processNoiseIndicator.getCountOfUnstableBars(),
+                measurementNoiseIndicator.getCountOfUnstableBars()));
     }
 
-    private void initializeFilter() {
-        double initialEstimate = 0.0;
-        if (indicator.getBarSeries().getBarCount() > 0) {
-            initialEstimate = indicator.getValue(0).doubleValue();
-            if (Double.isNaN(initialEstimate) || Double.isInfinite(initialEstimate)) {
-                initialEstimate = 0.0;
+    private StateIndicator stateIndicator() {
+        StateIndicator current = stateIndicator;
+        if (current == null) {
+            synchronized (this) {
+                current = stateIndicator;
+                if (current == null) {
+                    current = new StateIndicator();
+                    stateIndicator = current;
+                }
             }
         }
+        return current;
+    }
 
-        RealMatrix A = new Array2DRowRealMatrix(new double[] { 1 });
-        RealMatrix B = new Array2DRowRealMatrix(new double[] { 0 });
-        RealMatrix H = new Array2DRowRealMatrix(new double[] { 1 });
-        RealVector x = new ArrayRealVector(new double[] { initialEstimate });
-        RealMatrix Q = new Array2DRowRealMatrix(new double[] { processNoise });
-        RealMatrix P = new Array2DRowRealMatrix(new double[] { 1 });
-        RealMatrix R = new Array2DRowRealMatrix(new double[] { measurementNoise });
+    private KalmanState initialState(Num measurement, boolean validMeasurement) {
+        Num estimate = validMeasurement ? measurement : getBarSeries().numFactory().zero();
+        // A placeholder is not an initialized estimate; seed on the first usable bar.
+        return new KalmanState(estimate, getBarSeries().numFactory().one(), validMeasurement, validMeasurement);
+    }
 
-        this.filter = new KalmanFilter(new DefaultProcessModel(A, B, Q, x, P), new DefaultMeasurementModel(H, R));
-        lastProcessedIndex = -1;
+    private KalmanState correct(KalmanState previous, Num measurement, Num processNoise, Num measurementNoise) {
+        Num predictedErrorCovariance = previous.errorCovariance().plus(processNoise);
+        Num kalmanGain = predictedErrorCovariance.dividedBy(predictedErrorCovariance.plus(measurementNoise));
+        Num estimate = previous.estimate().plus(kalmanGain.multipliedBy(measurement.minus(previous.estimate())));
+        Num errorCovariance = getBarSeries().numFactory()
+                .one()
+                .minus(kalmanGain)
+                .multipliedBy(predictedErrorCovariance);
+        boolean stateValid = Num.isFinite(estimate) && Num.isFinite(errorCovariance) && !errorCovariance.isNegative();
+        return new KalmanState(estimate, errorCovariance, stateValid, stateValid);
+    }
+
+    private final class StateIndicator extends RecursiveCachedIndicator<KalmanState> {
+
+        private StateIndicator() {
+            super(KalmanFilterIndicator.this.indicator, KalmanFilterIndicator.this.processNoiseIndicator,
+                    KalmanFilterIndicator.this.measurementNoiseIndicator);
+        }
+
+        @Override
+        protected KalmanState calculate(int index) {
+            Num current = KalmanFilterIndicator.this.indicator.getValue(index);
+            Num processNoise = processNoiseIndicator.getValue(index);
+            Num measurementNoise = measurementNoiseIndicator.getValue(index);
+            boolean validMeasurement = Num.isFinite(current) && Num.isFinite(processNoise) && processNoise.isPositive()
+                    && Num.isFinite(measurementNoise) && measurementNoise.isPositive();
+            int beginIndex = getBarSeries().getBeginIndex();
+            if (index <= beginIndex) {
+                KalmanState initial = initialState(current, validMeasurement);
+                return validMeasurement ? correct(initial, current, processNoise, measurementNoise) : initial;
+            }
+
+            KalmanState previous = getValue(index - 1);
+            if (!validMeasurement) {
+                return new KalmanState(previous.estimate(), previous.errorCovariance(), previous.stateValid(), false);
+            }
+            if (!previous.stateValid()) {
+                return correct(initialState(current, true), current, processNoise, measurementNoise);
+            }
+            return correct(previous, current, processNoise, measurementNoise);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return KalmanFilterIndicator.this.getCountOfUnstableBars();
+        }
+
+    }
+
+    private record KalmanState(Num estimate, Num errorCovariance, boolean stateValid, boolean currentValuesValid) {
     }
 }

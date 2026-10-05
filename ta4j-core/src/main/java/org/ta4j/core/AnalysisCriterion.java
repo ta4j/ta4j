@@ -18,7 +18,10 @@ import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.backtest.BarSeriesManager;
+import org.ta4j.core.named.NamedAssetRegistry;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.serialization.AnalysisCriterionSerialization;
+import org.ta4j.core.serialization.ComponentDescriptor;
 
 /**
  * An analysis criterion. It can be used to:
@@ -36,6 +39,93 @@ public interface AnalysisCriterion {
         PROFIT,
         /** Consider only losing positions. */
         LOSS;
+    }
+
+    /**
+     * Serializes this criterion into canonical descriptor JSON.
+     *
+     * @return JSON representation
+     * @throws IllegalArgumentException if this criterion has constructor state that
+     *                                  cannot be represented safely
+     * @since 0.23.1
+     */
+    default String toJson() {
+        return AnalysisCriterionSerialization.toJson(this);
+    }
+
+    /**
+     * Converts this criterion into a structured descriptor.
+     *
+     * @return component descriptor for this criterion
+     * @throws IllegalArgumentException if this criterion has constructor state that
+     *                                  cannot be represented safely
+     * @since 0.23.1
+     */
+    default ComponentDescriptor toDescriptor() {
+        return AnalysisCriterionSerialization.describe(this);
+    }
+
+    /**
+     * Renders this criterion as a compact named shorthand expression using ta4j's
+     * default named asset registry.
+     *
+     * @return compact shorthand expression
+     * @throws IllegalArgumentException if no registered shorthand can represent the
+     *                                  criterion without dropping constructor state
+     * @since 0.23.1
+     */
+    default String toExpression() {
+        return AnalysisCriterionSerialization.toExpression(this);
+    }
+
+    /**
+     * Renders this criterion as a compact named shorthand expression using the
+     * supplied named asset registry.
+     *
+     * @param registry named asset registry
+     * @return compact shorthand expression
+     * @throws IllegalArgumentException if no registered shorthand can represent the
+     *                                  criterion without dropping constructor state
+     * @since 0.23.1
+     */
+    default String toExpression(NamedAssetRegistry registry) {
+        return AnalysisCriterionSerialization.toExpression(this, registry);
+    }
+
+    /**
+     * Reconstructs an analysis criterion from canonical descriptor JSON.
+     *
+     * @param json JSON payload
+     * @return reconstructed criterion
+     * @since 0.23.1
+     */
+    static AnalysisCriterion fromJson(String json) {
+        return AnalysisCriterionSerialization.fromJson(json);
+    }
+
+    /**
+     * Reconstructs an analysis criterion from compact named shorthand using ta4j's
+     * default named asset registry.
+     *
+     * @param expression shorthand expression
+     * @return reconstructed criterion
+     * @since 0.23.1
+     */
+    static AnalysisCriterion fromExpression(String expression) {
+        return AnalysisCriterionSerialization.fromExpression(expression);
+    }
+
+    /**
+     * Reconstructs an analysis criterion from compact named shorthand using the
+     * supplied named asset registry.
+     *
+     * @param expression shorthand expression
+     * @param registry   named asset registry
+     * @return reconstructed criterion
+     * @since 0.23.1
+     */
+    static AnalysisCriterion fromExpression(String expression, NamedAssetRegistry registry) {
+        return AnalysisCriterionSerialization.fromExpression(expression, registry);
     }
 
     /**
@@ -281,8 +371,7 @@ public interface AnalysisCriterion {
         }
 
         if (context.openPositionHandling() == OpenPositionHandling.MARK_TO_MARKET) {
-            List<Position> openPositions = openPositionsForMarkToMarket(source, end, transactionCostModel,
-                    holdingCostModel);
+            List<Position> openPositions = openPositionsForMarkToMarket(source, end);
             for (Position openPosition : openPositions) {
                 Position syntheticPosition = createMarkToMarketPosition(series, openPosition, end, holdingCostModel);
                 if (syntheticPosition != null
@@ -304,15 +393,11 @@ public interface AnalysisCriterion {
 
     private static Position createMarkToMarketPosition(BarSeries series, Position currentPosition, int windowEndIndex,
             CostModel holdingCostModel) {
-        if (currentPosition == null || !currentPosition.isOpened()) {
+        if (!isOpenAtWindowEnd(currentPosition, windowEndIndex)) {
             return null;
         }
 
         Trade entryTrade = currentPosition.getEntry();
-        if (entryTrade == null || entryTrade.getIndex() > windowEndIndex) {
-            return null;
-        }
-
         Num amount = entryTrade.getAmount();
         Num closePrice = series.getBar(windowEndIndex).getClosePrice();
         CostModel transactionCostModel = entryTrade.getCostModel();
@@ -322,31 +407,35 @@ public interface AnalysisCriterion {
         return new Position(entryTrade, syntheticExit, transactionCostModel, holdingCostModel);
     }
 
-    private static List<Position> openPositionsForMarkToMarket(TradingRecord source, int windowEndIndex,
-            CostModel transactionCostModel, CostModel holdingCostModel) {
+    private static List<Position> openPositionsForMarkToMarket(TradingRecord source, int windowEndIndex) {
+        List<Position> positions = new ArrayList<>();
         List<Position> openPositions = source.getOpenPositions();
         if (!openPositions.isEmpty()) {
-            return openPositionsWithinWindow(openPositions, windowEndIndex);
-        }
-        Position currentPosition = source.getCurrentPosition();
-        if (currentPosition == null || !currentPosition.isOpened()) {
-            return List.of();
-        }
-        return List.of(currentPosition);
-    }
-
-    private static List<Position> openPositionsWithinWindow(List<Position> openPositions, int windowEndIndex) {
-        List<Position> positions = new ArrayList<>();
-        for (Position openPosition : openPositions) {
-            if (openPosition == null || !openPosition.isOpened()) {
-                continue;
+            for (Position position : openPositions) {
+                if (isOpenAtWindowEnd(position, windowEndIndex)) {
+                    positions.add(position);
+                }
             }
-            if (openPosition.getEntry().getIndex() > windowEndIndex) {
-                continue;
+        } else {
+            Position currentPosition = source.getCurrentPosition();
+            if (currentPosition != null && currentPosition.isOpened()
+                    && isOpenAtWindowEnd(currentPosition, windowEndIndex)) {
+                positions.add(currentPosition);
             }
-            positions.add(openPosition);
+        }
+        for (Position position : source.getPositions()) {
+            if (position != null && position.isClosed() && isOpenAtWindowEnd(position, windowEndIndex)) {
+                positions.add(position);
+            }
         }
         return positions;
+    }
+
+    private static boolean isOpenAtWindowEnd(Position position, int windowEndIndex) {
+        if (position == null || position.getEntry() == null || position.getEntry().getIndex() > windowEndIndex) {
+            return false;
+        }
+        return !position.isClosed() || position.getExit().getIndex() > windowEndIndex;
     }
 
     private static boolean includeClosedPosition(Position position, int start, int end,

@@ -10,9 +10,13 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.StochasticIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.OpenPriceIndicator;
+import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -72,6 +76,33 @@ public class RecentZigZagSwingLowIndicatorTest extends AbstractIndicatorTest<Ind
     }
 
     @Test
+    public void rebuildsFromRebaseliningStateAfterSeriesHeadAdvances() {
+        // The Stochastic reversal input changes from 101 to 1 when the retained
+        // window starts at index 2. The state then confirms the low at 80, so
+        // this cache must follow the state rebaseline instead of retaining NaN.
+        series.barBuilder().openPrice(100).closePrice(0).add();
+        series.barBuilder().openPrice(90).closePrice(50).add();
+        series.barBuilder().openPrice(90).closePrice(50).add();
+        series.barBuilder().openPrice(80).closePrice(50).add();
+        series.barBuilder().openPrice(90).closePrice(50).add();
+
+        final Indicator<Num> price = new OpenPriceIndicator(series);
+        final Indicator<Num> reversalAmount = BinaryOperationIndicator
+                .sum(new StochasticIndicator(new ClosePriceIndicator(series), 3), 1);
+        final ZigZagStateIndicator state = new ZigZagStateIndicator(price, reversalAmount);
+        final RecentZigZagSwingLowIndicator indicator = new RecentZigZagSwingLowIndicator(state, price);
+
+        assertThat(indicator.getValue(4).isNaN()).isTrue();
+
+        series.setMaximumBarCount(3);
+        assertThat(series.getBeginIndex()).isEqualTo(2);
+
+        assertThat(indicator.getLatestSwingLowIndex(4)).isEqualTo(3);
+
+        assertThat(indicator.getValue(4)).isEqualByComparingTo(numOf(80));
+    }
+
+    @Test
     public void shouldTrackLatestSwingLowThroughMultipleSwingPoints() {
         // Price: 100, 90 (low1), 95, 105, 85 (low2), 90
         series.barBuilder().closePrice(100).add();
@@ -109,6 +140,22 @@ public class RecentZigZagSwingLowIndicatorTest extends AbstractIndicatorTest<Ind
 
         assertThat(indicator.getValue(4)).isEqualByComparingTo(numOf(90));
         assertThat(indicator.getLatestSwingLowIndex(4)).isEqualTo(2);
+    }
+
+    @Test
+    public void shouldDeriveLowPriceFromState() {
+        series.barBuilder().highPrice(101).lowPrice(100).closePrice(100.5).add();
+        series.barBuilder().highPrice(95).lowPrice(90).closePrice(91).add();
+        series.barBuilder().highPrice(98).lowPrice(92).closePrice(97).add();
+
+        final Indicator<Num> high = new HighPriceIndicator(series);
+        final Indicator<Num> low = new LowPriceIndicator(series);
+        final ZigZagStateIndicator state = new ZigZagStateIndicator(high, low, 5);
+        final RecentZigZagSwingLowIndicator derived = new RecentZigZagSwingLowIndicator(state);
+        final RecentZigZagSwingLowIndicator explicit = new RecentZigZagSwingLowIndicator(state, low);
+
+        assertThat(derived.getValue(2)).isEqualByComparingTo(explicit.getValue(2));
+        assertThat(derived.getPriceIndicator()).isSameAs(low);
     }
 
     @Test

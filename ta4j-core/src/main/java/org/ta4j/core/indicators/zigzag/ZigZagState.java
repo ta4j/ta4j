@@ -31,6 +31,13 @@ public final class ZigZagState {
     private final ZigZagTrend trend;
     private final int lastExtremeIndex;
     private final Num lastExtremePrice;
+    private final Num lastExtremeReversalAmount;
+    private final int initialHighIndex;
+    private final Num initialHighPrice;
+    private final Num initialHighReversalAmount;
+    private final int initialLowIndex;
+    private final Num initialLowPrice;
+    private final Num initialLowReversalAmount;
 
     /**
      * Constructs a new ZigZagState.
@@ -55,6 +62,14 @@ public final class ZigZagState {
      */
     public ZigZagState(int lastHighIndex, Num lastHighPrice, int lastLowIndex, Num lastLowPrice, ZigZagTrend trend,
             int lastExtremeIndex, Num lastExtremePrice) {
+        this(lastHighIndex, lastHighPrice, lastLowIndex, lastLowPrice, trend, lastExtremeIndex, lastExtremePrice,
+                lastExtremeIndex, lastExtremePrice, lastExtremeIndex, lastExtremePrice, null, null, null);
+    }
+
+    ZigZagState(int lastHighIndex, Num lastHighPrice, int lastLowIndex, Num lastLowPrice, ZigZagTrend trend,
+            int lastExtremeIndex, Num lastExtremePrice, int initialHighIndex, Num initialHighPrice, int initialLowIndex,
+            Num initialLowPrice, Num lastExtremeReversalAmount, Num initialHighReversalAmount,
+            Num initialLowReversalAmount) {
         this.lastHighIndex = lastHighIndex;
         this.lastHighPrice = lastHighPrice;
         this.lastLowIndex = lastLowIndex;
@@ -62,6 +77,13 @@ public final class ZigZagState {
         this.trend = trend;
         this.lastExtremeIndex = lastExtremeIndex;
         this.lastExtremePrice = lastExtremePrice;
+        this.lastExtremeReversalAmount = lastExtremeReversalAmount;
+        this.initialHighIndex = initialHighIndex;
+        this.initialHighPrice = initialHighPrice;
+        this.initialHighReversalAmount = initialHighReversalAmount;
+        this.initialLowIndex = initialLowIndex;
+        this.initialLowPrice = initialLowPrice;
+        this.initialLowReversalAmount = initialLowReversalAmount;
     }
 
     /**
@@ -116,9 +138,10 @@ public final class ZigZagState {
     /**
      * Returns the bar index of the current extreme point being tracked.
      * <p>
-     * The extreme point is the highest point in an up-trend or the lowest point in
-     * a down-trend. This point may become a confirmed swing high or low if price
-     * reverses by at least the reversal threshold.
+     * The extreme point is the highest point in an up-trend, the lowest point in a
+     * down-trend, or the most recently extended unambiguous candidate while the
+     * initial trend is undefined. This point may become a confirmed swing high or
+     * low if price reverses by at least the reversal threshold.
      *
      * @return the bar index of the current extreme point
      */
@@ -129,13 +152,55 @@ public final class ZigZagState {
     /**
      * Returns the price value at the current extreme point being tracked.
      * <p>
-     * The extreme point is the highest point in an up-trend or the lowest point in
-     * a down-trend. This point may become a confirmed swing high or low if price
-     * reverses by at least the reversal threshold.
+     * The extreme point is the highest point in an up-trend, the lowest point in a
+     * down-trend, or the most recently extended unambiguous candidate while the
+     * initial trend is undefined. This point may become a confirmed swing high or
+     * low if price reverses by at least the reversal threshold.
      *
      * @return the price value at the current extreme point
      */
     public Num getLastExtremePrice() {
         return lastExtremePrice;
+    }
+
+    /**
+     * Returns the reversal amount pinned to the active extreme.
+     *
+     * <p>
+     * A new leg resolves this value lazily on its next state evaluation. When the
+     * threshold source is still warming up at the extreme bar, the first later
+     * finite positive value is retained. This prevents a warm-up value from
+     * permanently blocking confirmation while keeping an established threshold
+     * stable for the life of the candidate.
+     *
+     * @return active reversal amount, or {@code null} until it is resolved
+     * @since 0.23.1
+     */
+    public Num getLastExtremeReversalAmount() {
+        return lastExtremeReversalAmount;
+    }
+
+    int getInitialHighIndex() {
+        return initialHighIndex;
+    }
+
+    Num getInitialHighPrice() {
+        return initialHighPrice;
+    }
+
+    Num getInitialHighReversalAmount() {
+        return initialHighReversalAmount;
+    }
+
+    int getInitialLowIndex() {
+        return initialLowIndex;
+    }
+
+    Num getInitialLowPrice() {
+        return initialLowPrice;
+    }
+
+    Num getInitialLowReversalAmount() {
+        return initialLowReversalAmount;
     }
 }

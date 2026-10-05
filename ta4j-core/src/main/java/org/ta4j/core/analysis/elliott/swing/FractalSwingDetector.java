@@ -1,0 +1,840 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+package org.ta4j.core.analysis.elliott.swing;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
+
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseRealtimeBar;
+import org.ta4j.core.indicators.RecentFractalSwingHighIndicator;
+import org.ta4j.core.indicators.RecentFractalSwingLowIndicator;
+import org.ta4j.core.indicators.RecentSwingIndicator;
+import org.ta4j.core.indicators.elliott.ElliottDegree;
+import org.ta4j.core.indicators.elliott.ElliottSwing;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.num.Num;
+
+/**
+ * Swing detector backed by fractal swing high/low indicators.
+ *
+ * <p>
+ * Use this detector when you prefer classic Bill Williams-style fractal
+ * confirmations with configurable lookback/lookforward windows. It is the
+ * default choice for deterministic swing detection in Elliott Wave analysis.
+ *
+ * @since 0.22.2
+ */
+public final class FractalSwingDetector implements SwingDetector {
+
+    private final int lookbackLength;
+    private final int lookforwardLength;
+    private final int allowedEqualBars;
+
+    /**
+     * Upper bound on simultaneously retained series; replays evaluate one or few
+     * series.
+     */
+    private static final int MAX_CACHED_SERIES = 4;
+
+    /**
+     * Shared incremental causal-replay state per (series, degree): rebuilding swing
+     * detection for every as-of evaluation makes ascending replays merge the full
+     * cumulative pivot prefix at every index. Each state keeps the merged
+     * alternating pivot sequence between queries and absorbs only the newly
+     * confirmed high/low pivots as an ascending replay advances, resetting on
+     * detected series history changes or descending queries.
+     */
+    private final Map<SeriesKey, Map<ElliottDegree, CausalReplayState>> replayStates = Collections
+            .synchronizedMap(new LinkedHashMap<SeriesKey, Map<ElliottDegree, CausalReplayState>>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(
+                        final Map.Entry<SeriesKey, Map<ElliottDegree, CausalReplayState>> eldest) {
+                    return size() > MAX_CACHED_SERIES;
+                }
+            });
+
+    /**
+     * Creates a detector with symmetric lookback/lookforward windows.
+     *
+     * @param window number of bars to inspect before/after a pivot
+     * @since 0.22.2
+     */
+    public FractalSwingDetector(final int window) {
+        this(window, window, Math.min(window, window));
+    }
+
+    /**
+     * Creates a detector with explicit lookback/lookforward windows.
+     *
+     * @param lookbackLength    bars inspected before a pivot candidate
+     * @param lookforwardLength bars inspected after a pivot candidate
+     * @param allowedEqualBars  maximum additional equal-value bars in a plateau
+     * @since 0.22.2
+     */
+    public FractalSwingDetector(final int lookbackLength, final int lookforwardLength, final int allowedEqualBars) {
+        if (lookbackLength < 1 || lookforwardLength < 1) {
+            throw new IllegalArgumentException("Window lengths must be positive");
+        }
+        if (allowedEqualBars < 0) {
+            throw new IllegalArgumentException("allowedEqualBars must be non-negative");
+        }
+        this.lookbackLength = lookbackLength;
+        this.lookforwardLength = lookforwardLength;
+        this.allowedEqualBars = allowedEqualBars;
+    }
+
+    @Override
+    public SwingDetectorResult detect(final BarSeries series, final int index, final ElliottDegree degree) {
+        Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(degree, "degree");
+        if (series.isEmpty()) {
+            return new SwingDetectorResult(List.of(), List.of());
+        }
+        final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
+        return replayState(series, degree).resultAt(clampedIndex);
+    }
+
+    @Override
+    public List<SwingPivot> detectPivots(final BarSeries series, final int index) {
+        Objects.requireNonNull(series, "series");
+        if (series.isEmpty()) {
+            return List.of();
+        }
+        final int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
+        return replayState(series, ElliottDegree.MINUETTE).pivotsAt(clampedIndex);
+    }
+
+    private CausalReplayState replayState(final BarSeries series, final ElliottDegree degree) {
+        final Map<ElliottDegree, CausalReplayState> seriesStates = replayStates.computeIfAbsent(new SeriesKey(series),
+                ignored -> new ConcurrentHashMap<>());
+        final CausalReplayState existing = seriesStates.get(degree);
+        if (existing != null) {
+            return existing;
+        }
+        // Built outside computeIfAbsent: construction reads the series, and a
+        // caller already holding the series lock must never wait on a map bin
+        // whose owner is itself waiting for that lock.
+        final CausalReplayState created = new CausalReplayState(series, lookbackLength, lookforwardLength,
+                allowedEqualBars, degree);
+        final CausalReplayState raced = seriesStates.putIfAbsent(degree, created);
+        return raced == null ? created : raced;
+    }
+
+    /**
+     * @return lookback window length
+     * @since 0.22.2
+     */
+    public int getLookbackLength() {
+        return lookbackLength;
+    }
+
+    /**
+     * @return lookforward window length
+     * @since 0.22.2
+     */
+    public int getLookforwardLength() {
+        return lookforwardLength;
+    }
+
+    /**
+     * @return allowed equal bars for flat tops/bottoms
+     * @since 0.22.2
+     */
+    public int getAllowedEqualBars() {
+        return allowedEqualBars;
+    }
+
+    /**
+     * Per-(series, degree) incremental causal replay. The fractal high/low swing
+     * indicators scan each newly observed bar once and expose the confirmed swing
+     * points visible at an as-of index; this state keeps the merged alternating
+     * pivot sequence between queries, so an ascending replay absorbs only the newly
+     * confirmed pivots instead of rebuilding the cumulative prefix at every index.
+     * Queries below the merged position or detected series history changes fall
+     * back to one full re-merge, which is exactly a from-scratch detection.
+     *
+     * <p>
+     * The swing indicators are never evaluated inside the series read scope: their
+     * caches compute misses under their own locks and then read bars, so holding
+     * the series lock around them would invert that order and deadlock against a
+     * queued writer. Each query instead observes the series history in a short
+     * bar-only read scope, replays without any series lock, and re-verifies the
+     * observation afterwards, retrying the replay when the history changed in
+     * between so a result is never served from bars of another history.
+     *
+     * <p>
+     * A replay holds {@link #replayLock} while it reads bars, so no query ever
+     * waits for that lock: a caller that may already hold the series lock would
+     * otherwise wait on a replay that is itself waiting for the series lock. A
+     * query finding the state busy replays on a detached state instead.
+     */
+    private static final class CausalReplayState {
+
+        /**
+         * Replays attempted before a query gives up on a series whose history keeps
+         * changing during evaluation.
+         */
+        private static final int MAX_REPLAY_ATTEMPTS = 8;
+
+        private final ReentrantLock replayLock = new ReentrantLock();
+        private final BarSeries series;
+        private RecentSwingIndicator swingHigh;
+        private RecentSwingIndicator swingLow;
+        private final ElliottDegree degree;
+
+        /** Merged alternating pivots visible up to {@link #lastScannedIndex}. */
+        private final List<Pivot> pivots = new ArrayList<>();
+
+        /** Latest high/low swing indexes consumed by the causal replay cursor. */
+        private int lastHighIndex = Integer.MIN_VALUE;
+        private int lastLowIndex = Integer.MIN_VALUE;
+        private int lastScannedIndex = Integer.MIN_VALUE;
+
+        /**
+         * Cached immutable detection result over {@link #pivots}; rebuilt only when a
+         * merge mutation changed the tracked sequence, so unchanged replay bars reuse
+         * one instance instead of re-materializing an {@link ElliottSwing} for every
+         * accumulated pivot on every ascending query.
+         */
+        private SwingDetectorResult cachedResult;
+        private List<SwingPivot> cachedPivots = List.of();
+        private boolean pivotViewDirty = true;
+
+        /** Whether {@link #pivots} changed since {@link #cachedResult} was built. */
+        private boolean resultDirty = true;
+
+        // History observation mirroring the swing indicators' own reset rules.
+        // Revision-aware BaseBar changes are O(1); sparse value snapshots cover
+        // direct mutations from bars that cannot publish a series revision.
+        private long observedRevision;
+        private int observedBeginIndex;
+        private int observedEndIndex;
+        private BarState observedLastBar;
+
+        /**
+         * OHLC snapshots per retained bar for legacy series, indexed from
+         * {@link #observedBarBaseIndex}. Revision-aware series keep only the snapshots
+         * for bars that cannot publish retained-bar mutations.
+         */
+        private final List<BarState> observedBars = new ArrayList<>();
+        private int observedBarBaseIndex;
+
+        /**
+         * Sparse snapshots for custom {@link Bar} implementations. BaseBar instances
+         * publish their retained-bar mutations to a BaseBarSeries revision, while an
+         * arbitrary Bar implementation may mutate in place without any series signal.
+         */
+        private final Map<Integer, BarState> observedUntrackableBars = new LinkedHashMap<>();
+
+        private final int lookbackLength;
+        private final int lookforwardLength;
+        private final int allowedEqualBars;
+
+        private CausalReplayState(final BarSeries series, final int lookbackLength, final int lookforwardLength,
+                final int allowedEqualBars, final ElliottDegree degree) {
+            this.series = series;
+            this.lookbackLength = lookbackLength;
+            this.lookforwardLength = lookforwardLength;
+            this.degree = degree;
+            this.allowedEqualBars = allowedEqualBars;
+            this.swingHigh = new RecentFractalSwingHighIndicator(new HighPriceIndicator(series), lookbackLength,
+                    lookforwardLength, allowedEqualBars);
+            this.swingLow = new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), lookbackLength,
+                    lookforwardLength, allowedEqualBars);
+            series.withReadLock(
+                    () -> observeSeries(true, series.getBarSeriesChangeSnapshot(-1L), series.getBeginIndex()));
+        }
+
+        /**
+         * Returns the detection result for {@code index}, extending the merged pivot
+         * state incrementally when the query advances the as-of position. A caller that
+         * finds the shared state busy replays from the series begin on a detached state
+         * instead of waiting, because waiting could invert the lock order with a caller
+         * holding the series lock; contended queries therefore cost a full replay each.
+         */
+        private List<SwingPivot> pivotsAt(final int index) {
+            if (!replayLock.tryLock()) {
+                return detached().pivotsAt(index);
+            }
+            try {
+                replayCoherentlyTo(index);
+                if (pivotViewDirty) {
+                    cachedPivots = snapshotPivots();
+                    pivotViewDirty = false;
+                }
+                return cachedPivots;
+            } finally {
+                replayLock.unlock();
+            }
+        }
+
+        private SwingDetectorResult resultAt(final int index) {
+            if (!replayLock.tryLock()) {
+                return detached().resultAt(index);
+            }
+            try {
+                replayCoherentlyTo(index);
+                if (resultDirty) {
+                    cachedResult = snapshot();
+                    resultDirty = false;
+                }
+                return cachedResult;
+            } finally {
+                replayLock.unlock();
+            }
+        }
+
+        /** Returns an unshared state whose full replay equals the shared one. */
+        private CausalReplayState detached() {
+            return new CausalReplayState(series, lookbackLength, lookforwardLength, allowedEqualBars, degree);
+        }
+
+        /**
+         * Replays up to {@code index} against one observed series history. The history
+         * is observed before the unlocked replay and verified after it; a change in
+         * between discards the replay and retries it against the newer history. Appends
+         * alone keep the replay, exactly as they do between queries.
+         *
+         * @throws IllegalStateException if the history changed during every attempt
+         */
+        private void replayCoherentlyTo(final int index) {
+            boolean historyChanged = seriesHistoryChanged();
+            for (int attempt = 1;; attempt++) {
+                if (historyChanged || index < lastScannedIndex) {
+                    reset(true);
+                }
+                IndexOutOfBoundsException evaluationFailure = null;
+                try {
+                    advanceTo(index);
+                } catch (IndexOutOfBoundsException exception) {
+                    // A concurrent head removal can evict bars the replay was
+                    // still reading; the verification below decides whether
+                    // this was a race or a genuine failure.
+                    evaluationFailure = exception;
+                }
+                historyChanged = seriesHistoryChanged();
+                if (!historyChanged && evaluationFailure == null) {
+                    return;
+                }
+                if (!historyChanged || attempt >= MAX_REPLAY_ATTEMPTS) {
+                    // Never keep a partial or stale replay behind an observation
+                    // that the next query would accept as current.
+                    reset(true);
+                    if (!historyChanged) {
+                        throw evaluationFailure;
+                    }
+                    throw new IllegalStateException("Series history changed during each of " + MAX_REPLAY_ATTEMPTS
+                            + " swing detection attempts; retry once the series is stable", evaluationFailure);
+                }
+            }
+        }
+
+        private void advanceTo(final int index) {
+            if (series.isEmpty()) {
+                return;
+            }
+            final int beginIndex = series.getBeginIndex();
+            final long scanStart = lastScannedIndex == Integer.MIN_VALUE ? beginIndex : (long) lastScannedIndex + 1L;
+            long asOfIndex = scanStart;
+            while (asOfIndex <= index) {
+                final int observationIndex = (int) asOfIndex;
+                final int highIndex = swingHigh.getLatestSwingIndex(observationIndex);
+                final int lowIndex = swingLow.getLatestSwingIndex(observationIndex);
+                final int mergedTailIndex = pivots.isEmpty() ? Integer.MIN_VALUE
+                        : pivots.get(pivots.size() - 1).index();
+                final boolean changedSidePrecedesMergedTail = !pivots.isEmpty()
+                        && ((highIndex != lastHighIndex && highIndex < mergedTailIndex)
+                                || (lowIndex != lastLowIndex && lowIndex < mergedTailIndex));
+                if (highIndex < lastHighIndex || lowIndex < lastLowIndex || changedSidePrecedesMergedTail) {
+                    // AbstractRecentSwingIndicator can retract or purge a newer
+                    // confirmed point when a later scan discovers an older one.
+                    // Rebuild the merged causal prefix and the indicators so the
+                    // replayed observations cannot reuse confirmed-swing state
+                    // damaged by those later scans.
+                    resetMergedPivots();
+                    rebuildIndicators();
+                    for (long replayIndex = beginIndex; replayIndex <= observationIndex; replayIndex++) {
+                        final int replayObservationIndex = (int) replayIndex;
+                        processObservation(beginIndex, swingHigh.getLatestSwingIndex(replayObservationIndex),
+                                swingLow.getLatestSwingIndex(replayObservationIndex));
+                    }
+                } else {
+                    processObservation(beginIndex, highIndex, lowIndex);
+                }
+                lastScannedIndex = observationIndex;
+                asOfIndex++;
+            }
+        }
+
+        /**
+         * Removes every merged pivot of {@code type} after its backing side purged to
+         * {@code -1}, then re-absorbs the surviving opposite-type pivots so consecutive
+         * survivors coalesce with the same extreme-keeping rule as ordinary merges
+         * instead of leaving stale withdrawn pivots or broken alternation behind.
+         */
+        private void withdrawPivotsOfType(final PivotType type) {
+            final List<Pivot> retained = new ArrayList<>(pivots.size());
+            for (final Pivot pivot : pivots) {
+                if (pivot.type() != type) {
+                    retained.add(pivot);
+                }
+            }
+            if (retained.size() == pivots.size()) {
+                return;
+            }
+            pivots.clear();
+            for (final Pivot pivot : retained) {
+                absorb(pivot);
+            }
+            resultDirty = true;
+            pivotViewDirty = true;
+        }
+
+        private void processObservation(final int beginIndex, final int highIndex, final int lowIndex) {
+            // Fractal indicators purge every confirmed swing on a side when
+            // a later scan detects none (purgeOnNegativeDetection), reported
+            // as -1. A previously valid cursor dropping to -1 therefore means
+            // that side's merged pivots are withdrawn and must leave the
+            // merged sequence instead of being ignored below beginIndex.
+            if (highIndex < 0 && lastHighIndex >= 0) {
+                withdrawPivotsOfType(PivotType.HIGH);
+            }
+            if (lowIndex < 0 && lastLowIndex >= 0) {
+                withdrawPivotsOfType(PivotType.LOW);
+            }
+            final boolean newHigh = highIndex != lastHighIndex;
+            final boolean newLow = lowIndex != lastLowIndex;
+
+            if (newHigh && newLow && highIndex == lowIndex) {
+                if (highIndex >= beginIndex) {
+                    final Num highPrice = swingHigh.getPriceIndicator().getValue(highIndex);
+                    final Num lowPrice = swingLow.getPriceIndicator().getValue(lowIndex);
+                    final PivotType chosen;
+                    if (pivots.isEmpty()) {
+                        if (Num.isNaNOrNull(highPrice)) {
+                            chosen = PivotType.LOW;
+                        } else if (Num.isNaNOrNull(lowPrice)) {
+                            chosen = PivotType.HIGH;
+                        } else {
+                            chosen = !highPrice.isLessThan(lowPrice) ? PivotType.HIGH : PivotType.LOW;
+                        }
+                    } else {
+                        chosen = pivots.get(pivots.size() - 1).type().opposite();
+                    }
+                    absorb(chosen == PivotType.HIGH ? new Pivot(highIndex, highPrice, PivotType.HIGH)
+                            : new Pivot(lowIndex, lowPrice, PivotType.LOW));
+                }
+            } else if (newHigh && newLow) {
+                if (highIndex < lowIndex) {
+                    if (highIndex >= beginIndex) {
+                        absorb(new Pivot(highIndex, swingHigh.getPriceIndicator().getValue(highIndex), PivotType.HIGH));
+                    }
+                    if (lowIndex >= beginIndex) {
+                        absorb(new Pivot(lowIndex, swingLow.getPriceIndicator().getValue(lowIndex), PivotType.LOW));
+                    }
+                } else {
+                    if (lowIndex >= beginIndex) {
+                        absorb(new Pivot(lowIndex, swingLow.getPriceIndicator().getValue(lowIndex), PivotType.LOW));
+                    }
+                    if (highIndex >= beginIndex) {
+                        absorb(new Pivot(highIndex, swingHigh.getPriceIndicator().getValue(highIndex), PivotType.HIGH));
+                    }
+                }
+            } else {
+                if (newHigh && highIndex >= beginIndex) {
+                    absorb(new Pivot(highIndex, swingHigh.getPriceIndicator().getValue(highIndex), PivotType.HIGH));
+                }
+                if (newLow && lowIndex >= beginIndex) {
+                    absorb(new Pivot(lowIndex, swingLow.getPriceIndicator().getValue(lowIndex), PivotType.LOW));
+                }
+            }
+
+            lastHighIndex = highIndex;
+            lastLowIndex = lowIndex;
+        }
+
+        private void resetMergedPivots() {
+            pivots.clear();
+            lastHighIndex = Integer.MIN_VALUE;
+            lastLowIndex = Integer.MIN_VALUE;
+            resultDirty = true;
+            pivotViewDirty = true;
+        }
+
+        private void absorb(final Pivot pivot) {
+            if (Num.isNaNOrNull(pivot.price())) {
+                return;
+            }
+            if (pivots.isEmpty()) {
+                pivots.add(pivot);
+                resultDirty = true;
+                pivotViewDirty = true;
+                return;
+            }
+            final Pivot last = pivots.get(pivots.size() - 1);
+            if (last.type() == pivot.type()) {
+                if (pivot.type() == PivotType.HIGH && !pivot.price().isLessThan(last.price())
+                        || pivot.type() == PivotType.LOW && !pivot.price().isGreaterThan(last.price())) {
+                    pivots.set(pivots.size() - 1, pivot);
+                    resultDirty = true;
+                    pivotViewDirty = true;
+                }
+                return;
+            }
+            if (last.index() == pivot.index()) {
+                // High and low plateaus of different lengths can confirm
+                // opposite-type sides at the same pivot index on different
+                // bars. Appending would create a zero-length swing, so
+                // reconcile with the tie rule of the simultaneous-update path.
+                final Pivot winner = reconcileSharedIndex(last, pivot);
+                if (winner != last) {
+                    pivots.set(pivots.size() - 1, winner);
+                    resultDirty = true;
+                    pivotViewDirty = true;
+                }
+                return;
+            }
+            if (pivot.index() < last.index()) {
+                // Staggered plateaus can confirm one side behind an
+                // opposite-side pivot that already merged, including during
+                // the fallback rebuild of the causal prefix. Withdraw the
+                // trailing newer pivots, absorb the late arrival, then
+                // re-merge the withdrawn ones so every replayed observation
+                // keeps the merged sequence chronologically ordered.
+                final List<Pivot> displaced = new ArrayList<>();
+                while (!pivots.isEmpty() && pivots.get(pivots.size() - 1).index() > pivot.index()) {
+                    displaced.add(pivots.remove(pivots.size() - 1));
+                }
+                absorb(pivot);
+                for (int i = displaced.size() - 1; i >= 0; i--) {
+                    absorb(displaced.get(i));
+                }
+                return;
+            }
+            pivots.add(pivot);
+            resultDirty = true;
+            pivotViewDirty = true;
+        }
+
+        /**
+         * Reconciles two opposite-type pivots reported at the same index with the tie
+         * rule the simultaneous-update branch applies: with a tracked predecessor, the
+         * side alternating with that predecessor wins; otherwise the high side wins
+         * unless its price sits below the low side.
+         */
+        private Pivot reconcileSharedIndex(final Pivot first, final Pivot second) {
+            final boolean preferHigh;
+            if (pivots.size() >= 2) {
+                preferHigh = pivots.get(pivots.size() - 2).type() == PivotType.LOW;
+            } else {
+                final Num highPrice = first.type() == PivotType.HIGH ? first.price() : second.price();
+                final Num lowPrice = first.type() == PivotType.HIGH ? second.price() : first.price();
+                preferHigh = !highPrice.isLessThan(lowPrice);
+            }
+            if (preferHigh) {
+                return first.type() == PivotType.HIGH ? first : second;
+            }
+            return first.type() == PivotType.LOW ? first : second;
+        }
+
+        private List<SwingPivot> snapshotPivots() {
+            if (pivots.isEmpty()) {
+                return List.of();
+            }
+            final List<SwingPivot> snapshot = new ArrayList<>(pivots.size());
+            for (final Pivot pivot : pivots) {
+                snapshot.add(new SwingPivot(pivot.index(), pivot.price(),
+                        pivot.type() == PivotType.HIGH ? SwingPivotType.HIGH : SwingPivotType.LOW));
+            }
+            return List.copyOf(snapshot);
+        }
+
+        /** Builds the immutable swing chain over the merged pivots. */
+        private SwingDetectorResult snapshot() {
+            if (pivots.size() < 2) {
+                return SwingDetectorResult.fromPivots(snapshotPivots(), degree);
+            }
+            final List<ElliottSwing> swings = new ArrayList<>(pivots.size() - 1);
+            for (int i = 1; i < pivots.size(); i++) {
+                final Pivot previous = pivots.get(i - 1);
+                final Pivot current = pivots.get(i);
+                swings.add(
+                        new ElliottSwing(previous.index(), current.index(), previous.price(), current.price(), degree));
+            }
+            return SwingDetectorResult.fromSwings(swings);
+        }
+
+        private void reset(final boolean rebuildIndicators) {
+            pivots.clear();
+            lastHighIndex = Integer.MIN_VALUE;
+            lastLowIndex = Integer.MIN_VALUE;
+            lastScannedIndex = Integer.MIN_VALUE;
+            cachedResult = null;
+            cachedPivots = List.of();
+            resultDirty = true;
+            pivotViewDirty = true;
+            if (rebuildIndicators) {
+                rebuildIndicators();
+            }
+        }
+
+        /** Replaces both swing indicators so their confirmed-swing state is rebuilt. */
+        private void rebuildIndicators() {
+            swingHigh = new RecentFractalSwingHighIndicator(new HighPriceIndicator(series), lookbackLength,
+                    lookforwardLength, allowedEqualBars);
+            swingLow = new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), lookbackLength,
+                    lookforwardLength, allowedEqualBars);
+        }
+
+        /**
+         * Detects series history changes with the same discipline the swing indicators
+         * apply internally, so stale merge state never survives a mutation they would
+         * themselves discard. Revision-aware series changes remain O(1). For legacy
+         * series whose revisions cannot observe direct {@link Bar} mutations, the
+         * retained OHLC snapshots are validated when revisions are unavailable.
+         * Untrackable bars are rescanned on every query. Tracked bars keep an
+         * incremental replay, validating the closed part of the window by value.
+         *
+         * <p>
+         * The check reads bars only, so it runs inside the series' short read scope.
+         * Legacy series with no revisions always revalidate their retained snapshots,
+         * including the replay that just read those bars, because nothing else can
+         * publish an in-place mutation of a retained bar.
+         */
+        private boolean seriesHistoryChanged() {
+            return series.withReadLock(this::seriesHistoryChangedUnderReadLock);
+        }
+
+        private boolean seriesHistoryChangedUnderReadLock() {
+            // Read the revision and series bounds through one coherent change
+            // snapshot, then verify the begin index was still read under that
+            // same revision. Reading them as separate calls would let an
+            // interior replaceBar between reads look unchanged while
+            // observeSeries publishes the newer revision without a rebuild,
+            // silently serving pivots computed from the replaced bar.
+            long sinceRevision = observedRevision;
+            while (true) {
+                BarSeriesChangeSnapshot snapshot;
+                int currentBeginIndex;
+                while (true) {
+                    snapshot = series.getBarSeriesChangeSnapshot(sinceRevision);
+                    currentBeginIndex = series.getBeginIndex();
+                    final BarSeriesChangeSnapshot verify = series.getBarSeriesChangeSnapshot(snapshot.revision());
+                    if (verify.revision() == snapshot.revision() && verify.endIndex() == snapshot.endIndex()
+                            && verify.removedThroughIndex() == snapshot.removedThroughIndex()
+                            && verify.maximumBarCount() == snapshot.maximumBarCount()) {
+                        break;
+                    }
+                    sinceRevision = verify.revision();
+                }
+                final long currentRevision = snapshot.revision();
+                final int currentEndIndex = snapshot.endIndex();
+                final boolean revisionUnavailable = currentRevision < 0L || observedRevision < 0L;
+                boolean changed = currentBeginIndex != observedBeginIndex
+                        || (!revisionUnavailable && currentRevision != observedRevision)
+                        || currentEndIndex < observedEndIndex;
+                // Without a revision nothing publishes an in-place mutation of a retained
+                // bar, so every query revalidates the snapshots it has already read.
+                final boolean validateLegacySnapshots = revisionUnavailable;
+                final boolean validateUntrackableSnapshots = !observedUntrackableBars.isEmpty();
+                if (!changed && (validateLegacySnapshots || validateUntrackableSnapshots)) {
+                    if (validateLegacySnapshots) {
+                        changed = retainedBarsChanged(currentBeginIndex, Math.min(observedEndIndex, currentEndIndex));
+                    }
+                    if (!changed && validateUntrackableSnapshots) {
+                        changed = untrackableBarsChanged(currentBeginIndex, currentEndIndex);
+                    }
+                }
+                if (!changed && !series.isEmpty() && currentEndIndex == observedEndIndex) {
+                    // The last bar is the live-forming bar: compare its full
+                    // high/low/close snapshot exactly.
+                    try {
+                        changed = !BarState.of(series.getLastBar()).sameAs(observedLastBar);
+                    } catch (IndexOutOfBoundsException exception) {
+                        final BarSeriesChangeSnapshot after = series.getBarSeriesChangeSnapshot(snapshot.revision());
+                        if (after.revision() != snapshot.revision() || after.endIndex() != snapshot.endIndex()
+                                || after.removedThroughIndex() != snapshot.removedThroughIndex()
+                                || after.maximumBarCount() != snapshot.maximumBarCount()) {
+                            sinceRevision = after.revision();
+                            continue;
+                        }
+                        throw exception;
+                    }
+                }
+                observeSeries(changed, snapshot, currentBeginIndex);
+                return changed;
+            }
+        }
+
+        /**
+         * Compares sparse snapshots of custom bars against the current retained window.
+         * These bars are intentionally checked even when the series revision is
+         * nonnegative because arbitrary Bar implementations cannot publish their
+         * in-place mutations to BaseBarSeries.
+         */
+        private boolean untrackableBarsChanged(final int fromIndex, final int toIndex) {
+            for (final Map.Entry<Integer, BarState> entry : observedUntrackableBars.entrySet()) {
+                final int index = entry.getKey();
+                if (index < fromIndex || index > toIndex) {
+                    continue;
+                }
+                final Bar bar = series.getBar(index);
+                if (!isUntrackableBar(bar) || !entry.getValue().sameAs(BarState.of(bar))) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private boolean isUntrackableBar(final Bar bar) {
+            return !(series instanceof BaseBarSeries)
+                    || (bar.getClass() != BaseBar.class && bar.getClass() != BaseRealtimeBar.class);
+        }
+
+        /**
+         * Compares stored OHLC snapshots of previously observed retained bars against
+         * the live bars. Bounds are clamped to the overlap of the captured window and
+         * the current retention window so head removals or truncations can never index
+         * outside the snapshot.
+         */
+        private boolean retainedBarsChanged(final int fromIndex, final int toIndex) {
+            if (observedBars.isEmpty()) {
+                return !series.isEmpty();
+            }
+            final long snapshotLast = (long) observedBarBaseIndex + observedBars.size() - 1L;
+            final int begin = Math.max(fromIndex, observedBarBaseIndex);
+            final int end = (int) Math.min((long) toIndex, snapshotLast);
+            for (long index = begin; index <= (long) end; index++) {
+                final int barIndex = (int) index;
+                if (!observedBars.get(barIndex - observedBarBaseIndex).sameAs(BarState.of(series.getBar(barIndex)))) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /**
+         * Recaptures or extends the revision, retention window, and value snapshots
+         * from the already verified change snapshot, so the published observation can
+         * never be newer than the bounds it is stored with.
+         */
+        private void observeSeries(final boolean refreshBarSnapshot, final BarSeriesChangeSnapshot snapshot,
+                final int currentBeginIndex) {
+            final int currentEndIndex = snapshot.endIndex();
+            final long currentRevision = snapshot.revision();
+            final int previousObservedEndIndex = observedEndIndex;
+            final boolean enteringLegacySnapshots = currentRevision < 0L && observedRevision >= 0L;
+            final boolean snapshotBarValues = currentRevision < 0L || observedRevision < 0L;
+            observedRevision = currentRevision;
+            observedBeginIndex = currentBeginIndex;
+            observedEndIndex = currentEndIndex;
+            observedLastBar = series.isEmpty() ? null : BarState.of(series.getLastBar());
+            if (series.isEmpty()) {
+                observedBarBaseIndex = currentBeginIndex;
+                observedBars.clear();
+                observedUntrackableBars.clear();
+                return;
+            }
+            if (!snapshotBarValues) {
+                observedBars.clear();
+                if (refreshBarSnapshot) {
+                    observedUntrackableBars.clear();
+                    captureUntrackableBars(currentBeginIndex, currentEndIndex);
+                } else {
+                    observedUntrackableBars.entrySet()
+                            .removeIf(entry -> entry.getKey() < currentBeginIndex || entry.getKey() > currentEndIndex);
+                    captureUntrackableBars(Math.max((long) previousObservedEndIndex + 1L, currentBeginIndex),
+                            currentEndIndex);
+                }
+            } else if (refreshBarSnapshot || enteringLegacySnapshots || series.isEmpty()) {
+                observedBarBaseIndex = currentBeginIndex;
+                observedBars.clear();
+                observedUntrackableBars.clear();
+                for (long index = currentBeginIndex; index <= (long) currentEndIndex; index++) {
+                    observedBars.add(BarState.of(series.getBar((int) index)));
+                }
+            } else {
+                for (long index = Math.max((long) previousObservedEndIndex + 1L,
+                        currentBeginIndex); index <= (long) currentEndIndex; index++) {
+                    observedBars.add(BarState.of(series.getBar((int) index)));
+                }
+            }
+        }
+
+        private void captureUntrackableBars(final long fromIndex, final int toIndex) {
+            for (long index = fromIndex; index <= (long) toIndex; index++) {
+                final Bar bar = series.getBar((int) index);
+                if (isUntrackableBar(bar)) {
+                    observedUntrackableBars.put((int) index, BarState.of(bar));
+                }
+            }
+        }
+    }
+
+    private record SeriesKey(BarSeries series) {
+
+        @Override
+        public boolean equals(final Object other) {
+            return this == other || other instanceof SeriesKey key && series == key.series;
+        }
+
+        @Override
+        public int hashCode() {
+            return System.identityHashCode(series);
+        }
+    }
+
+    private enum PivotType {
+        HIGH, LOW;
+
+        private PivotType opposite() {
+            return this == HIGH ? LOW : HIGH;
+        }
+    }
+
+    private record Pivot(int index, Num price, PivotType type) {
+    }
+
+    /**
+     * Value snapshot of a retained bar's high/low/close prices. Custom bar
+     * implementations can mutate without publishing a series revision, so replay
+     * fallback validation compares their values exactly.
+     */
+    private record BarState(Num high, Num low, Num close) {
+
+        private static BarState of(final Bar bar) {
+            return new BarState(bar.getHighPrice(), bar.getLowPrice(), bar.getClosePrice());
+        }
+
+        private boolean sameAs(final BarState other) {
+            return other != null && sameValue(high, other.high) && sameValue(low, other.low)
+                    && sameValue(close, other.close);
+        }
+
+        private static boolean sameValue(final Num left, final Num right) {
+            if (left == right) {
+                return true;
+            }
+            if (left == null || right == null) {
+                return false;
+            }
+            if (Num.isNaNOrNull(left) && Num.isNaNOrNull(right)) {
+                return true;
+            }
+            return left.equals(right);
+        }
+    }
+}

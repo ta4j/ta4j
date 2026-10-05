@@ -18,7 +18,10 @@ import org.ta4j.core.num.Num;
  */
 public class StandardDeviationIndicator extends CachedIndicator<Num> {
 
-    private final VarianceIndicator variance;
+    private final Indicator<Num> indicator;
+    private final int barCount;
+    private final SampleType sampleType;
+    private final transient VarianceIndicator variance;
 
     /**
      * Constructor using {@link SampleType#POPULATION} for backward compatibility.
@@ -40,8 +43,10 @@ public class StandardDeviationIndicator extends CachedIndicator<Num> {
      */
     public StandardDeviationIndicator(Indicator<Num> indicator, int barCount, SampleType sampleType) {
         super(indicator);
-        this.variance = Objects.requireNonNull(sampleType, "sampleType must not be null").isSample()
-                ? VarianceIndicator.ofSample(indicator, barCount)
+        this.indicator = indicator;
+        this.barCount = barCount;
+        this.sampleType = Objects.requireNonNull(sampleType, "sampleType must not be null");
+        this.variance = this.sampleType.isSample() ? VarianceIndicator.ofSample(indicator, barCount)
                 : VarianceIndicator.ofPopulation(indicator, barCount);
     }
 

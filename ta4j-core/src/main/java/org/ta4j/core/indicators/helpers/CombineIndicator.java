@@ -40,7 +40,7 @@ public class CombineIndicator extends CachedIndicator<Num> {
     public CombineIndicator(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight,
             BinaryOperator<Num> combination) {
         // TODO check both indicators use the same series/num function
-        super(indicatorLeft);
+        super(indicatorLeft, indicatorRight);
         this.indicatorLeft = indicatorLeft;
         this.indicatorRight = indicatorRight;
         this.combineFunction = combination;

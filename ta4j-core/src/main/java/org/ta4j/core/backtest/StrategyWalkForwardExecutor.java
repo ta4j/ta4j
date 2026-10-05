@@ -10,8 +10,12 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
@@ -22,16 +26,27 @@ import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.reports.TradingStatementGenerator;
 import org.ta4j.core.walkforward.AnchoredExpandingWalkForwardSplitter;
 import org.ta4j.core.walkforward.WalkForwardConfig;
+import org.ta4j.core.walkforward.WalkForwardRunResult;
 import org.ta4j.core.walkforward.WalkForwardRuntimeReport;
 import org.ta4j.core.walkforward.WalkForwardSplit;
 import org.ta4j.core.walkforward.WalkForwardSplitter;
 
 /**
  * Executes one strategy in walk-forward mode with a backtest-symmetric API.
+ * Splits are computed on the series window captured when execution starts, and
+ * folds run without holding any series lock, so a live
+ * {@link ConcurrentBarSeries} keeps accepting writes. Execution fails with an
+ * {@link IllegalStateException} if bars inside that window change before it
+ * completes; appended bars are ignored. Every fold ends flat: a position still
+ * open at the fold's last bar is exited at that bar's close and pays the
+ * transaction cost (see {@link ExitOnRunEndModel}), so folds never hand an open
+ * position to the next fold's data and their records can be chained.
  *
  * @since 0.22.4
  */
 public class StrategyWalkForwardExecutor {
+
+    private static final Logger log = LoggerFactory.getLogger(StrategyWalkForwardExecutor.class);
 
     private final BarSeriesManager seriesManager;
     private final TradingStatementGenerator tradingStatementGenerator;
@@ -92,7 +107,7 @@ public class StrategyWalkForwardExecutor {
 
     StrategyWalkForwardExecutor(BarSeriesManager seriesManager, TradingStatementGenerator tradingStatementGenerator,
             WalkForwardSplitter splitter) {
-        this.seriesManager = Objects.requireNonNull(seriesManager, "seriesManager");
+        this.seriesManager = Objects.requireNonNull(seriesManager, "seriesManager").exitingOnRunEnd();
         this.tradingStatementGenerator = Objects.requireNonNull(tradingStatementGenerator, "tradingStatementGenerator");
         this.splitter = Objects.requireNonNull(splitter, "splitter");
     }
@@ -143,13 +158,46 @@ public class StrategyWalkForwardExecutor {
     }
 
     /**
+     * Executes walk-forward testing with explicit entry trade type and dynamic
+     * entry position sizer.
+     *
+     * @param strategy      strategy to execute
+     * @param tradeType     trade type used to open positions
+     * @param positionSizer dynamic entry position sizer
+     * @param config        walk-forward configuration
+     * @return execution result
+     * @since 0.22.9
+     */
+    public StrategyWalkForwardExecutionResult execute(Strategy strategy, Trade.TradeType tradeType,
+            PositionSizer positionSizer, WalkForwardConfig config) {
+        return execute(strategy, tradeType, positionSizer, config, null);
+    }
+
+    /**
+     * Executes walk-forward testing with dynamic entry position sizer using
+     * strategy starting trade type.
+     *
+     * @param strategy      strategy to execute
+     * @param positionSizer dynamic entry position sizer
+     * @param config        walk-forward configuration
+     * @return execution result
+     * @since 0.22.9
+     */
+    public StrategyWalkForwardExecutionResult execute(Strategy strategy, PositionSizer positionSizer,
+            WalkForwardConfig config) {
+        Objects.requireNonNull(strategy, "strategy");
+        return execute(strategy, strategy.getStartingType(), positionSizer, config, null);
+    }
+
+    /**
      * Executes walk-forward testing with optional per-fold progress callback.
      *
      * @param strategy         strategy to execute
      * @param tradeType        trade type used to open positions
      * @param amount           amount used for entries/exits
      * @param config           walk-forward configuration
-     * @param progressCallback optional callback receiving completed fold count
+     * @param progressCallback optional callback receiving the processed fold count
+     *                         (successful and failed folds)
      * @return execution result
      * @since 0.22.4
      */
@@ -157,47 +205,117 @@ public class StrategyWalkForwardExecutor {
             WalkForwardConfig config, Consumer<Integer> progressCallback) {
         Objects.requireNonNull(strategy, "strategy");
         Objects.requireNonNull(tradeType, "tradeType");
+        return execute(strategy, tradeType, amount, config, progressCallback,
+                BacktestExecutionResult.snapshot(seriesManager.getBarSeries()));
+    }
+
+    /** Executes over a window the caller already captured and shares. */
+    StrategyWalkForwardExecutionResult execute(Strategy strategy, Trade.TradeType tradeType, Num amount,
+            WalkForwardConfig config, Consumer<Integer> progressCallback, BarSeries baseline) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(tradeType, "tradeType");
         Objects.requireNonNull(amount, "amount");
         Objects.requireNonNull(config, "config");
+        return execute(strategy, config, progressCallback,
+                split -> seriesManager.run(strategy, tradeType, amount, split.testStart(), split.testEnd()), baseline);
+    }
 
-        BarSeries series = seriesManager.getBarSeries();
-        List<WalkForwardSplit> splits = splitter.split(series, config);
+    /**
+     * Executes walk-forward testing with optional per-fold progress callback and
+     * dynamic entry position sizer.
+     *
+     * @param strategy         strategy to execute
+     * @param tradeType        trade type used to open positions
+     * @param positionSizer    dynamic entry position sizer
+     * @param config           walk-forward configuration
+     * @param progressCallback optional callback receiving the processed fold count
+     *                         (successful and failed folds)
+     * @return execution result
+     * @since 0.22.9
+     */
+    public StrategyWalkForwardExecutionResult execute(Strategy strategy, Trade.TradeType tradeType,
+            PositionSizer positionSizer, WalkForwardConfig config, Consumer<Integer> progressCallback) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(tradeType, "tradeType");
+        return execute(strategy, tradeType, positionSizer, config, progressCallback,
+                BacktestExecutionResult.snapshot(seriesManager.getBarSeries()));
+    }
+
+    /** Executes over a window the caller already captured and shares. */
+    StrategyWalkForwardExecutionResult execute(Strategy strategy, Trade.TradeType tradeType,
+            PositionSizer positionSizer, WalkForwardConfig config, Consumer<Integer> progressCallback,
+            BarSeries baseline) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(tradeType, "tradeType");
+        Objects.requireNonNull(positionSizer, "positionSizer");
+        Objects.requireNonNull(config, "config");
+        return execute(strategy, config, progressCallback,
+                split -> seriesManager.run(strategy, tradeType, positionSizer, split.testStart(), split.testEnd()),
+                baseline);
+    }
+
+    /**
+     * Splits and reports on the baseline window while folds run against the live
+     * series without holding its lock, then verifies the window did not change.
+     */
+    private StrategyWalkForwardExecutionResult execute(Strategy strategy, WalkForwardConfig config,
+            Consumer<Integer> progressCallback, Function<WalkForwardSplit, TradingRecord> foldRecordRunner,
+            BarSeries baseline) {
+        List<WalkForwardSplit> splits = splitter.split(baseline, config);
         if (splits.isEmpty()) {
-            return new StrategyWalkForwardExecutionResult(series, strategy, config, List.of(),
+            BacktestExecutionResult.verifyUnchanged(seriesManager.getBarSeries(), baseline);
+            return new StrategyWalkForwardExecutionResult(baseline, strategy, config, List.of(),
                     WalkForwardRuntimeReport.empty());
         }
 
         Consumer<Integer> effectiveCallback = progressCallback == null ? ProgressCompletion.noOp() : progressCallback;
         List<StrategyWalkForwardExecutionResult.FoldResult> foldResults = new ArrayList<>(splits.size());
         List<WalkForwardRuntimeReport.FoldRuntime> foldRuntimes = new ArrayList<>(splits.size());
+        List<WalkForwardRunResult.FoldFailure> foldFailures = new ArrayList<>();
 
         long overallStart = System.nanoTime();
         int completed = 0;
-        for (WalkForwardSplit split : splits) {
+        for (int splitIndex = 0; splitIndex < splits.size(); splitIndex++) {
+            WalkForwardSplit split = splits.get(splitIndex);
             long foldStart = System.nanoTime();
-            TradingRecord foldRecord = seriesManager.run(strategy, tradeType, amount, split.testStart(),
-                    split.testEnd());
-            TradingStatement statement = tradingStatementGenerator.generate(strategy, foldRecord, series);
-            Duration foldRuntime = Duration.ofNanos(System.nanoTime() - foldStart);
+            try {
+                TradingRecord foldRecord = foldRecordRunner.apply(split);
+                TradingStatement statement = tradingStatementGenerator.generate(strategy, foldRecord, baseline);
+                Duration foldRuntime = Duration.ofNanos(System.nanoTime() - foldStart);
 
-            foldResults
-                    .add(new StrategyWalkForwardExecutionResult.FoldResult(split, foldRecord, statement, foldRuntime));
-            foldRuntimes
-                    .add(new WalkForwardRuntimeReport.FoldRuntime(split.foldId(), foldRuntime, split.testBarCount()));
+                foldResults.add(
+                        new StrategyWalkForwardExecutionResult.FoldResult(split, foldRecord, statement, foldRuntime));
+                foldRuntimes.add(
+                        new WalkForwardRuntimeReport.FoldRuntime(split.foldId(), foldRuntime, split.testBarCount()));
 
-            completed++;
-            effectiveCallback.accept(completed);
+            } catch (RuntimeException e) {
+                String message = "Walk-forward fold " + split.foldId() + " failed";
+                log.warn(message + ": {}", e.toString());
+                foldFailures.add(new WalkForwardRunResult.FoldFailure(split.foldId(), splitIndex, message, e));
+            }
+            // Progress callback failures belong to the caller, not the fold: a
+            // throwing callback must not classify an otherwise successful fold as
+            // failed, so the callback runs outside the fold-isolation block.
+            // Failed folds still report progress so the final count always
+            // reaches the split total.
+            effectiveCallback.accept(++completed);
         }
 
         Duration overallRuntime = Duration.ofNanos(System.nanoTime() - overallStart);
         WalkForwardRuntimeReport runtimeReport = buildRuntimeReport(foldRuntimes, overallRuntime);
-        return new StrategyWalkForwardExecutionResult(series, strategy, config, foldResults, runtimeReport);
+        BacktestExecutionResult.verifyUnchanged(seriesManager.getBarSeries(), baseline);
+        return new StrategyWalkForwardExecutionResult(baseline, strategy, config, foldResults, runtimeReport,
+                foldFailures);
     }
 
     private WalkForwardRuntimeReport buildRuntimeReport(List<WalkForwardRuntimeReport.FoldRuntime> foldRuntimes,
             Duration overallRuntime) {
         if (foldRuntimes.isEmpty()) {
-            return WalkForwardRuntimeReport.empty();
+            // No fold completed (for example when every fold failed), but the run
+            // still consumed wall-clock time: retain the measured overall runtime
+            // while leaving the fold summary fields at zero.
+            return new WalkForwardRuntimeReport(overallRuntime, Duration.ZERO, Duration.ZERO, Duration.ZERO,
+                    Duration.ZERO, List.of());
         }
 
         List<Duration> durations = new ArrayList<>(foldRuntimes.size());

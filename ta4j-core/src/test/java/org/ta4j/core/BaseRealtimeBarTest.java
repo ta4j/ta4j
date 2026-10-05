@@ -5,10 +5,14 @@ package org.ta4j.core;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.lang.reflect.Proxy;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collections;
 
 import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -52,6 +56,65 @@ public class BaseRealtimeBarTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void partialBreakdownFailureInvalidatesEveryRetainingSeries() {
+        assertPartialBreakdownFailureInvalidatesEveryRetainingSeries(true);
+        assertPartialBreakdownFailureInvalidatesEveryRetainingSeries(false);
+    }
+
+    @Test
+    public void applyTradeFailurePublishesRetainedMutationOnce() {
+        final IllegalStateException failure = new IllegalStateException("price update failed");
+        final Instant start = Instant.parse("2024-01-01T00:00:00Z");
+        final Duration period = Duration.ofMinutes(1);
+        final BaseRealtimeBar bar = new BaseRealtimeBar(period, start, start.plus(period), numOf(10), numOf(10),
+                numOf(10), numOf(10), numFactory.zero(), numFactory.zero(), 0, null, null, null, null, 0, 0, null, null,
+                null, null, 0, 0, false, false, numFactory) {
+            @Override
+            public void addPrice(final Num price) {
+                super.addPrice(price);
+                throw failure;
+            }
+        };
+        final BaseBarSeries first = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(Collections.singletonList(bar))
+                .build();
+        final BaseBarSeries second = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(Collections.singletonList(bar))
+                .build();
+        final long firstRevision = first.getBarHistoryRevision();
+        final long secondRevision = second.getBarHistoryRevision();
+
+        final IllegalStateException thrown = assertThrows(IllegalStateException.class,
+                () -> bar.addTrade(numOf(2), numOf(100), null, null));
+
+        assertSame(failure, thrown);
+        assertEquals(firstRevision + 1, first.getBarHistoryRevision());
+        assertEquals(secondRevision + 1, second.getBarHistoryRevision());
+        assertEquals(numOf(100), bar.getClosePrice());
+        assertEquals(numFactory.zero(), bar.getVolume());
+        assertEquals(0, bar.getTrades());
+    }
+
+    @Test
+    public void inheritedAddTradeDispatchesToOverriddenAddPriceOnce() {
+        final Instant start = Instant.parse("2024-01-01T00:00:00Z");
+        final Duration period = Duration.ofMinutes(1);
+        final TrackingPriceBar bar = new TrackingPriceBar(period, start, start.plus(period), numFactory.zero());
+        final BaseBarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBars(Collections.singletonList(bar))
+                .build();
+        final long initialRevision = series.getBarHistoryRevision();
+
+        series.addTrade(numOf(2), numOf(100));
+
+        assertEquals(1, bar.getPriceUpdates());
+        assertEquals(numOf(100), bar.getLastPrice());
+        assertEquals(numOf(100), bar.getClosePrice());
+        assertEquals(numOf(200), bar.getAmount());
+        assertEquals(initialRevision + 1, series.getBarHistoryRevision());
+    }
+
+    @Test
     public void addTradeSupportsOptionalSideAndLiquidity() {
         final var start = Instant.parse("2024-01-01T00:00:00Z");
         final var period = Duration.ofMinutes(1);
@@ -89,6 +152,41 @@ public class BaseRealtimeBarTest extends AbstractIndicatorTest<BarSeries, Num> {
         final var zero = numFactory.zero();
         new BaseRealtimeBar(period, start, start.plus(period), null, null, null, null, zero, zero, 0, null, null, null,
                 null, 0, 0, null, null, null, null, 0, 0, false, false, null);
+    }
+
+    @Test
+    public void equalsAndHashCodeIncludeRealtimeFields() {
+        Instant start = Instant.parse("2024-01-01T00:00:00Z");
+        Duration period = Duration.ofMinutes(1);
+        BaseRealtimeBar bar = createRealtimeBar(period, start, numOf(6), numOf(4), true);
+        BaseRealtimeBar sameBar = createRealtimeBar(period, start, numOf(6), numOf(4), true);
+        BaseRealtimeBar differentBuyVolume = createRealtimeBar(period, start, numOf(7), numOf(4), true);
+        BaseRealtimeBar differentSideFlag = createRealtimeBar(period, start, numOf(6), numOf(4), false);
+
+        assertEquals(bar, sameBar);
+        assertEquals(bar.hashCode(), sameBar.hashCode());
+        assertFalse(bar.equals(differentBuyVolume));
+        assertFalse(bar.equals(differentSideFlag));
+    }
+
+    @Test
+    public void equalsRejectsPlainBaseBarWithSameOhlcvFields() {
+        Instant start = Instant.parse("2024-01-01T00:00:00Z");
+        Duration period = Duration.ofMinutes(1);
+        Num openPrice = numOf(100);
+        Num highPrice = numOf(110);
+        Num lowPrice = numOf(90);
+        Num closePrice = numOf(105);
+        Num volume = numOf(1000);
+        Num amount = numOf(105000);
+        BaseBar baseBar = new BaseBar(period, start, start.plus(period), openPrice, highPrice, lowPrice, closePrice,
+                volume, amount, 100);
+        BaseRealtimeBar realtimeBar = new BaseRealtimeBar(period, start, start.plus(period), openPrice, highPrice,
+                lowPrice, closePrice, volume, amount, 100, numOf(600), numOf(400), numOf(63000), numOf(42000), 60, 40,
+                numOf(700), numOf(300), numOf(73500), numOf(31500), 70, 30, true, true, numFactory);
+
+        assertFalse(baseBar.equals(realtimeBar));
+        assertFalse(realtimeBar.equals(baseBar));
     }
 
     @Test
@@ -135,6 +233,13 @@ public class BaseRealtimeBarTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(takerAmount, bar.getTakerAmount());
         assertEquals(70, bar.getMakerTrades());
         assertEquals(30, bar.getTakerTrades());
+    }
+
+    private BaseRealtimeBar createRealtimeBar(final Duration period, final Instant start, final Num buyVolume,
+            final Num sellVolume, final boolean hasSideData) {
+        return new BaseRealtimeBar(period, start, start.plus(period), numOf(100), numOf(110), numOf(90), numOf(105),
+                numOf(1000), numOf(105000), 100, buyVolume, sellVolume, numOf(63000), numOf(42000), 60, 40, numOf(700),
+                numOf(300), numOf(73500), numOf(31500), 70, 30, hasSideData, true, numFactory);
     }
 
     @Test
@@ -667,5 +772,72 @@ public class BaseRealtimeBarTest extends AbstractIndicatorTest<BarSeries, Num> {
         bar.addTrade(numOf(3), numOf(110), RealtimeBar.Side.BUY, RealtimeBar.Liquidity.MAKER);
         assertEquals(numOf(530), bar.getBuyAmount()); // 200 + 330
         assertEquals(numOf(530), bar.getMakerAmount()); // 200 + 330
+    }
+
+    private void assertPartialBreakdownFailureInvalidatesEveryRetainingSeries(final boolean side) {
+        final IllegalStateException failure = new IllegalStateException(
+                side ? "side breakdown failed after OHLCV update" : "liquidity breakdown failed after OHLCV update");
+        final Num failingVolume = throwingPlusNum(numOf(1), failure);
+        final Instant start = Instant.parse("2024-01-01T00:00:00Z");
+        final Duration period = Duration.ofMinutes(1);
+        final BaseRealtimeBar bar = new BaseRealtimeBar(period, start, start.plus(period), numOf(10), numOf(10),
+                numOf(10), numOf(10), numFactory.zero(), numFactory.zero(), 0, side ? failingVolume : null, null, null,
+                null, 0, 0, side ? null : failingVolume, null, null, null, 0, 0, side, !side, numFactory);
+        final BaseBarSeries first = new BaseBarSeriesBuilder().withName("first-breakdown-failure")
+                .withNumFactory(numFactory)
+                .withBars(Collections.singletonList(bar))
+                .build();
+        final BaseBarSeries second = new BaseBarSeriesBuilder().withName("second-breakdown-failure")
+                .withNumFactory(numFactory)
+                .withBars(Collections.singletonList(bar))
+                .build();
+        final long firstRevision = first.getBarHistoryRevision();
+        final long secondRevision = second.getBarHistoryRevision();
+
+        final IllegalStateException thrown = assertThrows(IllegalStateException.class,
+                () -> bar.addTrade(numOf(2), numOf(100), RealtimeBar.Side.BUY, RealtimeBar.Liquidity.MAKER));
+
+        assertSame(failure, thrown);
+        assertEquals(firstRevision + 1, first.getBarHistoryRevision());
+        assertEquals(secondRevision + 1, second.getBarHistoryRevision());
+        assertEquals(numOf(2), bar.getVolume());
+        assertEquals(numOf(200), bar.getAmount());
+        assertEquals(numOf(100), bar.getClosePrice());
+        assertEquals(1, bar.getTrades());
+    }
+
+    private static Num throwingPlusNum(final Num delegate, final RuntimeException failure) {
+        return (Num) Proxy.newProxyInstance(Num.class.getClassLoader(), new Class<?>[] { Num.class },
+                (proxy, method, arguments) -> {
+                    if ("plus".equals(method.getName())) {
+                        throw failure;
+                    }
+                    return method.invoke(delegate, arguments);
+                });
+    }
+
+    private static final class TrackingPriceBar extends BaseBar {
+
+        private Num lastPrice;
+        private int priceUpdates;
+
+        private TrackingPriceBar(final Duration period, final Instant start, final Instant end, final Num zero) {
+            super(period, start, end, null, null, null, null, zero, zero, 0);
+        }
+
+        @Override
+        public void addPrice(final Num price) {
+            lastPrice = price;
+            priceUpdates++;
+            super.addPrice(price);
+        }
+
+        private Num getLastPrice() {
+            return lastPrice;
+        }
+
+        private int getPriceUpdates() {
+            return priceUpdates;
+        }
     }
 }

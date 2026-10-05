@@ -25,10 +25,22 @@ import org.ta4j.core.indicators.helpers.DateTimeIndicator;
  * that time zone.
  *
  * <p>
+ * Each {@link TimeRange} must have a {@code from} that is not after its
+ * {@code to}; inverted windows (e.g. 22:00 to 02:00) are rejected at
+ * construction time. Overnight sessions spanning midnight are not supported and
+ * must be modeled as two ranges.
+ *
+ * <p>
  * This rule does not use the {@code tradingRecord}.
  */
 public class TimeRangeRule extends AbstractRule {
 
+    /**
+     * A time-of-day window.
+     *
+     * @param from the inclusive window start
+     * @param to   the inclusive window end
+     */
     public record TimeRange(LocalTime from, LocalTime to) {
     }
 
@@ -44,7 +56,7 @@ public class TimeRangeRule extends AbstractRule {
      * @param beginTimeIndicator the beginTime indicator
      */
     public TimeRangeRule(List<TimeRange> timeRanges, DateTimeIndicator beginTimeIndicator) {
-        this(beginTimeIndicator, extractSeconds(timeRanges, true), extractSeconds(timeRanges, false));
+        this(validatedConfig(beginTimeIndicator, extractSeconds(timeRanges, true), extractSeconds(timeRanges, false)));
     }
 
     /**
@@ -58,7 +70,19 @@ public class TimeRangeRule extends AbstractRule {
      *                           seconds since midnight (0-86399)
      */
     public TimeRangeRule(DateTimeIndicator beginTimeIndicator, int[] fromSecondOfDay, int[] toSecondOfDay) {
-        this.timeIndicator = Objects.requireNonNull(beginTimeIndicator, "timeIndicator");
+        this(validatedConfig(beginTimeIndicator, fromSecondOfDay, toSecondOfDay));
+    }
+
+    private TimeRangeRule(Config config) {
+        this.timeIndicator = config.timeIndicator();
+        this.fromSecondOfDay = config.fromSecondOfDay();
+        this.toSecondOfDay = config.toSecondOfDay();
+        this.timeRanges = config.timeRanges();
+    }
+
+    private static Config validatedConfig(DateTimeIndicator beginTimeIndicator, int[] fromSecondOfDay,
+            int[] toSecondOfDay) {
+        DateTimeIndicator validatedTimeIndicator = Objects.requireNonNull(beginTimeIndicator, "timeIndicator");
         Objects.requireNonNull(fromSecondOfDay, "fromSecondOfDay");
         Objects.requireNonNull(toSecondOfDay, "toSecondOfDay");
         if (fromSecondOfDay.length != toSecondOfDay.length) {
@@ -67,15 +91,20 @@ public class TimeRangeRule extends AbstractRule {
         if (fromSecondOfDay.length == 0) {
             throw new IllegalArgumentException("At least one time range is required");
         }
-        this.fromSecondOfDay = Arrays.copyOf(fromSecondOfDay, fromSecondOfDay.length);
-        this.toSecondOfDay = Arrays.copyOf(toSecondOfDay, toSecondOfDay.length);
-        List<TimeRange> normalizedRanges = new ArrayList<>(this.fromSecondOfDay.length);
-        for (int i = 0; i < this.fromSecondOfDay.length; i++) {
-            LocalTime from = LocalTime.ofSecondOfDay(validateSecond(this.fromSecondOfDay[i]));
-            LocalTime to = LocalTime.ofSecondOfDay(validateSecond(this.toSecondOfDay[i]));
+        int[] copiedFromSecondOfDay = Arrays.copyOf(fromSecondOfDay, fromSecondOfDay.length);
+        int[] copiedToSecondOfDay = Arrays.copyOf(toSecondOfDay, toSecondOfDay.length);
+        List<TimeRange> normalizedRanges = new ArrayList<>(copiedFromSecondOfDay.length);
+        for (int i = 0; i < copiedFromSecondOfDay.length; i++) {
+            LocalTime from = LocalTime.ofSecondOfDay(validateSecond(copiedFromSecondOfDay[i]));
+            LocalTime to = LocalTime.ofSecondOfDay(validateSecond(copiedToSecondOfDay[i]));
+            if (from.isAfter(to)) {
+                throw new IllegalArgumentException(
+                        "Time range 'from' must not be after 'to' but was " + from + " > " + to);
+            }
             normalizedRanges.add(new TimeRange(from, to));
         }
-        this.timeRanges = List.copyOf(normalizedRanges);
+        return new Config(validatedTimeIndicator, copiedFromSecondOfDay, copiedToSecondOfDay,
+                List.copyOf(normalizedRanges));
     }
 
     /** This rule does not use the {@code tradingRecord}. */
@@ -110,4 +139,7 @@ public class TimeRangeRule extends AbstractRule {
         return seconds;
     }
 
+    private record Config(DateTimeIndicator timeIndicator, int[] fromSecondOfDay, int[] toSecondOfDay,
+            List<TimeRange> timeRanges) {
+    }
 }

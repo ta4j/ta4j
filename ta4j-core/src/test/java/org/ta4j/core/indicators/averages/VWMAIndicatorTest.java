@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators.averages;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import org.ta4j.core.indicators.helpers.VolumeIndicator;
+
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.*;
 
@@ -25,6 +30,17 @@ public class VWMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     public VWMAIndicatorTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void registersVolumeWeightedDelegateAsCacheSource() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        Indicator<Num> priceIndicator = new ClosePriceIndicator(series);
+        Indicator<Num> volumeIndicator = new VolumeIndicator(series);
+        VWMAIndicator indicator = new VWMAIndicator(priceIndicator, volumeIndicator, 2);
+
+        assertEquals(1, indicator.getDependencies().size());
+        assertEquals(2, indicator.getDependencies().get(0).getDependencies().size());
     }
 
     @Test
@@ -137,6 +153,15 @@ public class VWMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         VWMAIndicator vwma = new VWMAIndicator(price, volume, 5, EMAIndicator::new);
 
         assertEquals(7, vwma.getCountOfUnstableBars());
+    }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        VolumeIndicator volume = new VolumeIndicator(series);
+
+        return List.of(serializationFixture(series, new VWMAIndicator(close, volume, 6), stableIndexes(series)));
     }
 
 }

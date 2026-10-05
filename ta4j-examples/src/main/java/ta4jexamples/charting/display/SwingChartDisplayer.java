@@ -30,6 +30,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -106,7 +107,7 @@ public final class SwingChartDisplayer implements ChartDisplayer {
      * Static counter to track window positions for cascading multiple chart
      * windows.
      */
-    private static int windowCounter = 0;
+    private static final AtomicInteger windowCounter = new AtomicInteger();
     private static final int CASCADE_OFFSET_X = 30;
     private static final int CASCADE_OFFSET_Y = 30;
 
@@ -257,7 +258,7 @@ public final class SwingChartDisplayer implements ChartDisplayer {
         });
 
         // Cascade windows by offsetting each new window
-        int windowIndex = windowCounter++;
+        int windowIndex = windowCounter.getAndIncrement();
         try {
             Rectangle screenBounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
             if (screenBounds != null) {

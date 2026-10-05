@@ -19,6 +19,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.backtest.ProgressCompletion;
 import org.ta4j.core.num.Num;
@@ -36,6 +38,8 @@ import org.ta4j.core.num.Num;
  * @since 0.22.4
  */
 public final class WalkForwardEngine<C, P, O> {
+
+    private static final Logger log = LoggerFactory.getLogger(WalkForwardEngine.class);
 
     private final WalkForwardSplitter splitter;
     private final PredictionProvider<C, P> predictionProvider;
@@ -200,8 +204,12 @@ public final class WalkForwardEngine<C, P, O> {
         AtomicInteger progressCounter = new AtomicInteger();
         int maxPredictions = config.allTopKs().stream().max(Integer::compareTo).orElse(config.optimizationTopK());
 
-        List<FoldExecution<P, O>> foldExecutions = executeFolds(series, context, config, splits, maxPredictions,
+        List<FoldExecution<P, O>> foldExecutions;
+        List<WalkForwardRunResult.FoldFailure> foldFailures;
+        WalkForwardFoldResults<P, O> foldResults = executeFolds(series, context, config, splits, maxPredictions,
                 progressCounter);
+        foldExecutions = foldResults.executions();
+        foldFailures = foldResults.failures();
         for (FoldExecution<P, O> foldExecution : foldExecutions) {
             snapshots.addAll(foldExecution.snapshots());
             for (Map.Entry<Integer, List<WalkForwardObservation<P, O>>> horizonEntry : foldExecution
@@ -231,7 +239,7 @@ public final class WalkForwardEngine<C, P, O> {
 
         return new WalkForwardRunResult<>(config, splits, snapshots, immutableObservationMap(observationsByHorizon),
                 immutableMetricMap(globalMetricsByHorizon), immutableFoldMetricMap(foldMetricsByHorizon), leakageAudit,
-                runtimeReport, manifest);
+                runtimeReport, manifest, foldFailures);
     }
 
     private List<RankedPrediction<P>> normalizePredictions(List<RankedPrediction<P>> predictions, int maxPredictions) {
@@ -246,18 +254,26 @@ public final class WalkForwardEngine<C, P, O> {
         return List.copyOf(sorted);
     }
 
-    private List<FoldExecution<P, O>> executeFolds(BarSeries series, C context, WalkForwardConfig config,
+    private WalkForwardFoldResults<P, O> executeFolds(BarSeries series, C context, WalkForwardConfig config,
             List<WalkForwardSplit> splits, int maxPredictions, AtomicInteger progressCounter) {
         if (splits.isEmpty()) {
-            return List.of();
+            return new WalkForwardFoldResults<>(List.of(), List.of());
         }
         if (maxParallelFolds == 1 || splits.size() == 1) {
             List<FoldExecution<P, O>> executions = new ArrayList<>(splits.size());
+            List<WalkForwardRunResult.FoldFailure> failures = new ArrayList<>();
             for (int splitIndex = 0; splitIndex < splits.size(); splitIndex++) {
-                executions.add(executeFold(series, context, config, splits.get(splitIndex), splitIndex, maxPredictions,
-                        progressCounter));
+                WalkForwardSplit split = splits.get(splitIndex);
+                try {
+                    executions.add(
+                            executeFold(series, context, config, split, splitIndex, maxPredictions, progressCounter));
+                } catch (ProgressCallbackException e) {
+                    throw markProgressCallbackFailure(e);
+                } catch (RuntimeException e) {
+                    failures.add(recordFoldFailure(split, splitIndex, e));
+                }
             }
-            return executions;
+            return new WalkForwardFoldResults<>(executions, failures);
         }
 
         int parallelism = Math.min(maxParallelFolds, splits.size());
@@ -272,31 +288,40 @@ public final class WalkForwardEngine<C, P, O> {
             }
 
             List<FoldExecution<P, O>> executions = new ArrayList<>(splits.size());
-            for (Future<FoldExecution<P, O>> future : futures) {
+            List<WalkForwardRunResult.FoldFailure> failures = new ArrayList<>();
+            for (int splitIndex = 0; splitIndex < futures.size(); splitIndex++) {
+                WalkForwardSplit split = splits.get(splitIndex);
                 try {
-                    executions.add(future.get());
+                    executions.add(futures.get(splitIndex).get());
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     throw new IllegalStateException("Interrupted while executing walk-forward folds", e);
                 } catch (ExecutionException e) {
-                    rethrowParallelFailure(e.getCause());
+                    Throwable cause = e.getCause();
+                    if (cause instanceof Error error) {
+                        throw error;
+                    }
+                    if (cause instanceof ProgressCallbackException progressFailure) {
+                        throw markProgressCallbackFailure(progressFailure);
+                    }
+                    failures.add(recordFoldFailure(split, splitIndex, cause));
                 }
             }
             executions.sort(Comparator.comparingInt(FoldExecution::foldOrder));
-            return executions;
+            return new WalkForwardFoldResults<>(executions, failures);
         } finally {
             executor.shutdownNow();
         }
     }
 
-    private static void rethrowParallelFailure(Throwable cause) {
-        if (cause instanceof Error error) {
-            throw error;
-        }
-        if (cause instanceof RuntimeException runtimeException) {
-            throw runtimeException;
-        }
-        throw new IllegalStateException("Walk-forward fold execution failed", cause);
+    private WalkForwardRunResult.FoldFailure recordFoldFailure(WalkForwardSplit split, int foldOrder, Throwable cause) {
+        String message = "Walk-forward fold " + split.foldId() + " failed";
+        log.warn(message + ": {}", cause == null ? "null" : cause.toString());
+        return new WalkForwardRunResult.FoldFailure(split.foldId(), foldOrder, message, cause);
+    }
+
+    private record WalkForwardFoldResults<P, O>(List<FoldExecution<P, O>> executions,
+            List<WalkForwardRunResult.FoldFailure> failures) {
     }
 
     private FoldExecution<P, O> executeFold(BarSeries series, C context, WalkForwardConfig config,
@@ -357,8 +382,55 @@ public final class WalkForwardEngine<C, P, O> {
 
     private void emitProgress(AtomicInteger progressCounter) {
         synchronized (progressCallbackLock) {
-            progressCallback.accept(progressCounter.incrementAndGet());
+            try {
+                progressCallback.accept(progressCounter.incrementAndGet());
+            } catch (RuntimeException e) {
+                // Callback failures belong to the caller; mark them so fold
+                // isolation never records them as fold failures.
+                throw new ProgressCallbackException(e);
+            }
         }
+    }
+
+    /**
+     * Marker for progress-callback failures. Never classified as a fold failure;
+     * the originating callback exception is rethrown to the caller.
+     */
+    private static final class ProgressCallbackException extends RuntimeException {
+
+        private ProgressCallbackException(Throwable cause) {
+            super(cause);
+        }
+    }
+
+    /**
+     * Unwraps the originating callback exception and attaches the marker as a
+     * suppressed exception, so callers that isolate candidate or fold failures (for
+     * example {@link WalkForwardTuner}) can still distinguish a callback failure
+     * from a genuine evaluation failure via
+     * {@link #isProgressCallbackFailure(RuntimeException)}.
+     */
+    private static RuntimeException markProgressCallbackFailure(ProgressCallbackException failure) {
+        RuntimeException original = (RuntimeException) failure.getCause();
+        original.addSuppressed(failure);
+        return original;
+    }
+
+    /**
+     * Returns whether an exception propagated from {@code run} originated from the
+     * progress callback rather than from candidate evaluation.
+     *
+     * @param exception exception rethrown by this engine
+     * @return {@code true} when the exception was raised by the progress callback
+     * @since 0.24.2
+     */
+    static boolean isProgressCallbackFailure(RuntimeException exception) {
+        for (Throwable suppressed : exception.getSuppressed()) {
+            if (suppressed instanceof ProgressCallbackException) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private Map<Integer, Map<String, Num>> computeGlobalMetrics(
@@ -395,7 +467,11 @@ public final class WalkForwardEngine<C, P, O> {
     private WalkForwardRuntimeReport buildRuntimeReport(List<WalkForwardRuntimeReport.FoldRuntime> foldRuntimes,
             Duration overallRuntime) {
         if (foldRuntimes.isEmpty()) {
-            return WalkForwardRuntimeReport.empty();
+            // No fold completed (for example when every fold failed), but the run
+            // still consumed wall-clock time: retain the measured overall runtime
+            // while leaving the fold summary fields at zero.
+            return new WalkForwardRuntimeReport(overallRuntime, Duration.ZERO, Duration.ZERO, Duration.ZERO,
+                    Duration.ZERO, List.of());
         }
 
         List<Duration> durations = new ArrayList<>(foldRuntimes.size());

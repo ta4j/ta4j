@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators.volume;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -170,4 +175,14 @@ public class ForceIndexIndicatorTest extends AbstractIndicatorTest<BarSeries, Nu
         }
         assertThat(actual).isEqualByComparingTo(expected);
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        VolumeIndicator volume = new VolumeIndicator(series);
+
+        return List.of(serializationFixture(series, new ForceIndexIndicator(close, volume, 8), stableIndexes(series)));
+    }
+
 }

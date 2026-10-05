@@ -4,9 +4,12 @@
 package org.ta4j.core.indicators;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -23,23 +26,45 @@ import static org.ta4j.core.num.NaN.NaN;
  * {@link #detectLatestSwingIndex(int)}. This base class handles caching of
  * swing indexes, purges indexes that fall out of the series window, and
  * provides access to swing-point values through the {@link Indicator} API.
+ * Revisionless series validate consumed retained bar values before cached
+ * queries and after scanning without the series read lock. A mismatch clears
+ * the tracker and its cached source graph before replay; revision-aware history
+ * checks remain constant-time. Queries retry until the history observations
+ * agree; continuous mutation can prevent completion. Each revisionless history
+ * comparison is linear in retained bars. A detector-backed first or replayed
+ * scan may perform one such comparison per scanned index, giving quadratic
+ * validation work in addition to the detector algorithm's cost.
  *
  * @since 0.20
  */
 public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> implements RecentSwingIndicator {
 
+    private static final Indicator<?>[] NO_ADDITIONAL_SOURCES = new Indicator<?>[0];
+
     private final Indicator<Num> priceIndicator;
-    private final SwingPointTracker swingPoints;
-    private final int unstableBars;
+    private final transient SwingPointTracker swingPoints;
+    private final transient int unstableBars;
 
     /**
-     * Constructor.
+     * Creates a swing indicator that uses only its price source.
      *
      * @param priceIndicator the price indicator used to fetch swing values
      * @param unstableBars   number of unstable bars
      */
     protected AbstractRecentSwingIndicator(Indicator<Num> priceIndicator, int unstableBars) {
-        super(priceIndicator);
+        this(priceIndicator, unstableBars, NO_ADDITIONAL_SOURCES);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param priceIndicator   the price indicator used to fetch swing values
+     * @param unstableBars     number of unstable bars
+     * @param sourceIndicators additional direct sources used to identify swings
+     */
+    protected AbstractRecentSwingIndicator(Indicator<Num> priceIndicator, int unstableBars,
+            Indicator<?>... sourceIndicators) {
+        super(priceIndicator, sourceIndicators);
         this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator cannot be null");
         this.unstableBars = Math.max(0, unstableBars);
         final BarSeries series = Objects.requireNonNull(priceIndicator.getBarSeries(),
@@ -47,9 +72,37 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
         this.swingPoints = new SwingPointTracker(this::detectLatestSwingIndex, series);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * Validates the tracker even on an outer-cache hit and verifies the consumed
+     * history again after fetching the swing value.
+     *
+     * @since 0.25.1
+     */
+    @Override
+    public Num getValue(int index) {
+        final BarSeries series = getBarSeries();
+        while (true) {
+            final HistorySnapshot before = series
+                    .withReadLock(() -> HistorySnapshot.capture(series, series.getEndIndex()));
+            swingPoints.getLatestSwingIndex(index);
+            final Num value = super.getValue(index);
+            if (series.withReadLock(() -> before.matches(series))) {
+                return value;
+            }
+        }
+    }
+
     @Override
     public final int getLatestSwingIndex(int index) {
         return swingPoints.getLatestSwingIndex(index);
+    }
+
+    @Override
+    public final int getLatestSwingConfirmationIndex(int index) {
+        return swingPoints.getLatestSwingConfirmationIndex(index);
     }
 
     @Override
@@ -60,7 +113,19 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
     @Override
     public final List<Integer> getSwingPointIndexes() {
         final BarSeries series = getBarSeries();
-        return series == null ? List.of() : swingPoints.getSwingPointIndexes(series.getEndIndex());
+        return swingPoints.getSwingPointIndexes(series.getEndIndex());
+    }
+
+    /**
+     * Whether the current thread holds the swing-point tracker monitor.
+     *
+     * <p>
+     * Package-private for lock-order regression verification.
+     *
+     * @return {@code true} when the tracker monitor is held by the current thread
+     */
+    final boolean holdsSwingPointTrackerMonitor() {
+        return Thread.holdsLock(swingPoints);
     }
 
     @Override
@@ -76,9 +141,6 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
     @Override
     protected Num calculate(int index) {
         final BarSeries series = getBarSeries();
-        if (series == null) {
-            return NaN;
-        }
         final int beginIndex = series.getBeginIndex();
         final int endIndex = series.getEndIndex();
         if (index < beginIndex || index > endIndex) {
@@ -121,88 +183,258 @@ public abstract class AbstractRecentSwingIndicator extends CachedIndicator<Num> 
     private final class SwingPointTracker {
         private final IntFunction<Integer> swingIndexDetector;
         private final BarSeries series;
-        private final List<Integer> swingPointIndexes = new ArrayList<>();
+        private final List<ConfirmedSwing> confirmedSwings = new ArrayList<>();
         private int lastScannedIndex = Integer.MIN_VALUE;
+        private long observedRevision;
+        private int observedEndIndex;
+        private int observedBeginIndex;
+        private Bar observedLastBar;
+        private HistorySnapshot observedHistory;
+        private boolean sourceInvalidationPending;
 
         private SwingPointTracker(IntFunction<Integer> swingIndexDetector, BarSeries series) {
             this.swingIndexDetector = Objects.requireNonNull(swingIndexDetector, "swingIndexDetector cannot be null");
             this.series = Objects.requireNonNull(series, "series cannot be null");
+            this.observedRevision = series.getBarHistoryRevision();
+            this.observedEndIndex = series.getEndIndex();
+            this.observedBeginIndex = series.getBeginIndex();
+            this.observedLastBar = observedRevision < 0L && !series.isEmpty() ? series.getLastBar() : null;
         }
 
         private int getLatestSwingIndex(int index) {
-            ensureScanned(index);
-            if (swingPointIndexes.isEmpty()) {
-                return -1;
-            }
-            for (int i = swingPointIndexes.size() - 1; i >= 0; i--) {
-                final int candidate = swingPointIndexes.get(i);
-                if (candidate <= index) {
-                    return candidate;
+            while (true) {
+                synchronized (this) {
+                    if (!ensureScanned(index)) {
+                        final ConfirmedSwing latest = latestSwingAvailableAt(index);
+                        return latest == null ? -1 : latest.swingIndex();
+                    }
                 }
+                invalidateCacheAfterHistoryReset(true);
             }
-            return -1;
+        }
+
+        private int getLatestSwingConfirmationIndex(int index) {
+            while (true) {
+                synchronized (this) {
+                    if (!ensureScanned(index)) {
+                        final ConfirmedSwing latest = latestSwingAvailableAt(index);
+                        return latest == null ? -1 : latest.confirmationIndex();
+                    }
+                }
+                invalidateCacheAfterHistoryReset(true);
+            }
         }
 
         private List<Integer> getSwingPointIndexes(int index) {
-            ensureScanned(index);
-            final List<Integer> filtered = new ArrayList<>();
-            for (int swingIndex : swingPointIndexes) {
-                if (swingIndex <= index) {
-                    filtered.add(swingIndex);
+            while (true) {
+                synchronized (this) {
+                    if (!ensureScanned(index)) {
+                        final List<Integer> filtered = new ArrayList<>();
+                        for (ConfirmedSwing swing : confirmedSwings) {
+                            if (swing.confirmationIndex() <= index) {
+                                filtered.add(swing.swingIndex());
+                            }
+                        }
+                        return Collections.unmodifiableList(filtered);
+                    }
                 }
+                invalidateCacheAfterHistoryReset(true);
             }
-            return Collections.unmodifiableList(filtered);
         }
 
-        private void ensureScanned(int index) {
+        /**
+         * Invalidates the outer cache only after releasing this tracker monitor. Cache
+         * calculations acquire the outer cache lock before querying this tracker.
+         *
+         * @param historyReset whether the tracker was reset for changed history
+         */
+        private void invalidateCacheAfterHistoryReset(boolean historyReset) {
+            if (historyReset) {
+                if (series.getBarHistoryRevision() < 0L) {
+                    AbstractRecentSwingIndicator.this.invalidateCacheIncludingDependencies();
+                } else {
+                    AbstractRecentSwingIndicator.this.invalidateCache();
+                }
+                synchronized (this) {
+                    sourceInvalidationPending = false;
+                }
+            }
+        }
+
+        private ConfirmedSwing latestSwingAvailableAt(int index) {
+            for (int i = confirmedSwings.size() - 1; i >= 0; i--) {
+                final ConfirmedSwing candidate = confirmedSwings.get(i);
+                if (candidate.confirmationIndex() <= index) {
+                    return candidate;
+                }
+            }
+            return null;
+        }
+
+        private boolean ensureScanned(int index) {
+            if (sourceInvalidationPending || resetIfHistoryChanged()) {
+                sourceInvalidationPending = true;
+                return true;
+            }
             final int beginIndex = series.getBeginIndex();
             final int endIndex = series.getEndIndex();
             purgeOutOfRange(beginIndex);
             if (index < beginIndex || beginIndex > endIndex) {
-                return;
+                return false;
             }
             final int targetIndex = Math.min(index, endIndex);
             if (lastScannedIndex < beginIndex - 1) {
                 lastScannedIndex = beginIndex - 1;
             }
             if (targetIndex <= lastScannedIndex) {
-                return;
+                return false;
             }
-            for (int currentIndex = Math.max(beginIndex,
-                    lastScannedIndex + 1); currentIndex <= targetIndex; currentIndex++) {
-                final int swingIndex = swingIndexDetector.apply(currentIndex);
+            if (series.getBarHistoryRevision() < 0L && observedHistory != null
+                    && targetIndex > observedHistory.endIndex()) {
+                // Public price-source readers may have cached new bars before the
+                // tracker observes them. Clear those sources before consuming the
+                // extension, while preserving confirmed swings from the unchanged
+                // prefix. Pin values first so a mutation during invalidation still
+                // causes the normal full reset on the next iteration.
+                observedHistory = series.withReadLock(() -> HistorySnapshot.capture(series, series.getEndIndex()));
+                sourceInvalidationPending = true;
+                return true;
+            }
+            final HistorySnapshot before = series.withReadLock(() -> HistorySnapshot.capture(series, endIndex));
+            final long firstIndex = Math.max((long) beginIndex, (long) lastScannedIndex + 1L);
+            for (long currentIndex = firstIndex; currentIndex <= targetIndex; currentIndex++) {
+                final int currentBarIndex = (int) currentIndex;
+                final int swingIndex = swingIndexDetector.apply(currentBarIndex);
                 if (swingIndex < 0) {
                     if (purgeOnNegativeDetection()) {
-                        swingPointIndexes.clear();
+                        confirmedSwings.clear();
                     }
                     continue;
                 }
-                final boolean validSwing = swingIndex >= beginIndex && swingIndex <= currentIndex;
+                final boolean validSwing = swingIndex >= beginIndex && swingIndex <= currentBarIndex;
                 if (!validSwing) {
                     continue;
                 }
-                while (!swingPointIndexes.isEmpty()
-                        && swingPointIndexes.get(swingPointIndexes.size() - 1) > swingIndex) {
-                    swingPointIndexes.remove(swingPointIndexes.size() - 1);
+                while (!confirmedSwings.isEmpty()
+                        && confirmedSwings.get(confirmedSwings.size() - 1).swingIndex() > swingIndex) {
+                    confirmedSwings.remove(confirmedSwings.size() - 1);
                 }
-                if (swingPointIndexes.isEmpty() || swingIndex > swingPointIndexes.get(swingPointIndexes.size() - 1)) {
-                    swingPointIndexes.add(swingIndex);
+                if (confirmedSwings.isEmpty()
+                        || swingIndex > confirmedSwings.get(confirmedSwings.size() - 1).swingIndex()) {
+                    confirmedSwings.add(new ConfirmedSwing(swingIndex, currentBarIndex));
                 }
             }
+            if (!series.withReadLock(() -> before.matches(series))) {
+                confirmedSwings.clear();
+                lastScannedIndex = Integer.MIN_VALUE;
+                observedHistory = null;
+                sourceInvalidationPending = true;
+                return true;
+            }
             lastScannedIndex = targetIndex;
+            observedEndIndex = before.endIndex();
+            observedBeginIndex = before.beginIndex();
+            observedRevision = before.revision();
+            observedLastBar = before.lastBar();
+            observedHistory = before;
+            return false;
+        }
+
+        private boolean resetIfHistoryChanged() {
+            return series.withReadLock(this::resetIfHistoryChangedUnderReadLock);
+        }
+
+        private boolean resetIfHistoryChangedUnderReadLock() {
+            final long currentRevision = series.getBarHistoryRevision();
+            final int currentBeginIndex = series.getBeginIndex();
+            final int currentEndIndex = series.getEndIndex();
+            final Bar currentLastBar = currentRevision < 0L && !series.isEmpty() ? series.getLastBar() : null;
+            final boolean trackedRevisionChanged = currentRevision >= 0L && observedRevision >= 0L
+                    && currentRevision != observedRevision;
+            final boolean fallbackHistoryChanged = currentRevision < 0L && (currentEndIndex < observedEndIndex
+                    || currentEndIndex == observedEndIndex && currentLastBar != observedLastBar
+                    || observedHistory != null && !observedHistory.retainedValuesMatch(series));
+            final boolean retainedRangeChanged = currentBeginIndex != observedBeginIndex;
+            final boolean revisionSupportChanged = (currentRevision < 0L) != (observedRevision < 0L);
+            if (!trackedRevisionChanged && !fallbackHistoryChanged && !retainedRangeChanged
+                    && !revisionSupportChanged) {
+                observedRevision = currentRevision;
+                observedBeginIndex = currentBeginIndex;
+                observedEndIndex = currentEndIndex;
+                observedLastBar = currentLastBar;
+                return false;
+            }
+            confirmedSwings.clear();
+            lastScannedIndex = Integer.MIN_VALUE;
+            observedHistory = null;
+            observedRevision = currentRevision;
+            observedBeginIndex = currentBeginIndex;
+            observedEndIndex = currentEndIndex;
+            observedLastBar = currentLastBar;
+            return true;
         }
 
         private void purgeOutOfRange(int beginIndex) {
-            if (swingPointIndexes.isEmpty()) {
+            if (confirmedSwings.isEmpty()) {
                 return;
             }
             int firstRetained = 0;
-            while (firstRetained < swingPointIndexes.size() && swingPointIndexes.get(firstRetained) < beginIndex) {
+            while (firstRetained < confirmedSwings.size()
+                    && confirmedSwings.get(firstRetained).swingIndex() < beginIndex) {
                 firstRetained++;
             }
             if (firstRetained > 0) {
-                swingPointIndexes.subList(0, firstRetained).clear();
+                confirmedSwings.subList(0, firstRetained).clear();
             }
         }
+    }
+
+    /**
+     * A bar-only observation; revision-aware series never allocate value snapshots.
+     */
+    private record HistorySnapshot(long revision, int beginIndex, int endIndex, Bar lastBar, List<BarState> bars) {
+        private static HistorySnapshot capture(BarSeries series, int targetIndex) {
+            final long revision = series.getBarHistoryRevision();
+            final int begin = series.getBeginIndex();
+            final int end = series.getEndIndex();
+            final List<BarState> bars = revision < 0L ? new ArrayList<>() : List.of();
+            if (revision < 0L && !series.isEmpty()) {
+                for (long i = begin; i <= Math.min(targetIndex, end); i++) {
+                    bars.add(BarState.capture(series.getBar((int) i)));
+                }
+            }
+            return new HistorySnapshot(revision, begin, end,
+                    revision < 0L && !series.isEmpty() ? series.getLastBar() : null, bars);
+        }
+
+        private boolean matches(BarSeries series) {
+            return revision == series.getBarHistoryRevision() && beginIndex == series.getBeginIndex()
+                    && endIndex == series.getEndIndex() && retainedValuesMatch(series);
+        }
+
+        private boolean retainedValuesMatch(BarSeries series) {
+            if (revision >= 0L) {
+                return true;
+            }
+            final long last = Math.min((long) beginIndex + bars.size() - 1L, series.getEndIndex());
+            for (long i = Math.max(beginIndex, series.getBeginIndex()); i <= last; i++) {
+                if (!bars.get((int) (i - beginIndex)).equals(BarState.capture(series.getBar((int) i)))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    private record BarState(Num open, Num high, Num low, Num close, Num volume, Num amount, long trades,
+            Duration period, Instant begin, Instant end) {
+        private static BarState capture(Bar bar) {
+            return new BarState(bar.getOpenPrice(), bar.getHighPrice(), bar.getLowPrice(), bar.getClosePrice(),
+                    bar.getVolume(), bar.getAmount(), bar.getTrades(), bar.getTimePeriod(), bar.getBeginTime(),
+                    bar.getEndTime());
+        }
+    }
+
+    private record ConfirmedSwing(int swingIndex, int confirmationIndex) {
     }
 }

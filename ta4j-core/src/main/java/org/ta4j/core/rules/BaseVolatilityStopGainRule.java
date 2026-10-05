@@ -20,37 +20,51 @@ abstract class BaseVolatilityStopGainRule extends AbstractRule implements StopGa
     private final Indicator<Num> stopGainThreshold;
 
     protected BaseVolatilityStopGainRule(Indicator<Num> referencePrice, Indicator<Num> stopGainThreshold) {
+        this(validatedConfig(referencePrice, stopGainThreshold));
+    }
+
+    private BaseVolatilityStopGainRule(Config config) {
+        this.referencePrice = config.referencePrice();
+        this.stopGainThreshold = config.stopGainThreshold();
+    }
+
+    private static Config validatedConfig(Indicator<Num> referencePrice, Indicator<Num> stopGainThreshold) {
         if (referencePrice == null) {
             throw new IllegalArgumentException("referencePrice must not be null");
         }
         if (stopGainThreshold == null) {
             throw new IllegalArgumentException("stopGainThreshold must not be null");
         }
-        this.referencePrice = referencePrice;
-        this.stopGainThreshold = stopGainThreshold;
+        return new Config(referencePrice, stopGainThreshold);
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
-        if (tradingRecord != null) {
-            Position position = tradingRecord.getCurrentPosition();
-            if (position.isOpened()) {
-                Num entryPrice = position.getEntry().getNetPrice();
-                Num currentPrice = referencePrice.getValue(index);
-                Num threshold = stopGainThreshold.getValue(index);
-                if (!Num.isNaNOrNull(entryPrice) && !Num.isNaNOrNull(currentPrice) && !Num.isNaNOrNull(threshold)) {
-                    if (position.getEntry().isBuy()) {
-                        satisfied = currentPrice.isGreaterThanOrEqual(
-                                StopGainRule.stopGainPriceFromDistance(entryPrice, threshold, true));
-                    } else {
-                        satisfied = currentPrice.isLessThanOrEqual(
-                                StopGainRule.stopGainPriceFromDistance(entryPrice, threshold, false));
-                    }
-                }
-            }
+        if (tradingRecord == null) {
+            StopRuleTrace.traceUnavailable(this, index, "noTradingRecord");
+            return false;
         }
-        traceIsSatisfied(index, satisfied);
+        Position position = tradingRecord.getCurrentPosition();
+        if (!position.isOpened()) {
+            StopRuleTrace.traceUnavailable(this, index, "noOpenPosition");
+            return false;
+        }
+
+        Num entryPrice = position.getEntry().getNetPrice();
+        Num currentPrice = referencePrice.getValue(index);
+        Num threshold = stopGainThreshold.getValue(index);
+        if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice) || Num.isNaNOrNull(threshold)) {
+            StopRuleTrace.traceUnavailable(this, index, "nanInput");
+            return false;
+        }
+
+        boolean buy = position.getEntry().isBuy();
+        Num stopPrice = StopGainRule.stopGainPriceFromDistance(entryPrice, threshold, buy);
+        boolean satisfied = buy ? currentPrice.isGreaterThanOrEqual(stopPrice)
+                : currentPrice.isLessThanOrEqual(stopPrice);
+        String reason = satisfied ? "stopReached" : buy ? "priceBelowStop" : "priceAboveStop";
+        StopRuleTrace.traceDecision(this, index, satisfied, buy, currentPrice, entryPrice, stopPrice, "gainAmount",
+                threshold, reason);
         return satisfied;
     }
 
@@ -68,5 +82,8 @@ abstract class BaseVolatilityStopGainRule extends AbstractRule implements StopGa
             return null;
         }
         return StopGainRule.stopGainPriceFromDistance(entryPrice, threshold, position.getEntry().isBuy());
+    }
+
+    private record Config(Indicator<Num> referencePrice, Indicator<Num> stopGainThreshold) {
     }
 }

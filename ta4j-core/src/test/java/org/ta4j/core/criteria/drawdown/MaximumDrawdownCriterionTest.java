@@ -8,7 +8,10 @@ import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ConstrainedSeriesSupport;
+import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
@@ -133,9 +136,45 @@ public class MaximumDrawdownCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void lossRealizedAtTheConstrainedBeginIsADrawdownFromTheWindowStart() {
+        var series = ConstrainedSeriesSupport.offsetSeries("mdd-seeded-begin", numFactory, 1, 3, 0, 100d, 100d, 100d,
+                110d);
+        var record = new BaseTradingRecord();
+        record.enter(0, numFactory.hundred(), numFactory.one());
+        record.exit(1, numFactory.numOf(95), numFactory.one());
+
+        // The first slot already holds the 0.95 realized at the window start; the
+        // equity fell from the neutral 1 that entered the window.
+        assertNumEquals(0.05, getCriterion().calculate(series, record));
+    }
+
+    @Test
     public void betterThan() {
         var criterion = getCriterion();
         assertTrue(criterion.betterThan(numOf(0.9), numOf(1.5)));
         assertFalse(criterion.betterThan(numOf(1.2), numOf(0.4)));
+    }
+
+    @Test
+    public void matchesFreshSeriesAcrossWindowShapesAndPositionBoundaries() {
+        for (ConstrainedSeriesSupport.CriterionWindowFixture fixture : ConstrainedSeriesSupport
+                .criterionWindowFixtures(numFactory)) {
+            for (EquityCurveMode mode : EquityCurveMode.values()) {
+                for (OpenPositionHandling handling : OpenPositionHandling.values()) {
+                    var criterion = new MaximumDrawdownCriterion(mode, handling);
+                    var actual = criterion.calculate(fixture.series(), fixture.tradingRecord());
+                    var expected = criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord(mode));
+                    assertNumEquals(expected, actual, 1e-10);
+                    Position expectedPosition = fixture.equivalentPosition(mode);
+                    if (fixture.position() != null && expectedPosition != null) {
+                        var expectedPositionValue = !fixture.position().isOpened() && expectedPosition.isOpened()
+                                ? criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord(mode))
+                                : criterion.calculate(fixture.equivalentSeries(), expectedPosition);
+                        assertNumEquals(expectedPositionValue,
+                                criterion.calculate(fixture.series(), fixture.position()), 1e-10);
+                    }
+                }
+            }
+        }
     }
 }

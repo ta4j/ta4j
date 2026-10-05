@@ -3,11 +3,11 @@
  */
 package org.ta4j.core.analysis;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import org.ta4j.core.Bar;
+import java.util.stream.Stream;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
@@ -17,7 +17,6 @@ import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.ReturnRepresentationPolicy;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * Allows to compute the return rate of a price time-series.
@@ -31,6 +30,13 @@ import org.ta4j.core.num.NumFactory;
  * <p>
  * The default representation (when not explicitly specified) is obtained from
  * {@link ReturnRepresentationPolicy#getDefaultRepresentation()}.
+ *
+ * <p>
+ * The return values are materialized positionally from the captured series
+ * begin index through the logical series end captured with them. Positions are
+ * never priced after that end: one still open there is marked at its last close
+ * rather than at an exit that happened later. {@link #getValue(int)} returns
+ * {@link NaN#NaN} outside that materialized range.
  *
  * @see ReturnRepresentation
  * @see ReturnRepresentationPolicy
@@ -61,7 +67,21 @@ public class Returns implements PerformanceIndicator {
      */
     private final List<Num> values;
 
-    private final List<Num> returnFactors;
+    private final OffsetNumBuffer returnFactors;
+
+    /**
+     * True when a position entered before the retained window marked the first
+     * retained slot against its entry price, giving that slot a defined return even
+     * though no prior in-window close exists.
+     */
+    private boolean firstRetainedSlotSeeded;
+
+    /**
+     * The window captured when the return buffers were materialized. Later rolling
+     * advances of the borrowed series must not rebase lookups, or old returns leak
+     * onto never-calculated bars.
+     */
+    private final AnalysisPositionSupport.Window window;
 
     /**
      * Constructor.
@@ -79,19 +99,43 @@ public class Returns implements PerformanceIndicator {
     public Returns(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
             ReturnRepresentation representation, EquityCurveMode equityCurveMode,
             OpenPositionHandling openPositionHandling) {
-        this.barSeries = Objects.requireNonNull(barSeries);
+        this(barSeries, tradingRecord, finalIndex, representation, equityCurveMode, openPositionHandling, false);
+    }
+
+    private Returns(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
+            ReturnRepresentation representation, EquityCurveMode equityCurveMode,
+            OpenPositionHandling openPositionHandling, boolean useRecordEnd) {
+        this.barSeries = Objects.requireNonNull(barSeries, "barSeries");
         this.representation = Objects.requireNonNull(representation);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        int seriesEnd = barSeries.getEndIndex();
-        int size = Math.max(seriesEnd + 1, 0);
-        Num one = barSeries.numFactory().one();
-        Num zero = barSeries.numFactory().zero();
-        Num initial = representation == ReturnRepresentation.LOG ? zero : one;
-        returnFactors = new ArrayList<>(Collections.nCopies(size, initial));
-        rawValues = new ArrayList<>(Collections.nCopies(size, zero));
-        values = new ArrayList<>(Collections.nCopies(size, zero));
-        calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
+        TradingRecord record = Objects.requireNonNull(tradingRecord);
+        OpenPositionHandling handling = Objects.requireNonNull(openPositionHandling);
+        Materialized materialized = AnalysisPositionSupport.materialize(this, barSeries, record, 0, finalIndex,
+                useRecordEnd, false, true, handling, (captured, positions, costs) -> {
+                    Num initial = this.representation == ReturnRepresentation.LOG ? this.barSeries.numFactory().zero()
+                            : this.barSeries.numFactory().one();
+                    OffsetNumBuffer factors = AnalysisPositionSupport.buffer(captured, initial, NaN.NaN);
+                    boolean seeded = false;
+                    for (Position position : positions) {
+                        seeded |= calculatePosition(position, captured.finalIndex(), captured, factors,
+                                costs.get(position));
+                    }
+                    return new Materialized(captured, factors, seeded);
+                });
+        this.window = materialized.window();
+        this.returnFactors = materialized.factors();
+        this.firstRetainedSlotSeeded = materialized.firstRetainedSlotSeeded();
+        this.rawValues = new ArrayList<>(returnFactors.size());
+        this.values = new ArrayList<>(returnFactors.size());
         buildReturns();
+    }
+
+    /**
+     * One materialization attempt's factors; the seeding flag travels with them so
+     * a discarded attempt cannot leave it set.
+     */
+    private record Materialized(AnalysisPositionSupport.Window window, OffsetNumBuffer factors,
+            boolean firstRetainedSlotSeeded) {
     }
 
     /**
@@ -158,8 +202,7 @@ public class Returns implements PerformanceIndicator {
      */
     public Returns(BarSeries barSeries, TradingRecord tradingRecord, ReturnRepresentation representation,
             EquityCurveMode equityCurveMode) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), representation, equityCurveMode,
-                OpenPositionHandling.MARK_TO_MARKET);
+        this(barSeries, tradingRecord, 0, representation, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET, true);
     }
 
     /**
@@ -211,8 +254,7 @@ public class Returns implements PerformanceIndicator {
      */
     public Returns(BarSeries barSeries, TradingRecord tradingRecord, ReturnRepresentation representation,
             OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), representation,
-                EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
+        this(barSeries, tradingRecord, 0, representation, EquityCurveMode.MARK_TO_MARKET, openPositionHandling, true);
     }
 
     /**
@@ -228,8 +270,7 @@ public class Returns implements PerformanceIndicator {
      */
     public Returns(BarSeries barSeries, TradingRecord tradingRecord, ReturnRepresentation representation,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), representation, equityCurveMode,
-                openPositionHandling);
+        this(barSeries, tradingRecord, 0, representation, equityCurveMode, openPositionHandling, true);
     }
 
     /**
@@ -237,24 +278,39 @@ public class Returns implements PerformanceIndicator {
      *         representation)
      */
     public List<Num> getValues() {
-        return values;
+        return List.copyOf(values);
     }
 
     /**
      * @param index the bar index
      * @return the return rate value at the index-th position (formatted according
-     *         to the configured representation)
+     *         to the configured representation), or {@link NaN#NaN} outside the
+     *         materialized range captured by this instance
      */
     @Override
     public Num getValue(int index) {
-        return values.get(index);
+        long position = (long) index - window.beginIndex();
+        if (position < 0 || position >= values.size()) {
+            return NaN.NaN;
+        }
+        return values.get((int) position);
+    }
+
+    /**
+     * @return formatted values over the captured materialized window, independent
+     *         of later changes to the borrowed series bounds
+     * @since 0.25.1
+     */
+    @Override
+    public Stream<Num> stream() {
+        return values.stream();
     }
 
     /**
      * @return the raw return rates (before formatting)
      */
     public List<Num> getRawValues() {
-        return rawValues;
+        return List.copyOf(rawValues);
     }
 
     @Override
@@ -263,15 +319,41 @@ public class Returns implements PerformanceIndicator {
     }
 
     @Override
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the borrowed caller series by contract.")
     public BarSeries getBarSeries() {
         return barSeries;
     }
 
     /**
-     * @return the size of the return series.
+     * {@inheritDoc}
+     *
+     * @since 0.25.1
+     */
+    @Override
+    public int getBeginIndex() {
+        return window.beginIndex();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.25.1
+     */
+    @Override
+    public int getEndIndex() {
+        return window.endIndex();
+    }
+
+    /**
+     * @return the number of materialized returns. The leading no-prior-close
+     *         placeholder is only excluded when the first slot carries no real
+     *         return.
      */
     public int getSize() {
-        return barSeries.getBarCount() - 1;
+        if (returnFactors.size() == 0) {
+            return 0;
+        }
+        return returnFactors.size() - (firstRetainedSlotSeeded ? 0 : 1);
     }
 
     /**
@@ -280,56 +362,70 @@ public class Returns implements PerformanceIndicator {
      * @param position   a single position
      * @param finalIndex the index up to which the returns of open positions are
      *                   considered
+     * @throws IllegalStateException if a bar this curve was materialized from was
+     *                               evicted, replaced or updated since
      * @since 0.22.2
      */
     @Override
     public void calculatePosition(Position position, int finalIndex) {
+        AnalysisPositionSupport.PricedPosition priced = AnalysisPositionSupport.pricePosition(this, barSeries, position,
+                finalIndex, window, false);
+        if (priced == null) {
+            return;
+        }
+        boolean[] seeded = new boolean[1];
+        AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, returnFactors,
+                staged -> seeded[0] = calculatePosition(position, finalIndex, window, staged, priced.holdingCost()));
+        // Reached only once the staged factors were verified and published.
+        firstRetainedSlotSeeded |= seeded[0];
+        rawValues.clear();
+        values.clear();
+        buildReturns();
+    }
+
+    /**
+     * Combines a position's returns into {@code factors}.
+     *
+     * @return whether a return was written into the first retained slot
+     */
+    private boolean calculatePosition(Position position, int finalIndex, AnalysisPositionSupport.Window captured,
+            OffsetNumBuffer factors, Num holdingCost) {
         Trade entry = position.getEntry();
         if (entry == null) {
-            return;
+            return false;
         }
+        // Priced only through the last captured bar, even when a later final index
+        // is requested of a bounded curve.
+        int lastCapturedIndex = captured.bufferEndIndex();
         int entryIndex = entry.getIndex();
-        int seriesEnd = barSeries.getEndIndex();
-        if (entryIndex > finalIndex || entryIndex > seriesEnd) {
-            return;
+        if (entryIndex > finalIndex || entryIndex > lastCapturedIndex) {
+            return false;
         }
-        int endIndex = determineEndIndex(position, finalIndex, seriesEnd);
-        int seriesBegin = barSeries.getBeginIndex();
+        int endIndex = determineEndIndex(position, finalIndex, lastCapturedIndex);
+        int seriesBegin = captured.beginIndex();
         if (endIndex < seriesBegin) {
-            return;
+            return false;
         }
 
-        NumFactory numFactory = barSeries.numFactory();
-        Num minusOne = numFactory.minusOne();
         boolean isLongTrade = entry.isBuy();
-        int start = Math.max(entryIndex + 1, seriesBegin + 1);
-
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
-            Num avgCost = averageHoldingCostPerPeriod(position, endIndex, numFactory);
-            Num lastPrice = entry.getNetPrice();
-            for (int i = start; i < endIndex; i++) {
-                Bar bar = barSeries.getBar(i);
-                Num intermediateNetPrice = addCost(bar.getClosePrice(), avgCost, isLongTrade);
-                Num rawReturn = calculateReturn(intermediateNetPrice, lastPrice);
-                Num strategyReturn = isLongTrade ? rawReturn : rawReturn.multipliedBy(minusOne);
-                combineReturnAtIndex(i, strategyReturn);
-                lastPrice = intermediateNetPrice;
-            }
-            Num exitPrice = resolveExitPrice(position, endIndex, barSeries);
-            Num rawReturn = calculateReturn(addCost(exitPrice, avgCost, isLongTrade), lastPrice);
-            Num strategyReturn = isLongTrade ? rawReturn : rawReturn.multipliedBy(minusOne);
-            combineReturnAtIndex(endIndex, strategyReturn);
-            return;
+            boolean[] seeded = new boolean[1];
+            AnalysisPositionSupport.ExitMark exit = AnalysisPositionSupport.markToMarket(this, barSeries, position,
+                    holdingCost, endIndex, seriesBegin, endIndex - 1,
+                    (index, netPrice, previousPrice) -> seeded[0] |= combineReturnAtIndex(index,
+                            strategyReturn(calculateReturn(netPrice, previousPrice), isLongTrade), captured, factors));
+            return combineReturnAtIndex(endIndex,
+                    strategyReturn(calculateReturn(exit.netPrice(), exit.previousPrice()), isLongTrade), captured,
+                    factors) | seeded[0];
         }
 
         Trade exit = position.getExit();
         if (exit != null && endIndex >= exit.getIndex()) {
-            Num holdingCost = position.getHoldingCost(endIndex);
             Num netExit = addCost(exit.getNetPrice(), holdingCost, isLongTrade);
-            Num rawReturn = calculateReturn(netExit, entry.getNetPrice());
-            Num strategyReturn = isLongTrade ? rawReturn : rawReturn.multipliedBy(minusOne);
-            combineReturnAtIndex(exit.getIndex(), strategyReturn);
+            return combineReturnAtIndex(exit.getIndex(),
+                    strategyReturn(calculateReturn(netExit, entry.getNetPrice()), isLongTrade), captured, factors);
         }
+        return false;
     }
 
     /**
@@ -364,35 +460,50 @@ public class Returns implements PerformanceIndicator {
         return strategyReturn.plus(one);
     }
 
-    private void combineReturnAtIndex(int index, Num strategyReturn) {
-        if (index < 0 || index >= returnFactors.size()) {
-            return;
+    /** Signs a position's price return: short positions gain when prices fall. */
+    private Num strategyReturn(Num rawReturn, boolean isLongTrade) {
+        return isLongTrade ? rawReturn : rawReturn.multipliedBy(barSeries.numFactory().minusOne());
+    }
+
+    /**
+     * Combines one return into {@code factors}.
+     *
+     * @return whether the return was written into the first retained slot, which
+     *         makes that slot a real return: a position that exits on the first
+     *         retained bar (entered there or, valued at that bar's close, before
+     *         the window)
+     */
+    private boolean combineReturnAtIndex(int index, Num strategyReturn, AnalysisPositionSupport.Window captured,
+            OffsetNumBuffer factors) {
+        if (!factors.contains(index)) {
+            return false;
         }
         if (representation == ReturnRepresentation.LOG) {
-            returnFactors.set(index, returnFactors.get(index).plus(strategyReturn));
+            factors.add(index, strategyReturn);
         } else {
-            returnFactors.set(index, returnFactors.get(index).multipliedBy(toFactor(strategyReturn)));
+            factors.multiply(index, toFactor(strategyReturn));
         }
+        return index == captured.beginIndex();
     }
 
     private void buildReturns() {
-        if (rawValues.isEmpty()) {
-            return;
-        }
-        rawValues.set(0, NaN.NaN);
-        values.set(0, NaN.NaN);
         Num one = barSeries.numFactory().one();
-        for (int i = 1; i < rawValues.size(); i++) {
-            if (representation == ReturnRepresentation.LOG) {
-                Num logReturn = returnFactors.get(i);
-                rawValues.set(i, logReturn);
-                values.set(i, logReturn);
+        for (int i = 0; i < returnFactors.size(); i++) {
+            if (i == 0 && !firstRetainedSlotSeeded) {
+                // No prior in-window close exists for the first retained bar;
+                // positions held into the window are valued from its close.
+                rawValues.add(NaN.NaN);
+                values.add(NaN.NaN);
+            } else if (representation == ReturnRepresentation.LOG) {
+                Num logReturn = returnFactors.at(i);
+                rawValues.add(logReturn);
+                values.add(logReturn);
             } else {
-                Num factor = returnFactors.get(i);
-                Num rawReturn = factor.minus(one);
-                rawValues.set(i, rawReturn);
-                values.set(i, representation.toRepresentationFromRateOfReturn(rawReturn));
+                Num rawReturn = returnFactors.at(i).minus(one);
+                rawValues.add(rawReturn);
+                values.add(representation.toRepresentationFromRateOfReturn(rawReturn));
             }
         }
     }
+
 }

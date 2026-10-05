@@ -31,6 +31,13 @@
  * be changed globally via {@link ReturnRepresentationPolicy} or per-criterion
  * by passing a {@link ReturnRepresentation} to the criterion constructor.
  * <p>
+ * <b>Active-return criteria</b> (e.g., {@link ActiveReturnCriterion} and
+ * {@link ActiveReturnVersusEnterAndHoldCriterion}) normalize two
+ * {@link ReturnCriterion return criteria} to 0-based rates, subtract the
+ * benchmark rate from the primary rate, and default to <em>decimal</em>
+ * representation. Parity is {@code 0.0} in DECIMAL/PERCENTAGE output and
+ * {@code 1.0} in MULTIPLICATIVE output.
+ * <p>
  * <b>Ratio-producing criteria</b> (e.g., {@link VersusEnterAndHoldCriterion},
  * {@link org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion},
  * {@link PositionsRatioCriterion}) default to <em>decimal</em> representation

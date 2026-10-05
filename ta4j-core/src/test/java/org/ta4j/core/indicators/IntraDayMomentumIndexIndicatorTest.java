@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -82,6 +87,13 @@ public class IntraDayMomentumIndexIndicatorTest extends AbstractIndicatorTest<In
         assertEquals(4, new IntraDayMomentumIndexIndicator(mockBarSeries, 5).getCountOfUnstableBars());
         assertEquals(0, new IntraDayMomentumIndexIndicator(mockBarSeries, 1).getCountOfUnstableBars());
         assertEquals(2, new IntraDayMomentumIndexIndicator(mockBarSeries, 3).getCountOfUnstableBars());
+    }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List
+                .of(serializationFixture(series, new IntraDayMomentumIndexIndicator(series, 8), stableIndexes(series)));
     }
 
 }

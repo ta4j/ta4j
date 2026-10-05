@@ -32,11 +32,11 @@ import static org.ta4j.core.num.NaN.NaN;
  *      Stochastic Oscillator</a>
  * @since 0.20
  */
-public class StochasticIndicator extends CachedIndicator<Num> {
+public class StochasticIndicator extends RecursiveCachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
-    private final HighestValueIndicator highest;
-    private final LowestValueIndicator lowest;
+    private final transient HighestValueIndicator highest;
+    private final transient LowestValueIndicator lowest;
     private final int lookback;
 
     /**
@@ -48,14 +48,24 @@ public class StochasticIndicator extends CachedIndicator<Num> {
      * @throws IllegalArgumentException if lookback is less than 1
      */
     public StochasticIndicator(Indicator<Num> indicator, int lookback) {
-        super(indicator);
+        this(validatedConfig(indicator, lookback));
+    }
+
+    private StochasticIndicator(Config config) {
+        super(config.indicator());
+        this.indicator = config.indicator();
+        this.highest = config.highest();
+        this.lowest = config.lowest();
+        this.lookback = config.lookback();
+    }
+
+    private static Config validatedConfig(Indicator<Num> indicator, int lookback) {
         if (lookback < 1) {
             throw new IllegalArgumentException("Stochastic look-back length must be a positive integer");
         }
-        this.indicator = indicator;
-        this.highest = new HighestValueIndicator(indicator, lookback);
-        this.lowest = new LowestValueIndicator(indicator, lookback);
-        this.lookback = lookback;
+        HighestValueIndicator highest = new HighestValueIndicator(indicator, lookback);
+        LowestValueIndicator lowest = new LowestValueIndicator(indicator, lookback);
+        return new Config(indicator, highest, lowest, lookback);
     }
 
     @Override
@@ -74,8 +84,12 @@ public class StochasticIndicator extends CachedIndicator<Num> {
         }
         Num range = highestValue.minus(lowestValue);
         if (range.isZero()) {
-            int beginIndex = getBarSeries().getBeginIndex();
-            return index <= beginIndex ? getBarSeries().numFactory().zero() : getValue(index - 1);
+            final Num zero = getBarSeries().numFactory().zero();
+            if (index <= getBarSeries().getBeginIndex()) {
+                return zero;
+            }
+            final Num previous = getValue(index - 1);
+            return Num.isFinite(previous) ? previous : zero;
         }
         return value.minus(lowestValue).dividedBy(range).multipliedBy(getBarSeries().numFactory().hundred());
     }
@@ -83,6 +97,26 @@ public class StochasticIndicator extends CachedIndicator<Num> {
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(highest.getCountOfUnstableBars(), lowest.getCountOfUnstableBars());
+    }
+
+    private record Config(Indicator<Num> indicator, HighestValueIndicator highest, LowestValueIndicator lowest,
+            int lookback) {
+    }
+
+    /**
+     * Discards the whole cache when the series head advances. The zero-range branch
+     * recurses into earlier results only while the retained window is flat, so any
+     * cached value - recursive or not - is recomputable from the retained window
+     * and the begin-index base case. Keeping only the recursively derived band
+     * would preserve stale results that were computed from evicted bars. After the
+     * eviction the inherited {@link RecursiveCachedIndicator} prefill rebuilds long
+     * flat stretches iteratively instead of recursing.
+     *
+     * @return {@code true}, evicting every cached entry
+     */
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
     }
 
 }

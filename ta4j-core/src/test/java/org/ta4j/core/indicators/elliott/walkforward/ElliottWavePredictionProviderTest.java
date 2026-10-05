@@ -9,11 +9,13 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.walkforward.RankedPrediction;
-import org.ta4j.core.walkforward.WalkForwardConfig;
+import org.ta4j.core.indicators.elliott.ElliottDegree;
+import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.walkforward.RankedPrediction;
+import org.ta4j.core.walkforward.WalkForwardConfig;
 
 class ElliottWavePredictionProviderTest {
 
@@ -28,6 +30,19 @@ class ElliottWavePredictionProviderTest {
         assertThat(ElliottWaveWalkForwardProfiles.baselineConfig()).isNotEqualTo(WalkForwardConfig.defaultConfig());
         assertThat(ElliottWaveWalkForwardProfiles.baselineConfig())
                 .isEqualTo(new WalkForwardConfig(252, 200, 65, 5, 5, 320, 60, List.of(30, 150), 3, List.of(1, 5), 42L));
+    }
+
+    @Test
+    void contextOwnsAndExposesRunnerCopies() {
+        ElliottWaveAnalysisRunner runner = ElliottWaveAnalysisRunner.builder().degree(ElliottDegree.MINUTE).build();
+
+        ElliottWaveWalkForwardContext context = ElliottWaveWalkForwardContext.of(runner, 3);
+
+        ElliottWaveAnalysisRunner firstExposedRunner = context.runner();
+        ElliottWaveAnalysisRunner secondExposedRunner = context.runner();
+        assertThat(firstExposedRunner).isNotSameAs(runner);
+        assertThat(secondExposedRunner).isNotSameAs(runner);
+        assertThat(secondExposedRunner).isNotSameAs(firstExposedRunner);
     }
 
     @Test

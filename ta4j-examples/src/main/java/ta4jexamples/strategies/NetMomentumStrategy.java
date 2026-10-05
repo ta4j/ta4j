@@ -27,9 +27,9 @@ public class NetMomentumStrategy {
 
     private static final Logger LOG = LogManager.getLogger(NetMomentumStrategy.class);
 
-    private static final int DEFAULT_OVERBOUGHT_THRESHOLD = 900;
+    private static final int DEFAULT_EXHAUSTION_EXIT_THRESHOLD = 0;
     private static final int DEFAULT_MOMENTUM_TIMEFRAME = 200;
-    private static final int DEFAULT_OVERSOLD_THRESHOLD = -200;
+    private static final int DEFAULT_REBOUND_ENTRY_THRESHOLD = 0;
     private static final int DEFAULT_RSI_BARCOUNT = 14;
     private static final double DEFAULT_DECAY_FACTOR = 1;
 
@@ -92,8 +92,8 @@ public class NetMomentumStrategy {
     }
 
     private static Strategy createStrategy(NetMomentumIndicator rsiM) {
-        Rule entryRule = new CrossedUpIndicatorRule(rsiM, DEFAULT_OVERSOLD_THRESHOLD);
-        Rule exitRule = new CrossedDownIndicatorRule(rsiM, DEFAULT_OVERBOUGHT_THRESHOLD);
+        Rule entryRule = new CrossedUpIndicatorRule(rsiM, DEFAULT_REBOUND_ENTRY_THRESHOLD);
+        Rule exitRule = new CrossedDownIndicatorRule(rsiM, DEFAULT_EXHAUSTION_EXIT_THRESHOLD);
 
         return new BaseStrategy(NetMomentumStrategy.class.getSimpleName(), entryRule, exitRule);
     }

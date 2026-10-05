@@ -5,7 +5,7 @@ package org.ta4j.core.backtest;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.backtest.ExecutionModelSupport.ExecutionTarget;
+import org.ta4j.core.backtest.TradeExecutionModel.ExecutionTarget;
 import org.ta4j.core.num.Num;
 
 /**

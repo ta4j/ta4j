@@ -349,7 +349,7 @@ public class TradingRecordTest {
 
         assertFalse(record.isClosed());
         assertTrue(record.getOpenPositions().isEmpty());
-        assertNull(record.getNetOpenPosition());
+        assertTrue(record.getCurrentPosition().isOpened());
         assertNull(record.getRecordedTotalFees());
     }
 

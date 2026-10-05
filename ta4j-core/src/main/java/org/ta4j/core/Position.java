@@ -52,7 +52,7 @@ public class Position implements Serializable {
 
     /** Constructor with {@link #startingType} = BUY. */
     public Position() {
-        this(TradeType.BUY);
+        this(validateDefaultStartingPosition());
     }
 
     /**
@@ -62,7 +62,7 @@ public class Position implements Serializable {
      *                     (i.e. type of the entry trade)
      */
     public Position(TradeType startingType) {
-        this(startingType, new ZeroCostModel(), new ZeroCostModel());
+        this(validateDefaultStartingPosition(startingType));
     }
 
     /**
@@ -74,12 +74,7 @@ public class Position implements Serializable {
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
     public Position(TradeType startingType, CostModel transactionCostModel, CostModel holdingCostModel) {
-        if (startingType == null) {
-            throw new IllegalArgumentException("Starting type must not be null");
-        }
-        this.startingType = startingType;
-        this.transactionCostModel = transactionCostModel;
-        this.holdingCostModel = holdingCostModel;
+        this(validateStartingPosition(startingType, transactionCostModel, holdingCostModel));
     }
 
     /**
@@ -89,7 +84,7 @@ public class Position implements Serializable {
      * @param exit  the exit {@link Trade trade}
      */
     public Position(Trade entry, Trade exit) {
-        this(entry, exit, entry.getCostModel(), new ZeroCostModel());
+        this(validateClosedPositionWithDefaults(entry, exit));
     }
 
     /**
@@ -101,21 +96,7 @@ public class Position implements Serializable {
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
     public Position(Trade entry, Trade exit, CostModel transactionCostModel, CostModel holdingCostModel) {
-
-        if (entry.getType().equals(exit.getType())) {
-            throw new IllegalArgumentException("Both trades must have different types");
-        }
-
-        if (!(entry.getCostModel().equals(transactionCostModel))
-                || !(exit.getCostModel().equals(transactionCostModel))) {
-            throw new IllegalArgumentException("Trades and the position must incorporate the same trading cost model");
-        }
-
-        this.startingType = entry.getType();
-        this.entry = entry;
-        this.exit = exit;
-        this.transactionCostModel = transactionCostModel;
-        this.holdingCostModel = holdingCostModel;
+        this(validateClosedPosition(entry, exit, transactionCostModel, holdingCostModel));
     }
 
     /**
@@ -127,15 +108,7 @@ public class Position implements Serializable {
      * @since 0.22.2
      */
     public Position(Trade entry, CostModel transactionCostModel, CostModel holdingCostModel) {
-        Objects.requireNonNull(entry, "entry");
-        if (!(entry.getCostModel().equals(transactionCostModel))) {
-            throw new IllegalArgumentException("Trades and the position must incorporate the same trading cost model");
-        }
-        this.startingType = entry.getType();
-        this.entry = entry;
-        this.exit = null;
-        this.transactionCostModel = transactionCostModel;
-        this.holdingCostModel = holdingCostModel;
+        this(validateOpenPosition(entry, transactionCostModel, holdingCostModel));
     }
 
     /**
@@ -543,6 +516,88 @@ public class Position implements Serializable {
      */
     public TradeType getStartingType() {
         return startingType;
+    }
+
+    private Position(ValidatedStartingPosition config) {
+        this.startingType = config.startingType();
+        this.transactionCostModel = config.transactionCostModel();
+        this.holdingCostModel = config.holdingCostModel();
+    }
+
+    private Position(ValidatedClosedPosition config) {
+        this.startingType = config.entry().getType();
+        this.entry = config.entry();
+        this.exit = config.exit();
+        this.transactionCostModel = config.transactionCostModel();
+        this.holdingCostModel = config.holdingCostModel();
+    }
+
+    private Position(ValidatedOpenPosition config) {
+        this.startingType = config.entry().getType();
+        this.entry = config.entry();
+        this.exit = null;
+        this.transactionCostModel = config.transactionCostModel();
+        this.holdingCostModel = config.holdingCostModel();
+    }
+
+    private static ValidatedStartingPosition validateStartingPosition(TradeType startingType,
+            CostModel transactionCostModel, CostModel holdingCostModel) {
+        if (startingType == null) {
+            throw new IllegalArgumentException("Starting type must not be null");
+        }
+        return new ValidatedStartingPosition(startingType, transactionCostModel, holdingCostModel);
+    }
+
+    private static ValidatedStartingPosition validateDefaultStartingPosition() {
+        return validateStartingPosition(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel());
+    }
+
+    private static ValidatedStartingPosition validateDefaultStartingPosition(TradeType startingType) {
+        return validateStartingPosition(startingType, new ZeroCostModel(), new ZeroCostModel());
+    }
+
+    private static CostModel defaultTransactionCostModel(Trade entry) {
+        return Objects.requireNonNull(entry, "entry").getCostModel();
+    }
+
+    private static ValidatedClosedPosition validateClosedPositionWithDefaults(Trade entry, Trade exit) {
+        return validateClosedPosition(entry, exit, defaultTransactionCostModel(entry), new ZeroCostModel());
+    }
+
+    private static ValidatedClosedPosition validateClosedPosition(Trade entry, Trade exit,
+            CostModel transactionCostModel, CostModel holdingCostModel) {
+        Trade validatedEntry = Objects.requireNonNull(entry, "entry");
+        Trade validatedExit = Objects.requireNonNull(exit, "exit");
+
+        if (validatedEntry.getType().equals(validatedExit.getType())) {
+            throw new IllegalArgumentException("Both trades must have different types");
+        }
+        if (!(validatedEntry.getCostModel().equals(transactionCostModel))
+                || !(validatedExit.getCostModel().equals(transactionCostModel))) {
+            throw new IllegalArgumentException("Trades and the position must incorporate the same trading cost model");
+        }
+
+        return new ValidatedClosedPosition(validatedEntry, validatedExit, transactionCostModel, holdingCostModel);
+    }
+
+    private static ValidatedOpenPosition validateOpenPosition(Trade entry, CostModel transactionCostModel,
+            CostModel holdingCostModel) {
+        Trade validatedEntry = Objects.requireNonNull(entry, "entry");
+        if (!(validatedEntry.getCostModel().equals(transactionCostModel))) {
+            throw new IllegalArgumentException("Trades and the position must incorporate the same trading cost model");
+        }
+        return new ValidatedOpenPosition(validatedEntry, transactionCostModel, holdingCostModel);
+    }
+
+    private record ValidatedStartingPosition(TradeType startingType, CostModel transactionCostModel,
+            CostModel holdingCostModel) {
+    }
+
+    private record ValidatedClosedPosition(Trade entry, Trade exit, CostModel transactionCostModel,
+            CostModel holdingCostModel) {
+    }
+
+    private record ValidatedOpenPosition(Trade entry, CostModel transactionCostModel, CostModel holdingCostModel) {
     }
 
     /**

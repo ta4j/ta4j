@@ -5,19 +5,44 @@ package org.ta4j.core.backtest;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Duration;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerArray;
+import java.util.concurrent.atomic.AtomicReference;
 
+import org.apache.logging.log4j.Level;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Position;
+import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
@@ -27,18 +52,52 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.NumberOfBarsCriterion;
 import org.ta4j.core.criteria.commissions.CommissionsCriterion;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.FixedRule;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.walkforward.WalkForwardConfig;
 
-public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class BacktestExecutorTest {
 
-    public BacktestExecutorTest(NumFactory numFactory) {
-        super(numFactory);
+    private static final NumFactory DECIMAL_NUM_FACTORY = DecimalNumFactory.getInstance();
+
+    private NumFactory numFactory = DoubleNumFactory.getInstance();
+
+    private TraceTestLogger backtestLogger;
+
+    @Before
+    public void suppressExpectedFailureLogs() {
+        // Failure-ledger tests intentionally throw during strategy execution;
+        // the executor records those failures at WARN with a stack trace. Keep
+        // that known noise off the console for this class.
+        backtestLogger = new TraceTestLogger();
+        backtestLogger.open();
+        backtestLogger.setLoggerLevel(BacktestExecutor.class, Level.OFF);
+    }
+
+    @After
+    public void restoreLoggerLevels() {
+        backtestLogger.close();
+    }
+
+    private Num numOf(Number value) {
+        return numFactory.numOf(value);
+    }
+
+    private void runWithNumFactory(NumFactory factory, Runnable test) {
+        NumFactory previousFactory = numFactory;
+        numFactory = factory;
+        try {
+            test.run();
+        } finally {
+            numFactory = previousFactory;
+        }
     }
 
     @Test
@@ -52,14 +111,19 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
         List<Strategy> strategies = List.of(strategyOne, strategyTwo, strategyThree);
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1));
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1), Trade.TradeType.BUY,
+                2);
 
         assertEquals(strategies.size(), result.tradingStatements().size());
         assertEquals(strategies.size(), result.runtimeReport().strategyCount());
         assertEquals(strategies.size(), result.runtimeReport().strategyRuntimes().size());
 
         for (int i = 0; i < strategies.size(); i++) {
-            assertSame(strategies.get(i), result.runtimeReport().strategyRuntimes().get(i).strategy());
+            Strategy runtimeStrategy = result.runtimeReport().strategyRuntimes().get(i).strategy();
+
+            assertNotSame(strategies.get(i), runtimeStrategy);
+            assertEquals(strategies.get(i).getName(), runtimeStrategy.getName());
+            assertEquals(strategies.get(i).getUnstableBars(), runtimeStrategy.getUnstableBars());
         }
 
         assertFalse(result.runtimeReport()
@@ -71,6 +135,28 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertTrue(result.runtimeReport()
                 .maxStrategyRuntime()
                 .compareTo(result.runtimeReport().minStrategyRuntime()) >= 0);
+    }
+
+    @Test
+    public void executeWithRuntimeReportAcceptsPositionSizer() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14).build();
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        BacktestExecutor executor = new BacktestExecutor(series);
+        PositionSizer positionSizer = context -> numFactory.numOf(context.signalIndex() + 1);
+
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), positionSizer,
+                Trade.TradeType.BUY, 1);
+        TradingRecord tradingRecord = result.tradingStatements().getFirst().getTradingRecord();
+        Position position = tradingRecord.getPositions().getFirst();
+
+        assertEquals(1, result.tradingStatements().size());
+        assertEquals(numFactory.one(), position.getEntry().getAmount());
+        assertEquals(numFactory.one(), position.getExit().getAmount());
+    }
+
+    @Test
+    public void executeWithRuntimeReportAcceptsPositionSizerWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY, this::executeWithRuntimeReportAcceptsPositionSizer);
     }
 
     @Test
@@ -87,6 +173,80 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertEquals(result.runtimeReport().overallRuntime(), result.runtimeReport().maxStrategyRuntime());
         assertEquals(result.runtimeReport().overallRuntime(), result.runtimeReport().averageStrategyRuntime());
         assertEquals(result.runtimeReport().overallRuntime(), result.runtimeReport().medianStrategyRuntime());
+    }
+
+    @Test
+    public void executeWithRuntimeReportBoundedRejectsNonPositiveParallelism() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(5, 6, 7).build();
+        BacktestExecutor executor = new BacktestExecutor(series);
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        PositionSizer positionSizer = context -> numFactory.one();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> executor.executeWithRuntimeReport(List.of(strategy), numOf(1), Trade.TradeType.BUY, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> executor.executeWithRuntimeReport(List.of(strategy), positionSizer, Trade.TradeType.BUY, -1));
+    }
+
+    @Test
+    public void boundedWorkerInterruptionRejectsIncompleteResults() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(5, 6, 7).build();
+        BacktestExecutor executor = new BacktestExecutor(series);
+        Strategy first = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        Strategy second = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        Strategy failing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1),
+                new IllegalStateException("previous execution"));
+        assertThrows(IllegalStateException.class,
+                () -> executor.executeWithRuntimeReport(List.of(failing), numFactory.one(), Trade.TradeType.BUY, 1));
+        assertSame(failing, executor.getStrategyFailures().getFirst().strategy());
+        PositionSizer interruptingSizer = context -> {
+            Thread.currentThread().interrupt();
+            return numFactory.one();
+        };
+
+        assertThrows(IllegalStateException.class, () -> executor.executeWithRuntimeReport(List.of(first, second),
+                interruptingSizer, Trade.TradeType.BUY, 1));
+        assertTrue(executor.getStrategyFailures().isEmpty());
+    }
+
+    @Test
+    public void boundedWorkerFailureInterruptsBlockedPeer() throws Exception {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(5, 6, 7, 8).build();
+        BacktestExecutor executor = new BacktestExecutor(series);
+        CountDownLatch blocked = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        AtomicBoolean interrupted = new AtomicBoolean();
+        AssertionError failure = new AssertionError("worker failure");
+        PositionSizer sizer = context -> {
+            try {
+                if (context.signalIndex() == 0) {
+                    blocked.countDown();
+                    release.await();
+                    return numFactory.one();
+                }
+                if (!blocked.await(5, TimeUnit.SECONDS)) {
+                    throw new AssertionError("peer did not start");
+                }
+                throw failure;
+            } catch (InterruptedException e) {
+                interrupted.set(true);
+                Thread.currentThread().interrupt();
+                return numFactory.one();
+            }
+        };
+        Strategy first = new BaseStrategy(new FixedRule(0), new FixedRule(2));
+        Strategy second = new BaseStrategy(new FixedRule(1), new FixedRule(2));
+        ExecutorService caller = Executors.newSingleThreadExecutor();
+        try {
+            Future<AssertionError> execution = caller.submit(() -> assertThrows(AssertionError.class,
+                    () -> executor.executeWithRuntimeReport(List.of(first, second), sizer, Trade.TradeType.BUY, 2)));
+            assertSame(failure, execution.get(5, TimeUnit.SECONDS));
+            assertTrue(interrupted.get());
+        } finally {
+            release.countDown();
+            caller.shutdownNow();
+            caller.close();
+        }
     }
 
     @Test
@@ -122,43 +282,165 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
-    public void executeWithLargeStrategyCountUsesBatchProcessing() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14).build();
-
-        // Create more than PARALLEL_THRESHOLD (1000) strategies to trigger batched
-        // processing
-        List<Strategy> strategies = new ArrayList<>();
-        for (int i = 0; i < 1500; i++) {
-            strategies.add(new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3)));
-        }
-
-        AtomicInteger progressUpdateCount = new AtomicInteger(0);
+    public void resultCaptureFailsWhenSeriesChangesDuringExecution() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1), Trade.TradeType.BUY,
-                completed -> progressUpdateCount.incrementAndGet());
 
-        assertEquals(strategies.size(), result.tradingStatements().size());
-        assertEquals(strategies.size(), result.runtimeReport().strategyCount());
-        assertEquals(strategies.size(), progressUpdateCount.get());
+        assertThrows(IllegalStateException.class, () -> executor.executeWithRuntimeReport(List.of(strategy), numOf(1),
+                Trade.TradeType.BUY, completed -> series.getLastBar().addPrice(numOf(99))));
+
     }
 
     @Test
-    public void executeWithCustomBatchSize() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14).build();
-
-        // Create more than PARALLEL_THRESHOLD strategies
-        List<Strategy> strategies = new ArrayList<>();
-        for (int i = 0; i < 1500; i++) {
-            strategies.add(new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3)));
-        }
-
-        int customBatchSize = 250;
+    public void resultCaptureFailsWhenMaximumBarCountChangesDuringExecution() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
         BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, numOf(1), Trade.TradeType.BUY,
-                null, customBatchSize);
 
-        assertEquals(strategies.size(), result.tradingStatements().size());
-        assertEquals(strategies.size(), result.runtimeReport().strategyCount());
+        assertThrows(IllegalStateException.class, () -> executor.executeWithRuntimeReport(List.of(strategy), numOf(1),
+                Trade.TradeType.BUY, completed -> series.setMaximumBarCount(2)));
+    }
+
+    @Test
+    public void allowsChangesStrictlyAfterTheCapturedWindowDuringBatchExecution() {
+        BarSeries series = ConstrainedSeriesSupport.offsetSeries("outside_window", numFactory, 0, 2, 0, 10d, 11d, 12d,
+                13d);
+        long revision = series.getBarHistoryRevision();
+        Strategy strategy = new BaseStrategy(new FixedRule(), new FixedRule());
+
+        BacktestExecutionResult result = new BacktestExecutor(series).executeWithRuntimeReport(List.of(strategy),
+                numOf(1), Trade.TradeType.BUY, completed -> series.getBarData().get(3).addPrice(numOf(99)));
+
+        assertTrue(series.getBarHistoryRevision() > revision);
+        assertEquals(2, result.barSeries().getEndIndex());
+        assertEquals(3, result.barSeries().getBarCount());
+    }
+
+    @Test
+    public void batchReportsMatchFreshSeriesForConstrainedAndPrunedWindows() {
+        int[][] windows = { { 2, 4, 0 }, { 4, 6, 4 }, { 4, 6, 2 } };
+        double[][] rawCloses = { { 10, 11, 12, 13, 14, 15 }, { 12, 13, 14 }, { 10, 11, 12, 13, 14, 15 } };
+        String[] scenarios = { "constrained", "pruned", "constrained and pruned" };
+        BarSeries freshSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(12, 13, 14).build();
+        TradingRecord freshRecord = new BarSeriesManager(freshSeries, new TradeOnCurrentCloseModel())
+                .run(new BaseStrategy(new FixedRule(0), new FixedRule(2)), Trade.TradeType.BUY, numOf(1));
+        Position freshPosition = freshRecord.getPositions().get(0);
+
+        for (int scenario = 0; scenario < windows.length; scenario++) {
+            int begin = windows[scenario][0];
+            int end = windows[scenario][1];
+            BarSeries window = ConstrainedSeriesSupport.offsetSeries(scenarios[scenario], numFactory, begin, end,
+                    windows[scenario][2], rawCloses[scenario]);
+            Strategy boundarySignals = new BaseStrategy(new FixedRule(begin - 1, begin), new FixedRule(end, end + 1));
+            BacktestExecutionResult result = new BacktestExecutor(window, new TradeOnCurrentCloseModel())
+                    .executeWithRuntimeReport(List.of(boundarySignals), numOf(1), Trade.TradeType.BUY, 1);
+
+            assertEquals(scenarios[scenario], begin, result.barSeries().getBeginIndex());
+            assertEquals(scenarios[scenario], end, result.barSeries().getEndIndex());
+            List<Position> positions = result.tradingStatements().get(0).getTradingRecord().getPositions();
+            assertEquals(scenarios[scenario], 1, positions.size());
+            Position actual = positions.get(0);
+            assertEquals(scenarios[scenario], begin, actual.getEntry().getIndex());
+            assertEquals(scenarios[scenario], end, actual.getExit().getIndex());
+            assertEquals(scenarios[scenario], freshPosition.getEntry().getPricePerAsset(),
+                    actual.getEntry().getPricePerAsset());
+            assertEquals(scenarios[scenario], freshPosition.getExit().getPricePerAsset(),
+                    actual.getExit().getPricePerAsset());
+        }
+    }
+
+    @Test
+    public void boundedExecutionOfConcurrentSeriesUsesWorkerThreads() {
+        ConcurrentBarSeries series = buildConcurrentSeries();
+        Set<Thread> runnerThreads = ConcurrentHashMap.newKeySet();
+        Rule recordsThread = (index, tradingRecord) -> {
+            runnerThreads.add(Thread.currentThread());
+            return false;
+        };
+        List<Strategy> strategies = List.of(new BaseStrategy(recordsThread, new FixedRule(1)),
+                new BaseStrategy(recordsThread, new FixedRule(2)));
+
+        BacktestExecutionResult result = new BacktestExecutor(series).executeWithRuntimeReport(strategies,
+                numFactory.one(), Trade.TradeType.BUY, 2);
+
+        assertEquals(2, result.tradingStatements().size());
+        assertFalse(runnerThreads.isEmpty());
+        assertFalse("bounded workers were bypassed", runnerThreads.contains(Thread.currentThread()));
+    }
+
+    @Test
+    public void executeWithRuntimeReportLetsLiveWritersAppendWhileStrategiesRun() {
+        ConcurrentBarSeries series = buildConcurrentSeries();
+        series.setMaximumBarCount(Integer.MAX_VALUE);
+        Strategy appending = strategyAppendingFromFeedThread(series, buildAppendedBar(series));
+        Strategy other = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+
+        BacktestExecutionResult result = new BacktestExecutor(series)
+                .executeWithRuntimeReport(List.of(appending, other), numFactory.one(), Trade.TradeType.BUY);
+
+        assertEquals("the feed append must not fail a strategy: " + result.strategyFailures(), 2,
+                result.tradingStatements().size());
+        assertEquals(3, series.getEndIndex());
+        assertEquals(0, result.barSeries().getBeginIndex());
+        assertEquals(2, result.barSeries().getEndIndex());
+        assertEquals(3, result.barSeries().getBarCount());
+        for (TradingStatement statement : result.tradingStatements()) {
+            assertEquals(0, statement.getTradingRecord().getStartIndex().intValue());
+            assertEquals(2, statement.getTradingRecord().getEndIndex().intValue());
+            for (Position position : statement.getTradingRecord().getPositions()) {
+                assertTrue("a fill used a bar appended after the window was captured",
+                        position.getExit() == null || position.getExit().getIndex() <= 2);
+            }
+        }
+    }
+
+    @Test
+    public void executeAndKeepTopKFailsWhenLiveWriterEvictsWindowBars() {
+        ConcurrentBarSeries series = buildConcurrentSeries();
+        Strategy appending = strategyAppendingFromFeedThread(series, buildAppendedBar(series));
+        Strategy other = new BaseStrategy(new FixedRule(0), new FixedRule(2));
+        BacktestExecutor executor = new BacktestExecutor(series);
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> executor.executeAndKeepTopK(List.of(appending, other), numFactory.one(), Trade.TradeType.BUY,
+                        new NumberOfBarsCriterion(), 2, null));
+
+        assertTrue(failure.getMessage(), failure.getMessage().contains("bars before index 1 were evicted"));
+        assertEquals(1, series.getBeginIndex());
+    }
+
+    @Test
+    public void batchingDecisionUsesConfiguredThreshold() {
+        assertFalse(BacktestExecutor.usesBatchedExecution(1000));
+        assertTrue(BacktestExecutor.usesBatchedExecution(1001));
+    }
+
+    @Test
+    public void effectiveBatchSizeCapsVeryLargeWorkloads() {
+        assertEquals(500, BacktestExecutor.effectiveBatchSize(1500, 500));
+        assertEquals(250, BacktestExecutor.effectiveBatchSize(5001, 500));
+        assertEquals(100, BacktestExecutor.effectiveBatchSize(5001, 100));
+    }
+
+    @Test
+    public void batchedExecutionVisitsEveryIndexExactlyOnce() {
+        int itemCount = 7;
+        AtomicIntegerArray visits = new AtomicIntegerArray(itemCount);
+
+        BacktestExecutor.forEachBatchIndex(itemCount, 3, index -> visits.incrementAndGet(index));
+
+        for (int index = 0; index < itemCount; index++) {
+            assertEquals(1, visits.get(index));
+        }
+    }
+
+    @Test
+    public void batchedExecutionRejectsInvalidBatchSizes() {
+        assertThrows(IllegalArgumentException.class, () -> BacktestExecutor.forEachBatchIndex(1, 0, index -> {
+        }));
+        assertThrows(IllegalArgumentException.class, () -> BacktestExecutor.forEachBatchIndex(1, -1, index -> {
+        }));
     }
 
     @Test
@@ -316,6 +598,11 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
+    public void executeAndKeepTopKWithCommissionsCriterionWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY, this::executeAndKeepTopKWithCommissionsCriterion);
+    }
+
+    @Test
     public void executeAndKeepTopKWithHigherIsBetterCriterion() {
         // Create a series with increasing prices to generate different returns
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14).build();
@@ -420,6 +707,422 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
+    public void executeAndKeepTopKSkipsNaNStrategiesWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY, this::executeAndKeepTopKSkipsNaNStrategies);
+    }
+
+    @Test
+    public void executeAndKeepTopKIsolatesThrowingStrategy() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14, 15, 16).build();
+
+        Strategy oneTrade = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        Strategy twoTrades = new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3));
+        Strategy threeTrades = new BaseStrategy(new FixedRule(0, 2, 4), new FixedRule(1, 3, 5));
+        Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1), new IllegalStateException("boom"));
+
+        List<Strategy> strategies = List.of(oneTrade, throwing, threeTrades, twoTrades);
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeAndKeepTopK(strategies, numOf(1), Trade.TradeType.BUY,
+                new NumberOfBarsCriterion(), 3, null);
+
+        // Healthy strategies are ranked and returned; the throwing one is skipped
+        assertEquals(3, result.tradingStatements().size());
+        // NumberOfBarsCriterion: the lower the criterion value, the better
+        assertSame(oneTrade, result.tradingStatements().get(0).getStrategy());
+        assertSame(twoTrades, result.tradingStatements().get(1).getStrategy());
+        assertSame(threeTrades, result.tradingStatements().get(2).getStrategy());
+        assertEquals(3, result.runtimeReport().strategyCount());
+
+        List<BacktestExecutionResult.StrategyFailure> failures = executor.getStrategyFailures();
+        assertEquals(1, failures.size());
+        assertSame(throwing, failures.get(0).strategy());
+        assertEquals("boom", failures.get(0).cause().getMessage());
+    }
+
+    @Test
+    public void executeAndKeepTopKExcludesFailedDurationsFromRuntimeReport() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14, 15, 16).build();
+
+        Strategy healthy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1), new IllegalStateException("boom"));
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeAndKeepTopK(List.of(healthy, throwing), numOf(1),
+                Trade.TradeType.BUY, new NumberOfBarsCriterion(), 2, null);
+
+        BacktestRuntimeReport report = result.runtimeReport();
+        assertEquals(1, report.strategyCount());
+        // The failing duration must not pollute the aggregated statistics: with
+        // one successful strategy, min and max coincide.
+        assertEquals(report.minStrategyRuntime(), report.maxStrategyRuntime());
+        assertEquals(1, result.strategyFailures().size());
+    }
+
+    @Test
+    public void executeAndKeepTopKExcludesCriterionFailuresFromRuntimeReport() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14, 15, 16).build();
+
+        Strategy healthy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        Strategy noTrades = new BaseStrategy(new FixedRule(-1), new FixedRule(-1));
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeAndKeepTopK(List.of(healthy, noTrades), numOf(1),
+                Trade.TradeType.BUY, new ThrowingOnEmptyRecordCriterion(), 2, null);
+
+        BacktestRuntimeReport report = result.runtimeReport();
+        // The criterion threw after the no-trade strategy's statement was
+        // generated; its duration must not enter the aggregated statistics:
+        // with one successful strategy, min and max coincide.
+        assertEquals(1, report.strategyCount());
+        assertEquals(report.minStrategyRuntime(), report.maxStrategyRuntime());
+        assertEquals(1, result.strategyFailures().size());
+        assertEquals("criterion boom", result.strategyFailures().get(0).cause().getMessage());
+    }
+
+    @Test
+    public void executeWithRuntimeReportExcludesFailedDurations() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14, 15, 16).build();
+
+        Strategy healthy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1), new IllegalStateException("boom"));
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(healthy, throwing), numOf(1));
+
+        BacktestRuntimeReport report = result.runtimeReport();
+        assertEquals(1, report.strategyCount());
+        assertEquals(report.minStrategyRuntime(), report.maxStrategyRuntime());
+        assertEquals(1, result.strategyFailures().size());
+    }
+
+    @Test
+    public void executeAndKeepTopKThrowsWhenAllStrategiesFail() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
+
+        Strategy throwingOne = new ThrowingStrategy(new FixedRule(0), new FixedRule(1),
+                new IllegalStateException("boom"));
+        Strategy throwingTwo = new ThrowingStrategy(new FixedRule(0), new FixedRule(1),
+                new IllegalStateException("boom"));
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> executor.executeAndKeepTopK(List.of(throwingOne, throwingTwo), numOf(1), Trade.TradeType.BUY,
+                        new NumberOfBarsCriterion(), 2, null));
+
+        assertTrue(exception.getMessage().contains("All 2 strategies failed"));
+        assertEquals(2, executor.getStrategyFailures().size());
+    }
+
+    @Test
+    public void executeWithRuntimeReportIsolatesThrowingStrategy() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14, 15, 16).build();
+
+        Strategy oneTrade = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        Strategy twoTrades = new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3));
+        Strategy threeTrades = new BaseStrategy(new FixedRule(0, 2, 4), new FixedRule(1, 3, 5));
+        Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1), new IllegalStateException("boom"));
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(
+                List.of(oneTrade, throwing, threeTrades, twoTrades), numOf(1), Trade.TradeType.BUY, 2);
+
+        assertEquals(3, result.tradingStatements().size());
+        assertEquals(3, result.runtimeReport().strategyCount());
+        assertEquals(1, result.strategyFailures().size());
+        assertSame(throwing, result.strategyFailures().getFirst().strategy());
+        assertEquals("boom", result.strategyFailures().getFirst().cause().getMessage());
+
+        List<BacktestExecutionResult.StrategyFailure> failures = executor.getStrategyFailures();
+        assertEquals(1, failures.size());
+        assertSame(throwing, failures.get(0).strategy());
+        assertEquals("boom", failures.get(0).cause().getMessage());
+    }
+
+    @Test
+    public void executionResultFailureMetadataIsolatedFromConcurrentExecutions() throws Exception {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14, 15, 16).build();
+        int failureCount = 3;
+        RuntimeException firstFailure = new IllegalStateException("first execution");
+        Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1), firstFailure);
+        Strategy healthy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        List<Strategy> strategies = new ArrayList<>(failureCount + 1);
+        for (int i = 0; i < failureCount; i++) {
+            strategies.add(throwing);
+        }
+        strategies.add(healthy);
+
+        // Block the first execution between publishing its failure ledger and
+        // assembling its result, so the clearing execution deterministically
+        // overlaps that window instead of racing it.
+        CountDownLatch ledgerPublished = new CountDownLatch(1);
+        CountDownLatch ledgerCleared = new CountDownLatch(1);
+        BacktestExecutor executor = new BacktestExecutor(series) {
+            @Override
+            void afterFailureLedgerPublished() {
+                ledgerPublished.countDown();
+                try {
+                    if (!ledgerCleared.await(10, TimeUnit.SECONDS)) {
+                        throw new IllegalStateException("timed out waiting for the clearing execution");
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(e);
+                }
+            }
+        };
+
+        ExecutorService pool = Executors.newSingleThreadExecutor();
+        try {
+            Future<BacktestExecutionResult> firstExecution = pool
+                    .submit(() -> executor.executeWithRuntimeReport(strategies, numOf(1)));
+
+            assertTrue("first execution did not publish its failure ledger",
+                    ledgerPublished.await(10, TimeUnit.SECONDS));
+
+            // The first execution is now blocked after publishing: clearing the
+            // shared ledger overlaps its result assembly by construction.
+            executor.executeWithRuntimeReport(List.of(), numOf(1));
+            assertTrue("clearing execution did not clear the shared ledger", executor.getStrategyFailures().isEmpty());
+            ledgerCleared.countDown();
+
+            BacktestExecutionResult result = firstExecution.get(10, TimeUnit.SECONDS);
+            assertEquals(failureCount, result.strategyFailures().size());
+            assertSame(throwing, result.strategyFailures().getFirst().strategy());
+            assertSame(firstFailure, result.strategyFailures().getFirst().cause());
+        } finally {
+            ledgerCleared.countDown();
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    public void executeWithRuntimeReportThrowsWhenAllStrategiesFail() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
+
+        Strategy throwingOne = new ThrowingStrategy(new FixedRule(0), new FixedRule(1),
+                new IllegalStateException("boom-one"));
+        Strategy throwingTwo = new ThrowingStrategy(new FixedRule(0), new FixedRule(1),
+                new IllegalStateException("boom-two"));
+
+        BacktestExecutor executor = new BacktestExecutor(series);
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> executor
+                .executeWithRuntimeReport(List.of(throwingOne, throwingTwo), numOf(1), Trade.TradeType.BUY, 2));
+
+        assertTrue(exception.getMessage().contains("All 2 strategies failed"));
+        assertEquals(2, executor.getStrategyFailures().size());
+        // The aggregate must retain the original failures: the first recorded
+        // failure is attached as the cause and the rest are suppressed, so
+        // callers keep the original stack traces.
+        assertNotNull(exception.getCause());
+        assertEquals(1, exception.getSuppressed().length);
+        Set<String> retainedMessages = Set.of(exception.getCause().getMessage(),
+                exception.getSuppressed()[0].getMessage());
+        assertEquals(Set.of("boom-one", "boom-two"), retainedMessages);
+    }
+
+    @Test
+    public void concurrentExecutionsKeepFailureLedgersIsolated() throws Exception {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
+        CountDownLatch blockedStarted = new CountDownLatch(1);
+        CountDownLatch releaseBlocked = new CountDownLatch(1);
+        Strategy blocked = new BlockingThrowingStrategy(new FixedRule(0), new FixedRule(1),
+                new IllegalStateException("blocked"), blockedStarted, releaseBlocked);
+        Strategy healthy = new BaseStrategy(new FixedRule(), new FixedRule());
+        Strategy immediateFailure = new ThrowingStrategy(new FixedRule(0), new FixedRule(1),
+                new IllegalStateException("immediate"));
+        BacktestExecutor executor = new BacktestExecutor(series);
+        AtomicReference<BacktestExecutionResult> firstResult = new AtomicReference<>();
+        AtomicReference<Throwable> firstFailure = new AtomicReference<>();
+
+        Thread firstExecution = new Thread(() -> {
+            try {
+                firstResult.set(executor.executeWithRuntimeReport(List.of(blocked, healthy), numOf(1)));
+            } catch (Throwable failure) {
+                firstFailure.set(failure);
+            }
+        });
+        firstExecution.start();
+        try {
+            assertTrue(blockedStarted.await(10, TimeUnit.SECONDS));
+            assertThrows(IllegalStateException.class,
+                    () -> executor.executeWithRuntimeReport(List.of(immediateFailure), numOf(1)));
+        } finally {
+            releaseBlocked.countDown();
+            firstExecution.join(10_000);
+        }
+
+        assertFalse(firstExecution.isAlive());
+        assertEquals(null, firstFailure.get());
+        assertEquals(1, firstResult.get().tradingStatements().size());
+        assertSame(healthy, firstResult.get().tradingStatements().get(0).getStrategy());
+    }
+
+    @Test
+    public void rejectsEndContractionDuringBatchExecutionEvenWhenRawBarsRemain() {
+        BarSeries delegate = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
+        AtomicInteger beginIndex = new AtomicInteger(0);
+        AtomicInteger endIndex = new AtomicInteger(3);
+        BarSeries series = withMutableLogicalBounds(delegate, beginIndex, endIndex);
+        Rule contractEndAtFirstBar = (index, tradingRecord) -> {
+            if (index == 0) {
+                endIndex.set(2);
+            }
+            return false;
+        };
+        Strategy mutating = new BaseStrategy(contractEndAtFirstBar, new FixedRule());
+        Strategy stable = new BaseStrategy(new FixedRule(), new FixedRule());
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class, () -> new BacktestExecutor(series)
+                .executeWithRuntimeReport(List.of(mutating, stable), numOf(1), Trade.TradeType.BUY, 1));
+
+        assertTrue(failure.getMessage(), failure.getMessage().contains("end moved"));
+    }
+
+    @Test
+    public void rejectsBeginAdvanceDuringBatchExecution() {
+        BarSeries delegate = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
+        AtomicInteger beginIndex = new AtomicInteger(0);
+        AtomicInteger endIndex = new AtomicInteger(3);
+        BarSeries series = withMutableLogicalBounds(delegate, beginIndex, endIndex);
+        Rule advanceBeginAtFirstBar = (index, tradingRecord) -> {
+            if (index == 0) {
+                beginIndex.set(1);
+            }
+            return false;
+        };
+        Strategy mutating = new BaseStrategy(advanceBeginAtFirstBar, new FixedRule());
+        Strategy stable = new BaseStrategy(new FixedRule(), new FixedRule());
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class, () -> new BacktestExecutor(series)
+                .executeWithRuntimeReport(List.of(mutating, stable), numOf(1), Trade.TradeType.BUY, 1));
+
+        assertTrue(failure.getMessage(), failure.getMessage().contains("begin moved"));
+    }
+
+    private BarSeries withMutableLogicalBounds(BarSeries delegate, AtomicInteger beginIndex, AtomicInteger endIndex) {
+        return (BarSeries) Proxy.newProxyInstance(BarSeries.class.getClassLoader(), new Class<?>[] { BarSeries.class },
+                (proxy, method, arguments) -> {
+                    if (method.getName().equals("getBeginIndex")) {
+                        return beginIndex.get();
+                    }
+                    if (method.getName().equals("getEndIndex")) {
+                        return endIndex.get();
+                    }
+                    try {
+                        return method.invoke(delegate, arguments);
+                    } catch (InvocationTargetException exception) {
+                        throw exception.getCause();
+                    }
+                });
+    }
+
+    @Test
+    public void emptyExecutionClearsPreviousFailures() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
+        Strategy throwing = new ThrowingStrategy(new FixedRule(0), new FixedRule(1), new IllegalStateException("boom"));
+        BacktestExecutor executor = new BacktestExecutor(series);
+
+        assertThrows(IllegalStateException.class, () -> executor.executeWithRuntimeReport(List.of(throwing), numOf(1)));
+        executor.executeWithRuntimeReport(List.of(), numOf(1));
+
+        assertTrue(executor.getStrategyFailures().isEmpty());
+    }
+
+    private ConcurrentBarSeries buildConcurrentSeries() {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
+        return ConstrainedSeriesSupport.seriesWithReadWriteLock(source, new ReentrantReadWriteLock());
+    }
+
+    private Bar buildAppendedBar(ConcurrentBarSeries series) {
+        return series.barBuilder().timePeriod(Duration.ofMinutes(1)).closePrice(13).build();
+    }
+
+    /**
+     * Strategy whose first evaluation appends a bar from a separate feed thread and
+     * requires that write to complete while the strategy is still running.
+     */
+    private Strategy strategyAppendingFromFeedThread(ConcurrentBarSeries series, Bar appendedBar) {
+        AtomicBoolean appended = new AtomicBoolean();
+        Rule appendOnce = (index, tradingRecord) -> {
+            if (appended.compareAndSet(false, true)) {
+                Thread feed = new Thread(() -> series.addBar(appendedBar), "backtest-live-feed");
+                feed.setDaemon(true);
+                feed.start();
+                try {
+                    feed.join(5_000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("Interrupted while waiting for the feed writer", e);
+                }
+                assertFalse("the feed writer was blocked by the running backtest", feed.isAlive());
+            }
+            return index == 0;
+        };
+        // Exits on the window's last bar, after the append completed: a next-open
+        // fill there must not use the appended bar.
+        return new BaseStrategy(appendOnce, new FixedRule(2));
+    }
+
+    /**
+     * Strategy that pauses before throwing, allowing deterministic overlap of two
+     * executor calls.
+     */
+    private static final class BlockingThrowingStrategy extends BaseStrategy {
+
+        private final RuntimeException failure;
+        private final CountDownLatch started;
+        private final CountDownLatch release;
+
+        private BlockingThrowingStrategy(Rule entryRule, Rule exitRule, RuntimeException failure,
+                CountDownLatch started, CountDownLatch release) {
+            super(entryRule, exitRule);
+            this.failure = failure;
+            this.started = started;
+            this.release = release;
+        }
+
+        @Override
+        public boolean shouldOperate(int index, TradingRecord tradingRecord) {
+            started.countDown();
+            try {
+                release.await();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("Interrupted while waiting to fail", e);
+            }
+            throw failure;
+        }
+    }
+
+    @Test
+    public void executeAndKeepTopKAcceptsPositionSizer() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
+        Strategy smallestEntry = new BaseStrategy(new FixedRule(0), new FixedRule(3));
+        Strategy middleEntry = new BaseStrategy(new FixedRule(1), new FixedRule(3));
+        Strategy largestEntry = new BaseStrategy(new FixedRule(2), new FixedRule(3));
+        List<Strategy> strategies = List.of(largestEntry, middleEntry, smallestEntry);
+        PositionSizer positionSizer = context -> numFactory.numOf(context.signalIndex() + 1);
+        BacktestExecutor executor = new BacktestExecutor(series, new LinearTransactionCostModel(0.01),
+                new ZeroCostModel(), new TradeOnCurrentCloseModel());
+
+        BacktestExecutionResult result = executor.executeAndKeepTopK(strategies, positionSizer, Trade.TradeType.BUY,
+                new CommissionsCriterion(), 1, null);
+        TradingRecord tradingRecord = result.tradingStatements().getFirst().getTradingRecord();
+        Position position = tradingRecord.getPositions().getFirst();
+
+        assertEquals(1, result.tradingStatements().size());
+        assertSame(smallestEntry, result.tradingStatements().getFirst().getStrategy());
+        assertEquals(numFactory.one(), position.getEntry().getAmount());
+        assertEquals(numFactory.one(), position.getExit().getAmount());
+    }
+
+    @Test
+    public void executeAndKeepTopKAcceptsPositionSizerWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY, this::executeAndKeepTopKAcceptsPositionSizer);
+    }
+
+    @Test
     public void executeWalkForwardRunsStrategyAcrossFolds() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25)
@@ -432,9 +1135,46 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
         StrategyWalkForwardExecutionResult result = executor.executeWalkForward(strategy, numOf(1), Trade.TradeType.BUY,
                 config);
 
-        assertSame(series, result.barSeries());
+        BarSeries resultSeries = result.barSeries();
+        assertEquals(series.getBarCount(), resultSeries.getBarCount());
         assertFalse(result.folds().isEmpty());
         assertEquals(result.folds().size(), result.runtimeReport().foldRuntimes().size());
+    }
+
+    @Test
+    public void executeWalkForwardAcceptsPositionSizer() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25)
+                .build();
+        Strategy strategy = new BaseStrategy(new FixedRule(4, 8, 12), new FixedRule(5, 9, 13));
+        WalkForwardConfig config = new WalkForwardConfig(4, 4, 4, 0, 0, 4, 2, List.of(1), 1, List.of(1), 3L);
+        PositionSizer positionSizer = context -> numFactory.numOf(context.entryIndex());
+        BacktestExecutor executor = new BacktestExecutor(series, new ZeroCostModel(), new ZeroCostModel(),
+                new TradeOnCurrentCloseModel());
+
+        StrategyWalkForwardExecutionResult result = executor.executeWalkForward(strategy, positionSizer,
+                Trade.TradeType.BUY, config);
+
+        assertFalse(result.folds().isEmpty());
+        assertEquals(result.folds().size(), result.runtimeReport().foldRuntimes().size());
+    }
+
+    @Test
+    public void executeWithWalkForwardAcceptsPositionSizer() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25)
+                .build();
+        Strategy strategy = new BaseStrategy(new FixedRule(4, 8, 12), new FixedRule(5, 9, 13));
+        WalkForwardConfig config = new WalkForwardConfig(4, 4, 4, 0, 0, 4, 2, List.of(1), 1, List.of(1), 3L);
+        PositionSizer positionSizer = context -> numFactory.numOf(context.entryIndex());
+        BacktestExecutor executor = new BacktestExecutor(series, new ZeroCostModel(), new ZeroCostModel(),
+                new TradeOnCurrentCloseModel());
+
+        BacktestExecutor.BacktestAndWalkForwardResult result = executor.executeWithWalkForward(strategy, positionSizer,
+                Trade.TradeType.BUY, config);
+
+        assertEquals(1, result.backtest().tradingStatements().size());
+        assertFalse(result.walkForward().folds().isEmpty());
     }
 
     @Test
@@ -452,7 +1192,16 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
 
         assertEquals(1, result.backtest().tradingStatements().size());
         assertFalse(result.walkForward().folds().isEmpty());
-        assertSame(result.backtest().barSeries(), result.walkForward().barSeries());
+        BarSeries backtestSeries = result.backtest().barSeries();
+        BarSeries walkForwardSeries = result.walkForward().barSeries();
+        assertEquals(backtestSeries.getBarCount(), walkForwardSeries.getBarCount());
+        assertEquals(backtestSeries.getName(), walkForwardSeries.getName());
+    }
+
+    @Test
+    public void executeWithWalkForwardReturnsCombinedBacktestAndWalkForwardOutputsWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY,
+                this::executeWithWalkForwardReturnsCombinedBacktestAndWalkForwardOutputs);
     }
 
     private static final class NaNPenalizingCriterion implements AnalysisCriterion {
@@ -491,6 +1240,52 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
         private TrackingTradingRecord(Trade.TradeType tradeType, int startIndex, int endIndex,
                 CostModel transactionCostModel, CostModel holdingCostModel) {
             super(tradeType, startIndex, endIndex, transactionCostModel, holdingCostModel);
+        }
+    }
+
+    /**
+     * Strategy whose execution fails on the first bar, used to verify that a
+     * throwing strategy is isolated from healthy strategies.
+     */
+    private static final class ThrowingStrategy extends BaseStrategy {
+
+        private final RuntimeException failure;
+
+        private ThrowingStrategy(Rule entryRule, Rule exitRule, RuntimeException failure) {
+            super(entryRule, exitRule);
+            this.failure = failure;
+        }
+
+        @Override
+        public boolean shouldOperate(int index, TradingRecord tradingRecord) {
+            throw failure;
+        }
+    }
+
+    /**
+     * Criterion that throws for empty trading records, used to verify that
+     * criterion failures after statement generation are excluded from runtime
+     * report aggregation.
+     */
+    private static final class ThrowingOnEmptyRecordCriterion implements AnalysisCriterion {
+
+        @Override
+        public Num calculate(BarSeries series, Position position) {
+            return series.numFactory().numOf(1);
+        }
+
+        @Override
+        public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+            int tradeCount = tradingRecord.getTrades().size();
+            if (tradeCount == 0) {
+                throw new IllegalStateException("criterion boom");
+            }
+            return series.numFactory().numOf(tradeCount);
+        }
+
+        @Override
+        public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+            return criterionValue1.isGreaterThan(criterionValue2);
         }
     }
 

@@ -26,6 +26,10 @@ import static java.util.Objects.requireNonNull;
  */
 public class AverageTrueRangeStopGainRule extends BaseVolatilityStopGainRule {
 
+    private final Indicator<Num> referencePrice;
+    private final ATRIndicator atrIndicator;
+    private final Number atrCoefficient;
+
     /**
      * Constructor defaulting the reference price to the close price.
      *
@@ -34,7 +38,7 @@ public class AverageTrueRangeStopGainRule extends BaseVolatilityStopGainRule {
      * @param atrCoefficient the multiple of ATR to set the gain threshold
      */
     public AverageTrueRangeStopGainRule(BarSeries series, int atrBarCount, Number atrCoefficient) {
-        this(series, new ClosePriceIndicator(series), atrBarCount, atrCoefficient);
+        this(new ClosePriceIndicator(series), new ATRIndicator(series, atrBarCount), atrCoefficient);
     }
 
     /**
@@ -46,7 +50,7 @@ public class AverageTrueRangeStopGainRule extends BaseVolatilityStopGainRule {
      */
     public AverageTrueRangeStopGainRule(final BarSeries series, final Indicator<Num> referencePrice,
             final int atrBarCount, final Number atrCoefficient) {
-        super(referencePrice, createStopGainThreshold(series, atrBarCount, atrCoefficient));
+        this(referencePrice, new ATRIndicator(series, atrBarCount), atrCoefficient);
     }
 
     /**
@@ -59,10 +63,24 @@ public class AverageTrueRangeStopGainRule extends BaseVolatilityStopGainRule {
      */
     public AverageTrueRangeStopGainRule(final Indicator<Num> referencePrice, final ATRIndicator atrIndicator,
             final Number atrCoefficient) {
-        super(referencePrice, BinaryOperationIndicator.product(requireNonNull(atrIndicator), atrCoefficient));
+        this(new Config(referencePrice, requireNonNull(atrIndicator), atrCoefficient));
     }
 
-    private static Indicator<Num> createStopGainThreshold(BarSeries series, int atrBarCount, Number atrCoefficient) {
-        return BinaryOperationIndicator.product(new ATRIndicator(series, atrBarCount), atrCoefficient);
+    private AverageTrueRangeStopGainRule(Config config) {
+        super(config.referencePrice(),
+                BinaryOperationIndicator.product(config.atrIndicator(), config.atrCoefficient()));
+        this.referencePrice = config.referencePrice();
+        this.atrIndicator = config.atrIndicator();
+        this.atrCoefficient = config.atrCoefficient();
+    }
+
+    private record Config(Indicator<Num> referencePrice, ATRIndicator atrIndicator, Number atrCoefficient) {
+
+        private Config {
+            if (atrCoefficient == null || Double.isNaN(atrCoefficient.doubleValue())
+                    || atrCoefficient.doubleValue() <= 0) {
+                throw new IllegalArgumentException("atrCoefficient must be positive");
+            }
+        }
     }
 }

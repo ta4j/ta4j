@@ -33,6 +33,19 @@ abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implement
      */
     protected BaseVolatilityTrailingStopLossRule(Indicator<Num> referencePrice, Indicator<Num> stopLossThreshold,
             int barCount) {
+        this(validatedConfig(referencePrice, stopLossThreshold, barCount));
+    }
+
+    private BaseVolatilityTrailingStopLossRule(Config config) {
+        this.referencePrice = config.referencePrice();
+        this.stopLossThreshold = config.stopLossThreshold();
+        this.barCount = config.barCount();
+        this.highestReferencePriceWithMaxLookback = config.highestReferencePriceWithMaxLookback();
+        this.lowestReferencePriceWithMaxLookback = config.lowestReferencePriceWithMaxLookback();
+    }
+
+    private static Config validatedConfig(Indicator<Num> referencePrice, Indicator<Num> stopLossThreshold,
+            int barCount) {
         if (referencePrice == null) {
             throw new IllegalArgumentException("referencePrice must not be null");
         }
@@ -42,11 +55,9 @@ abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implement
         if (barCount <= 0) {
             throw new IllegalArgumentException("barCount must be positive");
         }
-        this.referencePrice = referencePrice;
-        this.stopLossThreshold = stopLossThreshold;
-        this.barCount = barCount;
-        this.highestReferencePriceWithMaxLookback = new HighestValueIndicator(referencePrice, barCount);
-        this.lowestReferencePriceWithMaxLookback = new LowestValueIndicator(referencePrice, barCount);
+        return new Config(referencePrice, stopLossThreshold, barCount,
+                new HighestValueIndicator(referencePrice, barCount),
+                new LowestValueIndicator(referencePrice, barCount));
     }
 
     /**
@@ -59,30 +70,55 @@ abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implement
      */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        if (tradingRecord != null && !tradingRecord.isClosed()) {
-            Position position = tradingRecord.getCurrentPosition();
-            if (position.isOpened()) {
-                Num entryPrice = position.getEntry().getNetPrice();
-                Num currentPrice = referencePrice.getValue(index);
-                Num threshold = stopLossThreshold.getValue(index);
-                if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice) || Num.isNaNOrNull(threshold)) {
-                    return false;
-                }
-
-                int barsSinceEntry = index - position.getEntry().getIndex() + 1;
-                int lookback = Math.min(barsSinceEntry, barCount);
-
-                if (position.getEntry().isBuy()) {
-                    Num reference = entryPrice.max(highestReferencePrice(index, lookback));
-                    Num thresholdPrice = StopLossRule.stopLossPriceFromDistance(reference, threshold, true);
-                    return currentPrice.isLessThanOrEqual(thresholdPrice);
-                }
-                Num reference = entryPrice.min(lowestReferencePrice(index, lookback));
-                Num thresholdPrice = StopLossRule.stopLossPriceFromDistance(reference, threshold, false);
-                return currentPrice.isGreaterThanOrEqual(thresholdPrice);
-            }
+        if (tradingRecord == null) {
+            StopRuleTrace.traceUnavailable(this, index, "noTradingRecord");
+            return false;
         }
-        return false;
+        if (tradingRecord.isClosed()) {
+            StopRuleTrace.traceUnavailable(this, index, "closedTradingRecord");
+            return false;
+        }
+        Position position = tradingRecord.getCurrentPosition();
+        if (!position.isOpened()) {
+            StopRuleTrace.traceUnavailable(this, index, "noOpenPosition");
+            return false;
+        }
+        int entryIndex = position.getEntry().getIndex();
+        if (index < entryIndex) {
+            StopRuleTrace.traceUnavailable(this, index, "indexBeforeEntry");
+            return false;
+        }
+
+        Num entryPrice = position.getEntry().getNetPrice();
+        Num currentPrice = referencePrice.getValue(index);
+        Num threshold = stopLossThreshold.getValue(index);
+        if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice) || Num.isNaNOrNull(threshold)) {
+            StopRuleTrace.traceUnavailable(this, index, "nanInput");
+            return false;
+        }
+
+        int barsSinceEntry = index - entryIndex + 1;
+        int lookback = Math.min(barsSinceEntry, barCount);
+        boolean buy = position.getEntry().isBuy();
+        Num extremePrice;
+        Num stopPrice;
+        boolean satisfied;
+        String extremeField;
+        if (buy) {
+            extremePrice = entryPrice.max(highestReferencePrice(index, lookback));
+            stopPrice = StopLossRule.stopLossPriceFromDistance(extremePrice, threshold, true);
+            satisfied = currentPrice.isLessThanOrEqual(stopPrice);
+            extremeField = "highestPrice";
+        } else {
+            extremePrice = entryPrice.min(lowestReferencePrice(index, lookback));
+            stopPrice = StopLossRule.stopLossPriceFromDistance(extremePrice, threshold, false);
+            satisfied = currentPrice.isGreaterThanOrEqual(stopPrice);
+            extremeField = "lowestPrice";
+        }
+        String reason = satisfied ? "stopReached" : buy ? "priceAboveStop" : "priceBelowStop";
+        StopRuleTrace.traceTrailingDecision(this, index, satisfied, buy, currentPrice, entryPrice, stopPrice,
+                extremeField, extremePrice, lookback, "lossAmount", threshold, reason);
+        return satisfied;
     }
 
     /**
@@ -151,5 +187,10 @@ abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implement
             return lowestReferencePriceWithMaxLookback.getValue(index);
         }
         return new LowestValueIndicator(referencePrice, lookback).getValue(index);
+    }
+
+    private record Config(Indicator<Num> referencePrice, Indicator<Num> stopLossThreshold, int barCount,
+            HighestValueIndicator highestReferencePriceWithMaxLookback,
+            LowestValueIndicator lowestReferencePriceWithMaxLookback) {
     }
 }

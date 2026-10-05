@@ -3,9 +3,12 @@
  */
 package org.ta4j.core.indicators.renko;
 
+import java.util.Objects;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Detects exhaustion moves where price prints a configured number of Renko
@@ -34,7 +37,7 @@ public class RenkoXIndicator extends CachedIndicator<Boolean> {
      * @since 0.19
      */
     public RenkoXIndicator(Indicator<Num> priceIndicator, double pointSize) {
-        this(priceIndicator, pointSize, 3);
+        this(validatedConfig(priceIndicator, pointSize, 3));
     }
 
     /**
@@ -48,17 +51,28 @@ public class RenkoXIndicator extends CachedIndicator<Boolean> {
      * @since 0.19
      */
     public RenkoXIndicator(Indicator<Num> priceIndicator, double pointSize, int brickCount) {
-        super(priceIndicator);
-        var numFactory = getBarSeries().numFactory();
-        var resolvedPointSize = numFactory.numOf(pointSize);
+        this(validatedConfig(priceIndicator, pointSize, brickCount));
+    }
+
+    private RenkoXIndicator(Config config) {
+        super(config.priceIndicator());
+        this.brickCount = config.brickCount();
+        this.counter = config.counter();
+    }
+
+    private static Config validatedConfig(Indicator<Num> priceIndicator, double pointSize, int brickCount) {
+        Indicator<Num> validatedPriceIndicator = Objects.requireNonNull(priceIndicator,
+                "priceIndicator must not be null");
+        NumFactory numFactory = validatedPriceIndicator.getBarSeries().numFactory();
+        Num resolvedPointSize = numFactory.numOf(pointSize);
         if (resolvedPointSize.isLessThanOrEqual(numFactory.zero())) {
             throw new IllegalArgumentException("pointSize must be strictly positive");
         }
         if (brickCount < 1) {
             throw new IllegalArgumentException("brickCount must be at least 1");
         }
-        this.brickCount = brickCount;
-        this.counter = new RenkoCounter(priceIndicator, resolvedPointSize);
+        return new Config(validatedPriceIndicator, new RenkoCounter(validatedPriceIndicator, resolvedPointSize),
+                brickCount);
     }
 
     @Override
@@ -70,5 +84,8 @@ public class RenkoXIndicator extends CachedIndicator<Boolean> {
     @Override
     public int getCountOfUnstableBars() {
         return 1;
+    }
+
+    private record Config(Indicator<Num> priceIndicator, RenkoCounter counter, int brickCount) {
     }
 }

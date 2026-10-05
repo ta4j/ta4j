@@ -61,6 +61,10 @@ public class PivotPointIndicator extends AbstractPivotPointIndicator {
         this.three = series.numFactory().numOf(3);
     }
 
+    PivotPointIndicator copy() {
+        return new PivotPointIndicator(getBarSeries(), timeLevel);
+    }
+
     @Override
     protected Num calcPivotPoint(List<Integer> barsOfPreviousPeriod) {
         if (barsOfPreviousPeriod.isEmpty())

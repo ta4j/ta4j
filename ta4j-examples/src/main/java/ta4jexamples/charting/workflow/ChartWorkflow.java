@@ -52,7 +52,7 @@ import ta4jexamples.charting.storage.FileSystemChartStorage;
  *
  * @since 0.19
  */
-public class ChartWorkflow {
+public final class ChartWorkflow {
 
     /**
      * Default saved chart image width.
@@ -81,6 +81,7 @@ public class ChartWorkflow {
     static final int DEFAULT_CHART_IMAGE_HEIGHT = 2160;
 
     private static final Logger LOG = LogManager.getLogger(ChartWorkflow.class);
+    private static final int FIRST_POSITION_NUMBER = 1;
 
     private final TradingChartFactory chartFactory;
     private final ChartDisplayer chartDisplayer;
@@ -356,7 +357,28 @@ public class ChartWorkflow {
      */
     public JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
             TimeAxisMode timeAxisMode) {
-        return buildTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, null, false);
+        return buildTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, FIRST_POSITION_NUMBER, null,
+                false);
+    }
+
+    /**
+     * Builds a chart that overlays a trading record on top of OHLC data using
+     * labels that begin at the supplied source position number.
+     *
+     * @param series              the bar series to chart
+     * @param strategyName        the strategy name shown in the chart title
+     * @param tradingRecord       the trading record to render
+     * @param timeAxisMode        the chart time-axis mode
+     * @param sourcePositionStart the 1-based source number for the first rendered
+     *                            position
+     * @return a chart with position bands and trade labels using source position
+     *         numbers
+     * @since 0.22.9
+     */
+    public JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
+            TimeAxisMode timeAxisMode, int sourcePositionStart) {
+        return buildTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, sourcePositionStart, null,
+                false);
     }
 
     /**
@@ -380,7 +402,31 @@ public class ChartWorkflow {
     @SafeVarargs
     public final JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
             TimeAxisMode timeAxisMode, Indicator<Num>... indicators) {
-        return buildTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, indicators, true);
+        return buildTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, FIRST_POSITION_NUMBER,
+                indicators, true);
+    }
+
+    /**
+     * Builds a chart that overlays a trading record on top of OHLC data, appends
+     * indicator subplots, and uses labels that begin at the supplied source
+     * position number.
+     *
+     * @param series              the bar series to chart
+     * @param strategyName        the strategy name shown in the chart title
+     * @param tradingRecord       the trading record to render
+     * @param timeAxisMode        the chart time-axis mode
+     * @param sourcePositionStart the 1-based source number for the first rendered
+     *                            position
+     * @param indicators          optional indicators rendered in subplots
+     * @return a chart with position bands and trade labels using source position
+     *         numbers
+     * @since 0.22.9
+     */
+    @SafeVarargs
+    public final JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
+            TimeAxisMode timeAxisMode, int sourcePositionStart, Indicator<Num>... indicators) {
+        return buildTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, sourcePositionStart,
+                indicators, true);
     }
 
     /**
@@ -402,7 +448,26 @@ public class ChartWorkflow {
      */
     public Optional<Path> saveTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
             TimeAxisMode timeAxisMode) {
-        JFreeChart chart = buildTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, null, false);
+        return saveTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, FIRST_POSITION_NUMBER);
+    }
+
+    /**
+     * Persists a trading-record chart using labels that begin at the supplied
+     * source position number.
+     *
+     * @param series              the bar series to chart
+     * @param strategyName        the strategy name shown in the chart title
+     * @param tradingRecord       the trading record to render
+     * @param timeAxisMode        the chart time-axis mode
+     * @param sourcePositionStart the 1-based source number for the first rendered
+     *                            position
+     * @return an optional path to the stored chart
+     * @since 0.22.9
+     */
+    public Optional<Path> saveTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
+            TimeAxisMode timeAxisMode, int sourcePositionStart) {
+        JFreeChart chart = buildTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode,
+                sourcePositionStart, null, false);
         String chartTitle = resolveChartTitle(chart, series, strategyName);
         return chartStorage.save(chart, series, chartTitle, DEFAULT_CHART_IMAGE_WIDTH, DEFAULT_CHART_IMAGE_HEIGHT);
     }
@@ -430,7 +495,30 @@ public class ChartWorkflow {
     @SafeVarargs
     public final Optional<Path> saveTradingRecordChart(BarSeries series, String strategyName,
             TradingRecord tradingRecord, TimeAxisMode timeAxisMode, Indicator<Num>... indicators) {
-        JFreeChart chart = buildTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, indicators, true);
+        return saveTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, FIRST_POSITION_NUMBER,
+                indicators);
+    }
+
+    /**
+     * Persists a trading-record chart with indicator subplots using labels that
+     * begin at the supplied source position number.
+     *
+     * @param series              the bar series to chart
+     * @param strategyName        the strategy name shown in the chart title
+     * @param tradingRecord       the trading record to render
+     * @param timeAxisMode        the chart time-axis mode
+     * @param sourcePositionStart the 1-based source number for the first rendered
+     *                            position
+     * @param indicators          optional indicators rendered in subplots
+     * @return an optional path to the stored chart
+     * @since 0.22.9
+     */
+    @SafeVarargs
+    public final Optional<Path> saveTradingRecordChart(BarSeries series, String strategyName,
+            TradingRecord tradingRecord, TimeAxisMode timeAxisMode, int sourcePositionStart,
+            Indicator<Num>... indicators) {
+        JFreeChart chart = buildTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode,
+                sourcePositionStart, indicators, true);
         String chartTitle = resolveChartTitle(chart, series, strategyName);
         return chartStorage.save(chart, series, chartTitle, DEFAULT_CHART_IMAGE_WIDTH, DEFAULT_CHART_IMAGE_HEIGHT);
     }
@@ -452,11 +540,29 @@ public class ChartWorkflow {
      */
     public void displayTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
             TimeAxisMode timeAxisMode) {
+        displayTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, FIRST_POSITION_NUMBER);
+    }
+
+    /**
+     * Displays a trading-record chart using labels that begin at the supplied
+     * source position number, logging any presentation exceptions.
+     *
+     * @param series              the bar series to chart
+     * @param strategyName        the strategy name shown in the chart title
+     * @param tradingRecord       the trading record to render
+     * @param timeAxisMode        the chart time-axis mode
+     * @param sourcePositionStart the 1-based source number for the first rendered
+     *                            position
+     * @since 0.22.9
+     */
+    public void displayTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
+            TimeAxisMode timeAxisMode, int sourcePositionStart) {
         validateTradingInputs(series, strategyName, tradingRecord);
         validateTimeAxisMode(timeAxisMode);
-        displayChartSafely(
-                () -> chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode), null,
-                "Failed to display trading record chart for {}@{}", strategyName, safeSeriesName(series));
+        JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode,
+                sourcePositionStart);
+        displayChartSafely(() -> chart, null, "Failed to display trading record chart for {}@{}", strategyName,
+                safeSeriesName(series));
     }
 
     /**
@@ -480,13 +586,33 @@ public class ChartWorkflow {
     @SafeVarargs
     public final void displayTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
             TimeAxisMode timeAxisMode, Indicator<Num>... indicators) {
+        displayTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, FIRST_POSITION_NUMBER, indicators);
+    }
+
+    /**
+     * Displays a trading-record chart with indicator subplots using labels that
+     * begin at the supplied source position number, logging any presentation
+     * exceptions.
+     *
+     * @param series              the bar series to chart
+     * @param strategyName        the strategy name shown in the chart title
+     * @param tradingRecord       the trading record to render
+     * @param timeAxisMode        the chart time-axis mode
+     * @param sourcePositionStart the 1-based source number for the first rendered
+     *                            position
+     * @param indicators          optional indicators rendered in subplots
+     * @since 0.22.9
+     */
+    @SafeVarargs
+    public final void displayTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
+            TimeAxisMode timeAxisMode, int sourcePositionStart, Indicator<Num>... indicators) {
         validateTradingInputs(series, strategyName, tradingRecord);
         validateTimeAxisMode(timeAxisMode);
         validateIndicators(indicators);
-        displayChartSafely(
-                () -> chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode,
-                        indicators),
-                null, "Failed to display trading record chart for {}@{}", strategyName, safeSeriesName(series));
+        JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode,
+                sourcePositionStart, indicators);
+        displayChartSafely(() -> chart, null, "Failed to display trading record chart for {}@{}", strategyName,
+                safeSeriesName(series));
     }
 
     /**
@@ -506,7 +632,26 @@ public class ChartWorkflow {
      */
     public byte[] createTradingRecordChartBytes(BarSeries series, String strategyName, TradingRecord tradingRecord,
             TimeAxisMode timeAxisMode) {
-        JFreeChart chart = buildTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, null, false);
+        return createTradingRecordChartBytes(series, strategyName, tradingRecord, timeAxisMode, FIRST_POSITION_NUMBER);
+    }
+
+    /**
+     * Produces a PNG representation of a trading-record chart using labels that
+     * begin at the supplied source position number.
+     *
+     * @param series              the bar series to chart
+     * @param strategyName        the strategy name shown in the chart title
+     * @param tradingRecord       the trading record to render
+     * @param timeAxisMode        the chart time-axis mode
+     * @param sourcePositionStart the 1-based source number for the first rendered
+     *                            position
+     * @return the encoded PNG bytes
+     * @since 0.22.9
+     */
+    public byte[] createTradingRecordChartBytes(BarSeries series, String strategyName, TradingRecord tradingRecord,
+            TimeAxisMode timeAxisMode, int sourcePositionStart) {
+        JFreeChart chart = buildTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode,
+                sourcePositionStart, null, false);
         return getChartAsByteArray(chart);
     }
 
@@ -531,7 +676,30 @@ public class ChartWorkflow {
     @SafeVarargs
     public final byte[] createTradingRecordChartBytes(BarSeries series, String strategyName,
             TradingRecord tradingRecord, TimeAxisMode timeAxisMode, Indicator<Num>... indicators) {
-        JFreeChart chart = buildTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, indicators, true);
+        return createTradingRecordChartBytes(series, strategyName, tradingRecord, timeAxisMode, FIRST_POSITION_NUMBER,
+                indicators);
+    }
+
+    /**
+     * Produces a PNG representation of a trading-record chart with indicator
+     * subplots using labels that begin at the supplied source position number.
+     *
+     * @param series              the bar series to chart
+     * @param strategyName        the strategy name shown in the chart title
+     * @param tradingRecord       the trading record to render
+     * @param timeAxisMode        the chart time-axis mode
+     * @param sourcePositionStart the 1-based source number for the first rendered
+     *                            position
+     * @param indicators          optional indicators rendered in subplots
+     * @return the encoded PNG bytes
+     * @since 0.22.9
+     */
+    @SafeVarargs
+    public final byte[] createTradingRecordChartBytes(BarSeries series, String strategyName,
+            TradingRecord tradingRecord, TimeAxisMode timeAxisMode, int sourcePositionStart,
+            Indicator<Num>... indicators) {
+        JFreeChart chart = buildTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode,
+                sourcePositionStart, indicators, true);
         return getChartAsByteArray(chart);
     }
 
@@ -974,13 +1142,15 @@ public class ChartWorkflow {
     }
 
     private JFreeChart buildTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
-            TimeAxisMode timeAxisMode, Indicator<Num>[] indicators, boolean validateIndicators) {
+            TimeAxisMode timeAxisMode, int sourcePositionStart, Indicator<Num>[] indicators,
+            boolean validateIndicators) {
         validateTradingInputs(series, strategyName, tradingRecord);
         validateTimeAxisMode(timeAxisMode);
         if (validateIndicators) {
             validateIndicators(indicators);
         }
-        return chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, indicators);
+        return chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode,
+                sourcePositionStart, indicators);
     }
 
     @SafeVarargs

@@ -14,8 +14,10 @@ import org.ta4j.core.num.Num;
  */
 public class StandardErrorIndicator extends CachedIndicator<Num> {
 
+    private final Indicator<Num> indicator;
     private final int barCount;
-    private final StandardDeviationIndicator sdev;
+    private final SampleType sampleType;
+    private final transient StandardDeviationIndicator sdev;
 
     /**
      * Constructor using {@link SampleType#POPULATION} for backward compatibility.
@@ -37,9 +39,10 @@ public class StandardErrorIndicator extends CachedIndicator<Num> {
      */
     public StandardErrorIndicator(Indicator<Num> indicator, int barCount, SampleType sampleType) {
         super(indicator);
+        this.indicator = Objects.requireNonNull(indicator, "indicator must not be null");
         this.barCount = Math.max(barCount, 1);
-        this.sdev = Objects.requireNonNull(sampleType, "sampleType must not be null").isSample()
-                ? StandardDeviationIndicator.ofSample(indicator, this.barCount)
+        this.sampleType = Objects.requireNonNull(sampleType, "sampleType must not be null");
+        this.sdev = this.sampleType.isSample() ? StandardDeviationIndicator.ofSample(indicator, this.barCount)
                 : StandardDeviationIndicator.ofPopulation(indicator, this.barCount);
     }
 
@@ -69,8 +72,12 @@ public class StandardErrorIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        final int startIndex = Math.max(0, index - this.barCount + 1);
-        final int numberOfObservations = index - startIndex + 1;
+        // CachedIndicator services evicted indices via calculate(0) with reads
+        // clamped to the first retained bar; clamp the effective end index as
+        // well so the observation count never turns zero or negative.
+        final int endIndex = Math.max(index, getBarSeries().getBeginIndex());
+        final int startIndex = Math.max(Math.max(0, getBarSeries().getBeginIndex()), endIndex - this.barCount + 1);
+        final int numberOfObservations = endIndex - startIndex + 1;
         return sdev.getValue(index).dividedBy(getBarSeries().numFactory().numOf(numberOfObservations).sqrt());
     }
 

@@ -135,14 +135,9 @@ public class MinuteOfHourRuleTest extends AbstractIndicatorTest<Object, Object> 
     /**
      * Tests serialization/deserialization round-trip for MinuteOfHourRule.
      * <p>
-     * <b>Note:</b> This test may be skipped if serialization is not yet supported
-     * for MinuteOfHourRule. The test uses {@code Assume.assumeNoException()} to
-     * gracefully skip when serialization fails, rather than failing the build. This
-     * is intentional - the test serves as a placeholder until serialization support
-     * is implemented.
-     * <p>
-     * When serialization support is added to MinuteOfHourRule, this test should
-     * pass automatically. See the TODO comment in MinuteOfHourRule class.
+     * Serializes the rule and its descriptor, reconstructs it, and verifies that
+     * the round-tripped rule is equivalent and behaves identically. Any
+     * serialization failure fails this test.
      */
     @Test
     public void serializeAndDeserialize() {

@@ -44,7 +44,7 @@ public class DifferenceIndicator extends CachedIndicator<Num> {
      */
     @Override
     protected Num calculate(int index) {
-        if (index < getCountOfUnstableBars()) {
+        if (index - getBarSeries().getBeginIndex() < getCountOfUnstableBars()) {
             return NaN;
         }
         // Get the value of the previous bar

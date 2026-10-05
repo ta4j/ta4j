@@ -33,8 +33,8 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
      * @param level               the {@link PivotLevel} for this reversal
      */
     public StandardReversalIndicator(PivotPointIndicator pivotPointIndicator, PivotLevel level) {
-        super(pivotPointIndicator);
-        this.pivotPointIndicator = pivotPointIndicator;
+        super(pivotPointIndicator.copy());
+        this.pivotPointIndicator = pivotPointIndicator.copy();
         this.level = level;
         this.two = pivotPointIndicator.getBarSeries().numFactory().numOf(2);
     }
@@ -61,6 +61,31 @@ public class StandardReversalIndicator extends RecursiveCachedIndicator<Num> {
         default:
             return NaN;
         }
+    }
+
+    /**
+     * Reversal levels reference the same-index pivot value and carry no history
+     * dependence of their own, so the recursive default is opted out.
+     *
+     * @return {@code false}
+     */
+    @Override
+    protected boolean hasRecursiveDependencies() {
+        return false;
+    }
+
+    /**
+     * The underlying pivot look-back spans an unbounded number of bars, so the zero
+     * stable count would retain reversal values that still depend on evicted bars:
+     * the whole cache is discarded on head advance so that every retained index is
+     * recomputed from the bars that remain available.
+     *
+     * @param firstRetainedIndex the first series index that remains available
+     * @return {@link Integer#MAX_VALUE}, evicting every cached entry
+     */
+    @Override
+    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+        return Integer.MAX_VALUE;
     }
 
     @Override

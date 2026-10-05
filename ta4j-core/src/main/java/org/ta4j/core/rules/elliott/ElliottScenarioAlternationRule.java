@@ -33,11 +33,22 @@ public class ElliottScenarioAlternationRule extends AbstractRule {
      */
     public ElliottScenarioAlternationRule(final Indicator<ElliottScenarioSet> scenarioIndicator,
             final double minAlternationRatio) {
-        this.scenarioIndicator = Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
+        this(validatedConfig(scenarioIndicator, minAlternationRatio));
+    }
+
+    private ElliottScenarioAlternationRule(final Config config) {
+        this.scenarioIndicator = config.scenarioIndicator();
+        this.minAlternationRatio = config.minAlternationRatio();
+    }
+
+    private static Config validatedConfig(final Indicator<ElliottScenarioSet> scenarioIndicator,
+            final double minAlternationRatio) {
+        Indicator<ElliottScenarioSet> validatedScenarioIndicator = Objects.requireNonNull(scenarioIndicator,
+                "scenarioIndicator");
         if (minAlternationRatio < 1.0) {
             throw new IllegalArgumentException("minAlternationRatio must be >= 1.0");
         }
-        this.minAlternationRatio = minAlternationRatio;
+        return new Config(validatedScenarioIndicator, minAlternationRatio);
     }
 
     @Override
@@ -74,5 +85,8 @@ public class ElliottScenarioAlternationRule extends AbstractRule {
         boolean satisfied = normalized >= minAlternationRatio;
         traceIsSatisfied(index, satisfied);
         return satisfied;
+    }
+
+    private record Config(Indicator<ElliottScenarioSet> scenarioIndicator, double minAlternationRatio) {
     }
 }

@@ -28,9 +28,9 @@ public class UnstableIndicatorStrategy {
 
     private static final Logger LOG = LogManager.getLogger(UnstableIndicatorStrategy.class);
 
-    public static final Duration MINUTE = Duration.ofMinutes(1);
+    private static final Duration MINUTE = Duration.ofMinutes(1);
 
-    public static final Instant TIME = Instant.parse("2020-01-01T00:00:00Z");
+    private static final Instant TIME = Instant.parse("2020-01-01T00:00:00Z");
 
     public static Strategy buildStrategy(BarSeries series) {
         ClosePriceIndicator close = new ClosePriceIndicator(series);
@@ -50,17 +50,17 @@ public class UnstableIndicatorStrategy {
         appropriateTrade();
     }
 
-    public static void inappropriateTrade() {
+    private static void inappropriateTrade() {
         // Should not trade
         test("Inappropriate trade", Stream.of(10d, 2d, 6d, 16d, 8d));
     }
 
-    public static void appropriateTrade() {
+    private static void appropriateTrade() {
         // Should trade
         test("Appropriate trade", Stream.of(10d, 8d, 6d, 16d, 8d));
     }
 
-    public static void test(String name, Stream<Double> closePrices) {
+    private static void test(String name, Stream<Double> closePrices) {
         // Getting the bar series
         BarSeries series = new BaseBarSeriesBuilder().build();
 

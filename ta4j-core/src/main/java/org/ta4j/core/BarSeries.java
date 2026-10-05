@@ -4,8 +4,10 @@
 package org.ta4j.core;
 
 import java.io.Serializable;
+import java.io.Serial;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -30,6 +32,27 @@ import org.ta4j.core.num.NumFactory;
  * </p>
  */
 public interface BarSeries extends Serializable {
+
+    /**
+     * Immutable cache-relevant view of changes to a bar series.
+     *
+     * @param revision             current published-data revision, or {@code -1}
+     *                             when revision tracking is unsupported
+     * @param earliestChangedIndex earliest index whose published value changed
+     *                             after the requested revision, or {@code -1} when
+     *                             no published value changed
+     * @param removedThroughIndex  greatest removed series index, or {@code -1} when
+     *                             no index has been removed
+     * @param maximumBarCount      current maximum number of retained bars
+     * @param endIndex             current series end index
+     * @since 0.24.1
+     */
+    record BarSeriesChangeSnapshot(long revision, int earliestChangedIndex, int removedThroughIndex,
+            int maximumBarCount, int endIndex) implements Serializable {
+
+        @Serial
+        private static final long serialVersionUID = 1L;
+    }
 
     /**
      * @return factory that generates numbers usable in this BarSeries
@@ -103,6 +126,111 @@ public interface BarSeries extends Serializable {
      * @return the raw bar data
      */
     List<Bar> getBarData();
+
+    /**
+     * Executes a read-only action within this series' coherent read scope, so
+     * several reads (bounds, bars, revision) describe one state of the series.
+     * Concurrent implementations such as {@link ConcurrentBarSeries} hold their
+     * read lock for the duration of the action; other series run it directly.
+     * Views, such as the series returned by an indicator, delegate the scope to
+     * their source. Scopes nest on the same thread.
+     *
+     * <p>
+     * Keep the action short and limited to reading bar data. Do not evaluate
+     * indicators or strategies, invoke callbacks, or wait on other threads inside
+     * it: indicator caches take their own locks and then read bars, so holding the
+     * series lock while taking theirs can deadlock with another reader once a
+     * writer is waiting, and every writer is delayed until the action returns.
+     * </p>
+     *
+     * @param action read-only action
+     * @since 0.25.1
+     */
+    default void withReadLock(Runnable action) {
+        action.run();
+    }
+
+    /**
+     * Executes a read-only computation within this series' coherent read scope. See
+     * {@link #withReadLock(Runnable)} for the contract.
+     *
+     * @param action read-only computation
+     * @param <T>    result type
+     * @return the computation result
+     * @since 0.25.1
+     */
+    default <T> T withReadLock(Supplier<T> action) {
+        return action.get();
+    }
+
+    /**
+     * Returns a monotonically increasing revision for changes to already published
+     * bar data.
+     *
+     * <p>
+     * Implementations increment the revision when an operation replaces an existing
+     * bar, mutates the current bar through this series, or resets the retained
+     * history. Appending a new bar and removing expired bars do not change the
+     * revision. Implementations that do not track bar-data changes return
+     * {@code -1}.
+     *
+     * <p>
+     * Direct mutations through a retained {@link Bar} reference are implementation
+     * dependent. Implementations that can observe those mutations may advance the
+     * revision; callers must not assume that a revision change is the only way to
+     * detect changes for a series returning {@code -1}.
+     *
+     * @return the bar-data revision, or {@code -1} when change tracking is
+     *         unsupported
+     * @since 0.23.1
+     */
+    default long getBarHistoryRevision() {
+        return -1L;
+    }
+
+    /**
+     * Returns a cache-relevant snapshot of series changes after the supplied
+     * published-data revision.
+     *
+     * <p>
+     * Implementations that track exact changed indices should override this method.
+     * The default remains source-compatible with third-party series and
+     * conservatively reports index {@code 0} when a tracked revision changed.
+     * Implementations that return {@code -1} from {@link #getBarHistoryRevision()}
+     * retain the legacy best-effort cache behavior.
+     *
+     * <p>
+     * The returned components must describe one coherent point in time. The default
+     * implementation reads the series state through several separate calls, so
+     * implementations whose state can change concurrently must override this method
+     * and build the snapshot while holding their own lock.
+     *
+     * @param sinceRevision last revision observed by the caller
+     * @return current change snapshot
+     * @since 0.24.1
+     */
+    default BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long sinceRevision) {
+        long currentRevision = getBarHistoryRevision();
+        int earliestChangedIndex = currentRevision >= 0L && currentRevision != sinceRevision ? 0 : -1;
+        return new BarSeriesChangeSnapshot(currentRevision, earliestChangedIndex, getRemovedBarsCount() - 1,
+                getMaximumBarCount(), getEndIndex());
+    }
+
+    /**
+     * Removes every retained bar and resets the series to its initial empty index
+     * state.
+     *
+     * <p>
+     * The configured name, number factory, bar builder, and maximum bar count are
+     * preserved. The next appended bar receives index {@code 0}. Implementations
+     * that cannot safely clear their storage may retain the default behavior, which
+     * throws {@link UnsupportedOperationException}.
+     *
+     * @since 0.22.9
+     */
+    default void clear() {
+        throw new UnsupportedOperationException("This bar series does not support clearing");
+    }
 
     /**
      * @return the begin index of the series

@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static junit.framework.TestCase.assertEquals;
 
 import org.junit.Before;
@@ -25,20 +30,20 @@ public class StochasticOscillatorDIndicatorTest extends AbstractIndicatorTest<In
     public void setUp() {
 
         data = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        data.barBuilder().openPrice(44.98).closePrice(119.13).highPrice(119.50).lowPrice(116.00).add();
-        data.barBuilder().openPrice(45.05).closePrice(116.75).highPrice(119.94).lowPrice(116.00).add();
-        data.barBuilder().openPrice(45.11).closePrice(113.50).highPrice(118.44).lowPrice(111.63).add();
-        data.barBuilder().openPrice(45.19).closePrice(111.56).highPrice(114.19).lowPrice(110.06).add();
-        data.barBuilder().openPrice(45.12).closePrice(112.25).highPrice(112.81).lowPrice(109.63).add();
-        data.barBuilder().openPrice(45.15).closePrice(110.00).highPrice(113.44).lowPrice(109.13).add();
-        data.barBuilder().openPrice(45.13).closePrice(113.50).highPrice(115.81).lowPrice(110.38).add();
-        data.barBuilder().openPrice(45.12).closePrice(117.13).highPrice(117.50).lowPrice(114.06).add();
-        data.barBuilder().openPrice(45.15).closePrice(115.63).highPrice(118.44).lowPrice(114.81).add();
-        data.barBuilder().openPrice(45.24).closePrice(114.13).highPrice(116.88).lowPrice(113.13).add();
-        data.barBuilder().openPrice(45.43).closePrice(118.81).highPrice(119.00).lowPrice(116.19).add();
-        data.barBuilder().openPrice(45.43).closePrice(117.38).highPrice(119.75).lowPrice(117.00).add();
-        data.barBuilder().openPrice(45.58).closePrice(119.13).highPrice(119.13).lowPrice(116.88).add();
-        data.barBuilder().openPrice(45.58).closePrice(115.38).highPrice(119.44).lowPrice(114.56).add();
+        data.barBuilder().openPrice(116.00).closePrice(119.13).highPrice(119.50).lowPrice(116.00).add();
+        data.barBuilder().openPrice(116.00).closePrice(116.75).highPrice(119.94).lowPrice(116.00).add();
+        data.barBuilder().openPrice(111.63).closePrice(113.50).highPrice(118.44).lowPrice(111.63).add();
+        data.barBuilder().openPrice(110.06).closePrice(111.56).highPrice(114.19).lowPrice(110.06).add();
+        data.barBuilder().openPrice(109.63).closePrice(112.25).highPrice(112.81).lowPrice(109.63).add();
+        data.barBuilder().openPrice(109.13).closePrice(110.00).highPrice(113.44).lowPrice(109.13).add();
+        data.barBuilder().openPrice(110.38).closePrice(113.50).highPrice(115.81).lowPrice(110.38).add();
+        data.barBuilder().openPrice(114.06).closePrice(117.13).highPrice(117.50).lowPrice(114.06).add();
+        data.barBuilder().openPrice(114.81).closePrice(115.63).highPrice(118.44).lowPrice(114.81).add();
+        data.barBuilder().openPrice(113.13).closePrice(114.13).highPrice(116.88).lowPrice(113.13).add();
+        data.barBuilder().openPrice(116.19).closePrice(118.81).highPrice(119.00).lowPrice(116.19).add();
+        data.barBuilder().openPrice(117.00).closePrice(117.38).highPrice(119.75).lowPrice(117.00).add();
+        data.barBuilder().openPrice(116.88).closePrice(119.13).highPrice(119.13).lowPrice(116.88).add();
+        data.barBuilder().openPrice(114.56).closePrice(115.38).highPrice(119.44).lowPrice(114.56).add();
 
     }
 
@@ -66,4 +71,13 @@ public class StochasticOscillatorDIndicatorTest extends AbstractIndicatorTest<In
         assertEquals(sma.getValue(2), sos.getValue(2));
         assertEquals(sma.getValue(13), sos.getValue(13));
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(serializationFixture(series,
+                new StochasticOscillatorDIndicator(new StochasticOscillatorKIndicator(series, 5)),
+                stableIndexes(series)));
+    }
+
 }

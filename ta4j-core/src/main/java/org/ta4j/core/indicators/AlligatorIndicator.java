@@ -66,17 +66,27 @@ public class AlligatorIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public AlligatorIndicator(Indicator<Num> indicator, int barCount, int shift) {
-        super(IndicatorUtils.requireIndicator(indicator, "indicator"));
+        this(validatedConfig(indicator, barCount, shift));
+    }
+
+    private AlligatorIndicator(Config config) {
+        super(config.indicator());
+        this.barCount = config.barCount();
+        this.shift = config.shift();
+        this.indicator = config.indicator();
+        this.smoothedIndicator = config.smoothedIndicator();
+    }
+
+    private static Config validatedConfig(Indicator<Num> indicator, int barCount, int shift) {
+        Indicator<Num> validatedIndicator = IndicatorUtils.requireIndicator(indicator, "indicator");
         if (barCount < 1) {
             throw new IllegalArgumentException("barCount must be greater than 0");
         }
         if (shift < 0) {
             throw new IllegalArgumentException("shift must be 0 or greater");
         }
-        this.barCount = barCount;
-        this.shift = shift;
-        this.indicator = indicator;
-        this.smoothedIndicator = new SMMAIndicator(indicator, barCount);
+        SMMAIndicator smoothedIndicator = new SMMAIndicator(validatedIndicator, barCount);
+        return new Config(validatedIndicator, smoothedIndicator, barCount, shift);
     }
 
     /**
@@ -88,7 +98,11 @@ public class AlligatorIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public AlligatorIndicator(BarSeries series, int barCount, int shift) {
-        this(new MedianPriceIndicator(series), barCount, shift);
+        this(validatedConfig(series, barCount, shift));
+    }
+
+    private static Config validatedConfig(BarSeries series, int barCount, int shift) {
+        return validatedConfig(new MedianPriceIndicator(series), barCount, shift);
     }
 
     /**
@@ -167,7 +181,7 @@ public class AlligatorIndicator extends CachedIndicator<Num> {
             return NaN;
         }
         final Num value = smoothedIndicator.getValue(displacedIndex);
-        return IndicatorUtils.isInvalid(value) ? NaN : value;
+        return !Num.isFinite(value) ? NaN : value;
     }
 
     /**
@@ -204,4 +218,6 @@ public class AlligatorIndicator extends CachedIndicator<Num> {
         return getClass().getSimpleName() + " barCount: " + barCount + " shift: " + shift;
     }
 
+    private record Config(Indicator<Num> indicator, SMMAIndicator smoothedIndicator, int barCount, int shift) {
+    }
 }

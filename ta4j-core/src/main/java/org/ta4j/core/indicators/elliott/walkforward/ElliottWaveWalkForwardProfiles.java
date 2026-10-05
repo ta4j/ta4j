@@ -8,7 +8,7 @@ import java.util.Map;
 
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner;
-import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
+import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
 import org.ta4j.core.walkforward.WalkForwardConfig;
 
 /**

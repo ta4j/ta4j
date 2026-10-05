@@ -3,11 +3,13 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -29,8 +31,9 @@ public class RWILowIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void randomWalkIndexHigh() throws Exception {
-        BarSeries series = xls.getSeries();
-        RWILowIndicator rwih = (RWILowIndicator) getIndicator(series, 20);
-        assertIndicatorEquals(getIndicator(series, 20), rwih);
+        Indicator<Num> expected = xls.getIndicator(20);
+        RWILowIndicator rwil = (RWILowIndicator) getIndicator(expected.getBarSeries(), 20);
+        assertEquals(20, rwil.getCountOfUnstableBars());
+        assertIndicatorEquals(expected, rwil);
     }
 }

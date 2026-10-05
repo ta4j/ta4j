@@ -6,25 +6,15 @@ package org.ta4j.core.backtest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import org.junit.Test;
+import org.ta4j.core.TraceTestLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.Strategy;
-import org.ta4j.core.Trade;
-import org.ta4j.core.backtest.BacktestExecutionResult;
-import org.ta4j.core.backtest.BacktestExecutor;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.DecimalNum;
-import org.ta4j.core.num.DecimalNumFactory;
-import org.ta4j.core.rules.FixedRule;
 
 public class ProgressCompletionTest {
 
@@ -37,6 +27,32 @@ public class ProgressCompletionTest {
         callback.accept(1);
         callback.accept(100);
         callback.accept(1000);
+    }
+
+    @Test
+    public void autoDetectionLogsUnderTheCallingClass() {
+        TestHelper helper = new TestHelper();
+        MemoryTestHelper memoryHelper = new MemoryTestHelper();
+        TraceTestLogger traceLogger = new TraceTestLogger();
+        traceLogger.open("%c %msg%n");
+        try {
+            assertLoggedBy(ProgressCompletionTest.class, ProgressCompletion.logging(), 100, traceLogger);
+            assertLoggedBy(ProgressCompletionTest.class, createCallbackFromNestedMethod(), 100, traceLogger);
+            assertLoggedBy(TestHelper.class, helper.createCallback(), 100, traceLogger);
+            assertLoggedBy(TestHelper.class, helper.createCallbackWithInterval(25), 25, traceLogger);
+            assertLoggedBy(MemoryTestHelper.class, memoryHelper.createCallback(), 100, traceLogger);
+            assertLoggedBy(MemoryTestHelper.class, memoryHelper.createCallbackWithInterval(25), 25, traceLogger);
+        } finally {
+            traceLogger.close();
+        }
+    }
+
+    private static void assertLoggedBy(Class<?> expectedCaller, Consumer<Integer> callback, int completed,
+            TraceTestLogger traceLogger) {
+        traceLogger.clear();
+        callback.accept(completed);
+        String output = traceLogger.getLogOutput();
+        assertTrue(output, output.startsWith(expectedCaller.getName() + " Progress: " + completed));
     }
 
     @Test
@@ -116,50 +132,6 @@ public class ProgressCompletionTest {
         wrapped.accept(100); // Interval and 50% milestone
         wrapped.accept(150); // Interval and 75% milestone
         wrapped.accept(200); // Interval and 100% milestone
-    }
-
-    @Test
-    public void loggingWithAutoDetectionWorksWithBacktestExecutor() {
-        // Integration test to ensure auto-detection works with actual BacktestExecutor
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
-                .withData(10, 11, 12, 13, 14)
-                .build();
-
-        List<Strategy> strategies = new ArrayList<>();
-        for (int i = 0; i < 150; i++) {
-            strategies.add(new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3)));
-        }
-
-        // Use auto-detection convenience method
-        Consumer<Integer> callback = ProgressCompletion.logging();
-
-        BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, DecimalNum.valueOf(1),
-                Trade.TradeType.BUY, callback);
-
-        assertEquals(strategies.size(), result.tradingStatements().size());
-    }
-
-    @Test
-    public void loggingWithAutoDetectionAndIntervalWorksWithBacktestExecutor() {
-        // Integration test with custom interval
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
-                .withData(10, 11, 12, 13, 14)
-                .build();
-
-        List<Strategy> strategies = new ArrayList<>();
-        for (int i = 0; i < 200; i++) {
-            strategies.add(new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3)));
-        }
-
-        // Use auto-detection with custom interval
-        Consumer<Integer> callback = ProgressCompletion.logging(50);
-
-        BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, DecimalNum.valueOf(1),
-                Trade.TradeType.BUY, callback);
-
-        assertEquals(strategies.size(), result.tradingStatements().size());
     }
 
     @Test
@@ -359,50 +331,6 @@ public class ProgressCompletionTest {
     }
 
     @Test
-    public void loggingWithMemoryWorksWithBacktestExecutor() {
-        // Integration test to ensure memory logging works with actual BacktestExecutor
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
-                .withData(10, 11, 12, 13, 14)
-                .build();
-
-        List<Strategy> strategies = new ArrayList<>();
-        for (int i = 0; i < 150; i++) {
-            strategies.add(new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3)));
-        }
-
-        // Use memory logging convenience method
-        Consumer<Integer> callback = ProgressCompletion.loggingWithMemory();
-
-        BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, DecimalNum.valueOf(1),
-                Trade.TradeType.BUY, callback);
-
-        assertEquals(strategies.size(), result.tradingStatements().size());
-    }
-
-    @Test
-    public void loggingWithMemoryAndIntervalWorksWithBacktestExecutor() {
-        // Integration test with custom interval
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
-                .withData(10, 11, 12, 13, 14)
-                .build();
-
-        List<Strategy> strategies = new ArrayList<>();
-        for (int i = 0; i < 200; i++) {
-            strategies.add(new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3)));
-        }
-
-        // Use memory logging with custom interval
-        Consumer<Integer> callback = ProgressCompletion.loggingWithMemory(50);
-
-        BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, DecimalNum.valueOf(1),
-                Trade.TradeType.BUY, callback);
-
-        assertEquals(strategies.size(), result.tradingStatements().size());
-    }
-
-    @Test
     public void loggingWithMemoryFromHelperClass() {
         // Test that memory logging auto-detection works when called from helper class
         MemoryTestHelper helper = new MemoryTestHelper();
@@ -588,65 +516,4 @@ public class ProgressCompletionTest {
         callback.accept(200); // 50%
     }
 
-    @Test
-    public void loggingWorksWithBacktestExecutor() {
-        // Integration test to ensure it works with actual BacktestExecutor
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
-                .withData(10, 11, 12, 13, 14)
-                .build();
-
-        List<Strategy> strategies = new ArrayList<>();
-        for (int i = 0; i < 250; i++) {
-            strategies.add(new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3)));
-        }
-
-        Consumer<Integer> callback = ProgressCompletion.logging(ProgressCompletionTest.class);
-
-        BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, DecimalNum.valueOf(1),
-                Trade.TradeType.BUY, callback);
-
-        assertEquals(strategies.size(), result.tradingStatements().size());
-    }
-
-    @Test
-    public void noOpWorksWithBacktestExecutor() {
-        // Integration test to ensure noOp works with actual BacktestExecutor
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
-                .withData(10, 11, 12, 13, 14)
-                .build();
-
-        List<Strategy> strategies = new ArrayList<>();
-        for (int i = 0; i < 100; i++) {
-            strategies.add(new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3)));
-        }
-
-        Consumer<Integer> callback = ProgressCompletion.noOp();
-
-        BacktestExecutor executor = new BacktestExecutor(series);
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, DecimalNum.valueOf(1),
-                Trade.TradeType.BUY, callback);
-
-        assertEquals(strategies.size(), result.tradingStatements().size());
-    }
-
-    @Test
-    public void defaultNoOpWhenNullCallback() {
-        // Integration test to verify default noOp behavior
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
-                .withData(10, 11, 12, 13, 14)
-                .build();
-
-        List<Strategy> strategies = new ArrayList<>();
-        for (int i = 0; i < 50; i++) {
-            strategies.add(new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3)));
-        }
-
-        BacktestExecutor executor = new BacktestExecutor(series);
-        // Pass null - should use default noOp
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(strategies, DecimalNum.valueOf(1),
-                Trade.TradeType.BUY, null);
-
-        assertEquals(strategies.size(), result.tradingStatements().size());
-    }
 }

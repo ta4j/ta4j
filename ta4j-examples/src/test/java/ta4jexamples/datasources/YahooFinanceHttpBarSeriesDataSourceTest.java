@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -47,6 +48,28 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
                                 "low": [99.0, 100.0, 101.0],
                                 "close": [104.0, 105.0, 106.0],
                                 "volume": [1000000, 1100000, 1200000]
+                            }]
+                        }
+                    }]
+                }
+            }
+            """;
+
+    private static final String ADJUSTED_JSON_RESPONSE = """
+            {
+                "chart": {
+                    "result": [{
+                        "timestamp": [1609459200, 1609545600],
+                        "indicators": {
+                            "quote": [{
+                                "open": [100.0, 200.0],
+                                "high": [110.0, 220.0],
+                                "low": [90.0, 180.0],
+                                "close": [105.0, 210.0],
+                                "volume": [1000, 2000]
+                            }],
+                            "adjclose": [{
+                                "adjclose": [52.5, 210.0]
                             }]
                         }
                     }]
@@ -165,6 +188,31 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         assertEquals(3, series.getBarCount(), "Should have 3 bars");
         assertEquals("AAPL", series.getName(), "Series name should match ticker");
         assertTrue(series.getBar(0).getClosePrice().doubleValue() > 0, "Close price should be positive");
+    }
+
+    @Test
+    public void loadsAdjustedPricesWithoutChangingRawPriceBehavior() throws IOException, InterruptedException {
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(ADJUSTED_JSON_RESPONSE);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+        YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(mockClient);
+        Instant start = Instant.parse("2021-01-01T00:00:00Z");
+        Instant end = Instant.parse("2021-01-02T00:00:00Z");
+
+        BarSeries adjusted = dataSource.loadAdjustedSeriesInstance("AAPL",
+                YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+        BarSeries raw = dataSource.loadSeriesInstance("AAPL",
+                YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, start, end);
+
+        assertEquals(50.0, adjusted.getBar(0).getOpenPrice().doubleValue(), 0.000001);
+        assertEquals(55.0, adjusted.getBar(0).getHighPrice().doubleValue(), 0.000001);
+        assertEquals(45.0, adjusted.getBar(0).getLowPrice().doubleValue(), 0.000001);
+        assertEquals(52.5, adjusted.getBar(0).getClosePrice().doubleValue(), 0.000001);
+        assertEquals(1000.0, adjusted.getBar(0).getVolume().doubleValue(), 0.000001);
+        assertEquals(100.0, raw.getBar(0).getOpenPrice().doubleValue(), 0.000001);
+        assertEquals(105.0, raw.getBar(0).getClosePrice().doubleValue(), 0.000001);
     }
 
     @Test
@@ -453,6 +501,11 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         @Override
         protected Duration getConservativeLimit(YahooFinanceInterval interval) {
             return testConservativeLimit;
+        }
+
+        @Override
+        void pauseBetweenPaginatedRequests() {
+            // Keep mocked pagination tests deterministic and fast.
         }
     }
 
@@ -849,6 +902,49 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
     }
 
     @Test
+    public void testCacheFileReloadRoundTripsDashedTickerAndInterval() throws IOException, InterruptedException {
+        // Clean up any existing cache files for this test
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-");
+
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+
+        YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(mockClient, true);
+        Instant start = Instant.parse("2021-01-01T00:00:00Z");
+        Instant end = Instant.parse("2021-01-03T00:00:00Z");
+
+        // First request writes the cache file
+        BarSeries written = dataSource.loadSeriesInstance("BTC-USD",
+                YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.HOUR_1, start, end);
+        assertNotNull(written, "First request should return data");
+
+        // Locate the written cache file for the dashed ticker
+        Path cacheDir = Paths.get(AbstractHttpBarSeriesDataSource.DEFAULT_RESPONSE_CACHE_DIR);
+        List<Path> cacheFiles;
+        try (var stream = Files.list(cacheDir)) {
+            cacheFiles = stream
+                    .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC%2DUSD-"))
+                    .toList();
+        }
+        assertEquals(1, cacheFiles.size(), "Exactly one cache file should be written for BTC-USD");
+        Path cacheFile = cacheFiles.getFirst();
+
+        // Reload from the cache file path: ticker and interval must round-trip
+        // exactly
+        BarSeries reloaded = dataSource.loadSeries(cacheFile.toString());
+        assertNotNull(reloaded, "Reload from cache file should return data");
+        assertEquals("BTC-USD", reloaded.getName(), "Dashed ticker must round-trip exactly");
+        assertEquals(Duration.ofHours(1), reloaded.getFirstBar().getTimePeriod(), "Interval must round-trip exactly");
+
+        // Clean up
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-");
+    }
+
+    @Test
     public void testCacheWriteOnSuccessfulRequest() throws IOException, InterruptedException {
         // Clean up any existing cache files
         cleanupCacheFiles(getCachePrefix() + "AAPL-PT24H-");
@@ -941,7 +1037,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         // Use a unique notes identifier to avoid cache collisions with other tests
         String uniqueNotes = String.valueOf(System.currentTimeMillis());
         String ticker = "TEST-BARCOUNT";
-        cleanupCacheFiles(getCachePrefix() + ticker + "-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + ticker.replace("-", "%2D") + "-PT24H-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -968,7 +1064,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + ticker + "-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + ticker.replace("-", "%2D") + "-PT24H-");
     }
 
     @Test
@@ -1394,7 +1490,7 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
 
     @Test
     public void testDeleteCacheFilesWithNonExistentDirectory() throws IOException {
-        String cacheDir = "temp/non-existent-cache-dir";
+        String cacheDir = "temp/yahoo-non-existent-cache-dir";
         Path cacheDirPath = Paths.get(cacheDir);
         try {
             YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(cacheDir);

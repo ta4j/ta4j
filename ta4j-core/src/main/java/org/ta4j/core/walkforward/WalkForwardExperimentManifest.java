@@ -40,4 +40,8 @@ public record WalkForwardExperimentManifest(String datasetId, String candidateId
         metadata = metadata == null || metadata.isEmpty() ? Map.of()
                 : Collections.unmodifiableMap(new TreeMap<>(metadata));
     }
+
+    public Map<String, String> metadata() {
+        return Collections.unmodifiableMap(new TreeMap<>(metadata));
+    }
 }

@@ -93,7 +93,7 @@ public class RecentFractalSwingLowIndicatorTest extends AbstractIndicatorTest<In
         assertThat(noEquals.getLatestSwingIndex(6)).isEqualTo(-1);
 
         assertThat(withEquals.getValue(6)).isEqualByComparingTo(numOf(6));
-        assertThat(withEquals.getLatestSwingIndex(6)).isEqualTo(4);
+        assertThat(withEquals.getLatestSwingIndex(6)).isEqualTo(3);
     }
 
     @Test
@@ -106,12 +106,12 @@ public class RecentFractalSwingLowIndicatorTest extends AbstractIndicatorTest<In
     }
 
     @Test
-    public void shouldRemoveStaleSwingPointsWhenRoundedBottomExceedsAllowance() {
+    public void shouldNotPublishUnconfirmedRoundedBottomSwingPoints() {
         final var roundedSeries = createSeriesFromLows(10, 9, 9, 9, 9, 11, 12);
         final var indicator = new RecentFractalSwingLowIndicator(new LowPriceIndicator(roundedSeries), 1, 0, 1);
 
-        assertThat(indicator.getSwingPointIndexesUpTo(2)).containsExactly(1, 2);
-        assertThat(indicator.getLatestSwingIndex(2)).isEqualTo(2);
+        assertThat(indicator.getSwingPointIndexesUpTo(2)).isEmpty();
+        assertThat(indicator.getLatestSwingIndex(2)).isEqualTo(-1);
 
         assertThat(indicator.getLatestSwingIndex(4)).isEqualTo(-1);
         assertThat(indicator.getSwingPointIndexesUpTo(4)).isEmpty();

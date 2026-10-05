@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.backtest;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -18,39 +19,83 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.walkforward.WalkForwardConfig;
+import org.ta4j.core.walkforward.WalkForwardRunResult;
 import org.ta4j.core.walkforward.WalkForwardRuntimeReport;
 import org.ta4j.core.walkforward.WalkForwardSplit;
 
 /**
  * Wraps walk-forward execution output for one strategy.
  *
- * @param barSeries     series used for execution
+ * @param barSeries     immutable, offset-preserving snapshot of the series
+ *                      window used for execution
  * @param strategy      evaluated strategy
  * @param config        walk-forward configuration
  * @param folds         fold-level execution results
  * @param runtimeReport aggregate runtime report across folds
+ * @param foldFailures  per-fold execution failures encountered during the run;
+ *                      healthy folds remain fully represented in {@code folds}
  * @since 0.22.4
  */
 public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy strategy, WalkForwardConfig config,
-        List<FoldResult> folds,
-        WalkForwardRuntimeReport runtimeReport) implements TradingStatementExecutionResult<WalkForwardRuntimeReport> {
+        List<FoldResult> folds, WalkForwardRuntimeReport runtimeReport,
+        List<WalkForwardRunResult.FoldFailure> foldFailures)
+        implements
+            TradingStatementExecutionResult<WalkForwardRuntimeReport> {
 
     /**
-     * Creates a validated result.
+     * Creates a validated result with no recorded fold failures.
      *
-     * @param barSeries     series used for execution
+     * @param barSeries     series used for execution; its retained window is copied
+     *                      into an immutable, offset-preserving snapshot before
+     *                      storage
      * @param strategy      evaluated strategy
      * @param config        walk-forward configuration
      * @param folds         fold-level execution results
      * @param runtimeReport aggregate runtime report across folds
      * @since 0.22.4
      */
+    public StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy strategy, WalkForwardConfig config,
+            List<FoldResult> folds, WalkForwardRuntimeReport runtimeReport) {
+        this(barSeries, strategy, config, folds, runtimeReport, List.of());
+    }
+
+    /**
+     * Creates a validated result.
+     *
+     * @param barSeries     series used for execution; its retained window is copied
+     *                      into an immutable, offset-preserving snapshot before
+     *                      storage
+     * @param strategy      evaluated strategy
+     * @param config        walk-forward configuration
+     * @param folds         fold-level execution results
+     * @param runtimeReport aggregate runtime report across folds
+     * @param foldFailures  per-fold execution failures encountered during the run
+     * @since 0.22.4
+     */
     public StrategyWalkForwardExecutionResult {
-        barSeries = Objects.requireNonNull(barSeries, "barSeries");
-        strategy = Objects.requireNonNull(strategy, "strategy");
+        barSeries = BacktestExecutionResult.snapshot(Objects.requireNonNull(barSeries, "barSeries must not be null"));
+        strategy = StrategySnapshots.copy(strategy);
         config = Objects.requireNonNull(config, "config");
         folds = List.copyOf(Objects.requireNonNull(folds, "folds"));
         runtimeReport = Objects.requireNonNull(runtimeReport, "runtimeReport");
+        foldFailures = foldFailures == null ? List.of() : List.copyOf(foldFailures);
+    }
+
+    /**
+     * Returns the immutable, offset-preserving series snapshot owned by this
+     * result.
+     *
+     * @return the immutable series snapshot captured for this execution
+     */
+    @Override
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the immutable, offset-preserving series snapshot owned by this result.")
+    public BarSeries barSeries() {
+        return barSeries;
+    }
+
+    @Override
+    public Strategy strategy() {
+        return StrategySnapshots.copy(strategy);
     }
 
     /**

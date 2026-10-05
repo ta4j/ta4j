@@ -31,6 +31,7 @@ import org.jfree.data.xy.OHLCDataset;
 import org.jfree.data.xy.XYDataset;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.ChopIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 
@@ -43,8 +44,8 @@ public class CandlestickChartWithChopIndicator {
     private static final int CHOP_INDICATOR_TIMEFRAME = 14;
     private static final double CHOP_UPPER_THRESHOLD = 61.8;
     private static final double CHOP_LOWER_THRESHOLD = 38.2;
+    private static final int CHOP_PERCENTAGE_MAX = 100;
     private static final int VOLUME_DATASET_INDEX = 1;
-    private static final int CHOP_SCALE_VALUE = 100;
     private static CombinedDomainXYPlot combinedPlot;
     private static JFreeChart combinedChart;
     static DateAxis xAxis = new DateAxis("Time");
@@ -103,7 +104,7 @@ public class CandlestickChartWithChopIndicator {
     }
 
     private static TimeSeriesCollection createChopDataset(BarSeries series) {
-        ChopIndicator indicator = new ChopIndicator(series, CHOP_INDICATOR_TIMEFRAME, CHOP_SCALE_VALUE);
+        ChopIndicator indicator = new ChopIndicator(series, CHOP_INDICATOR_TIMEFRAME, ReturnRepresentation.PERCENTAGE);
         TimeSeriesCollection dataset = new TimeSeriesCollection();
         TimeSeries chartTimeSeries = new TimeSeries("CHOP_14");
         for (int i = 0; i < series.getBarCount(); i++) {
@@ -156,7 +157,7 @@ public class CandlestickChartWithChopIndicator {
         indicatorXYPlot.setRangeAxis(0, new NumberAxis(""));
         indicatorXYPlot.setRenderer(0, new XYLineAndShapeRenderer());
         NumberAxis yIndicatorAxis = new NumberAxis("");
-        yIndicatorAxis.setRange(0, CHOP_SCALE_VALUE);
+        yIndicatorAxis.setRange(0, CHOP_PERCENTAGE_MAX);
         indicatorXYPlot.setRangeAxis(0, yIndicatorAxis);
 
         // combinedPlot

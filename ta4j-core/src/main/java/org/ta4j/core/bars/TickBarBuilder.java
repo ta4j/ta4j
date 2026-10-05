@@ -6,6 +6,7 @@ package org.ta4j.core.bars;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilder;
@@ -26,7 +27,7 @@ public class TickBarBuilder implements BarBuilder {
     private final boolean realtimeBars;
     private final int tickCount;
     private int passedTicksCount;
-    private BarSeries barSeries;
+    private Consumer<Bar> barAppender;
     private Duration timePeriod;
     private Instant beginTime;
     private Instant endTime;
@@ -223,7 +224,7 @@ public class TickBarBuilder implements BarBuilder {
 
     @Override
     public TickBarBuilder bindTo(final BarSeries barSeries) {
-        this.barSeries = Objects.requireNonNull(barSeries);
+        this.barAppender = Objects.requireNonNull(barSeries)::addBar;
         return this;
     }
 
@@ -300,9 +301,13 @@ public class TickBarBuilder implements BarBuilder {
                 amount = closePrice.multipliedBy(volume);
             }
 
-            barSeries.addBar(build());
+            boundBarAppender().accept(build());
             reset();
         }
+    }
+
+    private Consumer<Bar> boundBarAppender() {
+        return Objects.requireNonNull(barAppender, "barSeries");
     }
 
     private void reset() {

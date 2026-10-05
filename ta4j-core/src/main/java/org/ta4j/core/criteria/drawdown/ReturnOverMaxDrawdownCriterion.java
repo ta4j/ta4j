@@ -6,6 +6,7 @@ package org.ta4j.core.criteria.drawdown;
 import java.util.Objects;
 import java.util.Optional;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
@@ -13,8 +14,10 @@ import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.AbstractEquityCurveSettingsCriterion;
 import org.ta4j.core.criteria.ReturnRepresentation;
+import org.ta4j.core.criteria.ReturnRepresentationPolicy;
+import org.ta4j.core.criteria.pnl.NetReturnCriterion;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * Reward risk ratio criterion (also known as "RoMaD"), returned in the
@@ -59,17 +62,20 @@ import org.ta4j.core.num.NumFactory;
  * </ul>
  *
  * <p>
- * <b>Open positions:</b> When using {@link EquityCurveMode#MARK_TO_MARKET}, the
- * {@link OpenPositionHandling} setting controls whether open positions
- * contribute to the return calculation. {@link EquityCurveMode#REALIZED} always
- * ignores open positions regardless of the requested handling.
+ * <b>Open positions:</b> For trading records in
+ * {@link EquityCurveMode#MARK_TO_MARKET}, the {@link OpenPositionHandling}
+ * setting controls whether open positions contribute to the return calculation.
+ * {@link EquityCurveMode#REALIZED} always ignores open positions regardless of
+ * the requested handling. The position overload returns neutral for a position
+ * without a recorded exit; a recorded exit beyond the effective analysis end is
+ * treated as open at that end. A null position yields the configured
+ * representation's neutral value.
  *
  * @see ReturnRepresentation
  * @see ReturnRepresentationPolicy
  */
 public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsCriterion {
 
-    private final MaximumDrawdownCriterion maxDrawdownCriterion;
     private final ReturnRepresentation returnRepresentation;
 
     /**
@@ -146,26 +152,23 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
             OpenPositionHandling openPositionHandling) {
         super(equityCurveMode, openPositionHandling);
         this.returnRepresentation = Objects.requireNonNull(returnRepresentation, "returnRepresentation");
-        this.maxDrawdownCriterion = new MaximumDrawdownCriterion(equityCurveMode, openPositionHandling);
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        NumFactory numFactory = series.numFactory();
-        if (position == null || position.isOpened()) {
-            return numFactory.zero();
+        if (position == null || position.getEntry() == null || position.isOpened()) {
+            return returnRepresentation.toRepresentationFromRateOfReturn(series.numFactory().zero());
         }
-        Num maxDrawdown = maxDrawdownCriterion.calculate(series, position);
-        Num netReturn = calculateNetReturn(series, position);
-        return toRepresentation(netReturn, maxDrawdown, numFactory);
+        return calculateTradingRecord(series, new BaseTradingRecord(position));
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        NumFactory numFactory = series.numFactory();
-        Num maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
-        Num netReturn = calculateNetReturn(series, tradingRecord);
-        return toRepresentation(netReturn, maxDrawdown, numFactory);
+        if (tradingRecord == null) {
+            // Like an unfinished position: no equity path, so the neutral value.
+            return returnRepresentation.toRepresentationFromRateOfReturn(series.numFactory().zero());
+        }
+        return calculateTradingRecord(series, tradingRecord);
     }
 
     @Override
@@ -179,38 +182,34 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    private Num calculateNetReturn(BarSeries series, Position position) {
-        CashFlow cashFlow = new CashFlow(series, position, equityCurveMode);
-        Num one = series.numFactory().one();
-        return cashFlow.getValue(position.getExit().getIndex()).minus(one);
-    }
-
-    private Num calculateNetReturn(BarSeries series, TradingRecord tradingRecord) {
-        if (tradingRecord == null) {
-            return series.numFactory().zero();
-        }
-        int endIndex = tradingRecord.getEndIndex(series);
-        if (endIndex < series.getBeginIndex()) {
-            return series.numFactory().zero();
-        }
+    private Num calculateTradingRecord(BarSeries series, TradingRecord tradingRecord) {
         CashFlow cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
-        Num one = series.numFactory().one();
-        return cashFlow.getValue(endIndex).minus(one);
+        Num maxDrawdown = Drawdown.amount(series, tradingRecord, cashFlow);
+        return toRepresentation(calculateNetReturn(cashFlow), maxDrawdown);
     }
 
-    private Num toRepresentation(Num netReturn, Num maxDrawdown, NumFactory numFactory) {
+    private Num calculateNetReturn(CashFlow cashFlow) {
+        int beginIndex = cashFlow.getBeginIndex();
+        int terminalIndex = cashFlow.getEndIndex();
+        if (terminalIndex < beginIndex) {
+            return cashFlow.getBarSeries().numFactory().zero();
+        }
+        Num one = cashFlow.getBarSeries().numFactory().one();
+        // Realized results in the first slot count; only carried pre-window equity is
+        // excluded.
+        Num startValue = cashFlow.getBaselineValue();
+        Num terminalValue = cashFlow.getValue(terminalIndex);
+        if (startValue.isNaN() || startValue.isZero() || terminalValue.isNaN()) {
+            return NaN.NaN;
+        }
+        return terminalValue.dividedBy(startValue).minus(one);
+    }
+
+    private Num toRepresentation(Num netReturn, Num maxDrawdown) {
         if (maxDrawdown.isZero()) {
             return returnRepresentation.toRepresentationFromRateOfReturn(netReturn);
         }
         Num rawRatio = netReturn.dividedBy(maxDrawdown);
-        if (returnRepresentation == ReturnRepresentation.MULTIPLICATIVE) {
-            Num one = numFactory.one();
-            Num zero = numFactory.zero();
-            if (rawRatio.isGreaterThanOrEqual(zero)) {
-                return rawRatio.plus(one);
-            }
-            return rawRatio;
-        }
         return returnRepresentation.toRepresentationFromRateOfReturn(rawRatio);
     }
 }

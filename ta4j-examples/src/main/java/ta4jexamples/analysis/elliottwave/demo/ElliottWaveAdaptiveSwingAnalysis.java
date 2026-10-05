@@ -15,13 +15,12 @@ import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceFactorResult;
 import org.ta4j.core.indicators.elliott.confidence.ElliottConfidenceBreakdown;
-import org.ta4j.core.indicators.elliott.swing.AdaptiveZigZagConfig;
-import org.ta4j.core.indicators.elliott.swing.CompositeSwingDetector;
-import org.ta4j.core.indicators.elliott.swing.MinMagnitudeSwingFilter;
-import org.ta4j.core.indicators.elliott.swing.SwingDetector;
-import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
+import org.ta4j.core.analysis.elliott.swing.AdaptiveZigZagConfig;
+import org.ta4j.core.analysis.elliott.swing.CompositeSwingDetector;
+import org.ta4j.core.analysis.elliott.swing.MinMagnitudeSwingFilter;
+import org.ta4j.core.analysis.elliott.swing.SwingDetector;
+import org.ta4j.core.analysis.elliott.swing.SwingDetectors;
 
-import ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo;
 import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
 
 /**
@@ -47,9 +46,9 @@ public class ElliottWaveAdaptiveSwingAnalysis {
             return;
         }
 
-        ElliottDegree baseDegree = ElliottWaveIndicatorSuiteDemo.autoSelectDegree(series);
+        ElliottDegree baseDegree = ElliottWaveDemoSupport.autoSelectDegree(series);
 
-        AdaptiveZigZagConfig config = new AdaptiveZigZagConfig(14, 1.0, 0.0, 0.0, 3);
+        AdaptiveZigZagConfig config = AdaptiveZigZagConfig.defaults();
         SwingDetector detector = SwingDetectors.composite(CompositeSwingDetector.Policy.OR, SwingDetectors.fractal(5),
                 SwingDetectors.adaptiveZigZag(config));
 

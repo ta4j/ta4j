@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.wyckoff;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
@@ -49,7 +50,7 @@ public final class WyckoffCycleFacade {
      * Creates a new WyckoffCycleFacade instance.
      */
     private WyckoffCycleFacade(Builder builder) {
-        this.series = builder.series;
+        this.series = Objects.requireNonNull(builder.series, "series");
         this.precedingSwingBars = builder.precedingSwingBars;
         this.followingSwingBars = builder.followingSwingBars;
         this.allowedEqualSwingBars = builder.allowedEqualSwingBars;
@@ -92,6 +93,8 @@ public final class WyckoffCycleFacade {
      * @return bar series
      * @since 0.22.3
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Returns the borrowed caller series by contract; "
+            + "cycle analysis reads the live series the indicators are bound to.")
     public BarSeries series() {
         return series;
     }
@@ -103,7 +106,7 @@ public final class WyckoffCycleFacade {
      * @since 0.22.3
      */
     public WyckoffPhaseIndicator phase() {
-        return phaseIndicator;
+        return createPhaseIndicator();
     }
 
     /**
@@ -114,7 +117,7 @@ public final class WyckoffCycleFacade {
      * @since 0.22.3
      */
     public WyckoffPhase phase(int index) {
-        return phase().getValue(index);
+        return phaseIndicator.getValue(index);
     }
 
     /**
@@ -125,7 +128,8 @@ public final class WyckoffCycleFacade {
      * @since 0.22.3
      */
     public Num tradingRangeHigh(int index) {
-        return phase().getTradingRangeHigh(index);
+        phaseIndicator.getValue(index);
+        return phaseIndicator.getTradingRangeHigh(index);
     }
 
     /**
@@ -136,7 +140,8 @@ public final class WyckoffCycleFacade {
      * @since 0.22.3
      */
     public Num tradingRangeLow(int index) {
-        return phase().getTradingRangeLow(index);
+        phaseIndicator.getValue(index);
+        return phaseIndicator.getTradingRangeLow(index);
     }
 
     /**
@@ -148,7 +153,8 @@ public final class WyckoffCycleFacade {
      * @since 0.22.3
      */
     public int lastPhaseTransitionIndex(int index) {
-        return phase().getLastPhaseTransitionIndex(index);
+        phaseIndicator.getValue(index);
+        return phaseIndicator.getLastPhaseTransitionIndex(index);
     }
 
     /**
@@ -158,7 +164,13 @@ public final class WyckoffCycleFacade {
      * @since 0.22.3
      */
     public int unstableBars() {
-        return phase().getCountOfUnstableBars();
+        return phaseIndicator.getCountOfUnstableBars();
+    }
+
+    private WyckoffPhaseIndicator createPhaseIndicator() {
+        return new WyckoffPhaseIndicator(series, precedingSwingBars, followingSwingBars, allowedEqualSwingBars,
+                volumeShortWindow, volumeLongWindow, breakoutTolerance, retestTolerance, climaxThreshold,
+                dryUpThreshold);
     }
 
     /**

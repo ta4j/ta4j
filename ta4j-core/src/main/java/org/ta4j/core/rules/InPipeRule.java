@@ -66,9 +66,26 @@ public class InPipeRule extends AbstractRule {
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         Num refValue = ref.getValue(index);
-        final boolean satisfied = refValue.isLessThanOrEqual(upper.getValue(index))
-                && refValue.isGreaterThanOrEqual(lower.getValue(index));
-        traceIsSatisfied(index, satisfied);
+        Num upperValue = upper.getValue(index);
+        Num lowerValue = lower.getValue(index);
+        final boolean satisfied = refValue.isLessThanOrEqual(upperValue) && refValue.isGreaterThanOrEqual(lowerValue);
+        if (isTraceEnabled()) {
+            traceIsSatisfied(index, satisfied, traceContext("value", refValue, "lowerValue", lowerValue, "upperValue",
+                    upperValue, "reason", reason(refValue, lowerValue, upperValue, satisfied)));
+        }
         return satisfied;
+    }
+
+    private static String reason(Num value, Num lowerValue, Num upperValue, boolean satisfied) {
+        if (satisfied) {
+            return "withinRange";
+        }
+        if (value.isGreaterThan(upperValue)) {
+            return "aboveUpper";
+        }
+        if (value.isLessThan(lowerValue)) {
+            return "belowLower";
+        }
+        return "outsideRange";
     }
 }

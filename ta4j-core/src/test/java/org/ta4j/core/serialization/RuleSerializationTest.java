@@ -8,9 +8,11 @@ import static org.junit.Assert.assertThrows;
 
 import java.time.DayOfWeek;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
 import org.ta4j.core.Bar;
@@ -21,6 +23,8 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
@@ -28,6 +32,7 @@ import org.ta4j.core.indicators.helpers.CrossIndicator;
 import org.ta4j.core.indicators.helpers.DateTimeIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.AndRule;
 import org.ta4j.core.rules.AbstractRule;
@@ -38,6 +43,7 @@ import org.ta4j.core.rules.DayOfWeekRule;
 import org.ta4j.core.rules.FixedRule;
 import org.ta4j.core.rules.NotRule;
 import org.ta4j.core.rules.OrRule;
+import org.ta4j.core.rules.InSlopeRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.TrailingFixedAmountStopGainRule;
 import org.ta4j.core.rules.TrailingFixedAmountStopLossRule;
@@ -442,6 +448,33 @@ public class RuleSerializationTest {
     }
 
     @Test
+    public void deserializeChainRuleRejectsNullChainLinksAndRules() {
+        BarSeries series = new MockBarSeriesBuilder().build();
+        ComponentDescriptor initialRule = ComponentDescriptor.builder()
+                .withType("FixedRule")
+                .withParameters(Map.of("indexes", List.of(1)))
+                .build();
+        ComponentDescriptor nullEntryDescriptor = ComponentDescriptor.builder()
+                .withType("ChainRule")
+                .addComponent(initialRule)
+                .withParameters(Map.of("chainLinks", Collections.singletonList(null)))
+                .build();
+        ComponentDescriptor missingRuleDescriptor = ComponentDescriptor.builder()
+                .withType("ChainRule")
+                .addComponent(initialRule)
+                .withParameters(Map.of("chainLinks", List.of(Map.of("threshold", 1))))
+                .build();
+
+        IllegalArgumentException nullEntry = assertThrows(IllegalArgumentException.class,
+                () -> RuleSerialization.fromDescriptor(series, nullEntryDescriptor));
+        IllegalArgumentException missingRule = assertThrows(IllegalArgumentException.class,
+                () -> RuleSerialization.fromDescriptor(series, missingRuleDescriptor));
+
+        assertThat(nullEntry).hasMessageContaining("Chain link entry cannot be null");
+        assertThat(missingRule).hasMessageContaining("Chain link rule cannot be null");
+    }
+
+    @Test
     public void serializeAndRebuildEnumVarargs() {
         var series = new MockBarSeriesBuilder().build();
         series.barBuilder().endTime(Instant.parse("2024-01-01T12:00:00Z")).add(); // Monday
@@ -782,6 +815,100 @@ public class RuleSerializationTest {
         assertThat(((AndRule) restored).getRule1().getName()).isEqualTo("left-label");
     }
 
+    @Test
+    public void fromJsonRejectsMalformedJsonSyntax() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String json = "{\"type\":\"BooleanRule\"";
+
+        assertThrows(com.google.gson.JsonParseException.class, () -> Rule.fromJson(series, json));
+    }
+
+    @Test
+    public void fromDescriptorRejectsNonRuleTypeLikeMissingTypeWithoutInitializingIt() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String probeType = StaticInitializerProbe.class.getName();
+
+        IllegalArgumentException nonRule = assertThrows(IllegalArgumentException.class,
+                () -> RuleSerialization.fromDescriptor(series, ComponentDescriptor.typeOnly(probeType)));
+        IllegalArgumentException missing = assertThrows(IllegalArgumentException.class, () -> RuleSerialization
+                .fromDescriptor(series, ComponentDescriptor.typeOnly("com.example.MissingRule")));
+
+        assertThat(nonRule).hasMessage("Unknown rule type: " + probeType).hasNoCause();
+        assertThat(missing).hasMessage("Unknown rule type: com.example.MissingRule").hasNoCause();
+        assertThat(STATIC_INITIALIZER_PROBE_RUNS).hasValue(0);
+    }
+
+    @Test
+    public void fromDescriptorDecodesEnumsFromDeclaredTypeWithoutLoadingEnumTypeMetadata() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType("WaitForRule")
+                .withParameters(Map.of("tradeType", TradeType.SELL.name(), "numberOfBars", 1, "__enumType_tradeType",
+                        StaticInitializerProbe.class.getName()))
+                .build();
+
+        Rule restored = RuleSerialization.fromDescriptor(series, descriptor);
+
+        assertThat(RuleSerialization.describe(restored).getParameters()).containsEntry("tradeType", "SELL");
+        assertThat(STATIC_INITIALIZER_PROBE_RUNS).hasValue(0);
+    }
+
+    @Test
+    public void fromDescriptorRejectsFractionalIntegerParameter() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType("WaitForRule")
+                .withParameters(Map.of("tradeType", TradeType.BUY.name(), "numberOfBars", 1.9))
+                .build();
+
+        RuleSerializationException exception = assertThrows(RuleSerializationException.class,
+                () -> RuleSerialization.fromDescriptor(series, descriptor));
+
+        assertThat(exception).hasMessageContaining("No compatible constructor");
+    }
+
+    @Test
+    public void fromDescriptorRejectsOverflowingIntegerParameter() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType("WaitForRule")
+                .withParameters(Map.of("tradeType", TradeType.BUY.name(), "numberOfBars", 2147483648L))
+                .build();
+
+        RuleSerializationException exception = assertThrows(RuleSerializationException.class,
+                () -> RuleSerialization.fromDescriptor(series, descriptor));
+
+        assertThat(exception).hasMessageContaining("No compatible constructor");
+    }
+
+    @Test
+    public void overloadedIndicatorConstructorRequiresConcreteIndicatorTypeMatch() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        OverloadedIndicatorRule rule = new OverloadedIndicatorRule(closePrice, 2);
+
+        ComponentDescriptor descriptor = RuleSerialization.describe(rule);
+        Rule restored = RuleSerialization.fromDescriptor(series, descriptor);
+
+        assertThat(descriptor.getComponents()).hasSize(1);
+        assertThat(descriptor.getComponents().get(0).getType()).isEqualTo("ClosePriceIndicator");
+        assertThat(restored).isInstanceOf(OverloadedIndicatorRule.class);
+        assertThat(((OverloadedIndicatorRule) restored).getConstructorUsed()).isEqualTo("generic");
+    }
+
+    private static final AtomicInteger STATIC_INITIALIZER_PROBE_RUNS = new AtomicInteger();
+
+    /** Not a rule or enum; descriptor resolution must never initialize it. */
+    private static final class StaticInitializerProbe {
+
+        static {
+            STATIC_INITIALIZER_PROBE_RUNS.incrementAndGet();
+        }
+
+        private StaticInitializerProbe() {
+        }
+    }
+
     private static final class ConstructorPreferenceRule extends AbstractRule {
 
         private final Num amount;
@@ -807,6 +934,42 @@ public class RuleSerializationTest {
 
         private Num getAmount() {
             return amount;
+        }
+
+        private int getBarCount() {
+            return barCount;
+        }
+
+        private String getConstructorUsed() {
+            return constructorUsed;
+        }
+    }
+
+    private static final class OverloadedIndicatorRule extends AbstractRule {
+
+        private final Indicator<Num> indicator;
+        private final int barCount;
+        private final String constructorUsed;
+
+        OverloadedIndicatorRule(ATRIndicator indicator, int barCount) {
+            this.indicator = indicator;
+            this.barCount = barCount;
+            this.constructorUsed = "atr";
+        }
+
+        OverloadedIndicatorRule(Indicator<Num> indicator, int barCount) {
+            this.indicator = indicator;
+            this.barCount = barCount;
+            this.constructorUsed = "generic";
+        }
+
+        @Override
+        public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+            return false;
+        }
+
+        private Indicator<Num> getIndicator() {
+            return indicator;
         }
 
         private int getBarCount() {
@@ -845,6 +1008,15 @@ public class RuleSerializationTest {
         private Number getBarCount() {
             return barCount;
         }
+    }
+
+    @Test
+    public void toDescriptorRejectsNonFiniteNumericParameter() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
+        Rule rule = new InSlopeRule(new ClosePriceIndicator(series), NaN.NaN);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, rule::toDescriptor);
+        assertThat(exception.getMessage()).contains("Non-finite numeric parameter");
     }
 
     private record Fixture(BarSeries series, Rule andRule, Strategy strategy) {

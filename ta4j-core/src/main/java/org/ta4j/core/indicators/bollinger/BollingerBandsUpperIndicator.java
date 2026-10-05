@@ -45,7 +45,7 @@ public class BollingerBandsUpperIndicator extends CachedIndicator<Num> {
      */
     public BollingerBandsUpperIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Num> deviation, Num k) {
         super(deviation);
-        this.bbm = bbm;
+        this.bbm = bbm.copy();
         this.deviation = deviation;
         this.k = k;
     }
@@ -63,6 +63,10 @@ public class BollingerBandsUpperIndicator extends CachedIndicator<Num> {
     /** @return the K multiplier */
     public Num getK() {
         return k;
+    }
+
+    BollingerBandsUpperIndicator copy() {
+        return new BollingerBandsUpperIndicator(bbm, deviation, k);
     }
 
     @Override

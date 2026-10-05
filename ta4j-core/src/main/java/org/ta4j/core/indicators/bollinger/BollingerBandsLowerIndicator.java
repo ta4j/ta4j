@@ -45,7 +45,7 @@ public class BollingerBandsLowerIndicator extends CachedIndicator<Num> {
      */
     public BollingerBandsLowerIndicator(BollingerBandsMiddleIndicator bbm, Indicator<Num> indicator, Num k) {
         super(indicator);
-        this.bbm = bbm;
+        this.bbm = bbm.copy();
         this.indicator = indicator;
         this.k = k;
     }
@@ -63,6 +63,10 @@ public class BollingerBandsLowerIndicator extends CachedIndicator<Num> {
     /** @return the K multiplier */
     public Num getK() {
         return k;
+    }
+
+    BollingerBandsLowerIndicator copy() {
+        return new BollingerBandsLowerIndicator(bbm, indicator, k);
     }
 
     @Override

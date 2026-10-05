@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.rules;
 
+import java.util.Objects;
+
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
 
@@ -25,25 +27,26 @@ public class XorRule extends AbstractRule {
      * @param rule2 another trading rule
      */
     public XorRule(Rule rule1, Rule rule2) {
-        this.rule1 = rule1;
-        this.rule2 = rule2;
+        this.rule1 = Objects.requireNonNull(rule1, "rule1 cannot be null");
+        this.rule2 = Objects.requireNonNull(rule2, "rule2 cannot be null");
         setName(createCompositeName(getClass().getSimpleName(), rule1, rule2));
     }
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        final boolean satisfied = rule1.isSatisfied(index, tradingRecord) ^ rule2.isSatisfied(index, tradingRecord);
+        final boolean satisfied = evaluateChildRule(rule1, "rule1", index, tradingRecord)
+                ^ evaluateChildRule(rule2, "rule2", index, tradingRecord);
         traceIsSatisfied(index, satisfied);
         return satisfied;
     }
 
     /** @return the first rule */
     public Rule getRule1() {
-        return rule1;
+        return RuleCopies.copy(rule1);
     }
 
     /** @return the second rule */
     public Rule getRule2() {
-        return rule2;
+        return RuleCopies.copy(rule2);
     }
 }

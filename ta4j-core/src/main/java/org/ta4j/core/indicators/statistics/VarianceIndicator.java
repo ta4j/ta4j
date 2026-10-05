@@ -79,26 +79,23 @@ public class VarianceIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         final int startIndex = Math.max(Math.max(0, getBarSeries().getBeginIndex()), index - barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
-        final NumFactory numFactory = getBarSeries().numFactory();
-        Num variance = numFactory.zero();
-        Num average = averageValue(startIndex, index);
-        for (int i = startIndex; i <= index; i++) {
-            Num pow = indicator.getValue(i).minus(average).pow(2);
-            variance = variance.plus(pow);
+        NumFactory numFactory = getBarSeries().numFactory();
+        Num anchor = indicator.getValue(startIndex);
+        Num averageOffset = numFactory.zero();
+        Num squaredDeviationTotal = numFactory.zero();
+        int observationCount = 1;
+        for (int i = startIndex + 1; i <= index; i++) {
+            Num offset = indicator.getValue(i).minus(anchor);
+            observationCount++;
+            Num difference = offset.minus(averageOffset);
+            averageOffset = averageOffset.plus(difference.dividedBy(numFactory.numOf(observationCount)));
+            squaredDeviationTotal = squaredDeviationTotal.plus(difference.multipliedBy(offset.minus(averageOffset)));
         }
         final int divisor = sampleType.isSample() ? numberOfObservations - 1 : numberOfObservations;
         if (divisor <= 0) {
             return numFactory.zero();
         }
-        return variance.dividedBy(numFactory.numOf(divisor));
-    }
-
-    private Num averageValue(int startIndex, int endIndex) {
-        Num sum = getBarSeries().numFactory().zero();
-        for (int i = startIndex; i <= endIndex; i++) {
-            sum = sum.plus(indicator.getValue(i));
-        }
-        return sum.dividedBy(getBarSeries().numFactory().numOf(endIndex - startIndex + 1));
+        return squaredDeviationTotal.dividedBy(numFactory.numOf(divisor));
     }
 
     @Override

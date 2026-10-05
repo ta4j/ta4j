@@ -4,7 +4,9 @@
 package org.ta4j.core.indicators;
 
 import java.util.List;
+import java.util.Objects;
 
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.ta4j.core.BarSeries;
@@ -79,11 +81,62 @@ public abstract class AbstractIndicatorTest<D, I> {
         return factory.getIndicator(data, params);
     }
 
+    @Test
+    public void serializationFixturesRoundTrip() {
+        for (IndicatorSerializationFixture<?> fixture : serializationFixtures()) {
+            IndicatorSerializationRoundTripTestSupport.assertIndicatorRoundTrips(fixture);
+        }
+    }
+
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        return List.of();
+    }
+
+    protected static <T> IndicatorSerializationFixture<T> serializationFixture(BarSeries series,
+            Indicator<T> indicator) {
+        return new IndicatorSerializationFixture<>(series, indicator, representativeIndexes(series));
+    }
+
+    protected static <T> IndicatorSerializationFixture<T> serializationFixture(BarSeries series, Indicator<T> indicator,
+            int... indexes) {
+        return new IndicatorSerializationFixture<>(series, indicator, indexes);
+    }
+
     protected Num numOf(Number n) {
         return numFactory.numOf(n);
     }
 
     public BarSeries getBarSeries(String name) {
         return new BaseBarSeriesBuilder().withNumFactory(numFactory).withName(name).build();
+    }
+
+    private static int[] representativeIndexes(BarSeries series) {
+        int beginIndex = series.getBeginIndex();
+        int endIndex = series.getEndIndex();
+        if (endIndex < beginIndex) {
+            return new int[0];
+        }
+        int middleIndex = beginIndex + (endIndex - beginIndex) / 2;
+        if (beginIndex == endIndex) {
+            return new int[] { beginIndex };
+        }
+        if (middleIndex == beginIndex || middleIndex == endIndex) {
+            return new int[] { beginIndex, endIndex };
+        }
+        return new int[] { beginIndex, middleIndex, endIndex };
+    }
+
+    protected record IndicatorSerializationFixture<T>(BarSeries series, Indicator<T> indicator, int[] indexes) {
+
+        public IndicatorSerializationFixture {
+            Objects.requireNonNull(series, "series");
+            Objects.requireNonNull(indicator, "indicator");
+            indexes = Objects.requireNonNull(indexes, "indexes").clone();
+        }
+
+        @Override
+        public int[] indexes() {
+            return indexes.clone();
+        }
     }
 }

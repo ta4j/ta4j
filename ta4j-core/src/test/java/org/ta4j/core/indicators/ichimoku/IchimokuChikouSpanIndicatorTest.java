@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators.ichimoku;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static java.util.stream.Collectors.toList;
 import static org.junit.Assert.assertEquals;
 
@@ -80,6 +85,12 @@ public class IchimokuChikouSpanIndicatorTest extends AbstractIndicatorTest<BarSe
         assertEquals(NaN.NaN, indicator.getValue(8));
         assertEquals(NaN.NaN, indicator.getValue(9));
         assertEquals(NaN.NaN, indicator.getValue(10));
+    }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(serializationFixture(series, new IchimokuChikouSpanIndicator(series, 8), stableIndexes(series)));
     }
 
 }

@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
  *
  * <pre>{@code
  * // Default DECIMAL representation
- * var winRatio = PositionsRatioCriterion.WinningPositionsRatioCriterion();
+ * var winRatio = PositionsRatioCriterion.winningPositionsRatioCriterion();
  * // Result: 0.5 means 50% of positions are winning
  *
  * // PERCENTAGE representation
@@ -67,7 +67,7 @@ public class PositionsRatioCriterion extends AbstractAnalysisCriterion {
      *         and {@link ReturnRepresentationPolicy#getDefaultRepresentation()
      *         global default representation}
      */
-    public static PositionsRatioCriterion WinningPositionsRatioCriterion() {
+    public static PositionsRatioCriterion winningPositionsRatioCriterion() {
         return new PositionsRatioCriterion(PositionFilter.PROFIT);
     }
 
@@ -76,7 +76,7 @@ public class PositionsRatioCriterion extends AbstractAnalysisCriterion {
      *         {@link ReturnRepresentationPolicy#getDefaultRepresentation() global
      *         default representation}
      */
-    public static PositionsRatioCriterion LosingPositionsRatioCriterion() {
+    public static PositionsRatioCriterion losingPositionsRatioCriterion() {
         return new PositionsRatioCriterion(PositionFilter.LOSS);
     }
 
@@ -120,7 +120,11 @@ public class PositionsRatioCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return numberOfPositionsCriterion.calculate(series, position);
+        Num count = numberOfPositionsCriterion.calculate(series, position);
+        // The per-position count is the rate of return over the single-position
+        // denominator; convert it so position-level and record-level results are
+        // consistent with the configured representation.
+        return returnRepresentation.toRepresentationFromRateOfReturn(count);
     }
 
     @Override

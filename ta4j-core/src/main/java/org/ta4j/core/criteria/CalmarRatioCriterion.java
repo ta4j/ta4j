@@ -10,12 +10,13 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
-import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
+import org.ta4j.core.criteria.drawdown.Drawdown;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.utils.BarSeriesUtils;
 
+import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -36,8 +37,10 @@ import java.util.Optional;
  * utilities:
  * <ul>
  * <li>{@link CashFlow} to reuse the existing compounded equity curve and derive
- * CAGR from the evaluated start and end equity values.</li>
- * <li>{@link MaximumDrawdownCriterion} for denominator calculation.</li>
+ * CAGR from the equity entering the evaluated window
+ * ({@link CashFlow#getBaselineValue()}) to its end equity, annualized over the
+ * time between the window's first and last bar closes.</li>
+ * <li>{@link Drawdown} for denominator calculation on that same curve.</li>
  * </ul>
  *
  * <p>
@@ -56,7 +59,12 @@ import java.util.Optional;
  */
 public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
 
-    private final MaximumDrawdownCriterion maximumDrawdownCriterion;
+    /**
+     * Analyses attempted before giving up on a series that keeps evicting the
+     * window.
+     */
+    private static final int MAX_ATTEMPTS = 8;
+
     private final ReturnRepresentation returnRepresentation;
 
     /**
@@ -135,7 +143,6 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
             OpenPositionHandling openPositionHandling) {
         super(equityCurveMode, openPositionHandling);
         this.returnRepresentation = Objects.requireNonNull(returnRepresentation, "returnRepresentation");
-        this.maximumDrawdownCriterion = new MaximumDrawdownCriterion(equityCurveMode, openPositionHandling);
     }
 
     @Override
@@ -149,26 +156,17 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        NumFactory numFactory = series.numFactory();
-        Num zero = numFactory.zero();
-        if (tradingRecord == null || series.isEmpty()) {
-            return zero;
+        if (tradingRecord == null) {
+            return series.numFactory().zero();
         }
-
-        int beginIndex = tradingRecord.getStartIndex(series);
-        int endIndex = tradingRecord.getEndIndex(series);
-        if (endIndex <= beginIndex) {
-            return zero;
+        for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            Num value = calculateTradingRecord(series, tradingRecord);
+            if (value != null) {
+                return value;
+            }
         }
-
-        Num annualizedReturn = annualizedReturn(series, tradingRecord, beginIndex, endIndex);
-
-        Num maximumDrawdown = maximumDrawdownCriterion.calculate(series, tradingRecord);
-        if (maximumDrawdown.isZero()) {
-            return toRepresentation(annualizedReturn);
-        }
-        Num calmarRatio = annualizedReturn.dividedBy(maximumDrawdown);
-        return toRepresentation(calmarRatio);
+        throw new IllegalStateException("Bar series '" + series.getName()
+                + "' evicted or changed the analysis window during each of " + MAX_ATTEMPTS + " attempts");
     }
 
     @Override
@@ -181,16 +179,55 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    private Num annualizedReturn(BarSeries series, TradingRecord tradingRecord, int beginIndex, int endIndex) {
+    /**
+     * Returns the ratio, or {@code null} when a bar at either end of the cash flow
+     * was evicted or given a different time after the analysis started.
+     */
+    private Num calculateTradingRecord(BarSeries series, TradingRecord tradingRecord) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
-        Num one = numFactory.one();
-        Num years = BarSeriesUtils.deltaYears(series, beginIndex, endIndex);
-        if (years.isZero()) {
+        // Bar times are captured before the curve so they can be verified against
+        // it afterwards: annualizing reads nothing else from the series.
+        EndTimes endTimes = series.withReadLock(() -> EndTimes.capture(series));
+        CashFlow cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
+        Integer explicitStartIndex = tradingRecord.getStartIndex();
+        int beginIndex = explicitStartIndex == null ? cashFlow.getBeginIndex()
+                : Math.max(explicitStartIndex, cashFlow.getBeginIndex());
+        int endIndex = cashFlow.getEndIndex();
+        if (endIndex <= beginIndex) {
             return zero;
         }
-        CashFlow cashFlow = new CashFlow(series, tradingRecord, endIndex, equityCurveMode, openPositionHandling);
-        Num startValue = cashFlow.getValue(beginIndex);
+
+        Num annualizedReturn = annualizedReturn(series, cashFlow, endTimes, beginIndex, endIndex);
+        if (annualizedReturn == null) {
+            return null;
+        }
+        Num maximumDrawdown = Drawdown.amount(series, tradingRecord, cashFlow);
+        if (maximumDrawdown.isZero()) {
+            return toRepresentation(annualizedReturn);
+        }
+        return toRepresentation(annualizedReturn.dividedBy(maximumDrawdown));
+    }
+
+    private Num annualizedReturn(BarSeries series, CashFlow cashFlow, EndTimes endTimes, int beginIndex, int endIndex) {
+        Num one = series.numFactory().one();
+        // The captured times are used only if the series still holds them at both
+        // ends of the curve; a bar replaced, or evicted, since they were captured
+        // may disagree with the curve, so the analysis runs again.
+        Num years = series
+                .withReadLock(() -> endTimes.isCurrentAt(series, beginIndex) && endTimes.isCurrentAt(series, endIndex)
+                        ? BarSeriesUtils.deltaYears(endTimes.at(beginIndex), endTimes.at(endIndex), series.numFactory())
+                        : null);
+        if (years == null) {
+            return null;
+        }
+        if (years.isZero()) {
+            return series.numFactory().zero();
+        }
+        // The CAGR starts from the equity entering the window: a result realized on
+        // its first bar (a pre-window position exiting there) belongs to the window.
+        Num startValue = beginIndex == cashFlow.getBeginIndex() ? cashFlow.getBaselineValue()
+                : cashFlow.getValue(beginIndex - 1);
         if (startValue.isNaN() || startValue.isZero()) {
             return NaN.NaN;
         }
@@ -209,5 +246,40 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
             return NaN.NaN;
         }
         return returnRepresentation.toRepresentationFromRateOfReturn(value);
+    }
+
+    /**
+     * End times of the bars retained when an analysis started.
+     *
+     * @param beginIndex the index of the first captured time
+     * @param times      the captured end times
+     */
+    private record EndTimes(int beginIndex, Instant[] times) {
+
+        /** Captures the retained bars' end times; runs inside the series read scope. */
+        static EndTimes capture(BarSeries series) {
+            if (series.isEmpty()) {
+                return new EndTimes(0, new Instant[0]);
+            }
+            int beginIndex = series.getBeginIndex();
+            Instant[] times = new Instant[series.getEndIndex() - beginIndex + 1];
+            for (int offset = 0; offset < times.length; offset++) {
+                times[offset] = series.getBar(beginIndex + offset).getEndTime();
+            }
+            return new EndTimes(beginIndex, times);
+        }
+
+        Instant at(int index) {
+            return times[index - beginIndex];
+        }
+
+        /**
+         * @return whether {@code index} was captured and the series still retains it
+         *         with the same end time; runs inside the series read scope
+         */
+        boolean isCurrentAt(BarSeries series, int index) {
+            return index >= beginIndex && index - beginIndex < times.length && index >= series.getBeginIndex()
+                    && index <= series.getEndIndex() && at(index).equals(series.getBar(index).getEndTime());
+        }
     }
 }

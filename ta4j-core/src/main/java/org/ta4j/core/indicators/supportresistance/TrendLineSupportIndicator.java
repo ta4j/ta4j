@@ -40,8 +40,7 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      *                            strictly higher than a swing low
      * @param followingHigherBars number of immediately following bars that must be
      *                            strictly higher than a swing low
-     * @param allowedEqualBars    number of bars on each side that may equal the
-     *                            swing-low value
+     * @param allowedEqualBars    maximum additional bars in a flat-low plateau
      * @param barCount            number of bars to look back when selecting swing
      *                            points for the trend line
      * @since 0.20
@@ -56,8 +55,7 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      *                            strictly higher than a swing low
      * @param followingHigherBars number of immediately following bars that must be
      *                            strictly higher than a swing low
-     * @param allowedEqualBars    number of bars on each side that may equal the
-     *                            swing-low value
+     * @param allowedEqualBars    maximum additional bars in a flat-low plateau
      * @param barCount            number of bars to look back when selecting swing
      *                            points for the trend line
      * @param scoringWeights      the scoring weights to use for candidate
@@ -86,8 +84,7 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      *                            strictly higher than a swing low
      * @param followingHigherBars number of immediately following bars that must be
      *                            strictly higher than a swing low
-     * @param allowedEqualBars    number of bars on each side that may equal the
-     *                            swing-low value
+     * @param allowedEqualBars    maximum additional bars in a flat-low plateau
      * @since 0.20
      */
     public TrendLineSupportIndicator(Indicator<Num> priceIndicator, int precedingHigherBars, int followingHigherBars,
@@ -106,8 +103,7 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
      *                            strictly higher than a swing low
      * @param followingHigherBars number of immediately following bars that must be
      *                            strictly higher than a swing low
-     * @param allowedEqualBars    number of bars on each side that may equal the
-     *                            swing-low value
+     * @param allowedEqualBars    maximum additional bars in a flat-low plateau
      * @param scoringWeights      the scoring weights to use for candidate
      *                            evaluation
      * @since 0.20
@@ -249,6 +245,37 @@ public class TrendLineSupportIndicator extends AbstractTrendLineIndicator {
                 outsideCountWeight, averageDeviationWeight, anchorRecencyWeight,
                 ToleranceSettings.from(toleranceMode, toleranceValue, toleranceMinimum),
                 DEFAULT_MAX_SWING_POINTS_FOR_TRENDLINE, DEFAULT_MAX_CANDIDATE_PAIRS);
+    }
+
+    /**
+     * Deserialization-friendly constructor that accepts explicit scoring weights,
+     * tolerance parameters, and search caps as strings/primitives.
+     *
+     * @param swingLowIndicator          the swing-low indicator to use
+     * @param barCount                   number of bars to look back when selecting
+     *                                   swing points
+     * @param touchCountWeight           weight for swing point touch count
+     * @param touchesExtremeWeight       weight for extreme point inclusion
+     * @param outsideCountWeight         weight for minimizing outside swings
+     * @param averageDeviationWeight     weight for minimizing average deviation
+     * @param anchorRecencyWeight        weight for anchor point recency
+     * @param toleranceMode              tolerance mode as string (PERCENTAGE,
+     *                                   ABSOLUTE, or TICK_SIZE)
+     * @param toleranceValue             tolerance value
+     * @param toleranceMinimum           minimum absolute tolerance
+     * @param maxSwingPointsForTrendline maximum number of swing points to consider
+     * @param maxCandidatePairs          maximum number of candidate pairs to
+     *                                   evaluate
+     * @since 0.23.1
+     */
+    public TrendLineSupportIndicator(RecentSwingIndicator swingLowIndicator, int barCount, double touchCountWeight,
+            double touchesExtremeWeight, double outsideCountWeight, double averageDeviationWeight,
+            double anchorRecencyWeight, String toleranceMode, double toleranceValue, double toleranceMinimum,
+            int maxSwingPointsForTrendline, int maxCandidatePairs) {
+        super(swingLowIndicator, barCount, TrendLineSide.SUPPORT, touchCountWeight, touchesExtremeWeight,
+                outsideCountWeight, averageDeviationWeight, anchorRecencyWeight,
+                ToleranceSettings.from(toleranceMode, toleranceValue, toleranceMinimum), maxSwingPointsForTrendline,
+                maxCandidatePairs);
     }
 
     /**

@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -134,6 +135,15 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource();
         String sourceName = dataSource.getSourceName();
         return sourceName.isEmpty() ? "" : sourceName + "-";
+    }
+
+    private CoinbaseHttpBarSeriesDataSource newNoDelayDataSource(HttpClientWrapper httpClient) {
+        return new CoinbaseHttpBarSeriesDataSource(httpClient) {
+            @Override
+            void pauseBetweenPaginatedRequests() {
+                // Keep mocked pagination tests deterministic and fast.
+            }
+        };
     }
 
     @Test
@@ -503,7 +513,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
                 .thenReturn(mockResponse2)
                 .thenReturn(mockResponse2); // In case there are more calls
 
-        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = newNoDelayDataSource(mockClient);
         // Request 351 days of daily data (exceeds 350 candle limit)
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-12-18T00:00:00Z"); // ~351 days
@@ -574,7 +584,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse1)
                 .thenReturn(mockResponse2);
 
-        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = newNoDelayDataSource(mockClient);
         // Request range that would trigger pagination
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-12-18T00:00:00Z"); // Exceeds 350 candles
@@ -617,7 +627,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse1)
                 .thenReturn(mockResponse2);
 
-        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = newNoDelayDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-12-18T00:00:00Z"); // Exceeds 350 candles
 
@@ -639,7 +649,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
 
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = newNoDelayDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-12-18T00:00:00Z"); // Exceeds 350 candles
 
@@ -695,7 +705,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
     @Test
     public void testCacheHitForSameRequest() throws IOException, InterruptedException {
         // Clean up any existing cache files for this test
-        cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-PT24H-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -726,14 +736,57 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up cache files created by this test
-        cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-PT24H-");
+    }
+
+    @Test
+    public void testCacheFileReloadRoundTripsDashedProductIdAndInterval() throws IOException, InterruptedException {
+        // Clean up any existing cache files for this test
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-");
+
+        HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
+        HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
+
+        when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn(VALID_JSON_RESPONSE);
+        when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
+
+        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient, true);
+        Instant start = Instant.parse("2021-01-01T00:00:00Z");
+        Instant end = Instant.parse("2021-01-03T00:00:00Z");
+
+        // First request writes the cache file
+        BarSeries written = dataSource.loadSeriesInstance("BTC-USD",
+                CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_HOUR, start, end);
+        assertNotNull(written, "First request should return data");
+
+        // Locate the written cache file for the dashed product ID
+        Path cacheDir = Paths.get(AbstractHttpBarSeriesDataSource.DEFAULT_RESPONSE_CACHE_DIR);
+        List<Path> cacheFiles;
+        try (var stream = Files.list(cacheDir)) {
+            cacheFiles = stream
+                    .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC%2DUSD-"))
+                    .toList();
+        }
+        assertEquals(1, cacheFiles.size(), "Exactly one cache file should be written for BTC-USD");
+        Path cacheFile = cacheFiles.getFirst();
+
+        // Reload from the cache file path: product ID and interval must round-trip
+        // exactly
+        BarSeries reloaded = dataSource.loadSeries(cacheFile.toString());
+        assertNotNull(reloaded, "Reload from cache file should return data");
+        assertEquals("BTC-USD", reloaded.getName(), "Dashed product ID must round-trip exactly");
+        assertEquals(Duration.ofHours(1), reloaded.getFirstBar().getTimePeriod(), "Interval must round-trip exactly");
+
+        // Clean up
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-");
     }
 
     @Test
     public void testCacheMissForDifferentProductId() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT24H-");
-        cleanupCacheFiles(getCachePrefix() + "ETH-USD-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + "ETH%2DUSD-PT24H-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -755,15 +808,15 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT24H-");
-        cleanupCacheFiles(getCachePrefix() + "ETH-USD-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + "ETH%2DUSD-PT24H-");
     }
 
     @Test
     public void testCacheMissForDifferentInterval() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT24H-");
-        cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT1H-");
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-PT1H-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -785,14 +838,14 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT24H-");
-        cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT1H-");
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-PT1H-");
     }
 
     @Test
     public void testCacheHitWithTruncatedTimestamps() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-PT24H-");
 
         // Test that cache hits work when timestamps are truncated to the same cache key
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
@@ -823,13 +876,13 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-PT24H-");
     }
 
     @Test
     public void testCacheWriteOnSuccessfulRequest() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-PT24H-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -854,7 +907,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-PT24H-");
     }
 
     @Test
@@ -882,7 +935,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
     @Test
     public void testCacheHitForHistoricalData() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-PT24H-");
 
         // Historical data (end date in the past) should be cached indefinitely
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
@@ -906,7 +959,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-PT24H-");
     }
 
     @Test
@@ -914,7 +967,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         // Use a unique notes identifier to avoid cache collisions with other tests
         String uniqueNotes = String.valueOf(System.currentTimeMillis());
         String productId = "TEST-BARCOUNT";
-        cleanupCacheFiles(getCachePrefix() + productId + "-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + productId.replace("-", "%2D") + "-PT24H-");
 
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
         HttpResponseWrapper<String> mockResponse = mock(HttpResponseWrapper.class);
@@ -939,7 +992,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         verify(mockClient, times(1)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + productId + "-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + productId.replace("-", "%2D") + "-PT24H-");
     }
 
     @Test
@@ -957,7 +1010,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
     @Test
     public void testCacheWithDifferentIntervalsTruncation() throws IOException, InterruptedException {
         // Clean up any existing cache files
-        cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT5M-");
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-PT5M-");
 
         // Test that different intervals truncate timestamps correctly
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
@@ -988,14 +1041,14 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         verify(mockClient, times(2)).send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class));
 
         // Clean up
-        cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT5M-");
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-PT5M-");
     }
 
     @Test
     public void testCacheWithFailedRequest() throws IOException, InterruptedException {
         // Clean up any existing cache files - important to ensure no cached success
         // response
-        cleanupCacheFiles(getCachePrefix() + "BTC-USD-PT24H-");
+        cleanupCacheFiles(getCachePrefix() + "BTC%2DUSD-PT24H-");
 
         // Test that failed requests don't write to cache
         HttpClientWrapper mockClient = mock(HttpClientWrapper.class);
@@ -1196,7 +1249,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         // Clean up any existing cache files
         if (Files.exists(customCachePath)) {
             Files.list(customCachePath)
-                    .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC-USD-PT24H-"))
+                    .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC%2DUSD-PT24H-"))
                     .forEach(path -> {
                         try {
                             Files.delete(path);
@@ -1226,7 +1279,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         // Verify cache file was created in custom directory
         assertTrue(Files.exists(customCachePath), "Custom cache directory should exist");
         boolean cacheFileExists = Files.list(customCachePath)
-                .anyMatch(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC-USD-PT24H-"));
+                .anyMatch(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC%2DUSD-PT24H-"));
         assertTrue(cacheFileExists, "Cache file should be created in custom directory");
 
         // Second request - should use cache (verify only one API call was made)
@@ -1265,7 +1318,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         // Clean up any existing cache files
         if (Files.exists(customCachePath)) {
             Files.list(customCachePath)
-                    .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC-USD-PT24H-"))
+                    .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC%2DUSD-PT24H-"))
                     .forEach(path -> {
                         try {
                             Files.delete(path);
@@ -1295,7 +1348,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         // Verify cache file was created
         assertTrue(Files.exists(customCachePath), "Custom cache directory should exist");
         long fileCountBefore = Files.list(customCachePath)
-                .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC-USD-PT24H-"))
+                .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC%2DUSD-PT24H-"))
                 .count();
         assertTrue(fileCountBefore > 0, "Cache file should exist");
 
@@ -1305,7 +1358,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
 
         // Verify cache files are gone
         long fileCountAfter = Files.list(customCachePath)
-                .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC-USD-PT24H-"))
+                .filter(path -> path.getFileName().toString().startsWith(getCachePrefix() + "BTC%2DUSD-PT24H-"))
                 .count();
         assertEquals(0, fileCountAfter, "All cache files should be deleted");
 

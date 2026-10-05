@@ -4,11 +4,14 @@
 package org.ta4j.core;
 
 import org.ta4j.core.num.Num;
+import org.ta4j.core.named.NamedAssetRegistry;
 import org.ta4j.core.serialization.ComponentDescriptor;
 import org.ta4j.core.serialization.IndicatorSerialization;
 import org.ta4j.core.serialization.IndicatorSerializationException;
 
+import java.util.List;
 import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 import java.util.stream.Stream;
 
 /**
@@ -67,8 +70,12 @@ public interface Indicator<T> {
      *         as a Stream
      */
     default Stream<T> stream() {
-        return IntStream.range(getBarSeries().getBeginIndex(), getBarSeries().getEndIndex() + 1)
-                .mapToObj(this::getValue);
+        int beginIndex = getBarSeries().getBeginIndex();
+        int endIndex = getBarSeries().getEndIndex();
+        if (beginIndex < 0 || endIndex < beginIndex) {
+            return Stream.empty();
+        }
+        return LongStream.range((long) beginIndex, (long) endIndex + 1L).mapToObj(index -> getValue((int) index));
     }
 
     /**
@@ -155,6 +162,56 @@ public interface Indicator<T> {
     }
 
     /**
+     * Renders {@code this} indicator as a compact named shorthand expression using
+     * ta4j's default named asset registry.
+     *
+     * @return compact shorthand expression
+     * @throws IllegalArgumentException if no registered shorthand can represent the
+     *                                  indicator
+     * @since 0.23.1
+     */
+    default String toExpression() {
+        return IndicatorSerialization.toExpression(this);
+    }
+
+    /**
+     * Renders {@code this} indicator as a compact named shorthand expression using
+     * the supplied named asset registry.
+     *
+     * @param registry named asset registry
+     * @return compact shorthand expression
+     * @throws IllegalArgumentException if no registered shorthand can represent the
+     *                                  indicator
+     * @since 0.23.1
+     */
+    default String toExpression(NamedAssetRegistry registry) {
+        return IndicatorSerialization.toExpression(this, registry);
+    }
+
+    /**
+     * The direct source indicators this indicator reads from, in evaluation order.
+     *
+     * <p>
+     * Non-cached wrapper indicators (for example {@code UnaryOperationIndicator})
+     * override this method to expose the sources they delegate to.
+     * {@link org.ta4j.core.indicators.CachedIndicator} traverses this graph to
+     * propagate bounded-series head-advance invalidation from a rebaselining source
+     * through intervening wrappers, so the walk reaches every component of a
+     * composed indicator instead of stopping at the first non-cached wrapper.
+     *
+     * <p>
+     * The graph is a construction-order DAG: a wrapper can only declare sources it
+     * received at construction time, so the traversal always terminates.
+     *
+     * @return the direct source indicators, empty when this indicator only reads
+     *         bar data
+     * @since 0.24.2
+     */
+    default List<Indicator<?>> getDependencies() {
+        return List.of();
+    }
+
+    /**
      * Reconstructs an indicator instance from its serialized representation.
      *
      * <p>
@@ -202,5 +259,32 @@ public interface Indicator<T> {
      */
     static Indicator<?> fromJson(BarSeries series, String json) {
         return IndicatorSerialization.fromJson(series, json);
+    }
+
+    /**
+     * Reconstructs an indicator from a compact named shorthand expression using
+     * ta4j's default named asset registry.
+     *
+     * @param series     backing series to attach to the reconstructed indicator
+     * @param expression shorthand expression
+     * @return indicator instance
+     * @since 0.23.1
+     */
+    static Indicator<?> fromExpression(BarSeries series, String expression) {
+        return IndicatorSerialization.fromExpression(series, expression);
+    }
+
+    /**
+     * Reconstructs an indicator from a compact named shorthand expression using the
+     * supplied named asset registry.
+     *
+     * @param series     backing series to attach to the reconstructed indicator
+     * @param expression shorthand expression
+     * @param registry   named asset registry
+     * @return indicator instance
+     * @since 0.23.1
+     */
+    static Indicator<?> fromExpression(BarSeries series, String expression, NamedAssetRegistry registry) {
+        return IndicatorSerialization.fromExpression(series, expression, registry);
     }
 }

@@ -11,6 +11,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.io.ByteArrayOutputStream;
 import java.io.ByteArrayInputStream;
@@ -19,30 +20,49 @@ import java.io.ObjectInputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.concurrent.BlockingQueue;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 
+import org.apache.logging.log4j.LogManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
+import org.ta4j.core.backtest.BarSeriesManager;
+import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
+import org.ta4j.core.analysis.EquityCurveMode;
+import org.ta4j.core.analysis.Returns;
+import org.ta4j.core.criteria.ReturnRepresentation;
+import org.ta4j.core.analysis.elliott.swing.FractalSwingDetector;
 import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.bars.TimeBarBuilderFactory;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.mocks.MockBarBuilderFactory;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.rules.FixedRule;
+import org.ta4j.core.utils.BarSeriesUtils;
 
 /**
  * Comprehensive unit tests for {@link ConcurrentBarSeries} focusing on the
@@ -89,6 +109,67 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         if (executorService != null) {
             executorService.shutdownNow();
         }
+    }
+
+    @Test
+    public void managerResolvesRollingWindowAfterAcquiringRunLock() {
+        AtomicBoolean appendBeforeLock = new AtomicBoolean();
+        ConcurrentBarSeries series = new ConcurrentBarSeries("rolling-manager", new ArrayList<>(testBars.subList(0, 2)),
+                0, 1, false, numFactory, barBuilderFactory) {
+            @Override
+            public <T> T withReadLock(Supplier<T> action) {
+                if (appendBeforeLock.compareAndSet(true, false)) {
+                    addBar(testBars.get(2));
+                }
+                return super.withReadLock(action);
+            }
+        };
+        series.setMaximumBarCount(2);
+        BarSeriesManager manager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        appendBeforeLock.set(true);
+
+        TradingRecord record = manager.run(new BaseStrategy(new FixedRule(2), new FixedRule()));
+
+        assertTrue(record.getCurrentPosition().isOpened());
+        assertEquals(2, record.getCurrentPosition().getEntry().getIndex());
+        assertEquals(testBars.get(2).getClosePrice(), record.getCurrentPosition().getEntry().getPricePerAsset());
+    }
+
+    @Test
+    public void returnsCaptureRollingWindowAfterAcquiringReadLock() {
+        AtomicBoolean appendBeforeLock = new AtomicBoolean();
+        ConcurrentBarSeries series = new ConcurrentBarSeries("returns-lock", new ArrayList<>(testBars.subList(0, 2)), 0,
+                1, false, numFactory, barBuilderFactory) {
+            @Override
+            public void withReadLock(Runnable action) {
+                appendBeforeLease();
+                super.withReadLock(action);
+            }
+
+            @Override
+            public <T> T withReadLock(Supplier<T> action) {
+                appendBeforeLease();
+                return super.withReadLock(action);
+            }
+
+            private void appendBeforeLease() {
+                if (appendBeforeLock.compareAndSet(true, false)) {
+                    addBar(testBars.get(2));
+                }
+            }
+        };
+        series.setMaximumBarCount(2);
+        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series));
+        appendBeforeLock.set(true);
+
+        Returns returns = new Returns(series, record, ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET);
+
+        Num expected = testBars.get(2)
+                .getClosePrice()
+                .dividedBy(testBars.get(1).getClosePrice())
+                .minus(numFactory.one());
+        TestUtils.assertNumEquals(expected, returns.getValue(2));
+        assertTrue(returns.getValue(0).isNaN());
     }
 
     // ==================== Constructor Tests ====================
@@ -146,6 +227,28 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         });
     }
 
+    @Test
+    public void replaceBarIfChangedAcquiresWriteLockForRestatement() {
+        RecordingReadWriteLock lock = new RecordingReadWriteLock();
+        ConcurrentBarSeries series = new ConcurrentBarSeries("TestName", new ArrayList<>(testBars), 0, 4, false,
+                numFactory, barBuilderFactory, lock);
+        Bar previousBar = series.getBar(2);
+        Bar replacementBar = replacementBarObservingWriteLock(previousBar, lock);
+        int beginIndex = series.getBeginIndex();
+        int endIndex = series.getEndIndex();
+        int barCount = series.getBarCount();
+
+        Bar returnedBar = BarSeriesUtils.replaceBarIfChanged(series, replacementBar);
+
+        assertSame(previousBar, returnedBar);
+        assertSame(replacementBar, series.getBar(2));
+        assertEquals(barCount, series.getBarCount());
+        assertEquals(beginIndex, series.getBeginIndex());
+        assertEquals(endIndex, series.getEndIndex());
+        assertTrue("Concurrent replacement should validate the new bar while holding the write lock",
+                lock.wasWriteLockHeldDuringReplacement());
+    }
+
     // ==================== getName() and numFactory() Tests ====================
 
     @Test
@@ -180,8 +283,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     }
                     successCount.incrementAndGet();
                 } catch (Exception e) {
-                    System.err.println("getName() operation failed: " + e.getMessage());
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("getName() operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -267,8 +370,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     }
                     successCount.incrementAndGet();
                 } catch (Exception e) {
-                    System.err.println("numFactory() operation failed: " + e.getMessage());
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("numFactory() operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -303,8 +406,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     }
                     successCount.incrementAndGet();
                 } catch (Exception e) {
-                    System.err.println("Combined getName()/numFactory() operation failed: " + e.getMessage());
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("Combined getName()/numFactory() operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -321,7 +424,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testConcurrentReadOperations() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testConcurrentReadOperationsSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -359,8 +463,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     successCount.incrementAndGet();
                 } catch (Exception e) {
                     // Log the exception but don't fail immediately
-                    System.err.println("Read operation failed: " + e.getMessage());
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("Read operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -374,7 +478,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testConcurrentWriteOperations() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testConcurrentWriteOperationsSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withMaxBarCount(1000)
                 .build();
@@ -413,8 +518,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                 }
                 successCount.incrementAndGet();
             } catch (Exception e) {
-                System.err.println("Write operation failed: " + e.getMessage());
-                e.printStackTrace();
+                LogManager.getLogger(ConcurrentBarSeriesTest.class).warn("Write operation failed: {}", e.getMessage());
             } finally {
                 endLatch.countDown();
             }
@@ -430,7 +534,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testConcurrentReadWriteOperations() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testConcurrentReadWriteOperationsSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -457,8 +563,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     successCount.incrementAndGet();
                 } catch (Exception e) {
                     // Log the exception but don't fail immediately
-                    System.err.println("Read operation failed: " + e.getMessage());
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("Read operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -474,7 +580,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetBarDataImmutability() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testGetBarDataImmutabilitySeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -501,7 +608,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetBarDataSnapshotConsistency() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetBarDataSnapshotConsistencySeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -528,7 +637,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSubSeriesReturnsConcurrentBarSeries() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetSubSeriesReturnsConcurrentBarSeriesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -545,7 +656,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     @Test
     public void testGetSubSeriesPreservesMaxBarCountAndBarBuilderFactory() {
         BarBuilderFactory customFactory = new TimeBarBuilderFactory(false);
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetSubSeriesPreservesMaxBarCountAndBarBuilderFactorySeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(customFactory)
                 .withMaxBarCount(3)
                 .withBars(new ArrayList<>(testBars))
@@ -568,7 +681,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSubSeriesWithConcurrentAccess() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetSubSeriesWithConcurrentAccessSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -685,8 +800,468 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     }
 
     @Test
+    public void sharedTerminalBarMutationsDoNotInvertSeriesWriteLocks() throws Exception {
+        final Duration period = Duration.ofMinutes(1);
+        final Instant start = Instant.parse("2024-05-01T00:00:00Z");
+        final BaseBar sharedBar = new BaseBar(period, start, start.plus(period), numOf(10), numOf(10), numOf(10),
+                numOf(10), numFactory.zero(), numFactory.zero(), 0);
+        final CoordinatedMutationLockPhases phases = new CoordinatedMutationLockPhases();
+        final ConcurrentBarSeries first = new ConcurrentBarSeries("first-shared-bar", List.of(sharedBar), 0, 0, false,
+                numFactory, barBuilderFactory, new CoordinatedMutationReadWriteLock(phases));
+        final ConcurrentBarSeries second = new ConcurrentBarSeries("second-shared-bar", List.of(sharedBar), 0, 0, false,
+                numFactory, barBuilderFactory, new CoordinatedMutationReadWriteLock(phases));
+
+        final Future<?> priceMutation = executorService.submit(() -> first.addPrice(numOf(20)));
+        final Future<?> tradeMutation = executorService.submit(() -> second.addTrade(numOf(1), numOf(30)));
+        try {
+            priceMutation.get(5, TimeUnit.SECONDS);
+            tradeMutation.get(5, TimeUnit.SECONDS);
+        } finally {
+            priceMutation.cancel(true);
+            tradeMutation.cancel(true);
+        }
+
+        assertEquals(1, sharedBar.getTrades());
+        assertNumEquals(30, sharedBar.getHighPrice());
+        assertNumEquals(1, sharedBar.getVolume());
+        assertEquals(2L, first.getBarHistoryRevision());
+        assertEquals(2L, second.getBarHistoryRevision());
+        assertEquals(0, first.getBarSeriesChangeSnapshot(0).earliestChangedIndex());
+        assertEquals(0, second.getBarSeriesChangeSnapshot(0).earliestChangedIndex());
+    }
+
+    @Test
+    public void explicitWriteLeasesDeferSharedBarCallbacksUntilAfterUnlock() throws Exception {
+        final Duration period = Duration.ofMinutes(1);
+        final Instant start = Instant.parse("2024-05-02T00:00:00Z");
+        final BaseBar sharedBar = new BaseBar(period, start, start.plus(period), numOf(10), numOf(10), numOf(10),
+                numOf(10), numFactory.zero(), numFactory.zero(), 0);
+        final ConcurrentBarSeries first = new ConcurrentBarSeries("first-explicit-lease", List.of(sharedBar), 0, 0,
+                false, numFactory, barBuilderFactory);
+        final ConcurrentBarSeries second = new ConcurrentBarSeries("second-explicit-lease", List.of(sharedBar), 0, 0,
+                false, numFactory, barBuilderFactory);
+        final CyclicBarrier writeLeases = new CyclicBarrier(2);
+
+        final Future<?> firstMutation = executorService.submit(() -> first.withWriteLock(() -> {
+            CoordinatedMutationLockPhases.await(writeLeases);
+            sharedBar.addPrice(numOf(20));
+        }));
+        final Future<?> secondMutation = executorService.submit(() -> second.withWriteLock(() -> {
+            CoordinatedMutationLockPhases.await(writeLeases);
+            sharedBar.addPrice(numOf(30));
+        }));
+        try {
+            firstMutation.get(5, TimeUnit.SECONDS);
+            secondMutation.get(5, TimeUnit.SECONDS);
+        } finally {
+            firstMutation.cancel(true);
+            secondMutation.cancel(true);
+        }
+
+        assertNumEquals(30, sharedBar.getHighPrice());
+        assertEquals(2L, first.getBarHistoryRevision());
+        assertEquals(2L, second.getBarHistoryRevision());
+    }
+
+    @Test
+    public void nestedCompanionTradeMutationsDoNotBypassDeferral() throws Exception {
+        final Bar firstCompanion = testBars.get(1);
+        final Bar secondCompanion = testBars.get(2);
+        final CompanionForwardingBar firstIntermediate = new CompanionForwardingBar(testBars.get(3), secondCompanion,
+                CompanionMutation.PRICE);
+        final CompanionForwardingBar secondIntermediate = new CompanionForwardingBar(testBars.get(4), firstCompanion,
+                CompanionMutation.PRICE);
+        final CompanionForwardingBar firstTerminal = new CompanionForwardingBar(testBars.get(3), firstIntermediate,
+                CompanionMutation.TRADE);
+        final CompanionForwardingBar secondTerminal = new CompanionForwardingBar(testBars.get(4), secondIntermediate,
+                CompanionMutation.TRADE);
+        final CoordinatedMutationLockPhases phases = new CoordinatedMutationLockPhases();
+        final ConcurrentBarSeries first = new ConcurrentBarSeries("first-nested-companion",
+                List.of(firstCompanion, firstTerminal), 0, 1, false, numFactory, barBuilderFactory,
+                new CoordinatedMutationReadWriteLock(phases));
+        final ConcurrentBarSeries second = new ConcurrentBarSeries("second-nested-companion",
+                List.of(secondCompanion, secondTerminal), 0, 1, false, numFactory, barBuilderFactory,
+                new CoordinatedMutationReadWriteLock(phases));
+        final long firstTrades = firstTerminal.getTrades();
+        final long secondTrades = secondTerminal.getTrades();
+
+        final Future<?> firstTrade = executorService.submit(() -> first.addTrade(numOf(1), numOf(20)));
+        final Future<?> secondTrade = executorService.submit(() -> second.addTrade(numOf(1), numOf(30)));
+        try {
+            firstTrade.get(5, TimeUnit.SECONDS);
+            secondTrade.get(5, TimeUnit.SECONDS);
+        } finally {
+            firstTrade.cancel(true);
+            secondTrade.cancel(true);
+        }
+
+        assertEquals(firstTrades + 1, firstTerminal.getTrades());
+        assertEquals(secondTrades + 1, secondTerminal.getTrades());
+        assertEquals(2L, first.getBarHistoryRevision());
+        assertEquals(2L, second.getBarHistoryRevision());
+        assertEquals(0, first.getBarSeriesChangeSnapshot(0).earliestChangedIndex());
+        assertEquals(0, second.getBarSeriesChangeSnapshot(0).earliestChangedIndex());
+    }
+
+    @Test
+    public void mutationFailureStillInvalidatesEveryRetainingSeries() {
+        final Duration period = Duration.ofMinutes(1);
+        final Instant start = Instant.parse("2024-05-01T00:00:00Z");
+        final BaseBar bar = new BaseBar(period, start, start.plus(period), numOf(10), numOf(10), numOf(10), numOf(10),
+                numFactory.zero(), numFactory.zero(), 0) {
+            @Override
+            public void addPrice(Num price) {
+                super.addPrice(price);
+                throw new IllegalStateException("Custom mutation failed after updating the bar");
+            }
+        };
+        final ConcurrentBarSeries first = new ConcurrentBarSeries("first-failed-mutation", List.of(bar), 0, 0, false,
+                numFactory, barBuilderFactory);
+        final ConcurrentBarSeries second = new ConcurrentBarSeries("second-failed-mutation", List.of(bar), 0, 0, false,
+                numFactory, barBuilderFactory);
+
+        assertThrows(IllegalStateException.class, () -> first.addPrice(numOf(20)));
+
+        assertNumEquals(20, bar.getClosePrice());
+        assertEquals(1L, first.getBarHistoryRevision());
+        assertEquals(1L, second.getBarHistoryRevision());
+
+        assertThrows(IllegalStateException.class, () -> first.addTrade(numOf(2), numOf(30)));
+        assertNumEquals(30, bar.getClosePrice());
+        assertEquals(2L, first.getBarHistoryRevision());
+        assertEquals(2L, second.getBarHistoryRevision());
+
+        assertThrows(IllegalStateException.class, () -> bar.addTrade(numOf(2), numOf(40)));
+        assertNumEquals(40, bar.getClosePrice());
+        assertEquals(3L, first.getBarHistoryRevision());
+        assertEquals(3L, second.getBarHistoryRevision());
+    }
+
+    @Test
+    public void failedIncompatiblePriceInvalidatesHistoricalPeer() {
+        final NumFactory decimalFactory = DecimalNumFactory.getInstance();
+        final Duration period = Duration.ofMinutes(1);
+        final Instant start = Instant.parse("2024-05-01T00:00:00Z");
+        final Num decimalPrice = decimalFactory.numOf(10);
+        final BaseBar sharedBar = new BaseBar(period, start, start.plus(period), decimalPrice, decimalPrice,
+                decimalPrice, decimalPrice, decimalFactory.zero(), decimalFactory.zero(), 0);
+        final BaseBar historicalBar = new BaseBar(period, start.minus(period), start, decimalPrice, decimalPrice,
+                decimalPrice, decimalPrice, decimalFactory.zero(), decimalFactory.zero(), 0);
+        final ConcurrentBarSeries terminalA = new ConcurrentBarSeries("incompatible-terminal", List.of(sharedBar), 0, 0,
+                false, decimalFactory, barBuilderFactory);
+        final ConcurrentBarSeries historicalB = new ConcurrentBarSeries("incompatible-historical",
+                List.of(historicalBar, sharedBar), 0, 1, false, decimalFactory, barBuilderFactory);
+        final Num incompatiblePrice = DoubleNumFactory.getInstance().numOf(20);
+        final long terminalRevision = terminalA.getBarHistoryRevision();
+        final long historicalRevision = historicalB.getBarHistoryRevision();
+
+        final ClassCastException failure = assertThrows(ClassCastException.class,
+                () -> terminalA.addPrice(incompatiblePrice));
+
+        assertSame(incompatiblePrice, sharedBar.getClosePrice());
+        assertEquals(terminalRevision + 1, terminalA.getBarHistoryRevision());
+        assertEquals(historicalRevision + 1, historicalB.getBarHistoryRevision());
+        assertEquals(0, terminalA.getBarSeriesChangeSnapshot(terminalRevision).earliestChangedIndex());
+        assertEquals(1, historicalB.getBarSeriesChangeSnapshot(historicalRevision).earliestChangedIndex());
+        assertEquals(0, failure.getSuppressed().length);
+    }
+
+    @Test
+    public void directFailedIncompatiblePriceInvalidatesEveryRetainingSeries() {
+        final NumFactory decimalFactory = DecimalNumFactory.getInstance();
+        final Duration period = Duration.ofMinutes(1);
+        final Instant start = Instant.parse("2024-05-01T00:00:00Z");
+        final Num decimalPrice = decimalFactory.numOf(10);
+        final BaseBar sharedBar = new BaseBar(period, start, start.plus(period), decimalPrice, decimalPrice,
+                decimalPrice, decimalPrice, decimalFactory.zero(), decimalFactory.zero(), 0);
+        final BaseBar historicalBar = new BaseBar(period, start.minus(period), start, decimalPrice, decimalPrice,
+                decimalPrice, decimalPrice, decimalFactory.zero(), decimalFactory.zero(), 0);
+        final ConcurrentBarSeries terminal = new ConcurrentBarSeries("direct-incompatible-terminal", List.of(sharedBar),
+                0, 0, false, decimalFactory, barBuilderFactory);
+        final ConcurrentBarSeries historical = new ConcurrentBarSeries("direct-incompatible-historical",
+                List.of(historicalBar, sharedBar), 0, 1, false, decimalFactory, barBuilderFactory);
+        final Num incompatiblePrice = DoubleNumFactory.getInstance().numOf(20);
+        final long terminalRevision = terminal.getBarHistoryRevision();
+        final long historicalRevision = historical.getBarHistoryRevision();
+
+        assertThrows(ClassCastException.class, () -> sharedBar.addPrice(incompatiblePrice));
+
+        assertSame(incompatiblePrice, sharedBar.getClosePrice());
+        assertEquals(terminalRevision + 1, terminal.getBarHistoryRevision());
+        assertEquals(historicalRevision + 1, historical.getBarHistoryRevision());
+        assertEquals(0, terminal.getBarSeriesChangeSnapshot(terminalRevision).earliestChangedIndex());
+        assertEquals(1, historical.getBarSeriesChangeSnapshot(historicalRevision).earliestChangedIndex());
+    }
+
+    @Test
+    public void nestedMutationFailurePublishesCompanionAndRestoresDeferralScope() {
+        final Duration period = Duration.ofMinutes(1);
+        final Instant start = Instant.parse("2024-05-01T00:00:00Z");
+        final AtomicBoolean failFirstCompanionMutation = new AtomicBoolean(true);
+        final BaseBar companion = new BaseBar(period, start, start.plus(period), numOf(10), numOf(10), numOf(10),
+                numOf(10), numFactory.zero(), numFactory.zero(), 0) {
+            @Override
+            public void addPrice(final Num price) {
+                super.addPrice(price);
+                if (failFirstCompanionMutation.getAndSet(false)) {
+                    throw new IllegalStateException("Custom companion mutation failed after updating the bar");
+                }
+            }
+        };
+        final Instant terminalStart = start.plus(period);
+        final BaseBar terminal = new BaseBar(period, terminalStart, terminalStart.plus(period), numOf(10), numOf(10),
+                numOf(10), numOf(10), numFactory.zero(), numFactory.zero(), 0) {
+            @Override
+            public void addTrade(final Num tradeVolume, final Num tradePrice) {
+                companion.addPrice(tradePrice);
+                super.addTrade(tradeVolume, tradePrice);
+            }
+        };
+        final ConcurrentBarSeries first = new ConcurrentBarSeries("first-nested-failed-mutation", List.of(terminal), 0,
+                0, false, numFactory, barBuilderFactory);
+        final ConcurrentBarSeries second = new ConcurrentBarSeries("second-nested-failed-mutation", List.of(companion),
+                0, 0, false, numFactory, barBuilderFactory);
+
+        assertThrows(IllegalStateException.class, () -> first.addTrade(numOf(1), numOf(20)));
+
+        assertNumEquals(20, companion.getClosePrice());
+        assertEquals(1L, first.getBarHistoryRevision());
+        assertEquals(1L, second.getBarHistoryRevision());
+
+        companion.addPrice(numOf(30));
+
+        assertEquals(2L, second.getBarHistoryRevision());
+    }
+
+    @Test
+    public void originRevisionIsVisibleBeforeMutationUnlock() {
+        final AtomicReference<ConcurrentBarSeries> origin = new AtomicReference<>();
+        final AtomicBoolean checking = new AtomicBoolean();
+        final AtomicBoolean observed = new AtomicBoolean();
+        final ReentrantReadWriteLock lock = new ReentrantReadWriteLock() {
+            private final WriteLock observingWriteLock = new WriteLock(this) {
+                @Override
+                public void unlock() {
+                    try {
+                        if (checking.get() && getWriteHoldCount() == 1) {
+                            observed.set(true);
+                            assertEquals(1L, origin.get().getBarHistoryRevision());
+                            assertNumEquals(20, origin.get().getLastBar().getClosePrice());
+                        }
+                    } finally {
+                        super.unlock();
+                    }
+                }
+            };
+
+            @Override
+            public WriteLock writeLock() {
+                return observingWriteLock;
+            }
+        };
+        final Duration period = Duration.ofMinutes(1);
+        final Instant start = Instant.parse("2024-05-01T00:00:00Z");
+        final BaseBar bar = new BaseBar(period, start, start.plus(period), numOf(10), numOf(10), numOf(10), numOf(10),
+                numFactory.zero(), numFactory.zero(), 0);
+        origin.set(new ConcurrentBarSeries("origin-revision", List.of(bar), 0, 0, false, numFactory, barBuilderFactory,
+                lock));
+        checking.set(true);
+
+        origin.get().addPrice(numOf(20));
+        assertTrue("write-lock observer was not invoked", observed.get());
+    }
+
+    @Test
+    public void localRetainedMutationInvalidationPrecedesWriteUnlock() {
+        final AtomicReference<ConcurrentBarSeries> origin = new AtomicReference<>();
+        final AtomicReference<CachedIndicator<Num>> cachedClose = new AtomicReference<>();
+        final AtomicReference<Num> observedClose = new AtomicReference<>();
+        final AtomicReference<Long> observedRevision = new AtomicReference<>();
+        final AtomicBoolean outerUnlockObserved = new AtomicBoolean();
+        final AtomicBoolean checking = new AtomicBoolean();
+        final ReentrantReadWriteLock lock = new ReentrantReadWriteLock() {
+            private final WriteLock observingWriteLock = new WriteLock(this) {
+                @Override
+                public void unlock() {
+                    if (checking.get() && getWriteHoldCount() == 1 && outerUnlockObserved.compareAndSet(false, true)) {
+                        observedRevision.set(origin.get().getBarHistoryRevision());
+                        observedClose.set(cachedClose.get().getValue(0));
+                    }
+                    super.unlock();
+                }
+            };
+
+            @Override
+            public WriteLock writeLock() {
+                return observingWriteLock;
+            }
+        };
+        final Duration period = Duration.ofMinutes(1);
+        final Instant start = Instant.parse("2024-05-01T00:00:00Z");
+        final BaseBar bar = new BaseBar(period, start, start.plus(period), numOf(10), numOf(10), numOf(10), numOf(10),
+                numFactory.zero(), numFactory.zero(), 0);
+        final BaseBar secondBar = new BaseBar(period, start.plus(period), start.plus(period).plus(period), numOf(30),
+                numOf(30), numOf(30), numOf(30), numFactory.zero(), numFactory.zero(), 0);
+        origin.set(new ConcurrentBarSeries("local-invalidation", List.of(bar, secondBar), 0, 1, false, numFactory,
+                barBuilderFactory, lock));
+        cachedClose.set(new CachedIndicator<Num>(origin.get()) {
+            @Override
+            protected Num calculate(final int index) {
+                return getBarSeries().getBar(index).getClosePrice();
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        });
+
+        assertNumEquals(10, cachedClose.get().getValue(0));
+        checking.set(true);
+        origin.get().withWriteLock(() -> ((BaseBar) origin.get().getBar(0)).addPrice(numOf(20)));
+        assertEquals(Long.valueOf(1L), observedRevision.get());
+        assertNumEquals(20, observedClose.get());
+    }
+
+    @Test
+    public void detectorDoesNotInvertSeriesAndReplayLocks() throws Exception {
+        final CountDownLatch readerReadAttempted = new CountDownLatch(1);
+        final CountDownLatch writerHolding = new CountDownLatch(1);
+        final AtomicBoolean armed = new AtomicBoolean();
+        final AtomicInteger readerReadCount = new AtomicInteger();
+        final AtomicReference<Thread> reader = new AtomicReference<>();
+        final ReentrantReadWriteLock lock = new ReentrantReadWriteLock() {
+            private final ReadLock coordinatingReadLock = new ReadLock(this) {
+                @Override
+                public void lock() {
+                    final boolean readerAttempt = armed.get() && Thread.currentThread() == reader.get()
+                            && readerReadCount.incrementAndGet() == 4;
+                    if (!readerAttempt) {
+                        super.lock();
+                        return;
+                    }
+                    readerReadAttempted.countDown();
+                    try {
+                        if (!writerHolding.await(2, TimeUnit.SECONDS)) {
+                            throw new AssertionError("writer did not acquire the series lock");
+                        }
+                    } catch (InterruptedException exception) {
+                        Thread.currentThread().interrupt();
+                        throw new AssertionError("reader lock coordination interrupted", exception);
+                    }
+                    final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+                    while (!super.tryLock()) {
+                        if (System.nanoTime() >= deadline) {
+                            throw new AssertionError("writer waited on the detector replay held by this reader");
+                        }
+                        Thread.yield();
+                    }
+                }
+            };
+            private final WriteLock coordinatingWriteLock = new WriteLock(this) {
+                @Override
+                public void lock() {
+                    super.lock();
+                    writerHolding.countDown();
+                }
+            };
+
+            @Override
+            public ReadLock readLock() {
+                return coordinatingReadLock;
+            }
+
+            @Override
+            public WriteLock writeLock() {
+                return coordinatingWriteLock;
+            }
+        };
+        final Duration period = Duration.ofMinutes(1);
+        final Instant start = Instant.parse("2024-05-01T00:00:00Z");
+        final BaseBar bar = new BaseBar(period, start, start.plus(period), numOf(10), numOf(10), numOf(10), numOf(10),
+                numFactory.zero(), numFactory.zero(), 0);
+        final ConcurrentBarSeries series = new ConcurrentBarSeries("detector-lock-order", List.of(bar), 0, 0, false,
+                numFactory, barBuilderFactory, lock);
+        final FractalSwingDetector detector = new FractalSwingDetector(1);
+        armed.set(true);
+
+        final Future<?> readerFuture = executorService.submit(() -> {
+            reader.set(Thread.currentThread());
+            detector.detectPivots(series, 0);
+        });
+        assertTrue("reader did not reach detector history read", readerReadAttempted.await(2, TimeUnit.SECONDS));
+        final Future<?> writerFuture = executorService
+                .submit(() -> series.withWriteLock(() -> detector.detectPivots(series, 0)));
+
+        writerFuture.get(4, TimeUnit.SECONDS);
+        readerFuture.get(4, TimeUnit.SECONDS);
+    }
+
+    @Test
+    public void nestedSeriesCallbacksPublishBeforeOwnUnlock() {
+        final ReentrantReadWriteLock outerLock = new ReentrantReadWriteLock();
+        final AtomicReference<ConcurrentBarSeries> nestedSeries = new AtomicReference<>();
+        final AtomicReference<CachedIndicator<Num>> nestedClose = new AtomicReference<>();
+        final AtomicReference<Num> currentClose = new AtomicReference<>(numOf(10));
+        final AtomicReference<Long> observedRevision = new AtomicReference<>();
+        final AtomicReference<Num> observedClose = new AtomicReference<>();
+        final AtomicBoolean armed = new AtomicBoolean();
+        final ReentrantReadWriteLock nestedLock = new ReentrantReadWriteLock() {
+            private final WriteLock observingWriteLock = new WriteLock(this) {
+                @Override
+                public void unlock() {
+                    final boolean shouldObserve = armed.get();
+                    super.unlock();
+                    if (shouldObserve) {
+                        final long revision = nestedSeries.get().getBarHistoryRevision();
+                        if (observedRevision.compareAndSet(null, revision)) {
+                            observedClose.set(nestedClose.get().getValue(0));
+                        }
+                    }
+                }
+            };
+
+            @Override
+            public WriteLock writeLock() {
+                return observingWriteLock;
+            }
+        };
+        final ConcurrentBarSeries outer = new ConcurrentBarSeries("nested-callback-outer",
+                new ArrayList<>(testBars.subList(0, 2)), 0, 1, false, numFactory, barBuilderFactory, outerLock);
+        final ConcurrentBarSeries nested = new ConcurrentBarSeries("nested-callback-nested",
+                new ArrayList<>(testBars.subList(0, 2)), 0, 1, false, numFactory, barBuilderFactory, nestedLock);
+        nestedSeries.set(nested);
+        nestedClose.set(new CachedIndicator<Num>(nested) {
+            @Override
+            protected Num calculate(final int index) {
+                return currentClose.get();
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        });
+        assertNumEquals(10, nestedClose.get().getValue(0));
+        armed.set(true);
+
+        outer.withWriteLock((java.util.function.Supplier<Void>) () -> {
+            nested.withWriteLock((java.util.function.Supplier<Void>) () -> {
+                currentClose.set(numOf(20));
+                nested.retainedBarMutated((BaseBar) nested.getBar(0), 0);
+                return null;
+            });
+            return null;
+        });
+
+        assertEquals(Long.valueOf(1L), observedRevision.get());
+        assertNumEquals(20, observedClose.get());
+    }
+
+    @Test
     public void testReadWriteLockUpgrade() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testReadWriteLockUpgradeSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -765,7 +1340,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void withReadLockSupportsRunnableAndSupplier() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("withReadLockSupportsRunnableAndSupplierSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -775,8 +1351,155 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     }
 
     @Test
+    public void revisionQueriesWorkInsideReadLock() {
+        var series = new ConcurrentBarSeriesBuilder().withName("revisionQueriesWorkInsideReadLockSeries")
+                .withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+        series.addBar(streamingBar(Duration.ofMinutes(1), Instant.parse("2024-01-01T00:00:00Z"), 100, 110, 90, 105, 5));
+        long initialRevision = series.getBarHistoryRevision();
+        series.getBar(0).addPrice(numOf(106));
+
+        series.withReadLock(() -> assertEquals(initialRevision + 1, series.getBarHistoryRevision()));
+        BarSeriesChangeSnapshot snapshot = series
+                .withReadLock(() -> series.getBarSeriesChangeSnapshot(initialRevision));
+        assertEquals(initialRevision + 1, snapshot.revision());
+        assertEquals(0, snapshot.earliestChangedIndex());
+    }
+
+    @Test
+    public void readScopeKeepsWindowAndSnapshotStableAgainstWaitingWriter() throws Exception {
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100).build();
+        ReentrantReadWriteLock seriesLock = new ReentrantReadWriteLock();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source, seriesLock);
+        BarSeriesChangeSnapshot before = series.getBarSeriesChangeSnapshot(-1L);
+        CountDownLatch writerStarted = new CountDownLatch(1);
+        Future<?>[] writer = new Future<?>[1];
+        Bar appended = streamingBar(Duration.ofMinutes(1), Instant.parse("2024-01-01T00:01:00Z"), 101, 101, 101, 101,
+                1);
+
+        series.withReadLock(() -> {
+            boolean writeLockAcquired = seriesLock.writeLock().tryLock();
+            if (writeLockAcquired) {
+                seriesLock.writeLock().unlock();
+            }
+            assertFalse("read scope must hold the series read lock", writeLockAcquired);
+            assertEquals(0, series.getBeginIndex());
+            assertEquals(0, series.getEndIndex());
+            assertEquals(1, series.getBarCount());
+            assertEquals(before, series.getBarSeriesChangeSnapshot(-1L));
+
+            writer[0] = executorService.submit(() -> {
+                writerStarted.countDown();
+                series.addBar(appended);
+            });
+            try {
+                assertTrue("writer did not start", writerStarted.await(2, TimeUnit.SECONDS));
+            } catch (InterruptedException interruption) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError("writer did not start", interruption);
+            }
+            assertEquals(before, series.getBarSeriesChangeSnapshot(-1L));
+        });
+
+        writer[0].get(2, TimeUnit.SECONDS);
+        assertEquals(1, series.getEndIndex());
+        assertEquals(1, series.getBarCount());
+    }
+
+    @Test
+    public void addTradeJournalsConcurrentRetainedBarMutations() {
+        Bar companionBar = testBars.get(1);
+        List<Bar> bars = new ArrayList<>(testBars.subList(0, 4));
+        bars.add(new CompanionMutatingTradeBar(testBars.get(3), companionBar));
+
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("addTradeJournalsConcurrentRetainedBarMutationsSeries")
+                .withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withBars(bars)
+                .build();
+        long baselineRevision = series.getBarHistoryRevision();
+
+        // The injected last bar mutates the retained companion at index 1 while
+        // addTrade runs, simulating another thread mutating an earlier retained
+        // bar between this operation's initial epoch reconciliation and its
+        // publication step. That advance must be journaled, not consumed.
+        series.addTrade(numOf(1), numOf(100));
+
+        BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(baselineRevision);
+        assertTrue("Concurrently mutated retained bar must be journaled, but earliest changed index was "
+                + snapshot.earliestChangedIndex(), snapshot.earliestChangedIndex() <= 1);
+    }
+
+    @Test
+    public void directRetainedMutationWaitsForConcurrentHeadEviction() throws Exception {
+        final BlockingQueue<RetainedMutationEvent> events = new LinkedBlockingQueue<>();
+        final AtomicReference<Thread> mutationThread = new AtomicReference<>();
+        final MutationEventReadWriteLock lock = new MutationEventReadWriteLock(events, mutationThread);
+        final RetainedMutationEventBar retainedBar = new RetainedMutationEventBar(testBars.get(1), events,
+                mutationThread);
+        // Register the same bar twice. The append below evicts its first alias
+        // while the callback waits, so publication must revalidate the survivor.
+        final List<Bar> bars = new ArrayList<>(List.of(retainedBar, retainedBar));
+        final ConcurrentBarSeries series = new ConcurrentBarSeries(
+                "directRetainedMutationWaitsForConcurrentHeadEviction", bars, 0, 1, false, numFactory,
+                barBuilderFactory, lock);
+        series.setMaximumBarCount(2);
+        final long revisionBeforeMutation = series.getBarHistoryRevision();
+        final CountDownLatch writerLocked = new CountDownLatch(1);
+        final CountDownLatch evictHead = new CountDownLatch(1);
+        final CountDownLatch evictionComplete = new CountDownLatch(1);
+        final CountDownLatch releaseWriter = new CountDownLatch(1);
+        final Bar appendedBar = streamingBar(Duration.ofDays(1), retainedBar.getEndTime(), 10, 10, 10, 10, 1);
+
+        final Future<?> eviction = executorService.submit(() -> {
+            lock.writeLock().lock();
+            try {
+                writerLocked.countDown();
+                try {
+                    evictHead.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new AssertionError(e);
+                }
+                series.addBar(appendedBar, false);
+                evictionComplete.countDown();
+                try {
+                    releaseWriter.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new AssertionError(e);
+                }
+            } finally {
+                lock.writeLock().unlock();
+            }
+        });
+        assertTrue("Writer should acquire the lock within the timeout", writerLocked.await(10, TimeUnit.SECONDS));
+        final Future<?> mutation = executorService.submit(() -> retainedBar.addPrice(numOf(20)));
+        try {
+            assertEquals("Mutation should attempt the series write lock within the timeout",
+                    RetainedMutationEvent.WRITE_LOCK_ATTEMPT, events.poll(10, TimeUnit.SECONDS));
+            evictHead.countDown();
+            assertTrue("Eviction should complete within the timeout", evictionComplete.await(10, TimeUnit.SECONDS));
+        } finally {
+            evictHead.countDown();
+            releaseWriter.countDown();
+        }
+        mutation.get(10, TimeUnit.SECONDS);
+        eviction.get(10, TimeUnit.SECONDS);
+
+        assertEquals(1, series.getBeginIndex());
+        assertEquals(2, series.getEndIndex());
+        assertEquals(2, series.getBarCount());
+        assertEquals(revisionBeforeMutation + 1, series.getBarHistoryRevision());
+        assertEquals(1, series.getBarSeriesChangeSnapshot(revisionBeforeMutation).earliestChangedIndex());
+    }
+
+    @Test
     public void withWriteLockSupportsRunnableAndSupplier() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("withWriteLockSupportsRunnableAndSupplierSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
         var period = Duration.ofSeconds(60);
@@ -793,7 +1516,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testConcurrentExceptionHandling() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testConcurrentExceptionHandlingSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -852,7 +1576,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testConcurrentBarDataConsistency() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testConcurrentBarDataConsistencySeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -911,7 +1636,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testHighFrequencyReadWriteOperations() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testHighFrequencyReadWriteOperationsSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -976,7 +1703,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestStreamingBarAppendsBar() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestStreamingBarAppendsBarSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
         var period = Duration.ofSeconds(60);
@@ -996,7 +1724,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestStreamingBarReplacesLatestInterval() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestStreamingBarReplacesLatestIntervalSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1015,7 +1744,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestStreamingBarUpdatesOlderInterval() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestStreamingBarUpdatesOlderIntervalSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1036,7 +1766,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestStreamingBarsSortNewestFirstPayloads() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestStreamingBarsSortNewestFirstPayloadsSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1060,7 +1791,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestStreamingBarReportsSeriesIndexAfterEviction() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder()
+                .withName("ingestStreamingBarReportsSeriesIndexAfterEvictionSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withMaxBarCount(2)
                 .build();
@@ -1081,7 +1814,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestStreamingBarRejectsMismatchedNumFactory() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestStreamingBarRejectsMismatchedNumFactorySeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1106,7 +1840,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestTradeBuildsTimeBarFromTrades() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestTradeBuildsTimeBarFromTradesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory())
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1133,8 +1868,31 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     }
 
     @Test
+    public void tradeBarBuilderFacadeSharesInternalTradeState() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("tradeBarBuilderReturnsFacadeSharingInternalTradeStateSeries")
+                .withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory())
+                .build();
+        Duration period = Duration.ofSeconds(60);
+        Instant start = Instant.parse("2024-01-01T00:00:30Z");
+
+        BarBuilder first = series.tradeBarBuilder();
+        BarBuilder second = series.tradeBarBuilder();
+
+        assertNotSame(first, second);
+        first.timePeriod(period);
+        second.addTrade(start, numOf(1), numOf(100));
+
+        assertEquals(1, series.getBarCount());
+        assertEquals(Instant.parse("2024-01-01T00:00:00Z"), series.getLastBar().getBeginTime());
+        assertEquals(numOf(100), series.getLastBar().getClosePrice());
+    }
+
+    @Test
     public void ingestTradeRollsOverTimePeriods() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestTradeRollsOverTimePeriodsSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory())
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1158,7 +1916,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestTradeCapturesSideAndLiquidity() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestTradeCapturesSideAndLiquiditySeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory(true))
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1194,7 +1953,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestTradeSupportsOptionalSideAndLiquidity() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestTradeSupportsOptionalSideAndLiquiditySeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory(true))
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1224,7 +1984,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestTradeResetsSideAndLiquidityAcrossBars() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestTradeResetsSideAndLiquidityAcrossBarsSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory(true))
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1252,7 +2013,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestTradeRequiresTimePeriod() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestTradeRequiresTimePeriodSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory())
                 .build();
         var start = Instant.parse("2024-01-01T00:00:00Z");
@@ -1262,7 +2024,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestTradeRejectsMismatchedNumFactoryWithSide() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestTradeRejectsMismatchedNumFactoryWithSideSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory(true))
                 .build();
         var start = Instant.parse("2024-01-01T00:00:00Z");
@@ -1278,7 +2041,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestTradeRejectsNullArgumentsWithSide() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestTradeRejectsNullArgumentsWithSideSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory(true))
                 .build();
         var start = Instant.parse("2024-01-01T00:00:00Z");
@@ -1293,7 +2057,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestTradeRejectsOutOfOrderTimestamp() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestTradeRejectsOutOfOrderTimestampSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory(true))
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1310,7 +2075,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void serializeAndDeserializeReinitializesLocksAndBuilders() throws Exception {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder()
+                .withName("serializeAndDeserializeReinitializesLocksAndBuildersSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory(true))
                 .build();
         var period = Duration.ofMinutes(1);
@@ -1332,8 +2099,25 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     }
 
     @Test
+    public void serializeAndDeserializeReattachesRetainedMutationTracking() throws Exception {
+        var series = new ConcurrentBarSeriesBuilder()
+                .withName("serializeAndDeserializeReattachesRetainedMutationTrackingSeries")
+                .withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withBars(new ArrayList<>(testBars))
+                .build();
+
+        ConcurrentBarSeries restored = serializeRoundTrip(series);
+        long initialRevision = restored.getBarHistoryRevision();
+        restored.getBar(0).addPrice(numOf(999));
+
+        assertEquals(initialRevision + 1, restored.getBarHistoryRevision());
+    }
+
+    @Test
     public void serializeAndDeserializePreservesMaxBarCount() throws Exception {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("serializeAndDeserializePreservesMaxBarCountSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withMaxBarCount(10)
                 .withBars(new ArrayList<>(testBars))
@@ -1347,7 +2131,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void serializeAndDeserializeEmptySeries() throws Exception {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("serializeAndDeserializeEmptySeriesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1359,12 +2144,33 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         assertTrue(restored.isEmpty());
     }
 
+    @Test
+    public void serializeAndDeserializeRollingSeriesRestoresTransientLogger() throws Exception {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("serializeAndDeserializeRollingSeriesRestoresTransientLoggerSeries")
+                .withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withMaxBarCount(2)
+                .withBars(new ArrayList<>(testBars))
+                .build();
+        assertEquals(3, series.getRemovedBarsCount());
+
+        ConcurrentBarSeries restored = serializeRoundTrip(series);
+
+        assertEquals(3, restored.getRemovedBarsCount());
+        // Index 1 precedes the removed-bars window, forcing getBar(int) through
+        // the trace-logging branch that dereferenced a null transient logger
+        // before readObject reinitialized it.
+        assertEquals(restored.getBar(3).getEndTime(), restored.getBar(1).getEndTime());
+    }
+
     // ==================== getFirstBar() and getLastBar() Tests
     // ====================
 
     @Test
     public void testGetFirstBar() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testGetFirstBarSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -1377,7 +2183,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetLastBar() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testGetLastBarSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -1390,7 +2197,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetFirstBarWithEmptySeries() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testGetFirstBarWithEmptySeriesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1399,7 +2207,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetLastBarWithEmptySeries() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testGetLastBarWithEmptySeriesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1408,7 +2217,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetFirstBarConcurrentAccess() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testGetFirstBarConcurrentAccessSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -1429,7 +2239,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     }
                     successCount.incrementAndGet();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("Read operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -1445,7 +2256,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSeriesPeriodDescription() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testGetSeriesPeriodDescriptionSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -1457,7 +2269,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSeriesPeriodDescriptionWithEmptySeries() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetSeriesPeriodDescriptionWithEmptySeriesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1467,7 +2281,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSeriesPeriodDescriptionInSystemTimeZone() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetSeriesPeriodDescriptionInSystemTimeZoneSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -1479,7 +2295,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSeriesPeriodDescriptionInSystemTimeZoneWithEmptySeries() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetSeriesPeriodDescriptionInSystemTimeZoneWithEmptySeriesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1489,7 +2307,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSeriesPeriodDescriptionConcurrentAccess() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetSeriesPeriodDescriptionConcurrentAccessSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -1511,7 +2331,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     }
                     successCount.incrementAndGet();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("Read operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -1527,7 +2348,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testAddPrice() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testAddPriceSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1541,7 +2363,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testAddPriceWithEmptySeries() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testAddPriceWithEmptySeriesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1550,7 +2373,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testAddPriceConcurrentAccess() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testAddPriceConcurrentAccessSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1573,7 +2397,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     }
                     successCount.incrementAndGet();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("Write operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -1589,7 +2414,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testAddBarWithReplace() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testAddBarWithReplaceSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1615,7 +2441,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testAddBarWithoutReplace() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testAddBarWithoutReplaceSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1668,7 +2495,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testIngestStreamingBarsWithNullCollection() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testIngestStreamingBarsWithNullCollectionSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1678,7 +2506,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testIngestStreamingBarsWithEmptyCollection() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testIngestStreamingBarsWithEmptyCollectionSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1689,7 +2518,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testIngestStreamingBarsFiltersNullBars() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testIngestStreamingBarsFiltersNullBarsSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1711,7 +2541,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSubSeriesWithEmptySeries() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testGetSubSeriesWithEmptySeriesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1724,7 +2555,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSubSeriesWithStartIndexEqualsEndIndex() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetSubSeriesWithStartIndexEqualsEndIndexSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -1734,7 +2567,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSubSeriesWithStartIndexGreaterThanEndIndex() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetSubSeriesWithStartIndexGreaterThanEndIndexSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -1744,7 +2579,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSubSeriesWithNegativeStartIndex() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetSubSeriesWithNegativeStartIndexSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -1755,7 +2592,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     @Test
     public void testGetSubSeriesInheritsConstrainedBehavior() {
         var bars = new ArrayList<>(testBars.subList(0, 2));
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testGetSubSeriesInheritsConstrainedBehaviorSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(bars)
                 .build();
@@ -1767,7 +2605,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     @Test
     public void testGetSubSeriesInheritsMaxBarCountConfiguration() {
         var bars = new ArrayList<>(testBars.subList(0, 2));
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testGetSubSeriesInheritsMaxBarCountConfigurationSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(bars)
                 .withMaxBarCount(10)
@@ -1783,22 +2622,27 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testTradeBarBuilderLazyInitialization() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
-                .withBarBuilderFactory(barBuilderFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testTradeBarBuilderLazyInitializationSeries")
+                .withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory())
                 .build();
+        Duration period = Duration.ofSeconds(60);
+        Instant start = Instant.parse("2024-01-01T00:00:30Z");
 
-        // First call should initialize
         BarBuilder builder1 = series.tradeBarBuilder();
         assertNotNull(builder1);
-
-        // Second call should return same instance
         BarBuilder builder2 = series.tradeBarBuilder();
-        assertSame(builder1, builder2);
+
+        assertNotSame(builder1, builder2);
+        builder1.timePeriod(period);
+        builder2.addTrade(start, numOf(1), numOf(100));
+        assertEquals(1, series.getBarCount());
     }
 
     @Test
     public void testTradeBarBuilderConcurrentInitialization() throws Exception {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testTradeBarBuilderConcurrentInitializationSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1814,7 +2658,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     BarBuilder builder = series.tradeBarBuilder();
                     builders.add(builder);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("Write operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -1825,11 +2670,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         assertTrue("All tradeBarBuilder() calls should complete", endLatch.await(10, TimeUnit.SECONDS));
         assertEquals(threadCount, builders.size());
 
-        // All builders should be the same instance (lazy initialization with
-        // double-check)
-        BarBuilder firstBuilder = builders.get(0);
         for (BarBuilder builder : builders) {
-            assertSame(firstBuilder, builder);
+            assertNotNull(builder);
         }
     }
 
@@ -1838,7 +2680,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testWithReadLockRejectsNullRunnable() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testWithReadLockRejectsNullRunnableSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1847,7 +2690,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testWithReadLockRejectsNullSupplier() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testWithReadLockRejectsNullSupplierSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1857,7 +2701,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testWithWriteLockRejectsNullRunnable() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testWithWriteLockRejectsNullRunnableSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1866,7 +2711,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testWithWriteLockRejectsNullSupplier() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testWithWriteLockRejectsNullSupplierSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1879,7 +2725,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testSetMaximumBarCountConcurrentAccess() throws Exception {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testSetMaximumBarCountConcurrentAccessSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .withMaxBarCount(1000)
@@ -1902,7 +2749,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     }
                     successCount.incrementAndGet();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("Read operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -1914,11 +2762,33 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         assertEquals(writerCount, successCount.get());
     }
 
+    @Test
+    public void testChangeSnapshotReportsDelegatedRevisionAndWindowState() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("changeSnapshot")
+                .withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withBars(new ArrayList<>(testBars))
+                .withMaxBarCount(1000)
+                .build();
+        long initialRevision = series.getBarHistoryRevision();
+
+        series.replaceBar(2, testBars.get(2));
+        series.setMaximumBarCount(3);
+
+        BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(initialRevision);
+        assertEquals(initialRevision + 1, snapshot.revision());
+        assertEquals(2, snapshot.earliestChangedIndex());
+        assertEquals(1, snapshot.removedThroughIndex());
+        assertEquals(3, snapshot.maximumBarCount());
+        assertEquals(4, snapshot.endIndex());
+    }
+
     // ==================== barBuilder() Concurrent Access ====================
 
     @Test
     public void testBarBuilderConcurrentAccess() throws Exception {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testBarBuilderConcurrentAccessSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -1938,7 +2808,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     }
                     successCount.incrementAndGet();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("Read operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -1955,7 +2826,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetRemovedBarsCountConcurrentAccess() throws Exception {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testGetRemovedBarsCountConcurrentAccessSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .withMaxBarCount(3)
@@ -1982,7 +2854,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     }
                     successCount.incrementAndGet();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("Read operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -1998,7 +2871,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testIngestTradeOmitsGaps() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testIngestTradeOmitsGapsSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory())
                 .build();
         var period = Duration.ofMinutes(1);
@@ -2026,7 +2900,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testIngestTradeHandlesLargeGaps() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testIngestTradeHandlesLargeGapsSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory())
                 .build();
         var period = Duration.ofMinutes(1);
@@ -2053,7 +2928,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void getBarDataProvidesSnapshot() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("getBarDataProvidesSnapshotSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new MockBarBuilderFactory())
                 .build();
         var now = Instant.now();
@@ -2075,7 +2951,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void getSubSeriesReturnsConcurrentBarSeries() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("getSubSeriesReturnsConcurrentBarSeriesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new MockBarBuilderFactory())
                 .build();
         var now = Instant.now();
@@ -2083,8 +2960,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
             series.barBuilder().endTime(now.plus(Duration.ofMinutes(i))).closePrice(i + 1).add();
         }
 
-        BarSeries subSeries = series.getSubSeries(1, 4);
-        assertTrue(subSeries instanceof ConcurrentBarSeries);
+        ConcurrentBarSeries subSeries = series.getSubSeries(1, 4);
         assertEquals(3, subSeries.getBarCount());
         assertEquals(series.getBar(1).getEndTime(), subSeries.getFirstBar().getEndTime());
 
@@ -2099,7 +2975,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void supportsConcurrentReadsAndWrites() throws Exception {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("supportsConcurrentReadsAndWritesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new MockBarBuilderFactory())
                 .build();
 
@@ -2180,4 +3057,310 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                 .volume(volume)
                 .build();
     }
+
+    private Bar replacementBarObservingWriteLock(final Bar sourceBar, final RecordingReadWriteLock lock) {
+        Bar replacementBar = new TimeBarBuilder(numFactory).timePeriod(sourceBar.getTimePeriod())
+                .endTime(sourceBar.getEndTime())
+                .openPrice(numOf(100))
+                .highPrice(numOf(101))
+                .lowPrice(numOf(99))
+                .closePrice(numOf(100))
+                .volume(numOf(10))
+                .amount(numOf(1000))
+                .trades(1)
+                .build();
+        return new WriteLockObservingBar(replacementBar, lock);
+    }
+
+    private enum RetainedMutationEvent {
+        WRITE_LOCK_ATTEMPT, MUTATION_COMPLETE
+    }
+
+    private static final class MutationEventReadWriteLock implements ReadWriteLock {
+
+        private final ReentrantReadWriteLock delegate = new ReentrantReadWriteLock();
+        private final BlockingQueue<RetainedMutationEvent> events;
+        private final AtomicReference<Thread> mutationThread;
+        private final Lock writeLock = new Lock() {
+
+            @Override
+            public void lock() {
+                recordMutationWriteLockAttempt();
+                delegate.writeLock().lock();
+            }
+
+            @Override
+            public void lockInterruptibly() throws InterruptedException {
+                recordMutationWriteLockAttempt();
+                delegate.writeLock().lockInterruptibly();
+            }
+
+            @Override
+            public boolean tryLock() {
+                recordMutationWriteLockAttempt();
+                return delegate.writeLock().tryLock();
+            }
+
+            @Override
+            public boolean tryLock(final long time, final TimeUnit unit) throws InterruptedException {
+                recordMutationWriteLockAttempt();
+                return delegate.writeLock().tryLock(time, unit);
+            }
+
+            @Override
+            public void unlock() {
+                delegate.writeLock().unlock();
+            }
+
+            @Override
+            public Condition newCondition() {
+                return delegate.writeLock().newCondition();
+            }
+        };
+
+        private MutationEventReadWriteLock(final BlockingQueue<RetainedMutationEvent> events,
+                final AtomicReference<Thread> mutationThread) {
+            this.events = events;
+            this.mutationThread = mutationThread;
+        }
+
+        @Override
+        public Lock readLock() {
+            return delegate.readLock();
+        }
+
+        @Override
+        public Lock writeLock() {
+            return writeLock;
+        }
+
+        private void recordMutationWriteLockAttempt() {
+            if (Thread.currentThread() == mutationThread.get()) {
+                events.add(RetainedMutationEvent.WRITE_LOCK_ATTEMPT);
+            }
+        }
+    }
+
+    private static final class RetainedMutationEventBar extends BaseBar {
+
+        private static final long serialVersionUID = 2567835443283232270L;
+
+        private final BlockingQueue<RetainedMutationEvent> events;
+        private final AtomicReference<Thread> mutationThread;
+
+        private RetainedMutationEventBar(final Bar source, final BlockingQueue<RetainedMutationEvent> events,
+                final AtomicReference<Thread> mutationThread) {
+            super(source.getTimePeriod(), source.getBeginTime(), source.getEndTime(), source.getOpenPrice(),
+                    source.getHighPrice(), source.getLowPrice(), source.getClosePrice(), source.getVolume(),
+                    source.getAmount(), source.getTrades());
+            this.events = events;
+            this.mutationThread = mutationThread;
+        }
+
+        @Override
+        public void addPrice(final Num price) {
+            mutationThread.set(Thread.currentThread());
+            super.addPrice(price);
+            events.add(RetainedMutationEvent.MUTATION_COMPLETE);
+        }
+    }
+
+    private static final class RecordingReadWriteLock implements ReadWriteLock {
+
+        private final ReentrantReadWriteLock delegate = new ReentrantReadWriteLock();
+        private final AtomicBoolean writeLockHeldDuringReplacement = new AtomicBoolean();
+
+        @Override
+        public Lock readLock() {
+            return delegate.readLock();
+        }
+
+        @Override
+        public Lock writeLock() {
+            return delegate.writeLock();
+        }
+
+        private void recordReplacementValidation() {
+            writeLockHeldDuringReplacement.set(delegate.isWriteLockedByCurrentThread());
+        }
+
+        private boolean wasWriteLockHeldDuringReplacement() {
+            return writeLockHeldDuringReplacement.get();
+        }
+    }
+
+    private static final class WriteLockObservingBar extends BaseBar {
+
+        private static final long serialVersionUID = 750820333207416582L;
+
+        private final RecordingReadWriteLock lock;
+
+        private WriteLockObservingBar(final Bar source, final RecordingReadWriteLock lock) {
+            super(source.getTimePeriod(), source.getBeginTime(), source.getEndTime(), source.getOpenPrice(),
+                    source.getHighPrice(), source.getLowPrice(), source.getClosePrice(), source.getVolume(),
+                    source.getAmount(), source.getTrades());
+            this.lock = lock;
+        }
+
+        @Override
+        public Num getClosePrice() {
+            lock.recordReplacementValidation();
+            return super.getClosePrice();
+        }
+    }
+
+    private enum CompanionMutation {
+        PRICE, TRADE
+    }
+
+    private static final class CompanionMutatingTradeBar extends BaseBar {
+
+        private static final long serialVersionUID = 6157293408821547093L;
+
+        private final Bar companionBar;
+
+        private CompanionMutatingTradeBar(final Bar source, final Bar companionBar) {
+            super(source.getTimePeriod(), source.getBeginTime().plus(Duration.ofDays(7)),
+                    source.getEndTime().plus(Duration.ofDays(7)), source.getOpenPrice(), source.getHighPrice(),
+                    source.getLowPrice(), source.getClosePrice(), source.getVolume(), source.getAmount(),
+                    source.getTrades());
+            this.companionBar = Objects.requireNonNull(companionBar, "companionBar");
+        }
+
+        @Override
+        public void addTrade(final Num tradeVolume, final Num tradePrice) {
+            companionBar.addPrice(tradePrice);
+            super.addTrade(tradeVolume, tradePrice);
+        }
+    }
+
+    private static final class CompanionForwardingBar extends BaseBar {
+
+        private static final long serialVersionUID = -8504376430039869077L;
+
+        private final Bar companionBar;
+        private final CompanionMutation companionMutation;
+
+        private CompanionForwardingBar(final Bar source, final Bar companionBar,
+                final CompanionMutation companionMutation) {
+            super(source.getTimePeriod(), source.getBeginTime().plus(Duration.ofDays(7)),
+                    source.getEndTime().plus(Duration.ofDays(7)), source.getOpenPrice(), source.getHighPrice(),
+                    source.getLowPrice(), source.getClosePrice(), source.getVolume(), source.getAmount(),
+                    source.getTrades());
+            this.companionBar = Objects.requireNonNull(companionBar, "companionBar");
+            this.companionMutation = Objects.requireNonNull(companionMutation, "companionMutation");
+        }
+
+        @Override
+        public void addTrade(final Num tradeVolume, final Num tradePrice) {
+            if (companionMutation == CompanionMutation.TRADE) {
+                companionBar.addTrade(tradeVolume, tradePrice);
+            }
+            super.addTrade(tradeVolume, tradePrice);
+        }
+
+        @Override
+        public void addPrice(final Num price) {
+            if (companionMutation == CompanionMutation.PRICE) {
+                companionBar.addPrice(price);
+            }
+            super.addPrice(price);
+        }
+    }
+
+    private static final class CoordinatedMutationLockPhases {
+
+        private final CyclicBarrier originLocks = new CyclicBarrier(2);
+        private final CyclicBarrier mutationCallbacks = new CyclicBarrier(2);
+        private final AtomicInteger nonReentrantAcquisitions = new AtomicInteger();
+
+        private int beforeWriteLock(final boolean reentrant) {
+            if (reentrant) {
+                return 0;
+            }
+            final int acquisition = nonReentrantAcquisitions.incrementAndGet();
+            if (acquisition <= 2) {
+                await(originLocks);
+            } else if (acquisition <= 4) {
+                await(mutationCallbacks);
+            }
+            return acquisition;
+        }
+
+        private static void await(final CyclicBarrier barrier) {
+            try {
+                barrier.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError("Mutation lock coordination was interrupted", e);
+            } catch (Exception e) {
+                throw new AssertionError("Mutation lock coordination did not complete", e);
+            }
+        }
+    }
+
+    private static final class CoordinatedMutationReadWriteLock implements ReadWriteLock {
+
+        private final CoordinatedMutationLockPhases phases;
+        private final ReentrantReadWriteLock delegate = new ReentrantReadWriteLock();
+        private final Lock writeLock = new Lock() {
+
+            @Override
+            public void lock() {
+                final int acquisition = phases.beforeWriteLock(delegate.isWriteLockedByCurrentThread());
+                if (acquisition > 2 && acquisition <= 4) {
+                    try {
+                        if (!delegate.writeLock().tryLock(5, TimeUnit.SECONDS)) {
+                            throw new AssertionError("Mutation callback could not acquire the target series lock");
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new AssertionError("Mutation callback lock acquisition was interrupted", e);
+                    }
+                } else {
+                    delegate.writeLock().lock();
+                }
+            }
+
+            @Override
+            public void lockInterruptibly() throws InterruptedException {
+                delegate.writeLock().lockInterruptibly();
+            }
+
+            @Override
+            public boolean tryLock() {
+                return delegate.writeLock().tryLock();
+            }
+
+            @Override
+            public boolean tryLock(final long time, final TimeUnit unit) throws InterruptedException {
+                return delegate.writeLock().tryLock(time, unit);
+            }
+
+            @Override
+            public void unlock() {
+                delegate.writeLock().unlock();
+            }
+
+            @Override
+            public Condition newCondition() {
+                return delegate.writeLock().newCondition();
+            }
+        };
+
+        private CoordinatedMutationReadWriteLock(final CoordinatedMutationLockPhases phases) {
+            this.phases = phases;
+        }
+
+        @Override
+        public Lock readLock() {
+            return delegate.readLock();
+        }
+
+        @Override
+        public Lock writeLock() {
+            return writeLock;
+        }
+    }
+
 }

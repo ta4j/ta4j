@@ -59,8 +59,8 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
     public IchimokuSenkouSpanAIndicator(BarSeries series, IchimokuTenkanSenIndicator conversionLine,
             IchimokuKijunSenIndicator baseLine, int offset) {
         super(series);
-        this.conversionLine = conversionLine;
-        this.baseLine = baseLine;
+        this.conversionLine = conversionLine.copy();
+        this.baseLine = baseLine.copy();
         this.offset = offset;
     }
 

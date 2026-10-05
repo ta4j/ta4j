@@ -3,8 +3,11 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+
+import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -23,6 +26,12 @@ public class DPOIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     public DPOIndicatorTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        DPOIndicator indicator = new DPOIndicator(series, 9);
+        return List.of(serializationFixture(series, indicator, 0, 9, 10, 11, series.getEndIndex()));
     }
 
     @Before
@@ -61,5 +70,15 @@ public class DPOIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     public void dpoIOOBE() {
         DPOIndicator dpo = new DPOIndicator(series, 9);
         dpo.getValue(100);
+    }
+
+    @Test
+    public void descriptorStoresConstructorInputs() {
+        DPOIndicator indicator = new DPOIndicator(series, 9);
+
+        assertThat(indicator.toDescriptor().getParameters()).containsEntry("barCount", 9);
+        assertThat(indicator.toDescriptor().getComponents()).hasSize(1)
+                .first()
+                .satisfies(component -> assertThat(component.getType()).isEqualTo("ClosePriceIndicator"));
     }
 }

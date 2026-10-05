@@ -23,7 +23,6 @@ public class BuildBarSeries {
      *
      * @param args command line arguments (ignored)
      */
-    @SuppressWarnings("unused")
     public static void main(String[] args) {
         BarSeries a = buildAndAddData();
         LOG.debug("a: {}", a.getBar(0).getClosePrice().getName());
@@ -34,6 +33,11 @@ public class BuildBarSeries {
         BarSeries d = buildManually();
         BarSeries e = buildManuallyDoubleNum();
         BarSeries f = buildManuallyAndAddBarManually();
+        LOG.debug("b: {}", b.getBarCount());
+        LOG.debug("c: {}", c.getBarCount());
+        LOG.debug("d: {}", d.getBarCount());
+        LOG.debug("e: {}", e.getBarCount());
+        LOG.debug("f: {}", f.getBarCount());
     }
 
     private static BarSeries buildAndAddData() {

@@ -3,6 +3,12 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+import org.ta4j.core.BarSeries;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.Test;
@@ -94,4 +100,45 @@ public class SchaffTrendCycleIndicatorTest extends AbstractIndicatorTest<Indicat
             assertThat(Num.isNaNOrNull(indicator.getValue(i))).isTrue();
         }
     }
+
+    @Test
+    public void recomputesAfterSeriesHeadAdvances() {
+        // The stochastic stages rebaseline at the begin index after a head
+        // advance and the smoothing EMAs discard their caches: a surviving
+        // band of STC values would mix fresh and stale chain inputs, so the
+        // whole cache must be discarded and recomputed against the retained
+        // window.
+        //
+        // The retained window must be long enough that the inner chain was
+        // already valid before the advance (begin index beyond the MACD
+        // unstable period) and the smoothing period long enough that the EMA
+        // seed shift after the advance is observable at a stable index.
+        final var closes = new double[40];
+        for (int i = 0; i < closes.length; i++) {
+            closes[i] = 100 + 10 * Math.sin(i * 0.5) + 0.3 * i;
+        }
+        final BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closes).build();
+        final var closePrice = new ClosePriceIndicator(series);
+        final var indicator = new SchaffTrendCycleIndicator(closePrice, 3, 5, 3, 8);
+
+        Num before = indicator.getValue(39);
+        assertThat(Num.isNaNOrNull(before)).isFalse();
+
+        series.setMaximumBarCount(32);
+        assertThat(series.getBeginIndex()).isEqualTo(8);
+
+        Num after = indicator.getValue(39);
+        assertThat(Num.isNaNOrNull(after)).isFalse();
+        assertThat(after).isNotEqualByComparingTo(before);
+    }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+
+        return List.of(
+                serializationFixture(series, new SchaffTrendCycleIndicator(close, 3, 6, 4, 2), stableIndexes(series)));
+    }
+
 }

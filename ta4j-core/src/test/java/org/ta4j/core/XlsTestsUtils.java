@@ -218,7 +218,10 @@ public class XlsTestsUtils {
                 continue;
             }
             String s = evaluator.evaluate(row.getCell(column)).formatAsString();
-            if (s.equals("#DIV/0!")) {
+            if (s.startsWith("\"") && s.endsWith("\"")) {
+                s = s.substring(1, s.length() - 1);
+            }
+            if (s.equals("#DIV/0!") || s.equalsIgnoreCase("NaN") || s.isBlank()) {
                 values.add(NaN.NaN);
             } else {
                 values.add(numFactory.numOf(new BigDecimal(s)));
@@ -283,6 +286,25 @@ public class XlsTestsUtils {
             Object... params) throws IOException, DataFormatException {
         Sheet sheet = getSheet(clazz, fileName);
         return new MockIndicator(getSeries(sheet, numFactory), getValues(sheet, column, numFactory, params));
+    }
+
+    /**
+     * Gets an Indicator from a column of an XLS file using an already parsed
+     * BarSeries.
+     *
+     * @param series   series parsed from the same XLS file
+     * @param clazz    class containing the file resource
+     * @param fileName file name of the file resource
+     * @param column   column number of the indicator values
+     * @param params   indicator parameters
+     * @return Indicator<Num> as calculated by the XLS file given the parameters
+     * @throws IOException         if getSheet throws IOException
+     * @throws DataFormatException if getValues throws DataFormatException
+     */
+    public static Indicator<Num> getIndicator(BarSeries series, Class<?> clazz, String fileName, int column,
+            NumFactory numFactory, Object... params) throws IOException, DataFormatException {
+        Sheet sheet = getSheet(clazz, fileName);
+        return new MockIndicator(series, getValues(sheet, column, numFactory, params));
     }
 
     /**

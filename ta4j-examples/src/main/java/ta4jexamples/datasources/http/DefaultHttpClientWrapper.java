@@ -23,17 +23,28 @@ public class DefaultHttpClientWrapper implements HttpClientWrapper {
      * @param httpClient the HttpClient to wrap
      */
     public DefaultHttpClientWrapper(HttpClient httpClient) {
-        if (httpClient == null) {
-            throw new IllegalArgumentException("HttpClient cannot be null");
-        }
-        this.httpClient = httpClient;
+        this(new ClientConfig(validatedHttpClient(httpClient)));
     }
 
     /**
      * Creates a new wrapper with a default HttpClient.
      */
     public DefaultHttpClientWrapper() {
-        this(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build());
+        this(new ClientConfig(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()));
+    }
+
+    private DefaultHttpClientWrapper(ClientConfig config) {
+        this.httpClient = config.httpClient();
+    }
+
+    private static HttpClient validatedHttpClient(HttpClient httpClient) {
+        if (httpClient == null) {
+            throw new IllegalArgumentException("HttpClient cannot be null");
+        }
+        return httpClient;
+    }
+
+    private record ClientConfig(HttpClient httpClient) {
     }
 
     @Override

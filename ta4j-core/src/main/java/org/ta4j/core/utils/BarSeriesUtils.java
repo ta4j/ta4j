@@ -13,6 +13,7 @@ import org.ta4j.core.aggregator.BaseBarSeriesAggregator;
 import org.ta4j.core.aggregator.BarSeriesAggregator;
 import org.ta4j.core.aggregator.DurationBarAggregator;
 import org.ta4j.core.aggregator.BarAggregator;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.BarSeries;
@@ -28,7 +29,7 @@ public final class BarSeriesUtils {
      * Sorts the Bars by {@link Bar#getEndTime()} in ascending sequence (lower
      * values before higher values).
      */
-    public static final Comparator<Bar> sortBarsByTime = (b1, b2) -> b1.getEndTime().isAfter(b2.getEndTime()) ? 1 : -1;
+    public static final Comparator<Bar> sortBarsByTime = (b1, b2) -> b1.getEndTime().compareTo(b2.getEndTime());
 
     private BarSeriesUtils() {
     }
@@ -62,6 +63,9 @@ public final class BarSeriesUtils {
      * @param newBar    the bar which has precedence over the same existing bar
      * @return the previous bar replaced by newBar, or null if there was no
      *         replacement.
+     * @throws UnsupportedOperationException if a matching bar needs replacement but
+     *                                       the series implementation does not
+     *                                       expose a supported replacement path
      */
     public static Bar replaceBarIfChanged(BarSeries barSeries, Bar newBar) {
         List<Bar> bars = barSeries.getBarData();
@@ -72,8 +76,14 @@ public final class BarSeriesUtils {
             boolean isSameBar = bar.getBeginTime().equals(newBar.getBeginTime())
                     && bar.getEndTime().equals(newBar.getEndTime())
                     && bar.getTimePeriod().equals(newBar.getTimePeriod());
-            if (isSameBar && !bar.equals(newBar))
-                return bars.set(i, newBar);
+            if (isSameBar && !bar.equals(newBar)) {
+                if (!(barSeries instanceof BaseBarSeries baseBarSeries)) {
+                    throw new UnsupportedOperationException("Cannot replace bars for " + barSeries.getClass().getName()
+                            + "; use a BaseBarSeries-backed implementation");
+                }
+                baseBarSeries.replaceBar(barSeries.getBeginIndex() + i, newBar);
+                return bar;
+            }
         }
         return null;
     }
@@ -221,12 +231,25 @@ public final class BarSeriesUtils {
      * @param previousIndex the previous index
      * @param currentIndex  the current index
      * @return the elapsed time in years, clamped to zero for non-positive deltas
+     * @since 0.22.2
      */
     public static Num deltaYears(BarSeries series, int previousIndex, int currentIndex) {
-        var endPrev = series.getBar(previousIndex).getEndTime();
-        var endNow = series.getBar(currentIndex).getEndTime();
-        var seconds = Math.max(0, Duration.between(endPrev, endNow).getSeconds());
-        var numFactory = series.numFactory();
+        return deltaYears(series.getBar(previousIndex).getEndTime(), series.getBar(currentIndex).getEndTime(),
+                series.numFactory());
+    }
+
+    /**
+     * Computes the elapsed time between two bar end times in years, for callers
+     * that captured the times instead of reading them from a live series.
+     *
+     * @param previousEndTime the earlier bar end time
+     * @param currentEndTime  the later bar end time
+     * @param numFactory      the factory for the result
+     * @return the elapsed time in years, clamped to zero for non-positive deltas
+     * @since 0.25.1
+     */
+    public static Num deltaYears(Instant previousEndTime, Instant currentEndTime, NumFactory numFactory) {
+        long seconds = Duration.between(previousEndTime, currentEndTime).getSeconds();
         return seconds <= 0 ? numFactory.zero()
                 : numFactory.numOf(seconds).dividedBy(numFactory.numOf(TimeConstants.SECONDS_PER_YEAR));
     }

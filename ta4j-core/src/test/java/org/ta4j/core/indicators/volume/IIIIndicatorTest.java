@@ -21,15 +21,15 @@ public class IIIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     public void intradayIntensityIndex() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         // 2-2 * 200 / 4
-        series.barBuilder().openPrice(0d).closePrice(10d).highPrice(12d).lowPrice(8d).volume(200d).add();
+        series.barBuilder().openPrice(8d).closePrice(10d).highPrice(12d).lowPrice(8d).volume(200d).add();
         // 1-2 * 100 / 3
-        series.barBuilder().openPrice(0d).closePrice(8d).highPrice(10d).lowPrice(7d).volume(100d).add();
+        series.barBuilder().openPrice(7d).closePrice(8d).highPrice(10d).lowPrice(7d).volume(100d).add();
         // 3-6 * 300 / 9
-        series.barBuilder().openPrice(0d).closePrice(9d).highPrice(15d).lowPrice(6d).volume(300d).add();
+        series.barBuilder().openPrice(6d).closePrice(9d).highPrice(15d).lowPrice(6d).volume(300d).add();
         // 15-20 * 50 / 35
-        series.barBuilder().openPrice(0d).closePrice(20d).highPrice(40d).lowPrice(5d).volume(50d).add();
+        series.barBuilder().openPrice(5d).closePrice(20d).highPrice(40d).lowPrice(5d).volume(50d).add();
         // 27-0 * 600 / 27
-        series.barBuilder().openPrice(0d).closePrice(30d).highPrice(30d).lowPrice(3d).volume(600d).add();
+        series.barBuilder().openPrice(3d).closePrice(30d).highPrice(30d).lowPrice(3d).volume(600d).add();
 
         var iiiIndicator = new IIIIndicator(series);
         assertNumEquals(0, iiiIndicator.getValue(0));

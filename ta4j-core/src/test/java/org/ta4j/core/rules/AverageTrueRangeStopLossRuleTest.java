@@ -25,6 +25,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertThrows;
 
 public class AverageTrueRangeStopLossRuleTest {
 
@@ -107,7 +108,7 @@ public class AverageTrueRangeStopLossRuleTest {
         // Price below stop loss
         series.barBuilder()
                 .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
-                .openPrice(110)
+                .openPrice(113)
                 .highPrice(123)
                 .lowPrice(113)
                 .closePrice(123)
@@ -120,7 +121,7 @@ public class AverageTrueRangeStopLossRuleTest {
         // Price rises above stop loss
         series.barBuilder()
                 .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
-                .openPrice(110)
+                .openPrice(117)
                 .highPrice(127)
                 .lowPrice(117)
                 .closePrice(127)
@@ -296,5 +297,15 @@ public class AverageTrueRangeStopLossRuleTest {
                 new AverageTrueRangeStopLossRule(series, new ClosePriceIndicator(series), atrBarCount, atrCoefficient),
                 new AverageTrueRangeStopLossRule(new ClosePriceIndicator(series), new ATRIndicator(series, atrBarCount),
                         atrCoefficient));
+    }
+
+    @Test
+    public void constructorValidation() {
+        ClosePriceIndicator referencePrice = new ClosePriceIndicator(series);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new AverageTrueRangeStopLossRule(series, referencePrice, 4, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new AverageTrueRangeStopLossRule(series, referencePrice, 4, -1.0));
     }
 }

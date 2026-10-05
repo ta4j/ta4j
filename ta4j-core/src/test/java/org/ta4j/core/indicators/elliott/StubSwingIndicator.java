@@ -50,4 +50,9 @@ public class StubSwingIndicator extends ElliottSwingIndicator {
         }
         return swingsByIndex.isEmpty() ? List.of() : swingsByIndex.get(swingsByIndex.size() - 1);
     }
+
+    @Override
+    ElliottSwingIndicator copy() {
+        return new StubSwingIndicator(getBarSeries(), List.copyOf(swingsByIndex), getDegree());
+    }
 }

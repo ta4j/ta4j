@@ -4,7 +4,7 @@
 package org.ta4j.core.indicators.averages;
 
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -18,7 +18,7 @@ import org.ta4j.core.num.Num;
  * some smoothing.
  *
  */
-public class SMMAIndicator extends CachedIndicator<Num> {
+public class SMMAIndicator extends RecursiveCachedIndicator<Num> {
 
     private final int barCount;
     private final Indicator<Num> indicator;
@@ -30,7 +30,8 @@ public class SMMAIndicator extends CachedIndicator<Num> {
      * @param barCount  the Simple Moving Average time frame
      */
     public SMMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator.getBarSeries());
+        super(indicator);
+
         this.barCount = barCount;
         this.indicator = indicator;
     }
@@ -38,9 +39,11 @@ public class SMMAIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
 
-        if (index == 0) {
-            // The first SMMA value is the first data point
-            return indicator.getValue(0);
+        if (index <= getBarSeries().getBeginIndex()) {
+            // Seed at the first retained bar: for a full series this is the first
+            // data point; for a bounded series it re-anchors the recursion after
+            // a head advance evicted the previous seed.
+            return indicator.getValue(index);
         }
 
         // Previous SMMA value
@@ -62,8 +65,23 @@ public class SMMAIndicator extends CachedIndicator<Num> {
         return indicator.getCountOfUnstableBars() + barCount;
     }
 
+    /**
+     * The SMMA recursion seeds at the first retained bar (see
+     * {@link #calculate(int)}), so after a head advance every cached value embeds
+     * the pre-advance chain. Discard the whole cache so the retained head
+     * re-anchors the recurrence from the first retained bar instead of serving
+     * stale values.
+     *
+     * @return {@code true}
+     */
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
+    }
+
     @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;
     }
+
 }

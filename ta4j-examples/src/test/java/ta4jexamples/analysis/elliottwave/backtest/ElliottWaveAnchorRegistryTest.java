@@ -216,7 +216,7 @@ class ElliottWaveAnchorRegistryTest {
         series.barBuilder()
                 .timePeriod(period)
                 .endTime(start.plus(period.multipliedBy(3)))
-                .openPrice(108)
+                .openPrice(105)
                 .highPrice(105)
                 .lowPrice(94)
                 .closePrice(100)

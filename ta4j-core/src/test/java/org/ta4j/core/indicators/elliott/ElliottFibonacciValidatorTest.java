@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NaN;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
@@ -295,6 +296,14 @@ class ElliottFibonacciValidatorTest {
 
         // With default tolerance of 0.05, it would be valid
         assertThat(validator.isWaveTwoRetracementValid(wave1, wave2)).isTrue();
+    }
+
+    @Test
+    void getTolerance_shouldReturnConfiguredTolerance() {
+        Num customTolerance = numFactory.numOf(0.25);
+        ElliottFibonacciValidator customValidator = new ElliottFibonacciValidator(numFactory, customTolerance);
+
+        assertThat(customValidator.getTolerance()).isEqualByComparingTo(customTolerance);
     }
 
     @Test

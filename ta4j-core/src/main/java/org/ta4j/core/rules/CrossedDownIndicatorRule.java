@@ -52,7 +52,10 @@ public class CrossedDownIndicatorRule extends AbstractRule {
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         final boolean satisfied = cross.getValue(index);
-        traceIsSatisfied(index, satisfied);
+        if (isTraceEnabled()) {
+            traceIsSatisfied(index, satisfied,
+                    traceCrossContext(cross.getUp(), cross.getLow(), index, satisfied, false));
+        }
         return satisfied;
     }
 

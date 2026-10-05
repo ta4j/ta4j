@@ -8,6 +8,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.num.Num;
 
+import java.util.List;
 import java.util.function.BinaryOperator;
 
 /**
@@ -203,16 +204,25 @@ public class BinaryOperationIndicator implements Indicator<Num> {
      * @param right     the right operand indicator
      */
     public BinaryOperationIndicator(final Operation operation, final Indicator<Num> left, final Indicator<Num> right) {
+        this(validatedConfig(operation, left, right));
+    }
+
+    private BinaryOperationIndicator(Config config) {
+        this.operation = config.operation();
+        this.operator = config.operator();
+        this.left = config.left();
+        this.right = config.right();
+    }
+
+    private static Config validatedConfig(final Operation operation, final Indicator<Num> left,
+            final Indicator<Num> right) {
         if (operation == null || left == null || right == null) {
             throw new IllegalArgumentException("Operation and indicators must not be null");
         }
         if (!left.getBarSeries().equals(right.getBarSeries())) {
             throw new IllegalArgumentException("Left and right indicators must share the same BarSeries");
         }
-        this.operation = operation;
-        this.operator = getOperator(operation);
-        this.left = left;
-        this.right = right;
+        return new Config(operation, getOperator(operation), left, right);
     }
 
     private static BinaryOperator<Num> getOperator(Operation operation) {
@@ -234,6 +244,11 @@ public class BinaryOperationIndicator implements Indicator<Num> {
     }
 
     @Override
+    public List<Indicator<?>> getDependencies() {
+        return List.of(left, right);
+    }
+
+    @Override
     public int getCountOfUnstableBars() {
         return Math.max(left.getCountOfUnstableBars(), right.getCountOfUnstableBars());
     }
@@ -243,4 +258,7 @@ public class BinaryOperationIndicator implements Indicator<Num> {
         return left.getBarSeries(); // Both indicators share the same series (validated in constructor)
     }
 
+    private record Config(Operation operation, BinaryOperator<Num> operator, Indicator<Num> left,
+            Indicator<Num> right) {
+    }
 }

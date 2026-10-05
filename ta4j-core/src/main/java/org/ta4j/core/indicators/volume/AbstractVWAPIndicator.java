@@ -6,7 +6,6 @@ package org.ta4j.core.indicators.volume;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -30,10 +29,12 @@ public abstract class AbstractVWAPIndicator extends CachedIndicator<Num> {
      * Creates a new AbstractVWAPIndicator instance.
      */
     protected AbstractVWAPIndicator(Indicator<Num> priceIndicator, Indicator<Num> volumeIndicator) {
-        super(IndicatorUtils.requireSameSeries(priceIndicator, volumeIndicator));
+        super(priceIndicator, volumeIndicator);
         this.priceIndicator = priceIndicator;
         this.volumeIndicator = volumeIndicator;
     }
+
+    abstract AbstractVWAPIndicator copy();
 
     /**
      * Calculates the indicator value at the requested index.
@@ -114,7 +115,7 @@ public abstract class AbstractVWAPIndicator extends CachedIndicator<Num> {
         for (int i = startIndex; i <= endIndex; i++) {
             Num price = priceIndicator.getValue(i);
             Num volume = volumeIndicator.getValue(i);
-            if (IndicatorUtils.isInvalid(price) || IndicatorUtils.isInvalid(volume) || volume.isNegative()) {
+            if (!Num.isFinite(price) || !Num.isFinite(volume) || volume.isNegative()) {
                 return VWAPValues.invalid(factory);
             }
             if (volume.isZero()) {

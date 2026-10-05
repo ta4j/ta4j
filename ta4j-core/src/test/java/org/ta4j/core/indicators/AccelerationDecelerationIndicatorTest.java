@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
@@ -25,11 +30,11 @@ public class AccelerationDecelerationIndicatorTest extends AbstractIndicatorTest
     public void setUp() {
         series = new MockBarSeriesBuilder().build();
 
-        series.barBuilder().openPrice(0).closePrice(0).highPrice(16).lowPrice(8).add();
-        series.barBuilder().openPrice(0).closePrice(0).highPrice(12).lowPrice(6).add();
-        series.barBuilder().openPrice(0).closePrice(0).highPrice(18).lowPrice(14).add();
-        series.barBuilder().openPrice(0).closePrice(0).highPrice(10).lowPrice(6).add();
-        series.barBuilder().openPrice(0).closePrice(0).highPrice(8).lowPrice(4).add();
+        series.barBuilder().openPrice(8).closePrice(16).highPrice(16).lowPrice(8).add();
+        series.barBuilder().openPrice(6).closePrice(12).highPrice(12).lowPrice(6).add();
+        series.barBuilder().openPrice(14).closePrice(18).highPrice(18).lowPrice(14).add();
+        series.barBuilder().openPrice(6).closePrice(10).highPrice(10).lowPrice(6).add();
+        series.barBuilder().openPrice(4).closePrice(8).highPrice(8).lowPrice(4).add();
     }
 
     @Test
@@ -64,4 +69,12 @@ public class AccelerationDecelerationIndicatorTest extends AbstractIndicatorTest
         assertNumEquals(0, acceleration.getValue(3));
         assertNumEquals(0, acceleration.getValue(4));
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(serializationFixture(series, new AccelerationDecelerationIndicator(series, 3, 5),
+                stableIndexes(series)));
+    }
+
 }

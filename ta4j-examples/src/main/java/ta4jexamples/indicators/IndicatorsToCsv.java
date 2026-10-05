@@ -4,9 +4,10 @@
 package ta4jexamples.indicators;
 
 import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -111,20 +112,11 @@ public class IndicatorsToCsv {
         /*
          * Writing CSV file
          */
-        BufferedWriter writer = null;
-        try {
-            writer = new BufferedWriter(new FileWriter(new File("target", "indicators.csv")));
+        Path outputPath = Path.of("target", "indicators.csv");
+        try (BufferedWriter writer = Files.newBufferedWriter(outputPath, StandardCharsets.UTF_8)) {
             writer.write(sb.toString());
         } catch (IOException ioe) {
             LOG.error("Unable to write CSV file", ioe);
-        } finally {
-            try {
-                if (writer != null) {
-                    writer.close();
-                }
-            } catch (IOException ioe) {
-                ioe.printStackTrace();
-            }
         }
 
     }

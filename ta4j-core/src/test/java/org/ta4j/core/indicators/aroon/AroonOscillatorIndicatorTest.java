@@ -3,7 +3,15 @@
  */
 package org.ta4j.core.indicators.aroon;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.assertIndicatorRoundTrips;
+
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.LocalDate;
@@ -15,6 +23,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.NumFactory;
 
 public class AroonOscillatorIndicatorTest {
     private BarSeries data;
@@ -206,8 +217,18 @@ public class AroonOscillatorIndicatorTest {
     @Test
     public void test() {
         var aroonOscillator = new AroonOscillatorIndicator(data, 25);
-        assertNotNull(aroonOscillator.getAroonUpIndicator());
-        assertNotNull(aroonOscillator.getAroonDownIndicator());
+        AroonUpIndicator firstUpIndicator = aroonOscillator.getAroonUpIndicator();
+        AroonUpIndicator secondUpIndicator = aroonOscillator.getAroonUpIndicator();
+        AroonDownIndicator firstDownIndicator = aroonOscillator.getAroonDownIndicator();
+        AroonDownIndicator secondDownIndicator = aroonOscillator.getAroonDownIndicator();
+
+        assertNotNull(firstUpIndicator);
+        assertNotNull(firstDownIndicator);
+        assertNotSame(firstUpIndicator, secondUpIndicator);
+        assertNotSame(firstDownIndicator, secondDownIndicator);
+        assertNumEquals(firstUpIndicator.getValue(data.getEndIndex()), secondUpIndicator.getValue(data.getEndIndex()));
+        assertNumEquals(firstDownIndicator.getValue(data.getEndIndex()),
+                secondDownIndicator.getValue(data.getEndIndex()));
 
         assertNumEquals(0, aroonOscillator.getValue(data.getBeginIndex()));
         assertNumEquals(84, aroonOscillator.getValue(data.getBeginIndex() + 25));
@@ -221,4 +242,13 @@ public class AroonOscillatorIndicatorTest {
         assertNumEquals(40d, aroonOscillator.getValue(data.getEndIndex() - 1));
         assertNumEquals(32d, aroonOscillator.getValue(data.getEndIndex()));
     }
+
+    @Test
+    public void serializationRoundTrips() {
+        for (NumFactory numFactory : List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance())) {
+            BarSeries series = serializationSeries(numFactory);
+            assertIndicatorRoundTrips(series, new AroonOscillatorIndicator(series, 8), stableIndexes(series));
+        }
+    }
+
 }

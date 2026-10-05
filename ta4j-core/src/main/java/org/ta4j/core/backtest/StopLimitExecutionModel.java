@@ -17,7 +17,7 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.backtest.ExecutionModelSupport.ExecutionTarget;
+import org.ta4j.core.backtest.TradeExecutionModel.ExecutionTarget;
 import org.ta4j.core.num.Num;
 
 /**
@@ -32,6 +32,16 @@ import org.ta4j.core.num.Num;
  * timestamps so backtest fills match live-fill metadata shape.
  * </p>
  *
+ * <p>
+ * This model is safe for concurrent use with distinct trading records: all
+ * access to the internal pending/rejected order maps is synchronized, so
+ * parallel strategy batches (e.g. {@link BacktestExecutor}) can share one model
+ * instance without losing or corrupting orders. Weak-key semantics are
+ * preserved: orders are removed on fill or expiry and stale keys are reclaimed
+ * once their trading records become unreachable. A single trading record must
+ * still be driven from one thread at a time.
+ * </p>
+ *
  * @since 0.22.4
  */
 public class StopLimitExecutionModel implements TradeExecutionModel {
@@ -41,6 +51,13 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
     private final Num maxBarParticipationRate;
     private final int maxBarsToFill;
     private final PriceSource priceSource;
+
+    /**
+     * Guards {@link #pendingOrders} and {@link #rejectedOrders}:
+     * {@link WeakHashMap} is not thread-safe, so every structural map access is
+     * synchronized on this lock.
+     */
+    private final Object stateLock = new Object();
 
     private final Map<TradingRecord, PendingOrder> pendingOrders = new WeakHashMap<>();
     private final Map<TradingRecord, List<RejectedOrder>> rejectedOrders = new WeakHashMap<>();
@@ -57,7 +74,8 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
      */
     public StopLimitExecutionModel(Num stopTriggerRatio, Num limitOffsetRatio, Num maxBarParticipation,
             int maxBarsToFill) {
-        this(stopTriggerRatio, limitOffsetRatio, maxBarParticipation, maxBarsToFill, PriceSource.NEXT_OPEN);
+        this(validatedConfig(stopTriggerRatio, limitOffsetRatio, maxBarParticipation, maxBarsToFill,
+                PriceSource.NEXT_OPEN));
     }
 
     /**
@@ -73,34 +91,44 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
      */
     public StopLimitExecutionModel(Num stopTriggerRatio, Num limitOffsetRatio, Num maxBarParticipation,
             int maxBarsToFill, PriceSource priceSource) {
-        validateRatio(stopTriggerRatio, "stopTriggerRatio");
-        validateRatio(limitOffsetRatio, "limitOffsetRatio");
-        validateRatio(maxBarParticipation, "maxBarParticipation");
-        Objects.requireNonNull(priceSource, "priceSource");
-        Num one = stopTriggerRatio.getNumFactory().one();
-        if (stopTriggerRatio.isGreaterThanOrEqual(one)) {
+        this(validatedConfig(stopTriggerRatio, limitOffsetRatio, maxBarParticipation, maxBarsToFill, priceSource));
+    }
+
+    private StopLimitExecutionModel(Config config) {
+        this.stopTriggerRatio = config.stopTriggerRatio();
+        this.limitOffsetRatio = config.limitOffsetRatio();
+        this.maxBarParticipationRate = config.maxBarParticipation();
+        this.maxBarsToFill = config.maxBarsToFill();
+        this.priceSource = config.priceSource();
+    }
+
+    private static Config validatedConfig(Num stopTriggerRatio, Num limitOffsetRatio, Num maxBarParticipation,
+            int maxBarsToFill, PriceSource priceSource) {
+        Num validatedStopTriggerRatio = validateRatio(stopTriggerRatio, "stopTriggerRatio");
+        Num validatedLimitOffsetRatio = validateRatio(limitOffsetRatio, "limitOffsetRatio");
+        Num validatedMaxBarParticipation = validateRatio(maxBarParticipation, "maxBarParticipation");
+        PriceSource validatedPriceSource = Objects.requireNonNull(priceSource, "priceSource");
+        Num one = validatedStopTriggerRatio.getNumFactory().one();
+        if (validatedStopTriggerRatio.isGreaterThanOrEqual(one)) {
             throw new IllegalArgumentException("stopTriggerRatio must be < 1");
         }
-        if (limitOffsetRatio.isGreaterThanOrEqual(one)) {
+        if (validatedLimitOffsetRatio.isGreaterThanOrEqual(one)) {
             throw new IllegalArgumentException("limitOffsetRatio must be < 1");
         }
-        if (maxBarParticipation.isZero()) {
+        if (validatedMaxBarParticipation.isZero()) {
             throw new IllegalArgumentException("maxBarParticipation must be > 0");
         }
-        if (maxBarParticipation.isGreaterThan(one)) {
+        if (validatedMaxBarParticipation.isGreaterThan(one)) {
             throw new IllegalArgumentException("maxBarParticipation must be <= 1");
         }
-        if (limitOffsetRatio.isLessThan(stopTriggerRatio)) {
+        if (validatedLimitOffsetRatio.isLessThan(validatedStopTriggerRatio)) {
             throw new IllegalArgumentException("limitOffsetRatio must be >= stopTriggerRatio");
         }
         if (maxBarsToFill < 1) {
             throw new IllegalArgumentException("maxBarsToFill must be >= 1");
         }
-        this.stopTriggerRatio = stopTriggerRatio;
-        this.limitOffsetRatio = limitOffsetRatio;
-        this.maxBarParticipationRate = maxBarParticipation;
-        this.maxBarsToFill = maxBarsToFill;
-        this.priceSource = priceSource;
+        return new Config(validatedStopTriggerRatio, validatedLimitOffsetRatio, validatedMaxBarParticipation,
+                maxBarsToFill, validatedPriceSource);
     }
 
     /**
@@ -111,8 +139,10 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
      * @since 0.22.4
      */
     public List<RejectedOrder> getRejectedOrders(TradingRecord tradingRecord) {
-        List<RejectedOrder> rejected = rejectedOrders.get(tradingRecord);
-        return rejected == null ? List.of() : List.copyOf(rejected);
+        synchronized (stateLock) {
+            List<RejectedOrder> rejected = rejectedOrders.get(tradingRecord);
+            return rejected == null ? List.of() : List.copyOf(rejected);
+        }
     }
 
     /**
@@ -123,11 +153,23 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
      * @since 0.22.4
      */
     public Optional<PendingOrderSnapshot> getPendingOrder(TradingRecord tradingRecord) {
-        PendingOrder order = pendingOrders.get(tradingRecord);
-        if (order == null) {
-            return Optional.empty();
+        synchronized (stateLock) {
+            PendingOrder order = pendingOrders.get(tradingRecord);
+            if (order == null) {
+                return Optional.empty();
+            }
+            return Optional.of(order.snapshot());
         }
-        return Optional.of(order.snapshot());
+    }
+
+    @Override
+    public ExecutionTarget estimateEntryTarget(int signalIndex, BarSeries barSeries, TradeType tradeType) {
+        ExecutionTarget referenceTarget = ExecutionModelSupport.resolveExecutionTarget(signalIndex, barSeries,
+                priceSource);
+        if (referenceTarget == null) {
+            return null;
+        }
+        return activationTarget(referenceTarget, barSeries, tradeType);
     }
 
     @Override
@@ -143,7 +185,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             return;
         }
         Num requestedAmount = resolveRequestedAmount(tradingRecord, amount);
-        PendingOrder pendingOrder = pendingOrders.get(tradingRecord);
+        PendingOrder pendingOrder = pendingOrderOf(tradingRecord);
         if (pendingOrder != null) {
             addRejectedOrder(tradingRecord,
                     new RejectedOrder(index, index, pendingOrder.tradeType, requestedAmount,
@@ -163,19 +205,19 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         TradeType tradeType = ExecutionModelSupport.nextTradeType(tradingRecord);
         Num stopPrice = toStopPrice(referenceTarget.price(), tradeType);
         Num limitPrice = toLimitPrice(referenceTarget.price(), tradeType);
-        int activationIndex = resolveActivationIndex(referenceTarget.index());
-        if (activationIndex > barSeries.getEndIndex()) {
+        ExecutionTarget activation = activationTarget(referenceTarget, barSeries, tradeType);
+        if (activation == null) {
             addRejectedOrder(tradingRecord, new RejectedOrder(index, index, tradeType, requestedAmount,
                     requestedAmount.getNumFactory().zero(), "Unable to resolve activation bar for stop-limit order"));
             return;
         }
-        pendingOrders.put(tradingRecord, new PendingOrder(index, activationIndex, tradeType, requestedAmount, stopPrice,
-                limitPrice, activationIndex + maxBarsToFill - 1));
+        putPendingOrder(tradingRecord, new PendingOrder(index, activation.index(), tradeType, requestedAmount,
+                stopPrice, limitPrice, expiryIndex(activation.index(), maxBarsToFill)));
     }
 
     @Override
     public void onBar(int index, TradingRecord tradingRecord, BarSeries barSeries) {
-        PendingOrder order = pendingOrders.get(tradingRecord);
+        PendingOrder order = pendingOrderOf(tradingRecord);
         if (order == null || index < order.activationIndex) {
             return;
         }
@@ -194,7 +236,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
 
         if (order.isCompletelyFilled()) {
             tradingRecord.operate(order.toTrade(tradingRecord));
-            pendingOrders.remove(tradingRecord);
+            removePendingOrder(tradingRecord);
             return;
         }
 
@@ -205,7 +247,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
 
     @Override
     public void onRunEnd(int lastProcessedIndex, TradingRecord tradingRecord) {
-        PendingOrder order = pendingOrders.get(tradingRecord);
+        PendingOrder order = pendingOrderOf(tradingRecord);
         if (order == null) {
             return;
         }
@@ -213,7 +255,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
     }
 
     private void expireIfStale(int index, TradingRecord tradingRecord) {
-        PendingOrder order = pendingOrders.get(tradingRecord);
+        PendingOrder order = pendingOrderOf(tradingRecord);
         if (order == null || index <= order.expiryIndex) {
             return;
         }
@@ -225,7 +267,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             tradingRecord.operate(order.toTrade(tradingRecord));
         }
         addRejectedOrder(tradingRecord, order.toExpiryRejection(index));
-        pendingOrders.remove(tradingRecord);
+        removePendingOrder(tradingRecord);
     }
 
     private static boolean shouldCommitPartial(PendingOrder order, TradingRecord tradingRecord) {
@@ -238,11 +280,12 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         return !tradingRecord.getOpenPositions().isEmpty();
     }
 
-    private static void validateRatio(Num ratio, String name) {
-        Objects.requireNonNull(ratio, name);
-        if (ratio.isNaN() || ratio.isNegative()) {
+    private static Num validateRatio(Num ratio, String name) {
+        Num validatedRatio = Objects.requireNonNull(ratio, name);
+        if (validatedRatio.isNaN() || validatedRatio.isNegative()) {
             throw new IllegalArgumentException(name + " must be positive or zero");
         }
+        return validatedRatio;
     }
 
     private int resolveActivationIndex(int referenceIndex) {
@@ -250,6 +293,51 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             return referenceIndex + 1;
         }
         return referenceIndex;
+    }
+
+    /**
+     * Resolves the bar that activates a stop-limit order referenced at
+     * {@code referenceTarget}, or {@code null} when no activation bar exists.
+     *
+     * <p>
+     * {@link PriceSource#CURRENT_CLOSE} activates on the bar after the reference:
+     * when the reference is the last representable index, that bar cannot exist and
+     * a naive {@code referenceIndex + 1} would wrap to a negative index, defeating
+     * the subsequent end-index check.
+     * </p>
+     *
+     * @param referenceTarget resolved reference execution target
+     * @param barSeries       series being executed
+     * @param tradeType       trade direction of the pending order
+     * @return activation target, or {@code null} when no activation bar exists
+     */
+    private ExecutionTarget activationTarget(ExecutionTarget referenceTarget, BarSeries barSeries,
+            TradeType tradeType) {
+        if (priceSource == PriceSource.CURRENT_CLOSE && referenceTarget.index() == Integer.MAX_VALUE) {
+            return null;
+        }
+        int activationIndex = resolveActivationIndex(referenceTarget.index());
+        if (activationIndex > barSeries.getEndIndex()) {
+            return null;
+        }
+        return new ExecutionTarget(activationIndex, toLimitPrice(referenceTarget.price(), tradeType));
+    }
+
+    /**
+     * Computes the last bar on which a stop-limit order may be filled, using wider
+     * arithmetic and clamping to {@link Integer#MAX_VALUE}. An activation near the
+     * maximum index must not wrap the expiry index negative, which would expire the
+     * order on its very first activation bar instead of keeping its configured
+     * time-to-live. The expiry is deliberately not clamped to the series end:
+     * bar-series managers may process raw bars past a constrained end to close open
+     * positions.
+     *
+     * @param activationIndex activation bar index
+     * @param maxBarsToFill   fillable bar count including the activation bar
+     * @return clamped expiry index, never below the activation index
+     */
+    private static int expiryIndex(int activationIndex, int maxBarsToFill) {
+        return (int) Math.min((long) activationIndex + maxBarsToFill - 1L, Integer.MAX_VALUE);
     }
 
     private Num toStopPrice(Num reference, TradeType tradeType) {
@@ -319,7 +407,31 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
     }
 
     private void addRejectedOrder(TradingRecord tradingRecord, RejectedOrder rejection) {
-        rejectedOrders.computeIfAbsent(tradingRecord, ignored -> new ArrayList<>()).add(rejection);
+        synchronized (stateLock) {
+            rejectedOrders.computeIfAbsent(tradingRecord, ignored -> new ArrayList<>()).add(rejection);
+        }
+    }
+
+    private PendingOrder pendingOrderOf(TradingRecord tradingRecord) {
+        synchronized (stateLock) {
+            return pendingOrders.get(tradingRecord);
+        }
+    }
+
+    private void putPendingOrder(TradingRecord tradingRecord, PendingOrder order) {
+        synchronized (stateLock) {
+            pendingOrders.put(tradingRecord, order);
+        }
+    }
+
+    private void removePendingOrder(TradingRecord tradingRecord) {
+        synchronized (stateLock) {
+            pendingOrders.remove(tradingRecord);
+        }
+    }
+
+    private record Config(Num stopTriggerRatio, Num limitOffsetRatio, Num maxBarParticipation, int maxBarsToFill,
+            PriceSource priceSource) {
     }
 
     /**
@@ -355,6 +467,13 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
     public record PendingOrderSnapshot(int signalIndex, int activationIndex, TradeType tradeType, Num requestedAmount,
             Num filledAmount, Num stopPrice, Num limitPrice, int expiryIndex, boolean triggered,
             List<TradeFill> fills) {
+        public PendingOrderSnapshot {
+            fills = List.copyOf(Objects.requireNonNull(fills, "fills must not be null"));
+        }
+
+        public List<TradeFill> fills() {
+            return List.copyOf(fills);
+        }
     }
 
     private static final class PendingOrder {

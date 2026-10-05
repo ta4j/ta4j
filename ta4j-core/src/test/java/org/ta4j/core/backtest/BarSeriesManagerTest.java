@@ -4,37 +4,68 @@
 package org.ta4j.core.backtest;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.Future;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.ConcurrentBarSeriesBuilder;
+import org.ta4j.core.ConstrainedSeriesSupport;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.Position;
+import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
+import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.bars.TimeBarBuilder;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBarBuilderFactory;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.rules.BooleanRule;
 import org.ta4j.core.rules.FixedRule;
-import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.walkforward.AnchoredExpandingWalkForwardSplitter;
 import org.ta4j.core.walkforward.WalkForwardConfig;
 import org.ta4j.core.walkforward.WalkForwardSplit;
 
-public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class BarSeriesManagerTest {
+
+    private static final NumFactory DECIMAL_NUM_FACTORY = DecimalNumFactory.getInstance();
+
+    private NumFactory numFactory = DoubleNumFactory.getInstance();
 
     private BarSeries seriesForRun;
 
@@ -42,14 +73,27 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
     private Strategy strategy;
 
-    private final Num HUNDRED = numOf(100);
+    private Num HUNDRED;
 
-    public BarSeriesManagerTest(NumFactory numFactory) {
-        super(numFactory);
+    private Num numOf(Number value) {
+        return numFactory.numOf(value);
+    }
+
+    private void runWithNumFactory(NumFactory factory, Runnable test) {
+        NumFactory previousFactory = numFactory;
+        numFactory = factory;
+        try {
+            setUp();
+            test.run();
+        } finally {
+            numFactory = previousFactory;
+            setUp();
+        }
     }
 
     @Before
     public void setUp() {
+        HUNDRED = numOf(100);
         seriesForRun = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
         seriesForRun.barBuilder().endTime(Instant.parse("2013-01-01T05:00:00Z")).closePrice(1d).add();
@@ -90,6 +134,431 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertEquals(HUNDRED, allPositions.get(0).getEntry().getAmount());
         assertEquals(HUNDRED, allPositions.get(1).getEntry().getAmount());
 
+    }
+
+    @Test
+    public void runTerminatesAndTradesOnSeriesEndingAtMaximumIndex() {
+        // The main run loop must break on the inclusive terminal index instead
+        // of wrapping its increment back to Integer.MIN_VALUE and scanning
+        // forever through negative indexes.
+        final Bar first = new TimeBarBuilder(numFactory).timePeriod(Duration.ofMinutes(1))
+                .endTime(Instant.parse("2026-01-01T00:01:00Z"))
+                .closePrice(1)
+                .build();
+        final Bar last = new TimeBarBuilder(numFactory).timePeriod(Duration.ofMinutes(1))
+                .endTime(Instant.parse("2026-01-01T00:02:00Z"))
+                .closePrice(2)
+                .build();
+        BarSeries series = new BaseBarSeriesBuilder().withBars(List.of(first, last))
+                .withBeginIndex(Integer.MAX_VALUE - 1)
+                .build();
+        assertEquals(Integer.MAX_VALUE, series.getEndIndex());
+        Strategy terminalRoundTrip = new BaseStrategy(new FixedRule(Integer.MAX_VALUE - 1),
+                new FixedRule(Integer.MAX_VALUE));
+        BarSeriesManager terminalManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+
+        List<Position> positions = terminalManager.run(terminalRoundTrip, TradeType.BUY, HUNDRED).getPositions();
+
+        assertEquals(1, positions.size());
+        assertEquals(Integer.MAX_VALUE - 1, positions.get(0).getEntry().getIndex());
+        assertEquals(Integer.MAX_VALUE, positions.get(0).getExit().getIndex());
+        assertTrue(positions.get(0).isClosed());
+    }
+
+    @Test
+    public void runSkipsClosePositionScanOnSeriesEndingAtMaximumIndex() {
+        // The close-position scan must not start from runEndIndex + 1 when the
+        // run ends at Integer.MAX_VALUE: the increment would wrap to a
+        // negative index and evaluate bars outside the series.
+        final Bar first = new TimeBarBuilder(numFactory).timePeriod(Duration.ofMinutes(1))
+                .endTime(Instant.parse("2026-01-01T00:01:00Z"))
+                .closePrice(1)
+                .build();
+        BarSeries series = new BaseBarSeriesBuilder().withBars(List.of(first))
+                .withBeginIndex(Integer.MAX_VALUE)
+                .build();
+        assertEquals(Integer.MAX_VALUE, series.getEndIndex());
+        Strategy entryOnlyStrategy = new BaseStrategy(new FixedRule(Integer.MAX_VALUE), new FixedRule());
+        BarSeriesManager terminalManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+
+        List<Position> positions = terminalManager.run(entryOnlyStrategy, TradeType.BUY, HUNDRED).getOpenPositions();
+
+        assertEquals(1, positions.size());
+        assertTrue(positions.get(0).isOpened());
+    }
+
+    @Test
+    public void doesNotTradeOnRawBarsAfterTheLogicalWindow() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("trailing", numFactory, 1, 10d, 20d, 30d);
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(2));
+
+        TradingRecord tradingRecord = new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(strategy);
+
+        // The exit signal only fires on raw bar 2, after the window: the position
+        // stays open at the window end instead of closing on a bar it never saw.
+        Position position = tradingRecord.getCurrentPosition();
+        assertEquals(0, position.getEntry().getIndex());
+        assertTrue(position.isOpened());
+        assertEquals(0, tradingRecord.getPositionCount());
+    }
+
+    @Test
+    public void nextOpenSignalOnTheLastRunBarDoesNotFillAfterTheRun() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30, 40, 50).build();
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(2));
+
+        TradingRecord tradingRecord = new BarSeriesManager(series, new TradeOnNextOpenModel()).run(strategy,
+                TradeType.BUY, 0, 2);
+
+        // The exit signal on bar 2 would fill at bar 3's open, outside [0, 2]
+        // (the next walk-forward fold, for example), so it does not fill.
+        assertEquals(1, tradingRecord.getCurrentPosition().getEntry().getIndex());
+        assertTrue(tradingRecord.getCurrentPosition().isOpened());
+        assertEquals(0, tradingRecord.getPositionCount());
+    }
+
+    @Test
+    public void runPreservesLeadingOrphanRawBarOffset() {
+        BarSeries series = ConstrainedSeriesSupport.offsetSeries("leading-orphan", numFactory, 1, 2, 0, 10d, 20d, 30d);
+        Strategy strategy = new BaseStrategy(new FixedRule(1), new FixedRule(2));
+
+        Position position = new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(strategy)
+                .getPositions()
+                .getFirst();
+
+        assertEquals(series.getBar(1).getClosePrice(), position.getEntry().getPricePerAsset());
+        assertEquals(series.getBar(2).getClosePrice(), position.getExit().getPricePerAsset());
+    }
+
+    @Test
+    public void doesNotTradeAfterTheWindowWithRemovedIndexOffset() {
+        BarSeries series = ConstrainedSeriesSupport.offsetSeries("offset-trailing", numFactory, 10, 11, 10, 10d, 20d,
+                30d);
+        Strategy strategy = new BaseStrategy(new FixedRule(10), new FixedRule(12));
+
+        TradingRecord tradingRecord = new BarSeriesManager(series, new TradeOnCurrentCloseModel()).run(strategy);
+
+        assertEquals(10, tradingRecord.getCurrentPosition().getEntry().getIndex());
+        assertTrue(tradingRecord.getCurrentPosition().isOpened());
+    }
+
+    @Test
+    public void runWithPositionSizerUsesDynamicEntryAmount() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30, 40).build();
+        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(2));
+        PositionSizer positionSizer = context -> numFactory.numOf(context.signalIndex());
+
+        TradingRecord tradingRecord = localManager.run(oneTradeStrategy, TradeType.BUY, positionSizer);
+        Position position = tradingRecord.getPositions().getFirst();
+
+        assertEquals(1, tradingRecord.getPositionCount());
+        assertEquals(1, position.getEntry().getIndex());
+        assertEquals(TradeType.BUY, position.getEntry().getType());
+        assertEquals(numFactory.one(), position.getEntry().getAmount());
+        assertEquals(2, position.getExit().getIndex());
+        assertEquals(numFactory.one(), position.getExit().getAmount());
+    }
+
+    @Test
+    public void runWithPositionSizerRejectsNonPositiveAndNonFiniteAmounts() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30, 40).build();
+        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(2));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> localManager.run(oneTradeStrategy, TradeType.BUY, context -> null));
+        assertThrows(IllegalArgumentException.class,
+                () -> localManager.run(oneTradeStrategy, TradeType.BUY, context -> numFactory.zero()));
+        assertThrows(IllegalArgumentException.class,
+                () -> localManager.run(oneTradeStrategy, TradeType.BUY, context -> DoubleNum.valueOf(-1)));
+        assertThrows(IllegalArgumentException.class,
+                () -> localManager.run(oneTradeStrategy, TradeType.BUY, context -> DoubleNum.valueOf(Double.NaN)));
+        assertThrows(IllegalArgumentException.class, () -> localManager.run(oneTradeStrategy, TradeType.BUY,
+                context -> DoubleNum.valueOf(Double.POSITIVE_INFINITY)));
+    }
+
+    @Test
+    public void runWithPositionSizerUsesStrategyStartingTypeAndRange() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30, 40, 50).build();
+        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(1, 2), new FixedRule(3), TradeType.SELL);
+        PositionSizer positionSizer = context -> {
+            BarSeries firstContextSeries = context.barSeries();
+            BarSeries secondContextSeries = context.barSeries();
+            Strategy firstContextStrategy = context.strategy();
+            Strategy secondContextStrategy = context.strategy();
+            assertNotSame(oneTradeStrategy, firstContextStrategy);
+            assertNotSame(firstContextStrategy, secondContextStrategy);
+            assertTrue(firstContextStrategy.shouldEnter(2));
+            // The context sees the caller's bars at their own indexes, ending at
+            // the run's last index so sizing cannot read bars after the window.
+            assertSame(series.getBar(2), firstContextSeries.getBar(2));
+            assertEquals(series.getBeginIndex(), firstContextSeries.getBeginIndex());
+            assertEquals(3, firstContextSeries.getEndIndex());
+            assertThrows(IndexOutOfBoundsException.class, () -> firstContextSeries.getBar(4));
+            assertSame(firstContextSeries, secondContextSeries);
+            return context.entryPrice().dividedBy(numFactory.numOf(10));
+        };
+
+        TradingRecord tradingRecord = localManager.run(oneTradeStrategy, positionSizer, 2, 3);
+        Position position = tradingRecord.getPositions().getFirst();
+
+        assertEquals(1, tradingRecord.getPositionCount());
+        assertEquals(2, position.getEntry().getIndex());
+        assertEquals(TradeType.SELL, position.getEntry().getType());
+        assertEquals(numFactory.numOf(3), position.getEntry().getAmount());
+        assertEquals(3, position.getExit().getIndex());
+        assertEquals(numFactory.numOf(3), position.getExit().getAmount());
+    }
+
+    @Test
+    public void constructorBorrowsBarSeriesAndAccessorReturnsIt() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30).build();
+        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+
+        assertSame(series, localManager.getBarSeries());
+    }
+
+    @Test
+    public void constructorAcceptsEmptySeriesAndPreservesEmptyState() {
+        BarSeries emptySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        assertTrue(emptySeries.isEmpty());
+
+        BarSeriesManager emptyManager = new BarSeriesManager(emptySeries, new TradeOnCurrentCloseModel());
+
+        assertTrue(emptyManager.getBarSeries().isEmpty());
+    }
+
+    @Test
+    public void runWithPositionSizerAndCustomExecutionModelFallsBackToNextOpenEstimate() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        TradeExecutionModel model = new TradeExecutionModel() {
+
+            @Override
+            public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
+                tradingRecord.operate(index + 1, barSeries.getBar(index + 1).getOpenPrice(), amount);
+            }
+        };
+        BarSeriesManager localManager = new BarSeriesManager(series, model);
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+
+        int[] contextEntryIndex = new int[] { -1 };
+        Num[] contextEntryPrice = new Num[] { null };
+        PositionSizer positionSizer = context -> {
+            contextEntryIndex[0] = context.entryIndex();
+            contextEntryPrice[0] = context.entryPrice();
+            return numFactory.one();
+        };
+
+        localManager.run(oneTradeStrategy, TradeType.BUY, positionSizer);
+
+        assertEquals(1, contextEntryIndex[0]);
+        assertEquals(series.getBar(1).getOpenPrice(), contextEntryPrice[0]);
+    }
+
+    @Test
+    public void runWithPositionSizerUsesCustomExecutionModelEstimate() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(10d).closePrice(11d).volume(10d).add();
+        series.barBuilder().openPrice(20d).closePrice(21d).volume(10d).add();
+        series.barBuilder().openPrice(30d).closePrice(31d).volume(10d).add();
+        TradeExecutionModel model = new TradeExecutionModel() {
+            @Override
+            public TradeExecutionModel.ExecutionTarget estimateEntryTarget(int signalIndex, BarSeries barSeries,
+                    TradeType tradeType) {
+                return new TradeExecutionModel.ExecutionTarget(signalIndex,
+                        barSeries.getBar(signalIndex).getClosePrice().plus(numFactory.one()));
+            }
+
+            @Override
+            public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
+                // no-op
+            }
+        };
+        BarSeriesManager localManager = new BarSeriesManager(series, model);
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(2));
+
+        int[] contextEntryIndex = new int[] { -1 };
+        Num[] contextEntryPrice = new Num[] { null };
+        PositionSizer positionSizer = context -> {
+            contextEntryIndex[0] = context.entryIndex();
+            contextEntryPrice[0] = context.entryPrice();
+            return numFactory.one();
+        };
+
+        localManager.run(oneTradeStrategy, TradeType.BUY, positionSizer);
+
+        assertEquals(1, contextEntryIndex[0]);
+        assertEquals(series.getBar(1).getClosePrice().plus(numFactory.one()), contextEntryPrice[0]);
+    }
+
+    @Test
+    public void runWithPositionSizerUsesCustomExecutionModelEstimateWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY, this::runWithPositionSizerUsesCustomExecutionModelEstimate);
+    }
+
+    @Test
+    public void runWithPositionSizerUnresolvableTargetFallsBackSafely() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d).build();
+        TradeExecutionModel model = new TradeExecutionModel() {
+            @Override
+            public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
+                // no-op
+            }
+        };
+        BarSeriesManager localManager = new BarSeriesManager(series, model);
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(2));
+
+        int[] contextSignalIndex = new int[] { -1 };
+        int[] contextEntryIndex = new int[] { -1 };
+        PositionSizer positionSizer = context -> {
+            contextSignalIndex[0] = context.signalIndex();
+            contextEntryIndex[0] = context.entryIndex();
+            return numFactory.one();
+        };
+
+        localManager.run(oneTradeStrategy, TradeType.BUY, positionSizer);
+
+        assertEquals(1, contextSignalIndex[0]);
+        assertEquals(1, contextEntryIndex[0]);
+    }
+
+    @Test
+    public void runWithPositionSizerContextEstimatesStopLimitEntry() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(10d).highPrice(10d).lowPrice(10d).closePrice(10d).volume(10d).add();
+        series.barBuilder().openPrice(15d).highPrice(15d).lowPrice(10d).closePrice(15d).volume(10d).add();
+        series.barBuilder().openPrice(20d).highPrice(20d).lowPrice(20d).closePrice(20d).volume(10d).add();
+        StopLimitExecutionModel executionModel = new StopLimitExecutionModel(numFactory.zero(), numOf(0.2),
+                numFactory.one(), 1, TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+        BarSeriesManager localManager = new BarSeriesManager(series, new ZeroCostModel(), new ZeroCostModel(),
+                executionModel);
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(0), new FixedRule());
+        PositionSizer positionSizer = context -> {
+            assertEquals(0, context.signalIndex());
+            assertEquals(1, context.entryIndex());
+            assertEquals(numOf(12), context.entryPrice());
+            return numFactory.one();
+        };
+
+        localManager.run(oneTradeStrategy, TradeType.BUY, positionSizer);
+    }
+
+    @Test
+    public void runWithPositionSizerContextEstimatesStopLimitEntryWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY, this::runWithPositionSizerContextEstimatesStopLimitEntry);
+    }
+
+    @Test
+    public void positionSizerFixedFactoriesUseDefaultAndCustomAmounts() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30).build();
+        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+
+        TradingRecord unitRecord = localManager.run(oneTradeStrategy, TradeType.BUY, PositionSizer.fixed());
+        TradingRecord numberRecord = localManager.run(oneTradeStrategy, TradeType.BUY, PositionSizer.fixed(3));
+        TradingRecord numRecord = localManager.run(oneTradeStrategy, TradeType.BUY,
+                PositionSizer.fixed(numFactory.two()));
+
+        assertEquals(numFactory.one(), unitRecord.getPositions().getFirst().getEntry().getAmount());
+        assertEquals(numFactory.numOf(3), numberRecord.getPositions().getFirst().getEntry().getAmount());
+        assertEquals(numFactory.two(), numRecord.getPositions().getFirst().getEntry().getAmount());
+    }
+
+    @Test
+    public void positionSizerFixedFactoriesRejectInvalidInputs() {
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.fixed(0));
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.fixed(-1));
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.fixed(Double.NaN));
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.fixed(Double.POSITIVE_INFINITY));
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.fixed(numFactory.zero()));
+        assertThrows(IllegalArgumentException.class,
+                () -> PositionSizer.fixed(DoubleNumFactory.getInstance().numOf(Double.POSITIVE_INFINITY)));
+    }
+
+    @Test
+    public void positionSizerBalanceUsesMaxAffordableAmountWithEntryFees() {
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+
+        assertEntryAmount(10.0, managerWithCosts(10, new ZeroCostModel()).run(oneTradeStrategy, TradeType.BUY,
+                PositionSizer.balance(100)));
+        assertEntryAmount(9.5, managerWithCosts(10, new FixedTransactionCostModel(5)).run(oneTradeStrategy,
+                TradeType.BUY, PositionSizer.balance(100)));
+        assertEntryAmount(100.0 / 11.0, managerWithCosts(10, new LinearTransactionCostModel(0.1)).run(oneTradeStrategy,
+                TradeType.BUY, PositionSizer.balance(100)));
+    }
+
+    @Test
+    public void positionSizerBalanceUsesMaxAffordableAmountWithEntryFeesWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY, this::positionSizerBalanceUsesMaxAffordableAmountWithEntryFees);
+    }
+
+    @Test
+    public void positionSizerBalanceUsesRealizedBalance() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 40, 20).build();
+        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        Strategy twoTradeStrategy = new BaseStrategy(new FixedRule(0, 2), new FixedRule(1, 3));
+
+        TradingRecord tradingRecord = localManager.run(twoTradeStrategy, TradeType.BUY, PositionSizer.balance(100));
+        List<Position> positions = tradingRecord.getPositions();
+
+        assertEquals(numFactory.numOf(10), positions.get(0).getEntry().getAmount());
+        assertEquals(numFactory.numOf(5), positions.get(1).getEntry().getAmount());
+    }
+
+    @Test
+    public void positionSizerBalanceUsesRealizedBalanceWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY, this::positionSizerBalanceUsesRealizedBalance);
+    }
+
+    @Test
+    public void positionSizerBalanceRejectsInvalidInputs() {
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.balance(0));
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.balance(-1));
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.balance(Double.NaN));
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.balance(Double.POSITIVE_INFINITY));
+        assertThrows(NullPointerException.class, () -> PositionSizer.balance(100, null));
+    }
+
+    @Test
+    public void positionSizerBalanceSupportsCustomRule() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20).build();
+        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        PositionSizer positionSizer = PositionSizer.balance(100,
+                (context, balance) -> context.maxAffordableAmount(balance.dividedBy(numFactory.two())));
+
+        TradingRecord tradingRecord = localManager.run(oneTradeStrategy, TradeType.BUY, positionSizer);
+
+        assertEquals(numFactory.numOf(5), tradingRecord.getPositions().getFirst().getEntry().getAmount());
+    }
+
+    @Test
+    public void positionSizerKellyUsesCoefficient() {
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+
+        assertEntryAmount(40.0, managerWithCosts(10, new ZeroCostModel()).run(oneTradeStrategy, TradeType.BUY,
+                PositionSizer.kelly(1000, 0.6, 2)));
+        assertEntryAmount(20.0, managerWithCosts(10, new ZeroCostModel()).run(oneTradeStrategy, TradeType.BUY,
+                PositionSizer.kelly(1000, 0.6, 2, 0.5)));
+        assertEntryAmount(48.0, managerWithCosts(10, new ZeroCostModel()).run(oneTradeStrategy, TradeType.BUY,
+                PositionSizer.kelly(1000, 0.6, 2, 1.2)));
+    }
+
+    @Test
+    public void positionSizerKellyUsesCoefficientWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY, this::positionSizerKellyUsesCoefficient);
+    }
+
+    @Test
+    public void positionSizerKellyRejectsInvalidInputs() {
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.kelly(1000, 0, 2));
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.kelly(1000, 1, 2));
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.kelly(1000, 0.6, 0));
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.kelly(1000, 0.6, 2, 0));
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.kelly(1000, Double.NaN, 2));
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.kelly(1000, 0.4, 1));
     }
 
     @Test
@@ -323,6 +792,28 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
+    public void defaultRunIteratesTheWindowItsRecordWasCreatedFor() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d, 4d).build();
+        Bar appended = series.barBuilder().timePeriod(Duration.ofDays(1)).closePrice(5d).build();
+        // A factory whose record creation coincides with a feed appending a bar.
+        BarSeriesManager.TradingRecordFactory appendingFactory = (tradeType, startIndex, endIndex, txCost,
+                holdCost) -> {
+            series.addBar(appended);
+            return new BaseTradingRecord(tradeType, ExecutionMatchPolicy.FIFO, txCost, holdCost, startIndex, endIndex);
+        };
+        BarSeriesManager localManager = new BarSeriesManager(series, new ZeroCostModel(), new ZeroCostModel(),
+                new TradeOnCurrentCloseModel(), appendingFactory);
+        Strategy entersOnAppendedBar = new BaseStrategy(new FixedRule(4), new FixedRule(Integer.MAX_VALUE));
+
+        TradingRecord record = localManager.run(entersOnAppendedBar, TradeType.BUY, numOf(1), 0, 99);
+
+        // The record ends at bar 3, so the run must not trade the bar appended after
+        // it.
+        assertEquals(Integer.valueOf(3), record.getEndIndex());
+        assertTrue(record.getTrades().isEmpty());
+    }
+
+    @Test
     public void runWalkForwardReturnsAllConfiguredSplits() {
         WalkForwardConfig config = new WalkForwardConfig(3, 2, 2, 0, 0, 2, 1, List.of(), 1, List.of(1), 7L);
         StrategyWalkForwardExecutionResult result = manager.runWalkForward(strategy, config);
@@ -355,11 +846,274 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertEquals(HUNDRED, entry.getAmount());
     }
 
+    @Test
+    public void runWalkForwardWithPositionSizerUsesDynamicAmount() {
+        WalkForwardConfig config = new WalkForwardConfig(3, 2, 2, 0, 0, 2, 1, List.of(), 1, List.of(1), 7L);
+        List<WalkForwardSplit> splits = new AnchoredExpandingWalkForwardSplitter().split(seriesForRun, config);
+        StrategyWalkForwardExecutionResult result = manager.runWalkForward(strategy, TradeType.BUY,
+                context -> numFactory.numOf(context.signalIndex()), config);
+
+        assertEquals(splits.size(), result.folds().size());
+        for (StrategyWalkForwardExecutionResult.FoldResult fold : result.folds()) {
+            if (!fold.tradingRecord().getPositions().isEmpty()) {
+                Position firstPosition = fold.tradingRecord().getPositions().getFirst();
+                assertEquals(numFactory.numOf(firstPosition.getEntry().getIndex()),
+                        firstPosition.getEntry().getAmount());
+                assertEquals(firstPosition.getEntry().getAmount(), firstPosition.getExit().getAmount());
+            }
+        }
+    }
+
+    @Test
+    public void runThroughReadOnlyIndicatorSeriesKeepsStartBoundsWhileFeedWrites() {
+        BarSeries initialSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 11d, 12d).build();
+        ConcurrentBarSeries concurrentSeries = ConstrainedSeriesSupport.seriesWithReadWriteLock(initialSeries,
+                new ReentrantReadWriteLock());
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(concurrentSeries);
+        Bar appendedBar = concurrentSeries.barBuilder().timePeriod(Duration.ofMinutes(1)).closePrice(13d).build();
+        AtomicBoolean appended = new AtomicBoolean();
+        Rule appendFromFeed = (index, tradingRecord) -> {
+            if (appended.compareAndSet(false, true)) {
+                Thread feed = new Thread(() -> concurrentSeries.addBar(appendedBar), "bar-series-manager-feed");
+                feed.setDaemon(true);
+                feed.start();
+                try {
+                    feed.join(5_000);
+                } catch (InterruptedException interruption) {
+                    Thread.currentThread().interrupt();
+                    throw new AssertionError(interruption);
+                }
+                assertTrue("the feed writer was blocked by the run", !feed.isAlive());
+            }
+            return false;
+        };
+        BarSeriesManager localManager = new BarSeriesManager(closePrice.getBarSeries(), new TradeOnCurrentCloseModel());
+
+        TradingRecord tradingRecord = localManager.run(new BaseStrategy(appendFromFeed, new FixedRule()));
+
+        assertTrue(appended.get());
+        assertEquals(0, tradingRecord.getStartIndex().intValue());
+        assertEquals(2, tradingRecord.getEndIndex().intValue());
+        assertEquals(1, concurrentSeries.getBeginIndex());
+        assertEquals(3, concurrentSeries.getEndIndex());
+    }
+
+    @Test
+    public void runObservesSeriesStateAtExecutionTime() {
+        // The manager borrows the caller's series: a bar appended after the
+        // manager and strategy are built must be visible to signal evaluation
+        // and fill pricing alike (no stale copy of the strategy graph).
+        BarSeries liveSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        Strategy lateRule = new BaseStrategy(new FixedRule(3), new FixedRule(3));
+        BarSeriesManager borrowedManager = new BarSeriesManager(liveSeries, new TradeOnCurrentCloseModel());
+
+        liveSeries.barBuilder().closePrice(40).add();
+
+        assertSame(liveSeries, borrowedManager.getBarSeries());
+        TradingRecord tradingRecord = borrowedManager.run(lateRule);
+
+        Position position = tradingRecord.getCurrentPosition();
+        assertTrue(position.isOpened());
+        assertEquals(3, position.getEntry().getIndex());
+        assertEquals(liveSeries.getBar(3).getClosePrice(), position.getEntry().getPricePerAsset());
+    }
+
+    @Test
+    public void runWalkForwardWithPositionSizerUsesDynamicAmountWithDecimalNum() {
+        runWithNumFactory(DECIMAL_NUM_FACTORY, this::runWalkForwardWithPositionSizerUsesDynamicAmount);
+    }
+
     private Trade buyAt(int index, Num price, Num amount) {
         return Trade.buyAt(index, price, amount);
     }
 
     private Trade sellAt(int index, Num price, Num amount) {
         return Trade.sellAt(index, price, amount);
+    }
+
+    private BarSeriesManager managerWithCosts(Number entryPrice, CostModel transactionCostModel) {
+        double firstPrice = entryPrice.doubleValue();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(firstPrice, numFactory.numOf(entryPrice).plus(numFactory.one()).doubleValue())
+                .build();
+        return new BarSeriesManager(series, transactionCostModel, new ZeroCostModel(), new TradeOnCurrentCloseModel());
+    }
+
+    private void assertEntryAmount(double expected, TradingRecord tradingRecord) {
+        double actual = tradingRecord.getPositions().getFirst().getEntry().getAmount().doubleValue();
+        assertEquals(expected, actual, 1e-9);
+    }
+
+    @Test
+    public void runDoesNotHoldSeriesLeaseWhileEvaluatingIndicators() throws Exception {
+        ReentrantReadWriteLock seriesLock = new ReentrantReadWriteLock();
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source, seriesLock);
+        CountDownLatch readerHoldsCache = new CountDownLatch(1);
+        CountDownLatch releaseReader = new CountDownLatch(1);
+        CountDownLatch strategyRunning = new CountDownLatch(1);
+        CountDownLatch releaseStrategy = new CountDownLatch(1);
+        ConstrainedSeriesSupport.PausingCloseIndicator shared = new ConstrainedSeriesSupport.PausingCloseIndicator(
+                series, readerHoldsCache, releaseReader);
+        Rule readsSharedIndicator = (index, tradingRecord) -> {
+            if (index == 0) {
+                strategyRunning.countDown();
+                ConstrainedSeriesSupport.awaitLatch(releaseStrategy);
+                shared.getValue(2);
+            }
+            return false;
+        };
+        Strategy strategy = new BaseStrategy(readsSharedIndicator, readsSharedIndicator);
+        Bar appended = series.barBuilder().timePeriod(Duration.ofDays(1)).closePrice(13).build();
+        AtomicBoolean writerDone = new AtomicBoolean();
+        ExecutorService threads = Executors.newFixedThreadPool(3, runnable -> {
+            Thread thread = new Thread(runnable, "manager-lease-order");
+            thread.setDaemon(true);
+            return thread;
+        });
+        try {
+            // A reader computes the shared indicator and holds its cache lock.
+            Future<Num> reader = threads.submit(() -> shared.getValue(2));
+            ConstrainedSeriesSupport.awaitLatch(readerHoldsCache);
+            Future<TradingRecord> run = threads.submit(() -> new BarSeriesManager(series).run(strategy));
+            ConstrainedSeriesSupport.awaitLatch(strategyRunning);
+            // A feed writer arrives while the strategy is mid-run.
+            Future<?> writer = threads.submit(() -> {
+                series.addBar(appended);
+                writerDone.set(true);
+            });
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (!writerDone.get() && !seriesLock.hasQueuedThreads() && System.nanoTime() < deadline) {
+                Thread.onSpinWait();
+            }
+            releaseStrategy.countDown();
+            releaseReader.countDown();
+
+            writer.get(5, TimeUnit.SECONDS);
+            assertEquals(numFactory.numOf(12), reader.get(5, TimeUnit.SECONDS));
+            assertTrue(run.get(5, TimeUnit.SECONDS).getPositions().isEmpty());
+        } finally {
+            releaseStrategy.countDown();
+            releaseReader.countDown();
+            threads.shutdownNow();
+        }
+    }
+
+    @Test
+    public void runReadsItsBoundsFromOneSnapshot() {
+        AtomicBoolean armed = new AtomicBoolean();
+        AtomicInteger outermostLeases = new AtomicInteger();
+        AtomicReference<Runnable> writer = new AtomicReference<>();
+        // Lets a feed append, evicting the first bar, before the fourth outermost
+        // read lease of the run: between separately read begin and end bounds.
+        ReentrantReadWriteLock lock = new ReentrantReadWriteLock() {
+            private final ReadLock interleavingReadLock = new ReadLock(this) {
+                @Override
+                public void lock() {
+                    if (armed.get() && getReadHoldCount() == 0 && outermostLeases.incrementAndGet() == 4) {
+                        armed.set(false);
+                        writer.get().run();
+                    }
+                    super.lock();
+                }
+            };
+
+            @Override
+            public ReadLock readLock() {
+                return interleavingReadLock;
+            }
+        };
+        BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14).build();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source, lock);
+        Bar appended = series.barBuilder().timePeriod(Duration.ofDays(1)).closePrice(15).build();
+        writer.set(() -> series.addBar(appended));
+        List<Integer> evaluated = new ArrayList<>();
+        Rule recordIndex = (index, tradingRecord) -> {
+            evaluated.add(index);
+            return false;
+        };
+        Strategy strategy = new BaseStrategy(recordIndex, BooleanRule.FALSE);
+
+        armed.set(true);
+        new BarSeriesManager(series).run(strategy, 0, Integer.MAX_VALUE);
+        armed.set(false);
+
+        // The run evaluates exactly the window whose bounds it read together, the
+        // same one its trading record was created with, not a window torn by the
+        // eviction between two separate reads.
+        assertEquals(List.of(0, 1, 2, 3, 4), evaluated);
+    }
+
+    @Test
+    public void logicalWindowsMatchFreshSeriesAcrossOffsetsAndRetentionShapes() {
+        int[][] windows = { { 2, 4, 0 }, { 4, 6, 4 }, { 4, 6, 2 } };
+        double[][] rawCloses = { { 10, 11, 12, 13, 14, 15 }, { 12, 13, 14 }, { 10, 11, 12, 13, 14, 15 } };
+        String[] scenarios = { "constrained", "pruned", "constrained and pruned" };
+        BarSeries freshSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(12, 13, 14).build();
+        TradingRecord freshRecord = new BarSeriesManager(freshSeries, new TradeOnCurrentCloseModel())
+                .run(new BaseStrategy(new FixedRule(0), new FixedRule(2)));
+        Position freshPosition = freshRecord.getPositions().get(0);
+
+        for (int scenario = 0; scenario < windows.length; scenario++) {
+            int begin = windows[scenario][0];
+            int end = windows[scenario][1];
+            int removed = windows[scenario][2];
+            BarSeries window = ConstrainedSeriesSupport.offsetSeries(scenarios[scenario], numFactory, begin, end,
+                    removed, rawCloses[scenario]);
+            Strategy boundarySignals = new BaseStrategy(new FixedRule(begin - 1, begin), new FixedRule(end, end + 1));
+
+            List<Position> positions = new BarSeriesManager(window, new TradeOnCurrentCloseModel()).run(boundarySignals)
+                    .getPositions();
+
+            assertEquals(scenarios[scenario], 1, positions.size());
+            Position actual = positions.get(0);
+            assertEquals(scenarios[scenario], begin, actual.getEntry().getIndex());
+            assertEquals(scenarios[scenario], end, actual.getExit().getIndex());
+            assertEquals(scenarios[scenario], freshPosition.getEntry().getPricePerAsset(),
+                    actual.getEntry().getPricePerAsset());
+            assertEquals(scenarios[scenario], freshPosition.getExit().getPricePerAsset(),
+                    actual.getExit().getPricePerAsset());
+        }
+    }
+
+    @Test
+    public void openEntryAtLogicalEndRemainsOpenForEveryRetentionShape() {
+        int[][] windows = { { 2, 4, 0 }, { 4, 6, 4 }, { 4, 6, 2 } };
+        double[][] rawCloses = { { 10, 11, 12, 13, 14, 15 }, { 12, 13, 14 }, { 10, 11, 12, 13, 14, 15 } };
+        String[] scenarios = { "constrained", "pruned", "constrained and pruned" };
+
+        for (int scenario = 0; scenario < windows.length; scenario++) {
+            int begin = windows[scenario][0];
+            int end = windows[scenario][1];
+            BarSeries window = ConstrainedSeriesSupport.offsetSeries(scenarios[scenario], numFactory, begin, end,
+                    windows[scenario][2], rawCloses[scenario]);
+            Strategy finalBarEntry = new BaseStrategy(new FixedRule(end), BooleanRule.FALSE);
+
+            TradingRecord record = new BarSeriesManager(window, new TradeOnCurrentCloseModel()).run(finalBarEntry);
+
+            assertEquals(scenarios[scenario], end, record.getCurrentPosition().getEntry().getIndex());
+            assertTrue(scenarios[scenario], record.getCurrentPosition().isOpened());
+        }
+    }
+
+    @Test
+    public void closesAnExistingPositionOnASingleBarLogicalWindow() {
+        int[][] windows = { { 2, 2, 0 }, { 4, 4, 4 }, { 4, 4, 2 } };
+        double[][] rawCloses = { { 10, 11, 12 }, { 12 }, { 10, 11, 12, 13 } };
+        String[] scenarios = { "constrained", "pruned", "constrained and pruned" };
+
+        for (int scenario = 0; scenario < windows.length; scenario++) {
+            int index = windows[scenario][0];
+            BarSeries window = ConstrainedSeriesSupport.offsetSeries(scenarios[scenario], numFactory, index, index,
+                    windows[scenario][2], rawCloses[scenario]);
+            BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(index, window));
+            Strategy exitOnOnlyBar = new BaseStrategy(BooleanRule.FALSE, new FixedRule(index));
+
+            new BarSeriesManager(window, new TradeOnCurrentCloseModel()).run(exitOnOnlyBar, record, numOf(1), index,
+                    index);
+
+            assertTrue(scenarios[scenario], record.isClosed());
+            assertEquals(scenarios[scenario], index, record.getPositions().get(0).getExit().getIndex());
+        }
     }
 }

@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.junit.Assume;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.serialization.ComponentDescriptor;
@@ -30,11 +29,8 @@ import org.ta4j.core.serialization.RuleSerializationException;
  * ensure that all properties, parameters, and nested components are preserved
  * during the round-trip process.
  * <p>
- * If serialization or deserialization is not supported for a particular rule
- * type, the test will be skipped using JUnit's {@link Assume} mechanism rather
- * than failing. This occurs when a {@link RuleSerializationException} is
- * thrown, indicating that serialization support has not yet been implemented
- * for the rule.
+ * Serialization or deserialization failures are treated as test failures so
+ * round-trip coverage cannot silently regress into skipped tests.
  *
  * @since 0.19
  */
@@ -55,16 +51,10 @@ final class RuleSerializationRoundTripTestSupport {
      * <li>Compares the original and restored descriptors for equality</li>
      * </ol>
      * <p>
-     * If serialization or deserialization is not supported for the rule type, the
-     * test will be skipped (using {@link Assume#assumeNoException}) rather than
-     * failing. This occurs when a {@link RuleSerializationException} is thrown,
-     * indicating that serialization support has not yet been implemented for the
-     * rule.
      *
      * @param series the bar series to use for rule deserialization
      * @param rule   the rule to test for round-trip serialization
-     * @return the restored rule after deserialization, or the original rule if
-     *         serialization/deserialization is not supported
+     * @return the restored rule after deserialization
      */
     static Rule assertRuleRoundTrips(BarSeries series, Rule rule) {
         return assertRuleRoundTrips(series, rule, RoundTripFlavor.DESCRIPTOR);
@@ -92,8 +82,7 @@ final class RuleSerializationRoundTripTestSupport {
         try {
             descriptor = RuleSerialization.describe(rule);
         } catch (RuntimeException ex) {
-            Assume.assumeNoException("Rule serialization not supported for " + rule.getClass().getSimpleName(), ex);
-            return rule;
+            throw new AssertionError("Rule serialization must be supported for " + rule.getClass().getSimpleName(), ex);
         }
 
         ComponentDescriptor descriptorForDeserialization = descriptor;
@@ -116,8 +105,8 @@ final class RuleSerializationRoundTripTestSupport {
         try {
             restored = RuleSerialization.fromDescriptor(series, descriptorForDeserialization);
         } catch (RuntimeException ex) {
-            Assume.assumeNoException("Rule deserialization not supported for " + rule.getClass().getSimpleName(), ex);
-            return rule;
+            throw new AssertionError("Rule deserialization must be supported for " + rule.getClass().getSimpleName(),
+                    ex);
         }
 
         ComponentDescriptor restoredDescriptor = RuleSerialization.describe(restored);

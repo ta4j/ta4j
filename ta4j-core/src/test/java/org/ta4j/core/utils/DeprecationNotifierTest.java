@@ -18,18 +18,15 @@ import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.criteria.MaximumDrawdownCriterion;
-import org.ta4j.core.criteria.ReturnOverMaxDrawdownCriterion;
-import org.ta4j.core.indicators.MACDVIndicator;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
-@SuppressWarnings({ "deprecation", "removal" })
 public class DeprecationNotifierTest {
 
+    private static final String LOGGER_NAME = DeprecationNotifier.class.getName();
+
     private LoggerContext loggerContext;
+    private Configuration loggerConfiguration;
     private LoggerConfig loggerConfig;
-    private Level originalLevel;
+    private LoggerConfig previousLoggerConfig;
     private Appender appender;
     private StringWriter logOutput;
 
@@ -38,9 +35,8 @@ public class DeprecationNotifierTest {
         DeprecationNotifier.resetForTests();
 
         loggerContext = (LoggerContext) LogManager.getContext(false);
-        Configuration config = loggerContext.getConfiguration();
-        loggerConfig = config.getLoggerConfig(DeprecationNotifier.class.getName());
-        originalLevel = loggerConfig.getLevel();
+        loggerConfiguration = loggerContext.getConfiguration();
+        previousLoggerConfig = loggerConfiguration.getLoggers().get(LOGGER_NAME);
 
         logOutput = new StringWriter();
         PatternLayout layout = PatternLayout.newBuilder().withPattern("%msg%n").build();
@@ -51,19 +47,22 @@ public class DeprecationNotifierTest {
                 .build();
         appender.start();
 
+        loggerConfig = new LoggerConfig(LOGGER_NAME, Level.WARN, false);
         loggerConfig.addAppender(appender, Level.WARN, null);
-        loggerConfig.setLevel(Level.WARN);
+        loggerConfiguration.addLogger(LOGGER_NAME, loggerConfig);
         loggerContext.updateLoggers();
     }
 
     @After
     public void tearDown() {
-        if (loggerConfig != null && appender != null) {
-            loggerConfig.removeAppender(appender.getName());
-            appender.stop();
+        if (loggerConfiguration != null) {
+            loggerConfiguration.removeLogger(LOGGER_NAME);
+            if (previousLoggerConfig != null) {
+                loggerConfiguration.addLogger(LOGGER_NAME, previousLoggerConfig);
+            }
         }
-        if (loggerConfig != null && originalLevel != null) {
-            loggerConfig.setLevel(originalLevel);
+        if (appender != null) {
+            appender.stop();
         }
         if (loggerContext != null) {
             loggerContext.updateLoggers();
@@ -73,75 +72,42 @@ public class DeprecationNotifierTest {
 
     @Test
     public void warnOnceLogsSingleMessagePerDeprecatedType() {
-        DeprecationNotifier.warnOnce(MACDVIndicator.class, "org.ta4j.core.indicators.macd.MACDVIndicator", "0.24.0");
-        DeprecationNotifier.warnOnce(MACDVIndicator.class, "org.ta4j.core.indicators.macd.MACDVIndicator", "0.24.0");
+        Class<?> deprecatedType = DeprecatedSinceFixture.class;
+
+        DeprecationNotifier.warnOnce(deprecatedType, "replacement.Type", "0.24.0");
+        DeprecationNotifier.warnOnce(deprecatedType, "replacement.Type", "0.24.0");
 
         String logContent = logOutput.toString();
-        assertThat(logContent).contains(
-                "org.ta4j.core.indicators.MACDVIndicator is deprecated since 0.22.3 and is scheduled for removal in 0.24.0. Use org.ta4j.core.indicators.macd.MACDVIndicator instead.");
-        assertThat(countOccurrences(logContent, "org.ta4j.core.indicators.MACDVIndicator is deprecated since"))
-                .isEqualTo(1);
-    }
-
-    @Test
-    public void macdvShimConstructorEmitsDeprecationWarning() {
-        BarSeries series = new MockBarSeriesBuilder()
-                .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
-                        27, 28)
-                .build();
-
-        new MACDVIndicator(series);
-        new MACDVIndicator(series, 12, 26, 9);
-
-        String logContent = logOutput.toString();
-        assertThat(logContent).contains("scheduled for removal in 0.24.0");
-        assertThat(logContent).contains("org.ta4j.core.indicators.macd.MACDVIndicator");
-        assertThat(countOccurrences(logContent, "org.ta4j.core.indicators.MACDVIndicator is deprecated since"))
-                .isEqualTo(1);
-    }
-
-    @Test
-    public void movedCriteriaShimsEmitDeprecationWarnings() {
-        new MaximumDrawdownCriterion();
-        new MaximumDrawdownCriterion();
-        new ReturnOverMaxDrawdownCriterion();
-        new ReturnOverMaxDrawdownCriterion();
-
-        String logContent = logOutput.toString();
-        assertThat(logContent).contains(
-                "org.ta4j.core.criteria.MaximumDrawdownCriterion is deprecated since 0.19 and is scheduled for removal in 0.24.0.");
-        assertThat(logContent).contains("Use org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion instead.");
-        assertThat(logContent).contains(
-                "org.ta4j.core.criteria.ReturnOverMaxDrawdownCriterion is deprecated since 0.19 and is scheduled for removal in 0.24.0.");
-        assertThat(logContent).contains("Use org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion instead.");
-
-        assertThat(countOccurrences(logContent, "org.ta4j.core.criteria.MaximumDrawdownCriterion is deprecated"))
-                .isEqualTo(1);
-        assertThat(countOccurrences(logContent, "org.ta4j.core.criteria.ReturnOverMaxDrawdownCriterion is deprecated"))
-                .isEqualTo(1);
+        assertThat(logContent).contains(deprecatedType.getName()
+                + " is deprecated since 1.2.3 and is scheduled for removal in 0.24.0. Use replacement.Type instead.");
+        assertThat(countOccurrences(logContent, deprecatedType.getName() + " is deprecated since")).isEqualTo(1);
     }
 
     @Test
     public void warnOnceSupportsUnsetRemovalVersion() {
-        DeprecationNotifier.warnOnce(MACDVIndicator.class, "org.ta4j.core.indicators.macd.MACDVIndicator", null);
+        Class<?> deprecatedType = DeprecatedWithoutSinceFixture.class;
+
+        DeprecationNotifier.warnOnce(deprecatedType, "replacement.Type", null);
 
         String logContent = logOutput.toString();
-        assertThat(logContent).contains(
-                "org.ta4j.core.indicators.MACDVIndicator is deprecated and will be removed at some point in the future.");
+        assertThat(logContent)
+                .contains(deprecatedType.getName() + " is deprecated and will be removed at some point in the future.");
         assertThat(logContent).contains("Consider yourself fairly warned!");
-        assertThat(logContent).contains("Use org.ta4j.core.indicators.macd.MACDVIndicator instead.");
+        assertThat(logContent).contains("Use replacement.Type instead.");
         assertThat(logContent).doesNotContain("scheduled for removal in");
     }
 
     @Test
     public void warnOnceSupportsBlankRemovalVersion() {
-        DeprecationNotifier.warnOnce(MACDVIndicator.class, "org.ta4j.core.indicators.macd.MACDVIndicator", "   ");
+        Class<?> deprecatedType = DeprecatedWithoutSinceFixture.class;
+
+        DeprecationNotifier.warnOnce(deprecatedType, "replacement.Type", "   ");
 
         String logContent = logOutput.toString();
-        assertThat(logContent).contains(
-                "org.ta4j.core.indicators.MACDVIndicator is deprecated and will be removed at some point in the future.");
+        assertThat(logContent)
+                .contains(deprecatedType.getName() + " is deprecated and will be removed at some point in the future.");
         assertThat(logContent).contains("Consider yourself fairly warned!");
-        assertThat(logContent).contains("Use org.ta4j.core.indicators.macd.MACDVIndicator instead.");
+        assertThat(logContent).contains("Use replacement.Type instead.");
         assertThat(logContent).doesNotContain("scheduled for removal in");
     }
 
@@ -153,5 +119,13 @@ public class DeprecationNotifierTest {
             index += pattern.length();
         }
         return count;
+    }
+
+    @Deprecated(since = "1.2.3", forRemoval = true)
+    private static final class DeprecatedSinceFixture {
+    }
+
+    @Deprecated
+    private static final class DeprecatedWithoutSinceFixture {
     }
 }

@@ -5,6 +5,8 @@ Follow `ta4j-core/src/test/java/AGENTS.md` for global policy; this file adds ind
 ## Structure
 
 - Mirror production naming (`MyIndicator` -> `MyIndicatorTest`).
+- Keep serialization/deserialization coverage in the owning indicator or facade test class. Do not add indicator
+  roll-up inventory test classes for new serialization coverage.
 - Prefer extending `AbstractIndicatorTest<BarSeries, Num>` so scenarios run for both `DoubleNum` and `DecimalNum`.
 
 ## Data and assertions

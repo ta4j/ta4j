@@ -8,7 +8,6 @@ import java.util.Objects;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * Correlation coefficient indicator.
@@ -19,10 +18,10 @@ import org.ta4j.core.num.NumFactory;
  */
 public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
 
+    private final Indicator<Num> indicator1;
+    private final Indicator<Num> indicator2;
     private final int barCount;
     private final SampleType sampleType;
-    private final Indicator<Num> firstIndicator;
-    private final Indicator<Num> secondIndicator;
     private final transient VarianceIndicator variance1;
     private final transient VarianceIndicator variance2;
     private final transient CovarianceIndicator covariance;
@@ -49,18 +48,16 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
      */
     public CorrelationCoefficientIndicator(Indicator<Num> indicator1, Indicator<Num> indicator2, int barCount,
             SampleType sampleType) {
-        super(Objects.requireNonNull(indicator1, "indicator1 must not be null"));
-        Indicator<Num> safeIndicator1 = indicator1;
-        Indicator<Num> safeIndicator2 = Objects.requireNonNull(indicator2, "indicator2 must not be null");
+        super(indicator1.getBarSeries(), indicator1, indicator2);
+        this.indicator1 = indicator1;
+        this.indicator2 = indicator2;
         this.barCount = Math.max(barCount, 1);
         this.sampleType = Objects.requireNonNull(sampleType, "sampleType must not be null");
-        this.firstIndicator = safeIndicator1;
-        this.secondIndicator = safeIndicator2;
-        this.variance1 = this.sampleType.isSample() ? VarianceIndicator.ofSample(safeIndicator1, this.barCount)
-                : VarianceIndicator.ofPopulation(safeIndicator1, this.barCount);
-        this.variance2 = this.sampleType.isSample() ? VarianceIndicator.ofSample(safeIndicator2, this.barCount)
-                : VarianceIndicator.ofPopulation(safeIndicator2, this.barCount);
-        this.covariance = new CovarianceIndicator(safeIndicator1, safeIndicator2, this.barCount);
+        this.variance1 = this.sampleType.isSample() ? VarianceIndicator.ofSample(indicator1, this.barCount)
+                : VarianceIndicator.ofPopulation(indicator1, this.barCount);
+        this.variance2 = this.sampleType.isSample() ? VarianceIndicator.ofSample(indicator2, this.barCount)
+                : VarianceIndicator.ofPopulation(indicator2, this.barCount);
+        this.covariance = new CovarianceIndicator(indicator1.getBarSeries(), indicator1, indicator2, this.barCount);
     }
 
     /**
@@ -98,7 +95,7 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
             final int startIndex = Math.max(Math.max(0, getBarSeries().getBeginIndex()), index - barCount + 1);
             final int numberOfObservations = index - startIndex + 1;
             if (numberOfObservations > 1) {
-                final NumFactory numFactory = getBarSeries().numFactory();
+                final var numFactory = getBarSeries().numFactory();
                 cov = cov.multipliedBy(numFactory.numOf(numberOfObservations))
                         .dividedBy(numFactory.numOf(numberOfObservations - 1));
             }

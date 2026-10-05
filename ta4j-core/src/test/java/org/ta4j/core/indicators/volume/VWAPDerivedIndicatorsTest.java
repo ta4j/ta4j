@@ -116,9 +116,9 @@ public class VWAPDerivedIndicatorsTest extends AbstractIndicatorTest<Indicator<N
 
         var invalidSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         invalidSeries.barBuilder().closePrice(10).openPrice(10).highPrice(10).lowPrice(10).volume(1).add();
-        invalidSeries.barBuilder().closePrice(11).openPrice(11).highPrice(11).lowPrice(11).volume(-1).add();
+        invalidSeries.barBuilder().closePrice(11).openPrice(11).highPrice(11).lowPrice(11).volume(1).add();
         var invalidClose = new ClosePriceIndicator(invalidSeries);
-        var invalidVolume = new VolumeIndicator(invalidSeries);
+        var invalidVolume = new MockIndicator(invalidSeries, 0, numOf(1), numOf(-1));
         var invalidVwap = new VWAPIndicator(invalidClose, invalidVolume, 2);
         var invalidStd = new VWAPStandardDeviationIndicator(invalidVwap);
         var invalidUpper = new VWAPBandIndicator(invalidVwap, invalidStd, 1, VWAPBandIndicator.BandType.UPPER);

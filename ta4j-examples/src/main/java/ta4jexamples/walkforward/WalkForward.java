@@ -49,11 +49,7 @@ public class WalkForward {
 
     private static final Logger LOG = LogManager.getLogger(WalkForward.class);
 
-    /**
-     * @param series the bar series
-     * @return a map (key: strategy, value: name) of trading strategies
-     */
-    public static Map<Strategy, String> buildStrategiesMap(BarSeries series) {
+    private static Map<Strategy, String> buildStrategiesMap(BarSeries series) {
         LinkedHashMap<Strategy, String> strategies = new LinkedHashMap<>();
         strategies.put(CCICorrectionStrategy.buildStrategy(series), "CCI Correction");
         strategies.put(GlobalExtremaStrategy.buildStrategy(series), "Global Extrema");

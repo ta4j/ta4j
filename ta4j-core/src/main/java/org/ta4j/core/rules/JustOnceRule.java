@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.rules;
 
+import java.util.Objects;
+
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
 
@@ -27,7 +29,7 @@ public class JustOnceRule extends AbstractRule {
      * @param rule the rule that should be satisfied only the first time
      */
     public JustOnceRule(Rule rule) {
-        this.rule = rule;
+        this.rule = Objects.requireNonNull(rule, "rule cannot be null");
     }
 
     /**

@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.macd;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
@@ -69,7 +70,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @since 0.19
      */
     public MACDVIndicator(BarSeries series) {
-        this(new ClosePriceIndicator(series));
+        this(validateSeriesConfig(series, DEFAULT_SHORT_BAR_COUNT, DEFAULT_LONG_BAR_COUNT, DEFAULT_SIGNAL_BAR_COUNT));
     }
 
     /**
@@ -85,7 +86,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @since 0.19
      */
     public MACDVIndicator(Indicator<Num> priceIndicator) {
-        this(priceIndicator, DEFAULT_SHORT_BAR_COUNT, DEFAULT_LONG_BAR_COUNT, DEFAULT_SIGNAL_BAR_COUNT);
+        this(validateConfig(priceIndicator, DEFAULT_SHORT_BAR_COUNT, DEFAULT_LONG_BAR_COUNT, DEFAULT_SIGNAL_BAR_COUNT));
     }
 
     /**
@@ -97,7 +98,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @since 0.19
      */
     public MACDVIndicator(BarSeries series, int shortBarCount, int longBarCount) {
-        this(new ClosePriceIndicator(series), shortBarCount, longBarCount, DEFAULT_SIGNAL_BAR_COUNT);
+        this(validateSeriesConfig(series, shortBarCount, longBarCount, DEFAULT_SIGNAL_BAR_COUNT));
     }
 
     /**
@@ -110,7 +111,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public MACDVIndicator(BarSeries series, int shortBarCount, int longBarCount, int signalBarCount) {
-        this(new ClosePriceIndicator(series), shortBarCount, longBarCount, signalBarCount);
+        this(validateSeriesConfig(series, shortBarCount, longBarCount, signalBarCount));
     }
 
     /**
@@ -122,7 +123,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @since 0.19
      */
     public MACDVIndicator(Indicator<Num> priceIndicator, int shortBarCount, int longBarCount) {
-        this(priceIndicator, shortBarCount, longBarCount, DEFAULT_SIGNAL_BAR_COUNT);
+        this(validateConfig(priceIndicator, shortBarCount, longBarCount, DEFAULT_SIGNAL_BAR_COUNT));
     }
 
     /**
@@ -135,13 +136,15 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public MACDVIndicator(Indicator<Num> priceIndicator, int shortBarCount, int longBarCount, int signalBarCount) {
-        super(priceIndicator);
-        validateBarCounts(shortBarCount, longBarCount);
-        validateSignalBarCount(signalBarCount);
-        this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator");
-        this.shortBarCount = shortBarCount;
-        this.longBarCount = longBarCount;
-        this.defaultSignalBarCount = signalBarCount;
+        this(validateConfig(priceIndicator, shortBarCount, longBarCount, signalBarCount));
+    }
+
+    private MACDVIndicator(ValidatedConfig config) {
+        super(config.priceIndicator());
+        this.priceIndicator = config.priceIndicator();
+        this.shortBarCount = config.shortBarCount();
+        this.longBarCount = config.longBarCount();
+        this.defaultSignalBarCount = config.signalBarCount();
         ensureSubIndicatorsInitialized();
     }
 
@@ -208,6 +211,23 @@ public class MACDVIndicator extends CachedIndicator<Num> {
         return defaultSignalBarCount;
     }
 
+    private static ValidatedConfig validateConfig(Indicator<Num> priceIndicator, int shortBarCount, int longBarCount,
+            int signalBarCount) {
+        Indicator<Num> validatedPriceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator");
+        validateBarCounts(shortBarCount, longBarCount);
+        validateSignalBarCount(signalBarCount);
+        return new ValidatedConfig(validatedPriceIndicator, shortBarCount, longBarCount, signalBarCount);
+    }
+
+    private static ValidatedConfig validateSeriesConfig(BarSeries series, int shortBarCount, int longBarCount,
+            int signalBarCount) {
+        return validateConfig(new ClosePriceIndicator(series), shortBarCount, longBarCount, signalBarCount);
+    }
+
+    private record ValidatedConfig(Indicator<Num> priceIndicator, int shortBarCount, int longBarCount,
+            int signalBarCount) {
+    }
+
     /**
      * @return short-term volume-weighted EMA indicator
      * @since 0.19
@@ -228,6 +248,8 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @return short-term ATR indicator used by the weighting chain
      * @since 0.22.3
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Deliberate public accessor for a shared sub-indicator. Indicators are "
+            + "effectively immutable after construction; the reference is shared, not mutated.")
     public ATRIndicator getShortAtrIndicator() {
         ensureSubIndicatorsInitialized();
         return shortAtrIndicator;
@@ -237,6 +259,8 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @return long-term ATR indicator used by the weighting chain
      * @since 0.22.3
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "Deliberate public accessor for a shared sub-indicator. Indicators are "
+            + "effectively immutable after construction; the reference is shared, not mutated.")
     public ATRIndicator getLongAtrIndicator() {
         ensureSubIndicatorsInitialized();
         return longAtrIndicator;
@@ -573,6 +597,20 @@ public class MACDVIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
         return macdValue;
+    }
+
+    /**
+     * Treats the lazily created VWMA and ATR sub-indicators as part of this
+     * indicator's source graph. A rebaselining source inside those chains (for
+     * example an ATR whose TR source requires full invalidation) must propagate a
+     * whole-cache discard here even though the sub-indicators are not
+     * constructor-registered dependencies.
+     */
+    @Override
+    protected int minimumCacheableIndexAfterHeadAdvance(int firstRetainedIndex) {
+        ensureSubIndicatorsInitialized();
+        return minimumCacheableIndexAfterHeadAdvance(firstRetainedIndex, shortTermVwema, longTermVwema,
+                shortAtrIndicator, longAtrIndicator);
     }
 
     @Override

@@ -3,9 +3,12 @@
  */
 package org.ta4j.core.num;
 
-public class DoubleNumFactory implements NumFactory {
+import java.io.Serial;
 
-    private static final DoubleNumFactory DOUBLE_NUM_FACTORY = new DoubleNumFactory();
+public final class DoubleNumFactory implements NumFactory {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     private DoubleNumFactory() {
         // hidden
@@ -57,10 +60,17 @@ public class DoubleNumFactory implements NumFactory {
     }
 
     public static DoubleNumFactory getInstance() {
-        return DOUBLE_NUM_FACTORY;
+        return InstanceHolder.INSTANCE.factory;
     }
 
+    @Serial
     private Object readResolve() {
-        return DOUBLE_NUM_FACTORY;
+        return getInstance();
+    }
+
+    private enum InstanceHolder {
+        INSTANCE;
+
+        private final DoubleNumFactory factory = new DoubleNumFactory();
     }
 }

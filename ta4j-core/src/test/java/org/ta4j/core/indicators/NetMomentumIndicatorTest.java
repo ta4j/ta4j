@@ -8,6 +8,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -157,7 +158,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     }
 
     @Test
-    public void testTrendDetection() {
+    public void testBullishPressureDepletesBattery() {
         // Create a trending indicator (consistently above neutral)
         CachedIndicator<Num> trendingUp = new CachedIndicator<>(closePrice) {
             @Override
@@ -173,9 +174,20 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
         NetMomentumIndicator subject = new NetMomentumIndicator(trendingUp, 5, 50);
 
-        // After several bars, balance should be positive
+        // After several bars, above-pivot pressure should deplete rebound battery.
         Num balance = subject.getValue(10);
-        assertTrue(balance.isPositive());
+        assertTrue(balance.isNegative());
+    }
+
+    @Test
+    public void testExtremeDistanceOutweighsRepeatedMildDistance() {
+        CachedIndicator<Num> mildBullish = constantOscillator(70);
+        CachedIndicator<Num> extremeBullish = constantOscillator(90);
+
+        NetMomentumIndicator mild = new NetMomentumIndicator(mildBullish, 1, 50);
+        NetMomentumIndicator extreme = new NetMomentumIndicator(extremeBullish, 1, 50);
+
+        assertTrue(extreme.getValue(5).abs().isGreaterThan(mild.getValue(5).abs().multipliedBy(numOf(2))));
     }
 
     @Test
@@ -268,14 +280,15 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
             }
 
             if (expected == null) {
-                expected = deltaIndicator.getValue(i);
+                expected = contribution(deltaIndicator.getValue(i), 50);
                 continue;
             }
 
-            expected = expected.multipliedBy(decay).plus(deltaIndicator.getValue(i));
+            expected = expected.multipliedBy(decay).plus(contribution(deltaIndicator.getValue(i), 50));
             if (i >= timeFrame) {
                 int expiredIndex = i - timeFrame;
-                Num expired = expiredIndex < unstableBars ? numOf(0) : deltaIndicator.getValue(expiredIndex);
+                Num expired = expiredIndex < unstableBars ? numOf(0)
+                        : contribution(deltaIndicator.getValue(expiredIndex), 50);
                 expected = expected.minus(expired.multipliedBy(decayAtWindow));
             }
         }
@@ -284,7 +297,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     }
 
     @Test
-    public void testDecayFactorZeroBehavesLikeInstantaneousDelta() {
+    public void testDecayFactorZeroBehavesLikeInstantaneousContribution() {
         CachedIndicator<Num> varying = new CachedIndicator<>(closePrice) {
             @Override
             public int getCountOfUnstableBars() {
@@ -307,7 +320,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         }
 
         for (int i = unstableBars; i < series.getBarCount(); i++) {
-            Num expected = deltaIndicator.getValue(i);
+            Num expected = contribution(deltaIndicator.getValue(i), 50);
             assertTrue("Mismatch at index " + i, instant.getValue(i).isEqual(expected));
         }
     }
@@ -384,7 +397,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     }
 
     @Test
-    public void testDecayOneLegacyParityDeterministic() {
+    public void testDecayOneMatchesWindowedBatterySum() {
         double constantOsc = 60.0;
         double pivot = 50.0;
         int timeFrame = 5;
@@ -410,11 +423,10 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
             int start = Math.max(0, i - timeFrame + 1);
             for (int j = start; j <= i; j++) {
                 if (j >= unstableBars) {
-                    expected = expected.plus(deltaIndicator.getValue(j));
+                    expected = expected.plus(contribution(deltaIndicator.getValue(j), pivot));
                 }
             }
-            assertTrue("Decay=1 must match legacy cumulative sum at index " + i,
-                    decayOne.getValue(i).isEqual(expected));
+            assertTrue("Decay=1 must match windowed battery sum at index " + i, decayOne.getValue(i).isEqual(expected));
         }
     }
 
@@ -438,7 +450,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
         KalmanFilterIndicator smoothed = new KalmanFilterIndicator(constantAbove);
         BinaryOperationIndicator deltaIndicator = BinaryOperationIndicator.difference(smoothed, pivot);
-        Num delta = deltaIndicator.getValue(series.getBarCount() - 1);
+        Num delta = contribution(deltaIndicator.getValue(series.getBarCount() - 1), pivot);
 
         Num decayNum = numOf(decay);
         Num decayAtWindow = decayNum.pow(timeFrame);
@@ -490,7 +502,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     }
 
     @Test
-    public void testTimeframeOneSignMatchesOscillatorMinusPivot() {
+    public void testTimeframeOneSignMatchesBatteryOrientation() {
         // Oscillator always above pivot
         CachedIndicator<Num> constantAbove = new CachedIndicator<>(closePrice) {
             @Override
@@ -520,10 +532,10 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         NetMomentumIndicator above = new NetMomentumIndicator(constantAbove, 1, 50);
         NetMomentumIndicator below = new NetMomentumIndicator(constantBelow, 1, 50);
 
-        assertTrue(above.getValue(0).isPositive());
-        assertTrue(below.getValue(0).isNegative());
-        assertTrue(above.getValue(10).isPositive());
-        assertTrue(below.getValue(10).isNegative());
+        assertTrue(above.getValue(0).isNegative());
+        assertTrue(below.getValue(0).isPositive());
+        assertTrue(above.getValue(10).isNegative());
+        assertTrue(below.getValue(10).isPositive());
     }
 
     @Test
@@ -592,7 +604,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
                 continue;
             }
             int window = Math.min(i - unstableBars + 1, timeFrame);
-            Num expected = numOf(window * (51.25 - pivot));
+            Num expected = contribution(numOf(51.25 - pivot), pivot).multipliedBy(numOf(window));
             assertTrue("Unexpected value at index " + i, actual.isEqual(expected));
         }
     }
@@ -676,6 +688,80 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
                 expected.minus(actual).abs().isLessThan(tolerance));
     }
 
+    @Test
+    public void reanchorsAtFirstRetainedBarAfterStochasticInvalidation() {
+        BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int index = 0; index < 8; index++) {
+            movingSeries.barBuilder().closePrice(40).add();
+        }
+        StochasticIndicator stochastic = new StochasticIndicator(new ClosePriceIndicator(movingSeries), 1);
+        NetMomentumIndicator subject = new NetMomentumIndicator(stochastic, 2, 50, 0.5);
+        subject.getValue(7);
+
+        movingSeries.setMaximumBarCount(5);
+
+        assertEquals(3, movingSeries.getBeginIndex());
+        assertTrue(subject.getValue(3).isEqual(numOf(100)));
+    }
+
+    @Test
+    public void retainsAllContributionsUntilTheFirstRetainedWindowExpires() {
+        BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int index = 0; index < 10; index++) {
+            movingSeries.barBuilder().closePrice(60).add();
+        }
+        movingSeries.setMaximumBarCount(5);
+
+        int timeFrame = 3;
+        NetMomentumIndicator subject = new NetMomentumIndicator(new ConstantIndicator<>(movingSeries, numOf(60)),
+                timeFrame, 50);
+        int beginIndex = movingSeries.getBeginIndex();
+
+        assertTrue(beginIndex > timeFrame);
+        assertTrue(subject.getValue(beginIndex).isEqual(numOf(-12)));
+        assertTrue(subject.getValue(beginIndex + 1).isEqual(numOf(-24)));
+        assertTrue(subject.getValue(beginIndex + 2).isEqual(numOf(-36)));
+    }
+
+    @Test
+    public void recomputedBandAnchorsExpirationAtRetainedHead() {
+        BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        movingSeries.setMaximumBarCount(5);
+
+        for (int i = 0; i < 20; i++) {
+            movingSeries.barBuilder().closePrice(55 + i).add();
+        }
+
+        // A constant oscillator keeps every contribution exactly -12
+        // (Kalman-smoothed delta 10, convex-weighted by pivot 50), so the
+        // expected partial-window sum at retained position k is -12 * (k + 1).
+        CachedIndicator<Num> constantOscillator = new CachedIndicator<>(movingSeries) {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            protected Num calculate(int index) {
+                return numOf(60);
+            }
+        };
+        NetMomentumIndicator indicator = new NetMomentumIndicator(constantOscillator, 7, 50, 1.0);
+
+        int beginIndex = movingSeries.getBeginIndex();
+        Num contribution = numOf(-12);
+        for (int i = beginIndex; i <= movingSeries.getEndIndex(); i++) {
+            int windowPosition = i - beginIndex;
+            Num expected = contribution.multipliedBy(numOf(windowPosition + 1));
+            assertClose(indicator.getValue(i), expected, i);
+        }
+    }
+
+    private void assertClose(Num actual, Num expected, int index) {
+        assertTrue("Anchored-expiration mismatch at index " + index + ": expected=" + expected + " actual=" + actual,
+                actual.minus(expected).abs().isLessThan(numOf(1e-9)));
+    }
+
     private CachedIndicator<Num> buildOscillator() {
         return new CachedIndicator<>(closePrice) {
             @Override
@@ -689,5 +775,26 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
                 return numOf(50 + 15 * Math.sin(index * 0.35));
             }
         };
+    }
+
+    private CachedIndicator<Num> constantOscillator(double value) {
+        return new CachedIndicator<>(closePrice) {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            protected Num calculate(int index) {
+                return numOf(value);
+            }
+        };
+    }
+
+    private Num contribution(Num rawDistance, double pivot) {
+        Num convexityScale = numOf(Math.max(Math.abs(pivot), 1.0d));
+        Num distance = rawDistance.abs();
+        Num convexDistance = distance.plus(distance.pow(2).dividedBy(convexityScale));
+        return rawDistance.isNegative() ? convexDistance : convexDistance.negate();
     }
 }

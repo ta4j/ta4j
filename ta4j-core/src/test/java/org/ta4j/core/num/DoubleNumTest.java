@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.num;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -20,11 +21,26 @@ public class DoubleNumTest {
     }
 
     @Test
+    public void testEqualsIsExactAndConsistentWithHashCode() {
+        final DoubleNum num1 = DoubleNum.valueOf(1.0);
+        final DoubleNum num2 = DoubleNum.valueOf(1.0 + 1e-10);
+
+        assertFalse(num1.equals(num2));
+        assertEquals(num1, DoubleNum.valueOf(1.0));
+        assertEquals(num1.hashCode(), DoubleNum.valueOf(1.0).hashCode());
+    }
+
+    @Test
     public void testZeroEquals() {
         final Num num1 = DoubleNum.valueOf(-0.0);
         final Num num2 = DoubleNum.valueOf(0.0);
 
         assertTrue(num1.isEqual(num2));
+    }
+
+    @Test
+    public void compareToTreatsNaNSentinelAsNeutral() {
+        assertEquals(0, DoubleNum.valueOf(1).compareTo(NaN.NaN));
     }
 
     @Test

@@ -7,6 +7,7 @@ import org.ta4j.core.rules.AndRule;
 import org.ta4j.core.rules.NotRule;
 import org.ta4j.core.rules.OrRule;
 import org.ta4j.core.rules.XorRule;
+import org.ta4j.core.named.NamedAssetRegistry;
 import org.ta4j.core.serialization.ComponentDescriptor;
 import org.ta4j.core.serialization.ComponentSerialization;
 import org.ta4j.core.serialization.RuleSerialization;
@@ -26,6 +27,26 @@ import org.ta4j.core.serialization.RuleSerialization;
 public interface Rule {
 
     /**
+     * Controls trace logging behavior for rule evaluation.
+     *
+     * <p>
+     * SLF4J TRACE logging is the off switch. This selector only changes the amount
+     * of detail emitted during an evaluation where the relevant logger is already
+     * TRACE-enabled.
+     *
+     * @since 0.22.7
+     */
+    enum TraceMode {
+        /**
+         * Emit one trace event for the evaluated rule while suppressing child-rule
+         * trace events inside the same scoped evaluation.
+         */
+        SUMMARY,
+        /** Emit trace logs for this rule and all children in an evaluation scope. */
+        VERBOSE
+    }
+
+    /**
      * Serializes this rule to JSON.
      *
      * @return JSON representation
@@ -34,6 +55,43 @@ public interface Rule {
     default String toJson() {
         ComponentDescriptor descriptor = RuleSerialization.describe(this);
         return ComponentSerialization.toJson(descriptor);
+    }
+
+    /**
+     * Converts this rule into a structured descriptor.
+     *
+     * @return component descriptor for the rule
+     * @since 0.23.1
+     */
+    default ComponentDescriptor toDescriptor() {
+        return RuleSerialization.describe(this);
+    }
+
+    /**
+     * Renders this rule as a compact named shorthand expression using ta4j's
+     * default named asset registry.
+     *
+     * @return compact shorthand expression
+     * @throws IllegalArgumentException if no registered shorthand can represent the
+     *                                  rule
+     * @since 0.23.1
+     */
+    default String toExpression() {
+        return RuleSerialization.toExpression(this);
+    }
+
+    /**
+     * Renders this rule as a compact named shorthand expression using the supplied
+     * named asset registry.
+     *
+     * @param registry named asset registry
+     * @return compact shorthand expression
+     * @throws IllegalArgumentException if no registered shorthand can represent the
+     *                                  rule
+     * @since 0.23.1
+     */
+    default String toExpression(NamedAssetRegistry registry) {
+        return RuleSerialization.toExpression(this, registry);
     }
 
     /**
@@ -47,6 +105,33 @@ public interface Rule {
     static Rule fromJson(BarSeries series, String json) {
         ComponentDescriptor descriptor = ComponentSerialization.parse(json);
         return RuleSerialization.fromDescriptor(series, descriptor);
+    }
+
+    /**
+     * Builds a rule from a compact named shorthand expression using ta4j's default
+     * named asset registry.
+     *
+     * @param series     bar series context
+     * @param expression shorthand expression
+     * @return reconstructed rule
+     * @since 0.23.1
+     */
+    static Rule fromExpression(BarSeries series, String expression) {
+        return RuleSerialization.fromExpression(series, expression);
+    }
+
+    /**
+     * Builds a rule from a compact named shorthand expression using the supplied
+     * named asset registry.
+     *
+     * @param series     bar series context
+     * @param expression shorthand expression
+     * @param registry   named asset registry
+     * @return reconstructed rule
+     * @since 0.23.1
+     */
+    static Rule fromExpression(BarSeries series, String expression, NamedAssetRegistry registry) {
+        return RuleSerialization.fromExpression(series, expression, registry);
     }
 
     /**
@@ -88,7 +173,7 @@ public interface Rule {
      *         otherwise
      */
     default boolean isSatisfied(int index) {
-        return isSatisfied(index, null);
+        return isSatisfied(index, (TradingRecord) null);
     }
 
     /**
@@ -98,6 +183,39 @@ public interface Rule {
      *         otherwise
      */
     boolean isSatisfied(int index, TradingRecord tradingRecord);
+
+    /**
+     * Evaluates this rule once with the supplied trace detail. Implementations that
+     * do not support scoped tracing may ignore {@code traceMode} and delegate to
+     * {@link #isSatisfied(int, TradingRecord)}.
+     *
+     * @param index     the bar index
+     * @param traceMode trace detail for this evaluation only; {@code null} uses
+     *                  {@link TraceMode#VERBOSE}
+     * @return true if this rule is satisfied for the provided index, false
+     *         otherwise
+     * @since 0.22.7
+     */
+    default boolean isSatisfiedWithTraceMode(int index, TraceMode traceMode) {
+        return isSatisfiedWithTraceMode(index, null, traceMode);
+    }
+
+    /**
+     * Evaluates this rule once with the supplied trace detail. Implementations that
+     * do not support scoped tracing may ignore {@code traceMode} and delegate to
+     * {@link #isSatisfied(int, TradingRecord)}.
+     *
+     * @param index         the bar index
+     * @param tradingRecord the potentially needed trading history
+     * @param traceMode     trace detail for this evaluation only; {@code null} uses
+     *                      {@link TraceMode#VERBOSE}
+     * @return true if this rule is satisfied for the provided index, false
+     *         otherwise
+     * @since 0.22.7
+     */
+    default boolean isSatisfiedWithTraceMode(int index, TradingRecord tradingRecord, TraceMode traceMode) {
+        return isSatisfied(index, tradingRecord);
+    }
 
     /**
      * Sets a human friendly name for this rule. Implementations that support naming

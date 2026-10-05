@@ -49,7 +49,7 @@ public class NaN implements Num {
 
     @Override
     public int compareTo(Num o) {
-        return 0;
+        return o.isNaN() ? 0 : 1;
     }
 
     @Override
@@ -287,5 +287,15 @@ public class NaN implements Num {
     @Override
     public boolean isNaN() {
         return true;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj instanceof Num num && num.isNaN();
+    }
+
+    @Override
+    public int hashCode() {
+        return NaN.class.hashCode();
     }
 }

@@ -26,14 +26,23 @@ import org.ta4j.core.num.Num;
  */
 public class KSTIndicator extends CachedIndicator<Num> {
 
-    private final SMAIndicator RCMA1;
-    private final SMAIndicator RCMA2;
-    private final SMAIndicator RCMA3;
-    private final SMAIndicator RCMA4;
-    private final Num RCMA1_Multiplier = getBarSeries().numFactory().one();
-    private final Num RCMA2_Multiplier = getBarSeries().numFactory().numOf(2);
-    private final Num RCMA3_Multiplier = getBarSeries().numFactory().numOf(3);
-    private final Num RCMA4_Multiplier = getBarSeries().numFactory().numOf(4);
+    private final Indicator<Num> indicator;
+    private final int rcma1SMABarCount;
+    private final int rcma1ROCBarCount;
+    private final int rcma2SMABarCount;
+    private final int rcma2ROCBarCount;
+    private final int rcma3SMABarCount;
+    private final int rcma3ROCBarCount;
+    private final int rcma4SMABarCount;
+    private final int rcma4ROCBarCount;
+    private final transient SMAIndicator RCMA1;
+    private final transient SMAIndicator RCMA2;
+    private final transient SMAIndicator RCMA3;
+    private final transient SMAIndicator RCMA4;
+    private final transient Num RCMA1_Multiplier = getBarSeries().numFactory().one();
+    private final transient Num RCMA2_Multiplier = getBarSeries().numFactory().numOf(2);
+    private final transient Num RCMA3_Multiplier = getBarSeries().numFactory().numOf(3);
+    private final transient Num RCMA4_Multiplier = getBarSeries().numFactory().numOf(4);
 
     /**
      * Constructor with:
@@ -48,11 +57,7 @@ public class KSTIndicator extends CachedIndicator<Num> {
      * @param indicator the {@link Indicator}
      */
     public KSTIndicator(Indicator<Num> indicator) {
-        super(indicator);
-        this.RCMA1 = new SMAIndicator(new ROCIndicator(indicator, 10), 10);
-        this.RCMA2 = new SMAIndicator(new ROCIndicator(indicator, 15), 10);
-        this.RCMA3 = new SMAIndicator(new ROCIndicator(indicator, 20), 10);
-        this.RCMA4 = new SMAIndicator(new ROCIndicator(indicator, 30), 15);
+        this(indicator, 10, 10, 10, 15, 10, 20, 15, 30);
     }
 
     /**
@@ -72,6 +77,15 @@ public class KSTIndicator extends CachedIndicator<Num> {
             int rcma2ROCBarCount, int rcma3SMABarCount, int rcma3ROCBarCount, int rcma4SMABarCount,
             int rcma4ROCBarCount) {
         super(indicator);
+        this.indicator = indicator;
+        this.rcma1SMABarCount = rcma1SMABarCount;
+        this.rcma1ROCBarCount = rcma1ROCBarCount;
+        this.rcma2SMABarCount = rcma2SMABarCount;
+        this.rcma2ROCBarCount = rcma2ROCBarCount;
+        this.rcma3SMABarCount = rcma3SMABarCount;
+        this.rcma3ROCBarCount = rcma3ROCBarCount;
+        this.rcma4SMABarCount = rcma4SMABarCount;
+        this.rcma4ROCBarCount = rcma4ROCBarCount;
         this.RCMA1 = new SMAIndicator(new ROCIndicator(indicator, rcma1ROCBarCount), rcma1SMABarCount);
         this.RCMA2 = new SMAIndicator(new ROCIndicator(indicator, rcma2ROCBarCount), rcma2SMABarCount);
         this.RCMA3 = new SMAIndicator(new ROCIndicator(indicator, rcma3ROCBarCount), rcma3SMABarCount);

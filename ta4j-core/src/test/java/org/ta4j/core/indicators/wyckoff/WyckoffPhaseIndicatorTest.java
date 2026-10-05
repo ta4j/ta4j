@@ -3,13 +3,17 @@
  */
 package org.ta4j.core.indicators.wyckoff;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertThrows;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -49,7 +53,7 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
         addBar(distributionSeries, 81, 83, 80, 81, 850);
         addBar(distributionSeries, 86, 88, 85, 87, 1100);
         addBar(distributionSeries, 93, 96, 92, 95, 3200);
-        addBar(distributionSeries, 94, 95, 93, 95.5, 1200);
+        addBar(distributionSeries, 94, 95.5, 93, 95.5, 1200);
         addBar(distributionSeries, 94, 95, 93, 94.8, 500);
         addBar(distributionSeries, 89, 90, 78, 79, 2800);
         addBar(distributionSeries, 82, 83, 80, 81, 1500);
@@ -158,33 +162,6 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
     }
 
     /**
-     * Verifies that round trip serialize and deserialize.
-     */
-    @Test
-    public void shouldRoundTripSerializeAndDeserialize() {
-        var indicator = WyckoffPhaseIndicator.builder(accumulationSeries)
-                .withSwingConfiguration(1, 1, 0)
-                .withVolumeWindows(1, 2)
-                .withTolerances(numOf(0.02), numOf(0.05))
-                .withVolumeThresholds(numOf(1.4), numOf(0.6))
-                .build();
-
-        int index = accumulationSeries.getBeginIndex() + 3;
-        WyckoffPhase expected = indicator.getValue(index);
-
-        String json = indicator.toJson();
-        Indicator<?> restored = Indicator.fromJson(accumulationSeries, json);
-
-        assertThat(restored).isInstanceOf(WyckoffPhaseIndicator.class);
-        var restoredIndicator = (WyckoffPhaseIndicator) restored;
-        assertThat(restoredIndicator.toDescriptor()).isEqualTo(indicator.toDescriptor());
-        assertThat(restoredIndicator.getValue(index)).isEqualTo(expected);
-        assertThat(restoredIndicator.getLastPhaseTransitionIndex(index))
-                .isEqualTo(indicator.getLastPhaseTransitionIndex(index));
-        assertThat(restoredIndicator.getCountOfUnstableBars()).isEqualTo(indicator.getCountOfUnstableBars());
-    }
-
-    /**
      * Verifies that reject invalid builder configuration.
      */
     @Test
@@ -229,9 +206,58 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
     }
 
     /**
+     * Verifies that cached structures and transitions refresh after the forming bar
+     * is replaced.
+     */
+    @Test
+    public void shouldMatchFreshIndicatorAfterFormingBarReplacement() {
+        var indicator = WyckoffPhaseIndicator.builder(accumulationSeries)
+                .withSwingConfiguration(1, 1, 0)
+                .withVolumeWindows(1, 4)
+                .withTolerances(numOf(0.02), numOf(0.05))
+                .withVolumeThresholds(numOf(1.4), numOf(0.6))
+                .build();
+        int lastIndex = accumulationSeries.getEndIndex();
+
+        indicator.getValue(lastIndex);
+        indicator.getLastPhaseTransitionIndex(lastIndex);
+
+        accumulationSeries.addBar(accumulationSeries.barBuilder()
+                .openPrice(130)
+                .highPrice(132)
+                .lowPrice(128)
+                .closePrice(131)
+                .volume(2600)
+                .build(), true);
+
+        var fresh = WyckoffPhaseIndicator.builder(accumulationSeries)
+                .withSwingConfiguration(1, 1, 0)
+                .withVolumeWindows(1, 4)
+                .withTolerances(numOf(0.02), numOf(0.05))
+                .withVolumeThresholds(numOf(1.4), numOf(0.6))
+                .build();
+        var cached = indicator.getValue(lastIndex);
+        var expected = fresh.getValue(lastIndex);
+        assertThat(cached.cycleType()).isEqualTo(expected.cycleType());
+        assertThat(cached.phaseType()).isEqualTo(expected.phaseType());
+        assertThat(indicator.getTradingRangeHigh(lastIndex)).isEqualByComparingTo(fresh.getTradingRangeHigh(lastIndex));
+        assertThat(indicator.getLastPhaseTransitionIndex(lastIndex))
+                .isEqualTo(fresh.getLastPhaseTransitionIndex(lastIndex));
+    }
+
+    /**
      * Adds bar.
      */
     private void addBar(BarSeries series, double open, double high, double low, double close, double volume) {
         series.barBuilder().openPrice(open).highPrice(high).lowPrice(low).closePrice(close).volume(volume).add();
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(serializationFixture(series,
+                new WyckoffPhaseIndicator(series, 3, 2, 1, 5, 12, numOf(0.02), numOf(0.05), numOf(1.6), numOf(0.7)),
+                stableIndexes(series)));
+    }
+
 }

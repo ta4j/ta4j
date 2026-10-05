@@ -7,8 +7,8 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.indicators.helpers.PreviousValueIndicator;
+import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -31,7 +31,9 @@ import org.ta4j.core.num.Num;
  */
 public class DPOIndicator extends CachedIndicator<Num> {
 
-    private final BinaryOperationIndicator indicatorMinusPreviousSMAIndicator;
+    private final Indicator<Num> price;
+    private final int barCount;
+    private final transient BinaryOperationIndicator indicatorMinusPreviousSMAIndicator;
     private final String name;
 
     /**
@@ -52,12 +54,19 @@ public class DPOIndicator extends CachedIndicator<Num> {
      */
     public DPOIndicator(Indicator<Num> price, int barCount) {
         super(price);
-        final int timeFrame = barCount / 2 + 1;
-        final var simpleMovingAverage = new SMAIndicator(price, barCount);
-        final var previousSimpleMovingAverage = new PreviousValueIndicator(simpleMovingAverage, timeFrame);
-        this.indicatorMinusPreviousSMAIndicator = BinaryOperationIndicator.difference(price,
-                previousSimpleMovingAverage);
+        this.price = price;
+        this.barCount = barCount;
+        this.indicatorMinusPreviousSMAIndicator = createIndicatorMinusPreviousSMAIndicator(price, barCount);
         this.name = String.format("%s barCount: %s", getClass().getSimpleName(), barCount);
+    }
+
+    private static BinaryOperationIndicator createIndicatorMinusPreviousSMAIndicator(Indicator<Num> price,
+            int barCount) {
+        final int timeFrame = barCount / 2 + 1;
+        final SMAIndicator simpleMovingAverage = new SMAIndicator(price, barCount);
+        final PreviousValueIndicator previousSimpleMovingAverage = new PreviousValueIndicator(simpleMovingAverage,
+                timeFrame);
+        return BinaryOperationIndicator.difference(price, previousSimpleMovingAverage);
     }
 
     @Override

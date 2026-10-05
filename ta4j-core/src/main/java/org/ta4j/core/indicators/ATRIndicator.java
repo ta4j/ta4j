@@ -3,7 +3,10 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.Objects;
+
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.averages.AbstractEMAIndicator;
 import org.ta4j.core.indicators.averages.MMAIndicator;
 import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.num.Num;
@@ -13,9 +16,14 @@ import static org.ta4j.core.num.NaN.NaN;
 /**
  * Average true range indicator.
  */
-public class ATRIndicator extends AbstractIndicator<Num> {
+public class ATRIndicator extends CachedIndicator<Num> {
 
-    private final TRIndicator trIndicator;
+    /**
+     * Logical source retained so descriptor serialization preserves custom price
+     * inputs.
+     */
+    private final TRIndicator tr;
+    private final transient int trueRangeUnstableBars;
     private final transient MMAIndicator averageTrueRangeIndicator;
     private final int barCount;
 
@@ -36,14 +44,28 @@ public class ATRIndicator extends AbstractIndicator<Num> {
      * @param barCount the time frame
      */
     public ATRIndicator(TRIndicator tr, int barCount) {
-        super(tr.getBarSeries());
-        this.trIndicator = tr;
-        this.barCount = barCount;
-        this.averageTrueRangeIndicator = new MMAIndicator(tr, barCount);
+        this(validatedConfig(tr, barCount));
+    }
+
+    private ATRIndicator(Config config) {
+        this(config, new MMAIndicator(config.trueRangeIndicator(), config.barCount()));
+    }
+
+    private ATRIndicator(Config config, MMAIndicator averageTrueRangeIndicator) {
+        super(averageTrueRangeIndicator);
+        this.tr = config.trueRangeIndicator();
+        this.trueRangeUnstableBars = config.trueRangeUnstableBars();
+        this.barCount = config.barCount();
+        this.averageTrueRangeIndicator = averageTrueRangeIndicator;
+    }
+
+    private static Config validatedConfig(TRIndicator tr, int barCount) {
+        TRIndicator validatedTrueRange = Objects.requireNonNull(tr, "tr");
+        return new Config(validatedTrueRange, validatedTrueRange.getCountOfUnstableBars(), barCount);
     }
 
     @Override
-    public Num getValue(int index) {
+    protected Num calculate(int index) {
         if (index < getCountOfUnstableBars()) {
             return NaN;
         }
@@ -52,12 +74,27 @@ public class ATRIndicator extends AbstractIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return trIndicator.getCountOfUnstableBars() + getBarCount();
+        return trueRangeUnstableBars + getBarCount();
     }
 
-    /** @return the {@link #trIndicator} */
+    /**
+     * The average true range re-anchors its whole chain on a head advance (see
+     * {@link AbstractEMAIndicator#getValue(int)}'s retained-head reset), so every
+     * cached value in this wrapper was derived from a recurrence that no longer
+     * exists. The re-anchored chain is recomputable from the retained window, but
+     * keeping any pre-advance value would combine the severed chain with the
+     * rebuilt one.
+     *
+     * @return {@code true}
+     */
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
+    }
+
+    /** @return a true range indicator for this indicator's bar series */
     public TRIndicator getTRIndicator() {
-        return trIndicator;
+        return new TRIndicator(getBarSeries());
     }
 
     /** @return the bar count of {@link #averageTrueRangeIndicator} */
@@ -68,5 +105,8 @@ public class ATRIndicator extends AbstractIndicator<Num> {
     @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + getBarCount();
+    }
+
+    private record Config(TRIndicator trueRangeIndicator, int trueRangeUnstableBars, int barCount) {
     }
 }

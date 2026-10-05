@@ -17,6 +17,8 @@ import org.ta4j.core.num.Num;
 public class RWIHighIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
+    private final transient ATRIndicator[] atrIndicators;
+    private final transient Num[] sqrtValues;
 
     /**
      * Constructor.
@@ -27,33 +29,45 @@ public class RWIHighIndicator extends CachedIndicator<Num> {
     public RWIHighIndicator(BarSeries series, int barCount) {
         super(series);
         this.barCount = barCount;
+        int helperCount = Math.max(0, barCount + 1);
+        this.atrIndicators = new ATRIndicator[helperCount];
+        this.sqrtValues = new Num[helperCount];
+        for (int n = 2; n <= barCount; n++) {
+            atrIndicators[n] = new ATRIndicator(series, n);
+            sqrtValues[n] = series.numFactory().numOf(n).sqrt();
+        }
     }
 
     @Override
     protected Num calculate(int index) {
-        if (index - barCount + 1 < getBarSeries().getBeginIndex()) {
+        if (index < getCountOfUnstableBars() || index - barCount + 1 < getBarSeries().getBeginIndex()) {
             return NaN.NaN;
         }
 
         Num maxRWIH = getBarSeries().numFactory().zero();
+        boolean hasDefinedValue = false;
         for (int n = 2; n <= barCount; n++) {
-            maxRWIH = maxRWIH.max(calcRWIHFor(index, n));
+            Num rwiHigh = calcRWIHFor(index, n);
+            if (Num.isFinite(rwiHigh)) {
+                maxRWIH = hasDefinedValue ? maxRWIH.max(rwiHigh) : rwiHigh;
+                hasDefinedValue = true;
+            }
         }
 
-        return maxRWIH;
+        return hasDefinedValue ? maxRWIH : NaN.NaN;
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return Math.max(0, barCount);
     }
 
     private Num calcRWIHFor(final int index, final int n) {
         BarSeries series = getBarSeries();
         Num high = series.getBar(index).getHighPrice();
         Num lowN = series.getBar(index + 1 - n).getLowPrice();
-        Num atrN = new ATRIndicator(series, n).getValue(index);
-        Num sqrtN = getBarSeries().numFactory().numOf(n).sqrt();
+        Num atrN = atrIndicators[n].getValue(index);
+        Num sqrtN = sqrtValues[n];
 
         return high.minus(lowN).dividedBy(atrN.multipliedBy(sqrtN));
     }

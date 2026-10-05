@@ -18,7 +18,9 @@ import org.ta4j.core.num.Num;
  */
 public class MVWAPIndicator extends CachedIndicator<Num> {
 
-    private final Indicator<Num> sma;
+    private final Indicator<Num> vwap;
+    private final int barCount;
+    private final transient Indicator<Num> sma;
 
     /**
      * Constructor.
@@ -28,6 +30,8 @@ public class MVWAPIndicator extends CachedIndicator<Num> {
      */
     public MVWAPIndicator(VWAPIndicator vwap, int barCount) {
         super(vwap);
+        this.vwap = vwap;
+        this.barCount = barCount;
         this.sma = new SMAIndicator(vwap, barCount);
     }
 

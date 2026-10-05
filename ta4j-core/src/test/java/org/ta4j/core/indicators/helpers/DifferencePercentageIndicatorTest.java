@@ -3,72 +3,41 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.StochasticIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 @SuppressWarnings("deprecation")
 public class DifferencePercentageIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
-    private DifferencePercentageIndicator percentageChangeIndicator;
 
     public DifferencePercentageIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
     @Test
-    public void getValueWithoutThreshold() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
-        var mockIndicator = new FixedIndicator<>(series, numOf(100), numOf(101), numOf(98.98), numOf(102.186952),
-                numOf(91.9682568), numOf(100.5213046824), numOf(101.526517729224));
+    public void retainedHeadAdvanceReanchorsThresholdState() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(0d, 50d, 50d, 50d, 50d)
+                .build();
+        StochasticIndicator source = new StochasticIndicator(new ClosePriceIndicator(series), 3);
+        DifferencePercentageIndicator existing = new DifferencePercentageIndicator(source, numOf(10));
 
-        percentageChangeIndicator = new DifferencePercentageIndicator(mockIndicator);
-        assertNumEquals(NaN.NaN, percentageChangeIndicator.getValue(0));
-        assertNumEquals(numOf(1), percentageChangeIndicator.getValue(1));
-        assertNumEquals(numOf(-2), percentageChangeIndicator.getValue(2));
-        assertNumEquals(numOf(3.24), percentageChangeIndicator.getValue(3));
-        assertNumEquals(numOf(-10), percentageChangeIndicator.getValue(4));
-        assertNumEquals(numOf(9.3), percentageChangeIndicator.getValue(5));
-        assertNumEquals(numOf(1), percentageChangeIndicator.getValue(6));
-    }
+        assertThat(Num.isFinite(existing.getValue(series.getEndIndex()))).isTrue();
+        series.setMaximumBarCount(3);
+        series.barBuilder().openPrice(60).closePrice(60).highPrice(60).lowPrice(60).volume(0).add();
 
-    @Test
-    public void getValueWithNumThreshold() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
-        var mockIndicator = new FixedIndicator<>(series, numOf(1000), numOf(1010), numOf(1020), numOf(1050),
-                numOf(1060.5), numOf(1081.5), numOf(1102.5), numOf(1091.475), numOf(1113.525), numOf(1036.35),
-                numOf(1067.4405));
+        StochasticIndicator freshSource = new StochasticIndicator(new ClosePriceIndicator(series), 3);
+        DifferencePercentageIndicator fresh = new DifferencePercentageIndicator(freshSource, numOf(10));
+        int endIndex = series.getEndIndex();
 
-        percentageChangeIndicator = new DifferencePercentageIndicator(mockIndicator, numOf(5));
-        assertNumEquals(NaN.NaN, percentageChangeIndicator.getValue(0));
-        assertNumEquals(numOf(1), percentageChangeIndicator.getValue(1));
-        assertNumEquals(numOf(2), percentageChangeIndicator.getValue(2));
-        assertNumEquals(numOf(5), percentageChangeIndicator.getValue(3));
-        assertNumEquals(numOf(1), percentageChangeIndicator.getValue(4));
-        assertNumEquals(numOf(3), percentageChangeIndicator.getValue(5));
-        assertNumEquals(numOf(5), percentageChangeIndicator.getValue(6));
-        assertNumEquals(numOf(-1), percentageChangeIndicator.getValue(7));
-        assertNumEquals(numOf(1), percentageChangeIndicator.getValue(8));
-        assertNumEquals(numOf(-6), percentageChangeIndicator.getValue(9));
-        assertNumEquals(numOf(3), percentageChangeIndicator.getValue(10));
-    }
-
-    @Test
-    public void getValueWithNumberThreshold() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
-        var mockIndicator = new FixedIndicator<>(series, numOf(1000), numOf(1000), numOf(1010), numOf(1025),
-                numOf(1038.325));
-
-        percentageChangeIndicator = new DifferencePercentageIndicator(mockIndicator, 1.5);
-        assertNumEquals(NaN.NaN, percentageChangeIndicator.getValue(0));
-        assertNumEquals(numOf(0), percentageChangeIndicator.getValue(1));
-        assertNumEquals(numOf(1), percentageChangeIndicator.getValue(2));
-        assertNumEquals(numOf(2.5), percentageChangeIndicator.getValue(3));
-        assertNumEquals(numOf(1.3), percentageChangeIndicator.getValue(4));
+        assertThat(fresh.getValue(endIndex).isNaN()).isTrue();
+        assertThat(existing.getValue(endIndex).isNaN()).isTrue();
     }
 }

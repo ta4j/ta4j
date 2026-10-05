@@ -10,8 +10,10 @@ import static org.ta4j.core.TestUtils.assertIndicatorNotEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -90,6 +92,33 @@ public class DecimalNumTest {
                 result);
         assertEquals(120, ((BigDecimal) result.getDelegate()).precision());
         assertEquals(120, ((DecimalNum) result).getMathContext().getPrecision());
+    }
+
+    @Test(timeout = 2000)
+    public void testPowLargeFractionalExponentStaysWithinPrecision() {
+        // Annualizing a short span raises a return to about 1/years; the whole part of
+        // that exponent must be computed at the working precision, not exactly.
+        final Num x = precision32Func.numOf("1.01");
+        final Num result = x.pow(precision32Func.numOf("262800.5"));
+        final BigDecimal power = (BigDecimal) result.getDelegate();
+        assertEquals(32, power.precision());
+        // log10(1.01^262800.5) = 1135.6..., so the leading digit sits at 10^1135.
+        assertEquals(1135, power.precision() - power.scale() - 1);
+    }
+
+    @Test
+    public void testPowNegativeFractionalExponent() {
+        final Num x = precision32Func.numOf("4");
+        assertNumEquals(precision32Func.numOf("0.03125"), x.pow(precision32Func.numOf("-2.5")));
+    }
+
+    @Test
+    public void testPowWholeNumExponentKeepsUnlimitedPrecisionExact() {
+        final NumFactory unlimited = DecimalNumFactory.getInstance(MathContext.UNLIMITED);
+        final BigDecimal base = new BigDecimal("1.23456789012345678901");
+        final Num powered = unlimited.numOf(base).pow(unlimited.numOf(3));
+
+        assertEquals(0, base.pow(3).compareTo((BigDecimal) powered.getDelegate()));
     }
 
     @Test
@@ -349,6 +378,23 @@ public class DecimalNumTest {
         final DecimalNum decimalNum = DecimalNum.valueOf(3.0);
 
         assertNotEquals(decimalNum, doubleNum);
+    }
+
+    @Test
+    public void testEqualsHashCodeContractAcrossScales() {
+        final DecimalNum num1 = DecimalNum.valueOf("1.0");
+        final DecimalNum num2 = DecimalNum.valueOf("1.00");
+
+        assertEquals(num1, num2);
+        assertEquals(num1.hashCode(), num2.hashCode());
+    }
+
+    @Test
+    public void testHashSetLookupAcrossScales() {
+        final HashSet<DecimalNum> nums = new HashSet<>();
+        nums.add(DecimalNum.valueOf("1.0"));
+
+        assertTrue(nums.contains(DecimalNum.valueOf("1.00")));
     }
 
     @Test

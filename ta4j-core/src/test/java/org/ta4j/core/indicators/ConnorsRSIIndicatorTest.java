@@ -3,6 +3,12 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import java.util.List;
+import org.ta4j.core.BarSeries;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Field;
@@ -155,4 +161,13 @@ public class ConnorsRSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         Num ratio = numFactory.numOf(lessThanCount).dividedBy(numFactory.numOf(valid));
         return ratio.multipliedBy(numFactory.numOf(100));
     }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+
+        return List.of(serializationFixture(series, new ConnorsRSIIndicator(close, 3, 2, 4), stableIndexes(series)));
+    }
+
 }

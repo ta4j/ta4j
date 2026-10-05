@@ -1,7 +1,10 @@
 /*
  * SPDX-License-Identifier: MIT
  */
+
 package org.ta4j.core.indicators;
+
+import static org.junit.Assert.assertEquals;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -36,6 +39,23 @@ public class DistanceFromMAIndicatorTest extends AbstractIndicatorTest<Indicator
         assertNumEquals(0.3333, distanceFromMAIndicator.getValue(2));
         assertNumEquals(0.01886792452830182, distanceFromMAIndicator.getValue(5));
         assertNumEquals(-0.1, distanceFromMAIndicator.getValue(6));
+    }
+
+    @Test
+    public void explicitSeriesBindingReadsClosePricesFromExplicitSeries() {
+        BarSeries explicitSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(20, 10)
+                .withName("explicit")
+                .build();
+        BarSeries maSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 30)
+                .withName("ma")
+                .build();
+        SMAIndicator ma = new SMAIndicator(new ClosePriceIndicator(maSeries), 2);
+        DistanceFromMAIndicator indicator = new DistanceFromMAIndicator(explicitSeries, ma);
+
+        assertNumEquals(numOf(-1).dividedBy(numOf(2)), indicator.getValue(1));
+        assertEquals("explicit", indicator.getBarSeries().getName());
     }
 
     @Test(expected = IllegalArgumentException.class)

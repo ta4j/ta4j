@@ -26,14 +26,22 @@ abstract class BaseVolatilityStopLossRule extends AbstractRule implements StopLo
      * @param stopLossThreshold volatility-scaled stop-loss threshold indicator
      */
     protected BaseVolatilityStopLossRule(Indicator<Num> referencePrice, Indicator<Num> stopLossThreshold) {
+        this(validatedConfig(referencePrice, stopLossThreshold));
+    }
+
+    private BaseVolatilityStopLossRule(Config config) {
+        this.referencePrice = config.referencePrice();
+        this.stopLossThreshold = config.stopLossThreshold();
+    }
+
+    private static Config validatedConfig(Indicator<Num> referencePrice, Indicator<Num> stopLossThreshold) {
         if (referencePrice == null) {
             throw new IllegalArgumentException("referencePrice must not be null");
         }
         if (stopLossThreshold == null) {
             throw new IllegalArgumentException("stopLossThreshold must not be null");
         }
-        this.referencePrice = referencePrice;
-        this.stopLossThreshold = stopLossThreshold;
+        return new Config(referencePrice, stopLossThreshold);
     }
 
     /**
@@ -46,25 +54,36 @@ abstract class BaseVolatilityStopLossRule extends AbstractRule implements StopLo
      */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        if (tradingRecord != null && !tradingRecord.isClosed()) {
-            Position position = tradingRecord.getCurrentPosition();
-            if (position.isOpened()) {
-                Num entryPrice = position.getEntry().getNetPrice();
-                Num currentPrice = referencePrice.getValue(index);
-                Num threshold = stopLossThreshold.getValue(index);
-                if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice) || Num.isNaNOrNull(threshold)) {
-                    return false;
-                }
-
-                if (position.getEntry().isBuy()) {
-                    return currentPrice
-                            .isLessThanOrEqual(StopLossRule.stopLossPriceFromDistance(entryPrice, threshold, true));
-                }
-                return currentPrice
-                        .isGreaterThanOrEqual(StopLossRule.stopLossPriceFromDistance(entryPrice, threshold, false));
-            }
+        if (tradingRecord == null) {
+            StopRuleTrace.traceUnavailable(this, index, "noTradingRecord");
+            return false;
         }
-        return false;
+        if (tradingRecord.isClosed()) {
+            StopRuleTrace.traceUnavailable(this, index, "closedTradingRecord");
+            return false;
+        }
+        Position position = tradingRecord.getCurrentPosition();
+        if (!position.isOpened()) {
+            StopRuleTrace.traceUnavailable(this, index, "noOpenPosition");
+            return false;
+        }
+
+        Num entryPrice = position.getEntry().getNetPrice();
+        Num currentPrice = referencePrice.getValue(index);
+        Num threshold = stopLossThreshold.getValue(index);
+        if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice) || Num.isNaNOrNull(threshold)) {
+            StopRuleTrace.traceUnavailable(this, index, "nanInput");
+            return false;
+        }
+
+        boolean buy = position.getEntry().isBuy();
+        Num stopPrice = StopLossRule.stopLossPriceFromDistance(entryPrice, threshold, buy);
+        boolean satisfied = buy ? currentPrice.isLessThanOrEqual(stopPrice)
+                : currentPrice.isGreaterThanOrEqual(stopPrice);
+        String reason = satisfied ? "stopReached" : buy ? "priceAboveStop" : "priceBelowStop";
+        StopRuleTrace.traceDecision(this, index, satisfied, buy, currentPrice, entryPrice, stopPrice, "lossAmount",
+                threshold, reason);
+        return satisfied;
     }
 
     /**
@@ -90,5 +109,8 @@ abstract class BaseVolatilityStopLossRule extends AbstractRule implements StopLo
         // stopPrice models the initial stop at entry time, so threshold is read at
         // the entry index rather than the current evaluation index.
         return StopLossRule.stopLossPriceFromDistance(entryPrice, threshold, position.getEntry().isBuy());
+    }
+
+    private record Config(Indicator<Num> referencePrice, Indicator<Num> stopLossThreshold) {
     }
 }

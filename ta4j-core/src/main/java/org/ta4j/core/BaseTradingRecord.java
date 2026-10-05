@@ -72,13 +72,15 @@ public class BaseTradingRecord implements TradingRecord {
     private transient List<Trade> tradesCache;
     private transient long tradesCacheVersion;
     private long modificationCount;
+    private transient List<Position> closedPositionsCache;
+    private transient long closedPositionsCacheVersion;
     private Num totalFees;
     private transient NumFactory numFactory;
     private long nextSequence;
 
     /** Constructor with {@link #startingType} = BUY and FIFO matching. */
     public BaseTradingRecord() {
-        this(TradeType.BUY);
+        this(defaultRecordConfig(TradeType.BUY));
     }
 
     /**
@@ -87,7 +89,7 @@ public class BaseTradingRecord implements TradingRecord {
      * @param name record name
      */
     public BaseTradingRecord(String name) {
-        this(TradeType.BUY);
+        this(defaultRecordConfig(TradeType.BUY));
         this.name = name;
     }
 
@@ -98,7 +100,7 @@ public class BaseTradingRecord implements TradingRecord {
      * @param tradeType entry trade type
      */
     public BaseTradingRecord(String name, TradeType tradeType) {
-        this(tradeType, new ZeroCostModel(), new ZeroCostModel());
+        this(defaultRecordConfig(tradeType));
         this.name = name;
     }
 
@@ -108,7 +110,7 @@ public class BaseTradingRecord implements TradingRecord {
      * @param startingType entry trade type
      */
     public BaseTradingRecord(TradeType startingType) {
-        this(startingType, new ZeroCostModel(), new ZeroCostModel());
+        this(defaultRecordConfig(startingType));
     }
 
     /**
@@ -148,17 +150,39 @@ public class BaseTradingRecord implements TradingRecord {
      */
     public BaseTradingRecord(TradeType startingType, ExecutionMatchPolicy matchPolicy, CostModel transactionCostModel,
             CostModel holdingCostModel, Integer startIndex, Integer endIndex) {
+        this(recordConfig(startingType, matchPolicy, transactionCostModel, holdingCostModel, startIndex, endIndex));
+    }
+
+    private BaseTradingRecord(RecordConfig config) {
+        this.startingType = config.startingType();
+        this.matchPolicy = config.matchPolicy();
+        this.transactionCostModel = config.transactionCostModel();
+        this.holdingCostModel = config.holdingCostModel();
+        this.positionBook = config.positionBook();
+        this.startIndex = config.startIndex();
+        this.endIndex = config.endIndex();
+        this.nextTradeIndex = config.nextTradeIndex();
+        this.modificationCount = config.modificationCount();
+        this.totalFees = config.totalFees();
+        this.numFactory = config.numFactory();
+        this.nextSequence = config.nextSequence();
+    }
+
+    private static RecordConfig recordConfig(TradeType startingType, ExecutionMatchPolicy matchPolicy,
+            CostModel transactionCostModel, CostModel holdingCostModel, Integer startIndex, Integer endIndex) {
         Objects.requireNonNull(startingType, "startingType");
         Objects.requireNonNull(matchPolicy, "matchPolicy");
-        this.startingType = startingType;
-        this.matchPolicy = matchPolicy;
-        this.transactionCostModel = defaultCostModel(transactionCostModel);
-        this.holdingCostModel = defaultCostModel(holdingCostModel);
-        this.positionBook = new PositionBook(startingType, matchPolicy, this.transactionCostModel,
-                this.holdingCostModel);
-        this.startIndex = startIndex;
-        this.endIndex = endIndex;
-        this.nextTradeIndex = 0;
+        CostModel resolvedTransactionCostModel = defaultCostModel(transactionCostModel);
+        CostModel resolvedHoldingCostModel = defaultCostModel(holdingCostModel);
+        PositionBook positionBook = new PositionBook(startingType, matchPolicy, resolvedTransactionCostModel,
+                resolvedHoldingCostModel);
+        return new RecordConfig(startingType, matchPolicy, resolvedTransactionCostModel, resolvedHoldingCostModel,
+                positionBook, startIndex, endIndex, 0, 0L, null, null, 0L);
+    }
+
+    private static RecordConfig defaultRecordConfig(TradeType startingType) {
+        return recordConfig(startingType, ExecutionMatchPolicy.FIFO, new ZeroCostModel(), new ZeroCostModel(), null,
+                null);
     }
 
     /**
@@ -167,7 +191,7 @@ public class BaseTradingRecord implements TradingRecord {
      * @param trades trades to record (must not be empty)
      */
     public BaseTradingRecord(Trade... trades) {
-        this(new ZeroCostModel(), new ZeroCostModel(), trades);
+        this(tradesConfig(trades));
     }
 
     /**
@@ -177,8 +201,7 @@ public class BaseTradingRecord implements TradingRecord {
      * @since 0.22.2
      */
     public BaseTradingRecord(Position position) {
-        this(defaultCostModel(position.getTransactionCostModel()), defaultCostModel(position.getHoldingCostModel()),
-                positionToTrades(position));
+        this(positionConfig(position));
     }
 
     /**
@@ -188,7 +211,7 @@ public class BaseTradingRecord implements TradingRecord {
      * @since 0.22.2
      */
     public BaseTradingRecord(List<Position> positions) {
-        this(positionsToTrades(positions));
+        this(positionsConfig(positions));
     }
 
     /**
@@ -199,10 +222,37 @@ public class BaseTradingRecord implements TradingRecord {
      * @param trades               trades to record (must not be empty)
      */
     public BaseTradingRecord(CostModel transactionCostModel, CostModel holdingCostModel, Trade... trades) {
-        this(validateTrades(trades), ExecutionMatchPolicy.FIFO, transactionCostModel, holdingCostModel, null, null);
+        this(tradesConfig(transactionCostModel, holdingCostModel, trades));
+    }
+
+    private static RecordConfig positionConfig(Position position) {
+        Objects.requireNonNull(position, "position must not be null");
+        return tradesConfig(defaultCostModel(position.getTransactionCostModel()),
+                defaultCostModel(position.getHoldingCostModel()), positionToTrades(position));
+    }
+
+    private static RecordConfig positionsConfig(List<Position> positions) {
+        return tradesConfig(new ZeroCostModel(), new ZeroCostModel(), positionsToTrades(positions));
+    }
+
+    private static RecordConfig tradesConfig(Trade... trades) {
+        return tradesConfig(new ZeroCostModel(), new ZeroCostModel(), trades);
+    }
+
+    private static RecordConfig tradesConfig(CostModel transactionCostModel, CostModel holdingCostModel,
+            Trade... trades) {
+        TradeType startingType = validateTrades(trades);
+        BaseTradingRecord initialized = new BaseTradingRecord(recordConfig(startingType, ExecutionMatchPolicy.FIFO,
+                transactionCostModel, holdingCostModel, null, null));
         for (Trade trade : trades) {
-            operate(trade);
+            initialized.operate(trade);
         }
+        return initialized.toRecordConfig();
+    }
+
+    private RecordConfig toRecordConfig() {
+        return new RecordConfig(startingType, matchPolicy, transactionCostModel, holdingCostModel, positionBook,
+                startIndex, endIndex, nextTradeIndex, modificationCount, totalFees, numFactory, nextSequence);
     }
 
     @Override
@@ -535,6 +585,7 @@ public class BaseTradingRecord implements TradingRecord {
             totalFees = totalFees.plus(fee);
             modificationCount++;
             tradesCache = null;
+            closedPositionsCache = null;
         } finally {
             lock.writeLock().unlock();
         }
@@ -558,6 +609,11 @@ public class BaseTradingRecord implements TradingRecord {
         return sideOf(net.getEntry().getType());
     }
 
+    /**
+     * Returns the open positions as freshly built {@link Position} snapshots. Each
+     * call rebuilds the list so callers never share mutable position instances with
+     * the record or with other calls.
+     */
     private List<Position> openPositionsSnapshot() {
         lock.readLock().lock();
         try {
@@ -579,9 +635,21 @@ public class BaseTradingRecord implements TradingRecord {
     private List<Position> closedPositionsSnapshot() {
         lock.readLock().lock();
         try {
-            return List.copyOf(positionBook.closedPositions());
+            if (closedPositionsCache != null && closedPositionsCacheVersion == modificationCount) {
+                return closedPositionsCache;
+            }
         } finally {
             lock.readLock().unlock();
+        }
+        lock.writeLock().lock();
+        try {
+            if (closedPositionsCache == null || closedPositionsCacheVersion != modificationCount) {
+                closedPositionsCache = List.copyOf(positionBook.closedPositions());
+                closedPositionsCacheVersion = modificationCount;
+            }
+            return closedPositionsCache;
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 
@@ -723,6 +791,8 @@ public class BaseTradingRecord implements TradingRecord {
         tradesCache = null;
         tradesCacheVersion = -1L;
         modificationCount = 0L;
+        closedPositionsCache = null;
+        closedPositionsCacheVersion = -1L;
         numFactory = null;
     }
 
@@ -752,6 +822,8 @@ public class BaseTradingRecord implements TradingRecord {
         this.transactionCostModel = resolvedTransaction;
         this.holdingCostModel = resolvedHolding;
         positionBook.rehydrateCostModels(resolvedTransaction, resolvedHolding);
+        closedPositionsCache = null;
+        closedPositionsCacheVersion = -1L;
     }
 
     private static Instant resolveExecutionTime(Instant fillTime, Instant fallbackTime) {
@@ -879,6 +951,12 @@ public class BaseTradingRecord implements TradingRecord {
     private static Trade[] positionsToTrades(List<Position> positions) {
         Objects.requireNonNull(positions, "positions must not be null");
         return positions.stream().flatMap(BaseTradingRecord::tradesOf).toArray(Trade[]::new);
+    }
+
+    private record RecordConfig(TradeType startingType, ExecutionMatchPolicy matchPolicy,
+            CostModel transactionCostModel, CostModel holdingCostModel, PositionBook positionBook, Integer startIndex,
+            Integer endIndex, int nextTradeIndex, long modificationCount, Num totalFees, NumFactory numFactory,
+            long nextSequence) {
     }
 
     /**

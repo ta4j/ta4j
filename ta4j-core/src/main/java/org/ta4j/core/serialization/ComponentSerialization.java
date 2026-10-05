@@ -69,8 +69,17 @@ public final class ComponentSerialization {
         try {
             return GSON.fromJson(trimmed, ComponentDescriptor.class);
         } catch (JsonSyntaxException ex) {
+            if (looksLikeJson(trimmed)) {
+                throw ex;
+            }
             return ComponentDescriptor.labelOnly(json);
         }
+    }
+
+    private static boolean looksLikeJson(String value) {
+        char first = value.charAt(0);
+        return first == '{' || first == '[' || first == '"' || first == '-' || Character.isDigit(first)
+                || "true".equals(value) || "false".equals(value) || "null".equals(value);
     }
 
     private static final class ComponentDescriptorAdapter

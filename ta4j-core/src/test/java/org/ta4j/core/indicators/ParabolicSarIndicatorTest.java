@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
+import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
+
+import org.ta4j.core.BarSeries;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -48,14 +53,14 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
                 .add();
         mockBarSeries.barBuilder()
                 .endTime(now.plusSeconds(2))
-                .openPrice(79.99)
+                .openPrice(75.060000)
                 .closePrice(75.24)
                 .highPrice(76.269900)
                 .lowPrice(75.060000)
                 .add();
         mockBarSeries.barBuilder()
                 .endTime(now.plusSeconds(3))
-                .openPrice(75.30)
+                .openPrice(74.500000)
                 .closePrice(75.17)
                 .highPrice(75.280000)
                 .lowPrice(74.500000)
@@ -93,21 +98,21 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
         // the result.
         mockBarSeries.barBuilder()
                 .endTime(now.plusSeconds(1))
-                .openPrice(165.5)
+                .openPrice(170.1)
                 .closePrice(175.1)
                 .highPrice(180.10)
                 .lowPrice(170.1)
                 .add();
         mockBarSeries.barBuilder()
                 .endTime(now.plusSeconds(2))
-                .openPrice(175.1)
+                .openPrice(180.2)
                 .closePrice(185.1)
                 .highPrice(190.20)
                 .lowPrice(180.2)
                 .add();
         mockBarSeries.barBuilder()
                 .endTime(now.plusSeconds(3))
-                .openPrice(185.1)
+                .openPrice(190.3)
                 .closePrice(195.1)
                 .highPrice(200.30)
                 .lowPrice(190.3)
@@ -131,14 +136,14 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
                 .add();
         mockBarSeries.barBuilder()
                 .endTime(now.plusSeconds(6))
-                .openPrice(79.99)
+                .openPrice(75.060000)
                 .closePrice(75.24)
                 .highPrice(76.269900)
                 .lowPrice(75.060000)
                 .add();
         mockBarSeries.barBuilder()
                 .endTime(now.plusSeconds(7))
-                .openPrice(75.30)
+                .openPrice(74.500000)
                 .closePrice(75.17)
                 .highPrice(75.280000)
                 .lowPrice(74.500000)
@@ -187,7 +192,7 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
                 .add();
         mockBarSeries.barBuilder()
                 .endTime(now.plusSeconds(14))
-                .openPrice(74.36)
+                .openPrice(74.820000)
                 .closePrice(76.510000)
                 .highPrice(76.830000)
                 .lowPrice(74.820000)
@@ -229,7 +234,7 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
                 .add();
         mockBarSeries.barBuilder()
                 .endTime(now.plusSeconds(20))
-                .openPrice(75.0)
+                .openPrice(75.250000)
                 .closePrice(75.620000)
                 .highPrice(76.210000)
                 .lowPrice(75.250000)
@@ -354,6 +359,13 @@ public class ParabolicSarIndicatorTest extends AbstractIndicatorTest<Indicator<N
         assertNumEquals(values.get(8), parabolicSarIndicator.getValue(8));
         assertNumEquals(values.get(7), parabolicSarIndicator.getValue(7));
         assertNumEquals(values.get(6), parabolicSarIndicator.getValue(6));
+    }
+
+    @Override
+    protected List<IndicatorSerializationFixture<?>> serializationFixtures() {
+        BarSeries series = serializationSeries(numFactory);
+        return List.of(serializationFixture(series,
+                new ParabolicSarIndicator(series, numOf(0.02), numOf(0.2), numOf(0.02)), stableIndexes(series)));
     }
 
 }

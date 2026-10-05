@@ -22,22 +22,26 @@ import static org.ta4j.core.num.NaN.NaN;
 public class ATMAIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
-    private final int slow;
-    private final int fast;
-    private final SMAIndicator sma;
-    private final SMAIndicator smaSma;
+    private final Indicator<Num> indicator;
+    private final transient int slow;
+    private final transient int fast;
+    private final transient SMAIndicator sma;
+    private final transient SMAIndicator smaSma;
 
     /**
      * Constructor.
      *
      * @param indicator an indicator
-     * @param barCount  the Simple Moving Average time frame
+     * @param barCount  the Simple Moving Average time frame. Odd time frames use
+     *                  the rounded-up half as the fast smoothing length.
      */
     public ATMAIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator.getBarSeries());
+        super(indicator);
+
         this.barCount = barCount;
-        this.fast = (int) (Math.ceil(barCount / 2));
-        this.slow = (int) (Math.floor(barCount / 2) + 1);
+        this.indicator = indicator;
+        this.fast = Math.ceilDiv(barCount, 2);
+        this.slow = (barCount / 2) + 1;
         this.sma = new SMAIndicator(indicator, slow);
         this.smaSma = new SMAIndicator(sma, fast);
     }

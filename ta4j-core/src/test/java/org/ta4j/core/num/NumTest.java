@@ -190,6 +190,18 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
     }
 
     @Test
+    public void isFiniteRejectsNaNAndPrimitiveInfinityWithoutRejectingLargeDecimal() {
+        final Num positiveInfinity = DoubleNumFactory.getInstance().numOf(Double.POSITIVE_INFINITY);
+        final Num hugeDecimal = DecimalNum.valueOf(new BigDecimal("1e10000"), new MathContext(50));
+
+        assertFalse(Num.isFinite(null));
+        assertFalse(Num.isFinite(NaN));
+        assertFalse(Num.isFinite(positiveInfinity));
+        assertTrue(Double.isInfinite(hugeDecimal.doubleValue()));
+        assertTrue(Num.isFinite(hugeDecimal));
+    }
+
+    @Test
     public void testArithmetic() {
         final Num ten = numOf(10);
         final Num million = numOf(1000000);
@@ -285,7 +297,7 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
                 assertNumEquals(numOf(numBD), numOf(sqrtBD.multiply(sqrtBD, new MathContext(99999, HALF_UP))));
                 assertNumNotEquals(numOf(numBD), sqrt.multipliedBy(sqrt));
             } catch (final IOException ioe) {
-                ioe.printStackTrace();
+                throw new IllegalStateException("Failed to load numTest.properties", ioe);
             }
         }
     }

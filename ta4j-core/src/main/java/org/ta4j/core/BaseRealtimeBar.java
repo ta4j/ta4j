@@ -169,9 +169,15 @@ public class BaseRealtimeBar extends BaseBar implements RealtimeBar {
 
     @Override
     public void addTrade(final Num tradeVolume, final Num tradePrice, final Side side, final Liquidity liquidity) {
-        super.addTrade(tradeVolume, tradePrice);
-        addSideData(tradeVolume, tradePrice, side);
-        addLiquidityData(tradeVolume, tradePrice, liquidity);
+        applyTrade(tradeVolume, tradePrice);
+        try {
+            addSideData(tradeVolume, tradePrice, side);
+            addLiquidityData(tradeVolume, tradePrice, liquidity);
+        } catch (RuntimeException | Error failure) {
+            publishRetainedBarMutationAfterFailure(failure);
+            throw failure;
+        }
+        publishRetainedBarMutation();
     }
 
     private void addSideData(final Num tradeVolume, final Num tradePrice, final Side side) {
@@ -206,5 +212,33 @@ public class BaseRealtimeBar extends BaseBar implements RealtimeBar {
             takerAmount = takerAmount == null ? tradeAmount : takerAmount.plus(tradeAmount);
             takerTrades++;
         }
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), buyVolume, sellVolume, buyAmount, sellAmount, buyTrades, sellTrades,
+                hasSideData, makerVolume, takerVolume, makerAmount, takerAmount, makerTrades, takerTrades,
+                hasLiquidityData);
+    }
+
+    @Override
+    public boolean equals(final Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!(obj instanceof BaseRealtimeBar)) {
+            return false;
+        }
+        if (!super.equals(obj)) {
+            return false;
+        }
+        final BaseRealtimeBar other = (BaseRealtimeBar) obj;
+        return Objects.equals(buyVolume, other.buyVolume) && Objects.equals(sellVolume, other.sellVolume)
+                && Objects.equals(buyAmount, other.buyAmount) && Objects.equals(sellAmount, other.sellAmount)
+                && buyTrades == other.buyTrades && sellTrades == other.sellTrades && hasSideData == other.hasSideData
+                && Objects.equals(makerVolume, other.makerVolume) && Objects.equals(takerVolume, other.takerVolume)
+                && Objects.equals(makerAmount, other.makerAmount) && Objects.equals(takerAmount, other.takerAmount)
+                && makerTrades == other.makerTrades && takerTrades == other.takerTrades
+                && hasLiquidityData == other.hasLiquidityData;
     }
 }

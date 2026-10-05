@@ -22,7 +22,7 @@ final class ExecutionModelSupport {
     private ExecutionModelSupport() {
     }
 
-    static ExecutionTarget resolveExecutionTarget(int signalIndex, BarSeries barSeries,
+    static TradeExecutionModel.ExecutionTarget resolveExecutionTarget(int signalIndex, BarSeries barSeries,
             TradeExecutionModel.PriceSource priceSource) {
         if (signalIndex < barSeries.getBeginIndex()) {
             return null;
@@ -31,21 +31,24 @@ final class ExecutionModelSupport {
             if (!hasAccessibleBar(signalIndex, barSeries)) {
                 return null;
             }
-            return new ExecutionTarget(signalIndex, barSeries.getBar(signalIndex).getClosePrice());
+            return createExecutionTarget(signalIndex, barSeries.getBar(signalIndex).getClosePrice());
         }
-        if (signalIndex > barSeries.getEndIndex()) {
+        // Executing on the next open requires a subsequent bar; using >= keeps the
+        // check exact even when signalIndex is Integer.MAX_VALUE, where signalIndex + 1
+        // would overflow and wrap around to a negative index.
+        if (signalIndex >= barSeries.getEndIndex()) {
             return null;
         }
         int executionIndex = signalIndex + 1;
         if (executionIndex > barSeries.getEndIndex()) {
             return null;
         }
-        return new ExecutionTarget(executionIndex, barSeries.getBar(executionIndex).getOpenPrice());
+        return createExecutionTarget(executionIndex, barSeries.getBar(executionIndex).getOpenPrice());
     }
 
     private static boolean hasAccessibleBar(int signalIndex, BarSeries barSeries) {
-        int rawIndex = signalIndex - barSeries.getRemovedBarsCount();
-        return rawIndex >= 0 && rawIndex < barSeries.getBarData().size();
+        long visibleOffset = (long) signalIndex - barSeries.getBeginIndex();
+        return visibleOffset >= 0 && visibleOffset < barSeries.getBarCount();
     }
 
     static TradeType nextTradeType(TradingRecord tradingRecord) {
@@ -59,6 +62,7 @@ final class ExecutionModelSupport {
         return currentPosition.getEntry().getType().complementType();
     }
 
-    record ExecutionTarget(int index, Num price) {
+    private static TradeExecutionModel.ExecutionTarget createExecutionTarget(int index, Num price) {
+        return new TradeExecutionModel.ExecutionTarget(index, price);
     }
 }

@@ -18,10 +18,10 @@ import org.ta4j.core.num.Num;
  */
 public class CCIIndicator extends CachedIndicator<Num> {
 
-    private final Num factor;
-    private final TypicalPriceIndicator typicalPriceInd;
-    private final SMAIndicator smaInd;
-    private final MeanDeviationIndicator meanDeviationInd;
+    private final transient Num factor;
+    private final transient TypicalPriceIndicator typicalPriceInd;
+    private final transient SMAIndicator smaInd;
+    private final transient MeanDeviationIndicator meanDeviationInd;
     private final int barCount;
 
     /**

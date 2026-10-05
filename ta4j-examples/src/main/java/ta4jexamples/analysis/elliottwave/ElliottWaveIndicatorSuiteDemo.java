@@ -50,6 +50,7 @@ import ta4jexamples.charting.builder.ChartPlan;
 import ta4jexamples.datasources.YahooFinanceHttpBarSeriesDataSource;
 import ta4jexamples.datasources.CoinbaseHttpBarSeriesDataSource;
 import ta4jexamples.datasources.BarSeriesDataSource;
+import ta4jexamples.analysis.elliottwave.demo.ElliottWaveDemoSupport;
 import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
 
 /**
@@ -201,7 +202,8 @@ public class ElliottWaveIndicatorSuiteDemo {
             return;
         }
 
-        ElliottDegree degree = explicitDegree == null ? selectRecommendedDegree(series) : explicitDegree;
+        ElliottDegree degree = explicitDegree == null ? ElliottWaveDemoSupport.autoSelectDegree(series)
+                : explicitDegree;
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
         AnalysisResult result = analysis.analyze(series, degree, DEFAULT_FIB_TOLERANCE);
         String json = result.structuredResult().toJson(false);
@@ -505,21 +507,26 @@ public class ElliottWaveIndicatorSuiteDemo {
         if (explicitDegree.isPresent()) {
             return explicitDegree.get();
         }
-        return autoSelectDegree(series);
+        return ElliottWaveDemoSupport.autoSelectDegree(series);
     }
 
     /**
      * Auto-selects an Elliott degree from the bar series duration and history size.
      * <p>
      * This helper is exposed for demo entry points that should default to the same
-     * recommendation logic as this suite.
+     * recommendation logic as this suite. It delegates to
+     * {@link ElliottWaveDemoSupport#autoSelectDegree(BarSeries)}.
      *
      * @param series bar series used for recommendation
      * @return recommended degree, or {@link #DEFAULT_DEGREE} when recommendation
      *         cannot be derived
+     * @since 0.24.2
+     * @deprecated use {@link ElliottWaveDemoSupport#autoSelectDegree(BarSeries)}
+     *             instead
      */
+    @Deprecated(since = "0.24.2", forRemoval = false)
     public static ElliottDegree autoSelectDegree(BarSeries series) {
-        return selectRecommendedDegree(series);
+        return ElliottWaveDemoSupport.autoSelectDegree(series);
     }
 
     /**
@@ -545,39 +552,6 @@ public class ElliottWaveIndicatorSuiteDemo {
         } catch (IllegalArgumentException ex) {
             LOG.warn("Invalid degree '{}', using default: {}", degreeValue, DEFAULT_DEGREE);
             return Optional.of(DEFAULT_DEGREE);
-        }
-    }
-
-    private static ElliottDegree selectRecommendedDegree(BarSeries series) {
-        if (series == null || series.isEmpty()) {
-            LOG.warn("Series unavailable for degree selection, using default: {}", DEFAULT_DEGREE);
-            return DEFAULT_DEGREE;
-        }
-
-        Duration barDuration = series.getFirstBar().getTimePeriod();
-        if (barDuration == null || barDuration.isZero() || barDuration.isNegative()) {
-            LOG.warn("Invalid bar duration '{}' for degree selection, using default: {}", barDuration, DEFAULT_DEGREE);
-            return DEFAULT_DEGREE;
-        }
-
-        int barCount = series.getBarCount();
-        try {
-            List<ElliottDegree> recommendations = ElliottDegree.getRecommendedDegrees(barDuration, barCount);
-            if (recommendations.isEmpty()) {
-                LOG.warn("No recommended degrees for {} bars at {}, using default: {}", barCount, barDuration,
-                        DEFAULT_DEGREE);
-                return DEFAULT_DEGREE;
-            }
-            ElliottDegree selected = recommendations.get(0);
-            String seriesName = series.getName() == null || series.getName().isBlank() ? "<unnamed-series>"
-                    : series.getName();
-            LOG.info("Auto-selected Elliott degree {} for {} {} bars at {}. Candidates: {}", selected, seriesName,
-                    barCount, barDuration, recommendations);
-            return selected;
-        } catch (Exception ex) {
-            LOG.warn("Failed to auto-select degree for {} bars at {}, using default: {}", barCount, barDuration,
-                    DEFAULT_DEGREE, ex);
-            return DEFAULT_DEGREE;
         }
     }
 
@@ -723,10 +697,10 @@ public class ElliottWaveIndicatorSuiteDemo {
         // Log the structured result (for backward compatibility)
         logStructuredAnalysisResult(structuredResult, scenarioSet, series.numFactory());
 
-        return new AnalysisResult(series, degree, endIndex, phaseIndicator, invalidationIndicator, channelIndicator,
-                ratioIndicator, confluenceIndicator, swingCount, filteredSwingCount, scenarioIndicator, swingMetadata,
-                scenarioSet, ratioValue, swingCountAsNum, filteredSwingCountAsNum, baseCaseChartPlan,
-                alternativeChartPlans, structuredResult);
+        return new AnalysisResult(series.getName(), degree, endIndex, phaseIndicator, invalidationIndicator,
+                channelIndicator, ratioIndicator, confluenceIndicator, swingCount, filteredSwingCount,
+                scenarioIndicator, swingMetadata, scenarioSet, ratioValue, swingCountAsNum, filteredSwingCountAsNum,
+                baseCaseChartPlan, alternativeChartPlans, structuredResult);
     }
 
     /**
@@ -757,14 +731,13 @@ public class ElliottWaveIndicatorSuiteDemo {
             ElliottScenario baseCase = result.scenarioSet().base().orElseThrow();
             String baseCaseLabel = "BASE CASE";
             String baseCaseWindowTitle = buildScenarioWindowTitle(result.degree(), trendLabel, baseCaseLabel, baseCase,
-                    result.series().getName());
+                    result.seriesName());
 
             if (!isHeadless) {
                 chartWorkflow.display(baseCasePlan, baseCaseWindowTitle);
             }
-            chartWorkflow.save(baseCasePlan, "temp/charts",
-                    "elliott-wave-analysis-" + result.series().getName().toLowerCase() + "-"
-                            + result.degree().name().toLowerCase() + "-base-case");
+            chartWorkflow.save(baseCasePlan, "temp/charts", "elliott-wave-analysis-" + result.seriesName().toLowerCase()
+                    + "-" + result.degree().name().toLowerCase() + "-base-case");
         }
 
         // Display and save alternative scenario charts
@@ -774,14 +747,13 @@ public class ElliottWaveIndicatorSuiteDemo {
             ElliottScenario alt = alternatives.get(i);
             String altLabel = String.format("ALTERNATIVE %d", i + 1);
             String altWindowTitle = buildScenarioWindowTitle(result.degree(), trendLabel, altLabel, alt,
-                    result.series().getName());
+                    result.seriesName());
 
             if (!isHeadless) {
                 chartWorkflow.display(altPlan, altWindowTitle);
             }
-            chartWorkflow.save(altPlan, "temp/charts",
-                    "elliott-wave-analysis-" + result.series().getName().toLowerCase() + "-"
-                            + result.degree().name().toLowerCase() + "-alternative-" + (i + 1));
+            chartWorkflow.save(altPlan, "temp/charts", "elliott-wave-analysis-" + result.seriesName().toLowerCase()
+                    + "-" + result.degree().name().toLowerCase() + "-alternative-" + (i + 1));
         }
     }
 
@@ -1329,46 +1301,140 @@ public class ElliottWaveIndicatorSuiteDemo {
     /**
      * Result container for Elliott Wave analysis findings.
      * <p>
-     * This record holds all analysis indicators, metadata, and chart plans
-     * generated during Elliott Wave analysis. It allows separation of analysis
-     * computation from visualization.
-     *
-     * @param series                  the analyzed bar series
-     * @param degree                  the Elliott wave degree used
-     * @param endIndex                the index at which analysis was evaluated
-     * @param phaseIndicator          the phase indicator
-     * @param invalidationIndicator   the invalidation indicator
-     * @param channelIndicator        the channel indicator
-     * @param ratioIndicator          the ratio indicator
-     * @param confluenceIndicator     the confluence indicator
-     * @param swingCount              the raw swing count indicator
-     * @param filteredSwingCount      the filtered swing count indicator
-     * @param scenarioIndicator       the scenario indicator
-     * @param swingMetadata           the swing metadata snapshot
-     * @param scenarioSet             the scenario set at endIndex (use
-     *                                {@code scenarioSet.base()} to get the base
-     *                                case scenario)
-     * @param ratioValue              indicator for Elliott ratio values (for
-     *                                charting)
-     * @param swingCountAsNum         indicator for raw swing count (as numeric, for
-     *                                charting)
-     * @param filteredSwingCountAsNum indicator for filtered swing count (as
-     *                                numeric, for charting)
-     * @param baseCaseChartPlan       chart plan for the base case scenario (if
-     *                                present)
-     * @param alternativeChartPlans   chart plans for alternative scenarios
-     * @param structuredResult        structured analysis result with embedded chart
-     *                                images and all logged data
+     * This class holds immutable report/chart ownership state generated during
+     * Elliott Wave analysis. Mutable indicator collaborators are kept as
+     * package-local artifacts for test/report construction support instead of being
+     * part of the public result contract.
      */
-    public record AnalysisResult(BarSeries series, ElliottDegree degree, int endIndex,
-            ElliottPhaseIndicator phaseIndicator, ElliottInvalidationIndicator invalidationIndicator,
-            ElliottChannelIndicator channelIndicator, ElliottRatioIndicator ratioIndicator,
-            ElliottConfluenceIndicator confluenceIndicator, ElliottWaveCountIndicator swingCount,
-            ElliottWaveCountIndicator filteredSwingCount, ElliottScenarioIndicator scenarioIndicator,
-            ElliottSwingMetadata swingMetadata, ElliottScenarioSet scenarioSet, Indicator<Num> ratioValue,
-            Indicator<Num> swingCountAsNum, Indicator<Num> filteredSwingCountAsNum,
-            Optional<ChartPlan> baseCaseChartPlan, List<ChartPlan> alternativeChartPlans,
-            ElliottWaveAnalysisReport structuredResult) {
+    public static final class AnalysisResult {
+        private final String seriesName;
+        private final ElliottDegree degree;
+        private final int endIndex;
+        private final ElliottSwingMetadata swingMetadata;
+        private final ElliottScenarioSet scenarioSet;
+        private final Indicator<Num> ratioValue;
+        private final Indicator<Num> swingCountAsNum;
+        private final Indicator<Num> filteredSwingCountAsNum;
+        private final Optional<ChartPlan> baseCaseChartPlan;
+        private final List<ChartPlan> alternativeChartPlans;
+        private final ElliottWaveAnalysisReport structuredResult;
+        private final AnalysisArtifacts artifacts;
+
+        AnalysisResult(String seriesName, ElliottDegree degree, int endIndex, ElliottPhaseIndicator phaseIndicator,
+                ElliottInvalidationIndicator invalidationIndicator, ElliottChannelIndicator channelIndicator,
+                ElliottRatioIndicator ratioIndicator, ElliottConfluenceIndicator confluenceIndicator,
+                ElliottWaveCountIndicator swingCount, ElliottWaveCountIndicator filteredSwingCount,
+                ElliottScenarioIndicator scenarioIndicator, ElliottSwingMetadata swingMetadata,
+                ElliottScenarioSet scenarioSet, Indicator<Num> ratioValue, Indicator<Num> swingCountAsNum,
+                Indicator<Num> filteredSwingCountAsNum, Optional<ChartPlan> baseCaseChartPlan,
+                List<ChartPlan> alternativeChartPlans, ElliottWaveAnalysisReport structuredResult) {
+            this.seriesName = Objects.requireNonNull(seriesName, "seriesName");
+            this.degree = Objects.requireNonNull(degree, "degree");
+            this.endIndex = endIndex;
+            this.swingMetadata = Objects.requireNonNull(swingMetadata, "swingMetadata");
+            this.scenarioSet = Objects.requireNonNull(scenarioSet, "scenarioSet");
+            this.ratioValue = Objects.requireNonNull(ratioValue, "ratioValue");
+            this.swingCountAsNum = Objects.requireNonNull(swingCountAsNum, "swingCountAsNum");
+            this.filteredSwingCountAsNum = Objects.requireNonNull(filteredSwingCountAsNum, "filteredSwingCountAsNum");
+            this.baseCaseChartPlan = Objects.requireNonNull(baseCaseChartPlan, "baseCaseChartPlan");
+            this.alternativeChartPlans = alternativeChartPlans == null ? List.of() : List.copyOf(alternativeChartPlans);
+            this.structuredResult = Objects.requireNonNull(structuredResult, "structuredResult");
+            this.artifacts = new AnalysisArtifacts(phaseIndicator, invalidationIndicator, channelIndicator,
+                    ratioIndicator, confluenceIndicator, swingCount, filteredSwingCount, scenarioIndicator);
+        }
+
+        public String seriesName() {
+            return seriesName;
+        }
+
+        public ElliottDegree degree() {
+            return degree;
+        }
+
+        public int endIndex() {
+            return endIndex;
+        }
+
+        public ElliottSwingMetadata swingMetadata() {
+            return swingMetadata;
+        }
+
+        public ElliottScenarioSet scenarioSet() {
+            return scenarioSet;
+        }
+
+        public Indicator<Num> ratioValue() {
+            return ratioValue;
+        }
+
+        public Indicator<Num> swingCountAsNum() {
+            return swingCountAsNum;
+        }
+
+        public Indicator<Num> filteredSwingCountAsNum() {
+            return filteredSwingCountAsNum;
+        }
+
+        public Optional<ChartPlan> baseCaseChartPlan() {
+            return baseCaseChartPlan;
+        }
+
+        public List<ChartPlan> alternativeChartPlans() {
+            return List.copyOf(alternativeChartPlans);
+        }
+
+        public ElliottWaveAnalysisReport structuredResult() {
+            return structuredResult;
+        }
+
+        ElliottPhaseIndicator phaseIndicator() {
+            return artifacts.phaseIndicator();
+        }
+
+        ElliottInvalidationIndicator invalidationIndicator() {
+            return artifacts.invalidationIndicator();
+        }
+
+        ElliottChannelIndicator channelIndicator() {
+            return artifacts.channelIndicator();
+        }
+
+        ElliottRatioIndicator ratioIndicator() {
+            return artifacts.ratioIndicator();
+        }
+
+        ElliottConfluenceIndicator confluenceIndicator() {
+            return artifacts.confluenceIndicator();
+        }
+
+        ElliottWaveCountIndicator swingCount() {
+            return artifacts.swingCount();
+        }
+
+        ElliottWaveCountIndicator filteredSwingCount() {
+            return artifacts.filteredSwingCount();
+        }
+
+        ElliottScenarioIndicator scenarioIndicator() {
+            return artifacts.scenarioIndicator();
+        }
+    }
+
+    private record AnalysisArtifacts(ElliottPhaseIndicator phaseIndicator,
+            ElliottInvalidationIndicator invalidationIndicator, ElliottChannelIndicator channelIndicator,
+            ElliottRatioIndicator ratioIndicator, ElliottConfluenceIndicator confluenceIndicator,
+            ElliottWaveCountIndicator swingCount, ElliottWaveCountIndicator filteredSwingCount,
+            ElliottScenarioIndicator scenarioIndicator) {
+        private AnalysisArtifacts {
+            Objects.requireNonNull(phaseIndicator, "phaseIndicator");
+            Objects.requireNonNull(invalidationIndicator, "invalidationIndicator");
+            Objects.requireNonNull(channelIndicator, "channelIndicator");
+            Objects.requireNonNull(ratioIndicator, "ratioIndicator");
+            Objects.requireNonNull(confluenceIndicator, "confluenceIndicator");
+            Objects.requireNonNull(swingCount, "swingCount");
+            Objects.requireNonNull(filteredSwingCount, "filteredSwingCount");
+            Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
+        }
     }
 
 }

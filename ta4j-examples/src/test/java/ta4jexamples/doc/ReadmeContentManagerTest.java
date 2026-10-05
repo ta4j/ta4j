@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
@@ -79,6 +80,16 @@ public class ReadmeContentManagerTest {
         String pom = readString(repositoryRoot.resolve("pom.xml"));
         String readme = readString(repositoryRoot.resolve("README.md"));
         String contributing = readString(repositoryRoot.resolve(".github").resolve("CONTRIBUTING.md"));
+        Map<String, String> expectedActionPins = Map.ofEntries(
+                Map.entry("actions/setup-java@", "actions/setup-java@v5"),
+                Map.entry("actions/checkout@", "actions/checkout@v6"), Map.entry("actions/cache@", "actions/cache@v5"),
+                Map.entry("actions/upload-artifact@", "actions/upload-artifact@v7"),
+                Map.entry("actions/github-script@", "actions/github-script@v9"),
+                Map.entry("softprops/action-gh-release@", "softprops/action-gh-release@v3"),
+                Map.entry("rhysd/actionlint@", "rhysd/actionlint@v1.7.12"));
+        List<String> forbiddenActionPins = List.of("actions/checkout@v5", "actions/cache@v4",
+                "actions/upload-artifact@v4", "actions/github-script@v8", "softprops/action-gh-release@v2",
+                "rhysd/actionlint@v1.7.9");
         List<Path> setupJavaWorkflows = new ArrayList<>();
 
         assertTrue(pom.contains("<maven.compiler.release>25</maven.compiler.release>"));
@@ -86,8 +97,13 @@ public class ReadmeContentManagerTest {
         assertTrue(pom.contains("<version>[25,)</version>"));
         assertTrue(readme.contains("JDK-25%2B"));
         assertTrue(readme.contains("Java 25+"));
-        assertFalse(readme.contains("./mvnw"));
-        assertFalse(readme.contains("mvnw.cmd"));
+        assertTrue(readme.contains("scripts/run-full-build-quiet.sh"));
+        assertTrue(readme.contains("scripts/run-full-build-quiet.ps1"));
+        assertTrue(readme.contains(
+                "./mvnw -B clean license:format spotless:apply verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless"));
+        assertTrue(readme.contains(
+                "./mvnw -B clean license:check spotless:check verify -Dta4j.excludedTestTags=analysis-demo,benchmark,requires-display,requires-headless"));
+        assertTrue(readme.contains("./mvnw -B license:format spotless:apply"));
         assertTrue(contributing.contains("Java 25+"));
 
         try (Stream<Path> workflowPaths = Files.list(repositoryRoot.resolve(".github").resolve("workflows"))) {
@@ -98,10 +114,32 @@ public class ReadmeContentManagerTest {
                     assertTrue(workflow.contains("java-version: 25"), path + " should set up Java 25");
                     assertFalse(workflow.contains("java-version: 21"), path + " should not set up Java 21");
                 }
+                expectedActionPins.forEach((actionPrefix, expectedPin) -> {
+                    if (workflow.contains(actionPrefix)) {
+                        assertTrue(workflow.contains(expectedPin) || containsFullShaActionPin(workflow, actionPrefix),
+                                path + " should use " + expectedPin + " or a full commit SHA");
+                    }
+                });
+                forbiddenActionPins.forEach((forbiddenPin) -> assertFalse(workflow.contains(forbiddenPin),
+                        path + " should not pin " + forbiddenPin));
+                if (path.getFileName().toString().equals("github-release.yml")) {
+                    assertTrue(workflow.contains("path: workflow-support"),
+                            path + " should stage workflow support files separately from the release tag checkout");
+                    assertTrue(workflow.contains("workflow-support/scripts/release/release_helpers.sh"), path
+                            + " should validate artifacts with workflow support files, not the checked-out tag tree");
+                }
             });
         }
 
         assertFalse(setupJavaWorkflows.isEmpty());
+    }
+
+    private static boolean containsFullShaActionPin(String workflow, String actionPrefix) {
+        return workflow.lines()
+                .map(String::trim)
+                .filter(line -> line.startsWith("uses: " + actionPrefix))
+                .map(line -> line.substring(line.indexOf(actionPrefix) + actionPrefix.length()).trim())
+                .anyMatch(ref -> ref.matches("[0-9a-fA-F]{40}"));
     }
 
     private static String buildSourceSnippets(String lineSeparator) {

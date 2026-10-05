@@ -8,6 +8,7 @@ import java.util.Arrays;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 final class StopRuleTestSupport {
@@ -22,5 +23,24 @@ final class StopRuleTestSupport {
 
     static ClosePriceIndicator closePrice(NumFactory numFactory, Number... closes) {
         return new ClosePriceIndicator(series(numFactory, closes));
+    }
+
+    static ClosePriceIndicator strictClosePrice(BarSeries series) {
+        return new StrictClosePriceIndicator(series);
+    }
+
+    private static final class StrictClosePriceIndicator extends ClosePriceIndicator {
+
+        private StrictClosePriceIndicator(BarSeries series) {
+            super(series);
+        }
+
+        @Override
+        public Num getValue(int index) {
+            if (index < getBarSeries().getBeginIndex()) {
+                throw new IndexOutOfBoundsException("index before retained begin");
+            }
+            return super.getValue(index);
+        }
     }
 }

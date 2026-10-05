@@ -23,10 +23,12 @@ import org.ta4j.core.num.Num;
  */
 public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
 
-    private final EMAIndicator stcSmoothed;
+    private final Indicator<Num> indicator;
+    private final int fastPeriod;
     private final int slowPeriod;
     private final int cycleLength;
     private final int smoothingPeriod;
+    private final transient EMAIndicator stcSmoothed;
 
     /**
      * Constructor with common parameterization ({@code fast}=23, {@code slow}=50,
@@ -36,7 +38,7 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
      * @since 0.20
      */
     public SchaffTrendCycleIndicator(Indicator<Num> indicator) {
-        this(indicator, 23, 50, 10, 3);
+        this(validatedConfig(indicator, 23, 50, 10, 3));
     }
 
     /**
@@ -52,22 +54,34 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
      */
     public SchaffTrendCycleIndicator(Indicator<Num> indicator, int fastPeriod, int slowPeriod, int cycleLength,
             int smoothingPeriod) {
-        super(indicator);
+        this(validatedConfig(indicator, fastPeriod, slowPeriod, cycleLength, smoothingPeriod));
+    }
+
+    private SchaffTrendCycleIndicator(Config config) {
+        super(config.indicator());
+        this.indicator = config.indicator();
+        this.fastPeriod = config.fastPeriod();
+        this.slowPeriod = config.slowPeriod();
+        this.cycleLength = config.cycleLength();
+        this.smoothingPeriod = config.smoothingPeriod();
+        this.stcSmoothed = config.stcSmoothed();
+    }
+
+    private static Config validatedConfig(Indicator<Num> indicator, int fastPeriod, int slowPeriod, int cycleLength,
+            int smoothingPeriod) {
         if (fastPeriod < 1 || slowPeriod < 1 || cycleLength < 1 || smoothingPeriod < 1) {
             throw new IllegalArgumentException("All Schaff Trend Cycle periods must be positive integers");
         }
         if (fastPeriod >= slowPeriod) {
             throw new IllegalArgumentException("Slow period must be greater than fast period for MACD calculation");
         }
-        this.slowPeriod = slowPeriod;
-        this.cycleLength = cycleLength;
-        this.smoothingPeriod = smoothingPeriod;
 
         MACDIndicator macd = new MACDIndicator(indicator, fastPeriod, slowPeriod);
         StochasticIndicator macdStochastic = new StochasticIndicator(macd, cycleLength);
-        EMAIndicator macdStochasticSmoothed = new EMAIndicator(macdStochastic, smoothingPeriod);
+        EMAIndicator macdStochasticSmoothed = new EvictingEmaIndicator(macdStochastic, smoothingPeriod);
         StochasticIndicator cycleStochastic = new StochasticIndicator(macdStochasticSmoothed, cycleLength);
-        this.stcSmoothed = new EMAIndicator(cycleStochastic, smoothingPeriod);
+        EMAIndicator stcSmoothed = new EvictingEmaIndicator(cycleStochastic, smoothingPeriod);
+        return new Config(indicator, fastPeriod, stcSmoothed, slowPeriod, cycleLength, smoothingPeriod);
     }
 
     @Override
@@ -85,5 +99,48 @@ public class SchaffTrendCycleIndicator extends CachedIndicator<Num> {
         // Stochastic (cycleLength) -> EMA (smoothingPeriod)
         // Unstable periods are additive through the chain
         return slowPeriod + cycleLength + smoothingPeriod + cycleLength + smoothingPeriod;
+    }
+
+    /**
+     * Discards every cached value after the series head advanced.
+     *
+     * <p>
+     * STC values are always recomputable from the retained window, and both the
+     * stochastic stages and the smoothing {@link EvictingEmaIndicator}s discard
+     * their caches on a head advance: keeping any band here would preserve results
+     * derived from bars that no longer exist.
+     *
+     * @return {@code true} to evict the whole cache
+     */
+    @Override
+    protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+        return true;
+    }
+
+    private record Config(Indicator<Num> indicator, int fastPeriod, EMAIndicator stcSmoothed, int slowPeriod,
+            int cycleLength, int smoothingPeriod) {
+    }
+
+    /**
+     * An {@link EMAIndicator} that discards its whole cache when the series head
+     * advances.
+     *
+     * <p>
+     * EMA values depend on the entire retained history of their input. The
+     * stochastic stage of this indicator rebaselines after a head advance, so any
+     * surviving EMA value would mix fresh and stale stochastic inputs; discarding
+     * the cache makes post-advance reads recurse through freshly recomputed
+     * stochastic values.
+     */
+    private static final class EvictingEmaIndicator extends EMAIndicator {
+
+        private EvictingEmaIndicator(final Indicator<Num> indicator, final int barCount) {
+            super(indicator, barCount);
+        }
+
+        @Override
+        protected boolean requiresFullCacheInvalidationAfterHeadAdvance() {
+            return true;
+        }
     }
 }

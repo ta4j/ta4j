@@ -7,6 +7,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
+import org.ta4j.core.criteria.ReturnCriterion;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.ReturnRepresentationPolicy;
 import org.ta4j.core.num.Num;
@@ -22,7 +23,7 @@ import java.util.Optional;
  * with total returns (a neutral value of {@code 1.0}). The representation is
  * applied before values are returned to callers.
  */
-public abstract class AbstractReturnCriterion extends AbstractAnalysisCriterion {
+public abstract class AbstractReturnCriterion extends AbstractAnalysisCriterion implements ReturnCriterion {
 
     /**
      * Output representation used for this criterion.

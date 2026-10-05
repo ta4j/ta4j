@@ -13,7 +13,7 @@ import org.ta4j.core.num.Num;
  */
 public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<Num> {
 
-    private final CloseLocationValueIndicator clvIndicator;
+    private final transient CloseLocationValueIndicator clvIndicator;
 
     /**
      * Constructor.
@@ -44,4 +44,5 @@ public class AccumulationDistributionIndicator extends RecursiveCachedIndicator<
     public int getCountOfUnstableBars() {
         return 0;
     }
+
 }

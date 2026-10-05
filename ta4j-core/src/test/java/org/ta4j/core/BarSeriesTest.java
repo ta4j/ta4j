@@ -351,7 +351,7 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertNull(currentMax);
         assertNumEquals(adding1, mxPrice.getValue(defaultSeries.getEndIndex())); // adding1 also new max
         assertNull(currentMin);
-        assertNumEquals(adding1, mnPrice.getValue(defaultSeries.getEndIndex())); // adding1 also new min
+        assertNumEquals(currentClose, mnPrice.getValue(defaultSeries.getEndIndex())); // prior close folds into new min
         assertNumEquals(prevClose, prevValue.getValue(defaultSeries.getEndIndex())); // previous close stays
 
         Num adding2 = numOf(0);

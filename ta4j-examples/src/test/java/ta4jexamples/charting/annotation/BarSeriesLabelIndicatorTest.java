@@ -19,6 +19,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -52,7 +53,7 @@ class BarSeriesLabelIndicatorTest {
         BarSeriesLabelIndicator indicator = new BarSeriesLabelIndicator(series, labels);
 
         assertNotNull(indicator);
-        assertSame(series, indicator.getBarSeries());
+        assertTrue(IndicatorUtils.isSameSeries(series, indicator.getBarSeries()));
         assertEquals(2, indicator.labels().size());
     }
 

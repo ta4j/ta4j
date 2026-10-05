@@ -19,6 +19,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.num.Num;
 
@@ -29,6 +30,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.Arrays;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -158,6 +160,52 @@ public class ChartWorkflowTest {
 
         assertTrue(plot.getAnnotations().stream().anyMatch(XYTextAnnotation.class::isInstance),
                 "Trade annotations should contain readable labels");
+    }
+
+    @Test
+    public void testCustomSourcePositionStartFlowsThroughPlainAndVolumeCharts() {
+        JFreeChart plainChart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord,
+                TimeAxisMode.BAR_INDEX, 2);
+        assertSourceOrdinalLabels(plainChart.getXYPlot(), 2);
+
+        VolumeIndicator volume = new VolumeIndicator(barSeries);
+        JFreeChart volumeChart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord,
+                TimeAxisMode.BAR_INDEX, 2, volume);
+        CombinedDomainXYPlot combinedPlot = assertInstanceOf(CombinedDomainXYPlot.class, volumeChart.getPlot());
+        assertSourceOrdinalLabels(combinedPlot.getSubplots().get(0), 2);
+    }
+
+    @Test
+    public void testCustomSourcePositionStartFlowsThroughSavedAndEncodedCharts() throws IOException {
+        RecordingChartStorage storage = new RecordingChartStorage();
+        ChartWorkflow persistentWorkflow = new ChartWorkflow(new TradingChartFactory(), new MockChartDisplayer(),
+                storage);
+
+        persistentWorkflow.saveTradingRecordChart(barSeries, "Test Strategy", tradingRecord, TimeAxisMode.BAR_INDEX, 2);
+        assertSourceOrdinalLabels(storage.lastChart.getXYPlot(), 2);
+
+        VolumeIndicator volume = new VolumeIndicator(barSeries);
+        persistentWorkflow.saveTradingRecordChart(barSeries, "Test Strategy", tradingRecord, TimeAxisMode.BAR_INDEX, 2,
+                volume);
+        CombinedDomainXYPlot savedVolumePlot = assertInstanceOf(CombinedDomainXYPlot.class,
+                storage.lastChart.getPlot());
+        assertSourceOrdinalLabels(savedVolumePlot.getSubplots().get(0), 2);
+
+        byte[] defaultBytes = chartWorkflow.createTradingRecordChartBytes(barSeries, "Test Strategy", tradingRecord,
+                TimeAxisMode.BAR_INDEX);
+        byte[] shiftedBytes = chartWorkflow.createTradingRecordChartBytes(barSeries, "Test Strategy", tradingRecord,
+                TimeAxisMode.BAR_INDEX, 2);
+        assertNotNull(decodeImage(shiftedBytes));
+        assertFalse(Arrays.equals(defaultBytes, shiftedBytes),
+                "Shifted trade labels should change encoded chart output");
+
+        byte[] defaultVolumeBytes = chartWorkflow.createTradingRecordChartBytes(barSeries, "Test Strategy",
+                tradingRecord, TimeAxisMode.BAR_INDEX, volume);
+        byte[] shiftedVolumeBytes = chartWorkflow.createTradingRecordChartBytes(barSeries, "Test Strategy",
+                tradingRecord, TimeAxisMode.BAR_INDEX, 2, volume);
+        assertNotNull(decodeImage(shiftedVolumeBytes));
+        assertFalse(Arrays.equals(defaultVolumeBytes, shiftedVolumeBytes),
+                "Shifted trade labels should change encoded volume chart output");
     }
 
     @Test
@@ -303,23 +351,38 @@ public class ChartWorkflowTest {
     }
 
     @Test
-    public void testGenerateChartAsBytes() {
+    public void testGenerateChartAsBytes() throws IOException {
         byte[] chartBytes = chartWorkflow.createTradingRecordChartBytes(barSeries, "Test Strategy", tradingRecord);
 
-        assertNotNull(chartBytes, "Chart bytes should not be null");
-        assertTrue(chartBytes.length > 0, "Chart bytes should not be empty");
+        BufferedImage image = decodeImage(chartBytes);
+        assertEquals(ChartWorkflow.DEFAULT_CHART_IMAGE_WIDTH, image.getWidth());
+        assertEquals(ChartWorkflow.DEFAULT_CHART_IMAGE_HEIGHT, image.getHeight());
     }
 
     @Test
-    public void testGenerateChartAsBytesWithIndicators() {
+    public void testGenerateChartAsBytesWithIndicators() throws IOException {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
         SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
+        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord, closePrice,
+                sma);
         byte[] chartBytes = chartWorkflow.createTradingRecordChartBytes(barSeries, "Test Strategy", tradingRecord,
                 closePrice, sma);
 
-        assertNotNull(chartBytes, "Chart bytes should not be null");
-        assertTrue(chartBytes.length > 0, "Chart bytes should not be empty");
+        assertInstanceOf(CombinedDomainXYPlot.class, chart.getPlot(),
+                "Indicator convenience method should build the combined chart before encoding");
+        assertTrue(decodeImage(chartBytes).getWidth() > 0, "Indicator convenience export should produce PNG bytes");
+    }
+
+    @Test
+    public void testGetChartAsByteArrayUsesExplicitDimensions() throws IOException {
+        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+
+        byte[] chartBytes = chartWorkflow.getChartAsByteArray(chart, 640, 360);
+
+        BufferedImage image = decodeImage(chartBytes);
+        assertEquals(640, image.getWidth());
+        assertEquals(360, image.getHeight());
     }
 
     @Test
@@ -330,7 +393,7 @@ public class ChartWorkflowTest {
     @Test
     public void testGetChartAsByteArray() {
         JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
-        byte[] bytes = chartWorkflow.getChartAsByteArray(chart);
+        byte[] bytes = chartWorkflow.getChartAsByteArray(chart, 640, 360);
 
         assertNotNull(bytes, "Bytes should not be null");
         assertTrue(bytes.length > 0, "Bytes should not be empty");
@@ -372,16 +435,34 @@ public class ChartWorkflowTest {
     }
 
     @Test
-    public void testGenerateAndSaveChartImageWithSaveDirectory() throws IOException {
-        // Create temporary directory for testing
-        Path tempDir = Files.createTempDirectory("ChartWorkflow-test");
+    public void testGenerateAndSaveChartImageWithSaveDirectory() {
+        RecordingChartStorage storage = new RecordingChartStorage();
+        ChartWorkflow makerWithSave = new ChartWorkflow(new TradingChartFactory(), new MockChartDisplayer(), storage);
+        TradingRecord emptyRecord = new BaseTradingRecord();
+
+        Optional<Path> result = makerWithSave.saveTradingRecordChart(barSeries, "TestStrat", emptyRecord);
+
+        assertTrue(result.isPresent(), "Save workflow should return the storage path");
+        assertEquals(1, storage.saveCount, "Storage should be invoked once");
+        assertSame(barSeries, storage.lastSeries, "Workflow should pass the source series to storage");
+        assertEquals(ChartWorkflow.DEFAULT_CHART_IMAGE_WIDTH, storage.lastWidth);
+        assertEquals(ChartWorkflow.DEFAULT_CHART_IMAGE_HEIGHT, storage.lastHeight);
+    }
+
+    @Test
+    public void testGenerateAndSaveChartImageWithConstructorDirectoryWritesFile() throws IOException {
+        Path tempDir = Files.createTempDirectory("ChartWorkflow-constructor-save");
         try {
             ChartWorkflow makerWithSave = new ChartWorkflow(tempDir.toString());
             TradingRecord emptyRecord = new BaseTradingRecord();
+
             Optional<Path> result = makerWithSave.saveTradingRecordChart(barSeries, "TestStrat", emptyRecord);
-            result.ifPresent(path -> assertTrue(Files.exists(path), "Saved chart path should exist"));
+
+            Path path = result.orElseThrow();
+            assertTrue(Files.exists(path), "Constructor-backed save should write an image file");
+            assertTrue(path.startsWith(tempDir), "Constructor-backed save should use the configured directory");
+            assertTrue(Files.size(path) > 0, "Saved image file should not be empty");
         } finally {
-            // Clean up
             if (Files.exists(tempDir)) {
                 Files.walk(tempDir).sorted(Comparator.reverseOrder()).forEach(path -> {
                     try {
@@ -401,13 +482,13 @@ public class ChartWorkflowTest {
             ChartWorkflow makerWithSave = new ChartWorkflow(tempDir.toString());
             JFreeChart chart = makerWithSave.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
 
-            Optional<Path> result = makerWithSave.saveChartImage(chart, barSeries, "custom-resolution", 1024, 576);
+            Optional<Path> result = makerWithSave.saveChartImage(chart, barSeries, "custom-resolution", 640, 360);
 
             assertTrue(result.isPresent(), "Custom resolution save should return a path");
             BufferedImage image = ImageIO.read(result.orElseThrow().toFile());
             assertNotNull(image, "Saved image should be readable");
-            assertEquals(1024, image.getWidth());
-            assertEquals(576, image.getHeight());
+            assertEquals(640, image.getWidth());
+            assertEquals(360, image.getHeight());
         } finally {
             if (Files.exists(tempDir)) {
                 Files.walk(tempDir).sorted(Comparator.reverseOrder()).forEach(path -> {
@@ -422,29 +503,21 @@ public class ChartWorkflowTest {
     }
 
     @Test
-    public void testSaveTradingRecordChartWithIndicators() throws IOException {
-        Path tempDir = Files.createTempDirectory("ChartWorkflow-indicator-save");
-        try {
-            ChartWorkflow makerWithSave = new ChartWorkflow(tempDir.toString());
-            ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
-            SMAIndicator sma = new SMAIndicator(closePrice, 5);
+    public void testSaveTradingRecordChartWithIndicators() {
+        RecordingChartStorage storage = new RecordingChartStorage();
+        ChartWorkflow makerWithSave = new ChartWorkflow(new TradingChartFactory(), new MockChartDisplayer(), storage);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
 
-            Optional<Path> result = makerWithSave.saveTradingRecordChart(barSeries, "Strategy", tradingRecord,
-                    closePrice, sma);
+        Optional<Path> result = makerWithSave.saveTradingRecordChart(barSeries, "Strategy", tradingRecord, closePrice,
+                sma);
 
-            assertTrue(result.isPresent(), "Combined chart should be persisted when storage is configured");
-            result.ifPresent(path -> assertTrue(Files.exists(path), "Persisted chart file should exist"));
-        } finally {
-            if (Files.exists(tempDir)) {
-                Files.walk(tempDir).sorted(Comparator.reverseOrder()).forEach(path -> {
-                    try {
-                        Files.deleteIfExists(path);
-                    } catch (IOException ignored) {
-                        // Ignore cleanup errors
-                    }
-                });
-            }
-        }
+        assertTrue(result.isPresent(), "Combined chart should be routed to storage when configured");
+        assertEquals(1, storage.saveCount, "Storage should be invoked once");
+        assertInstanceOf(CombinedDomainXYPlot.class, storage.lastChart.getPlot(),
+                "Saved chart should include indicator subplots");
+        assertEquals(ChartWorkflow.DEFAULT_CHART_IMAGE_WIDTH, storage.lastWidth);
+        assertEquals(ChartWorkflow.DEFAULT_CHART_IMAGE_HEIGHT, storage.lastHeight);
     }
 
     @Test
@@ -488,6 +561,46 @@ public class ChartWorkflowTest {
         assertNotNull(spyDisplayer.getLastChart(), "Chart should have been passed to displayer");
         assertTrue(spyDisplayer.getLastChart().getTitle().getText().contains("Test Strategy"),
                 "Chart title should contain strategy name");
+    }
+
+    @Test
+    public void testDisplayTradingRecordChartUsesCustomSourcePositionStart() {
+        MockChartDisplayer displayer = new MockChartDisplayer();
+        ChartWorkflow workflow = new ChartWorkflow(new TradingChartFactory(), displayer, ChartStorage.noOp());
+
+        workflow.displayTradingRecordChart(barSeries, "Test Strategy", tradingRecord, TimeAxisMode.BAR_INDEX, 2);
+        assertSourceOrdinalLabels(displayer.getLastChart().getXYPlot(), 2);
+
+        VolumeIndicator volume = new VolumeIndicator(barSeries);
+        workflow.displayTradingRecordChart(barSeries, "Test Strategy", tradingRecord, TimeAxisMode.BAR_INDEX, 2,
+                volume);
+        CombinedDomainXYPlot combinedPlot = assertInstanceOf(CombinedDomainXYPlot.class,
+                displayer.getLastChart().getPlot());
+        assertSourceOrdinalLabels(combinedPlot.getSubplots().get(0), 2);
+    }
+
+    @Test
+    public void testDisplayTradingRecordChartRejectsInvalidSourcePositionStart() {
+        MockChartDisplayer displayer = new MockChartDisplayer();
+        ChartWorkflow workflow = new ChartWorkflow(new TradingChartFactory(), displayer, ChartStorage.noOp());
+        VolumeIndicator volume = new VolumeIndicator(barSeries);
+
+        assertThrows(IllegalArgumentException.class, () -> workflow.displayTradingRecordChart(barSeries,
+                "Test Strategy", tradingRecord, TimeAxisMode.BAR_INDEX, 0));
+        assertThrows(IllegalArgumentException.class, () -> workflow.displayTradingRecordChart(barSeries,
+                "Test Strategy", tradingRecord, TimeAxisMode.BAR_INDEX, 0, volume));
+
+        BaseTradingRecord overflowRecord = new BaseTradingRecord();
+        Num amount = barSeries.numFactory().numOf(1);
+        overflowRecord.enter(1, barSeries.getBar(1).getClosePrice(), amount);
+        overflowRecord.exit(3, barSeries.getBar(3).getClosePrice(), amount);
+        overflowRecord.enter(5, barSeries.getBar(5).getClosePrice(), amount);
+
+        assertThrows(IllegalArgumentException.class, () -> workflow.displayTradingRecordChart(barSeries,
+                "Test Strategy", overflowRecord, TimeAxisMode.BAR_INDEX, Integer.MAX_VALUE));
+        assertThrows(IllegalArgumentException.class, () -> workflow.displayTradingRecordChart(barSeries,
+                "Test Strategy", overflowRecord, TimeAxisMode.BAR_INDEX, Integer.MAX_VALUE, volume));
+        assertNull(displayer.getLastChart(), "Invalid source positions must not reach the displayer");
     }
 
     @Test
@@ -748,58 +861,38 @@ public class ChartWorkflowTest {
         // Use dependency injection with spy to prevent actual chart display
         MockChartDisplayer spyDisplayer = new MockChartDisplayer();
         TradingChartFactory factory = new TradingChartFactory();
-        // Create a ChartWorkflow with save directory to enable save functionality
-        Path tempDir = null;
-        try {
-            tempDir = Files.createTempDirectory("ChartWorkflow-test");
-            ChartWorkflow makerWithSave = new ChartWorkflow(factory, spyDisplayer, new FileSystemChartStorage(tempDir));
+        RecordingChartStorage storage = new RecordingChartStorage();
+        ChartWorkflow makerWithSave = new ChartWorkflow(factory, spyDisplayer, storage);
 
-            // Create a chart
-            JFreeChart chart = makerWithSave.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        // Create a chart
+        JFreeChart chart = makerWithSave.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
 
-            // Count legend items before display
-            int legendItemCountBefore = countLegendItems(chart);
+        // Count legend items before display
+        int legendItemCountBefore = countLegendItems(chart);
 
-            // Display the chart (this should not modify it since we're using a spy)
-            makerWithSave.displayChart(chart);
+        // Display the chart (this should not modify it since we're using a spy)
+        makerWithSave.displayChart(chart);
 
-            // Verify display was called
-            assertEquals(1, spyDisplayer.getTotalDisplayCallCount(), "Display should be called once");
+        // Verify display was called
+        assertEquals(1, spyDisplayer.getTotalDisplayCallCount(), "Display should be called once");
 
-            // Count legend items after display
-            int legendItemCountAfter = countLegendItems(chart);
+        // Count legend items after display
+        int legendItemCountAfter = countLegendItems(chart);
 
-            // The legend items should not have changed
-            assertEquals(legendItemCountBefore, legendItemCountAfter,
-                    "Legend items should not be duplicated when reusing ChartWorkflow instance");
+        // The legend items should not have changed
+        assertEquals(legendItemCountBefore, legendItemCountAfter,
+                "Legend items should not be duplicated when reusing ChartWorkflow instance");
 
-            // Save the chart image (which uses the same chart instance)
-            makerWithSave.saveChartImage(chart, barSeries, "Test Chart");
+        // Save the chart image (which uses the same chart instance)
+        makerWithSave.saveChartImage(chart, barSeries, "Test Chart");
 
-            // Count legend items after save
-            int legendItemCountAfterSave = countLegendItems(chart);
+        // Count legend items after save
+        int legendItemCountAfterSave = countLegendItems(chart);
 
-            // The legend items should still not have changed
-            assertEquals(legendItemCountBefore, legendItemCountAfterSave,
-                    "Legend items should not be duplicated after save operation");
-        } catch (IOException e) {
-            fail("Failed to create temporary directory: " + e.getMessage());
-        } finally {
-            // Clean up
-            if (tempDir != null && Files.exists(tempDir)) {
-                try {
-                    Files.walk(tempDir).sorted(Comparator.reverseOrder()).forEach(path -> {
-                        try {
-                            Files.deleteIfExists(path);
-                        } catch (IOException e) {
-                            // Ignore cleanup errors
-                        }
-                    });
-                } catch (IOException e) {
-                    // Ignore cleanup errors
-                }
-            }
-        }
+        // The legend items should still not have changed
+        assertEquals(legendItemCountBefore, legendItemCountAfterSave,
+                "Legend items should not be duplicated after save operation");
+        assertEquals(1, storage.saveCount, "Save should be routed to storage once");
     }
 
     private int countLegendItems(JFreeChart chart) {
@@ -822,7 +915,7 @@ public class ChartWorkflowTest {
         Path customDir = Files.createTempDirectory("ChartWorkflow-custom-dir");
         try {
             JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
-            Optional<Path> result = chartWorkflow.saveChartImage(chart, barSeries, customDir);
+            Optional<Path> result = chartWorkflow.saveChartImage(chart, barSeries, customDir, 640, 360);
 
             assertTrue(result.isPresent(), "Chart should be saved to custom directory");
             assertTrue(Files.exists(result.get()), "Saved chart file should exist");
@@ -848,7 +941,7 @@ public class ChartWorkflowTest {
         Path nestedDir = customDir.resolve("nested").resolve("subdirectory");
         try {
             JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
-            Optional<Path> result = chartWorkflow.saveChartImage(chart, barSeries, nestedDir);
+            Optional<Path> result = chartWorkflow.saveChartImage(chart, barSeries, nestedDir, 640, 360);
 
             assertTrue(result.isPresent(), "Chart should be saved even to nested directory");
             assertTrue(Files.exists(result.get()), "Saved chart file should exist");
@@ -877,7 +970,7 @@ public class ChartWorkflowTest {
                     tradingRecord);
 
             // Save to custom directory (not constructor directory)
-            Optional<Path> result = makerWithConstructorDir.saveChartImage(chart, barSeries, customDir);
+            Optional<Path> result = makerWithConstructorDir.saveChartImage(chart, barSeries, customDir, 640, 360);
 
             assertTrue(result.isPresent(), "Chart should be saved");
             assertTrue(result.get().startsWith(customDir),
@@ -914,7 +1007,7 @@ public class ChartWorkflowTest {
             JFreeChart chart = makerWithoutDir.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
 
             // Should still work with custom directory parameter
-            Optional<Path> result = makerWithoutDir.saveChartImage(chart, barSeries, customDir);
+            Optional<Path> result = makerWithoutDir.saveChartImage(chart, barSeries, customDir, 640, 360);
 
             assertTrue(result.isPresent(),
                     "Chart should be saved even when ChartWorkflow has no constructor directory");
@@ -984,7 +1077,8 @@ public class ChartWorkflowTest {
         Path customDir = Files.createTempDirectory("ChartWorkflow-custom-dir");
         try {
             JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
-            Optional<Path> result = chartWorkflow.saveChartImage(chart, barSeries, null, customDir.toString());
+            Optional<Path> result = chartWorkflow.saveChartImage(chart, barSeries, null, customDir.toString(), 640,
+                    360);
 
             assertTrue(result.isPresent(), "Chart should be saved to custom directory");
             assertTrue(Files.exists(result.get()), "Saved chart file should exist");
@@ -1010,8 +1104,8 @@ public class ChartWorkflowTest {
         try {
             JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
             String customFileName = "MyCustomChart";
-            Optional<Path> result = chartWorkflow.saveChartImage(chart, barSeries, customFileName,
-                    customDir.toString());
+            Optional<Path> result = chartWorkflow.saveChartImage(chart, barSeries, customFileName, customDir.toString(),
+                    640, 360);
 
             assertTrue(result.isPresent(), "Chart should be saved to custom directory");
             assertTrue(Files.exists(result.get()), "Saved chart file should exist");
@@ -1041,8 +1135,8 @@ public class ChartWorkflowTest {
                     tradingRecord);
 
             // Save to custom directory (not constructor directory)
-            Optional<Path> result = makerWithConstructorDir.saveChartImage(chart, barSeries, null,
-                    customDir.toString());
+            Optional<Path> result = makerWithConstructorDir.saveChartImage(chart, barSeries, null, customDir.toString(),
+                    640, 360);
 
             assertTrue(result.isPresent(), "Chart should be saved");
             assertTrue(result.get().startsWith(customDir),
@@ -1079,7 +1173,8 @@ public class ChartWorkflowTest {
             JFreeChart chart = makerWithoutDir.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
 
             // Should still work with custom directory parameter
-            Optional<Path> result = makerWithoutDir.saveChartImage(chart, barSeries, null, customDir.toString());
+            Optional<Path> result = makerWithoutDir.saveChartImage(chart, barSeries, null, customDir.toString(), 640,
+                    360);
 
             assertTrue(result.isPresent(),
                     "Chart should be saved even when ChartWorkflow has no constructor directory");
@@ -1166,7 +1261,8 @@ public class ChartWorkflowTest {
         Path customDir = Files.createTempDirectory("ChartWorkflow-custom-dir");
         try {
             JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
-            Optional<Path> result = chartWorkflow.saveChartImage(chart, barSeries, null, customDir.toString());
+            Optional<Path> result = chartWorkflow.saveChartImage(chart, barSeries, null, customDir.toString(), 640,
+                    360);
 
             assertTrue(result.isPresent(), "Chart should be saved even with null filename");
             assertTrue(Files.exists(result.get()), "Saved chart file should exist");
@@ -1194,7 +1290,7 @@ public class ChartWorkflowTest {
             JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
             String expectedFileName = "MyCustomChartName";
             Optional<Path> result = chartWorkflow.saveChartImage(chart, barSeries, expectedFileName,
-                    customDir.toString());
+                    customDir.toString(), 640, 360);
 
             assertTrue(result.isPresent(), "Chart should be saved");
             assertTrue(Files.exists(result.get()), "Saved chart file should exist");
@@ -1221,8 +1317,9 @@ public class ChartWorkflowTest {
             JFreeChart chart1 = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
             JFreeChart chart2 = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
 
-            Optional<Path> resultPath = chartWorkflow.saveChartImage(chart1, barSeries, customDir);
-            Optional<Path> resultString = chartWorkflow.saveChartImage(chart2, barSeries, null, customDir.toString());
+            Optional<Path> resultPath = chartWorkflow.saveChartImage(chart1, barSeries, customDir, 640, 360);
+            Optional<Path> resultString = chartWorkflow.saveChartImage(chart2, barSeries, null, customDir.toString(),
+                    640, 360);
 
             assertTrue(resultPath.isPresent(), "Path version should save chart");
             assertTrue(resultString.isPresent(), "String version should save chart");
@@ -1369,6 +1466,55 @@ public class ChartWorkflowTest {
         BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
         assertNotNull(image, "Encoded chart bytes should decode into an image");
         return image;
+    }
+
+    private static void assertSourceOrdinalLabels(XYPlot plot, int sourcePositionNumber) {
+        String buyPrefix = "B" + sourcePositionNumber + " @";
+        String sellPrefix = "S" + sourcePositionNumber + " @";
+        assertTrue(
+                plot.getAnnotations()
+                        .stream()
+                        .filter(XYTextAnnotation.class::isInstance)
+                        .map(XYTextAnnotation.class::cast)
+                        .map(XYTextAnnotation::getText)
+                        .anyMatch(text -> text.startsWith(buyPrefix)),
+                "Buy annotation should use the source position number");
+        assertTrue(
+                plot.getAnnotations()
+                        .stream()
+                        .filter(XYTextAnnotation.class::isInstance)
+                        .map(XYTextAnnotation.class::cast)
+                        .map(XYTextAnnotation::getText)
+                        .anyMatch(text -> text.startsWith(sellPrefix)),
+                "Sell annotation should use the source position number");
+
+        Collection<?> markers = plot.getDomainMarkers(Layer.BACKGROUND);
+        assertNotNull(markers, "Position band should be present");
+        assertTrue(
+                markers.stream()
+                        .filter(IntervalMarker.class::isInstance)
+                        .map(IntervalMarker.class::cast)
+                        .map(IntervalMarker::getLabel)
+                        .anyMatch(("Position " + sourcePositionNumber)::equals),
+                "Position band should use the source position number");
+    }
+
+    private static final class RecordingChartStorage implements ChartStorage {
+        private int saveCount;
+        private JFreeChart lastChart;
+        private BarSeries lastSeries;
+        private int lastWidth;
+        private int lastHeight;
+
+        @Override
+        public Optional<Path> save(JFreeChart chart, BarSeries series, String chartTitle, int width, int height) {
+            saveCount++;
+            lastChart = chart;
+            lastSeries = series;
+            lastWidth = width;
+            lastHeight = height;
+            return Optional.of(Path.of("recorded-chart.jpg"));
+        }
     }
 
     /**
