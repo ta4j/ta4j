@@ -233,8 +233,23 @@ public final class CumulativePnL implements PerformanceIndicator {
             return;
         }
         if (priced != null) {
-            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values,
-                    staged -> calculatePosition(position, finalIndex, window, staged, priced.holdingCost()));
+            if (futuresPnL == null) {
+                AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values,
+                        staged -> calculatePosition(position, finalIndex, window, staged, priced.holdingCost()));
+            } else {
+                FuturesPerformanceSupport.PnLAccumulator pnl = futuresPnL.copy();
+                AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values, staged -> {
+                    Num zero = barSeries.numFactory().zero();
+                    OffsetNumBuffer deltas = AnalysisPositionSupport.buffer(window, zero, zero);
+                    calculatePosition(position, finalIndex, window, deltas, priced.holdingCost());
+                    pnl.add(deltas);
+                    for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
+                        staged.add((int) index, deltas.get((int) index));
+                    }
+                    staged.addBaseline(deltas.baseline());
+                });
+                futuresPnL = pnl;
+            }
         }
     }
 

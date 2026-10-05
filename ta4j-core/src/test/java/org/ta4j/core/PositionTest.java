@@ -1574,6 +1574,50 @@ public class PositionTest {
     }
 
     @Test
+    public void mixedPartialFuturesExitPreservesMissingExecutionTime() {
+        for (NumFactory factory : factories()) {
+            FuturesContract contract = BaseTradeTest.groupedFeeFills(factory).getFirst().futuresContract();
+            Trade entry = futuresTradeWithFills(contract, TradeType.BUY,
+                    List.of(new TradeFill(0, T0, factory.hundred(), factory.one(), ExecutionSide.BUY)));
+            TradeFill executed = new TradeFill(1, null, factory.numOf(110), factory.one(), ExecutionSide.SELL);
+            TradeFill deferred = new TradeFill(-1, null, factory.numOf(300), factory.one(), ExecutionSide.SELL);
+            Trade exit = futuresTradeWithFills(contract, TradeType.SELL, List.of(executed, deferred));
+            Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            assertNumEquals(10, position.getProfit());
+            assertNumEquals(1.1, position.getGrossReturn());
+            assertNull(exit.getFills().getFirst().time());
+            assertNull(exit.getFills().getFirst().futuresContract());
+            assertSame(executed, exit.getFills().getFirst());
+            assertSame(deferred, exit.getFills().getLast());
+        }
+    }
+
+    @Test
+    public void missingTimePartialExitKeepsArithmeticAndInversePrices() {
+        for (NumFactory factory : factories()) {
+            for (FuturesContract.SettlementType settlement : FuturesContract.SettlementType.values()) {
+                FuturesContract contract = BaseTradeTest.groupedFeeFills(factory)
+                        .getFirst()
+                        .futuresContract()
+                        .toBuilder()
+                        .settlementType(settlement)
+                        .settlementCurrency(settlement == FuturesContract.SettlementType.INVERSE ? "BTC" : "USD")
+                        .build();
+                Trade entry = futuresTradeWithFills(contract, TradeType.BUY,
+                        List.of(new TradeFill(0, T0, factory.hundred(), factory.numOf(3), ExecutionSide.BUY)));
+                Trade exit = futuresTradeWithFills(contract, TradeType.SELL,
+                        List.of(new TradeFill(1, null, factory.numOf(110), factory.one(), ExecutionSide.SELL),
+                                new TradeFill(2, null, factory.numOf(220), factory.one(), ExecutionSide.SELL),
+                                new TradeFill(-1, null, factory.numOf(999), factory.one(), ExecutionSide.SELL)));
+                Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+                assertNumEquals(settlement == FuturesContract.SettlementType.INVERSE ? 1.3181818181818181 : 1.65,
+                        position.getGrossReturn());
+                assertTrue(exit.getFills().stream().allMatch(fill -> fill.time() == null));
+            }
+        }
+    }
+
+    @Test
     public void groupedNativeFeesPreserveMarkedProfitDouble() {
         assertGroupedFeeProfit(DoubleNumFactory.getInstance());
     }

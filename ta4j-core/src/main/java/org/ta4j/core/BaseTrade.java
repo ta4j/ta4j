@@ -653,7 +653,20 @@ public class BaseTrade implements Trade {
         return requireFiniteAggregate(quotient, name);
     }
 
+    /**
+     * Aggregates accepted execution prices without reconstructing fill metadata.
+     */
+    static Num aggregateFillPrice(Trade.TradeType tradeType, List<TradeFill> fills, FuturesContract contract) {
+        return summarizeFills(tradeType, fills, contract).weightedAveragePrice();
+    }
+
     private static FillSummary summarizeFills(Trade.TradeType tradeType, List<TradeFill> fills) {
+        Objects.requireNonNull(fills, "fills");
+        return summarizeFills(tradeType, fills, singleContract(fills));
+    }
+
+    private static FillSummary summarizeFills(Trade.TradeType tradeType, List<TradeFill> fills,
+            FuturesContract contract) {
         Objects.requireNonNull(fills, "fills");
         if (fills.isEmpty()) {
             throw new IllegalArgumentException("fills must not be empty");
@@ -662,7 +675,6 @@ public class BaseTrade implements Trade {
         Num totalAmount = numFactory.zero();
         Num maximumFillAmount = numFactory.zero();
         Num quotePriceSum = numFactory.zero();
-        FuturesContract contract = singleContract(fills);
         TradeFill earliestFill = null;
         ExecutionSide expectedSide = executionSide(tradeType);
         for (TradeFill fill : fills) {

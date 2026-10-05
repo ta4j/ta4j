@@ -1266,16 +1266,8 @@ public class Position implements Serializable {
         if (executedExitFills.isEmpty()) {
             return null;
         }
-        // A supported custom native trade can expose legacy scalar fills. Reuse
-        // native arithmetic/inverse aggregation with fee-free price copies while
-        // leaving the accepted source fills and their recorded fees unchanged.
-        List<TradeFill> priceFills = executedExitFills.stream()
-                .map(fill -> fill.toBuilder()
-                        .futuresContract(fill.futuresContract() == null ? futuresContract : fill.futuresContract())
-                        .fee(null)
-                        .fees(List.of())
-                        .build())
-                .toList();
-        return Trade.fromFills(exit.getType(), priceFills, exit.getCostModel()).getPricePerAsset();
+        // Price aggregation must not strengthen the metadata contract of accepted
+        // legacy scalar fills, which may omit execution timestamps.
+        return BaseTrade.aggregateFillPrice(exit.getType(), executedExitFills, futuresContract);
     }
 }

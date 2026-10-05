@@ -369,10 +369,12 @@ final class FuturesPerformanceSupport {
         private final AnalysisPositionSupport.Window window;
         private final NumFactory factory;
         private final List<ProfitSum> sums;
+        private ProfitSum baseline;
 
         PnLAccumulator(AnalysisPositionSupport.Window window, NumFactory factory) {
             this.window = window;
             this.factory = factory;
+            this.baseline = new ProfitSum();
             OffsetNumBuffer initial = AnalysisPositionSupport.buffer(window, factory.zero(), factory.zero());
             this.sums = new ArrayList<>(initial.size());
             for (int offset = 0; offset < initial.size(); offset++) {
@@ -383,6 +385,7 @@ final class FuturesPerformanceSupport {
         private PnLAccumulator(PnLAccumulator previous) {
             this.window = previous.window;
             this.factory = previous.factory;
+            this.baseline = previous.baseline == null ? null : new ProfitSum(previous.baseline);
             this.sums = new ArrayList<>(previous.sums.size());
             for (ProfitSum sum : previous.sums) {
                 sums.add(sum == null ? null : new ProfitSum(sum));
@@ -405,6 +408,37 @@ final class FuturesPerformanceSupport {
             }
         }
 
+        /** Retains spot deltas alongside the unrounded native components. */
+        void add(OffsetNumBuffer deltas) {
+            for (int offset = 0; offset < sums.size(); offset++) {
+                Num delta = deltas.get((int) ((long) window.beginIndex() + offset));
+                ProfitSum sum = sums.get(offset);
+                if (sum == null || !Num.isFinite(delta)) {
+                    sums.set(offset, null);
+                } else {
+                    sum.add(delta);
+                }
+            }
+            if (baseline == null || !Num.isFinite(deltas.baseline())) {
+                baseline = null;
+            } else {
+                baseline.add(deltas.baseline());
+            }
+        }
+
+        /** A spot ratio scales only the native components already present. */
+        void multiply(OffsetNumBuffer factors) {
+            for (int offset = 0; offset < sums.size(); offset++) {
+                Num factor = factors.get((int) ((long) window.beginIndex() + offset));
+                ProfitSum sum = sums.get(offset);
+                if (sum == null || !Num.isFinite(factor)) {
+                    sums.set(offset, null);
+                } else {
+                    sum.sum = sum.sum.multiply(factor.bigDecimalValue());
+                }
+            }
+        }
+
         Num get(int index) {
             if (index < window.beginIndex() || index > window.bufferEndIndex()) {
                 return factory.zero();
@@ -415,6 +449,7 @@ final class FuturesPerformanceSupport {
 
         OffsetNumBuffer values() {
             OffsetNumBuffer values = AnalysisPositionSupport.buffer(window, factory.zero(), factory.zero());
+            values.addBaseline(baseline == null ? NaN.NaN : baseline.value(factory));
             for (int offset = 0; offset < sums.size(); offset++) {
                 int index = (int) ((long) window.beginIndex() + offset);
                 values.add(index, get(index));

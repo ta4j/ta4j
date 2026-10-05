@@ -49,6 +49,7 @@ public class CashFlow implements PerformanceIndicator {
     private final Indicator<Num> futuresMark;
     private final boolean markFuturesExposure;
     private FuturesPerformanceSupport.PnLAccumulator futuresPnL;
+    private OffsetNumBuffer futuresSpotFactors;
 
     /**
      * Constructor.
@@ -216,6 +217,8 @@ public class CashFlow implements PerformanceIndicator {
         this.window = curve.window();
         this.values = curve.values();
         this.futuresPnL = curve.pnl();
+        this.futuresSpotFactors = futuresPnL == null ? null
+                : AnalysisPositionSupport.buffer(window, barSeries.numFactory().one(), barSeries.numFactory().one());
         this.futuresCapital = record.getInitialCapital() == null ? fallbackCapital : record.getInitialCapital();
         this.futuresMark = markPriceIndicator;
         this.markFuturesExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
@@ -266,12 +269,18 @@ public class CashFlow implements PerformanceIndicator {
                         futuresMark, pnl);
                 OffsetNumBuffer result = AnalysisPositionSupport.buffer(window, one, one);
                 for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
-                    Num equity = nativeCurve ? capital.plus(pnl.get((int) index)).dividedBy(capital)
+                    Num equity = nativeCurve
+                            ? capital.multipliedBy(futuresSpotFactors.get((int) index))
+                                    .plus(pnl.get((int) index))
+                                    .dividedBy(capital)
                             : staged.get((int) index).plus(pnl.get((int) index).dividedBy(capital));
                     result.multiply((int) index, equity);
                 }
-                if (!initialReturn && !window.isEmpty())
+                if (!initialReturn && !window.isEmpty()) {
                     result.multiplyBaseline(result.get(window.beginIndex()));
+                } else if (nativeCurve) {
+                    result.multiplyBaseline(futuresSpotFactors.baseline());
+                }
                 staged.replaceWith(result);
             }, true);
             if (nativeCurve) {
@@ -283,13 +292,40 @@ public class CashFlow implements PerformanceIndicator {
             return;
         }
         if (priced != null) {
-            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values,
-                    staged -> calculatePosition(position, finalIndex, window, staged, priced.holdingCost()));
+            if (futuresPnL == null) {
+                AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values,
+                        staged -> calculatePosition(position, finalIndex, window, staged, priced.holdingCost()));
+            } else {
+                FuturesPerformanceSupport.PnLAccumulator pnl = futuresPnL.copy();
+                OffsetNumBuffer spotFactors = futuresSpotFactors.copy();
+                AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values, staged -> {
+                    Num one = barSeries.numFactory().one();
+                    OffsetNumBuffer factors = AnalysisPositionSupport.buffer(window, one, one);
+                    // Read prices/costs once and test entry equity against the visible
+                    // curve, while capturing the exact accepted spot multipliers.
+                    calculatePosition(position, finalIndex, window, factors, priced.holdingCost(), staged);
+                    pnl.multiply(factors);
+                    for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
+                        Num factor = factors.get((int) index);
+                        staged.multiply((int) index, factor);
+                        spotFactors.multiply((int) index, factor);
+                    }
+                    staged.multiplyBaseline(factors.baseline());
+                    spotFactors.multiplyBaseline(factors.baseline());
+                });
+                futuresPnL = pnl;
+                futuresSpotFactors = spotFactors;
+            }
         }
     }
 
     private void calculatePosition(Position position, int finalIndex, AnalysisPositionSupport.Window captured,
             OffsetNumBuffer buffer, Num holdingCost) {
+        calculatePosition(position, finalIndex, captured, buffer, holdingCost, buffer);
+    }
+
+    private void calculatePosition(Position position, int finalIndex, AnalysisPositionSupport.Window captured,
+            OffsetNumBuffer buffer, Num holdingCost, OffsetNumBuffer entryValues) {
         Trade entry = position.getEntry();
         if (entry == null) {
             return;
@@ -310,7 +346,7 @@ public class CashFlow implements PerformanceIndicator {
             if (!captured.carriesBeforeWindow(position)) {
                 return;
             }
-            Num entryEquity = buffer.get(windowStartIndex);
+            Num entryEquity = entryValues.get(windowStartIndex);
             if (!entryEquity.isGreaterThan(barSeries.numFactory().zero())) {
                 return;
             }
@@ -322,7 +358,7 @@ public class CashFlow implements PerformanceIndicator {
             return;
         }
 
-        Num entryEquity = buffer.get(Math.max(entryIndex, windowStartIndex));
+        Num entryEquity = entryValues.get(Math.max(entryIndex, windowStartIndex));
         if (!entryEquity.isGreaterThan(barSeries.numFactory().zero())) {
             return;
         }
