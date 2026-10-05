@@ -120,7 +120,7 @@ public final class ShockPathMonteCarloMethod implements MonteCarloMethod {
      * Describes the shock and volatility configuration.
      *
      * @return the configured shock model, update mode, and decay factor
-     * @since 0.25.1
+     * @since 0.26.1
      */
     @Override
     public String toString() {

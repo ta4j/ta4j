@@ -74,7 +74,7 @@ public interface MonteCarloMethod {
      *
      * @param other technique pooled with this one
      * @return pooled technique
-     * @since 0.25.1
+     * @since 0.26.1
      */
     default MonteCarloMethod pooledWith(MonteCarloMethod other) {
         return new EnsembleMonteCarloMethod(this, other);
@@ -87,7 +87,7 @@ public interface MonteCarloMethod {
      *
      * @return widened technique
      * @see #widenedByRecentVolatility(int, double)
-     * @since 0.25.1
+     * @since 0.26.1
      */
     default MonteCarloMethod widenedByRecentVolatility() {
         return new RecentVolatilityWideningMonteCarloMethod(this);
@@ -115,7 +115,7 @@ public interface MonteCarloMethod {
      * @param maxWiden       upper bound on the widening factor, must be a finite
      *                       value &gt;= 1
      * @return widened technique
-     * @since 0.25.1
+     * @since 0.26.1
      */
     default MonteCarloMethod widenedByRecentVolatility(int recentBarCount, double maxWiden) {
         return new RecentVolatilityWideningMonteCarloMethod(this, recentBarCount, maxWiden);
@@ -126,7 +126,7 @@ public interface MonteCarloMethod {
      *
      * @return tail-mixed technique
      * @see #withStudentTScaleMixing(int)
-     * @since 0.25.1
+     * @since 0.26.1
      */
     default MonteCarloMethod withStudentTScaleMixing() {
         return new StudentTScaleMixingMonteCarloMethod(this);
@@ -151,7 +151,7 @@ public interface MonteCarloMethod {
      *
      * @param degreesOfFreedom mixing degrees of freedom, must be &gt;= 2
      * @return tail-mixed technique
-     * @since 0.25.1
+     * @since 0.26.1
      */
     default MonteCarloMethod withStudentTScaleMixing(int degreesOfFreedom) {
         return new StudentTScaleMixingMonteCarloMethod(this, degreesOfFreedom);

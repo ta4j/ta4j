@@ -133,7 +133,7 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
      *
      * @return posterior over smoothed residuals
      * @see #overResiduals(MonteCarloMethod)
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public MonteCarloMethod overSmoothedResiduals() {
         // The decay factor is validated but ignored under CONSTANT volatility.
@@ -163,7 +163,7 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
      *
      * @param residualMethod technique generating the residual path shape
      * @return posterior over the residual technique
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public MonteCarloMethod overResiduals(MonteCarloMethod residualMethod) {
         return new PosteriorSmoothedResidualMonteCarloMethod(this, residualMethod);
@@ -179,7 +179,7 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
      *         or non-finite, the posterior scale is invalid, or a nonzero
      *         stochastic posterior parameter cannot reach primitive sampling
      *         precision
-     * @since 0.25.1
+     * @since 0.26.1
      */
     Posterior posterior(MonteCarloContext context) {
         List<Num> window = context.historicalLogReturns();
@@ -316,7 +316,7 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
      * @param random    deterministic seeded random generator
      * @return a single parameter draw, or {@code null} when the posterior cannot
      *         reach primitive sampling precision
-     * @since 0.25.1
+     * @since 0.26.1
      */
     static ParameterDraw drawParameters(Posterior posterior, RandomGenerator random) {
         double mean = posterior.samplingMean();
@@ -352,7 +352,7 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
      * Describes the prior configuration.
      *
      * @return the empirical-prior marker or the explicit hyper-parameters
-     * @since 0.25.1
+     * @since 0.26.1
      */
     @Override
     public String toString() {

@@ -73,7 +73,7 @@ import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
  * The experiment is deterministic: results are written incrementally as JSON
  * under {@code temp/walk-forward-calibration/}.
  *
- * @since 0.25.1
+ * @since 0.26.1
  */
 public final class WalkForwardCalibrationBakeoffExample {
 
