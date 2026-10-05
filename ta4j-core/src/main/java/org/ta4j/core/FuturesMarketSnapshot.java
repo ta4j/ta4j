@@ -529,10 +529,8 @@ public final class FuturesMarketSnapshot implements Serializable {
         /**
          * Builds the immutable market snapshot.
          *
-         * @return this builder
-         * @since 0.25.1
          * @return the configured market snapshot
-         * @since 0.25.1
+         * @since 0.26.1
          */
         public FuturesMarketSnapshot build() {
             return new FuturesMarketSnapshot(this);

@@ -264,10 +264,8 @@ public final class FuturesFunding implements Serializable {
         /**
          * Builds the immutable funding event.
          *
-         * @return this builder
-         * @since 0.25.1
          * @return the configured funding event
-         * @since 0.25.1
+         * @since 0.26.1
          */
         public FuturesFunding build() {
             return new FuturesFunding(this);
