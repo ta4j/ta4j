@@ -299,7 +299,7 @@ final class CorrectiveFamilyStudy {
             final ScaleRelation.Scale parentScale = scales.get(i);
             final TopologyAnalysis analysis = analyzer.analyze(group.parentGrammar(), tapes.get(i), index);
             if (analysis.status() == TopologyStatus.INVALIDATED) {
-                invalidated.add(parentScale.name());
+                invalidated.add(invalidationKey(group.parentGrammar(), parentScale.name()));
             }
             final List<ScaleRelationExtractor.Parent> parents = new ArrayList<>();
             for (final TopologyCandidate candidate : analysis.candidates()) {
@@ -340,14 +340,17 @@ final class CorrectiveFamilyStudy {
         return new GroupCoverage(group.id(), coverage);
     }
 
-    private static List<Event> advance(final int index, final Map<String, CorrectiveFamily.Verdict> active,
+    static List<Event> advance(final int index, final Map<String, CorrectiveFamily.Verdict> active,
             final Map<String, CorrectiveFamily.Verdict> current, final Set<String> invalidated) {
         final List<Event> events = new ArrayList<>();
         for (final Map.Entry<String, CorrectiveFamily.Verdict> previous : active.entrySet()) {
             if (!current.containsKey(previous.getKey())) {
                 final CorrectiveFamily.Verdict verdict = previous.getValue();
                 events.add(new Event(index, ScaleRelation.Lifecycle.ENDED,
-                        invalidated.contains(verdict.parentScale()) ? Reason.PARENT_INVALIDATED : Reason.RETIRED,
+                        invalidated.contains(
+                                invalidationKey(verdict.spec().profile().parentGrammar(), verdict.parentScale()))
+                                        ? Reason.PARENT_INVALIDATED
+                                        : Reason.RETIRED,
                         verdict));
             }
         }
@@ -362,5 +365,14 @@ final class CorrectiveFamilyStudy {
         active.clear();
         active.putAll(current);
         return events;
+    }
+
+    /**
+     * Invalidation is a property of one parent grammar on one scale: a
+     * {@code MOTIVE_5} invalidation must not relabel a {@code CORRECTIVE_3} parent
+     * that merely stopped being reported on the same scale.
+     */
+    static String invalidationKey(final TopologyGrammar parentGrammar, final String parentScale) {
+        return parentGrammar.name() + '@' + parentScale;
     }
 }

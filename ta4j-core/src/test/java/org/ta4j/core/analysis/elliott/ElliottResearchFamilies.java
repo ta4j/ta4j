@@ -144,7 +144,9 @@ final class ElliottResearchFamilies {
         if (parent != null) {
             Files.createDirectories(parent);
         }
-        final long[] counts = new long[5];
+        final long[] counts = new long[4];
+        // Revisions re-emit a verdict key; the artifact counts verdicts, not events.
+        final Set<String> truncatedVerdicts = new HashSet<>();
         final int[] peak = new int[1];
         try (BufferedWriter writer = Files.newBufferedWriter(file, StandardCharsets.UTF_8)) {
             final JsonObject header = new JsonObject();
@@ -194,7 +196,7 @@ final class ElliottResearchFamilies {
                     for (final CorrectiveFamilyStudy.Event event : frame.events()) {
                         if (event.lifecycle() == ScaleRelation.Lifecycle.ACTIVE
                                 && event.verdict().compositionsTruncated()) {
-                            counts[4]++;
+                            truncatedVerdicts.add(event.verdict().key());
                         }
                     }
                 });
@@ -208,10 +210,10 @@ final class ElliottResearchFamilies {
             footer.addProperty("truncatedFrames", counts[2]);
             footer.addProperty("incompleteFrames", counts[3]);
             footer.addProperty("peakRetainedEdges", peak[0]);
-            footer.addProperty("truncatedCompositions", counts[4]);
+            footer.addProperty("truncatedCompositions", truncatedVerdicts.size());
             ElliottResearchRelations.writeLine(writer, footer);
         }
-        return new Totals(counts[0], counts[1], counts[2], counts[3], peak[0], counts[4]);
+        return new Totals(counts[0], counts[1], counts[2], counts[3], peak[0], truncatedVerdicts.size());
     }
 
     static JsonObject frameJson(final String datasetId, final CorrectiveFamilyStudy.Frame frame) {

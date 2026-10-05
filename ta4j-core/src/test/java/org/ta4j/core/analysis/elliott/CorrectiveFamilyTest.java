@@ -372,6 +372,25 @@ class CorrectiveFamilyTest {
         assertTrue(finalVerdicts(frames).isEmpty(), "nothing replaces a parent that is no longer reported");
     }
 
+    @Test
+    void anotherParentGrammarsInvalidationOnTheSameScaleLeavesAnEndedVerdictRetired() {
+        final CorrectiveFamily.Verdict zigzag = verdict(
+                frames(ZIGZAG_PARENT, ZIGZAG_CHILD, CorrectiveFamily.Profile.ZIGZAG), CorrectiveFamily.Profile.ZIGZAG);
+        final String scale = zigzag.parentScale();
+
+        final List<CorrectiveFamilyStudy.Event> otherGrammar = CorrectiveFamilyStudy.advance(40,
+                new TreeMap<>(Map.of(zigzag.key(), zigzag)), Map.of(),
+                java.util.Set.of(CorrectiveFamilyStudy.invalidationKey(TopologyGrammar.MOTIVE_5, scale)));
+        final List<CorrectiveFamilyStudy.Event> ownGrammar = CorrectiveFamilyStudy.advance(40,
+                new TreeMap<>(Map.of(zigzag.key(), zigzag)), Map.of(),
+                java.util.Set.of(CorrectiveFamilyStudy.invalidationKey(TopologyGrammar.CORRECTIVE_3, scale)));
+
+        assertEquals(List.of(CorrectiveFamilyStudy.Reason.RETIRED),
+                otherGrammar.stream().map(CorrectiveFamilyStudy.Event::reason).toList());
+        assertEquals(List.of(CorrectiveFamilyStudy.Reason.PARENT_INVALIDATED),
+                ownGrammar.stream().map(CorrectiveFamilyStudy.Event::reason).toList());
+    }
+
     private static List<Pt> mirror(final List<Pt> tape) {
         return tape.stream()
                 .map(point -> new Pt(point.index(), 400 - point.price(),

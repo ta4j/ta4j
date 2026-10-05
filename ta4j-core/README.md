@@ -257,6 +257,8 @@ and `contracting-triangle` 3-3-3-3-3 inside a strictly contracting envelope. Onl
 fitted optima, and the declared values are part of the run's identity. The
 profiles judge the candidates of each parent scale with the relation edges to its
 adjacent finer scale, so `families` requires `hierarchy` and the recipe is rejected otherwise.
+It also requires `"interiorAnchors": "contiguous"` (the default): a family child sequence may
+not skip interior pivots, so a recipe that combines `families` with `allow-skipped` is rejected.
 Unsupported variants (diagonals, combinations, running or expanding triangles)
 have no profile and are never approximated by another one.
 
