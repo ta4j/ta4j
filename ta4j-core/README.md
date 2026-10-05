@@ -205,9 +205,11 @@ momentum-matched forward returns on the same tape. Summaries report counts and
 bounds only, never significance, because events overlap. Null-member events are
 included for the member chosen with `--trace selected-null-member`. An `explore`
 recipe may add an optional `"outcomes"` object
-(`{"horizons":[5,20,60],"structuralMode":"classical-all","invalidation":"origin-pivot"}`;
-`invalidation` is `origin-pivot` or `origin-price`); the choices are recorded in
-`run.json` and fixed before labels are read.
+(`{"horizons":[5,20,60],"structuralMode":"all-rules","invalidation":"origin-pivot"}`;
+`structuralMode` is `topology-only`, `all-rules`, or `+<rule>` for a rule in
+`activeRules`, and a mode the run does not evaluate is rejected; `invalidation`
+is `origin-pivot` or `origin-price`); the choices are recorded in `run.json` and
+fixed before labels are read.
 
 An `explore` recipe may also add an optional `"calibration"` object
 (`{"horizon":20,"fit":"calibration","validation":"validation","evaluation":"holdout","minGroups":3}`;

@@ -84,7 +84,7 @@ final class ElliottResearchOutcomes {
      */
     static final int MOMENTUM_BARS = 20;
     static final List<Integer> DEFAULT_HORIZONS = List.of(5, 20, 60);
-    static final String DEFAULT_STRUCTURAL_MODE = "classical-all";
+    static final String DEFAULT_STRUCTURAL_MODE = "all-rules";
 
     private static final Gson JSON = new GsonBuilder().disableHtmlEscaping().serializeNulls().create();
     private static final List<String> OUTCOMES_HEADER = List.of("dataset", "stream", "partition", "candidateKey",
@@ -171,7 +171,8 @@ final class ElliottResearchOutcomes {
      *
      * @param horizons       strictly increasing positive horizons in bars
      * @param structuralMode H2 study mode whose complete cycle candidates define
-     *                       correction completion
+     *                       correction completion; the run rejects a mode its
+     *                       runner does not evaluate
      * @param invalidation   invalidation policy
      */
     record Settings(List<Integer> horizons, String structuralMode, Invalidation invalidation) {
@@ -191,9 +192,8 @@ final class ElliottResearchOutcomes {
                 }
                 previous = horizon;
             }
-            if (!RuleAblation.frozenModeNames().contains(structuralMode)) {
-                throw new IllegalArgumentException("outcomes.structuralMode '" + structuralMode + "' must be one of "
-                        + RuleAblation.frozenModeNames());
+            if (structuralMode.isBlank()) {
+                throw new IllegalArgumentException("outcomes.structuralMode must not be blank");
             }
         }
 
