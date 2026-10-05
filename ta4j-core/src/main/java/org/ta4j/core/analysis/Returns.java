@@ -72,7 +72,7 @@ public class Returns implements PerformanceIndicator {
     private final List<Num> values;
 
     private final OffsetNumBuffer returnFactors;
-    private OffsetNumBuffer futuresPnL;
+    private FuturesPerformanceSupport.PnLAccumulator futuresPnL;
     private final Num futuresCapital;
     private final Indicator<Num> futuresMark;
     private final boolean markFuturesExposure;
@@ -138,15 +138,15 @@ public class Returns implements PerformanceIndicator {
                     OffsetNumBuffer factors = AnalysisPositionSupport.buffer(captured, initial, NaN.NaN);
                     boolean seeded = false;
                     Num zero = this.barSeries.numFactory().zero();
-                    OffsetNumBuffer pnl = futures ? AnalysisPositionSupport.buffer(captured, zero, zero) : null;
+                    FuturesPerformanceSupport.PnLAccumulator pnl = null;
                     if (futures) {
                         Num capital = captured.isEmpty() ? zero
                                 : FuturesPerformanceSupport.accountCapital(barSeries.numFactory(), record,
                                         fallbackCapital);
-                        FuturesPerformanceSupport
-                                .addPnL(FuturesPerformanceSupport.cursor(barSeries, record, captured.endIndex(),
+                        pnl = FuturesPerformanceSupport
+                                .pnl(FuturesPerformanceSupport.cursor(barSeries, record, captured.endIndex(),
                                         FuturesPerformanceSupport.includesExposure(handling, equityCurveMode),
-                                        markPriceIndicator), captured, pnl);
+                                        markPriceIndicator), captured, barSeries.numFactory());
                         seeded = fillFuturesReturnFactors(pnl, capital,
                                 FuturesPerformanceSupport.hasActivityAtIndex(record, captured.beginIndex()), captured,
                                 factors);
@@ -180,8 +180,8 @@ public class Returns implements PerformanceIndicator {
      * One materialization attempt's factors; the seeding flag travels with them so
      * a discarded attempt cannot leave it set.
      */
-    private record Materialized(AnalysisPositionSupport.Window window, OffsetNumBuffer factors, OffsetNumBuffer pnl,
-            boolean firstRetainedSlotSeeded) {
+    private record Materialized(AnalysisPositionSupport.Window window, OffsetNumBuffer factors,
+            FuturesPerformanceSupport.PnLAccumulator pnl, boolean firstRetainedSlotSeeded) {
     }
 
     /**
@@ -429,9 +429,8 @@ public class Returns implements PerformanceIndicator {
                     window.beginIndex(), markFuturesExposure);
             boolean firstActivity = firstBarFuturesActivity
                     || FuturesPerformanceSupport.hasActivityAtIndex(position, window.beginIndex());
-            OffsetNumBuffer pnl = futuresPnL == null
-                    ? AnalysisPositionSupport.buffer(window, barSeries.numFactory().zero(),
-                            barSeries.numFactory().zero())
+            FuturesPerformanceSupport.PnLAccumulator pnl = futuresPnL == null
+                    ? new FuturesPerformanceSupport.PnLAccumulator(window, barSeries.numFactory())
                     : futuresPnL.copy();
             boolean[] firstReported = new boolean[1];
             AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, returnFactors, staged -> {
@@ -614,8 +613,8 @@ public class Returns implements PerformanceIndicator {
                 markPriceIndicator, null);
     }
 
-    private boolean fillFuturesReturnFactors(OffsetNumBuffer pnl, Num capital, boolean firstActivity,
-            AnalysisPositionSupport.Window captured, OffsetNumBuffer factors) {
+    private boolean fillFuturesReturnFactors(FuturesPerformanceSupport.PnLAccumulator pnl, Num capital,
+            boolean firstActivity, AnalysisPositionSupport.Window captured, OffsetNumBuffer factors) {
         if (captured.isEmpty() || capital.isZero())
             return false;
         boolean firstReported = captured.beginIndex() > 0 && firstActivity;

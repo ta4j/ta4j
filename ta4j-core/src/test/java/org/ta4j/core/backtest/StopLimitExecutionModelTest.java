@@ -11,6 +11,9 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import java.time.Duration;
 import java.time.Instant;
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -40,12 +43,110 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.rules.FixedRule;
 
 public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     public StopLimitExecutionModelTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    @Test
+    public void roundedPendingCloseDoesNotReopenAfterTheExposureIsClosed() {
+        NumFactory precisionTwo = DecimalNumFactory.getInstance(new MathContext(2, RoundingMode.HALF_UP));
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(precisionTwo).build();
+        for (int index = 0; index <= 12; index++) {
+            series.barBuilder()
+                    .openPrice(100)
+                    .highPrice(100)
+                    .lowPrice(100)
+                    .closePrice(100)
+                    .volume(index == 1 ? 990 : 1)
+                    .add();
+        }
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(precisionTwo.one())
+                .maximumQuantity(precisionTwo.numOf(990))
+                .quantityIncrement(precisionTwo.one())
+                .build();
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(precisionTwo.numOf(100_000))
+                .transactionCostModel(new ZeroCostModel())
+                .build();
+        // An observed exchange fill is accepted independently of the modeled cap.
+        record.operate(TradeFill.builder()
+                .index(0)
+                .time(series.getBar(0).getEndTime())
+                .price(precisionTwo.hundred())
+                .amount(precisionTwo.numOf(1000))
+                .side(ExecutionSide.BUY)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build());
+        StopLimitExecutionModel model = new StopLimitExecutionModel(precisionTwo.zero(), precisionTwo.zero(),
+                precisionTwo.one(), 20);
+        model.execute(0, record, series, precisionTwo.numOf(1000));
+        for (int index = 1; index <= 12; index++) {
+            model.onBar(index, record, series);
+            if (index == 2) {
+                StopLimitExecutionModel.PendingOrderSnapshot pending = model.getPendingOrder(record).orElseThrow();
+                BigDecimal executed = pending.fills()
+                        .stream()
+                        .map(fill -> fill.amount().bigDecimalValue())
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                assertEquals(new BigDecimal("991"), executed);
+                // The displayed cumulative Num rounds to 990; remaining exposure
+                // must progress from the committed chunks rather than that view.
+                assertNumEquals(990, pending.filledAmount());
+                assertNumEquals(9, record.getCurrentPosition().getEntry().getAmount());
+            }
+            if (index == 11) {
+                assertTrue(record.isClosed());
+                assertTrue(model.getPendingOrder(record).isEmpty());
+            }
+        }
+        assertTrue("The complete close must not leave a new short position", record.isClosed());
+        assertTrue("A completed close must remove its pending order", model.getPendingOrder(record).isEmpty());
+    }
+
+    @Test
+    public void nativeEntryProgressRetainsSmallFillsAgainstLargePendingQuantity() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int index = 0; index <= 2; index++) {
+            series.barBuilder().openPrice(100).highPrice(100).lowPrice(100).closePrice(100).volume(1).add();
+        }
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.one())
+                .quantityIncrement(numFactory.one())
+                .build();
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .transactionCostModel(new ZeroCostModel())
+                .build();
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(),
+                numFactory.one(), 20);
+        model.execute(0, record, series, numFactory.numOf(1e16));
+        model.onBar(1, record, series);
+        assertNumEquals(1, model.getPendingOrder(record).orElseThrow().filledAmount());
+        model.onBar(2, record, series);
+        assertNumEquals(2, model.getPendingOrder(record).orElseThrow().filledAmount());
+        assertEquals(2, record.getOpenPositions().size());
     }
 
     @Test

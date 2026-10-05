@@ -348,20 +348,79 @@ final class FuturesPerformanceSupport {
                 markPrice == null ? new ClosePriceIndicator(series) : markPrice);
     }
 
-    /** Adds the same settlement-currency P&L used by constructor curves. */
-    static void addPnL(Cursor cursor, AnalysisPositionSupport.Window window, OffsetNumBuffer buffer) {
-        for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
-            buffer.add((int) index, cursor.pnlAt((int) index));
-        }
+    /** Captures components before converting the final account total to Num. */
+    static PnLAccumulator pnl(Cursor cursor, AnalysisPositionSupport.Window window, NumFactory factory) {
+        PnLAccumulator pnl = new PnLAccumulator(window, factory);
+        pnl.add(cursor);
+        return pnl;
     }
 
     /** Adds one position, recognizing fills only through its incremental cutoff. */
     static void addPositionPnL(BarSeries series, Position position, int finalIndex,
-            AnalysisPositionSupport.Window window, boolean markExposure, Indicator<Num> mark, OffsetNumBuffer buffer) {
+            AnalysisPositionSupport.Window window, boolean markExposure, Indicator<Num> mark, PnLAccumulator pnl) {
         int cutoff = Math.min(finalIndex, window.endIndex());
         Cursor cursor = new Cursor(series, List.of(position), cutoff, markExposure,
                 mark == null ? new ClosePriceIndicator(series) : mark);
-        addPnL(cursor, window, buffer);
+        pnl.add(cursor);
+    }
+
+    /** Per-bar component totals retained across staged incremental updates. */
+    static final class PnLAccumulator {
+        private final AnalysisPositionSupport.Window window;
+        private final NumFactory factory;
+        private final List<ProfitSum> sums;
+
+        PnLAccumulator(AnalysisPositionSupport.Window window, NumFactory factory) {
+            this.window = window;
+            this.factory = factory;
+            OffsetNumBuffer initial = AnalysisPositionSupport.buffer(window, factory.zero(), factory.zero());
+            this.sums = new ArrayList<>(initial.size());
+            for (int offset = 0; offset < initial.size(); offset++) {
+                sums.add(new ProfitSum());
+            }
+        }
+
+        private PnLAccumulator(PnLAccumulator previous) {
+            this.window = previous.window;
+            this.factory = previous.factory;
+            this.sums = new ArrayList<>(previous.sums.size());
+            for (ProfitSum sum : previous.sums) {
+                sums.add(sum == null ? null : new ProfitSum(sum));
+            }
+        }
+
+        PnLAccumulator copy() {
+            return new PnLAccumulator(this);
+        }
+
+        private void add(Cursor cursor) {
+            for (int offset = 0; offset < sums.size(); offset++) {
+                ProfitSum contribution = cursor.profitAt((int) ((long) window.beginIndex() + offset));
+                ProfitSum sum = sums.get(offset);
+                if (sum == null || contribution == null) {
+                    sums.set(offset, null);
+                } else {
+                    sum.sum = sum.sum.add(contribution.sum);
+                }
+            }
+        }
+
+        Num get(int index) {
+            if (index < window.beginIndex() || index > window.bufferEndIndex()) {
+                return factory.zero();
+            }
+            ProfitSum sum = sums.get(index - window.beginIndex());
+            return sum == null ? NaN.NaN : sum.value(factory);
+        }
+
+        OffsetNumBuffer values() {
+            OffsetNumBuffer values = AnalysisPositionSupport.buffer(window, factory.zero(), factory.zero());
+            for (int offset = 0; offset < sums.size(); offset++) {
+                int index = (int) ((long) window.beginIndex() + offset);
+                values.add(index, get(index));
+            }
+            return values;
+        }
     }
 
     /**
@@ -461,14 +520,14 @@ final class FuturesPerformanceSupport {
         }
 
         /**
-         * Returns the cumulative futures profit accounted at {@code index}.
+         * Returns the cumulative futures profit components accounted at {@code index}.
          *
          * @param index logical bar index, must not move backwards
-         * @return realized profit, plus unrealized profit while mark-to-market exposure
-         *         is selected
+         * @return realized plus selected marked components, or {@code null} when a
+         *         required mark is unavailable
          * @since 0.25.1
          */
-        Num pnlAt(int index) {
+        private ProfitSum profitAt(int index) {
             if (index < lastIndex) {
                 throw new IllegalArgumentException(
                         "cursor index must not move backwards: " + lastIndex + " -> " + index);
@@ -495,13 +554,13 @@ final class FuturesPerformanceSupport {
                 }
                 Position position = positions.get(i);
                 if (mark != null && !Num.isFinite(mark)) {
-                    return NaN.NaN;
+                    return null;
                 }
                 for (Num component : position.getProfitComponents(effectiveIndex, mark)) {
                     total.add(component);
                 }
             }
-            return total.value(numFactory);
+            return total;
         }
 
         private static boolean hasResidualExposure(Position position, int finalIndex) {

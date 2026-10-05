@@ -1122,6 +1122,94 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
         return new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
     }
 
+    @Test
+    public void mixedPartialExitUsesOnlyExecutedGrossPrices() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 100, 110).build();
+        FuturesContract contract = linearBtcPerpetual().toBuilder().contractSize(numFactory.one()).build();
+        Trade entry = Trade.fromFills(TradeType.BUY,
+                List.of(futuresFill(contract, 0, ExecutionSide.BUY, 100, 0.5).toBuilder().time(Instant.EPOCH).build()),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = legacyNativeTrade(contract, TradeType.SELL,
+                List.of(new TradeFill(1, Instant.EPOCH.plusSeconds(1), numFactory.numOf(120), numFactory.numOf(0.25),
+                        numFactory.zero(), ExecutionSide.SELL, null, null),
+                        futuresFill(contract, 1, ExecutionSide.SELL, 120, 0.25).toBuilder()
+                                .time(Instant.EPOCH.plusSeconds(1))
+                                .build(),
+                        new TradeFill(-1, Instant.EPOCH.minusSeconds(1), numFactory.numOf(300), numFactory.numOf(0.5),
+                                numFactory.zero(), ExecutionSide.SELL, null, null)));
+        Position first = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        Trade secondEntry = Trade.fromFills(TradeType.BUY,
+                List.of(futuresFill(contract, 2, ExecutionSide.BUY, 100, 0.5).toBuilder()
+                        .time(Instant.EPOCH.plusSeconds(2))
+                        .build()),
+                RecordedTradeCostModel.INSTANCE);
+        Trade secondExit = Trade.fromFills(TradeType.SELL,
+                List.of(futuresFill(contract, 3, ExecutionSide.SELL, 110, 0.5).toBuilder()
+                        .time(Instant.EPOCH.plusSeconds(3))
+                        .build()),
+                RecordedTradeCostModel.INSTANCE);
+        Position second = new Position(secondEntry, secondExit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        assertTrue(first.isClosed());
+        assertNumEquals(210, exit.getPricePerAsset());
+        assertNumEquals(1, exit.getAmount());
+        Num executedExitAmount = exit.getFills()
+                .stream()
+                .filter(fill -> fill.index() >= 0)
+                .map(TradeFill::amount)
+                .reduce(numFactory.zero(), Num::plus);
+        assertNumEquals(0.5, executedExitAmount);
+        // Executed returns are 1.2 and 1.1: mean 1.15, sigma .05, Cpk=1.
+        assertNumEquals(numFactory.one(),
+                getCriterion(0.7, 1.3).calculate(series, legacyPositionRecord(contract, List.of(first, second))),
+                1e-12);
+    }
+
+    @Test
+    public void mixedPartialExitKeepsUnequalContractPriceBases() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 100, 110).build();
+        for (FuturesContract template : List.of(linearBtcPerpetual(), inverseBtcPerpetual())) {
+            boolean inverse = template.settlementType() == FuturesContract.SettlementType.INVERSE;
+            TradeType type = inverse ? TradeType.SELL : TradeType.BUY;
+            ExecutionSide entrySide = inverse ? ExecutionSide.SELL : ExecutionSide.BUY;
+            ExecutionSide exitSide = inverse ? ExecutionSide.BUY : ExecutionSide.SELL;
+            for (double size : new double[] { 1, Double.MIN_VALUE }) {
+                FuturesContract contract = template.toBuilder().contractSize(numFactory.numOf(size)).build();
+                Trade entry = Trade.fromFills(type,
+                        List.of(futuresFill(contract, 0, entrySide, inverse ? 115.2 : 100, 0.5).toBuilder()
+                                .time(Instant.EPOCH)
+                                .build()),
+                        RecordedTradeCostModel.INSTANCE);
+                Trade exit = legacyNativeTrade(contract, type.complementType(),
+                        List.of(new TradeFill(1, Instant.EPOCH.plusSeconds(1), numFactory.numOf(80),
+                                numFactory.numOf(0.25), numFactory.zero(), exitSide, null, null),
+                                futuresFill(contract, 1, exitSide, inverse ? 120 : 160, 0.25).toBuilder()
+                                        .time(Instant.EPOCH.plusSeconds(1))
+                                        .build(),
+                                new TradeFill(-1, Instant.EPOCH.minusSeconds(1), numFactory.numOf(300),
+                                        numFactory.numOf(0.5), numFactory.zero(), exitSide, null, null)));
+                Position first = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+                Trade secondEntry = Trade.fromFills(type,
+                        List.of(futuresFill(contract, 2, entrySide, inverse ? 110 : 100, 0.5).toBuilder()
+                                .time(Instant.EPOCH.plusSeconds(2))
+                                .build()),
+                        RecordedTradeCostModel.INSTANCE);
+                Trade secondExit = Trade.fromFills(type.complementType(),
+                        List.of(futuresFill(contract, 3, exitSide, inverse ? 100 : 110, 0.5).toBuilder()
+                                .time(Instant.EPOCH.plusSeconds(3))
+                                .build()),
+                        RecordedTradeCostModel.INSTANCE);
+                Position second = new Position(secondEntry, secondExit, RecordedTradeCostModel.INSTANCE,
+                        new ZeroCostModel());
+                // Arithmetic exit basis is 120; inverse harmonic basis is 96.
+                assertNumEquals(numFactory.one(), getCriterion(0.7, 1.3).calculate(series,
+                        legacyPositionRecord(contract, List.of(first, second))), 1e-12);
+                assertEquals(null, exit.getFills().getFirst().futuresContract());
+                assertEquals(contract, exit.getFills().get(1).futuresContract());
+                assertEquals(3, exit.getFills().size());
+            }
+        }
+    }
+
     private Trade legacyNativeTrade(FuturesContract contract, TradeType type, List<TradeFill> fills) {
         List<TradeFill> nativePriceFills = fills.stream()
                 .map(fill -> fill.toBuilder().futuresContract(contract).fee(null).fees(List.of()).build())

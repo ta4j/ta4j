@@ -35,6 +35,7 @@ public final class CumulativePnL implements PerformanceIndicator {
     /** The window captured when the curve was materialized. */
     private final AnalysisPositionSupport.Window window;
     private final OffsetNumBuffer values;
+    private FuturesPerformanceSupport.PnLAccumulator futuresPnL;
     private final Indicator<Num> futuresMark;
     private final boolean markFuturesExposure;
 
@@ -68,26 +69,33 @@ public final class CumulativePnL implements PerformanceIndicator {
         TradingRecord record = Objects.requireNonNull(tradingRecord);
         OpenPositionHandling handling = Objects.requireNonNull(openPositionHandling);
         FuturesPerformanceSupport.requireMarkSeries(barSeries, markPriceIndicator);
-        AnalysisPositionSupport.Curve curve = AnalysisPositionSupport.materialize(this, barSeries, record, 0,
-                requestedFinalIndex, useRecordEnd, useSeriesEnd, true, handling, (captured, positions, costs) -> {
+        Materialized curve = AnalysisPositionSupport.materialize(this, barSeries, record, 0, requestedFinalIndex,
+                useRecordEnd, useSeriesEnd, true, handling, (captured, positions, costs) -> {
                     Num zero = this.barSeries.numFactory().zero();
                     OffsetNumBuffer buffer = AnalysisPositionSupport.buffer(captured, zero, zero);
+                    FuturesPerformanceSupport.PnLAccumulator pnl = null;
                     if (FuturesPerformanceSupport.isFutures(record)) {
                         FuturesPerformanceSupport.Cursor cursor = FuturesPerformanceSupport.cursor(barSeries, record,
                                 captured.endIndex(),
                                 FuturesPerformanceSupport.includesExposure(handling, equityCurveMode),
                                 markPriceIndicator);
-                        FuturesPerformanceSupport.addPnL(cursor, captured, buffer);
+                        pnl = FuturesPerformanceSupport.pnl(cursor, captured, barSeries.numFactory());
+                        buffer = pnl.values();
                     } else
                         for (Position position : positions) {
                             calculatePosition(position, captured.finalIndex(), captured, buffer, costs.get(position));
                         }
-                    return new AnalysisPositionSupport.Curve(captured, buffer);
+                    return new Materialized(captured, buffer, pnl);
                 });
         this.futuresMark = markPriceIndicator;
         this.markFuturesExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
         this.window = curve.window();
         this.values = curve.values();
+        this.futuresPnL = curve.pnl();
+    }
+
+    private record Materialized(AnalysisPositionSupport.Window window, OffsetNumBuffer values,
+            FuturesPerformanceSupport.PnLAccumulator pnl) {
     }
 
     /**
@@ -204,10 +212,24 @@ public final class CumulativePnL implements PerformanceIndicator {
         AnalysisPositionSupport.PricedPosition priced = AnalysisPositionSupport.pricePosition(this, barSeries, position,
                 finalIndex, window, true);
         if (priced != null && FuturesPerformanceSupport.isFutures(position)) {
-            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values,
-                    staged -> FuturesPerformanceSupport.addPositionPnL(barSeries, position, finalIndex, window,
-                            markFuturesExposure, futuresMark, staged),
-                    true);
+            boolean nativeCurve = futuresPnL != null;
+            FuturesPerformanceSupport.PnLAccumulator pnl = futuresPnL == null
+                    ? new FuturesPerformanceSupport.PnLAccumulator(window, barSeries.numFactory())
+                    : futuresPnL.copy();
+            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values, staged -> {
+                FuturesPerformanceSupport.addPositionPnL(barSeries, position, finalIndex, window, markFuturesExposure,
+                        futuresMark, pnl);
+                if (nativeCurve) {
+                    staged.replaceWith(pnl.values());
+                } else {
+                    for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
+                        staged.add((int) index, pnl.get((int) index));
+                    }
+                }
+            }, true);
+            if (nativeCurve) {
+                futuresPnL = pnl;
+            }
             return;
         }
         if (priced != null) {

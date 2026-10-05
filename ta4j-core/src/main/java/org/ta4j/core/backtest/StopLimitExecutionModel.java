@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.backtest;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -256,13 +257,28 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             boolean entryAllowed = futuresContract == null || ExecutionModelSupport.isExecutionAllowed(tradingRecord,
                     futuresContract, order.tradeType, bar.getEndTime());
             if (fillAmount.isPositive() && entryAllowed) {
+                BigDecimal nextFuturesFilledAmount = null;
+                Num nextFuturesFilledValue = null;
+                if (futuresContract != null) {
+                    BigDecimal previous = order.futuresFilledAmount == null ? BigDecimal.ZERO
+                            : order.futuresFilledAmount;
+                    nextFuturesFilledAmount = previous.add(fillAmount.bigDecimalValue());
+                    if (nextFuturesFilledAmount.compareTo(order.requestedAmount.bigDecimalValue()) > 0) {
+                        throw new IllegalArgumentException("futures fill quantity exceeds the pending amount");
+                    }
+                    nextFuturesFilledValue = order.requestedAmount.getNumFactory().numOf(nextFuturesFilledAmount);
+                    if (!Num.isFinite(nextFuturesFilledValue) || nextFuturesFilledValue.isZero()) {
+                        throw new IllegalArgumentException(
+                                "filled futures quantity must be representable in the pending number factory");
+                    }
+                }
                 // Commit the fill to the record before booking it on the pending
                 // order, so a rejected fill leaves the pending order unbooked.
                 TradeFill fill = order.toFill(index, bar, order.limitPrice, fillAmount, futuresContract);
                 if (futuresContract != null) {
                     ExecutionModelSupport.recordFuturesFill(tradingRecord, fill);
                 }
-                order.recordFill(fill, fillAmount, futuresContract);
+                order.recordFill(fill, fillAmount, nextFuturesFilledAmount, nextFuturesFilledValue);
             }
         }
 
@@ -562,6 +578,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         private boolean triggered;
         private Num filledAmount;
         private Num bookedAmount;
+        private BigDecimal futuresFilledAmount;
         private final List<TradeFill> fills;
 
         private PendingOrder(int signalIndex, int activationIndex, TradeType tradeType, Num requestedAmount,
@@ -580,14 +597,22 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         }
 
         private Num remainingAmount() {
-            return requestedAmount.minus(filledAmount);
+            return futuresFilledAmount == null ? requestedAmount.minus(filledAmount)
+                    : requestedAmount.getNumFactory()
+                            .numOf(requestedAmount.bigDecimalValue().subtract(futuresFilledAmount));
         }
 
-        private void recordFill(TradeFill fill, Num amount, FuturesContract futuresContract) {
+        private void recordFill(TradeFill fill, Num amount, BigDecimal nextFuturesFilledAmount,
+                Num nextFuturesFilledValue) {
             fills.add(fill);
-            filledAmount = filledAmount.plus(amount);
-            if (futuresContract != null) {
+            if (nextFuturesFilledAmount != null) {
+                // Preserve committed quantity components before rounding the public
+                // view, so neither small entry fills nor close progress disappears.
+                futuresFilledAmount = nextFuturesFilledAmount;
+                filledAmount = nextFuturesFilledValue;
                 bookedAmount = filledAmount;
+            } else {
+                filledAmount = filledAmount.plus(amount);
             }
         }
 
@@ -610,7 +635,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         }
 
         private boolean isCompletelyFilled() {
-            return !requestedAmount.minus(filledAmount).isPositive();
+            return !remainingAmount().isPositive();
         }
 
         private boolean hasUnbookedFills() {

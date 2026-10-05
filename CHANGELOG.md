@@ -1,4 +1,5 @@
 ## Unreleased
+- **Futures execution and incremental components (#1636)**: mixed scalar/native partial exits use executed contract-aware prices, stop-limit close orders retain remaining quantity through rounded cumulative fills, and incremental native curves retain signed components across lots and constructor state.
 - **Futures capability recovery (#1636)**: decimal Cpk recovery retains neutral returns for positions with no executed exposure, excludes deferred entry and exit fills from the executed price bases, and preserves inverse harmonic pricing.
 - **Native futures run-end exits (#1636)**: close remaining exposure with timestamped, contract-aware fills and the selected fee model, including custom-record walk-forward folds and capped exit orders.
 - **Same-index futures imports (#1636)**: replay partial exits and reentries in execution-time order, preserving realized profit and residual entry basis without applying later entries to earlier exits.

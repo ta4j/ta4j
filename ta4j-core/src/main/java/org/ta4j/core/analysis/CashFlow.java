@@ -48,6 +48,7 @@ public class CashFlow implements PerformanceIndicator {
     private final Num futuresCapital;
     private final Indicator<Num> futuresMark;
     private final boolean markFuturesExposure;
+    private FuturesPerformanceSupport.PnLAccumulator futuresPnL;
 
     /**
      * Constructor.
@@ -197,21 +198,24 @@ public class CashFlow implements PerformanceIndicator {
         OpenPositionHandling handling = Objects.requireNonNull(openPositionHandling);
         FuturesPerformanceSupport.requireMarkSeries(barSeries, markPriceIndicator);
         boolean futures = FuturesPerformanceSupport.isFutures(record);
-        AnalysisPositionSupport.Curve curve = AnalysisPositionSupport.materialize(this, barSeries, record, startIndex,
+        Materialized curve = AnalysisPositionSupport.materialize(this, barSeries, record, startIndex,
                 requestedFinalIndex, useRecordEnd, useSeriesEnd, padToSeriesEnd, handling,
                 (captured, positions, costs) -> {
                     Num one = this.barSeries.numFactory().one();
                     OffsetNumBuffer buffer = AnalysisPositionSupport.buffer(captured, one, one);
+                    FuturesPerformanceSupport.PnLAccumulator pnl = null;
                     if (futures) {
-                        fillFuturesValues(record, captured, buffer, markPriceIndicator, handling, fallbackCapital);
+                        pnl = fillFuturesValues(record, captured, buffer, markPriceIndicator, handling,
+                                fallbackCapital);
                     } else
                         for (Position position : positions) {
                             calculatePosition(position, captured.finalIndex(), captured, buffer, costs.get(position));
                         }
-                    return new AnalysisPositionSupport.Curve(captured, buffer);
+                    return new Materialized(captured, buffer, pnl);
                 });
         this.window = curve.window();
         this.values = curve.values();
+        this.futuresPnL = curve.pnl();
         this.futuresCapital = record.getInitialCapital() == null ? fallbackCapital : record.getInitialCapital();
         this.futuresMark = markPriceIndicator;
         this.markFuturesExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
@@ -221,6 +225,10 @@ public class CashFlow implements PerformanceIndicator {
                 && FuturesPerformanceSupport.hasActivityAtIndex(record, window.beginIndex());
         this.initialReturnEligible = futures && !window.isEmpty() && !preWindowFuturesActivity
                 && firstBarFuturesActivity;
+    }
+
+    private record Materialized(AnalysisPositionSupport.Window window, OffsetNumBuffer values,
+            FuturesPerformanceSupport.PnLAccumulator pnl) {
     }
 
     /**
@@ -248,21 +256,27 @@ public class CashFlow implements PerformanceIndicator {
             boolean firstActivity = firstBarFuturesActivity
                     || FuturesPerformanceSupport.hasActivityAtIndex(position, window.beginIndex());
             boolean initialReturn = !preWindow && firstActivity;
+            boolean nativeCurve = futuresPnL != null;
+            FuturesPerformanceSupport.PnLAccumulator pnl = futuresPnL == null
+                    ? new FuturesPerformanceSupport.PnLAccumulator(window, barSeries.numFactory())
+                    : futuresPnL.copy();
             AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values, staged -> {
-                Num zero = barSeries.numFactory().zero();
                 Num one = barSeries.numFactory().one();
-                OffsetNumBuffer pnl = AnalysisPositionSupport.buffer(window, zero, zero);
                 FuturesPerformanceSupport.addPositionPnL(barSeries, position, finalIndex, window, markFuturesExposure,
                         futuresMark, pnl);
                 OffsetNumBuffer result = AnalysisPositionSupport.buffer(window, one, one);
                 for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
-                    Num equity = staged.get((int) index).plus(pnl.get((int) index).dividedBy(capital));
+                    Num equity = nativeCurve ? capital.plus(pnl.get((int) index)).dividedBy(capital)
+                            : staged.get((int) index).plus(pnl.get((int) index).dividedBy(capital));
                     result.multiply((int) index, equity);
                 }
                 if (!initialReturn && !window.isEmpty())
                     result.multiplyBaseline(result.get(window.beginIndex()));
                 staged.replaceWith(result);
             }, true);
+            if (nativeCurve) {
+                futuresPnL = pnl;
+            }
             preWindowFuturesActivity = preWindow;
             firstBarFuturesActivity = firstActivity;
             initialReturnEligible = initialReturn;
@@ -504,24 +518,27 @@ public class CashFlow implements PerformanceIndicator {
         return initialReturnEligible;
     }
 
-    private void fillFuturesValues(TradingRecord record, AnalysisPositionSupport.Window captured,
-            OffsetNumBuffer buffer, Indicator<Num> markPrice, OpenPositionHandling handling, Num fallbackCapital) {
-        if (captured.isEmpty())
-            return;
+    private FuturesPerformanceSupport.PnLAccumulator fillFuturesValues(TradingRecord record,
+            AnalysisPositionSupport.Window captured, OffsetNumBuffer buffer, Indicator<Num> markPrice,
+            OpenPositionHandling handling, Num fallbackCapital) {
         NumFactory factory = barSeries.numFactory();
+        if (captured.isEmpty())
+            return new FuturesPerformanceSupport.PnLAccumulator(captured, factory);
         Num capital = FuturesPerformanceSupport.accountCapital(factory, record, fallbackCapital);
         if (capital.isZero())
-            return;
+            return new FuturesPerformanceSupport.PnLAccumulator(captured, factory);
         boolean markExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
         FuturesPerformanceSupport.Cursor cursor = FuturesPerformanceSupport.cursor(barSeries, record,
                 captured.endIndex(), markExposure, markPrice);
+        FuturesPerformanceSupport.PnLAccumulator pnl = FuturesPerformanceSupport.pnl(cursor, captured, factory);
         boolean initial = !FuturesPerformanceSupport.hasPreWindowActivity(record, captured.beginIndex(), markExposure)
                 && FuturesPerformanceSupport.hasActivityAtIndex(record, captured.beginIndex());
         for (long index = captured.beginIndex(); index <= captured.bufferEndIndex(); index++) {
-            Num equity = capital.plus(cursor.pnlAt((int) index)).dividedBy(capital);
+            Num equity = capital.plus(pnl.get((int) index)).dividedBy(capital);
             buffer.multiply((int) index, equity);
             if (index == captured.beginIndex() && !initial)
                 buffer.multiplyBaseline(equity);
         }
+        return pnl;
     }
 }

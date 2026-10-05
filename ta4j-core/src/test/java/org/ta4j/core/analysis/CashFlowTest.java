@@ -2170,6 +2170,42 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
+    public void incrementalCrossLotFeeComponentsShareConstructorEconomics() {
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory)
+                .toBuilder()
+                .contractSize(numFactory.one())
+                .build();
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 100, 100);
+        // CumulativePnL owns the full constructor-state/closed-state matrix.
+        for (boolean seedFirst : new boolean[] { false, true }) {
+            boolean closed = seedFirst;
+            BaseTradingRecord complete = FuturesAnalysisTestSupport.crossLotFeeRecord(contract, Trade.TradeType.BUY,
+                    closed);
+            List<Position> positions = closed ? complete.getPositions() : complete.getOpenPositions();
+            BaseTradingRecord initial = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+            if (seedFirst) {
+                Position first = positions.getFirst();
+                initial.operate(first.getEntry().getFills().getFirst());
+                if (closed) {
+                    initial.operate(first.getExit().getFills().getFirst());
+                }
+            }
+            CashFlow constructor = new CashFlow(series, complete, 3, EquityCurveMode.MARK_TO_MARKET,
+                    OpenPositionHandling.MARK_TO_MARKET);
+            CashFlow incremental = new CashFlow(series, initial, 3, EquityCurveMode.MARK_TO_MARKET,
+                    OpenPositionHandling.MARK_TO_MARKET);
+            assertEquals(2, positions.size());
+            for (int lot = seedFirst ? 1 : 0; lot < positions.size(); lot++) {
+                incremental.calculatePosition(positions.get(lot), 3);
+            }
+            for (int index = 1; index <= 3; index++) {
+                assertNumEquals(0.998, constructor.getValue(index));
+                assertNumEquals(0.998, incremental.getValue(index));
+            }
+        }
+    }
+
+    @Test
     public void incrementalFuturesPositionsShareAccountCapitalAndHonorEachCutoff() {
         FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
         BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 110, 100, 120);
