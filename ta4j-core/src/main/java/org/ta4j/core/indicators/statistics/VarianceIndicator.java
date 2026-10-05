@@ -7,7 +7,6 @@ import java.util.Objects;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -19,9 +18,10 @@ import org.ta4j.core.num.NumFactory;
  * {@code n - 1}) for rolling windows. Use {@link #ofPopulation(Indicator, int)}
  * (or the {@link SampleType} constructor) when population variance is required.
  * </p>
- * Zero-origin warm-up retains the legacy partial-window calculations. After
- * history removal, incomplete retained windows return {@link NaN#NaN}; the
- * stability boundary always includes source warm-up and the retained begin.
+ * Warm-up and partial retained windows preserve legacy calculation values. The
+ * stability boundary still requires a full window of stable source values and
+ * includes the retained begin; it does not suppress partial-window
+ * calculations.
  */
 public class VarianceIndicator extends CachedIndicator<Num> {
 
@@ -81,9 +81,6 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        if (getBarSeries().getBeginIndex() > 0 && index < stableBoundary()) {
-            return NaN.NaN;
-        }
         final int startIndex = (int) Math.max(Math.max(0L, getBarSeries().getBeginIndex()),
                 (long) index - barCount + 1L);
         final int numberOfObservations = index - startIndex + 1;

@@ -130,12 +130,12 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
                 .build();
         var variance = new VarianceIndicator(new ClosePriceIndicator(pruned), 6);
 
-        // Partial retained windows are unavailable until the full six-bar window.
-        assertThat(variance.getValue(4).isNaN()).isTrue();
-        // Four retained observations still do not complete the requested window.
-        assertThat(variance.getValue(7).isNaN()).isTrue();
-        // The last unstable and first stable boundaries are adjacent.
-        assertThat(variance.getValue(8).isNaN()).isTrue();
+        // Preserve the released partial-window values even before stability.
+        assertNumEquals(0, variance.getValue(4));
+        // Window [4..7] = {5,6,7,8}: sample variance = 5 / 3.
+        assertNumEquals(5.0 / 3, variance.getValue(7));
+        // Last unstable index: five observations give sample variance = 10 / 4.
+        assertNumEquals(2.5, variance.getValue(8));
         assertThat(variance.getCountOfUnstableBars()).isEqualTo(9);
         assertNumEquals(3.5, variance.getValue(9));
     }
@@ -170,7 +170,10 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         ClosePriceIndicator source = new ClosePriceIndicator(retained);
         VarianceIndicator metric = VarianceIndicator.ofPopulation(source, 3);
         assertThat(metric.getCountOfUnstableBars()).isEqualTo(4);
-        assertThat(metric.getValue(3).isNaN()).isTrue();
+        assertNumEquals(0, metric.getValue(0));
+        assertNumEquals(0, metric.getValue(2));
+        // Last unstable index has the legacy two-observation population value.
+        assertNumEquals(0.25, metric.getValue(3));
         assertNumEquals(2.0 / 3, metric.getValue(4));
     }
 
@@ -245,7 +248,8 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         };
         VarianceIndicator metric = VarianceIndicator.ofPopulation(source, 3);
         assertThat(metric.getCountOfUnstableBars()).isEqualTo(6);
-        assertThat(metric.getValue(5).isNaN()).isTrue();
+        // Available numeric source values do not override the stability metadata.
+        assertNumEquals(2.0 / 3, metric.getValue(5));
         assertNumEquals(2.0 / 3, metric.getValue(6));
     }
 }
