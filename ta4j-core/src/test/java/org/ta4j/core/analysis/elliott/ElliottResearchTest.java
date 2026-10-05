@@ -119,6 +119,17 @@ class ElliottResearchTest {
         assertEquals(0, inspect.code(), inspect.err());
         assertTrue(inspect.out().contains(denominator + " in this row's scope"), inspect.out());
         assertTrue(inspect.out().contains("-> match"), inspect.out());
+
+        for (final String artifact : List.of("events.jsonl", "outcomes.csv", "outcomes-summary.csv")) {
+            assertTrue(Files.isRegularFile(smokeRun.resolve(artifact)), artifact);
+        }
+        final List<String> eventLines = Files.readAllLines(smokeRun.resolve("events.jsonl"));
+        assertTrue(eventLines.get(0).contains("ta4j-elliott-research-events/1"), eventLines.get(0));
+        assertTrue(eventLines.get(eventLines.size() - 1).contains("\"complete\":true"), "events footer");
+        assertEquals("events.jsonl", run.getAsJsonObject("outcomes").get("events").getAsString());
+        assertTrue(summary.contains("Forward outcomes"), summary);
+        assertTrue(Files.readString(smokeRun.resolve("outcomes.csv")).contains(",correction-completed,"),
+                "the default structural mode must match the H2 mode the research runner evaluates");
     }
 
     @Test
@@ -151,6 +162,37 @@ class ElliottResearchTest {
         assertEquals(0, summarize.code(), summarize.err());
         assertTrue(Files.readString(copy.resolve("summary.md")).contains("Elliott research run: smoke"));
         assertEquals(0, launch("inspect", copy.toString(), OCCUPANCY_KEY).code());
+    }
+
+    @Test
+    void summarizeDiagnosesAMissingOutcomesSummaryThatTheRunDeclares() throws Exception {
+        final Path copy = work.resolve("no-outcomes-summary");
+        copyTree(smokeRun, copy);
+        Files.delete(copy.resolve("outcomes-summary.csv"));
+        Files.delete(copy.resolve("summary.md"));
+
+        final Result result = launch("summarize", copy.toString());
+
+        assertEquals(2, result.code());
+        assertTrue(result.err().contains("outcomes-summary.csv is declared by run.json but missing"), result.err());
+        assertFalse(Files.exists(copy.resolve("summary.md")), "an incomplete run must not get a summary");
+    }
+
+    @Test
+    void summarizeStaysCleanForARunWrittenBeforeOutcomesExisted() throws Exception {
+        final Path copy = work.resolve("legacy-run");
+        copyTree(smokeRun, copy);
+        final JsonObject run = readJson(copy.resolve("run.json"));
+        run.remove("outcomes");
+        Files.writeString(copy.resolve("run.json"), run.toString());
+        for (final String artifact : List.of("events.jsonl", "outcomes.csv", "outcomes-summary.csv")) {
+            Files.delete(copy.resolve(artifact));
+        }
+
+        final Result result = launch("summarize", copy.toString());
+
+        assertEquals(0, result.code(), result.err());
+        assertFalse(Files.readString(copy.resolve("summary.md")).contains("Forward outcomes"));
     }
 
     @Test
@@ -452,6 +494,26 @@ class ElliottResearchTest {
                 "--out", out.toString());
         assertEquals(1, result.code());
         assertTrue(result.err().contains("unknown field recipe.unexpected"), result.err());
+        assertFalse(Files.exists(out));
+    }
+
+    @Test
+    void exploreRecipeRejectsStructuralModeTheRunDoesNotEvaluate() throws Exception {
+        final Path candles = work.resolve("mode-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
+        final Path recipe = work.resolve("mode-recipe.json");
+        Files.writeString(recipe, toyRecipe("mode").replace("\"null\":", """
+                "activeRules":["wave2-origin"],
+                "outcomes":{"structuralMode":"+wave3-not-shortest"},
+                "null\":"""));
+        final Path out = work.resolve("explore-mode");
+        final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(),
+                "--out", out.toString());
+        assertEquals(1, result.code(), result.err());
+        assertTrue(
+                result.err().contains("outcomes.structuralMode '+wave3-not-shortest' is not a mode this run evaluates"),
+                result.err());
+        assertTrue(result.err().contains("+wave2-origin"), result.err());
         assertFalse(Files.exists(out));
     }
 

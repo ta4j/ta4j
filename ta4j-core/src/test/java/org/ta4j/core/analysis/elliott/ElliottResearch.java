@@ -213,6 +213,10 @@ final class ElliottResearch {
                 "                           list the recorded observations behind one comparison key", "",
                 "Run status: complete = every dataset evaluated (coverage.csv marks datasets whose data cover",
                 "less than the requested window as partial), partial = some dataset failed, failed = all failed.",
+                "Every run also writes events.jsonl (enrolled MOTIVE_5 event lifecycles), outcomes.csv (per-horizon",
+                "structural and price labels) and outcomes-summary.csv (per-partition tallies and comparators);",
+                "explore recipes may set an optional \"outcomes\" object (horizons, structuralMode, invalidation).",
+                "Null-member events are included for the member chosen with --trace selected-null-member.", "",
                 "Exit codes: 0 ok; 1 usage error or run failure; 2 missing, truncated or corrupt trace, or failed",
                 "dataset while inspecting.");
     }
@@ -347,21 +351,36 @@ final class ElliottResearch {
     /** Effective analytical configuration of one run. */
     private record Setup(String fingerprint, StudyRunner.Partitions partitions, DetectorRecipe primary,
             List<DetectorRecipe> robustness, List<String> activeRules, int momentumBarCount,
-            List<String> competingModes, List<Integer> blockLengths, int ensembleSize, long seed) {
+            List<String> competingModes, List<Integer> blockLengths, int ensembleSize, long seed,
+            ElliottResearchOutcomes.Settings outcomes) {
+
+        Setup {
+            final List<String> structuralModes = RuleAblation.modes(rules(activeRules, momentumBarCount))
+                    .stream()
+                    .map(RuleAblation.Mode::name)
+                    .toList();
+            if (!structuralModes.contains(outcomes.structuralMode())) {
+                throw new IllegalArgumentException("outcomes.structuralMode '" + outcomes.structuralMode()
+                        + "' is not a mode this run evaluates; expected one of " + structuralModes);
+            }
+        }
 
         StudyRunner runner() {
-            final Function<BarSeries, Indicator<Num>> momentum = series -> new RSIIndicator(
-                    new ClosePriceIndicator(series), momentumBarCount);
-            final List<RelationshipRule> rules = ClassicalRelationshipRules.classicalRelationships(momentum)
-                    .stream()
-                    .filter(rule -> activeRules.contains(rule.id()))
-                    .toList();
             final List<DetectorRobustnessMatrix.DetectorSpec> specs = robustness.stream()
                     .map(detector -> new DetectorRobustnessMatrix.DetectorSpec(detector.name(), detector.supplier()))
                     .toList();
             return new StudyRunner(primary.supplier(), List.of(TopologyGrammar.MOTIVE_5, TopologyGrammar.CYCLE_5_3),
-                    rules, new StudyRunner.Configuration(partitions, fingerprint, seed, blockLengths, ensembleSize,
-                            specs, primary.name(), competingModes));
+                    rules(activeRules, momentumBarCount), new StudyRunner.Configuration(partitions, fingerprint, seed,
+                            blockLengths, ensembleSize, specs, primary.name(), competingModes));
+        }
+
+        private static List<RelationshipRule> rules(final List<String> activeRules, final int momentumBarCount) {
+            final Function<BarSeries, Indicator<Num>> momentum = series -> new RSIIndicator(
+                    new ClosePriceIndicator(series), momentumBarCount);
+            return ClassicalRelationshipRules.classicalRelationships(momentum)
+                    .stream()
+                    .filter(rule -> activeRules.contains(rule.id()))
+                    .toList();
         }
 
         LocalDate requestedFrom() {
@@ -418,6 +437,7 @@ final class ElliottResearch {
             nulls.addProperty("ensembleSize", ensembleSize);
             nulls.addProperty("seed", seed);
             json.add("null", nulls);
+            json.add("outcomes", outcomes.toJson());
             return json;
         }
     }
@@ -436,9 +456,10 @@ final class ElliottResearch {
         final DetectorRecipe w5 = new DetectorRecipe("fractal-w5", "fractal", List.of(5));
         final String description = "elliott-research-smoke/1: " + SMOKE_BARS
                 + " synthetic daily bars from 2020-01-01 (StrictMath sine mix); primary fractal-w5; robustness fractal-w3,fractal-w5; "
-                + "RSI14; competing 3+3,5+5,change-point-baseline; null block 20 ensemble 8 seed 5252026";
+                + "RSI14; competing 3+3,5+5,change-point-baseline; null block 20 ensemble 8 seed 5252026; "
+                + "outcomes horizons 5,20,60 all-rules origin-pivot";
         return new Setup(sha256(description.getBytes(StandardCharsets.UTF_8)), partitions, w5, List.of(w3, w5),
-                RULE_IDS, 14, COMPETING_MODES, List.of(20), 8, 5_252_026L);
+                RULE_IDS, 14, COMPETING_MODES, List.of(20), 8, 5_252_026L, ElliottResearchOutcomes.Settings.defaults());
     }
 
     private static BarSeries smokeSeries() {
@@ -488,12 +509,12 @@ final class ElliottResearch {
         return new Setup(protocol.fingerprintSha256(), runnerPartitions, primary, detectors, RULE_IDS,
                 protocol.momentumIndicator().barCount(), protocol.competingGrammars(),
                 protocol.nullEnsemble().blockLengths(), protocol.nullEnsemble().ensembleSize(),
-                protocol.nullEnsemble().seed());
+                protocol.nullEnsemble().seed(), ElliottResearchOutcomes.Settings.defaults());
     }
 
     private static final Set<String> RECIPE_FIELDS = Set.of("datasetId", "asset", "partitions",
             "forbiddenCalibrationStart", "detector", "robustnessDetectors", "activeRules", "momentum", "competingModes",
-            "null");
+            "null", "outcomes");
 
     /** Parsed explore recipe plus the setup it describes. */
     private record ExploreRecipe(String datasetId, String asset, Setup setup, JsonObject definition) {
@@ -570,6 +591,9 @@ final class ElliottResearch {
                 ? strings(root.get("competingModes"), "recipe.competingModes", COMPETING_MODES)
                 : COMPETING_MODES;
         final JsonObject nulls = objectOf(required(root, "null", "recipe"), "recipe.null");
+        final ElliottResearchOutcomes.Settings outcomes = root.has("outcomes")
+                ? ElliottResearchOutcomes.Settings.parse(objectOf(root.get("outcomes"), "recipe.outcomes"))
+                : ElliottResearchOutcomes.Settings.defaults();
         rejectUnknown(nulls, "recipe.null", Set.of("blockLengths", "ensembleSize", "seed"));
         final List<Integer> blockLengths = new ArrayList<>();
         final JsonArray blocks = arrayOf(required(nulls, "blockLengths", "recipe.null"), "recipe.null.blockLengths");
@@ -579,7 +603,7 @@ final class ElliottResearch {
         final int ensembleSize = integer(required(nulls, "ensembleSize", "recipe.null"), "recipe.null.ensembleSize");
         final long seed = longValue(required(nulls, "seed", "recipe.null"), "recipe.null.seed");
         final Setup setup = new Setup("explore-" + sha256(recipeBytes), runnerPartitions, primary, robustness,
-                activeRules, barCount, competing, blockLengths, ensembleSize, seed);
+                activeRules, barCount, competing, blockLengths, ensembleSize, seed, outcomes);
         try {
             setup.runner();
             primary.supplier().get();
@@ -881,7 +905,9 @@ final class ElliottResearch {
 
     private static void prepareRunDirectory(final Path dir, final boolean overwrite) throws IOException {
         if (checkRunDirectory(dir, overwrite)) {
-            for (final String file : List.of(RUN_FILE, COMPARISONS_FILE, COVERAGE_FILE, SUMMARY_FILE)) {
+            for (final String file : List.of(RUN_FILE, COMPARISONS_FILE, COVERAGE_FILE, SUMMARY_FILE,
+                    ElliottResearchOutcomes.EVENTS_FILE, ElliottResearchOutcomes.OUTCOMES_FILE,
+                    ElliottResearchOutcomes.SUMMARY_FILE)) {
                 Files.deleteIfExists(dir.resolve(file));
             }
             deleteTree(dir.resolve(REPORTS_DIR));
@@ -935,6 +961,8 @@ final class ElliottResearch {
         private final Map<String, DatasetEntry> entries = new LinkedHashMap<>();
         private final List<Row> rows = new ArrayList<>();
         private final Map<String, ElliottResearchTrace> openTraces = new HashMap<>();
+        private final Map<String, ElliottResearchEvents> recorders = new HashMap<>();
+        private final Map<String, ElliottResearchOutcomes.Result> outcomes = new LinkedHashMap<>();
         private String numFactory = "unknown";
         private String status = "running";
 
@@ -957,13 +985,16 @@ final class ElliottResearch {
         }
 
         StudyObserver observer(final String id) throws IOException {
+            final ElliottResearchEvents recorder = new ElliottResearchEvents(setup.outcomes().structuralMode(),
+                    setup.outcomes().maxHorizon());
+            recorders.put(id, recorder);
             if (!ElliottResearchTrace.MODE_REAL.equals(options.trace())) {
-                return null;
+                return recorder;
             }
             final ElliottResearchTrace trace = ElliottResearchTrace.open(dir.resolve(realTraceName(id)), id, revision,
                     setup.fingerprint(), sourceSha256(id), ElliottResearchTrace.MODE_REAL, -1, -1);
             openTraces.put(id, trace);
-            return trace;
+            return ElliottResearchEvents.tee(trace, recorder);
         }
 
         /**
@@ -1028,16 +1059,20 @@ final class ElliottResearch {
                     real.close();
                     entry.traces.add(relative(dir.resolve(realTraceName(id))));
                 }
+                final ElliottResearchEvents recorder = recorders.get(id);
+                recorder.bindRealTape(series);
                 if (ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER.equals(options.trace())) {
                     final Path file = dir.resolve(nullTraceName(id, options.block(), options.member()));
                     try (ElliottResearchTrace trace = ElliottResearchTrace.open(file, id, revision, setup.fingerprint(),
                             sourceSha256(id), ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER, options.block(),
                             options.member())) {
                         runner.replayNullMember(series, series.getBeginIndex(), series.getEndIndex(), options.block(),
-                                options.member(), trace);
+                                options.member(), ElliottResearchEvents.tee(trace, recorder));
                     }
                     entry.traces.add(relative(file));
                 }
+                outcomes.put(id, ElliottResearchOutcomes.evaluate(id, recorder, setup.outcomes()));
+                recorders.remove(id);
                 rows.addAll(ElliottResearchReport.comparisons(id, report));
                 entry.report = relative(reportFile);
                 applyCoverage(entry, series);
@@ -1136,6 +1171,8 @@ final class ElliottResearch {
                 // best effort: run.json records no trace or report for a failed dataset
             }
             rows.removeIf(row -> row.dataset().equals(id));
+            recorders.remove(id);
+            outcomes.remove(id);
             entry.traces.clear();
             entry.report = null;
             entry.bars = 0;
@@ -1159,6 +1196,11 @@ final class ElliottResearch {
             final JsonObject json = toJson();
             ElliottResearchReport.writeCoverage(dir.resolve(COVERAGE_FILE), coverage(json));
             Files.writeString(dir.resolve(RUN_FILE), GSON.toJson(json) + "\n", StandardCharsets.UTF_8);
+            final List<ElliottResearchOutcomes.Result> results = List.copyOf(outcomes.values());
+            ElliottResearchOutcomes.writeEvents(dir.resolve(ElliottResearchOutcomes.EVENTS_FILE), setup.fingerprint(),
+                    setup.outcomes(), results);
+            ElliottResearchOutcomes.writeOutcomes(dir.resolve(ElliottResearchOutcomes.OUTCOMES_FILE), results);
+            ElliottResearchOutcomes.writeSummary(dir.resolve(ElliottResearchOutcomes.SUMMARY_FILE), results);
             Files.writeString(dir.resolve(SUMMARY_FILE), renderSummary(dir, json, rows), StandardCharsets.UTF_8);
         }
 
@@ -1223,6 +1265,12 @@ final class ElliottResearch {
                 datasets.add(dataset);
             }
             json.add("datasets", datasets);
+            final JsonObject outcomeFiles = new JsonObject();
+            outcomeFiles.addProperty("schema", ElliottResearchOutcomes.SCHEMA);
+            outcomeFiles.addProperty("events", ElliottResearchOutcomes.EVENTS_FILE);
+            outcomeFiles.addProperty("outcomes", ElliottResearchOutcomes.OUTCOMES_FILE);
+            outcomeFiles.addProperty("summary", ElliottResearchOutcomes.SUMMARY_FILE);
+            json.add("outcomes", outcomeFiles);
             return json;
         }
     }
@@ -1379,6 +1427,21 @@ final class ElliottResearch {
         if (!traces.isEmpty()) {
             markdown.append("\n## Traces\n\n");
             traces.forEach(name -> markdown.append("- `").append(name).append("`\n"));
+        }
+        if (run.has("outcomes")) {
+            // A run that declares outcome artifacts is incomplete without them; only a
+            // run written before outcomes existed legitimately has none.
+            final Path outcomesSummary = dir.resolve(ElliottResearchOutcomes.SUMMARY_FILE);
+            if (!Files.isRegularFile(outcomesSummary)) {
+                throw new Diagnostic(ElliottResearchOutcomes.SUMMARY_FILE + " is declared by " + RUN_FILE
+                        + " but missing in " + dir + "; the run is incomplete, rerun the recipe");
+            }
+            markdown.append('\n').append(ElliottResearchOutcomes.summaryMarkdown(outcomesSummary));
+            markdown.append("\nEvent lifecycles are in `")
+                    .append(ElliottResearchOutcomes.EVENTS_FILE)
+                    .append("`, per-horizon labels in `")
+                    .append(ElliottResearchOutcomes.OUTCOMES_FILE)
+                    .append("`.\n");
         }
         markdown.append("\nInspect any key with `inspect ").append(displayPath(dir)).append(" <key>`.\n");
         return markdown.toString();

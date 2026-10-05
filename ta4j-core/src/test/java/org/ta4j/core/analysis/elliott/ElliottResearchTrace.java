@@ -283,6 +283,22 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         final String key = candidateKey(candidate);
         final JsonArray placement = new JsonArray();
         candidate.pivots().forEach(pivot -> placement.add(placementJson(pivot)));
+        final JsonArray rules = rulesJson(evidence);
+        final JsonObject json = new JsonObject();
+        json.addProperty("candidateKey", key);
+        json.addProperty("version", version(key, rules));
+        json.addProperty("direction", candidate.direction().name());
+        json.add("placement", placement);
+        json.add("rules", rules);
+        return json;
+    }
+
+    /**
+     * Serialised rule evidence exactly as the trace records it.
+     *
+     * @since 0.26.1
+     */
+    static JsonArray rulesJson(final List<RuleEvidence> evidence) {
         final JsonArray rules = new JsonArray();
         for (final RuleEvidence rule : evidence) {
             final JsonObject json = new JsonObject();
@@ -295,13 +311,16 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
             json.addProperty("explanation", rule.explanation());
             rules.add(json);
         }
-        final JsonObject json = new JsonObject();
-        json.addProperty("candidateKey", key);
-        json.addProperty("version", key + "@" + digest(rules.toString()));
-        json.addProperty("direction", candidate.direction().name());
-        json.add("placement", placement);
-        json.add("rules", rules);
-        return json;
+        return rules;
+    }
+
+    /**
+     * {@code <candidateKey>@<evidenceKey>} for serialised rule evidence.
+     *
+     * @since 0.26.1
+     */
+    static String version(final String candidateKey, final JsonArray rules) {
+        return candidateKey + "@" + digest(rules.toString());
     }
 
     /**
@@ -309,9 +328,18 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
      * placement.
      */
     static String candidateKey(final TopologyCandidate candidate) {
+        return candidateKey(candidate.grammar().name(), candidate.direction().name(), candidate.pivots());
+    }
+
+    /**
+     * Identity of a named grammar and direction over a full pivot placement.
+     *
+     * @since 0.26.1
+     */
+    static String candidateKey(final String grammar, final String direction, final List<ConfirmedPivot> pivots) {
         final StringBuilder identity = new StringBuilder();
-        identity.append(candidate.grammar().name()).append('|').append(candidate.direction().name());
-        for (final ConfirmedPivot pivot : candidate.pivots()) {
+        identity.append(grammar).append('|').append(direction);
+        for (final ConfirmedPivot pivot : pivots) {
             identity.append('|')
                     .append(pivot.pivotIndex())
                     .append(':')
