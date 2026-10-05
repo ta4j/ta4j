@@ -56,8 +56,8 @@ class ElliottResearchOutcomesTest {
 
         final Tally tally = new Tally();
         for (final Event event : List.of(success, failure, censored)) {
-            tally.structural(ElliottResearchOutcomes.label(event, 5, event == censored ? 32 : 100, null, SETTINGS,
-                    -1).structural(), false);
+            tally.structural(ElliottResearchOutcomes.label(event, 5, event == censored ? 32 : 100, null, SETTINGS, -1)
+                    .structural(), false);
         }
 
         assertEquals(3, tally.prospective());
@@ -155,7 +155,8 @@ class ElliottResearchOutcomesTest {
     @Test
     void originPriceBreachBetweenTheMotiveEndAndLateEnrollmentIsNotAdministrativelyKnownBeforeEnrollment() {
         final Settings priceSettings = new Settings(List.of(5), "classical-all", Invalidation.ORIGIN_PRICE);
-        // Pivots sit at bars 4..9 but are only confirmed (and the event only enrolled) at bar 20.
+        // Pivots sit at bars 4..9 but are only confirmed (and the event only enrolled)
+        // at bar 20.
         final List<ConfirmedPivot> pivots = new ArrayList<>();
         final double[] prices = { 100, 120, 110, 140, 130, 160 };
         for (int at = 0; at < prices.length; at++) {
@@ -263,7 +264,8 @@ class ElliottResearchOutcomesTest {
 
     @Test
     void legacyTouchPolicyMatchesTheReleasedOutcomeLabelerAndLeavesItUnchanged() {
-        // A bullish motive's correction runs down: target = wave-4 low, invalidation = wave-5 high,
+        // A bullish motive's correction runs down: target = wave-4 low, invalidation =
+        // wave-5 high,
         // which is the released labeler's bearish scenario with the same levels.
         final Curve flatClose = i -> 145;
         final List<BarSeries> tapes = List.of(series(flatClose, i -> i == 11 ? 165 : 146, i -> i == 11 ? 125 : 144),
@@ -306,7 +308,8 @@ class ElliottResearchOutcomesTest {
     @Test
     void nonOverlappingCohortKeepsEarliestSkipsRunningHorizonsAndBreaksTiesByKey() {
         final List<Label> labels = new ArrayList<>();
-        // Decisions 10, 12 (skipped: 10's horizon runs to 15), 15 (kept: boundary), two at 30 tied by key.
+        // Decisions 10, 12 (skipped: 10's horizon runs to 15), 15 (kept: boundary), two
+        // at 30 tied by key.
         for (final int decision : new int[] { 15, 12, 10 }) {
             labels.add(ElliottResearchOutcomes.label(keyed(decision, "k" + decision), 5, 100, null, SETTINGS, -1));
         }
@@ -395,7 +398,8 @@ class ElliottResearchOutcomesTest {
         assertEquals(List.of(completed), events(ElliottResearchOutcomes.purgeStructural(labels, 12)));
         assertEquals(3, ElliottResearchOutcomes.purgeStructural(labels, 15).size());
         assertTrue(ElliottResearchOutcomes.purgeStructural(labels, 9).isEmpty());
-        // Price windows all end at decision + horizon = 15, regardless of structural result.
+        // Price windows all end at decision + horizon = 15, regardless of structural
+        // result.
         assertTrue(ElliottResearchOutcomes.purgePrice(labels, 14).isEmpty());
         assertEquals(3, ElliottResearchOutcomes.purgePrice(labels, 15).size());
     }
@@ -450,7 +454,8 @@ class ElliottResearchOutcomesTest {
                 .stream()
                 .mapToLong(stream -> stream.lastObserved() - stream.firstObserved() + 1)
                 .sum();
-        assertTrue(observations > events.size(), "a placement stays visible over several observations but enrolls once");
+        assertTrue(observations > events.size(),
+                "a placement stays visible over several observations but enrolls once");
         for (final Event event : events) {
             assertEquals(6, event.pivots.size());
             assertNotNull(event.version);
@@ -492,7 +497,8 @@ class ElliottResearchOutcomesTest {
 
         final Event event = soleEvent(recorder);
         assertEquals(9, event.enrollIndex);
-        assertEquals(12, event.completionIndex, "an enrolled event stays tracked when enrollIndex + maxHorizon exceeds int");
+        assertEquals(12, event.completionIndex,
+                "an enrolled event stays tracked when enrollIndex + maxHorizon exceeds int");
     }
 
     @Test
@@ -571,7 +577,8 @@ class ElliottResearchOutcomesTest {
 
     private static List<String> nullLabels(final BarSeries series, final int block, final int member) {
         final ElliottResearchEvents recorder = new ElliottResearchEvents("classical-all", 10);
-        runner(ElliottResearchOutcomesTest::localExtrema).replayNullMember(series, 0, series.getEndIndex(), block, member, recorder);
+        runner(ElliottResearchOutcomesTest::localExtrema).replayNullMember(series, 0, series.getEndIndex(), block,
+                member, recorder);
         return recorder.streams()
                 .stream()
                 .flatMap(stream -> stream.events().stream())
@@ -584,7 +591,9 @@ class ElliottResearchOutcomesTest {
 
     private static final Instant AS_OF = Instant.parse("2018-01-01T00:00:00Z");
 
-    /** Nine bullish pivots at bars 4..12: a motive followed by a corrective block. */
+    /**
+     * Nine bullish pivots at bars 4..12: a motive followed by a corrective block.
+     */
     private static List<ConfirmedPivot> bullishCyclePivots() {
         final double[] prices = { 100, 120, 110, 140, 130, 160, 145, 155, 135 };
         final List<ConfirmedPivot> pivots = new ArrayList<>();
@@ -640,8 +649,8 @@ class ElliottResearchOutcomesTest {
         final boolean bullish = direction == WaveDirection.BULLISH;
         for (int at = 0; at < prices.length; at++) {
             final boolean low = (at % 2 == 0) == bullish;
-            pivots.add(new ConfirmedPivot(enrollIndex - 6 + at, enrollIndex - 6 + at,
-                    DecimalNum.valueOf(prices[at]), low ? SwingPivotType.LOW : SwingPivotType.HIGH));
+            pivots.add(new ConfirmedPivot(enrollIndex - 6 + at, enrollIndex - 6 + at, DecimalNum.valueOf(prices[at]),
+                    low ? SwingPivotType.LOW : SwingPivotType.HIGH));
         }
         return new Event(REAL, "key-" + enrollIndex + direction, "version", direction, pivots,
                 direction + "|" + enrollIndex, enrollIndex, Instant.parse("2018-01-01T00:00:00Z"),
@@ -677,8 +686,8 @@ class ElliottResearchOutcomesTest {
 
     private static BarSeries syntheticSeries(final int count) {
         final double[] pivotPrices = { 100, 120, 110, 140, 130, 160, 150, 180, 170, 200, 190, 220, 210, 240, 230 };
-        return seriesOf(count, index -> index % 2 == 1 && index / 2 < pivotPrices.length ? pivotPrices[index / 2]
-                : 100 + index);
+        return seriesOf(count,
+                index -> index % 2 == 1 && index / 2 < pivotPrices.length ? pivotPrices[index / 2] : 100 + index);
     }
 
     private static BarSeries seriesOf(final int count, final Curve close) {
@@ -756,8 +765,7 @@ class ElliottResearchOutcomesTest {
         final StudyRunner.Partitions partitions = StudyRunner.Partitions.lockedDefault();
         return new StudyRunner.Configuration(partitions,
                 "b92d667cdbf951aac8d0519006a31e097bc88d26e399b04dd9a89e6353729100", 5_252_026L, List.of(2), 2,
-                List.of(new DetectorRobustnessMatrix.DetectorSpec("synthetic",
-                        ElliottResearchOutcomesTest::detector)),
+                List.of(new DetectorRobustnessMatrix.DetectorSpec("synthetic", ElliottResearchOutcomesTest::detector)),
                 "synthetic-primary", null);
     }
 

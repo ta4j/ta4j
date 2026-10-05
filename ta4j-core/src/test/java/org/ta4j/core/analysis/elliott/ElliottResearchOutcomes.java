@@ -43,14 +43,14 @@ import com.google.gson.JsonPrimitive;
  * <ul>
  * <li><strong>Structural</strong>: the first absorbing structural result
  * {@code r} is the earliest of correction completion, withdrawal, and
- * invalidation. {@code r <= d} is
- * {@link Structural#ALREADY_RESOLVED already resolved at enrollment} and
- * leaves the prospective denominator. {@code r - d <= h} (a confirmation exactly
- * at the boundary is included, one bar later is not) is a success or an
- * invalidation/withdrawal. Otherwise a stream that observed bar {@code d + h}
- * reports a {@link Structural#HORIZON_EXPIRED full-horizon failure}; a stream
- * that ended earlier is right-censored. A tie between an invalidation and a
- * completion on the same observation resolves as invalidation.</li>
+ * invalidation. {@code r <= d} is {@link Structural#ALREADY_RESOLVED already
+ * resolved at enrollment} and leaves the prospective denominator.
+ * {@code r - d <= h} (a confirmation exactly at the boundary is included, one
+ * bar later is not) is a success or an invalidation/withdrawal. Otherwise a
+ * stream that observed bar {@code d + h} reports a
+ * {@link Structural#HORIZON_EXPIRED full-horizon failure}; a stream that ended
+ * earlier is right-censored. A tie between an invalidation and a completion on
+ * the same observation resolves as invalidation.</li>
  * <li><strong>Price</strong>: raw and motive-direction-aligned close-to-close
  * return and future-only excursions over {@code d+1..d+h}, only when the whole
  * window lies inside the stream's partition. Structural resolution never makes
@@ -79,7 +79,9 @@ final class ElliottResearchOutcomes {
     static final String OUTCOMES_FILE = "outcomes.csv";
     static final String SUMMARY_FILE = "outcomes-summary.csv";
     static final String ALL_PARTITIONS = "ALL";
-    /** Trailing close-to-close lookback of the frozen momentum-direction baseline. */
+    /**
+     * Trailing close-to-close lookback of the frozen momentum-direction baseline.
+     */
     static final int MOMENTUM_BARS = 20;
     static final List<Integer> DEFAULT_HORIZONS = List.of(5, 20, 60);
     static final String DEFAULT_STRUCTURAL_MODE = "classical-all";
@@ -87,8 +89,8 @@ final class ElliottResearchOutcomes {
     private static final Gson JSON = new GsonBuilder().disableHtmlEscaping().serializeNulls().create();
     private static final List<String> OUTCOMES_HEADER = List.of("dataset", "stream", "partition", "candidateKey",
             "version", "direction", "decisionIndex", "decisionTime", "ambiguous", "carriedIn", "horizon", "structural",
-            "cause", "resolutionIndex", "priceStatus", "priceReason", "rawReturn", "alignedReturn", "favorableExcursion",
-            "adverseExcursion", "researchTouch", "legacyTouch");
+            "cause", "resolutionIndex", "priceStatus", "priceReason", "rawReturn", "alignedReturn",
+            "favorableExcursion", "adverseExcursion", "researchTouch", "legacyTouch");
     private static final List<String> SUMMARY_HEADER = List.of("dataset", "stream", "partition", "horizon",
             "structuralMode", "invalidation", "enrolled", "alreadyResolved", "prospective", "success", "invalidated",
             "expired", "censored", "resolved", "resolvedRate", "lowerBound", "upperBound", "priceAvailable",
@@ -190,8 +192,8 @@ final class ElliottResearchOutcomes {
                 previous = horizon;
             }
             if (!RuleAblation.frozenModeNames().contains(structuralMode)) {
-                throw new IllegalArgumentException("outcomes.structuralMode '" + structuralMode
-                        + "' must be one of " + RuleAblation.frozenModeNames());
+                throw new IllegalArgumentException("outcomes.structuralMode '" + structuralMode + "' must be one of "
+                        + RuleAblation.frozenModeNames());
             }
         }
 
@@ -299,8 +301,8 @@ final class ElliottResearchOutcomes {
 
         /**
          * @return first index at which the structural label is administratively known,
-         *         or {@link Integer#MAX_VALUE} for a censored label that never
-         *         resolves inside its stream
+         *         or {@link Integer#MAX_VALUE} for a censored label that never resolves
+         *         inside its stream
          */
         int structuralAvailableIndex() {
             return switch (structural) {
@@ -662,14 +664,14 @@ final class ElliottResearchOutcomes {
     /**
      * Labels one event at one horizon.
      *
-     * @param event               enrolled event
-     * @param horizon             horizon in bars
-     * @param lastObserved        last index the event's stream observed; no result
-     *                            beyond it is known
-     * @param tape                price tape, or {@code null}
-     * @param settings            recipe settings
-     * @param originPriceIndex    first origin-price breach index, or {@code -1};
-     *                            only consulted for the origin-price policy
+     * @param event            enrolled event
+     * @param horizon          horizon in bars
+     * @param lastObserved     last index the event's stream observed; no result
+     *                         beyond it is known
+     * @param tape             price tape, or {@code null}
+     * @param settings         recipe settings
+     * @param originPriceIndex first origin-price breach index, or {@code -1}; only
+     *                         consulted for the origin-price policy
      * @return the label
      */
     static Label label(final Event event, final int horizon, final int lastObserved, final Tape tape,
@@ -872,7 +874,10 @@ final class ElliottResearchOutcomes {
         }
     }
 
-    /** Sign of the trailing close change over {@link #MOMENTUM_BARS}; 0 if unknown or flat. */
+    /**
+     * Sign of the trailing close change over {@link #MOMENTUM_BARS}; 0 if unknown
+     * or flat.
+     */
     private static int momentumSign(final Tape tape, final int date) {
         if ((long) date - MOMENTUM_BARS < tape.first()) {
             return 0;
@@ -899,8 +904,8 @@ final class ElliottResearchOutcomes {
 
     private static Num valid(final Tape tape, final int index, final int field) {
         final Bar bar = tape.bar(index);
-        final Num value = bar == null ? null : field == 0 ? bar.getClosePrice() : field == 1 ? bar.getHighPrice()
-                : bar.getLowPrice();
+        final Num value = bar == null ? null
+                : field == 0 ? bar.getClosePrice() : field == 1 ? bar.getHighPrice() : bar.getLowPrice();
         return value == null || value.isNaN() || !value.isPositive() ? null : value;
     }
 
@@ -1050,9 +1055,10 @@ final class ElliottResearchOutcomes {
                             Boolean.toString(event.ambiguous()), Boolean.toString(event.carriedIn()),
                             Integer.toString(label.horizon()), label.structural().id(), label.cause(),
                             label.resolutionIndex() < 0 ? "" : Integer.toString(label.resolutionIndex()),
-                            price.available() ? "available" : "unavailable", price.reason() == null ? "" : price.reason(),
-                            plain(price.raw()), plain(price.aligned()), plain(price.favorable()),
-                            plain(price.adverse()), price.researchTouch() == null ? "" : price.researchTouch().id(),
+                            price.available() ? "available" : "unavailable",
+                            price.reason() == null ? "" : price.reason(), plain(price.raw()), plain(price.aligned()),
+                            plain(price.favorable()), plain(price.adverse()),
+                            price.researchTouch() == null ? "" : price.researchTouch().id(),
                             price.legacyTouch() == null ? "" : price.legacyTouch().id()));
                 }
             }
@@ -1060,14 +1066,17 @@ final class ElliottResearchOutcomes {
         ElliottResearchReport.writeTable(path, OUTCOMES_HEADER, table);
     }
 
-    /** Writes {@code outcomes-summary.csv}: one row per stream, partition, and horizon. */
+    /**
+     * Writes {@code outcomes-summary.csv}: one row per stream, partition, and
+     * horizon.
+     */
     static void writeSummary(final Path path, final List<Result> results) {
         final List<List<String>> table = new ArrayList<>();
         for (final Result result : results) {
             for (final SummaryRow row : result.summary()) {
-                final List<String> cells = new ArrayList<>(List.of(result.dataset(), row.stream(), row.partition(),
-                        Integer.toString(row.horizon()), result.settings().structuralMode(),
-                        result.settings().invalidation().id()));
+                final List<String> cells = new ArrayList<>(
+                        List.of(result.dataset(), row.stream(), row.partition(), Integer.toString(row.horizon()),
+                                result.settings().structuralMode(), result.settings().invalidation().id()));
                 cells.addAll(row.tally().cells());
                 table.add(cells);
             }

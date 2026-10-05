@@ -23,12 +23,12 @@ import org.ta4j.core.analysis.elliott.swing.SwingPivotType;
  *
  * <p>
  * The recorder is a {@link StudyObserver}: it only witnesses the observations
- * the runner already produced and never feeds anything back into recognition.
- * A complete or ambiguous {@code MOTIVE_5} candidate of the {@code h1}
- * hypothesis stream (or of the selected null member's {@code MOTIVE_5} stream)
- * becomes one {@link Event} at the first observation that shows its full pivot
- * placement; later observations of the same placement never enroll again, and a
- * changed placement is a new event. Streams are keyed by
+ * the runner already produced and never feeds anything back into recognition. A
+ * complete or ambiguous {@code MOTIVE_5} candidate of the {@code h1} hypothesis
+ * stream (or of the selected null member's {@code MOTIVE_5} stream) becomes one
+ * {@link Event} at the first observation that shows its full pivot placement;
+ * later observations of the same placement never enroll again, and a changed
+ * placement is a new event. Streams are keyed by
  * {@code (null block, null member, partition)}, so labels derived from an event
  * can never read beyond its own partition tape and null members keep their
  * identity.
@@ -39,13 +39,13 @@ import org.ta4j.core.analysis.elliott.swing.SwingPivotType;
  * horizon, the facts that follow causally from later observations of the same
  * stream: <em>withdrawal</em> (a pivot of the placement is no longer visible),
  * <em>display retirement</em> (the placement is no longer reported although
- * every pivot is still visible; informational only), <em>pivot invalidation</em>
- * (a later confirmed counter-pivot beyond the motive origin price), and
- * <em>correction completion</em> (the first observation of the selected
- * structural mode whose {@code CYCLE_5_3} candidate starts with exactly the
- * enrolled six pivots and has no failing, pending, or unavailable active rule).
- * Horizon classification itself lives in {@link ElliottResearchOutcomes}.
- * Instances are not thread-safe.
+ * every pivot is still visible; informational only), <em>pivot
+ * invalidation</em> (a later confirmed counter-pivot beyond the motive origin
+ * price), and <em>correction completion</em> (the first observation of the
+ * selected structural mode whose {@code CYCLE_5_3} candidate starts with
+ * exactly the enrolled six pivots and has no failing, pending, or unavailable
+ * active rule). Horizon classification itself lives in
+ * {@link ElliottResearchOutcomes}. Instances are not thread-safe.
  * </p>
  *
  * @since 0.26.1
@@ -116,8 +116,8 @@ final class ElliottResearchEvents implements StudyObserver {
             @Override
             public void nullTape(final int nullBlockLength, final int nullMemberIndex, final String partition,
                     final int sourceOffset, final BarSeries member) {
-                present.forEach(observer -> observer.nullTape(nullBlockLength, nullMemberIndex, partition,
-                        sourceOffset, member));
+                present.forEach(observer -> observer.nullTape(nullBlockLength, nullMemberIndex, partition, sourceOffset,
+                        member));
             }
         };
     }
@@ -275,8 +275,8 @@ final class ElliottResearchEvents implements StudyObserver {
                 if (candidate.grammar() == TopologyGrammar.CYCLE_5_3 && candidate.direction() == event.direction
                         && startsWith(candidate.pivots(), event.pivots) && rulesSatisfied(rules)) {
                     event.completionIndex = index;
-                    event.completionVersion = ElliottResearchTrace.version(
-                            ElliottResearchTrace.candidateKey(candidate), ElliottResearchTrace.rulesJson(rules));
+                    event.completionVersion = ElliottResearchTrace.version(ElliottResearchTrace.candidateKey(candidate),
+                            ElliottResearchTrace.rulesJson(rules));
                     break;
                 }
             }
@@ -309,7 +309,9 @@ final class ElliottResearchEvents implements StudyObserver {
                 && left.price().compareTo(right.price()) == 0;
     }
 
-    /** Whether every placement pivot is still among the visible confirmed pivots. */
+    /**
+     * Whether every placement pivot is still among the visible confirmed pivots.
+     */
     private static boolean visibleAll(final List<ConfirmedPivot> placement, final List<ConfirmedPivot> visible) {
         for (int at = placement.size() - 1; at >= 0; at--) {
             final ConfirmedPivot wanted = placement.get(at);
@@ -355,8 +357,12 @@ final class ElliottResearchEvents implements StudyObserver {
     private static String placement(final WaveDirection direction, final List<ConfirmedPivot> pivots) {
         final StringBuilder text = new StringBuilder(direction.name());
         for (final ConfirmedPivot pivot : pivots) {
-            text.append('|').append(pivot.pivotIndex()).append(':').append(pivot.type().name()).append(':').append(
-                    pivot.price());
+            text.append('|')
+                    .append(pivot.pivotIndex())
+                    .append(':')
+                    .append(pivot.type().name())
+                    .append(':')
+                    .append(pivot.price());
         }
         return text.toString();
     }
