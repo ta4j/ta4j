@@ -13,6 +13,9 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -41,6 +44,57 @@ class ReplaySessionTest {
         assertEquals(2, session.frame().candidates().size());
         assertEquals(ReplayFixture.FIRST_AS_OF, session.firstAsOf());
         assertEquals(ReplayFixture.BARS - 1, session.lastAsOf());
+    }
+
+    @Test
+    void defaultCursorRecognizesTheProducersLowercaseAmbiguousAlternativeStatus() {
+        final ReplaySession session = open(ReplayFixture.write(temp.resolve("run")), ReplayFixture.COMPETING_KEY, 120,
+                8);
+
+        assertEquals(33, session.cursor(), "the first ambiguous alternative record, not the first record");
+        assertEquals("alternative", session.frame().kind());
+        assertEquals("ambiguous", session.frame().status());
+        assertTrue(session.frame().candidates().isEmpty(), "alternative records carry labels, not candidates");
+        assertEquals(List.of("3+3@12-30", "3+3@5-20"), session.frame().labels());
+    }
+
+    @Test
+    void firstRecordIsAnInitialStateNotAStateChange() {
+        final ReplaySession session = open(ReplayFixture.write(temp.resolve("run")));
+
+        final ReplayFrame first = session.seek(ReplayFixture.FIRST_AS_OF);
+
+        assertTrue(first.initial());
+        assertFalse(first.transition());
+        final String text = ReplayEvidenceText.render(first);
+        assertTrue(text.contains("initial recorded state"), text);
+        assertFalse(text.contains("state changed at this bar"), text);
+        assertFalse(text.contains("unchanged since the previous"), text);
+        final JsonObject semantic = JsonParser.parseString(first.toSemanticJson()).getAsJsonObject();
+        assertTrue(semantic.get("initial").getAsBoolean());
+        assertFalse(semantic.get("transition").getAsBoolean());
+
+        final ReplayFrame second = session.stepBar(1);
+        assertFalse(second.initial());
+        assertFalse(second.transition());
+        assertTrue(ReplayEvidenceText.render(second).contains("unchanged since the previous recorded bar"));
+        final ReplayFrame changed = session.seek(15);
+        assertFalse(changed.initial());
+        assertTrue(changed.transition());
+        assertTrue(ReplayEvidenceText.render(changed).contains("state changed at this bar"));
+    }
+
+    @Test
+    void previousTransitionNeverStopsAtTheInitialRecord() {
+        final ReplaySession session = open(ReplayFixture.write(temp.resolve("run")));
+
+        assertEquals(15, session.seek(15).cursor());
+        assertEquals(15, session.stepTransition(-1).cursor(),
+                "records 10..14 are identical, so there is no earlier state change");
+        session.seek(20);
+        assertEquals(15, session.stepTransition(-1).cursor());
+        session.seek(ReplayFixture.FIRST_AS_OF);
+        assertEquals(ReplayFixture.FIRST_AS_OF, session.stepTransition(-1).cursor());
     }
 
     @Test

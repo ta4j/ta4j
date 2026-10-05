@@ -190,10 +190,21 @@ final class ReplaySession {
                 .orElse(base + "; the run holds no all-rules ablation for this detector and partition");
     }
 
+    /**
+     * Status the research recorder writes for an ambiguous record: the
+     * {@code TopologyStatus} name on {@code topology} records, and the lowercase
+     * outcome {@code StudyRunner} passes to the observer on {@code alternative}
+     * records (the competing {@code 3+3}/{@code 5+5} grammars). Neither side
+     * exposes a shared constant, so both producer spellings are matched exactly.
+     */
+    private static boolean isAmbiguous(final String status) {
+        return "AMBIGUOUS".equals(status) || "ambiguous".equals(status);
+    }
+
     /** First ambiguous record, else the first one carrying 2+ candidates, else the first. */
     private int defaultPosition() {
         for (int i = 0; i < entries.size(); i++) {
-            if ("AMBIGUOUS".equals(entries.get(i).status())) {
+            if (isAmbiguous(entries.get(i).status())) {
                 return i;
             }
         }
@@ -271,10 +282,11 @@ final class ReplaySession {
             return cached;
         }
         final JsonObject record = trace.read(entries.get(position));
-        final boolean transition = position == 0
-                || !entries.get(position).signature().equals(entries.get(position - 1).signature());
-        final ReplayFrame frame = ReplayFrame.project(row.key(), family, row.activeRules(), record, bars, transition,
-                selected, window, overlayCap, ruleEvidenceHint, firstBar);
+        final boolean initial = position == 0;
+        final boolean transition = !initial
+                && !entries.get(position).signature().equals(entries.get(position - 1).signature());
+        final ReplayFrame frame = ReplayFrame.project(row.key(), family, row.activeRules(), record, bars, initial,
+                transition, selected, window, overlayCap, ruleEvidenceHint, firstBar);
         cache.put(cacheKey, frame);
         return frame;
     }
@@ -343,7 +355,8 @@ final class ReplaySession {
 
     /**
      * Steps to the next ({@code +}) or previous ({@code -}) record whose state
-     * differs from its predecessor.
+     * differs from its predecessor. The first record of the stream has no
+     * predecessor, so it is an initial state and never a transition target.
      *
      * @param direction positive forward, negative backward
      * @return the frame at the new cursor; unchanged when no transition exists in
@@ -358,8 +371,8 @@ final class ReplaySession {
                 }
             }
         } else {
-            for (int i = position - 1; i >= 0; i--) {
-                if (i == 0 || !entries.get(i).signature().equals(entries.get(i - 1).signature())) {
+            for (int i = position - 1; i > 0; i--) {
+                if (!entries.get(i).signature().equals(entries.get(i - 1).signature())) {
                     position = i;
                     break;
                 }

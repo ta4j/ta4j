@@ -50,15 +50,19 @@ import ta4jexamples.charting.replay.ReplayTraceIndex.Family;
  * @param suppressedFuture   pivot/placement points removed by the causality
  *                           guard
  * @param clippedPoints      overlay points left of the visible window
+ * @param initial            whether this is the first record of the recorded
+ *                           stream, so there is no earlier record to compare
+ *                           with
  * @param transition         whether this record differs from the previous
- *                           recorded one
+ *                           recorded one; always false for the initial record
  * @param selectedCandidate  selected candidate key or empty
  * @param ruleEvidenceHint   pointer for modes that evaluate no rules or empty
  */
 record ReplayFrame(String comparisonKey, Family family, List<String> activeRules, int cursor, String asOfTime,
         String kind, String status, String direction, int windowStart, List<Pivot> pivots, List<Candidate> candidates,
         List<String> labels, int overlayCap, int overlayed, int truncated, Axis axis, int suppressedFuture,
-        int clippedPoints, boolean transition, String selectedCandidate, String ruleEvidenceHint) {
+        int clippedPoints, boolean initial, boolean transition, String selectedCandidate,
+        String ruleEvidenceHint) {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
@@ -100,7 +104,9 @@ record ReplayFrame(String comparisonKey, Family family, List<String> activeRules
      * @param record           the recorded as-of record
      * @param bars             all retained bars of the dataset; only
      *                         {@code [windowStart, cursor]} is read
-     * @param transition       whether the record differs from its predecessor
+     * @param initial          whether the record is the first of its stream
+     * @param transition       whether the record differs from its predecessor;
+     *                         never true for an initial record
      * @param selected         selected candidate key or empty
      * @param window           visible bar count
      * @param cap              maximum simultaneous overlays
@@ -111,8 +117,12 @@ record ReplayFrame(String comparisonKey, Family family, List<String> activeRules
      * @return the frame
      */
     static ReplayFrame project(final String comparisonKey, final Family family, final List<String> activeRules,
-            final JsonObject record, final List<PriceBar> bars, final boolean transition, final String selected,
-            final int window, final int cap, final String ruleEvidenceHint, final int firstBar) {
+            final JsonObject record, final List<PriceBar> bars, final boolean initial, final boolean transition,
+            final String selected, final int window, final int cap, final String ruleEvidenceHint,
+            final int firstBar) {
+        if (initial && transition) {
+            throw new IllegalArgumentException("an initial record has no predecessor, so it cannot be a transition");
+        }
         Objects.requireNonNull(selected, "selected");
         if (window < 1 || cap < 1) {
             throw new IllegalArgumentException("window and overlay cap must be positive");
@@ -178,7 +188,7 @@ record ReplayFrame(String comparisonKey, Family family, List<String> activeRules
         return new ReplayFrame(comparisonKey, family, activeRules, cursor, text(record, "asOfTime"),
                 text(record, "kind"), text(record, "status"), text(record, "direction"), windowStart, pivots, candidates,
                 labels, cap, overlayed, rawCandidates.size() - overlayed, axis(bars, windowStart, cursor, pivots, candidates),
-                suppressed, clipped, transition, selected, ruleEvidenceHint);
+                suppressed, clipped, initial, transition, selected, ruleEvidenceHint);
     }
 
     /** Selected candidate first, then recorded order, until the cap is filled. */
@@ -250,6 +260,7 @@ record ReplayFrame(String comparisonKey, Family family, List<String> activeRules
         root.addProperty("kind", kind);
         root.addProperty("status", status);
         root.addProperty("direction", direction);
+        root.addProperty("initial", initial);
         root.addProperty("transition", transition);
         final JsonObject window = new JsonObject();
         window.addProperty("start", windowStart);

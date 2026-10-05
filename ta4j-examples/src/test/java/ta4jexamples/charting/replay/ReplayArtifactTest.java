@@ -164,10 +164,10 @@ class ReplayArtifactTest {
     void footerRecordCountMustMatch() throws IOException {
         final Path run = ReplayFixture.write(temp.resolve("run"));
         final Path trace = run.resolve("traces/d1-real.jsonl");
-        Files.writeString(trace, Files.readString(trace).replace("\"records\":100", "\"records\":99"),
+        Files.writeString(trace, Files.readString(trace).replace("\"records\":150", "\"records\":149"),
                 StandardCharsets.UTF_8);
 
-        assertTrue(failureOf(run, ReplayFixture.RULES_KEY).contains("footer declares 99"));
+        assertTrue(failureOf(run, ReplayFixture.RULES_KEY).contains("footer declares 149"));
     }
 
     @Test

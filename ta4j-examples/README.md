@@ -195,8 +195,10 @@ Reproducible smoke walkthrough (synthetic data, no network):
 
 `inspect` prints the matching `Replay:` command for a comparison, so the key to
 replay is the one whose counterexample or rule disagreement you want to see. The
-cursor opens at `--at` when given, otherwise where the session opens; `next`/`prev` step by bar,
-`tnext`/`tprev` jump to the next recorded state change, `seek <bar|instant>` moves
+cursor opens at `--at` when given, otherwise on the first ambiguous record of the
+stream (or the first record when none is ambiguous); `next`/`prev` step by bar,
+`tnext`/`tprev` jump to the next or previous recorded state change (the first
+record of a stream is an initial recorded state, not a change), `seek <bar|instant>` moves
 to the latest record at or before it, `select <candidate key|#>` follows one
 candidate across bars, `history` lists its recorded version changes (when the
 stream is longer than the 5,000-record lookback it says where the scanned history
@@ -213,6 +215,11 @@ default and replay needs the trace), `inspect <dir> '<key>'` for a row whose
 observed value sits outside its null band, replay that key with the printed
 command, jump to the listed counterexample bar with `seek`, `select` the candidate
 the report names, and `export` the frame as evidence.
+
+The frozen study replays many null-member tapes, and the trace records the full
+visible pivot history at every bar, so `--trace real` is a long run (expect far
+longer than the smoke run) and writes a large trace file; budget disk and time
+accordingly. Only the synthetic smoke walkthrough above is a seconds-scale run.
 
 To replay the resampled null member behind a null reference band, capture it
 with `run ... --trace selected-null-member --block <L> --member <M>` (`L` must be

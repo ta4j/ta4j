@@ -40,6 +40,7 @@ final class ReplayFixture {
     static final String FINGERPRINT = "fixture-fingerprint";
     static final String RULES_KEY = "d1|h2|all-rules|fractal-w5|calibration|ambiguousRate|b20";
     static final String TOPOLOGY_KEY = "d1|h1|topology-only|fractal-w5|calibration|ambiguousRate|b20";
+    static final String COMPETING_KEY = "d1|competing|competing-3+3|3+3|fractal-w5|calibration|ambiguousRate|b20";
     static final Instant START = Instant.parse("2020-01-01T00:00:00Z");
 
     private static final int[][] PIVOTS = { { 5, 0, 8 }, { 12, 1, 15 }, { 20, 0, 23 }, { 30, 1, 33 }, { 40, 0, 43 } };
@@ -160,8 +161,9 @@ final class ReplayFixture {
             datasets.add(dataset);
             run.add("datasets", datasets);
             Files.writeString(directory.resolve("run.json"), run.toString(), StandardCharsets.UTF_8);
-            Files.writeString(directory.resolve("comparisons.csv"), HEADER + "\n" + row(RULES_KEY, "all-rules",
-                    "wave2-origin;wave3-not-shortest") + "\n" + row(TOPOLOGY_KEY, "topology-only", "") + "\n",
+            Files.writeString(directory.resolve("comparisons.csv"),
+                    HEADER + "\n" + row(RULES_KEY, "all-rules", "wave2-origin;wave3-not-shortest") + "\n"
+                            + row(TOPOLOGY_KEY, "topology-only", "") + "\n" + competingRow() + "\n",
                     StandardCharsets.UTF_8);
             writeTrace(directory.resolve("traces/d1-real.jsonl"), options, false);
             if (options.nullTrace) {
@@ -177,6 +179,11 @@ final class ReplayFixture {
         return String.join(",", key, DATASET, "FIXTURE", rules.isEmpty() ? "h1" : "h2", mode, "MOTIVE_5", rules,
                 "fractal-w5", "kernel-topology",
                 "calibration", "ambiguousRate", "20", "0.5");
+    }
+
+    private static String competingRow() {
+        return String.join(",", COMPETING_KEY, DATASET, "FIXTURE", "competing", "competing-3+3", "3+3", "",
+                "fractal-w5", "kernel-topology", "calibration", "ambiguousRate", "20", "0.5");
     }
 
     private static void writeTrace(final Path file, final Options options, final boolean nullMember)
@@ -205,6 +212,10 @@ final class ReplayFixture {
             out.append(rules).append('\n');
             out.append(topology).append('\n');
             records += 2;
+            if (!nullMember) {
+                out.append(competingRecord(asOf)).append('\n');
+                records++;
+            }
         }
         if (!options.truncateTrace) {
             out.append("{\"complete\":true,\"records\":").append(records).append("}\n");
@@ -251,7 +262,7 @@ final class ReplayFixture {
         record.addProperty("nullBlockLength", -1);
         record.addProperty("nullMemberIndex", -1);
         record.addProperty("asOfTime", START.plus(asOf + 1L, ChronoUnit.DAYS).toString());
-        record.addProperty("kind", "alternative");
+        record.addProperty("kind", "topology");
         final List<int[]> confirmed = new ArrayList<>();
         for (final int[] pivot : PIVOTS) {
             if (pivot[2] <= asOf) {
@@ -285,6 +296,65 @@ final class ReplayFixture {
             labels.add("ambiguous");
         }
         record.add("labels", labels);
+        return record;
+    }
+
+    /**
+     * One as-of line of the {@code competing-3+3} stream in the exact shape of
+     * {@code StudyRunner.evaluateAlternativeGrammar}: kind {@code alternative},
+     * a lowercase outcome as status, a null direction, an empty candidates array
+     * and the sorted match labels. The first {@code ambiguous} record is bar 33.
+     */
+    static JsonObject competingRecord(final int asOf) {
+        int confirmed = 0;
+        for (final int[] pivot : PIVOTS) {
+            if (pivot[2] <= asOf) {
+                confirmed++;
+            }
+        }
+        final String outcome;
+        final List<String> labels;
+        if (confirmed < 2) {
+            outcome = "insufficient-history";
+            labels = List.of("insufficient-history");
+        } else if (confirmed < 4) {
+            outcome = "forming";
+            labels = List.of("3+3@" + confirmed);
+        } else if (confirmed == 4) {
+            outcome = "ambiguous";
+            labels = List.of("3+3@12-30", "3+3@5-20");
+        } else {
+            outcome = "complete";
+            labels = List.of("3+3@12-40");
+        }
+        final JsonObject record = new JsonObject();
+        record.addProperty("dataset", DATASET);
+        record.addProperty("section", "competing");
+        record.addProperty("mode", "competing-3+3");
+        record.addProperty("grammar", "3+3");
+        record.add("activeRules", new JsonArray());
+        record.addProperty("detector", "fractal-w5");
+        record.addProperty("partition", "calibration");
+        record.addProperty("asOfIndex", asOf);
+        record.addProperty("nullBlockLength", -1);
+        record.addProperty("nullMemberIndex", -1);
+        record.addProperty("asOfTime", START.plus(asOf + 1L, ChronoUnit.DAYS).toString());
+        record.addProperty("kind", "alternative");
+        record.addProperty("status", outcome);
+        final JsonArray pivots = new JsonArray();
+        for (final int[] pivot : PIVOTS) {
+            if (pivot[2] <= asOf) {
+                final JsonObject object = point(pivot);
+                object.addProperty("confirmationIndex", pivot[2]);
+                pivots.add(object);
+            }
+        }
+        record.add("pivots", pivots);
+        record.add("candidates", new JsonArray());
+        record.add("direction", JsonNull.INSTANCE);
+        final JsonArray labelArray = new JsonArray();
+        labels.forEach(labelArray::add);
+        record.add("labels", labelArray);
         return record;
     }
 

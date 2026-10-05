@@ -38,7 +38,8 @@ final class ReplayEvidenceText {
         if (!frame.direction().isEmpty()) {
             out.append(' ').append(frame.direction());
         }
-        out.append(frame.transition() ? "  (state changed at this bar)" : "  (unchanged since the previous recorded bar)")
+        out.append(frame.initial() ? "  (initial recorded state; no earlier record to compare with)"
+                : frame.transition() ? "  (state changed at this bar)" : "  (unchanged since the previous recorded bar)")
                 .append('\n');
         if (!frame.labels().isEmpty()) {
             out.append("  labels:    ").append(String.join(", ", frame.labels())).append('\n');
