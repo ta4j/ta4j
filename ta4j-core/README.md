@@ -184,8 +184,10 @@ counterexamples and rule disagreements; when the trace is missing or truncated
 it exits with status 2 and prints the recapture command, quoted for a POSIX shell.
 The command carries `--expect-fingerprint` (and, for `explore`, `--expect-source-sha256`),
 so a recapture against a changed configuration or edited candles fails instead of
-tracing different data. Coverage marks a partition `partial` when it has no bars or
-a gap longer than seven bar periods.
+tracing different data. A run that declares `calibration` but captured no trace is
+the exception: `inspect` prints the row's calibration estimates with a "real trace
+not captured" note and exits with status 0. Coverage marks a partition `partial`
+when it has no bars or a gap longer than seven bar periods.
 
 Every run also records causal forward-outcome evidence for enrolled `MOTIVE_5`
 events (events enroll once per placement, when it first becomes visible to the
@@ -208,6 +210,45 @@ recipe may add an optional `"outcomes"` object
 `activeRules`, and a mode the run does not evaluate is rejected; `invalidation`
 is `origin-pivot` or `origin-price`); the choices are recorded in `run.json` and
 fixed before labels are read.
+
+An `explore` recipe may also add an optional `"calibration"` object
+(`{"horizon":20,"fit":"calibration","validation":"validation","evaluation":"holdout","minGroups":3}`;
+only `horizon` is required and it must be one of `outcomes.horizons`). Without it
+a run is unchanged, every artifact above is identical apart from the fingerprint
+that hashes the recipe. With it the run adds `calibration-tables.json`,
+`calibration-predictions.csv`, `calibration-summary.csv`,
+`calibration-reliability.csv` and an "Outcome calibration" section in `summary.md`. The
+target is the structural label "the correction completes before invalidation
+within `horizon` bars"; the only feature is the heuristic rule score
+`pass/(pass+fail)` frozen at enrollment (pending, unavailable and not-applicable
+rules are coverage states, not failures), kept as a separate field from the
+estimated probability. The estimator is a five-bin smoothed weighted frequency
+`(S + 1) / (W + 2)` per available-rule mask; each eligible alternative of one
+decision bar weighs `1 / m`, and a bin with fewer than `minGroups` distinct
+decision groups or without both a success and a failure abstains with the exact
+reason and raw support instead of emitting a probability. Fitting is
+chronological: the `validation` table is fitted on the `fit` partition and the
+`evaluation` table on `fit` plus `validation`, and both use only labels whose
+whole window had ended by the cutoff, so a score never uses a table fitted after
+its decision bar. A candidate lineage (the same candidate key) that has any
+fit-stage row is purged from the scored stage and counted in the `purged`
+column of `calibration-summary.csv`, so one lineage never feeds both a table
+and its score. A table is bound to the primary detector's actual
+configuration (factory and parameters, not just its name) and momentum
+lookback in addition to grammar, mode, rules and horizon, and `estimate`
+rejects any other scope. Summaries report coverage, Brier and log-loss against
+the unconditional base rate (reported as differences, never as significance),
+and reliability bins for the group-weighted and non-overlapping-cohort views.
+Estimates are marginal per alternative and are not normalised across
+simultaneous alternatives. `inspect` shows each alternative's decision-time
+estimate and fit support by default only for the scope the table was fitted on
+(the primary detector's H1 `MOTIVE_5` rows); robustness-detector, H2 and
+competing-grammar comparison keys print a "calibration not applicable to this
+scope" line naming the differing field instead. It hides realised outcomes
+unless `--retrospective` is given, and ranks by enrollment order unless
+`--rank probability` asks for the estimate. This is calibration of a heuristic
+score, not a forecast: poor calibration or worse-than-baseline loss are
+reported results, and nothing here claims predictive efficacy.
 
 ## Companion user guides
 

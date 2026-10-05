@@ -18,6 +18,7 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import com.google.gson.JsonArray;
@@ -343,6 +344,9 @@ class ElliottResearchTest {
         assertTrue(option.err().contains("unknown option --frobnicate"), option.err());
         assertFalse(Files.exists(work.resolve("x")));
         assertEquals(1, launch("inspect", smokeRun.toString(), OCCUPANCY_KEY, "--bogus").code());
+        final Result rank = launch("inspect", smokeRun.toString(), OCCUPANCY_KEY, "--rank", "luck");
+        assertEquals(1, rank.code(), "an uncalibrated run must still reject an unknown rank");
+        assertTrue(rank.err().contains("--rank must be"), rank.err());
         assertEquals(1, launch("run", "smoke", "--block", "20", "--out", work.resolve("y").toString()).code());
         assertEquals(0, launch("help").code());
     }
@@ -686,6 +690,281 @@ class ElliottResearchTest {
                  "momentum":{"type":"RSI","barCount":14},
                  "null":{"blockLengths":[10],"ensembleSize":2,"seed":7}}
                 """.formatted(datasetId);
+    }
+
+    private static String calibrationRecipe(final String datasetId, final String calibration) {
+        return toyRecipe(datasetId).replace("\"null\":", "\"calibration\":" + calibration + ",\n \"null\":");
+    }
+
+    private Path runCalibrated(final String name, final String calibration) throws IOException {
+        return runRecipe(name, calibrationRecipe("cal", calibration));
+    }
+
+    private Path runRecipe(final String name, final String recipeJson) throws IOException {
+        final Path candles = work.resolve(name + "-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
+        final Path recipe = work.resolve(name + "-recipe.json");
+        Files.writeString(recipe, recipeJson);
+        final Path out = work.resolve(name);
+        final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(),
+                "--out", out.toString());
+        assertEquals(0, result.code(), result.err());
+        return out;
+    }
+
+    private static String keyOfSection(final Path run, final String partition, final String section)
+            throws IOException {
+        for (final ElliottResearchReport.Row row : ElliottResearchReport.readCsv(run.resolve("comparisons.csv"))) {
+            if (row.partition().equals(partition) && row.section().equals(section)) {
+                return row.key();
+            }
+        }
+        throw new AssertionError("no " + section + " comparison row in partition " + partition);
+    }
+
+    private static String keyOf(final Path run, final String partition, final String section, final String grammar)
+            throws IOException {
+        for (final ElliottResearchReport.Row row : ElliottResearchReport.readCsv(run.resolve("comparisons.csv"))) {
+            if (row.partition().equals(partition) && row.section().equals(section) && row.grammar().equals(grammar)) {
+                return row.key();
+            }
+        }
+        throw new AssertionError("no " + section + " " + grammar + " comparison row in partition " + partition);
+    }
+
+    @Test
+    void inspectShowsCalibrationOnlyForTheScopeTheTablesWereFitted() throws Exception {
+        final String recipe = calibrationRecipe("cal", "{\"horizon\":5,\"minGroups\":1}").replace("\"momentum\"",
+                "\"robustnessDetectors\":[{\"name\":\"fractal-w5\",\"factory\":\"fractal\",\"params\":[5]}],\n"
+                        + " \"momentum\"");
+        final Path run = runRecipe("scope", recipe);
+        final ElliottResearchCalibration.Identity identity = ElliottResearchCalibration
+                .readTables(run.resolve(ElliottResearchCalibration.TABLES_FILE))
+                .get(0)
+                .identity();
+        assertEquals("fractal-w3", identity.detector());
+        assertEquals("fractal(3)", identity.detectorConfig());
+        assertEquals("RSI(14)", identity.momentum());
+        final List<String> summaryLines = Files.readAllLines(run.resolve(ElliottResearchCalibration.SUMMARY_FILE));
+        assertTrue(List.of(summaryLines.get(0).split(",", -1)).contains("purged"), summaryLines.get(0));
+
+        final Result primary = launch("inspect", run.toString(), keyOf(run, "holdout", "h1", "MOTIVE_5"), "--limit",
+                "2");
+        assertEquals(0, primary.code(), primary.err());
+        assertTrue(primary.out().contains("estimated event probability:"), primary.out());
+        assertFalse(primary.out().contains("not applicable to this scope"), primary.out());
+
+        String robustness = null;
+        for (final ElliottResearchReport.Row row : ElliottResearchReport.readCsv(run.resolve("comparisons.csv"))) {
+            if (row.partition().equals("holdout") && row.section().equals("robustness")
+                    && row.detector().equals("fractal-w5")) {
+                robustness = row.key();
+                break;
+            }
+        }
+        assertTrue(robustness != null, "the recipe must produce a robustness-detector row");
+        final Result other = launch("inspect", run.toString(), robustness, "--limit", "2");
+        assertEquals(0, other.code(), other.err());
+        assertTrue(other.out().contains("not applicable to this scope"), other.out());
+        assertTrue(other.out().contains("section (h1 vs robustness)"), other.out());
+        assertTrue(other.out().contains("detector (fractal-w3 vs fractal-w5)"), other.out());
+        assertFalse(other.out().contains("estimated event probability:"), other.out());
+
+        final Result competing = launch("inspect", run.toString(), keyOfSection(run, "holdout", "competing"), "--limit",
+                "2");
+        assertEquals(0, competing.code(), competing.err());
+        assertTrue(competing.out().contains("not applicable to this scope"), competing.out());
+        assertTrue(competing.out().contains("section (h1 vs competing)"), competing.out());
+        assertFalse(competing.out().contains("estimated event probability:"), competing.out());
+    }
+
+    private static String keyOfPartition(final Path run, final String partition) throws IOException {
+        for (final ElliottResearchReport.Row row : ElliottResearchReport.readCsv(run.resolve("comparisons.csv"))) {
+            if (row.partition().equals(partition)) {
+                return row.key();
+            }
+        }
+        throw new AssertionError("no comparison row in partition " + partition);
+    }
+
+    /**
+     * The fingerprint hashes the whole recipe, so it legitimately differs once
+     * calibration is configured.
+     */
+    private static String withoutFingerprint(final Path file) throws IOException {
+        return Files.readString(file).replaceAll("explore-[0-9a-f]{64}", "explore-FINGERPRINT");
+    }
+
+    @Test
+    void calibrationLeavesEveryBaseArtifactByteIdenticalAndAddsDiagnosticsOnlyWhenConfigured() throws Exception {
+        final Path candles = work.resolve("both-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
+        final Path plainRecipe = work.resolve("plain-recipe.json");
+        Files.writeString(plainRecipe, toyRecipe("cal"));
+        final Path plain = work.resolve("plain");
+        assertEquals(0, launch("run", "explore", "--source", candles.toString(), "--recipe", plainRecipe.toString(),
+                "--out", plain.toString()).code());
+        final Path calibrated = runCalibrated("calibrated", "{\"horizon\":5,\"minGroups\":1}");
+
+        for (final String artifact : List.of("comparisons.csv", "coverage.csv", "events.jsonl", "outcomes.csv",
+                "outcomes-summary.csv", "reports/cal.json")) {
+            assertEquals(withoutFingerprint(plain.resolve(artifact)), withoutFingerprint(calibrated.resolve(artifact)),
+                    artifact);
+        }
+        final List<String> files = List.of(ElliottResearchCalibration.TABLES_FILE,
+                ElliottResearchCalibration.PREDICTIONS_FILE, ElliottResearchCalibration.SUMMARY_FILE,
+                ElliottResearchCalibration.RELIABILITY_FILE);
+        for (final String file : files) {
+            assertFalse(Files.exists(plain.resolve(file)), file);
+            assertTrue(Files.isRegularFile(calibrated.resolve(file)), file);
+        }
+        assertFalse(readJson(plain.resolve("run.json")).has("calibration"));
+        assertFalse(Files.readString(plain.resolve("summary.md")).contains("## Outcome calibration"));
+        final JsonObject block = readJson(calibrated.resolve("run.json")).getAsJsonObject("calibration");
+        assertEquals(ElliottResearchCalibration.TABLES_FILE, block.get("tables").getAsString());
+        assertEquals(5,
+                readJson(calibrated.resolve("run.json")).getAsJsonObject("configuration")
+                        .getAsJsonObject("calibration")
+                        .get("horizon")
+                        .getAsInt());
+        final String summary = Files.readString(calibrated.resolve("summary.md"));
+        assertTrue(summary.contains("## Outcome calibration"), summary);
+        assertTrue(summary.contains("no predictive efficacy"), summary);
+    }
+
+    @Test
+    void calibrationTablesAreFittedBeforeTheDecisionsTheyScore() throws Exception {
+        final Path run = runCalibrated("causal", "{\"horizon\":5,\"minGroups\":1}");
+        final List<ElliottResearchCalibration.Calibrator> tables = ElliottResearchCalibration
+                .readTables(run.resolve(ElliottResearchCalibration.TABLES_FILE));
+        assertEquals(List.of("validation", "evaluation"), tables.stream().map(table -> table.stage()).toList());
+        assertEquals(List.of("calibration"), tables.get(0).fitPartitions());
+        assertEquals(List.of("calibration", "validation"), tables.get(1).fitPartitions());
+        assertTrue(tables.get(0).cutoffIndex() < tables.get(1).cutoffIndex());
+        final List<String> lines = Files.readAllLines(run.resolve(ElliottResearchCalibration.PREDICTIONS_FILE));
+        final List<String> header = List.of(lines.get(0).split(",", -1));
+        assertTrue(lines.size() > 1, "the recipe must enroll scored alternatives");
+        assertTrue(
+                lines.subList(1, lines.size())
+                        .stream()
+                        .noneMatch(line -> line.split(",", -1)[header.indexOf("status")]
+                                .equals(ElliottResearchCalibration.STATUS_NO_FEATURE)),
+                "rules evaluated on the enrolled pivots must give every scored alternative a feature");
+        for (final String line : lines.subList(1, lines.size())) {
+            final String[] cells = line.split(",", -1);
+            final String stage = cells[header.indexOf("stage")];
+            final ElliottResearchCalibration.Calibrator table = tables.get(stage.equals("validation") ? 0 : 1);
+            assertTrue(Integer.parseInt(cells[header.indexOf("enrollIndex")]) > table.cutoffIndex(), line);
+            assertEquals(String.valueOf(table.cutoffIndex()), cells[header.indexOf("fitCutoff")], line);
+            assertEquals(stage.equals("validation") ? "validation" : "holdout", cells[header.indexOf("partition")]);
+        }
+    }
+
+    @Test
+    void insufficientSupportAbstainsInsteadOfFabricatingAProbability() throws Exception {
+        final Path run = runCalibrated("sparse", "{\"horizon\":5,\"minGroups\":100000}");
+        final List<String> lines = Files.readAllLines(run.resolve(ElliottResearchCalibration.PREDICTIONS_FILE));
+        final List<String> header = List.of(lines.get(0).split(",", -1));
+        assertTrue(lines.size() > 1, "the recipe must enroll scored alternatives");
+        for (final String line : lines.subList(1, lines.size())) {
+            final String[] cells = line.split(",", -1);
+            assertEquals("", cells[header.indexOf("probability")], line);
+            assertFalse(cells[header.indexOf("reason")].isEmpty(), line);
+        }
+        final String summary = Files.readString(run.resolve("summary.md"));
+        assertTrue(summary.contains("unavailable"), summary);
+    }
+
+    @Test
+    void inspectShowsDecisionTimeProbabilitiesAndHidesOutcomesUnlessRetrospective() throws Exception {
+        final Path run = runCalibrated("inspect", "{\"horizon\":5,\"minGroups\":1}");
+        final String key = keyOfPartition(run, "holdout");
+        final Result hidden = launch("inspect", run.toString(), key, "--limit", "2");
+        assertEquals(0, hidden.code(), hidden.err());
+        assertTrue(hidden.out().contains("Calibration: target " + ElliottResearchCalibration.TARGET), hidden.out());
+        assertTrue(hidden.out().contains("Ranking basis: enrollment order"), hidden.out());
+        assertTrue(hidden.out().contains("estimated event probability:"), hidden.out());
+        assertTrue(hidden.out().contains("fit support:"), hidden.out());
+        assertFalse(hidden.out().contains("retrospective outcome:"), hidden.out());
+        assertTrue(hidden.out().contains("hidden; rerun with --retrospective"), hidden.out());
+
+        final Result revealed = launch("inspect", run.toString(), key, "--limit", "2", "--retrospective", "--rank",
+                "probability");
+        assertEquals(0, revealed.code(), revealed.err());
+        assertTrue(revealed.out().contains("retrospective outcome:"), revealed.out());
+        assertTrue(revealed.out().contains("Ranking basis: estimated event probability"), revealed.out());
+        assertTrue(revealed.out().contains("Retrospective evaluation support"), revealed.out());
+
+        final Result badRank = launch("inspect", run.toString(), key, "--rank", "luck");
+        assertEquals(1, badRank.code());
+        assertTrue(badRank.err().contains("--rank must be"), badRank.err());
+
+        final List<String> lines = Files.readAllLines(run.resolve(ElliottResearchCalibration.PREDICTIONS_FILE));
+        final List<String> header = List.of(lines.get(0).split(",", -1));
+        final String[] holdout = lines.subList(1, lines.size())
+                .stream()
+                .map(line -> line.split(",", -1))
+                .filter(cells -> cells[header.indexOf("partition")].equals("holdout"))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("the recipe must score holdout alternatives"));
+        final String candidateKey = holdout[header.indexOf("candidateKey")];
+        final String version = holdout[header.indexOf("version")];
+        final String listed = "- " + candidateKey + " (version " + version;
+        for (final String selector : List.of(candidateKey.substring(0, candidateKey.length() - 1), version)) {
+            final Result selected = launch("inspect", run.toString(), key, "--candidate", selector);
+            assertEquals(0, selected.code(), selected.err());
+            assertTrue(selected.out().contains(listed), selector + " must select like trace inspection does");
+        }
+    }
+
+    @Test
+    void calibratedRunWithAMissingDeclaredTraceStillExitsTwo() throws Exception {
+        final Path candles = work.resolve("declared-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
+        final Path recipe = work.resolve("declared-recipe.json");
+        Files.writeString(recipe, calibrationRecipe("cal", "{\"horizon\":5,\"minGroups\":1}"));
+        final Path run = work.resolve("declared");
+        final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(),
+                "--trace", "real", "--out", run.toString());
+        assertEquals(0, result.code(), result.err());
+        final String key = keyOfPartition(run, "holdout");
+        assertEquals(0, launch("inspect", run.toString(), key).code());
+        Files.delete(run.resolve("traces/cal-real.jsonl"));
+
+        final Result missing = launch("inspect", run.toString(), key);
+        assertEquals(2, missing.code());
+        assertTrue(missing.err().contains("no trace was captured"), missing.err());
+    }
+
+    @Test
+    void summarizeRegeneratesTheCalibrationSectionAndDiagnosesMissingFiles() throws Exception {
+        final Path run = runCalibrated("resummarize", "{\"horizon\":5,\"minGroups\":1}");
+        final String before = Files.readString(run.resolve("summary.md"));
+        assertEquals(0, launch("summarize", run.toString()).code());
+        assertEquals(before, Files.readString(run.resolve("summary.md")));
+        Files.delete(run.resolve(ElliottResearchCalibration.SUMMARY_FILE));
+        final Result missing = launch("summarize", run.toString());
+        assertEquals(2, missing.code());
+        assertTrue(missing.err().contains(ElliottResearchCalibration.SUMMARY_FILE), missing.err());
+    }
+
+    @Test
+    void calibrationRecipeErrorsFailBeforeCreatingArtifacts() throws Exception {
+        final Path candles = work.resolve("bad-cal-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
+        final Map<String, String> cases = Map.of("{}", "calibration.horizon is required", "{\"horizon\":7}",
+                "must be one of outcomes.horizons", "{\"horizon\":5,\"fit\":\"nope\"}", "unknown partition 'nope'",
+                "{\"horizon\":5,\"extra\":1}", "unknown field 'extra'");
+        for (final Map.Entry<String, String> entry : cases.entrySet()) {
+            final Path recipe = work.resolve("bad-cal-recipe.json");
+            Files.writeString(recipe, calibrationRecipe("cal", entry.getKey()));
+            final Path out = work.resolve("bad-cal-out");
+            final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe",
+                    recipe.toString(), "--out", out.toString());
+            assertEquals(1, result.code(), entry.getKey());
+            assertTrue(result.err().contains(entry.getValue()), result.err());
+            assertFalse(Files.exists(out), entry.getKey());
+        }
     }
 
     private static JsonObject exploreCoverage(final Path out) throws IOException {
