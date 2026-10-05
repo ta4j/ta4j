@@ -608,4 +608,21 @@ public class RatioSampleSupportTest {
                 .side(side)
                 .build();
     }
+
+    @Test
+    public void tradeSamplingRetainsSameBarTradeAtMaximumIndex() {
+        BarSeries series = ConstrainedSeriesSupport.terminalOneBarSeries("terminal_same_bar", numFactory, 110);
+        Trade entry = Trade.buyAt(Integer.MAX_VALUE, numFactory.numOf(100), numFactory.one());
+        Trade exit = Trade.sellAt(Integer.MAX_VALUE, numFactory.numOf(110), numFactory.one());
+        TradingRecord record = new BaseTradingRecord(entry, exit);
+        ExcessReturns returns = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO, record,
+                OpenPositionHandling.MARK_TO_MARKET);
+        List<Sample> samples = RatioSampleSupport
+                .samples(series, record, SamplingFrequency.TRADE, ZoneOffset.UTC, returns,
+                        OpenPositionHandling.MARK_TO_MARKET)
+                .toList();
+        assertEquals(1, samples.size());
+        assertNumEquals(0, samples.getFirst().value());
+    }
+
 }

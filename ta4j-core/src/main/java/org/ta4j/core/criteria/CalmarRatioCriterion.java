@@ -190,7 +190,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         int beginIndex = explicitStartIndex == null ? cashFlow.getBeginIndex()
                 : Math.max(explicitStartIndex, cashFlow.getBeginIndex());
         int endIndex = cashFlow.getEndIndex();
-        if (endIndex <= beginIndex) {
+        if (endIndex < beginIndex || endIndex == beginIndex && !cashFlow.hasInitialReturn()) {
             return zero;
         }
 

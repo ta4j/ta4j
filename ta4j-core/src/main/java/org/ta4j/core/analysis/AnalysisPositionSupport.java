@@ -251,6 +251,30 @@ final class AnalysisPositionSupport {
      */
     static void updateCapturedCurve(BarSeries series, Window window, PricedPosition priced, OffsetNumBuffer values,
             Consumer<OffsetNumBuffer> update) {
+        updateCapturedCurve(series, window, priced, values, update, false);
+    }
+
+    /**
+     * Native updates can invoke custom marks, so evaluate them between read checks.
+     */
+    static void updateCapturedCurve(BarSeries series, Window window, PricedPosition priced, OffsetNumBuffer values,
+            Consumer<OffsetNumBuffer> update, boolean evaluateUnlocked) {
+        if (evaluateUnlocked) {
+            if (!series.withReadLock(() -> priced.isUnchangedIn(series, window))) {
+                throw changedWindow(series);
+            }
+            OffsetNumBuffer staged = values.copy();
+            update.accept(staged);
+            boolean published = series.withReadLock(() -> {
+                if (!priced.isUnchangedIn(series, window))
+                    return false;
+                values.replaceWith(staged);
+                return true;
+            });
+            if (!published)
+                throw changedWindow(series);
+            return;
+        }
         boolean applied = series.withReadLock(() -> {
             if (!priced.isUnchangedIn(series, window)) {
                 return false;
@@ -532,5 +556,10 @@ final class AnalysisPositionSupport {
             positions.add(openPosition);
         }
         return positions;
+    }
+
+    private static IllegalStateException changedWindow(BarSeries series) {
+        return new IllegalStateException("Bar series '" + series.getName()
+                + "' changed inside this curve's window since it was materialized; build a new curve to analyse the changed bars");
     }
 }

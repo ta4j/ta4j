@@ -489,7 +489,7 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
                 .between(series.getBar(series.getBeginIndex()).getBeginTime(),
                         series.getBar(series.getEndIndex()).getEndTime())
                 .getSeconds() / (double) TimeConstants.SECONDS_PER_YEAR;
-        double expected = (Math.pow(0.8d, 1d / years) - 1d) / 0.2d;
+        double expected = (Math.pow(0.9d, 1d / years) - 1d) / 0.1d;
 
         assertNumEquals(numFactory.numOf(expected), actual, 1e-12);
     }
@@ -558,4 +558,37 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
                 .fees(List.of())
                 .build();
     }
+
+    @Test
+    public void annualizesSingleBarInitialFuturesLoss() {
+        for (Duration duration : List.of(Duration.ofDays(1), Duration.ofHours(6))) {
+            BarSeries series = getBarSeries("single_bar_initial_futures_loss");
+            Instant end = Instant.parse("2024-01-02T00:00:00Z");
+            series.addBar(series.barBuilder()
+                    .timePeriod(duration)
+                    .endTime(end)
+                    .openPrice(100)
+                    .highPrice(100)
+                    .lowPrice(100)
+                    .closePrice(100)
+                    .volume(1)
+                    .build());
+            FuturesContract contract = futuresPosition(series, 100, 100).getFuturesContract();
+            BaseTradingRecord record = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .initialCapital(numFactory.one())
+                    .build();
+            record.operate(fill(contract, 0, ExecutionSide.BUY, 100).toBuilder().time(end.minusSeconds(60)).build());
+            record.operate(fill(contract, 0, ExecutionSide.SELL, 99.9).toBuilder().time(end).build());
+            CashFlow curve = new CashFlow(series, record);
+            assertTrue(curve.hasInitialReturn());
+            assertNumEquals(0.999, curve.getValue(0));
+            double expected = (Math.pow(0.999, TimeConstants.SECONDS_PER_YEAR / (double) duration.getSeconds()) - 1)
+                    / 0.001;
+            assertNumEquals(numFactory.numOf(expected), getCriterion().calculate(series, record), 1e-8);
+            assertNumEquals(numFactory.numOf(expected),
+                    getCriterion().calculate(series, record.getPositions().getFirst()), 1e-8);
+        }
+    }
+
 }

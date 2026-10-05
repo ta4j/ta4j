@@ -460,4 +460,65 @@ class PositionSizerTest {
 
         assertThrows(IllegalArgumentException.class, () -> sizingContext.maxAffordableAmount(factory.numOf("1E308")));
     }
+
+    @Test
+    void fixedSnapshotsCustomNumberWithoutNumericString() {
+        CustomNumber amount = new CustomNumber(5);
+        PositionSizer sizer = PositionSizer.fixed(amount);
+        amount.value = 9;
+        assertNumEquals(5, sizer.amount(context(DoubleNumFactory.getInstance(), spotRecord())));
+    }
+
+    @Test
+    void balanceSnapshotsCustomNumberWithoutNumericString() {
+        CustomNumber principal = new CustomNumber(10);
+        PositionSizer sizer = PositionSizer.balance(principal, (context, balance) -> balance);
+        principal.value = 20;
+        assertNumEquals(10, sizer.amount(context(DoubleNumFactory.getInstance(), spotRecord())));
+    }
+
+    @Test
+    void kellySnapshotsCustomNumberWithoutNumericString() {
+        CustomNumber principal = new CustomNumber(10);
+        CustomNumber probability = new CustomNumber(0.6);
+        CustomNumber payoff = new CustomNumber(2);
+        CustomNumber coefficient = new CustomNumber(1);
+        PositionSizer sizer = PositionSizer.kelly(principal, probability, payoff, coefficient);
+        principal.value = 20;
+        probability.value = 0.9;
+        payoff.value = 4;
+        coefficient.value = 2;
+        // Kelly fraction0.4, balance10, price1 with fixed fee1 => amount3.
+        assertNumEquals(DoubleNumFactory.getInstance().numOf(3),
+                sizer.amount(context(DoubleNumFactory.getInstance(), spotRecord())), 1e-12);
+    }
+
+    private static final class CustomNumber extends Number {
+        private double value;
+
+        private CustomNumber(double value) {
+            this.value = value;
+        }
+
+        @Override
+        public int intValue() {
+            return (int) value;
+        }
+
+        @Override
+        public long longValue() {
+            return (long) value;
+        }
+
+        @Override
+        public float floatValue() {
+            return (float) value;
+        }
+
+        @Override
+        public double doubleValue() {
+            return value;
+        }
+    }
+
 }

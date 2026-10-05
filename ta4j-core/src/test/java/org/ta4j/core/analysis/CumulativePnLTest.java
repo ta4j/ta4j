@@ -3,6 +3,10 @@
  */
 package org.ta4j.core.analysis;
 
+import org.ta4j.core.Indicator;
+import org.ta4j.core.criteria.ReturnRepresentation;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 import org.ta4j.core.num.NaN;
@@ -1219,5 +1223,86 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
             assertNumEquals(NaN.NaN, markToMarket.getValue(index));
             assertNumEquals(0, realizedOnly.getValue(index));
         }
+    }
+
+    @Test
+    public void incrementalFuturesPositionSharesConstructorSettlementEconomics() {
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 110);
+        BaseTradingRecord complete = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+        complete.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+        complete.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1_000, 110, List.of()));
+        BaseTradingRecord empty = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+        CumulativePnL curve = new CumulativePnL(series, empty);
+        curve.calculatePosition(complete.getPositions().getFirst(), 1);
+        assertNumEquals(100, curve.getValue(1));
+    }
+
+    @Test
+    public void incrementalFuturesPositionsShareAccountCapitalAndHonorEachCutoff() {
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 110, 100, 120);
+        BaseTradingRecord complete = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+        complete.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+        complete.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1_000, 110, List.of()));
+        BaseTradingRecord initial = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+        initial.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+        initial.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1_000, 110, List.of()));
+        complete.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1_000, 100, List.of()));
+        complete.operate(FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 1_000, 120, List.of()));
+        Position second = complete.getPositions().get(1);
+        CumulativePnL curve = new CumulativePnL(series, initial);
+        curve.calculatePosition(second, 3);
+        // Profits 100 and 200 add to the same 500-capital account.
+        assertNumEquals(300, curve.getValue(3));
+        assertEquals(new CumulativePnL(series, complete).stream().toList(), curve.stream().toList());
+        CumulativePnL truncated = new CumulativePnL(series, initial);
+        truncated.calculatePosition(second, 2);
+        // The second exit is not recognized after the incremental cutoff.
+        assertNumEquals(100, truncated.getValue(3));
+    }
+
+    @Test
+    public void incrementalFuturesMarkRunsUnlockedAndRejectsChangedWindowAtomically() {
+        BaseBarSeries source = (BaseBarSeries) FuturesAnalysisTestSupport.series(numFactory, 100, 110, 130);
+        ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source, lock);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        BaseTradingRecord empty = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 100);
+        Position incoming = FuturesAnalysisTestSupport.openPosition(contract, 0, 100, 100);
+        AtomicBoolean changed = new AtomicBoolean();
+        Indicator<Num> mark = new Indicator<Num>() {
+            @Override
+            public Num getValue(int index) {
+                assertEquals("incremental mark must run outside the read lock", 0, lock.getReadHoldCount());
+                Num value = series.getBar(index).getClosePrice();
+                if (index == 1 && changed.compareAndSet(false, true)) {
+                    Bar original = series.getBar(index);
+                    series.replaceBar(index,
+                            series.barBuilder()
+                                    .timePeriod(original.getTimePeriod())
+                                    .endTime(original.getEndTime())
+                                    .closePrice(120)
+                                    .build());
+                }
+                return value;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            public BarSeries getBarSeries() {
+                return series;
+            }
+        };
+        CumulativePnL curve = new CumulativePnL(series, empty, mark, 2, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        List<Num> before = curve.stream().toList();
+        assertThrows(IllegalStateException.class, () -> curve.calculatePosition(incoming, 2));
+        assertTrue(changed.get());
+        assertEquals(before, curve.stream().toList());
     }
 }

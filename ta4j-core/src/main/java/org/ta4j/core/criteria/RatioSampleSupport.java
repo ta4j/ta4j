@@ -168,13 +168,13 @@ final class RatioSampleSupport {
     }
 
     private static int firstExecutedFillIndex(Trade trade, int finalIndex) {
-        int firstIndex = Integer.MAX_VALUE;
+        int firstIndex = -1;
         for (TradeFill fill : Trade.executionFillsOf(trade)) {
             if (fill.index() >= 0 && fill.index() <= finalIndex) {
-                firstIndex = Math.min(firstIndex, fill.index());
+                firstIndex = firstIndex < 0 ? fill.index() : Math.min(firstIndex, fill.index());
             }
         }
-        return firstIndex == Integer.MAX_VALUE ? -1 : firstIndex;
+        return firstIndex;
     }
 
     private static int lastExecutedFillIndex(Trade trade, int finalIndex) {

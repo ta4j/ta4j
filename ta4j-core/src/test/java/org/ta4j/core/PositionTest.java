@@ -1518,4 +1518,59 @@ public class PositionTest {
             assertTrue(position.isClosed());
         }
     }
+
+    @Test
+    public void zeroHoldingCostDoesNotRechargeRecordedFuturesFees() {
+        for (NumFactory factory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(factory.one())
+                    .build();
+            TradeFee fee = TradeFee.builder()
+                    .type(TradeFee.Type.COMMISSION)
+                    .currency("USD")
+                    .amount(factory.one())
+                    .build();
+            Trade entry = Trade.fromFill(
+                    futuresFill(contract, 0, 100, 1, ExecutionSide.BUY).toBuilder().fees(List.of(fee)).build(),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFill(
+                    futuresFill(contract, 1, 110, 1, ExecutionSide.SELL).toBuilder().fees(List.of(fee)).build(),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            assertNumEquals(0, position.getHoldingCost(1));
+            assertNumEquals(8, position.getProfit());
+            assertNumEquals(8, position.getRealizedProfit(1));
+        }
+    }
+
+    @Test
+    public void acceptedSameIndexMissingExitTimeUsesConstructionOrderingForAccounting() {
+        for (NumFactory factory : factories()) {
+            FuturesContract contract = FuturesContract.builder()
+                    .venue("CDE")
+                    .symbol("BTC-PERP")
+                    .productType(FuturesContract.ProductType.PERPETUAL)
+                    .settlementType(FuturesContract.SettlementType.LINEAR)
+                    .baseCurrency("BTC")
+                    .quoteCurrency("USD")
+                    .settlementCurrency("USD")
+                    .contractSize(factory.one())
+                    .build();
+            Trade entry = futuresTrade(contract, TradeType.BUY,
+                    new TradeFill(1, T0, factory.numOf(100), factory.one(), ExecutionSide.BUY));
+            Trade exit = futuresTrade(contract, TradeType.SELL,
+                    new TradeFill(1, null, factory.numOf(110), factory.one(), ExecutionSide.SELL));
+            Position position = new Position(entry, exit, new ZeroCostModel(), new ZeroCostModel());
+            assertNumEquals(10, position.getProfit());
+            assertNumEquals(10, position.getRealizedProfit(1));
+        }
+    }
+
 }

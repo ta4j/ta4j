@@ -72,6 +72,12 @@ public class Returns implements PerformanceIndicator {
     private final List<Num> values;
 
     private final OffsetNumBuffer returnFactors;
+    private OffsetNumBuffer futuresPnL;
+    private final Num futuresCapital;
+    private final Indicator<Num> futuresMark;
+    private final boolean markFuturesExposure;
+    private boolean preWindowFuturesActivity;
+    private boolean firstBarFuturesActivity;
 
     /**
      * True when a position entered before the retained window marked the first
@@ -79,7 +85,7 @@ public class Returns implements PerformanceIndicator {
      * though no prior in-window close exists.
      */
     private boolean firstRetainedSlotSeeded;
-    private final boolean seededFirstBarReturn;
+    private boolean seededFirstBarReturn;
 
     /**
      * The window captured when the return buffers were materialized. Later rolling
@@ -131,18 +137,36 @@ public class Returns implements PerformanceIndicator {
                             : this.barSeries.numFactory().one();
                     OffsetNumBuffer factors = AnalysisPositionSupport.buffer(captured, initial, NaN.NaN);
                     boolean seeded = false;
+                    Num zero = this.barSeries.numFactory().zero();
+                    OffsetNumBuffer pnl = futures ? AnalysisPositionSupport.buffer(captured, zero, zero) : null;
                     if (futures) {
-                        seeded = fillFuturesReturnFactors(record, markPriceIndicator, captured, factors, handling,
-                                fallbackCapital);
+                        Num capital = captured.isEmpty() ? zero
+                                : FuturesPerformanceSupport.accountCapital(barSeries.numFactory(), record,
+                                        fallbackCapital);
+                        FuturesPerformanceSupport
+                                .addPnL(FuturesPerformanceSupport.cursor(barSeries, record, captured.endIndex(),
+                                        FuturesPerformanceSupport.includesExposure(handling, equityCurveMode),
+                                        markPriceIndicator), captured, pnl);
+                        seeded = fillFuturesReturnFactors(pnl, capital,
+                                FuturesPerformanceSupport.hasActivityAtIndex(record, captured.beginIndex()), captured,
+                                factors);
                     } else
                         for (Position position : positions) {
                             seeded |= calculatePosition(position, captured.finalIndex(), captured, factors,
                                     costs.get(position));
                         }
-                    return new Materialized(captured, factors, seeded);
+                    return new Materialized(captured, factors, pnl, seeded);
                 });
         this.window = materialized.window();
         this.returnFactors = materialized.factors();
+        this.futuresPnL = materialized.pnl();
+        this.futuresCapital = record.getInitialCapital() == null ? fallbackCapital : record.getInitialCapital();
+        this.futuresMark = markPriceIndicator;
+        this.markFuturesExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
+        this.preWindowFuturesActivity = futures
+                && FuturesPerformanceSupport.hasPreWindowActivity(record, window.beginIndex(), markFuturesExposure);
+        this.firstBarFuturesActivity = futures
+                && FuturesPerformanceSupport.hasActivityAtIndex(record, window.beginIndex());
         this.firstRetainedSlotSeeded = materialized.firstRetainedSlotSeeded();
         this.seededFirstBarReturn = futures && firstRetainedSlotSeeded
                 && FuturesPerformanceSupport.hasPreWindowActivity(record, window.beginIndex(),
@@ -156,7 +180,7 @@ public class Returns implements PerformanceIndicator {
      * One materialization attempt's factors; the seeding flag travels with them so
      * a discarded attempt cannot leave it set.
      */
-    private record Materialized(AnalysisPositionSupport.Window window, OffsetNumBuffer factors,
+    private record Materialized(AnalysisPositionSupport.Window window, OffsetNumBuffer factors, OffsetNumBuffer pnl,
             boolean firstRetainedSlotSeeded) {
     }
 
@@ -393,8 +417,40 @@ public class Returns implements PerformanceIndicator {
     @Override
     public void calculatePosition(Position position, int finalIndex) {
         AnalysisPositionSupport.PricedPosition priced = AnalysisPositionSupport.pricePosition(this, barSeries, position,
-                finalIndex, window, false);
+                finalIndex, window, FuturesPerformanceSupport.isFutures(position));
         if (priced == null) {
+            return;
+        }
+        if (FuturesPerformanceSupport.isFutures(position)) {
+            Num capital = FuturesPerformanceSupport.accountCapital(barSeries.numFactory(),
+                    FuturesPerformanceSupport.analysisRecord(position),
+                    futuresCapital == null ? FuturesPerformanceSupport.fallbackCapital(position) : futuresCapital);
+            boolean preWindow = preWindowFuturesActivity || FuturesPerformanceSupport.hasPreWindowActivity(position,
+                    window.beginIndex(), markFuturesExposure);
+            boolean firstActivity = firstBarFuturesActivity
+                    || FuturesPerformanceSupport.hasActivityAtIndex(position, window.beginIndex());
+            OffsetNumBuffer pnl = futuresPnL == null
+                    ? AnalysisPositionSupport.buffer(window, barSeries.numFactory().zero(),
+                            barSeries.numFactory().zero())
+                    : futuresPnL.copy();
+            boolean[] firstReported = new boolean[1];
+            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, returnFactors, staged -> {
+                FuturesPerformanceSupport.addPositionPnL(barSeries, position, finalIndex, window, markFuturesExposure,
+                        futuresMark, pnl);
+                Num initial = representation == ReturnRepresentation.LOG ? barSeries.numFactory().zero()
+                        : barSeries.numFactory().one();
+                OffsetNumBuffer factors = AnalysisPositionSupport.buffer(window, initial, NaN.NaN);
+                firstReported[0] = fillFuturesReturnFactors(pnl, capital, firstActivity, window, factors);
+                staged.replaceWith(factors);
+            }, true);
+            futuresPnL = pnl;
+            firstRetainedSlotSeeded = firstReported[0];
+            seededFirstBarReturn = firstReported[0] && preWindow;
+            preWindowFuturesActivity = preWindow;
+            firstBarFuturesActivity = firstActivity;
+            rawValues.clear();
+            values.clear();
+            buildReturns();
             return;
         }
         boolean[] seeded = new boolean[1];
@@ -558,22 +614,14 @@ public class Returns implements PerformanceIndicator {
                 markPriceIndicator, null);
     }
 
-    private boolean fillFuturesReturnFactors(TradingRecord record, Indicator<Num> markPrice,
-            AnalysisPositionSupport.Window captured, OffsetNumBuffer factors, OpenPositionHandling handling,
-            Num fallbackCapital) {
-        if (captured.isEmpty())
+    private boolean fillFuturesReturnFactors(OffsetNumBuffer pnl, Num capital, boolean firstActivity,
+            AnalysisPositionSupport.Window captured, OffsetNumBuffer factors) {
+        if (captured.isEmpty() || capital.isZero())
             return false;
-        Num capital = FuturesPerformanceSupport.accountCapital(barSeries.numFactory(), record, fallbackCapital);
-        if (capital.isZero())
-            return false;
-        boolean markExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
-        FuturesPerformanceSupport.Cursor cursor = FuturesPerformanceSupport.cursor(barSeries, record,
-                captured.endIndex(), markExposure, markPrice);
-        boolean firstReported = captured.beginIndex() > 0
-                && FuturesPerformanceSupport.hasActivityAtIndex(record, captured.beginIndex());
+        boolean firstReported = captured.beginIndex() > 0 && firstActivity;
         Num previousEquity = capital;
         for (long index = captured.beginIndex(); index <= captured.bufferEndIndex(); index++) {
-            Num equity = capital.plus(cursor.pnlAt((int) index));
+            Num equity = capital.plus(pnl.get((int) index));
             if (index > captured.beginIndex() || firstReported) {
                 Num factor = returnFactor(previousEquity, equity);
                 if (representation == ReturnRepresentation.LOG)

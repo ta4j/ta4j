@@ -3,6 +3,8 @@
  */
 package org.ta4j.core;
 
+import java.time.Instant;
+
 import static org.ta4j.core.num.NaN.NaN;
 
 import java.io.Serial;
@@ -1090,23 +1092,32 @@ public class Position implements Serializable {
     }
 
     private static int compareFuturesExposureEvents(FuturesExposureEvent first, FuturesExposureEvent second) {
-        int indexComparison = Integer.compare(first.index(), second.index());
+        return compareFuturesExecutionOrder(first.index(), first.time(), first.opens(), second.index(), second.time(),
+                second.opens());
+    }
+
+    /**
+     * Shared accepted ordering for known and missing execution times at one index.
+     */
+    static int compareFuturesExecutionOrder(int firstIndex, Instant firstTime, boolean firstOpens, int secondIndex,
+            Instant secondTime, boolean secondOpens) {
+        int indexComparison = Integer.compare(firstIndex, secondIndex);
         if (indexComparison != 0) {
             return indexComparison;
         }
-        int firstTimeOrder = first.time() == null ? (first.opens() ? -1 : 1) : 0;
-        int secondTimeOrder = second.time() == null ? (second.opens() ? -1 : 1) : 0;
+        int firstTimeOrder = firstTime == null ? (firstOpens ? -1 : 1) : 0;
+        int secondTimeOrder = secondTime == null ? (secondOpens ? -1 : 1) : 0;
         int missingTimeComparison = Integer.compare(firstTimeOrder, secondTimeOrder);
         if (missingTimeComparison != 0) {
             return missingTimeComparison;
         }
-        if (first.time() != null && second.time() != null) {
-            int timeComparison = first.time().compareTo(second.time());
+        if (firstTime != null && secondTime != null) {
+            int timeComparison = firstTime.compareTo(secondTime);
             if (timeComparison != 0) {
                 return timeComparison;
             }
         }
-        return Integer.compare(first.opens() ? 0 : 1, second.opens() ? 0 : 1);
+        return Integer.compare(firstOpens ? 0 : 1, secondOpens ? 0 : 1);
     }
 
     private static void addFuturesExposureEvents(List<FuturesExposureEvent> events, Trade trade, boolean opens,

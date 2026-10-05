@@ -54,10 +54,10 @@ public class AnalysisCriterionTest {
 
             NetReturnCriterion criterion = new NetReturnCriterion();
             AnalysisContext exitInWindow = AnalysisContext.defaults();
-            assertNumEquals(1.012, criterion.calculate(barSeries, record));
-            assertNumEquals(1.006, criterion.calculate(barSeries, record, AnalysisWindow.barRange(3, 5), exitInWindow));
-            assertNumEquals(1.006, criterion.calculate(barSeries, record, AnalysisWindow.barRange(0, 2), exitInWindow));
-            assertNumEquals(1.006,
+            assertNumEquals(1.016, criterion.calculate(barSeries, record));
+            assertNumEquals(1.008, criterion.calculate(barSeries, record, AnalysisWindow.barRange(3, 5), exitInWindow));
+            assertNumEquals(1.008, criterion.calculate(barSeries, record, AnalysisWindow.barRange(0, 2), exitInWindow));
+            assertNumEquals(1.008,
                     criterion.calculate(barSeries, record, AnalysisWindow.barRange(3, 5), AnalysisContext.defaults()
                             .withPositionInclusionPolicy(AnalysisContext.PositionInclusionPolicy.FULLY_CONTAINED)));
             assertNumEquals(1.0, criterion.calculate(barSeries, record, AnalysisWindow.barRange(3, 4), exitInWindow));
@@ -79,14 +79,14 @@ public class AnalysisCriterionTest {
             AnalysisContext marked = AnalysisContext.defaults()
                     .withOpenPositionHandling(OpenPositionHandling.MARK_TO_MARKET);
 
-            assertNumEquals(1.008, criterion.calculate(barSeries, record, window, marked));
+            assertNumEquals(1.009, criterion.calculate(barSeries, record, window, marked));
 
             CashFlow equity = new CashFlow(barSeries, record, EquityCurveMode.MARK_TO_MARKET,
                     OpenPositionHandling.MARK_TO_MARKET);
             CashFlow realized = new CashFlow(barSeries, record, EquityCurveMode.REALIZED,
                     OpenPositionHandling.MARK_TO_MARKET);
-            assertNumEquals(1.008, equity.getValue(2));
-            assertNumEquals(1.001, realized.getValue(2));
+            assertNumEquals(1.009, equity.getValue(2));
+            assertNumEquals(1.002, realized.getValue(2));
             assertNumEquals(1.0, criterion.calculate(barSeries, record, window, AnalysisContext.defaults()));
         }
     }

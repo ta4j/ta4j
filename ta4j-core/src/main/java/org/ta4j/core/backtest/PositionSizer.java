@@ -3,6 +3,9 @@
  */
 package org.ta4j.core.backtest;
 
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import java.math.BigDecimal;
@@ -256,7 +259,8 @@ public interface PositionSizer {
         if (value instanceof BigInteger bigIntegerValue) {
             return new BigDecimal(bigIntegerValue);
         }
-        if (value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long) {
+        if (value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long
+                || value instanceof AtomicInteger || value instanceof AtomicLong) {
             return BigDecimal.valueOf(value.longValue());
         }
         return BigDecimal.valueOf(value.doubleValue());
@@ -266,14 +270,14 @@ public interface PositionSizer {
      * Captures a factory input for later sizing.
      *
      * <p>
-     * The value is captured at creation time without normalizing through
-     * {@code double}: the JDK's immutable numeric types are kept as-is, and any
-     * other {@link Number} implementation is copied into an immutable
-     * {@code java.math.BigDecimal} through {@code toString()}, so later sizing
-     * calls use the creation-time value even when the caller mutates the input.
-     * Re-wrapping to the record's number precision happens at sizing time via
-     * {@link Context#numOf(Number)}, which keeps exact values beyond {@code 2^53}
-     * intact for decimal number factories.
+     * The value is captured at creation time: the JDK's immutable numeric types are
+     * kept as-is, mutable integral JDK numbers retain their exact {@code long}
+     * value, and any other {@link Number} implementation is copied into an
+     * immutable {@code java.math.BigDecimal} through its numeric conversion, so
+     * later sizing calls use the creation-time value even when the caller mutates
+     * the input. Re-wrapping to the record's number precision happens at sizing
+     * time via {@link Context#numOf(Number)}, which keeps exact values beyond
+     * {@code 2^53} intact for decimal number factories.
      * </p>
      */
     private static Number snapshotNumber(Number value, String name) {
@@ -283,7 +287,7 @@ public interface PositionSizer {
                 || value instanceof Double) {
             return value;
         }
-        return new BigDecimal(value.toString());
+        return decimalValue(value);
     }
 
     private static void validateProbability(Number value, String name) {

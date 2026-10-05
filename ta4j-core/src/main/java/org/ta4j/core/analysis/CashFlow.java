@@ -42,7 +42,12 @@ public class CashFlow implements PerformanceIndicator {
      * The equity curve calculation mode.
      */
     private final EquityCurveMode equityCurveMode;
-    private final boolean initialReturnEligible;
+    private boolean initialReturnEligible;
+    private boolean preWindowFuturesActivity;
+    private boolean firstBarFuturesActivity;
+    private final Num futuresCapital;
+    private final Indicator<Num> futuresMark;
+    private final boolean markFuturesExposure;
 
     /**
      * Constructor.
@@ -207,10 +212,15 @@ public class CashFlow implements PerformanceIndicator {
                 });
         this.window = curve.window();
         this.values = curve.values();
-        this.initialReturnEligible = futures && !window.isEmpty()
-                && !FuturesPerformanceSupport.hasPreWindowActivity(record, window.beginIndex(),
-                        FuturesPerformanceSupport.includesExposure(handling, equityCurveMode))
+        this.futuresCapital = record.getInitialCapital() == null ? fallbackCapital : record.getInitialCapital();
+        this.futuresMark = markPriceIndicator;
+        this.markFuturesExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
+        this.preWindowFuturesActivity = futures
+                && FuturesPerformanceSupport.hasPreWindowActivity(record, window.beginIndex(), markFuturesExposure);
+        this.firstBarFuturesActivity = futures
                 && FuturesPerformanceSupport.hasActivityAtIndex(record, window.beginIndex());
+        this.initialReturnEligible = futures && !window.isEmpty() && !preWindowFuturesActivity
+                && firstBarFuturesActivity;
     }
 
     /**
@@ -227,6 +237,37 @@ public class CashFlow implements PerformanceIndicator {
     public void calculatePosition(Position position, int finalIndex) {
         AnalysisPositionSupport.PricedPosition priced = AnalysisPositionSupport.pricePosition(this, barSeries, position,
                 finalIndex, window, true);
+        if (priced != null && FuturesPerformanceSupport.isFutures(position)) {
+            TradingRecord single = FuturesPerformanceSupport.analysisRecord(position);
+            Num capital = FuturesPerformanceSupport.accountCapital(barSeries.numFactory(), single,
+                    futuresCapital == null ? FuturesPerformanceSupport.fallbackCapital(position) : futuresCapital);
+            if (capital.isZero())
+                return;
+            boolean preWindow = preWindowFuturesActivity || FuturesPerformanceSupport.hasPreWindowActivity(position,
+                    window.beginIndex(), markFuturesExposure);
+            boolean firstActivity = firstBarFuturesActivity
+                    || FuturesPerformanceSupport.hasActivityAtIndex(position, window.beginIndex());
+            boolean initialReturn = !preWindow && firstActivity;
+            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values, staged -> {
+                Num zero = barSeries.numFactory().zero();
+                Num one = barSeries.numFactory().one();
+                OffsetNumBuffer pnl = AnalysisPositionSupport.buffer(window, zero, zero);
+                FuturesPerformanceSupport.addPositionPnL(barSeries, position, finalIndex, window, markFuturesExposure,
+                        futuresMark, pnl);
+                OffsetNumBuffer result = AnalysisPositionSupport.buffer(window, one, one);
+                for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
+                    Num equity = staged.get((int) index).plus(pnl.get((int) index).dividedBy(capital));
+                    result.multiply((int) index, equity);
+                }
+                if (!initialReturn && !window.isEmpty())
+                    result.multiplyBaseline(result.get(window.beginIndex()));
+                staged.replaceWith(result);
+            }, true);
+            preWindowFuturesActivity = preWindow;
+            firstBarFuturesActivity = firstActivity;
+            initialReturnEligible = initialReturn;
+            return;
+        }
         if (priced != null) {
             AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values,
                     staged -> calculatePosition(position, finalIndex, window, staged, priced.holdingCost()));

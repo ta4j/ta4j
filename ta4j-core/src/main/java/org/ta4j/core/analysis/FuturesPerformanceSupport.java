@@ -127,7 +127,7 @@ final class FuturesPerformanceSupport {
         return false;
     }
 
-    private static boolean hasPreWindowActivity(Position position, int seriesBegin, boolean markExposure) {
+    static boolean hasPreWindowActivity(Position position, int seriesBegin, boolean markExposure) {
         if (position == null) {
             return false;
         }
@@ -136,7 +136,7 @@ final class FuturesPerformanceSupport {
                 || hasPreWindowCashFlow(position, seriesBegin);
     }
 
-    private static boolean hasActivityAtIndex(Position position, int index) {
+    static boolean hasActivityAtIndex(Position position, int index) {
         if (position == null) {
             return false;
         }
@@ -335,6 +335,22 @@ final class FuturesPerformanceSupport {
         Objects.requireNonNull(record, "record");
         return new Cursor(series, positions(record, finalIndex), finalIndex, markExposure,
                 markPrice == null ? new ClosePriceIndicator(series) : markPrice);
+    }
+
+    /** Adds the same settlement-currency P&L used by constructor curves. */
+    static void addPnL(Cursor cursor, AnalysisPositionSupport.Window window, OffsetNumBuffer buffer) {
+        for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
+            buffer.add((int) index, cursor.pnlAt((int) index));
+        }
+    }
+
+    /** Adds one position, recognizing fills only through its incremental cutoff. */
+    static void addPositionPnL(BarSeries series, Position position, int finalIndex,
+            AnalysisPositionSupport.Window window, boolean markExposure, Indicator<Num> mark, OffsetNumBuffer buffer) {
+        int cutoff = Math.min(finalIndex, window.endIndex());
+        Cursor cursor = new Cursor(series, List.of(position), cutoff, markExposure,
+                mark == null ? new ClosePriceIndicator(series) : mark);
+        addPnL(cursor, window, buffer);
     }
 
     /**

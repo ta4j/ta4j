@@ -35,6 +35,8 @@ public final class CumulativePnL implements PerformanceIndicator {
     /** The window captured when the curve was materialized. */
     private final AnalysisPositionSupport.Window window;
     private final OffsetNumBuffer values;
+    private final Indicator<Num> futuresMark;
+    private final boolean markFuturesExposure;
 
     /**
      * Constructor for a trading record with a specified final index.
@@ -75,15 +77,15 @@ public final class CumulativePnL implements PerformanceIndicator {
                                 captured.endIndex(),
                                 FuturesPerformanceSupport.includesExposure(handling, equityCurveMode),
                                 markPriceIndicator);
-                        for (long index = captured.beginIndex(); index <= captured.bufferEndIndex(); index++) {
-                            buffer.add((int) index, cursor.pnlAt((int) index));
-                        }
+                        FuturesPerformanceSupport.addPnL(cursor, captured, buffer);
                     } else
                         for (Position position : positions) {
                             calculatePosition(position, captured.finalIndex(), captured, buffer, costs.get(position));
                         }
                     return new AnalysisPositionSupport.Curve(captured, buffer);
                 });
+        this.futuresMark = markPriceIndicator;
+        this.markFuturesExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
         this.window = curve.window();
         this.values = curve.values();
     }
@@ -201,6 +203,13 @@ public final class CumulativePnL implements PerformanceIndicator {
     public void calculatePosition(Position position, int finalIndex) {
         AnalysisPositionSupport.PricedPosition priced = AnalysisPositionSupport.pricePosition(this, barSeries, position,
                 finalIndex, window, true);
+        if (priced != null && FuturesPerformanceSupport.isFutures(position)) {
+            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values,
+                    staged -> FuturesPerformanceSupport.addPositionPnL(barSeries, position, finalIndex, window,
+                            markFuturesExposure, futuresMark, staged),
+                    true);
+            return;
+        }
         if (priced != null) {
             AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values,
                     staged -> calculatePosition(position, finalIndex, window, staged, priced.holdingCost()));

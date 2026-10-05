@@ -6,7 +6,6 @@ package org.ta4j.core;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.num.Num;
@@ -102,7 +101,8 @@ final class FuturesPositionAccounting {
             ArrayDeque<FillSlice> exits, int finalIndex, Num unexecutedPrice) {
         List<TradeFill> entryFills = executedFills(entry, finalIndex);
         List<ExposureEvent> events = new ArrayList<>(entryFills.size() + exits.size());
-        boolean useTradeBasis = entryFills.size() == 1 && entryFills.size() == Trade.executionFillsOf(entry).size();
+        boolean useTradeBasis = entryFills.size() == Trade.executionFillsOf(entry).size()
+                && (entryFills.size() == 1 || BaseTrade.hasAdjustedFillPrice(entry));
         for (TradeFill entryFill : entryFills) {
             FillSlice entrySlice = fillSlice(entryFill, numFactory);
             if (useTradeBasis) {
@@ -114,9 +114,8 @@ final class FuturesPositionAccounting {
         while (!exits.isEmpty()) {
             events.add(new ExposureEvent(exits.removeFirst(), false));
         }
-        events.sort(Comparator.comparingInt((ExposureEvent event) -> event.slice().index())
-                .thenComparing(event -> event.slice().time(), Comparator.nullsFirst(Comparator.naturalOrder()))
-                .thenComparing(ExposureEvent::entry, Comparator.reverseOrder()));
+        events.sort((first, second) -> Position.compareFuturesExecutionOrder(first.slice().index(),
+                first.slice().time(), first.entry(), second.slice().index(), second.slice().time(), second.entry()));
 
         Num activeAmount = numFactory.zero();
         Num basis = null;

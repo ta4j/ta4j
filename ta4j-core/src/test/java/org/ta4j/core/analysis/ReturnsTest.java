@@ -3,6 +3,10 @@
  */
 package org.ta4j.core.analysis;
 
+import org.ta4j.core.ConcurrentBarSeries;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import java.time.Duration;
 
 import static org.junit.Assert.assertEquals;
@@ -81,7 +85,24 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         BarSeries sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         Returns returns = new Returns(sampleBarSeries, new BaseTradingRecord(), ReturnRepresentation.DECIMAL);
 
+        int size = returns.getSize();
+        int end = returns.getEndIndex();
+        List<Num> capturedValues = returns.stream().toList();
         assertSame(sampleBarSeries, returns.getBarSeries());
+        sampleBarSeries.barBuilder()
+                .timePeriod(sampleBarSeries.getLastBar().getTimePeriod())
+                .endTime(sampleBarSeries.getLastBar().getEndTime().plus(sampleBarSeries.getLastBar().getTimePeriod()))
+                .closePrice(4)
+                .add();
+        returns.getBarSeries()
+                .barBuilder()
+                .timePeriod(sampleBarSeries.getLastBar().getTimePeriod())
+                .endTime(sampleBarSeries.getLastBar().getEndTime().plus(sampleBarSeries.getLastBar().getTimePeriod()))
+                .closePrice(5)
+                .add();
+        assertEquals(size, returns.getSize());
+        assertEquals(end, returns.getEndIndex());
+        assertEquals(capturedValues, returns.stream().toList());
     }
 
     @Test
@@ -1043,7 +1064,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
             Position closedSlice = record.getPositions().getFirst();
             Returns closedReturns = new Returns(barSeries, closedSlice, ReturnRepresentation.DECIMAL);
             assertTrue(closedReturns.getValue(0).isNaN());
-            assertNumEquals(0.06000000000000005, closedReturns.getValue(1));
+            assertNumEquals(0.08000000000000007, closedReturns.getValue(1));
         }
     }
 
@@ -1295,5 +1316,90 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
             assertNumEquals(0.1, returns.getValue(1));
         }
+    }
+
+    @Test
+    public void incrementalFuturesPositionSharesConstructorSettlementEconomics() {
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 110);
+        BaseTradingRecord complete = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+        complete.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+        complete.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1_000, 110, List.of()));
+        BaseTradingRecord empty = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+        Returns curve = new Returns(series, empty, org.ta4j.core.criteria.ReturnRepresentation.DECIMAL);
+        curve.calculatePosition(complete.getPositions().getFirst(), 1);
+        assertNumEquals(0.2, curve.getValue(1));
+    }
+
+    @Test
+    public void incrementalFuturesPositionsShareAccountCapitalAndHonorEachCutoff() {
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 110, 100, 120);
+        BaseTradingRecord complete = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+        complete.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+        complete.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1_000, 110, List.of()));
+        BaseTradingRecord initial = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+        initial.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+        initial.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1_000, 110, List.of()));
+        complete.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1_000, 100, List.of()));
+        complete.operate(FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 1_000, 120, List.of()));
+        Position second = complete.getPositions().get(1);
+        for (ReturnRepresentation representation : List.of(ReturnRepresentation.DECIMAL,
+                ReturnRepresentation.PERCENTAGE, ReturnRepresentation.LOG)) {
+            Returns curve = new Returns(series, initial, representation);
+            curve.calculatePosition(second, 3);
+            Num factor = numFactory.numOf(800).dividedBy(numFactory.numOf(600));
+            Num expected = representation == ReturnRepresentation.LOG ? factor.log()
+                    : representation.toRepresentationFromTotalReturn(factor);
+            assertNumEquals(expected, curve.getValue(3));
+            assertEquals(new Returns(series, complete, representation).stream().toList(), curve.stream().toList());
+            Returns truncated = new Returns(series, initial, representation);
+            truncated.calculatePosition(second, 2);
+            assertNumEquals(0, truncated.getValue(3));
+        }
+    }
+
+    @Test
+    public void incrementalFuturesMarkRunsUnlockedAndRejectsChangedWindowAtomically() {
+        BaseBarSeries source = (BaseBarSeries) FuturesAnalysisTestSupport.series(numFactory, 100, 110, 130);
+        ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source, lock);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        BaseTradingRecord empty = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 100);
+        Position incoming = FuturesAnalysisTestSupport.openPosition(contract, 0, 100, 100);
+        AtomicBoolean changed = new AtomicBoolean();
+        Indicator<Num> mark = new Indicator<Num>() {
+            @Override
+            public Num getValue(int index) {
+                assertEquals("incremental mark must run outside the read lock", 0, lock.getReadHoldCount());
+                Num value = series.getBar(index).getClosePrice();
+                if (index == 1 && changed.compareAndSet(false, true)) {
+                    Bar original = series.getBar(index);
+                    series.replaceBar(index,
+                            series.barBuilder()
+                                    .timePeriod(original.getTimePeriod())
+                                    .endTime(original.getEndTime())
+                                    .closePrice(120)
+                                    .build());
+                }
+                return value;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            public BarSeries getBarSeries() {
+                return series;
+            }
+        };
+        Returns curve = new Returns(series, empty, mark, 2, ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        List<Num> before = curve.stream().toList();
+        assertThrows(IllegalStateException.class, () -> curve.calculatePosition(incoming, 2));
+        assertTrue(changed.get());
+        assertEquals(before, curve.stream().toList());
     }
 }
