@@ -15,8 +15,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -119,6 +121,17 @@ class ElliottResearchTest {
         assertEquals(0, inspect.code(), inspect.err());
         assertTrue(inspect.out().contains(denominator + " in this row's scope"), inspect.out());
         assertTrue(inspect.out().contains("-> match"), inspect.out());
+        // Replay: the sidecar bars are hashed and complete, and inspect names the
+        // viewer command with this key.
+        final JsonObject priceBars = dataset.getAsJsonObject("priceBars");
+        assertEquals("bars/smoke.csv", priceBars.get("path").getAsString());
+        final byte[] barBytes = Files.readAllBytes(smokeRun.resolve("bars/smoke.csv"));
+        assertEquals(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(barBytes)),
+                priceBars.get("sha256").getAsString());
+        assertEquals(dataset.get("bars").getAsInt() + 1, Files.readAllLines(smokeRun.resolve("bars/smoke.csv")).size());
+        assertTrue(inspect.out().contains("Replay: mvn -q -pl ta4j-examples exec:java"), inspect.out());
+        assertTrue(inspect.out().contains("ElliottReplayInspector"), inspect.out());
+        assertTrue(inspect.out().contains(OCCUPANCY_KEY), inspect.out());
     }
 
     @Test
