@@ -611,7 +611,7 @@ public class BaseTrade implements Trade {
             SettlementAmountSupport.CompensatedSum total = new SettlementAmountSupport.CompensatedSum(
                     pricePerAsset.getNumFactory(), "fill fee", "total fill fees");
             for (TradeFill fill : fills) {
-                total.addFees(fill.fees());
+                total.addFillFees(fill);
             }
             return total.total();
         }

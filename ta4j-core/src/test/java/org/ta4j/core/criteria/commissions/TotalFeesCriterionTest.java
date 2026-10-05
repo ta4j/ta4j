@@ -325,4 +325,29 @@ public class TotalFeesCriterionTest extends AbstractCriterionTest {
         BarSeries cutoff = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100).build();
         assertNumEquals(1e16, getCriterion().calculate(cutoff, position));
     }
+
+    @Test
+    public void legacyScalarFuturesFillFeesRemainInCriterionTotals() {
+        FuturesContract contract = linearBtcPerpetual();
+        TradeFill scalar = new TradeFill(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.one(),
+                ExecutionSide.BUY, null, null);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100).build();
+        for (TradeFill fill : List.of(scalar,
+                scalar.toBuilder().fee(null).futuresContract(contract).fees(List.of()).build())) {
+            Trade entry = new BaseTrade(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.one(),
+                    ExecutionSide.BUY, null, null) {
+                @Override
+                public FuturesContract getFuturesContract() {
+                    return contract;
+                }
+
+                @Override
+                public List<TradeFill> getFills() {
+                    return List.of(fill);
+                }
+            };
+            Position position = new Position(entry, entry.getCostModel(), new ZeroCostModel());
+            assertNumEquals(fill.hasRecordedFees() ? 0 : 1, getCriterion().calculate(series, position));
+        }
+    }
 }

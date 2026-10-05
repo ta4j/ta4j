@@ -1592,4 +1592,31 @@ public class PositionTest {
         assertNumEquals(-1e16, position.getProfit(0, factory.hundred()));
         assertNumEquals(0, position.getProfit(-1, NaN));
     }
+
+    @Test
+    public void legacyScalarFuturesFillFeesRemainAccountedDouble() {
+        assertLegacyScalarFuturesFillFees(DoubleNumFactory.getInstance());
+    }
+
+    @Test
+    public void legacyScalarFuturesFillFeesRemainAccountedDecimal() {
+        assertLegacyScalarFuturesFillFees(DecimalNumFactory.getInstance());
+    }
+
+    private static void assertLegacyScalarFuturesFillFees(NumFactory factory) {
+        FuturesContract contract = BaseTradeTest.groupedFeeFills(factory).getFirst().futuresContract();
+        TradeFill scalar = new TradeFill(0, Instant.EPOCH, factory.hundred(), factory.one(), factory.one(),
+                ExecutionSide.BUY, null, null);
+        Trade entry = futuresTradeWithFills(contract, TradeType.BUY, List.of(scalar));
+        Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        assertNumEquals(-1, position.getProfit(0, factory.hundred()));
+        assertNumEquals(1, FuturesPositionAccounting.executedFees(position, 0));
+        assertNumEquals(1, position.getPositionCost(0));
+        assertNumEquals(0, position.getProfit(-1, NaN));
+        TradeFill recordedEmpty = scalar.toBuilder().fee(null).futuresContract(contract).fees(List.of()).build();
+        Position explicitZero = new Position(futuresTradeWithFills(contract, TradeType.BUY, List.of(recordedEmpty)),
+                RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        assertNumEquals(0, explicitZero.getProfit(0, factory.hundred()));
+        assertNumEquals(0, FuturesPositionAccounting.executedFees(explicitZero, 0));
+    }
 }

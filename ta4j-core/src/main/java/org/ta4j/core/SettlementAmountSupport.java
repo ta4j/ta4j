@@ -147,6 +147,15 @@ final class SettlementAmountSupport {
             }
         }
 
+        /** Keeps recorded components authoritative, including an empty list. */
+        void addFillFees(TradeFill fill) {
+            if (fill.hasRecordedFees()) {
+                addFees(fill.fees());
+            } else {
+                add(fill.fee());
+            }
+        }
+
         Num total() {
             Num total = sum.plus(compensation);
             if (!Num.isFinite(total)) {

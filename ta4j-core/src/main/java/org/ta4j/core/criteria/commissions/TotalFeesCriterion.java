@@ -144,8 +144,12 @@ public class TotalFeesCriterion extends AbstractAnalysisCriterion {
     private void addFee(CompensatedSum total, Trade trade, int finalIndex) {
         for (TradeFill fill : Trade.executionFillsOf(trade)) {
             if (fill.index() >= 0 && fill.index() <= finalIndex && fill.fee() != null && !fill.fee().isNaN()) {
-                for (TradeFee fee : fill.fees()) {
-                    total.add(fee.settlementAmount());
+                if (fill.hasRecordedFees()) {
+                    for (TradeFee fee : fill.fees()) {
+                        total.add(fee.settlementAmount());
+                    }
+                } else {
+                    total.add(fill.fee());
                 }
             }
         }
