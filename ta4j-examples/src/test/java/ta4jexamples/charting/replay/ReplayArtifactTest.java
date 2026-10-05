@@ -174,7 +174,7 @@ class ReplayArtifactTest {
     void malformedFooterIsRejectedAsArtifactError() throws IOException {
         final String footer = "{\"complete\":true,\"records\":150}";
         for (final String replacement : List.of("{\"complete\":[],\"records\":150}", "{\"complete\":true}",
-                "{\"complete\":true,\"records\":\"150\"}")) {
+                "{\"complete\":true,\"records\":\"150\"}", "{\"complete\":true,\"records\":150.5}")) {
             final Path run = ReplayFixture.write(temp.resolve("run-" + Math.abs(replacement.hashCode())));
             final Path trace = run.resolve("traces/d1-real.jsonl");
             final String original = Files.readString(trace);

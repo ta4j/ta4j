@@ -249,6 +249,21 @@ class ReplaySessionTest {
     }
 
     @Test
+    void asOfTimeEditAfterIndexingIsRejectedInsteadOfProjected() throws java.io.IOException {
+        final Path run = ReplayFixture.write(temp.resolve("run"));
+        final ReplaySession session = open(run);
+        final Path trace = run.resolve("traces/d1-real.jsonl");
+        final String original = java.nio.file.Files.readString(trace);
+        final String edited = original.replace("\"asOfTime\":\"2020-02-14T00:00:00Z\"",
+                "\"asOfTime\":\"2020-02-14T00:00:01Z\"");
+        assertNotEquals(original, edited);
+        java.nio.file.Files.writeString(trace, edited, java.nio.charset.StandardCharsets.UTF_8);
+
+        final String failure = assertThrows(ReplayArtifactException.class, () -> session.seek(43)).getMessage();
+        assertTrue(failure.contains("changed on disk after it was indexed"), failure);
+    }
+
+    @Test
     void selectionIsKeyedAndSurvivesNavigation() {
         final ReplaySession session = open(ReplayFixture.write(temp.resolve("run")));
         session.seek(36);

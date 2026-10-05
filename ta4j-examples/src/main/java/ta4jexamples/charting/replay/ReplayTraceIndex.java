@@ -6,6 +6,7 @@ package ta4jexamples.charting.replay;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -56,11 +57,13 @@ final class ReplayTraceIndex {
      * @param signature SHA-256 of the record content without the as-of coordinates;
      *                  consecutive equal signatures mean no state change happened
      *                  between the two as-of bars
+     * @param digest    SHA-256 of the whole record, used to detect a record that
+     *                  changed on disk after it was indexed
      * @param bar       the price bar recorded with a null-member record, or null
      *                  when the record carries none (real traces)
      */
-    record Entry(int asOfIndex, long offset, int length, String signature, String status, int candidateCount,
-            PriceBar bar) {
+    record Entry(int asOfIndex, long offset, int length, String signature, String digest, String status,
+            int candidateCount, PriceBar bar) {
     }
 
     private final Path file;
@@ -198,7 +201,7 @@ final class ReplayTraceIndex {
             }
             final JsonElement declared = footer.get("records");
             if (declared == null || !declared.isJsonPrimitive() || !declared.getAsJsonPrimitive().isNumber()
-                    || declared.getAsLong() != records) {
+                    || declared.getAsBigDecimal().compareTo(BigDecimal.valueOf(records)) != 0) {
                 throw new ReplayArtifactException("trace " + display + " footer declares " + declared + " records but "
                         + records + " were read; regenerate the run");
             }
@@ -235,7 +238,7 @@ final class ReplayTraceIndex {
                     + family + "; regenerate the run");
         }
         final JsonElement candidates = record.get("candidates");
-        list.add(new Entry(asOf, offset, length, signature(record), text(record, "status"),
+        list.add(new Entry(asOf, offset, length, signature(record), sha256(record.toString()), text(record, "status"),
                 candidates != null && candidates.isJsonArray() ? candidates.getAsJsonArray().size() : 0, bar(record)));
     }
 
@@ -392,10 +395,13 @@ final class ReplayTraceIndex {
         copy.remove("asOfIndex");
         copy.remove("asOfTime");
         copy.remove("bar");
+        return sha256(copy.toString());
+    }
+
+    private static String sha256(final String text) {
         try {
             return HexFormat.of()
-                    .formatHex(MessageDigest.getInstance("SHA-256")
-                            .digest(copy.toString().getBytes(StandardCharsets.UTF_8)));
+                    .formatHex(MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 is mandatory on every Java platform", e);
         }
@@ -433,8 +439,7 @@ final class ReplayTraceIndex {
             in.seek(entry.offset());
             in.readFully(bytes);
             final JsonObject record = parseRecord(new String(bytes, StandardCharsets.UTF_8), display);
-            if (!record.has("asOfIndex") || record.get("asOfIndex").getAsInt() != entry.asOfIndex()
-                    || !signature(record).equals(entry.signature())) {
+            if (!sha256(record.toString()).equals(entry.digest())) {
                 throw new ReplayArtifactException("trace " + display + " changed on disk after it was indexed (record "
                         + "as-of " + entry.asOfIndex() + " differs from the scanned one); reopen the replay");
             }
