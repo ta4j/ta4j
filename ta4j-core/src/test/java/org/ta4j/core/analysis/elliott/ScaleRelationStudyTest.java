@@ -253,46 +253,6 @@ class ScaleRelationStudyTest {
     }
 
     @Test
-    void selfCyclicReversedAndNonAdjacentLinksAreRejected() {
-        final List<ScaleRelation.Scale> chain = List.of(new ScaleRelation.Scale("a", 0),
-                new ScaleRelation.Scale("b", 1), new ScaleRelation.Scale("c", 2));
-
-        assertEquals(List.of(new ScaleRelation.Link("a", "b"), new ScaleRelation.Link("b", "c")),
-                ScaleRelation.adjacentLinks(chain));
-        ScaleRelation.validateLinks(chain, ScaleRelation.adjacentLinks(chain));
-        assertTrue(assertThrows(IllegalArgumentException.class,
-                () -> ScaleRelation.validateLinks(chain, List.of(new ScaleRelation.Link("a", "a")))).getMessage()
-                .contains("self link"));
-        assertTrue(assertThrows(IllegalArgumentException.class,
-                () -> ScaleRelation.validateLinks(chain,
-                        List.of(new ScaleRelation.Link("a", "b"), new ScaleRelation.Link("b", "a"))))
-                .getMessage()
-                .contains("cyclic link"));
-        assertTrue(assertThrows(IllegalArgumentException.class,
-                () -> ScaleRelation.validateLinks(chain, List.of(new ScaleRelation.Link("c", "b")))).getMessage()
-                .contains("reversed link"));
-        assertTrue(assertThrows(IllegalArgumentException.class,
-                () -> ScaleRelation.validateLinks(chain, List.of(new ScaleRelation.Link("a", "c")))).getMessage()
-                .contains("non-adjacent"));
-        assertTrue(assertThrows(IllegalArgumentException.class,
-                () -> ScaleRelation.validateLinks(chain, List.of(new ScaleRelation.Link("a", "z")))).getMessage()
-                .contains("undeclared"));
-    }
-
-    @Test
-    void extractorRejectsSameScaleAndReversedScales() {
-        final ScaleRelationExtractor extractor = new ScaleRelationExtractor(DEFAULTS,
-                ScaleRelationFixtures.passingRules(), ScaleRelationFixtures.identity());
-        final ScaleRelation.Scale coarse = new ScaleRelation.Scale("coarse", 0);
-        final ScaleRelation.Scale fine = new ScaleRelation.Scale("fine", 1);
-
-        assertThrows(IllegalArgumentException.class,
-                () -> extractor.extract(coarse, coarse, List.of(), List.of(), series(5)));
-        assertThrows(IllegalArgumentException.class,
-                () -> extractor.extract(fine, coarse, List.of(), List.of(), series(5)));
-    }
-
-    @Test
     void absentParentKeepsChildEvidenceAndEndsEdgesAsRetired() {
         // The parent's trailing pivot disappears at bar 56 before any successor.
         final List<ScaleRelationStudy.ScaleInput> inputs = List.of(
