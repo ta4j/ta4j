@@ -23,7 +23,8 @@ import ta4jexamples.charting.replay.ReplaySession.TimelineEntry;
 import ta4jexamples.charting.workflow.ChartWorkflow;
 
 /**
- * Replays the as-of Elliott state recorded by a research run, one bar at a time.
+ * Replays the as-of Elliott state recorded by a research run, one bar at a
+ * time.
  *
  * <p>
  * The tool reads a {@code elliott-research-run/1} directory (see the Elliott
@@ -93,8 +94,8 @@ public final class ElliottReplayInspector {
      * @param in   stream read in {@code --interactive} mode
      * @param out  receives evidence text and command results
      * @param err  receives usage and error messages
-     * @return {@code 0} on success, {@code 1} for a usage error, {@code 2} when
-     *         the artifact or a command is invalid
+     * @return {@code 0} on success, {@code 1} for a usage error, {@code 2} when the
+     *         artifact or a command is invalid
      */
     public static int run(final String[] args, final InputStream in, final PrintStream out, final PrintStream err) {
         final Options options;
@@ -231,7 +232,8 @@ public final class ElliottReplayInspector {
     private void history(final String argument) {
         final String key = argument.isEmpty() ? current.selectedCandidate() : argument;
         if (key.isEmpty()) {
-            throw new ReplayArtifactException("history needs a candidate key: select one first or pass `history <key>`");
+            throw new ReplayArtifactException(
+                    "history needs a candidate key: select one first or pass `history <key>`");
         }
         final List<TimelineEntry> timeline = session.candidateTimeline(key);
         final int truncatedBefore = session.timelineStartAsOf();
@@ -246,8 +248,7 @@ public final class ElliottReplayInspector {
     }
 
     /**
-     * Writes the JSON, text and image of the current frame to the output
-     * directory.
+     * Writes the JSON, text and image of the current frame to the output directory.
      */
     private void export() {
         rejectRunDirectory();
@@ -326,7 +327,8 @@ public final class ElliottReplayInspector {
         try {
             return Instant.parse(value);
         } catch (DateTimeParseException e) {
-            throw new ReplayArtifactException("'" + value + "' is neither a bar index nor an ISO-8601 instant like 2020-03-27T00:00:00Z");
+            throw new ReplayArtifactException(
+                    "'" + value + "' is neither a bar index nor an ISO-8601 instant like 2020-03-27T00:00:00Z");
         }
     }
 

@@ -177,8 +177,7 @@ final class ReplayFixture {
 
     private static String row(final String key, final String mode, final String rules) {
         return String.join(",", key, DATASET, "FIXTURE", rules.isEmpty() ? "h1" : "h2", mode, "MOTIVE_5", rules,
-                "fractal-w5", "kernel-topology",
-                "calibration", "ambiguousRate", "20", "0.5");
+                "fractal-w5", "kernel-topology", "calibration", "ambiguousRate", "20", "0.5");
     }
 
     private static String competingRow() {
@@ -289,7 +288,8 @@ final class ReplayFixture {
             candidates.add(candidate("c-B", "v1", confirmed, 1, rules));
         }
         record.add("candidates", candidates);
-        record.addProperty("status", candidates.size() >= 2 ? "AMBIGUOUS" : candidates.size() == 1 ? "COMPLETE" : "NONE");
+        record.addProperty("status",
+                candidates.size() >= 2 ? "AMBIGUOUS" : candidates.size() == 1 ? "COMPLETE" : "NONE");
         record.addProperty("direction", candidates.isEmpty() ? "" : "BULLISH");
         final JsonArray labels = new JsonArray();
         if (candidates.size() >= 2) {
@@ -301,9 +301,9 @@ final class ReplayFixture {
 
     /**
      * One as-of line of the {@code competing-3+3} stream in the exact shape of
-     * {@code StudyRunner.evaluateAlternativeGrammar}: kind {@code alternative},
-     * a lowercase outcome as status, a null direction, an empty candidates array
-     * and the sorted match labels. The first {@code ambiguous} record is bar 33.
+     * {@code StudyRunner.evaluateAlternativeGrammar}: kind {@code alternative}, a
+     * lowercase outcome as status, a null direction, an empty candidates array and
+     * the sorted match labels. The first {@code ambiguous} record is bar 33.
      */
     static JsonObject competingRecord(final int asOf) {
         int confirmed = 0;

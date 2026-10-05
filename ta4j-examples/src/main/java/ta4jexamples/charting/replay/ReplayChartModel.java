@@ -50,13 +50,13 @@ record ReplayChartModel(String title, BarSeries series, int windowStart, List<La
     /**
      * One overlay.
      *
-     * @param name       legend text
-     * @param color      line and label color
-     * @param width      line width
-     * @param line       indicator drawn as a connected polyline through the
-     *                   labeled bars, or {@code null} for marker-only layers
-     * @param indicator  indicator carrying values and labels
-     * @param candidate  candidate ordinal ({@code -1} for non-candidate layers)
+     * @param name      legend text
+     * @param color     line and label color
+     * @param width     line width
+     * @param line      indicator drawn as a connected polyline through the labeled
+     *                  bars, or {@code null} for marker-only layers
+     * @param indicator indicator carrying values and labels
+     * @param candidate candidate ordinal ({@code -1} for non-candidate layers)
      */
     record Layer(String name, Color color, float width, Indicator<Num> line, BarSeriesLabelIndicator indicator,
             int candidate) {
@@ -142,14 +142,16 @@ record ReplayChartModel(String title, BarSeries series, int windowStart, List<La
                             "HIGH".equals(point.type()) ? LabelPlacement.ABOVE : LabelPlacement.BELOW, color));
                 }
             }
-            layers.add(new Layer("#" + (candidate.ordinal() + 1) + " " + shortKey(candidate.candidateKey()) + " "
-                    + candidate.direction(), color, candidate.selected() ? 3.0f : 1.6f, new PointLine(series, labels),
+            layers.add(new Layer(
+                    "#" + (candidate.ordinal() + 1) + " " + shortKey(candidate.candidateKey()) + " "
+                            + candidate.direction(),
+                    color, candidate.selected() ? 3.0f : 1.6f, new PointLine(series, labels),
                     new BarSeriesLabelIndicator(series, labels), candidate.ordinal()));
         }
         final BarLabel asOf = new BarLabel(frame.cursor() - offset, series.getLastBar().getHighPrice(),
                 "as-of " + frame.cursor(), LabelPlacement.ABOVE, Color.WHITE);
-        layers.add(new Layer("As-of bar", Color.WHITE, 0.5f, null,
-                new BarSeriesLabelIndicator(series, List.of(asOf)), -1));
+        layers.add(new Layer("As-of bar", Color.WHITE, 0.5f, null, new BarSeriesLabelIndicator(series, List.of(asOf)),
+                -1));
         final double low = new BigDecimal(frame.axis().low()).doubleValue();
         final double high = new BigDecimal(frame.axis().high()).doubleValue();
         final double margin = Math.max((high - low) * 0.04, Math.ulp(high) * 8);

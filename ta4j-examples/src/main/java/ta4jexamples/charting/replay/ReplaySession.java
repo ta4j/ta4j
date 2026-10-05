@@ -99,8 +99,8 @@ final class ReplaySession {
      * @return a session positioned on the default cursor (first ambiguous record,
      *         else first record)
      */
-    static ReplaySession open(final ReplayArtifact artifact, final String key, final String traceMode,
-            final int window, final int overlayCap) {
+    static ReplaySession open(final ReplayArtifact artifact, final String key, final String traceMode, final int window,
+            final int overlayCap) {
         Objects.requireNonNull(artifact, "artifact");
         if (window < 1) {
             throw new ReplayArtifactException("--window must be at least 1 bar, got " + window);
@@ -183,7 +183,8 @@ final class ReplaySession {
         if (!row.activeRules().isEmpty()) {
             return "";
         }
-        final String base = "mode '" + row.mode() + "' evaluates no rules, so candidates carry no rule evidence (not evaluated)";
+        final String base = "mode '" + row.mode()
+                + "' evaluates no rules, so candidates carry no rule evidence (not evaluated)";
         return artifact.ruleEvidenceRow(row)
                 .map(rules -> base + "; recorded rule evidence for the same detector and partition is in key "
                         + rules.key())
@@ -201,7 +202,10 @@ final class ReplaySession {
         return "AMBIGUOUS".equals(status) || "ambiguous".equals(status);
     }
 
-    /** First ambiguous record, else the first one carrying 2+ candidates, else the first. */
+    /**
+     * First ambiguous record, else the first one carrying 2+ candidates, else the
+     * first.
+     */
     private int defaultPosition() {
         for (int i = 0; i < entries.size(); i++) {
             if (isAmbiguous(entries.get(i).status())) {
@@ -299,8 +303,8 @@ final class ReplaySession {
      */
     ReplayFrame seek(final int asOfIndex) {
         if (asOfIndex < firstAsOf()) {
-            throw new ReplayArtifactException("no record at or before bar " + asOfIndex + "; the first recorded as-of is "
-                    + firstAsOf() + " (last " + lastAsOf() + ")");
+            throw new ReplayArtifactException("no record at or before bar " + asOfIndex
+                    + "; the first recorded as-of is " + firstAsOf() + " (last " + lastAsOf() + ")");
         }
         int low = 0;
         int high = entries.size() - 1;
@@ -336,8 +340,8 @@ final class ReplaySession {
             }
         }
         if (found < 0) {
-            throw new ReplayArtifactException("instant " + instant + " precedes the first retained bar ending "
-                    + bars.get(firstBar).end());
+            throw new ReplayArtifactException(
+                    "instant " + instant + " precedes the first retained bar ending " + bars.get(firstBar).end());
         }
         return seek(found);
     }

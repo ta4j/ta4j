@@ -29,40 +29,40 @@ import ta4jexamples.charting.replay.ReplayTraceIndex.Family;
  * cursor are dropped and counted in {@link #suppressedFuture()}, which stays
  * zero for artifacts produced by the research recorder.
  *
- * @param comparisonKey      the {@code comparisons.csv} key the replay was
- *                           opened from
- * @param family             recorded stream (section, mode, grammar, detector,
- *                           partition)
- * @param activeRules        rule ids active in the recorded mode
- * @param cursor             as-of bar index
- * @param asOfTime           recorded as-of timestamp
- * @param kind               record kind ({@code topology} or {@code alternative})
- * @param status             recorded topology/alternative status
- * @param direction          recorded direction or empty
- * @param windowStart        first visible bar index
- * @param pivots             confirmed pivots, oldest first
- * @param candidates         every retained alternative in recorded order
- * @param labels             recorded alternative labels
- * @param overlayCap         maximum simultaneous overlays
- * @param overlayed          number of candidates drawn
- * @param truncated          number of candidates not drawn because of the cap
- * @param axis               price bounds of the visible window
- * @param suppressedFuture   pivot/placement points removed by the causality
- *                           guard
- * @param clippedPoints      overlay points left of the visible window
- * @param initial            whether this is the first record of the recorded
- *                           stream, so there is no earlier record to compare
- *                           with
- * @param transition         whether this record differs from the previous
- *                           recorded one; always false for the initial record
- * @param selectedCandidate  selected candidate key or empty
- * @param ruleEvidenceHint   pointer for modes that evaluate no rules or empty
+ * @param comparisonKey     the {@code comparisons.csv} key the replay was
+ *                          opened from
+ * @param family            recorded stream (section, mode, grammar, detector,
+ *                          partition)
+ * @param activeRules       rule ids active in the recorded mode
+ * @param cursor            as-of bar index
+ * @param asOfTime          recorded as-of timestamp
+ * @param kind              record kind ({@code topology} or
+ *                          {@code alternative})
+ * @param status            recorded topology/alternative status
+ * @param direction         recorded direction or empty
+ * @param windowStart       first visible bar index
+ * @param pivots            confirmed pivots, oldest first
+ * @param candidates        every retained alternative in recorded order
+ * @param labels            recorded alternative labels
+ * @param overlayCap        maximum simultaneous overlays
+ * @param overlayed         number of candidates drawn
+ * @param truncated         number of candidates not drawn because of the cap
+ * @param axis              price bounds of the visible window
+ * @param suppressedFuture  pivot/placement points removed by the causality
+ *                          guard
+ * @param clippedPoints     overlay points left of the visible window
+ * @param initial           whether this is the first record of the recorded
+ *                          stream, so there is no earlier record to compare
+ *                          with
+ * @param transition        whether this record differs from the previous
+ *                          recorded one; always false for the initial record
+ * @param selectedCandidate selected candidate key or empty
+ * @param ruleEvidenceHint  pointer for modes that evaluate no rules or empty
  */
 record ReplayFrame(String comparisonKey, Family family, List<String> activeRules, int cursor, String asOfTime,
         String kind, String status, String direction, int windowStart, List<Pivot> pivots, List<Candidate> candidates,
         List<String> labels, int overlayCap, int overlayed, int truncated, Axis axis, int suppressedFuture,
-        int clippedPoints, boolean initial, boolean transition, String selectedCandidate,
-        String ruleEvidenceHint) {
+        int clippedPoints, boolean initial, boolean transition, String selectedCandidate, String ruleEvidenceHint) {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
@@ -118,8 +118,7 @@ record ReplayFrame(String comparisonKey, Family family, List<String> activeRules
      */
     static ReplayFrame project(final String comparisonKey, final Family family, final List<String> activeRules,
             final JsonObject record, final List<PriceBar> bars, final boolean initial, final boolean transition,
-            final String selected, final int window, final int cap, final String ruleEvidenceHint,
-            final int firstBar) {
+            final String selected, final int window, final int cap, final String ruleEvidenceHint, final int firstBar) {
         if (initial && transition) {
             throw new IllegalArgumentException("an initial record has no predecessor, so it cannot be a transition");
         }
@@ -145,8 +144,8 @@ record ReplayFrame(String comparisonKey, Family family, List<String> activeRules
                 rejected.add(index);
                 continue;
             }
-            pivots.add(new Pivot(index, text(pivot, "price"), text(pivot, "type"), confirmation,
-                    confirmation == cursor, index >= windowStart));
+            pivots.add(new Pivot(index, text(pivot, "price"), text(pivot, "type"), confirmation, confirmation == cursor,
+                    index >= windowStart));
         }
         final List<Candidate> candidates = new ArrayList<>();
         final JsonArray rawCandidates = array(record, "candidates");
@@ -174,9 +173,9 @@ record ReplayFrame(String comparisonKey, Family family, List<String> activeRules
                 final JsonObject rule = element.getAsJsonObject();
                 final List<String> observations = new ArrayList<>();
                 array(rule, "observations").forEach(observation -> observations.add(observation.getAsString()));
-                rules.add(new Rule(text(rule, "id"), text(rule, "state"), rule.has("score") && !rule.get("score").isJsonNull()
-                        ? rule.get("score").getAsString()
-                        : "", List.copyOf(observations), text(rule, "explanation")));
+                rules.add(new Rule(text(rule, "id"), text(rule, "state"),
+                        rule.has("score") && !rule.get("score").isJsonNull() ? rule.get("score").getAsString() : "",
+                        List.copyOf(observations), text(rule, "explanation")));
             }
             final String key = text(candidate, "candidateKey");
             candidates.add(new Candidate(ordinal, key, text(candidate, "version"), text(candidate, "direction"),
@@ -186,9 +185,10 @@ record ReplayFrame(String comparisonKey, Family family, List<String> activeRules
         optionalArray(record, "labels").forEach(label -> labels.add(label.getAsString()));
         final int overlayed = overlaySlots.size();
         return new ReplayFrame(comparisonKey, family, activeRules, cursor, text(record, "asOfTime"),
-                text(record, "kind"), text(record, "status"), text(record, "direction"), windowStart, pivots, candidates,
-                labels, cap, overlayed, rawCandidates.size() - overlayed, axis(bars, windowStart, cursor, pivots, candidates),
-                suppressed, clipped, initial, transition, selected, ruleEvidenceHint);
+                text(record, "kind"), text(record, "status"), text(record, "direction"), windowStart, pivots,
+                candidates, labels, cap, overlayed, rawCandidates.size() - overlayed,
+                axis(bars, windowStart, cursor, pivots, candidates), suppressed, clipped, initial, transition, selected,
+                ruleEvidenceHint);
     }
 
     /** Selected candidate first, then recorded order, until the cap is filled. */

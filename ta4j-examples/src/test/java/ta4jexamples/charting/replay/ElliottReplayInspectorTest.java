@@ -257,8 +257,8 @@ class ElliottReplayInspectorTest {
         final java.util.Map<String, String> files = new java.util.TreeMap<>();
         try (java.util.stream.Stream<Path> walk = Files.walk(directory)) {
             for (final Path file : (Iterable<Path>) walk::iterator) {
-                files.put(directory.relativize(file).toString(),
-                        Files.isDirectory(file) ? "<dir>" : java.util.Base64.getEncoder().encodeToString(Files.readAllBytes(file)));
+                files.put(directory.relativize(file).toString(), Files.isDirectory(file) ? "<dir>"
+                        : java.util.Base64.getEncoder().encodeToString(Files.readAllBytes(file)));
             }
         }
         return files;

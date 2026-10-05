@@ -118,7 +118,10 @@ final class ElliottResearch {
     private static final String SUMMARY_FILE = "summary.md";
     private static final String REPORTS_DIR = "reports";
     private static final String TRACES_DIR = "traces";
-    /** Per-dataset price bars a replay viewer needs to draw the traced as-of indices. */
+    /**
+     * Per-dataset price bars a replay viewer needs to draw the traced as-of
+     * indices.
+     */
     private static final String BARS_DIR = "bars";
     private static final String BARS_HEADER = "index,beginTime,endTime,open,high,low,close,volume";
     /**

@@ -131,7 +131,12 @@ class ReplaySessionTest {
                 .orElseThrow();
         assertEquals(33, pivot.confirmationIndex());
         assertTrue(pivot.newlyConfirmed());
-        assertFalse(session.seek(34).pivots().stream().filter(p -> p.index() == 30).findFirst().orElseThrow()
+        assertFalse(session.seek(34)
+                .pivots()
+                .stream()
+                .filter(p -> p.index() == 30)
+                .findFirst()
+                .orElseThrow()
                 .newlyConfirmed());
         for (int cursor = ReplayFixture.FIRST_AS_OF; cursor < ReplayFixture.BARS; cursor++) {
             final ReplayFrame frame = session.seek(cursor);
@@ -262,11 +267,12 @@ class ReplaySessionTest {
         final ReplayFrame selected = session.select("c-B");
         assertFalse(selected.candidates().get(0).overlayed());
         assertTrue(selected.candidates().get(1).overlayed());
-        assertEquals(1, ReplayChartModel.of(selected, session.bars())
-                .layers()
-                .stream()
-                .filter(layer -> layer.candidate() >= 0)
-                .count());
+        assertEquals(1,
+                ReplayChartModel.of(selected, session.bars())
+                        .layers()
+                        .stream()
+                        .filter(layer -> layer.candidate() >= 0)
+                        .count());
     }
 
     @Test
@@ -278,7 +284,8 @@ class ReplaySessionTest {
 
         assertEquals(29, frame.windowStart());
         assertTrue(frame.clippedPoints() > 0);
-        assertTrue(frame.candidates().stream()
+        assertTrue(frame.candidates()
+                .stream()
                 .flatMap(candidate -> candidate.placement().stream())
                 .anyMatch(point -> !point.inWindow()));
         final ReplayChartModel model = ReplayChartModel.of(frame, session.bars());
@@ -321,11 +328,12 @@ class ReplaySessionTest {
         assertEquals("NONE", frame.status());
         assertTrue(frame.candidates().isEmpty());
         assertTrue(ReplayEvidenceText.render(frame).contains("candidates retained: 0"));
-        assertEquals(1, ReplayChartModel.of(frame, session.bars())
-                .layers()
-                .stream()
-                .filter(layer -> layer.name().equals("As-of bar"))
-                .count());
+        assertEquals(1,
+                ReplayChartModel.of(frame, session.bars())
+                        .layers()
+                        .stream()
+                        .filter(layer -> layer.name().equals("As-of bar"))
+                        .count());
     }
 
     private static ReplaySession openNull(final Path directory, final String key) {
@@ -362,9 +370,9 @@ class ReplaySessionTest {
     void nullMemberReplayRejectsUnsupportedRowsAndMismatchedRecordings() throws java.io.IOException {
         final Path run = nullRun("run");
         final Path csv = run.resolve("comparisons.csv");
-        java.nio.file.Files.writeString(csv,
-                java.nio.file.Files.readString(csv) + ReplayFixture.RULES_KEY.replace("|h2|", "|competing|")
-                        + ",d1,FIXTURE,competing,all-rules,MOTIVE_5,,fractal-w5,kernel-topology,calibration,ambiguousRate,20,0.5\n",
+        java.nio.file.Files.writeString(csv, java.nio.file.Files.readString(csv)
+                + ReplayFixture.RULES_KEY.replace("|h2|", "|competing|")
+                + ",d1,FIXTURE,competing,all-rules,MOTIVE_5,,fractal-w5,kernel-topology,calibration,ambiguousRate,20,0.5\n",
                 java.nio.charset.StandardCharsets.UTF_8);
         final String competing = assertThrows(ReplayArtifactException.class,
                 () -> openNull(run, ReplayFixture.RULES_KEY.replace("|h2|", "|competing|"))).getMessage();

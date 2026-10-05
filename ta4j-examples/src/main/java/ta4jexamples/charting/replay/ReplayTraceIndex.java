@@ -53,11 +53,11 @@ final class ReplayTraceIndex {
     /**
      * Location and cheap summary of one as-of record.
      *
-     * @param signature SHA-256 of the record content without the as-of
-     *                  coordinates; consecutive equal signatures mean no state
-     *                  change happened between the two as-of bars
-     * @param bar       the price bar recorded with a null-member record, or
-     *                  null when the record carries none (real traces)
+     * @param signature SHA-256 of the record content without the as-of coordinates;
+     *                  consecutive equal signatures mean no state change happened
+     *                  between the two as-of bars
+     * @param bar       the price bar recorded with a null-member record, or null
+     *                  when the record carries none (real traces)
      */
     record Entry(int asOfIndex, long offset, int length, String signature, String status, int candidateCount,
             PriceBar bar) {
@@ -232,8 +232,7 @@ final class ReplayTraceIndex {
         }
         final JsonElement candidates = record.get("candidates");
         list.add(new Entry(asOf, offset, length, signature(record), text(record, "status"),
-                candidates != null && candidates.isJsonArray() ? candidates.getAsJsonArray().size() : 0,
-                bar(record)));
+                candidates != null && candidates.isJsonArray() ? candidates.getAsJsonArray().size() : 0, bar(record)));
     }
 
     /** The recorded null-member price bar, or null when the trace carries none. */
@@ -259,8 +258,8 @@ final class ReplayTraceIndex {
             throw corrupt(display, line, "record kind " + record.get("kind") + " is not topology or alternative");
         }
         final String where = kind + " record field ";
-        for (final String field : List.of("dataset", "section", "mode", "grammar", "detector", "partition",
-                "asOfTime", "status")) {
+        for (final String field : List.of("dataset", "section", "mode", "grammar", "detector", "partition", "asOfTime",
+                "status")) {
             requireText(display, line, record, field, where);
         }
         for (final String field : List.of("nullBlockLength", "nullMemberIndex", "asOfIndex")) {
@@ -308,8 +307,8 @@ final class ReplayTraceIndex {
                     requireText(display, line, rule, field, ruleAt + ".");
                 }
                 final JsonElement score = rule.get("score");
-                if (score == null || !score.isJsonNull()
-                        && !(score.isJsonPrimitive() && score.getAsJsonPrimitive().isNumber())) {
+                if (score == null
+                        || !score.isJsonNull() && !(score.isJsonPrimitive() && score.getAsJsonPrimitive().isNumber())) {
                     throw corrupt(display, line, ruleAt + ".score is missing or not a number or null");
                 }
                 requireTexts(display, line, rule, "observations", ruleAt + ".");
@@ -346,8 +345,8 @@ final class ReplayTraceIndex {
         return value.getAsJsonArray();
     }
 
-    private static void requireTexts(final String display, final long line, final JsonObject owner,
-            final String field, final String where) {
+    private static void requireTexts(final String display, final long line, final JsonObject owner, final String field,
+            final String where) {
         final JsonArray array = requireArray(display, line, owner, field, where);
         for (int i = 0; i < array.size(); i++) {
             final JsonElement element = array.get(i);
@@ -357,8 +356,8 @@ final class ReplayTraceIndex {
         }
     }
 
-    private static void requireText(final String display, final long line, final JsonObject owner,
-            final String field, final String where) {
+    private static void requireText(final String display, final long line, final JsonObject owner, final String field,
+            final String where) {
         if (textOrNull(owner, field) == null) {
             throw corrupt(display, line, where + field + " is missing or not a string");
         }
@@ -375,8 +374,7 @@ final class ReplayTraceIndex {
 
     private static String textOrNull(final JsonObject object, final String name) {
         final JsonElement value = object.get(name);
-        return value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()
-                ? value.getAsString()
+        return value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isString() ? value.getAsString()
                 : null;
     }
 
@@ -392,7 +390,8 @@ final class ReplayTraceIndex {
         copy.remove("bar");
         try {
             return HexFormat.of()
-                    .formatHex(MessageDigest.getInstance("SHA-256").digest(copy.toString().getBytes(StandardCharsets.UTF_8)));
+                    .formatHex(MessageDigest.getInstance("SHA-256")
+                            .digest(copy.toString().getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 is mandatory on every Java platform", e);
         }

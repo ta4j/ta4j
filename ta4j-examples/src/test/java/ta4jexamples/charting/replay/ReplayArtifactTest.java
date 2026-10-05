@@ -215,18 +215,18 @@ class ReplayArtifactTest {
     void nonPositiveWindowAndCapAreRejected() {
         final ReplayArtifact artifact = ReplayArtifact.open(ReplayFixture.write(temp.resolve("run")));
 
-        assertThrows(ReplayArtifactException.class, () -> ReplaySession.open(artifact, ReplayFixture.RULES_KEY,
-                ReplayArtifact.TRACE_MODE_REAL, 0, 8));
-        assertThrows(ReplayArtifactException.class, () -> ReplaySession.open(artifact, ReplayFixture.RULES_KEY,
-                ReplayArtifact.TRACE_MODE_REAL, 8, 0));
+        assertThrows(ReplayArtifactException.class,
+                () -> ReplaySession.open(artifact, ReplayFixture.RULES_KEY, ReplayArtifact.TRACE_MODE_REAL, 0, 8));
+        assertThrows(ReplayArtifactException.class,
+                () -> ReplaySession.open(artifact, ReplayFixture.RULES_KEY, ReplayArtifact.TRACE_MODE_REAL, 8, 0));
     }
 
     @Test
     void requestedTraceModeMustBeRetained() {
         final ReplayArtifact artifact = ReplayArtifact.open(ReplayFixture.write(temp.resolve("run")));
 
-        final ReplayArtifactException e = assertThrows(ReplayArtifactException.class, () -> ReplaySession
-                .open(artifact, ReplayFixture.RULES_KEY, ReplayArtifact.TRACE_MODE_NULL_MEMBER, 120, 8));
+        final ReplayArtifactException e = assertThrows(ReplayArtifactException.class, () -> ReplaySession.open(artifact,
+                ReplayFixture.RULES_KEY, ReplayArtifact.TRACE_MODE_NULL_MEMBER, 120, 8));
 
         assertTrue(e.getMessage().contains("has no 'selected-null-member' trace"));
     }
@@ -278,8 +278,11 @@ class ReplayArtifactTest {
             options.traceSource = "aaaa";
             return options;
         });
-        assertEquals(33, ReplaySession.open(ReplayArtifact.open(matching), ReplayFixture.RULES_KEY,
-                ReplayArtifact.TRACE_MODE_REAL, 120, 8).cursor());
+        assertEquals(33,
+                ReplaySession
+                        .open(ReplayArtifact.open(matching), ReplayFixture.RULES_KEY, ReplayArtifact.TRACE_MODE_REAL,
+                                120, 8)
+                        .cursor());
     }
 
     @Test
@@ -306,15 +309,18 @@ class ReplayArtifactTest {
             options.nullTrace = true;
             return options;
         });
-        assertEquals(ReplayFixture.FIRST_AS_OF, ReplaySession.open(ReplayArtifact.open(run), ReplayFixture.RULES_KEY,
-                ReplayArtifact.TRACE_MODE_NULL_MEMBER, 120, 8).firstAsOf());
+        assertEquals(ReplayFixture.FIRST_AS_OF,
+                ReplaySession
+                        .open(ReplayArtifact.open(run), ReplayFixture.RULES_KEY, ReplayArtifact.TRACE_MODE_NULL_MEMBER,
+                                120, 8)
+                        .firstAsOf());
         final Path trace = run.resolve("traces/d1-null.jsonl");
-        Files.writeString(trace,
-                Files.readString(trace).replaceFirst("\"nullMemberIndex\":0", "\"nullMemberIndex\":1"),
+        Files.writeString(trace, Files.readString(trace).replaceFirst("\"nullMemberIndex\":0", "\"nullMemberIndex\":1"),
                 StandardCharsets.UTF_8);
 
-        final ReplayArtifactException e = assertThrows(ReplayArtifactException.class, () -> ReplaySession
-                .open(ReplayArtifact.open(run), ReplayFixture.RULES_KEY, ReplayArtifact.TRACE_MODE_NULL_MEMBER, 120, 8));
+        final ReplayArtifactException e = assertThrows(ReplayArtifactException.class,
+                () -> ReplaySession.open(ReplayArtifact.open(run), ReplayFixture.RULES_KEY,
+                        ReplayArtifact.TRACE_MODE_NULL_MEMBER, 120, 8));
 
         assertTrue(e.getMessage().contains("does not belong to this run"), e.getMessage());
         assertTrue(e.getMessage().contains("nullBlockLength/nullMemberIndex"), e.getMessage());

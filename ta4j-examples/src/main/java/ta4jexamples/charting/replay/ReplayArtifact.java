@@ -38,8 +38,8 @@ import com.google.gson.JsonParser;
  * <p>
  * Every path is resolved against the run directory, so a moved bundle keeps
  * working. The adapter reads {@code run.json}, {@code comparisons.csv}, the
- * retained price-bar sidecar and the real trace; it never recomputes an
- * Elliott count and never fetches data.
+ * retained price-bar sidecar and the real trace; it never recomputes an Elliott
+ * count and never fetches data.
  */
 final class ReplayArtifact {
 
@@ -97,14 +97,14 @@ final class ReplayArtifact {
         final Path dir = directory.toAbsolutePath().normalize();
         final Path runFile = dir.resolve("run.json");
         if (!Files.isRegularFile(runFile)) {
-            throw new ReplayArtifactException("no run.json in " + dir
-                    + "; pass the run directory written by ElliottResearch. " + REGENERATE);
+            throw new ReplayArtifactException(
+                    "no run.json in " + dir + "; pass the run directory written by ElliottResearch. " + REGENERATE);
         }
         final JsonObject run = parseJson(runFile, "run.json");
         final String schema = text(run, "artifactSchemaVersion");
         if (!RUN_SCHEMA.equals(schema)) {
-            throw new ReplayArtifactException("unsupported run schema '" + schema + "' in " + runFile + "; this replay reads only '"
-                    + RUN_SCHEMA + "'. " + REGENERATE);
+            throw new ReplayArtifactException("unsupported run schema '" + schema + "' in " + runFile
+                    + "; this replay reads only '" + RUN_SCHEMA + "'. " + REGENERATE);
         }
         if (!"complete".equals(text(run, "status"))) {
             throw new ReplayArtifactException("run in " + dir + " has status '" + text(run, "status")
@@ -182,8 +182,8 @@ final class ReplayArtifact {
                         .thenComparing(Comparator.naturalOrder()))
                 .limit(5)
                 .toList();
-        return "unknown comparison key '" + key + "' in " + directory.resolve("comparisons.csv")
-                + "; closest keys:\n  " + String.join("\n  ", close);
+        return "unknown comparison key '" + key + "' in " + directory.resolve("comparisons.csv") + "; closest keys:\n  "
+                + String.join("\n  ", close);
     }
 
     private static int commonPrefix(final String left, final String right) {
@@ -205,9 +205,8 @@ final class ReplayArtifact {
     Optional<ComparisonRow> ruleEvidenceRow(final ComparisonRow row) {
         return comparisons.stream()
                 .filter(candidate -> candidate.dataset().equals(row.dataset())
-                        && candidate.detector().equals(row.detector())
-                        && candidate.partition().equals(row.partition()) && "h2".equals(candidate.section())
-                        && "all-rules".equals(candidate.mode()))
+                        && candidate.detector().equals(row.detector()) && candidate.partition().equals(row.partition())
+                        && "h2".equals(candidate.section()) && "all-rules".equals(candidate.mode()))
                 .findFirst();
     }
 
@@ -235,8 +234,8 @@ final class ReplayArtifact {
         for (final String relative : dataset.traces()) {
             final Path file = resolveInside(relative);
             if (!Files.isRegularFile(file)) {
-                throw new ReplayArtifactException("trace " + relative + " listed in run.json is missing from "
-                        + directory + ". " + REGENERATE);
+                throw new ReplayArtifactException(
+                        "trace " + relative + " listed in run.json is missing from " + directory + ". " + REGENERATE);
             }
             final JsonObject header = ReplayTraceIndex.readHeader(file, relative);
             if (!TRACE_SCHEMA.equals(text(header, "schema"))) {
@@ -248,14 +247,14 @@ final class ReplayArtifact {
             }
             final String mismatch = headerMismatch(header, dataset, mode);
             if (mismatch != null) {
-                throw new ReplayArtifactException("trace " + relative
-                        + " does not belong to this run (header " + mismatch + " differs from run.json). " + REGENERATE);
+                throw new ReplayArtifactException("trace " + relative + " does not belong to this run (header "
+                        + mismatch + " differs from run.json). " + REGENERATE);
             }
             return relative;
         }
-        throw new ReplayArtifactException("run in " + directory + " has no '" + mode + "' trace for dataset '"
-                + dataset.id() + "' (listed: " + dataset.traces() + "). Rerun with --trace " + mode + ". "
-                + REGENERATE);
+        throw new ReplayArtifactException(
+                "run in " + directory + " has no '" + mode + "' trace for dataset '" + dataset.id() + "' (listed: "
+                        + dataset.traces() + "). Rerun with --trace " + mode + ". " + REGENERATE);
     }
 
     /**
@@ -291,11 +290,15 @@ final class ReplayArtifact {
         return null;
     }
 
-    /** @return the block or member run.json selected for its null trace, or -1 if none */
+    /**
+     * @return the block or member run.json selected for its null trace, or -1 if
+     *         none
+     */
     private int runTraceCoordinate(final String name) {
         final JsonElement trace = run.get("trace");
         final JsonElement value = trace != null && trace.isJsonObject() ? trace.getAsJsonObject().get(name) : null;
-        return value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isNumber() ? value.getAsInt() : -1;
+        return value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isNumber() ? value.getAsInt()
+                : -1;
     }
 
     private static int integer(final JsonObject object, final String name) {
@@ -326,14 +329,15 @@ final class ReplayArtifact {
             return cached;
         }
         if (dataset.barsPath() == null) {
-            throw new ReplayArtifactException("run.json in " + directory + " has no priceBars entry for dataset '"
-                    + dataset.id() + "': the run predates the price-bar sidecar and replay never substitutes live data. "
-                    + REGENERATE);
+            throw new ReplayArtifactException(
+                    "run.json in " + directory + " has no priceBars entry for dataset '" + dataset.id()
+                            + "': the run predates the price-bar sidecar and replay never substitutes live data. "
+                            + REGENERATE);
         }
         final Path file = resolveInside(dataset.barsPath());
         if (!Files.isRegularFile(file)) {
-            throw new ReplayArtifactException("price-bar sidecar " + dataset.barsPath() + " is missing from " + directory
-                    + "; replay never substitutes live data. " + REGENERATE);
+            throw new ReplayArtifactException("price-bar sidecar " + dataset.barsPath() + " is missing from "
+                    + directory + "; replay never substitutes live data. " + REGENERATE);
         }
         final byte[] bytes;
         try {
@@ -442,15 +446,16 @@ final class ReplayArtifact {
             final String rules = row.get(column.get("activeRules"));
             result.add(new ComparisonRow(row.get(column.get("key")), row.get(column.get("dataset")),
                     row.get(column.get("asset")), row.get(column.get("section")), row.get(column.get("mode")),
-                    row.get(column.get("grammar")),
-                    rules.isEmpty() ? List.of() : List.of(rules.split(";")), row.get(column.get("detector")),
-                    row.get(column.get("partition")), row.get(column.get("metric")),
+                    row.get(column.get("grammar")), rules.isEmpty() ? List.of() : List.of(rules.split(";")),
+                    row.get(column.get("detector")), row.get(column.get("partition")), row.get(column.get("metric")),
                     nullBlockLength(row.get(column.get("nullBlockLength"))), row.get(column.get("observed"))));
         }
         return List.copyOf(result);
     }
 
-    /** Block length is empty for rows that have no bootstrap null; those carry 0. */
+    /**
+     * Block length is empty for rows that have no bootstrap null; those carry 0.
+     */
     private static int nullBlockLength(final String value) {
         return value.isEmpty() ? 0 : Integer.parseInt(value);
     }
@@ -507,13 +512,13 @@ final class ReplayArtifact {
         try (Reader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
             final JsonElement parsed = JsonParser.parseReader(reader);
             if (!parsed.isJsonObject()) {
-                throw new ReplayArtifactException(display + " in " + file.getParent() + " is not a JSON object. "
-                        + REGENERATE);
+                throw new ReplayArtifactException(
+                        display + " in " + file.getParent() + " is not a JSON object. " + REGENERATE);
             }
             return parsed.getAsJsonObject();
         } catch (JsonParseException | IOException e) {
-            throw new ReplayArtifactException(display + " in " + file.getParent() + " is unreadable: " + e.getMessage()
-                    + ". " + REGENERATE, e);
+            throw new ReplayArtifactException(
+                    display + " in " + file.getParent() + " is unreadable: " + e.getMessage() + ". " + REGENERATE, e);
         }
     }
 
