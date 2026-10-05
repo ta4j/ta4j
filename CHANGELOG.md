@@ -1,6 +1,12 @@
 ## Unreleased
 
-- _No changes yet._
+### Added
+
+- **Reproducible Elliott pattern research runs (`CF-585`)**: maintainers can run the experimental Elliott study from one command, `ElliottResearch` via `mvn -pl ta4j-core test-compile exec:java`, with an offline `smoke` recipe, the frozen `frozen-cf525` study, or `explore` over their own candles and settings. Each run writes a relocatable directory: `run.json` provenance (revision and whether the worktree was clean or dirty), per-dataset reports, `comparisons.csv` of observed metrics against per-partition null reference bands and empirical reference ranks, coverage that flags partitions without bars or with long internal gaps, a summary, and optional per-bar evidence traces for the real data or one selected null member. `summarize` rebuilds the summary without recomputing, and `inspect <run> <key>` traces a comparison back to its supporting bars, counterexamples and rule disagreements; its recapture command refuses to run against a changed configuration or edited candles. Frozen outputs are unchanged with capture on or off.
+
+### Fixed
+
+- **Elliott research coverage (`CF-585`)**: gap detection considers each configured partition separately, so intentionally unrequested intervals between noncontiguous partitions no longer mark otherwise complete data as partial. Long gaps within a partition still report partial coverage.
 
 ## 0.26.0 (2026-10-05)
 
@@ -24,7 +30,6 @@
 - **`pow` in numeric indicator chains**: `NumericIndicator.pow(Number)` raises any composed indicator to a constant exponent, so chains like `NumericIndicator.of(relativeVolume).max(0.25).min(4).pow(0.5)` no longer need `UnaryOperationIndicator.pow`.
 - **Adaptive Kalman noise example**: `AdaptiveKalmanNoiseExample` and the `adaptive-kalman-noise.md` walkthrough show a Kalman filter that adapts to volatility and volume: ATR-based process noise and relative-volume measurement noise fed into `KinematicKalmanFilterIndicator` through `KalmanNoiseIndicator`, with same-bar or lagged (`--lag-noise`) noise, explicit handling of missing or zero volume, and MAE/RMSE comparisons against fixed-noise and last-close baselines. Library defaults are unchanged.
 - **Experimental Elliott wave pattern research (`CF-525`)**: package-private groundwork, not yet public API, for recognizing Elliott structures (5-wave motive, 3-wave corrective and full 5-3 cycles) from confirmed pivots, with explicit forming, complete, ambiguous and invalidated outcomes, plus a reproducible internal study harness. It changes no public behavior.
-- **Reproducible Elliott pattern research runs (`CF-585`)**: maintainers can run the experimental Elliott study from one command, `ElliottResearch` via `mvn -pl ta4j-core test-compile exec:java`, with an offline `smoke` recipe, the frozen `frozen-cf525` study, or `explore` over their own candles and settings. Each run writes a relocatable directory: `run.json` provenance (revision and whether the worktree was clean or dirty), per-dataset reports, `comparisons.csv` of observed metrics against per-partition null reference bands and empirical reference ranks, coverage that flags partitions without bars or with long internal gaps, a summary, and optional per-bar evidence traces for the real data or one selected null member. `summarize` rebuilds the summary without recomputing, and `inspect <run> <key>` traces a comparison back to its supporting bars, counterexamples and rule disagreements; its recapture command refuses to run against a changed configuration or edited candles. Frozen outputs are unchanged with capture on or off.
 
 ### Changed
 
@@ -34,7 +39,6 @@
 
 ### Fixed
 
-- **Elliott research coverage (`CF-585`)**: gap detection considers each configured partition separately, so intentionally unrequested intervals between noncontiguous partitions no longer mark otherwise complete data as partial. Long gaps within a partition still report partial coverage.
 
 - **Fresh swing and forecast results on revisionless series (CF-638)**: `AbstractRecentSwingIndicator`, `ProminenceSwingDetector`, `AdaptiveZigZagSwingDetector` and `EwmaReturnForecastStateIndicator` revalidate retained bar values for series without history revisions. Repeated queries, appends after interior edits and mutations during calculation reset stale swing or EWMA state, including registered SMA/ATR inputs. EWMA refreshes shared return caches before accepting appended ranges, and direct detector-backed price reads refresh cached fallback sources. Each fallback history comparison costs O(retained bars); an initial or replayed detector-backed recent-swing scan can perform O(retained bars²) validation work across its historical queries, in addition to the underlying swing algorithm's cost. Revision-aware series keep constant-time history checks. Queries retry until the observed history is stable; continuous mutation can delay completion.
 
