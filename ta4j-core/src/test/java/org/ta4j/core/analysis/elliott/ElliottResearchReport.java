@@ -696,7 +696,7 @@ final class ElliottResearchReport {
         return text.replace("|", "\\|").replace("\r", " ").replace("\n", " ");
     }
 
-    private static String plain(final double value) {
+    static String plain(final double value) {
         if (!Double.isFinite(value)) {
             return "";
         }

@@ -82,6 +82,7 @@ import com.google.gson.JsonPrimitive;
  *     [--source candles.json --recipe recipe.json]
  * summarize &lt;runDir&gt;
  * inspect &lt;runDir&gt; &lt;key&gt; [--as-of IDX] [--candidate KEY] [--limit N]
+ *     [--rank enrollment|probability] [--retrospective]
  * </pre>
  *
  * <p>
@@ -210,12 +211,18 @@ final class ElliottResearch {
                 "      --expect-source-sha256 SHA    fail unless the explore source candles hash to SHA",
                 "  summarize <runDir>       regenerate summary.md from the recorded artifacts",
                 "  inspect <runDir> <key> [--as-of IDX] [--candidate KEY] [--limit N]",
-                "                           list the recorded observations behind one comparison key", "",
+                "          [--rank enrollment|probability] [--retrospective]",
+                "                           list the recorded observations behind one comparison key; a calibrated",
+                "                           run also lists decision-time probabilities (outcomes only with",
+                "                           --retrospective, probability ranking only with --rank)", "",
                 "Run status: complete = every dataset evaluated (coverage.csv marks datasets whose data cover",
                 "less than the requested window as partial), partial = some dataset failed, failed = all failed.",
                 "Every run also writes events.jsonl (enrolled MOTIVE_5 event lifecycles), outcomes.csv (per-horizon",
                 "structural and price labels) and outcomes-summary.csv (per-partition tallies and comparators);",
                 "explore recipes may set an optional \"outcomes\" object (horizons, structuralMode, invalidation).",
+                "A recipe may also set \"calibration\" (horizon, fit, validation, evaluation, minGroups) to add",
+                "calibration-tables.json, calibration-predictions.csv, calibration-summary.csv and",
+                "calibration-reliability.csv: outcome-calibrated event probabilities, fitted chronologically.",
                 "Null-member events are included for the member chosen with --trace selected-null-member.", "",
                 "Exit codes: 0 ok; 1 usage error or run failure; 2 missing, truncated or corrupt trace, or failed",
                 "dataset while inspecting.");
@@ -352,15 +359,19 @@ final class ElliottResearch {
     private record Setup(String fingerprint, StudyRunner.Partitions partitions, DetectorRecipe primary,
             List<DetectorRecipe> robustness, List<String> activeRules, int momentumBarCount,
             List<String> competingModes, List<Integer> blockLengths, int ensembleSize, long seed,
-            ElliottResearchOutcomes.Settings outcomes) {
+            ElliottResearchOutcomes.Settings outcomes, ElliottResearchCalibration.Settings calibration) {
 
-        StudyRunner runner() {
+        List<RelationshipRule> rules() {
             final Function<BarSeries, Indicator<Num>> momentum = series -> new RSIIndicator(
                     new ClosePriceIndicator(series), momentumBarCount);
-            final List<RelationshipRule> rules = ClassicalRelationshipRules.classicalRelationships(momentum)
+            return ClassicalRelationshipRules.classicalRelationships(momentum)
                     .stream()
                     .filter(rule -> activeRules.contains(rule.id()))
                     .toList();
+        }
+
+        StudyRunner runner() {
+            final List<RelationshipRule> rules = rules();
             final List<DetectorRobustnessMatrix.DetectorSpec> specs = robustness.stream()
                     .map(detector -> new DetectorRobustnessMatrix.DetectorSpec(detector.name(), detector.supplier()))
                     .toList();
@@ -424,6 +435,9 @@ final class ElliottResearch {
             nulls.addProperty("seed", seed);
             json.add("null", nulls);
             json.add("outcomes", outcomes.toJson());
+            if (calibration != null) {
+                json.add("calibration", calibration.toJson());
+            }
             return json;
         }
     }
@@ -445,7 +459,8 @@ final class ElliottResearch {
                 + "RSI14; competing 3+3,5+5,change-point-baseline; null block 20 ensemble 8 seed 5252026; "
                 + "outcomes horizons 5,20,60 classical-all origin-pivot";
         return new Setup(sha256(description.getBytes(StandardCharsets.UTF_8)), partitions, w5, List.of(w3, w5),
-                RULE_IDS, 14, COMPETING_MODES, List.of(20), 8, 5_252_026L, ElliottResearchOutcomes.Settings.defaults());
+                RULE_IDS, 14, COMPETING_MODES, List.of(20), 8, 5_252_026L, ElliottResearchOutcomes.Settings.defaults(),
+                null);
     }
 
     private static BarSeries smokeSeries() {
@@ -495,12 +510,12 @@ final class ElliottResearch {
         return new Setup(protocol.fingerprintSha256(), runnerPartitions, primary, detectors, RULE_IDS,
                 protocol.momentumIndicator().barCount(), protocol.competingGrammars(),
                 protocol.nullEnsemble().blockLengths(), protocol.nullEnsemble().ensembleSize(),
-                protocol.nullEnsemble().seed(), ElliottResearchOutcomes.Settings.defaults());
+                protocol.nullEnsemble().seed(), ElliottResearchOutcomes.Settings.defaults(), null);
     }
 
     private static final Set<String> RECIPE_FIELDS = Set.of("datasetId", "asset", "partitions",
             "forbiddenCalibrationStart", "detector", "robustnessDetectors", "activeRules", "momentum", "competingModes",
-            "null", "outcomes");
+            "null", "outcomes", "calibration");
 
     /** Parsed explore recipe plus the setup it describes. */
     private record ExploreRecipe(String datasetId, String asset, Setup setup, JsonObject definition) {
@@ -580,6 +595,15 @@ final class ElliottResearch {
         final ElliottResearchOutcomes.Settings outcomes = root.has("outcomes")
                 ? ElliottResearchOutcomes.Settings.parse(objectOf(root.get("outcomes"), "recipe.outcomes"))
                 : ElliottResearchOutcomes.Settings.defaults();
+        final ElliottResearchCalibration.Settings calibration;
+        try {
+            calibration = root.has("calibration")
+                    ? ElliottResearchCalibration.Settings.parse(objectOf(root.get("calibration"), "recipe.calibration"),
+                            outcomes, partitions)
+                    : null;
+        } catch (final IllegalArgumentException e) {
+            throw new IllegalArgumentException("recipe " + e.getMessage());
+        }
         rejectUnknown(nulls, "recipe.null", Set.of("blockLengths", "ensembleSize", "seed"));
         final List<Integer> blockLengths = new ArrayList<>();
         final JsonArray blocks = arrayOf(required(nulls, "blockLengths", "recipe.null"), "recipe.null.blockLengths");
@@ -589,7 +613,7 @@ final class ElliottResearch {
         final int ensembleSize = integer(required(nulls, "ensembleSize", "recipe.null"), "recipe.null.ensembleSize");
         final long seed = longValue(required(nulls, "seed", "recipe.null"), "recipe.null.seed");
         final Setup setup = new Setup("explore-" + sha256(recipeBytes), runnerPartitions, primary, robustness,
-                activeRules, barCount, competing, blockLengths, ensembleSize, seed, outcomes);
+                activeRules, barCount, competing, blockLengths, ensembleSize, seed, outcomes, calibration);
         try {
             setup.runner();
             primary.supplier().get();
@@ -893,7 +917,9 @@ final class ElliottResearch {
         if (checkRunDirectory(dir, overwrite)) {
             for (final String file : List.of(RUN_FILE, COMPARISONS_FILE, COVERAGE_FILE, SUMMARY_FILE,
                     ElliottResearchOutcomes.EVENTS_FILE, ElliottResearchOutcomes.OUTCOMES_FILE,
-                    ElliottResearchOutcomes.SUMMARY_FILE)) {
+                    ElliottResearchOutcomes.SUMMARY_FILE, ElliottResearchCalibration.TABLES_FILE,
+                    ElliottResearchCalibration.PREDICTIONS_FILE, ElliottResearchCalibration.SUMMARY_FILE,
+                    ElliottResearchCalibration.RELIABILITY_FILE)) {
                 Files.deleteIfExists(dir.resolve(file));
             }
             deleteTree(dir.resolve(REPORTS_DIR));
@@ -949,6 +975,7 @@ final class ElliottResearch {
         private final Map<String, ElliottResearchTrace> openTraces = new HashMap<>();
         private final Map<String, ElliottResearchEvents> recorders = new HashMap<>();
         private final Map<String, ElliottResearchOutcomes.Result> outcomes = new LinkedHashMap<>();
+        private final Map<String, ElliottResearchCalibration.Computation> calibrations = new LinkedHashMap<>();
         private String numFactory = "unknown";
         private String status = "running";
 
@@ -1058,6 +1085,21 @@ final class ElliottResearch {
                     entry.traces.add(relative(file));
                 }
                 outcomes.put(id, ElliottResearchOutcomes.evaluate(id, recorder, setup.outcomes()));
+                if (setup.calibration() != null) {
+                    final Map<String, Integer> lastObserved = new HashMap<>();
+                    for (final ElliottResearchEvents.Stream stream : recorder.streams()) {
+                        if (stream.key().real()) {
+                            lastObserved.put(stream.key().partition(), stream.lastObserved());
+                        }
+                    }
+                    final List<RelationshipRule> rules = setup.rules();
+                    calibrations.put(id,
+                            ElliottResearchCalibration.compute(outcomes.get(id), lastObserved, setup.calibration(),
+                                    ElliottResearchCalibration.Identity.of(id, setup.primary().name(),
+                                            setup.activeRules(), setup.outcomes(), setup.calibration()),
+                                    new ElliottResearchCalibration.Provenance(setup.fingerprint(), revision),
+                                    event -> ElliottResearchCalibration.enrollmentEvidence(event, rules, series)));
+                }
                 recorders.remove(id);
                 rows.addAll(ElliottResearchReport.comparisons(id, report));
                 entry.report = relative(reportFile);
@@ -1159,6 +1201,7 @@ final class ElliottResearch {
             rows.removeIf(row -> row.dataset().equals(id));
             recorders.remove(id);
             outcomes.remove(id);
+            calibrations.remove(id);
             entry.traces.clear();
             entry.report = null;
             entry.bars = 0;
@@ -1187,6 +1230,17 @@ final class ElliottResearch {
                     setup.outcomes(), results);
             ElliottResearchOutcomes.writeOutcomes(dir.resolve(ElliottResearchOutcomes.OUTCOMES_FILE), results);
             ElliottResearchOutcomes.writeSummary(dir.resolve(ElliottResearchOutcomes.SUMMARY_FILE), results);
+            if (setup.calibration() != null) {
+                final List<ElliottResearchCalibration.Computation> computations = List.copyOf(calibrations.values());
+                ElliottResearchCalibration.writeTables(dir.resolve(ElliottResearchCalibration.TABLES_FILE),
+                        computations);
+                ElliottResearchCalibration.writePredictions(dir.resolve(ElliottResearchCalibration.PREDICTIONS_FILE),
+                        computations);
+                ElliottResearchCalibration.writeSummary(dir.resolve(ElliottResearchCalibration.SUMMARY_FILE),
+                        computations);
+                ElliottResearchCalibration.writeReliability(dir.resolve(ElliottResearchCalibration.RELIABILITY_FILE),
+                        computations);
+            }
             Files.writeString(dir.resolve(SUMMARY_FILE), renderSummary(dir, json, rows), StandardCharsets.UTF_8);
         }
 
@@ -1257,6 +1311,15 @@ final class ElliottResearch {
             outcomeFiles.addProperty("outcomes", ElliottResearchOutcomes.OUTCOMES_FILE);
             outcomeFiles.addProperty("summary", ElliottResearchOutcomes.SUMMARY_FILE);
             json.add("outcomes", outcomeFiles);
+            if (setup.calibration() != null) {
+                final JsonObject calibrationFiles = new JsonObject();
+                calibrationFiles.addProperty("schema", ElliottResearchCalibration.SCHEMA);
+                calibrationFiles.addProperty("tables", ElliottResearchCalibration.TABLES_FILE);
+                calibrationFiles.addProperty("predictions", ElliottResearchCalibration.PREDICTIONS_FILE);
+                calibrationFiles.addProperty("summary", ElliottResearchCalibration.SUMMARY_FILE);
+                calibrationFiles.addProperty("reliability", ElliottResearchCalibration.RELIABILITY_FILE);
+                json.add("calibration", calibrationFiles);
+            }
             return json;
         }
     }
@@ -1429,6 +1492,18 @@ final class ElliottResearch {
                     .append(ElliottResearchOutcomes.OUTCOMES_FILE)
                     .append("`.\n");
         }
+        if (run.has("calibration")) {
+            final Path calibrationSummary = dir.resolve(ElliottResearchCalibration.SUMMARY_FILE);
+            final Path calibrationReliability = dir.resolve(ElliottResearchCalibration.RELIABILITY_FILE);
+            for (final Path file : List.of(calibrationSummary, calibrationReliability)) {
+                if (!Files.isRegularFile(file)) {
+                    throw new Diagnostic(file.getFileName() + " is declared by " + RUN_FILE + " but missing in " + dir
+                            + "; the run is incomplete, rerun the recipe");
+                }
+            }
+            markdown.append('\n')
+                    .append(ElliottResearchCalibration.summaryMarkdown(calibrationSummary, calibrationReliability));
+        }
         markdown.append("\nInspect any key with `inspect ").append(displayPath(dir)).append(" <key>`.\n");
         return markdown.toString();
     }
@@ -1584,15 +1659,19 @@ final class ElliottResearch {
         String candidate = null;
         Integer asOf = null;
         int limit = DEFAULT_LIMIT;
+        String rank = ElliottResearchCalibration.RANK_ENROLLMENT;
+        boolean retrospective = false;
         for (int index = 0; index < args.size(); index++) {
             final String argument = args.get(index);
-            if (Set.of("--as-of", "--candidate", "--limit").contains(argument)) {
+            if (Set.of("--as-of", "--candidate", "--limit", "--rank").contains(argument)) {
                 if (index + 1 >= args.size()) {
                     throw new IllegalArgumentException("option " + argument + " requires a value");
                 }
                 final String value = args.get(++index);
                 if ("--candidate".equals(argument)) {
                     candidate = value;
+                } else if ("--rank".equals(argument)) {
+                    rank = value;
                 } else {
                     final int number;
                     try {
@@ -1609,6 +1688,8 @@ final class ElliottResearch {
                         limit = number;
                     }
                 }
+            } else if ("--retrospective".equals(argument)) {
+                retrospective = true;
             } else if (argument.startsWith("--")) {
                 throw new IllegalArgumentException("unknown option " + argument);
             } else if (dir == null) {
@@ -1644,7 +1725,7 @@ final class ElliottResearch {
         if (row == null) {
             throw new IllegalArgumentException(unknownKeyMessage(key, rows));
         }
-        new Inspection(dir, run, dataset, row, limit).print(out, asOf, candidate);
+        new Inspection(dir, run, dataset, row, limit, rank, retrospective).print(out, asOf, candidate);
         return 0;
     }
 
@@ -1693,13 +1774,18 @@ final class ElliottResearch {
         private final JsonObject dataset;
         private final Row row;
         private final int limit;
+        private final String rank;
+        private final boolean retrospective;
 
-        Inspection(final Path dir, final JsonObject run, final JsonObject dataset, final Row row, final int limit) {
+        Inspection(final Path dir, final JsonObject run, final JsonObject dataset, final Row row, final int limit,
+                final String rank, final boolean retrospective) {
             this.dir = dir;
             this.run = run;
             this.dataset = dataset;
             this.row = row;
             this.limit = limit;
+            this.rank = rank;
+            this.retrospective = retrospective;
         }
 
         /**
@@ -1708,6 +1794,19 @@ final class ElliottResearch {
          */
         private record View(String label, String relative, ElliottResearchTrace.TraceFile file,
                 List<JsonObject> scope) {
+        }
+
+        private void printCalibration(final PrintStream out, final Integer asOf, final String candidate) {
+            final Path predictions = dir.resolve(ElliottResearchCalibration.PREDICTIONS_FILE);
+            final Path reliability = dir.resolve(ElliottResearchCalibration.RELIABILITY_FILE);
+            for (final Path file : List.of(predictions, reliability)) {
+                if (!Files.isRegularFile(file)) {
+                    throw new Diagnostic(file.getFileName() + " is declared by " + RUN_FILE + " but missing in " + dir
+                            + "; the run is incomplete, rerun the recipe");
+                }
+            }
+            ElliottResearchCalibration.inspect(out, predictions, reliability, row.dataset(), row.partition(), candidate,
+                    asOf, limit, rank, retrospective);
         }
 
         void print(final PrintStream out, final Integer asOf, final String candidate) throws IOException {
@@ -1722,7 +1821,7 @@ final class ElliottResearch {
                     expectedTraceHeader(run, dataset, ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER,
                             row.nullBlockLength(), member == null || member.isJsonNull() ? -1 : member.getAsInt()),
                     this::inNullScope, this::inNullScope, recaptureNull()) : null;
-            if (real == null && nullView == null) {
+            if (real == null && nullView == null && !run.has("calibration")) {
                 throw new Diagnostic(
                         "no trace was captured for key " + row.key() + " in " + dir + ". Recapture with:\n  "
                                 + ElliottResearch.recapture(dir, run, ElliottResearchTrace.MODE_REAL, null, null)
@@ -1756,11 +1855,14 @@ final class ElliottResearch {
                         + ". Capture with:\n  " + recaptureNull());
             }
             final View focus = real != null ? real : nullView;
-            if (asOf != null) {
+            if (focus != null && asOf != null) {
                 printAsOf(out, focus, asOf);
             }
-            if (candidate != null) {
+            if (focus != null && candidate != null) {
                 printCandidate(out, focus, candidate);
+            }
+            if (run.has("calibration")) {
+                printCalibration(out, asOf, candidate);
             }
         }
 

@@ -207,6 +207,36 @@ recipe may add an optional `"outcomes"` object
 `invalidation` is `origin-pivot` or `origin-price`); the choices are recorded in
 `run.json` and fixed before labels are read.
 
+An `explore` recipe may also add an optional `"calibration"` object
+(`{"horizon":20,"fit":"calibration","validation":"validation","evaluation":"holdout","minGroups":3}`;
+only `horizon` is required and it must be one of `outcomes.horizons`). Without it
+a run is unchanged, every artifact above is identical apart from the fingerprint
+that hashes the recipe. With it the run adds `calibration-tables.json`,
+`calibration-predictions.csv`, `calibration-summary.csv`,
+`calibration-reliability.csv` and a "Calibration" section in `summary.md`. The
+target is the structural label "the correction completes before invalidation
+within `horizon` bars"; the only feature is the heuristic rule score
+`pass/(pass+fail)` frozen at enrollment (pending, unavailable and not-applicable
+rules are coverage states, not failures), kept as a separate field from the
+estimated probability. The estimator is a five-bin smoothed weighted frequency
+`(S + 1) / (W + 2)` per available-rule mask; each eligible alternative of one
+decision bar weighs `1 / m`, and a bin with fewer than `minGroups` distinct
+decision groups or without both a success and a failure abstains with the exact
+reason and raw support instead of emitting a probability. Fitting is
+chronological: the `validation` table is fitted on the `fit` partition and the
+`evaluation` table on `fit` plus `validation`, and both use only labels whose
+whole window had ended by the cutoff, so a score never uses a table fitted after
+its decision bar. Summaries report coverage, Brier and log-loss against the
+unconditional base rate (reported as differences, never as significance), and
+reliability bins for the group-weighted and non-overlapping-cohort views.
+Estimates are marginal per alternative and are not normalised across
+simultaneous alternatives. `inspect` shows each alternative's decision-time
+estimate and fit support by default, hides realised outcomes unless
+`--retrospective` is given, and ranks by enrollment order unless
+`--rank probability` asks for the estimate. This is calibration of a heuristic
+score, not a forecast: poor calibration or worse-than-baseline loss are
+reported results, and nothing here claims predictive efficacy.
+
 ## Companion user guides
 
 - Backtesting: https://ta4j.github.io/ta4j-wiki/Backtesting.html

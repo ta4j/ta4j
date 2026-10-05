@@ -813,23 +813,42 @@ final class ElliottResearchOutcomes {
      * Deterministic non-overlapping sensitivity cohort: prospective events in
      * decision order with the candidate key breaking same-time ties; an event is
      * skipped while the previously kept event's horizon is still running.
+     *
+     * @param labels  one stream's labels at {@code horizon}
+     * @param horizon horizon in bars
+     * @return kept labels in decision order
      */
-    static void cohort(final List<Label> labels, final int horizon, final Tally tally) {
+    static List<Label> cohortLabels(final List<Label> labels, final int horizon) {
         final List<Label> prospective = labels.stream()
                 .filter(label -> label.structural() != Structural.ALREADY_RESOLVED)
                 .sorted(Comparator.comparingInt((Label label) -> label.event().enrollIndex)
                         .thenComparing(label -> label.event().candidateKey))
                 .toList();
+        final List<Label> kept = new ArrayList<>();
         long nextFree = Long.MIN_VALUE;
         for (final Label label : prospective) {
             if (label.event().enrollIndex >= nextFree) {
-                tally.cohortKept++;
-                tally.structural(label.structural(), true);
+                kept.add(label);
                 nextFree = (long) label.event().enrollIndex + horizon;
-            } else {
-                tally.cohortDiscarded++;
             }
         }
+        return kept;
+    }
+
+    /**
+     * Tallies the {@link #cohortLabels sensitivity cohort} of one stream and
+     * horizon.
+     */
+    static void cohort(final List<Label> labels, final int horizon, final Tally tally) {
+        final long prospective = labels.stream()
+                .filter(label -> label.structural() != Structural.ALREADY_RESOLVED)
+                .count();
+        final List<Label> kept = cohortLabels(labels, horizon);
+        for (final Label label : kept) {
+            tally.cohortKept++;
+            tally.structural(label.structural(), true);
+        }
+        tally.cohortDiscarded += prospective - kept.size();
     }
 
     /**
