@@ -348,4 +348,19 @@ public final class NormalInverseGammaForecastMethod implements MonteCarloMethod 
         }
     }
 
+    /**
+     * Describes the prior configuration.
+     *
+     * @return the empirical-prior marker or the explicit hyper-parameters
+     * @since 0.25.1
+     */
+    @Override
+    public String toString() {
+        if (empiricalPriors) {
+            return "NormalInverseGammaForecastMethod[empiricalPriors]";
+        }
+        return "NormalInverseGammaForecastMethod[priorMean=" + priorMean + ", priorStrength=" + priorStrength
+                + ", priorShape=" + priorShape + ", priorScale=" + priorScale + "]";
+    }
+
 }
