@@ -3962,4 +3962,85 @@ class BaseTradingRecordTest {
         assertNumEquals(1, record.getRecordedTotalFees());
         assertNumEquals(1, serializedCopy(record).getTotalFees());
     }
+
+    @Test
+    void partialFuturesImportPreservesSameIndexExecutionOrderDouble() throws Exception {
+        assertSameIndexPartialImport(DoubleNumFactory.getInstance());
+    }
+
+    @Test
+    void partialFuturesImportPreservesSameIndexExecutionOrderDecimal() throws Exception {
+        assertSameIndexPartialImport(DecimalNumFactory.getInstance());
+    }
+
+    private static void assertSameIndexPartialImport(NumFactory factory) throws Exception {
+        FuturesContract contract = linearBtcPerpetual(factory).toBuilder().contractSize(factory.one()).build();
+        for (boolean distinctTimes : List.of(true, false)) {
+            TradeFill first = fillAtTime(contract, 0, T0, ExecutionSide.BUY, 1, 100, List.of());
+            TradeFill reentry = fillAtTime(contract, 0, distinctTimes ? T0.plusSeconds(2) : T0, ExecutionSide.BUY, 1,
+                    120, List.of());
+            Trade entry = Trade.fromFills(TradeType.BUY, List.of(first, reentry), RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFill(fillAtTime(contract, 0, distinctTimes ? T0.plusSeconds(1) : T0,
+                    ExecutionSide.SELL, 1, 110, List.of()), RecordedTradeCostModel.INSTANCE);
+            Position original = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            double expectedRealized = distinctTimes ? 10 : 0;
+            double expectedBasis = distinctTimes ? 120 : 110;
+            assertNumEquals(expectedRealized, original.getRealizedProfit(0));
+            assertNumEquals(distinctTimes ? 10 : 20, original.getUnrealizedProfit(factory.numOf(130), 0));
+            for (BaseTradingRecord imported : List.of(new BaseTradingRecord(original),
+                    new BaseTradingRecord(List.of(original)))) {
+                for (BaseTradingRecord snapshot : List.of(imported, serializedCopy(imported))) {
+                    assertEquals(1, snapshot.getPositions().size());
+                    assertEquals(1, snapshot.getOpenPositions().size());
+                    Position closed = snapshot.getPositions().getFirst();
+                    Position residual = snapshot.getOpenPositions().getFirst();
+                    assertNumEquals(expectedRealized, closed.getRealizedProfit(0));
+                    assertNumEquals(expectedBasis, residual.averageEntryPrice());
+                    assertNumEquals(1, residual.amount());
+                    assertNumEquals(distinctTimes ? 10 : 20, residual.getUnrealizedProfit(factory.numOf(130), 0));
+                    assertNumEquals(original.getProfit(0, factory.numOf(120)),
+                            closed.getProfit(0, factory.numOf(120)).plus(residual.getProfit(0, factory.numOf(120))));
+                }
+            }
+        }
+    }
+
+    @Test
+    void sameIndexFifoImportsUseExecutedEntryTimeDouble() throws Exception {
+        assertSameIndexFifoImport(DoubleNumFactory.getInstance());
+    }
+
+    @Test
+    void sameIndexFifoImportsUseExecutedEntryTimeDecimal() throws Exception {
+        assertSameIndexFifoImport(DecimalNumFactory.getInstance());
+    }
+
+    private static void assertSameIndexFifoImport(NumFactory factory) throws Exception {
+        FuturesContract contract = linearBtcPerpetual(factory).toBuilder().contractSize(factory.one()).build();
+        TradeFill earlyFill = fillAtTime(contract, 0, T0, ExecutionSide.BUY, 1, 100, List.of());
+        TradeFill lateFill = fillAtTime(contract, 0, T0.plusSeconds(1), ExecutionSide.BUY, 1, 120, List.of());
+        for (boolean missingTradeMetadataTime : List.of(false, true)) {
+            Trade earlyEntry = missingTradeMetadataTime
+                    ? futuresTradeViewWithFills(contract, TradeType.BUY, List.of(earlyFill))
+                    : Trade.fromFill(earlyFill, RecordedTradeCostModel.INSTANCE);
+            Trade lateEntry = missingTradeMetadataTime
+                    ? futuresTradeViewWithFills(contract, TradeType.BUY, List.of(lateFill))
+                    : Trade.fromFill(lateFill, RecordedTradeCostModel.INSTANCE);
+            Position early = new Position(earlyEntry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            Position late = new Position(lateEntry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            for (List<Position> positions : List.of(List.of(late, early), List.of(early, late))) {
+                BaseTradingRecord imported = new BaseTradingRecord(positions);
+                for (BaseTradingRecord snapshot : List.of(imported, serializedCopy(imported))) {
+                    snapshot.operate(fillAtTime(contract, 0, T0.plusSeconds(2), ExecutionSide.SELL, 1, 130, List.of()));
+                    Position closed = snapshot.getPositions().getFirst();
+                    Position residual = snapshot.getOpenPositions().getFirst();
+                    assertNumEquals(30, closed.getRealizedProfit(0));
+                    assertNumEquals(100, closed.averageEntryPrice());
+                    assertNumEquals(120, residual.averageEntryPrice());
+                    assertNumEquals(10, residual.getUnrealizedProfit(factory.numOf(130), 0));
+                    assertNumEquals(1, residual.amount());
+                }
+            }
+        }
+    }
 }
