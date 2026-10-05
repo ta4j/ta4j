@@ -891,7 +891,7 @@ final class StudyRunner {
         return List.copyOf(reports);
     }
 
-    private static int partitionIndex(final BarSeries series, final int index, final Partitions partitions) {
+    static int partitionIndex(final BarSeries series, final int index, final Partitions partitions) {
         final LocalDate date = barDate(series, index);
         for (int partitionIndex = 0; partitionIndex < partitions.entries().size(); partitionIndex++) {
             if (partitions.entries().get(partitionIndex).contains(date)) {
@@ -901,7 +901,7 @@ final class StudyRunner {
         return -1;
     }
 
-    private static LocalDate barDate(final BarSeries series, final int index) {
+    static LocalDate barDate(final BarSeries series, final int index) {
         return series.getBar(index).getBeginTime().atZone(ZoneOffset.UTC).toLocalDate();
     }
 

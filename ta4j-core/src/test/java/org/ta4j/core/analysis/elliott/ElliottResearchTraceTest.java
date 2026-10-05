@@ -184,6 +184,10 @@ class ElliottResearchTraceTest {
         // order.
         assertEquals(forward.get(0), reverse.get(1));
         assertEquals(forward.get(2), reverse.get(0));
+        // The shared helper relation records reuse names exactly the version the
+        // trace writes.
+        assertEquals(forward.get(0), ElliottResearchTrace.candidateVersion(first, passing));
+        assertEquals(forward.get(2), ElliottResearchTrace.candidateVersion(first, failing));
     }
 
     private List<String> versions(final String name, final TopologyCandidate candidate,
