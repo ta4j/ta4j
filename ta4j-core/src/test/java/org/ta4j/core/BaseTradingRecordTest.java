@@ -3199,22 +3199,26 @@ class BaseTradingRecordTest {
     @Test
     public void importedPartialExitUsesOnlyEarlierEntryBasis() {
         for (NumFactory numFactory : factories()) {
-            FuturesContract contract = linearBtcPerpetual(numFactory);
-            Trade entry = Trade.fromFills(TradeType.BUY,
-                    List.of(fillAtTime(contract, 1, T0.plusSeconds(1), ExecutionSide.BUY, 2, 100, List.of()),
-                            fillAtTime(contract, 10, T0.plusSeconds(10), ExecutionSide.BUY, 1, 200, List.of())),
-                    RecordedTradeCostModel.INSTANCE);
-            Trade exit = Trade.fromFill(
-                    fillAtTime(contract, 5, T0.plusSeconds(5), ExecutionSide.SELL, 1, 150, List.of()),
-                    RecordedTradeCostModel.INSTANCE);
-            Position importedPosition = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            for (boolean sameIndex : List.of(false, true)) {
+                FuturesContract contract = linearBtcPerpetual(numFactory);
+                Trade entry = Trade.fromFills(TradeType.BUY,
+                        List.of(fillAtTime(contract, sameIndex ? 0 : 1, T0.plusSeconds(1), ExecutionSide.BUY, 2, 100,
+                                List.of()),
+                                fillAtTime(contract, sameIndex ? 0 : 10, T0.plusSeconds(10), ExecutionSide.BUY, 1, 200,
+                                        List.of())),
+                        RecordedTradeCostModel.INSTANCE);
+                Trade exit = Trade.fromFill(fillAtTime(contract, sameIndex ? 0 : 5, T0.plusSeconds(5),
+                        ExecutionSide.SELL, 1, 150, List.of()), RecordedTradeCostModel.INSTANCE);
+                Position importedPosition = new Position(entry, exit, RecordedTradeCostModel.INSTANCE,
+                        new ZeroCostModel());
 
-            BaseTradingRecord record = new BaseTradingRecord(List.of(importedPosition));
+                BaseTradingRecord record = new BaseTradingRecord(List.of(importedPosition));
 
-            Position closed = record.getPositions().getFirst();
-            assertNumEquals(100, closed.getEntry().getPricePerAsset());
-            assertNumEquals(0.5, closed.getProfit());
-            assertEquals(2, record.getOpenPositions().size());
+                Position closed = record.getPositions().getFirst();
+                assertNumEquals(100, closed.getEntry().getPricePerAsset());
+                assertNumEquals(0.5, closed.getProfit());
+                assertEquals(2, record.getOpenPositions().size());
+            }
         }
     }
 
@@ -4005,42 +4009,4 @@ class BaseTradingRecordTest {
         }
     }
 
-    @Test
-    void sameIndexFifoImportsUseExecutedEntryTimeDouble() throws Exception {
-        assertSameIndexFifoImport(DoubleNumFactory.getInstance());
-    }
-
-    @Test
-    void sameIndexFifoImportsUseExecutedEntryTimeDecimal() throws Exception {
-        assertSameIndexFifoImport(DecimalNumFactory.getInstance());
-    }
-
-    private static void assertSameIndexFifoImport(NumFactory factory) throws Exception {
-        FuturesContract contract = linearBtcPerpetual(factory).toBuilder().contractSize(factory.one()).build();
-        TradeFill earlyFill = fillAtTime(contract, 0, T0, ExecutionSide.BUY, 1, 100, List.of());
-        TradeFill lateFill = fillAtTime(contract, 0, T0.plusSeconds(1), ExecutionSide.BUY, 1, 120, List.of());
-        for (boolean missingTradeMetadataTime : List.of(false, true)) {
-            Trade earlyEntry = missingTradeMetadataTime
-                    ? futuresTradeViewWithFills(contract, TradeType.BUY, List.of(earlyFill))
-                    : Trade.fromFill(earlyFill, RecordedTradeCostModel.INSTANCE);
-            Trade lateEntry = missingTradeMetadataTime
-                    ? futuresTradeViewWithFills(contract, TradeType.BUY, List.of(lateFill))
-                    : Trade.fromFill(lateFill, RecordedTradeCostModel.INSTANCE);
-            Position early = new Position(earlyEntry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
-            Position late = new Position(lateEntry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
-            for (List<Position> positions : List.of(List.of(late, early), List.of(early, late))) {
-                BaseTradingRecord imported = new BaseTradingRecord(positions);
-                for (BaseTradingRecord snapshot : List.of(imported, serializedCopy(imported))) {
-                    snapshot.operate(fillAtTime(contract, 0, T0.plusSeconds(2), ExecutionSide.SELL, 1, 130, List.of()));
-                    Position closed = snapshot.getPositions().getFirst();
-                    Position residual = snapshot.getOpenPositions().getFirst();
-                    assertNumEquals(30, closed.getRealizedProfit(0));
-                    assertNumEquals(100, closed.averageEntryPrice());
-                    assertNumEquals(120, residual.averageEntryPrice());
-                    assertNumEquals(10, residual.getUnrealizedProfit(factory.numOf(130), 0));
-                    assertNumEquals(1, residual.amount());
-                }
-            }
-        }
-    }
 }

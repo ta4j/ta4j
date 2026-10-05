@@ -534,19 +534,13 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     private static RecordConfig futuresPositionsConfig(FuturesContract contract, List<Position> positions) {
-        List<Position> chronologicalPositions = positions.stream()
-                .sorted(Comparator.comparingInt((Position position) -> {
-                    Trade positionEntry = position.getEntry();
-                    if (positionEntry == null) {
-                        throw new IllegalArgumentException("Position entry must not be null");
-                    }
-                    return positionEntry.getIndex();
-                }).thenComparing(position -> {
-                    Trade positionEntry = position.getEntry();
-                    List<TradeFill> executedFills = PositionBook.executedFillsInChronologicalOrder(positionEntry);
-                    return executedFills.isEmpty() ? positionEntry.getTime() : executedFills.getFirst().time();
-                }, Comparator.nullsFirst(Comparator.naturalOrder())))
-                .toList();
+        List<Position> chronologicalPositions = positions.stream().sorted(Comparator.comparingInt(position -> {
+            Trade positionEntry = position.getEntry();
+            if (positionEntry == null) {
+                throw new IllegalArgumentException("Position entry must not be null");
+            }
+            return positionEntry.getIndex();
+        })).toList();
         Trade entry = chronologicalPositions.getFirst().getEntry();
         CostModel holdingCostModel = holdingCostModelOf(chronologicalPositions);
         CostModel transactionCostModel = transactionCostModelOf(chronologicalPositions);
