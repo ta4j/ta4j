@@ -1,5 +1,5 @@
 ## Unreleased
-- **Futures capability recovery (#1636)**: decimal Cpk recovery excludes deferred entry and exit fills from the executed price bases, including inverse contracts whose fills use harmonic pricing.
+- **Futures capability recovery (#1636)**: decimal Cpk recovery retains neutral returns for positions with no executed exposure, excludes deferred entry and exit fills from the executed price bases, and preserves inverse harmonic pricing.
 - **Native futures run-end exits (#1636)**: close remaining exposure with timestamped, contract-aware fills and the selected fee model, including custom-record walk-forward folds and capped exit orders.
 - **Same-index futures imports (#1636)**: replay partial exits and reentries in execution-time order, preserving realized profit and residual entry basis without applying later entries to earlier exits.
 - **Legacy futures fill fees (#1636)**: custom futures trades exposing legacy scalar fills retain their recorded execution fees in native P&L and fee criteria. Explicitly recorded component lists, including empty lists, remain authoritative.

@@ -431,6 +431,17 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             if (!position.isClosed()) {
                 continue;
             }
+            if (position.getFuturesContract() != null && (Trade.executionFillsOf(position.getEntry())
+                    .stream()
+                    .noneMatch(fill -> fill.index() >= 0)
+                    || Trade.executionFillsOf(position.getExit()).stream().noneMatch(fill -> fill.index() >= 0))) {
+                // No executed entry has zero notional and returns one. Without an
+                // executed exit, native closed-position payoff is also zero. Match
+                // that neutral return before reading deferred price metadata, in
+                // the same centered domain as every other recovered return.
+                returns.add(BigDecimal.ONE.subtract(returnCenter));
+                continue;
+            }
             Num entryPrice = position.getEntry().getPricePerAsset(series);
             Num exitPrice = position.getExit().getPricePerAsset(series);
             if (!Num.isFinite(entryPrice) || !Num.isFinite(exitPrice) || entryPrice.isZero()

@@ -902,6 +902,109 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
         assertTrue(criterion.calculate(series, record, AnalysisWindow.barRange(0, 5)).isLessThan(numFactory.zero()));
     }
 
+    @Test
+    public void decimalRecoveryPreservesTheNativeExecutionPartition() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 100, 120).build();
+        for (FuturesContract template : List.of(linearBtcPerpetual(), inverseBtcPerpetual())) {
+            boolean inverse = template.settlementType() == FuturesContract.SettlementType.INVERSE;
+            for (TradeType type : TradeType.values()) {
+                boolean risingRatio = inverse ? type == TradeType.SELL : type == TradeType.BUY;
+                double firstEntryPrice = inverse ? (risingRatio ? 110 : 90) : 100;
+                double firstExitPrice = inverse ? 100 : (risingRatio ? 110 : 90);
+                double anchorEntryPrice = inverse ? (risingRatio ? 120 : 80) : 100;
+                double anchorExitPrice = inverse ? 100 : (risingRatio ? 120 : 80);
+                for (double size : new double[] { 1, Double.MIN_VALUE }) {
+                    FuturesContract contract = template.toBuilder().contractSize(numFactory.numOf(size)).build();
+                    Position anchor = new Position(executionPartitionTrade(contract, type, 2, 2, anchorEntryPrice),
+                            executionPartitionTrade(contract, type.complementType(), 2, 3, anchorExitPrice),
+                            RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+                    // 0 = no executed fills, 1 = executed and deferred, 2 = all executed.
+                    for (int entryPartition = 0; entryPartition < 3; entryPartition++) {
+                        for (int exitPartition = 0; exitPartition < 3; exitPartition++) {
+                            Trade entry = executionPartitionTrade(contract, type, entryPartition, 0, firstEntryPrice);
+                            Trade exit = executionPartitionTrade(contract, type.complementType(), exitPartition, 1,
+                                    exitPartition == 0 ? 300 : firstExitPrice);
+                            if (entryPartition == 0 && exitPartition != 0) {
+                                assertThrows(IllegalArgumentException.class, () -> new Position(entry, exit,
+                                        RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+                                continue;
+                            }
+                            Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE,
+                                    new ZeroCostModel());
+                            BaseTradingRecord record = new BaseTradingRecord(List.of(position, anchor));
+                            AnalysisCriterion criterion = getCriterion(0.7, 1.3);
+                            if (entryPartition != 0 && exitPartition == 0) {
+                                assertEquals(1, record.getPositionCount());
+                                assertEquals(1, record.getOpenPositions().size());
+                                assertNumEquals(numFactory.zero(), criterion.calculate(series, record));
+                                assertNumEquals(numFactory.zero(),
+                                        criterion.calculate(series, record, AnalysisWindow.barRange(0, 3)));
+                                continue;
+                            }
+                            assertEquals(2, record.getPositionCount());
+                            assertTrue(record.getOpenPositions().isEmpty());
+                            if (entryPartition == 0) {
+                                assertNumEquals(numFactory.one(), position.getGrossReturn());
+                            }
+                            // Neutral1 with anchor1.2 gives2/3; executed1.1 with
+                            // anchor1.2 gives1. Window projection excludes the neutral
+                            // deferred-only position, leaving zero variance.
+                            double expectedWhole = entryPartition == 0 ? 2d / 3 : 1;
+                            double expectedWindow = entryPartition == 0 ? 0 : 1;
+                            assertNumEquals(numFactory.numOf(expectedWhole), criterion.calculate(series, record),
+                                    1e-12);
+                            assertNumEquals(numFactory.numOf(expectedWindow),
+                                    criterion.calculate(series, record, AnalysisWindow.barRange(0, 3)), 1e-12);
+                            assertNumEquals(numFactory.zero(),
+                                    criterion.calculate(series, record, AnalysisWindow.barRange(0, 1)));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void decimalRecoveryCentersDeferredNativeReturnsWithOppositeSides() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120).build();
+        for (FuturesContract template : List.of(linearBtcPerpetual(), inverseBtcPerpetual())) {
+            boolean inverse = template.settlementType() == FuturesContract.SettlementType.INVERSE;
+            for (TradeType deferredType : TradeType.values()) {
+                TradeType executedType = deferredType.complementType();
+                boolean risingRatio = inverse ? executedType == TradeType.SELL : executedType == TradeType.BUY;
+                double entryPrice = inverse ? (risingRatio ? 120 : 80) : 100;
+                double exitPrice = inverse ? 100 : (risingRatio ? 120 : 80);
+                for (double size : new double[] { 1, Double.MIN_VALUE }) {
+                    FuturesContract contract = template.toBuilder().contractSize(numFactory.numOf(size)).build();
+                    Position deferred = new Position(executionPartitionTrade(contract, deferredType, 0, 0, 100),
+                            executionPartitionTrade(contract, deferredType.complementType(), 0, 1, 300),
+                            RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+                    Position executed = new Position(executionPartitionTrade(contract, executedType, 2, 0, entryPrice),
+                            executionPartitionTrade(contract, executedType.complementType(), 2, 1, exitPrice),
+                            RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+                    BaseTradingRecord record = new BaseTradingRecord(List.of(deferred, executed));
+
+                    assertEquals(2, record.getPositionCount());
+                    assertNumEquals(numFactory.numOf(2d / 3), getCriterion(0.7, 1.3).calculate(series, record), 1e-12);
+                    assertNumEquals(numFactory.zero(),
+                            getCriterion(0.7, 1.3).calculate(series, record, AnalysisWindow.barRange(0, 1)));
+                }
+            }
+        }
+    }
+
+    private Trade executionPartitionTrade(FuturesContract contract, TradeType type, int partition, int index,
+            double price) {
+        ExecutionSide side = type == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+        TradeFill fill = futuresFill(contract, index, side, price, 0.5);
+        List<TradeFill> fills = new ArrayList<>();
+        fills.add(partition == 0 ? fill.toBuilder().index(-1).build() : fill);
+        if (partition == 1) {
+            fills.add(fill.toBuilder().index(-1).price(numFactory.numOf(300)).build());
+        }
+        return Trade.fromFills(type, fills, RecordedTradeCostModel.INSTANCE);
+    }
+
     private Position withDeferredExit(Position position, List<TradeFill> executedExits) {
         TradeType exitType = position.getExit().getType();
         ExecutionSide exitSide = exitType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
