@@ -1056,7 +1056,7 @@ final class ElliottResearch {
             int count = 0;
             final List<StudyRunner.Partition> partitions = setup.partitions().entries();
             final boolean[] populated = new boolean[partitions.size()];
-            Instant previous = null;
+            final Instant[] previous = new Instant[partitions.size()];
             int internalGaps = 0;
             Instant widestFrom = null;
             Instant widestTo = null;
@@ -1069,22 +1069,26 @@ final class ElliottResearch {
                 first = first == null || date.isBefore(first) ? date : first;
                 last = last == null || date.isAfter(last) ? date : last;
                 count++;
+                final Duration tolerance = bar.getTimePeriod().multipliedBy(INTERNAL_GAP_BAR_PERIODS);
                 for (int partition = 0; partition < partitions.size(); partition++) {
                     final StudyRunner.Partition window = partitions.get(partition);
-                    populated[partition] |= !date.isBefore(window.start()) && !date.isAfter(window.end());
-                }
-                // Missing bars inside a populated partition shift every as-of
-                // window yet leave the extremes and partition bits intact.
-                final Duration tolerance = bar.getTimePeriod().multipliedBy(INTERNAL_GAP_BAR_PERIODS);
-                if (previous != null && Duration.between(previous, bar.getBeginTime()).compareTo(tolerance) > 0) {
-                    internalGaps++;
-                    if (widestFrom == null || Duration.between(previous, bar.getBeginTime())
-                            .compareTo(Duration.between(widestFrom, widestTo)) > 0) {
-                        widestFrom = previous;
-                        widestTo = bar.getBeginTime();
+                    if (!window.contains(date)) {
+                        continue;
                     }
+                    populated[partition] = true;
+                    // Only missing bars within this partition affect its as-of windows;
+                    // intervals between configured partitions are intentionally unrequested.
+                    final Instant prior = previous[partition];
+                    if (prior != null && Duration.between(prior, bar.getBeginTime()).compareTo(tolerance) > 0) {
+                        internalGaps++;
+                        if (widestFrom == null || Duration.between(prior, bar.getBeginTime())
+                                .compareTo(Duration.between(widestFrom, widestTo)) > 0) {
+                            widestFrom = prior;
+                            widestTo = bar.getBeginTime();
+                        }
+                    }
+                    previous[partition] = bar.getBeginTime();
                 }
-                previous = bar.getBeginTime();
             }
             entry.effectiveFrom = first;
             entry.effectiveTo = last;

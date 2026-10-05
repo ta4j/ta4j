@@ -634,6 +634,47 @@ class ElliottResearchTest {
     }
 
     @Test
+    void exploreCoverageIgnoresIntervalsBetweenNoncontiguousPartitions() throws Exception {
+        final Path recipe = work.resolve("noncontiguous-recipe.json");
+        Files.writeString(recipe, noncontiguousRecipe());
+        final Path candles = work.resolve("noncontiguous-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 152, date -> date.getMonthValue() % 2 == 1);
+        final Path out = work.resolve("explore-noncontiguous");
+        final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(),
+                "--out", out.toString());
+        assertEquals(0, result.code(), result.err());
+        final JsonObject coverage = exploreCoverage(out);
+        assertEquals("complete", coverage.get("status").getAsString(), coverage.toString());
+        assertEquals("", coverage.get("message").getAsString());
+    }
+
+    @Test
+    void exploreCoverageStillFlagsInternalGapsInNoncontiguousPartitions() throws Exception {
+        final Path recipe = work.resolve("noncontiguous-gappy-recipe.json");
+        Files.writeString(recipe, noncontiguousRecipe());
+        final Path candles = work.resolve("noncontiguous-gappy-candles.json");
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 152,
+                date -> date.getMonthValue() % 2 == 1
+                        && (date.isBefore(LocalDate.of(2020, 3, 10)) || date.isAfter(LocalDate.of(2020, 3, 18))));
+        final Path out = work.resolve("explore-noncontiguous-gappy");
+        final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(),
+                "--out", out.toString());
+        assertEquals(0, result.code(), result.err());
+        final JsonObject coverage = exploreCoverage(out);
+        assertEquals("partial", coverage.get("status").getAsString(), coverage.toString());
+        assertEquals("1 internal gap(s) longer than 7 bar periods, widest 2020-03-09T00:00:00Z..2020-03-19T00:00:00Z",
+                coverage.get("message").getAsString());
+    }
+
+    private static String noncontiguousRecipe() {
+        return toyRecipe("noncontiguous").replace("2020-06-30", "2020-01-31")
+                .replace("2020-07-01", "2020-03-01")
+                .replace("2020-09-30", "2020-03-31")
+                .replace("2020-10-01", "2020-05-01")
+                .replace("2020-12-31", "2020-05-31");
+    }
+
+    @Test
     void exploreCoverageFlagsMissingBarsInsideAPopulatedPartition() throws Exception {
         // Regression: coverage only asked whether each partition held any bar, so
         // weeks missing inside a partition were reported complete.
