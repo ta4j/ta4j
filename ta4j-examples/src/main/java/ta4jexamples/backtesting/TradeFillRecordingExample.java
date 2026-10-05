@@ -245,10 +245,11 @@ public class TradeFillRecordingExample {
         requireValue(0.15, exitFee, "exit fee charged by the configured model", contract.settlementCurrency());
         requireValue(0.3, executedFees, "executed settlement fees", contract.settlementCurrency());
         requireValue(-0.153, funding, "funding paid by the long side", contract.settlementCurrency());
-        requireValue(59.247, netProfit, "net profit", contract.settlementCurrency());
+        requireValue(60 - 0.153 - 0.3, netProfit, "net profit", contract.settlementCurrency());
         requireValue(1_000, initialCapital, "explicit initial capital", contract.settlementCurrency());
-        requireValue(1_059.247, equity, "final equity", contract.settlementCurrency());
-        requireValue(1.059247, NET_RETURN_CRITERION.calculate(marks, record), "account net return", "x");
+        requireValue(1_000 + 60 - 0.153 - 0.3, equity, "final equity", contract.settlementCurrency());
+        requireValue(1 + (60 - 0.153 - 0.3) / 1_000, NET_RETURN_CRITERION.calculate(marks, record),
+                "account net return", "x");
         requireValue(1.06, GROSS_RETURN_CRITERION.calculate(marks, record), "account gross return", "x");
         requireValue(150, marginRequirement, "initial margin requirement", contract.settlementCurrency());
 
@@ -300,7 +301,7 @@ public class TradeFillRecordingExample {
         requireValue(60, grossProfit, "short gross profit", contract.settlementCurrency());
         requireValue(0.153, funding, "funding credited to the short side", contract.settlementCurrency());
         requireValue(0.3, fees, "settlement fees", contract.settlementCurrency());
-        requireValue(59.553, netProfit, "short net profit", contract.settlementCurrency());
+        requireValue(60 + 0.153 - 0.3, netProfit, "short net profit", contract.settlementCurrency());
         requireValue(156, marginRequirement, "initial margin of the short entry", contract.settlementCurrency());
         requireTrue(!fees.isNegative(), "settlement fees stay charges on the short side");
 
@@ -332,14 +333,15 @@ public class TradeFillRecordingExample {
         Position openSlice = record.getCurrentPosition();
         requireValue(10, closedSlice.getGrossProfit(), "gross profit of the closed slice",
                 contract.settlementCurrency());
-        requireValue(5.89, closedSlice.getProfit(), "net profit of the closed slice", contract.settlementCurrency());
+        requireValue(10 - 2 - 0.11, closedSlice.getProfit(), "net profit of the closed slice",
+                contract.settlementCurrency());
         requireValue(-0.44, record.getCashFlows().get(0).amount(), "funding while 4 contracts were open",
                 contract.settlementCurrency());
         requireValue(3, openSlice.getEntry().getAmount(), "remaining contracts", "contracts");
-        requireValue(-6.33, openSlice.getRealizedProfit(2), "realized profit of the open slice",
+        requireValue(-3 - 0.33, openSlice.getRealizedProfit(2), "realized profit of the open slice",
                 contract.settlementCurrency());
-        requireValue(23.67, openSlice.getProfit(2, NUM_FACTORY.numOf(11_000)), "marked profit of the open slice",
-                contract.settlementCurrency());
+        requireValue(30 - 3 - 0.33, openSlice.getProfit(2, NUM_FACTORY.numOf(11_000)),
+                "marked profit of the open slice", contract.settlementCurrency());
 
         LOG.info(
                 "  BUY 4 @ {} {} with a 4 USD entry fee, then SELL 1 @ {} {} with a 1 USD exit fee: closed gross {} {}",
@@ -376,13 +378,14 @@ public class TradeFillRecordingExample {
         requireValue(20, record.getCashFlows().get(2).amount(), "variation margin settled",
                 contract.settlementCurrency());
         requireValue(5, record.getTotalFees(), "executed fees before the final close", contract.settlementCurrency());
-        requireValue(13.31, openRealized, "realized profit of the open slice after variation margin",
+        requireValue(20 - 3 - 0.33 - 0.36, openRealized, "realized profit of the open slice after variation margin",
                 contract.settlementCurrency());
         requireValue(40, unrealized, "remaining unrealized profit", contract.settlementCurrency());
-        requireValue(53.31, openSliceAfterEvents.getProfit(4, NUM_FACTORY.numOf(12_000)),
+        requireValue(60 - 3 - 0.33 - 0.36, openSliceAfterEvents.getProfit(4, NUM_FACTORY.numOf(12_000)),
                 "marked profit of the open slice after variation margin", contract.settlementCurrency());
-        requireValue(19.2, recordRealized, "realized profit of the whole record", contract.settlementCurrency());
-        requireValue(59.2, totalProfit, "total profit before the final close", contract.settlementCurrency());
+        requireValue((10 - 2 - 0.11) + (20 - 3 - 0.33 - 0.36), recordRealized, "realized profit of the whole record",
+                contract.settlementCurrency());
+        requireValue(70 - 5 - 0.8, totalProfit, "total profit before the final close", contract.settlementCurrency());
 
         LOG.info("  after another funding event the open slice realizes {} {} and marks {} {} unrealized", openRealized,
                 contract.settlementCurrency(), unrealized, contract.settlementCurrency());
@@ -401,11 +404,11 @@ public class TradeFillRecordingExample {
                 .plus(firstProfit.dividedBy(record.getInitialCapital()))
                 .multipliedBy(NUM_FACTORY.one().plus(secondProfit.dividedBy(record.getInitialCapital())));
 
-        requireValue(5.89, firstProfit, "profit of the partial close", contract.settlementCurrency());
-        requireValue(47.31, secondProfit, "profit of the final close", contract.settlementCurrency());
-        requireValue(53.2, finalProfit, "final net profit", contract.settlementCurrency());
+        requireValue(10 - 2 - 0.11, firstProfit, "profit of the partial close", contract.settlementCurrency());
+        requireValue(60 - 6 - 0.69, secondProfit, "profit of the final close", contract.settlementCurrency());
+        requireValue(70 - 8 - 0.8, finalProfit, "final net profit", contract.settlementCurrency());
         requireValue(8, record.getTotalFees(), "final executed fees", contract.settlementCurrency());
-        requireValue(1.0532, accountReturn, "account net return", "x");
+        requireValue(1 + (70 - 8 - 0.8) / 1_000, accountReturn, "account net return", "x");
         requireTrue(record.getOpenPositions().isEmpty(), "the partial close scenario must end flat");
 
         LOG.info("  final close of 3 contracts at the 12,000 USD mark: {} {} + {} {} = {} {}", firstProfit,
@@ -449,7 +452,7 @@ public class TradeFillRecordingExample {
         requireValue(0.0001, entryFee, "maker entry fee", contract.settlementCurrency());
         requireValue(0.00012, exitFee, "taker exit fee", contract.settlementCurrency());
         requireValue(-0.0004, funding, "funding paid by the long side", contract.settlementCurrency());
-        requireValue(0.09916, netProfit, "net profit", contract.settlementCurrency());
+        requireValue(0.1 - 0.0001 - 0.00012 - 0.0004, netProfit, "net profit", contract.settlementCurrency());
 
         LOG.info("  the contract settles in {} while it is quoted in {}", contract.settlementCurrency(),
                 contract.quoteCurrency());

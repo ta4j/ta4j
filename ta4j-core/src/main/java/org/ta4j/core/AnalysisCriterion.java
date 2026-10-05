@@ -608,7 +608,8 @@ public interface AnalysisCriterion {
         }
         CostModel transactionCostModel = position.getTransactionCostModel();
         CostModel holdingCostModel = position.getHoldingCostModel();
-        Trade retainedEntry = tradeForRetainedFills(entry, retainedEntryFills, !recomputeBasis);
+        Trade retainedEntry = tradeForRetainedFills(entry, retainedEntryFills,
+                retainedEntryFills.size() == allEntryFills.size() && !recomputeBasis);
         if (exit == null || retainedExitFills.isEmpty()) {
             return List
                     .of(new Position(retainedEntry, transactionCostModel, holdingCostModel, position.getCashFlows()));

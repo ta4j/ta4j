@@ -3,6 +3,8 @@
  */
 package org.ta4j.core;
 
+import org.ta4j.core.analysis.CumulativePnL;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
@@ -2362,8 +2364,8 @@ class BaseTradingRecordTest {
 
             assertEquals(1, record.getPositions().size());
             assertEquals(1, record.getOpenPositions().size());
-            assertEquals(2, record.getPositions().getFirst().getCashFlows().size());
-            assertNumEquals(-0.2,
+            assertEquals(3, record.getPositions().getFirst().getCashFlows().size());
+            assertNumEquals(-0.15,
                     record.getPositions()
                             .getFirst()
                             .getCashFlows()
@@ -2371,7 +2373,15 @@ class BaseTradingRecordTest {
                             .map(FuturesCashFlow::amount)
                             .reduce(Num::plus)
                             .orElseThrow());
-            assertNumEquals(-0.1, record.getOpenPositions().getFirst().getCashFlows().getFirst().amount());
+            assertNumEquals(-0.05, record.getOpenPositions().getFirst().getCashFlows().getFirst().amount());
+            assertNumEquals(-0.15,
+                    record.getOpenPositions()
+                            .getFirst()
+                            .getCashFlows()
+                            .stream()
+                            .map(FuturesCashFlow::amount)
+                            .reduce(Num::plus)
+                            .orElseThrow());
             assertNumEquals(-0.3,
                     record.getCashFlows().stream().map(FuturesCashFlow::amount).reduce(Num::plus).orElseThrow());
         }
@@ -2601,7 +2611,7 @@ class BaseTradingRecordTest {
     }
 
     @Test
-    void averageCostPartialClosePreservesHistoricalRetainedFillPrice() {
+    void averageCostPartialCloseRetainsEachHistoricalFillProportionally() {
         FuturesContract contract = linearBtcPerpetual(numFactory);
         BaseTradingRecord record = BaseTradingRecord.builder()
                 .futuresContract(contract)
@@ -2615,7 +2625,11 @@ class BaseTradingRecordTest {
         Position open = record.getOpenPositions().get(0);
 
         assertNumEquals(numFactory.numOf(105), open.getEntry().getPricePerAsset());
-        assertNumEquals(numFactory.numOf(110), open.getEntry().getFills().getFirst().price());
+        assertEquals(2, open.getEntry().getFills().size());
+        assertNumEquals(100, open.getEntry().getFills().get(0).price());
+        assertNumEquals(110, open.getEntry().getFills().get(1).price());
+        assertNumEquals(0.5, open.getEntry().getFills().get(0).amount());
+        assertNumEquals(0.5, open.getEntry().getFills().get(1).amount());
     }
 
     @Test
@@ -3685,11 +3699,80 @@ class BaseTradingRecordTest {
             record.operate(fill(contract, 3, ExecutionSide.SELL, 2, 300, List.of()));
             Position closed = record.getPositions().getFirst();
             assertNumEquals(200, closed.getEntry().getPricePerAsset());
-            assertNumEquals(2, closed.getProfit());
-            assertNumEquals(1, record.getCurrentPosition().getUnrealizedProfit(factory.numOf(300), 3));
-            assertNumEquals(3,
-                    closed.getProfit().plus(record.getCurrentPosition().getUnrealizedProfit(factory.numOf(300), 3)));
+            assertNumEquals(factory.numOf(2), closed.getProfit(), 1e-12);
+            assertNumEquals(factory.one(), record.getCurrentPosition().getUnrealizedProfit(factory.numOf(300), 3),
+                    1e-12);
+            assertNumEquals(factory.numOf(3),
+                    closed.getProfit().plus(record.getCurrentPosition().getUnrealizedProfit(factory.numOf(300), 3)),
+                    1e-12);
         }
     }
 
+    @Test
+    void averageCostCompletedHistoryMatchesEveryActualExecutionPrefix() throws Exception {
+        for (NumFactory factory : factories()) {
+            for (FuturesContract contract : List.of(linearBtcPerpetual(factory), inverseBtcPerpetual(factory))) {
+                for (boolean paidCosts : List.of(false, true)) {
+                    BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory)
+                            .withData(100d, 200d, 300d, 300d, 400d, 450d)
+                            .build();
+                    BaseTradingRecord record = BaseTradingRecord.builder()
+                            .futuresContract(contract)
+                            .matchPolicy(ExecutionMatchPolicy.AVG_COST)
+                            .build();
+                    List<TradeFill> executions = List.of(
+                            fill(contract, 0, ExecutionSide.BUY, 1, 100,
+                                    paidCosts ? List.of(commission(factory, 0.1, contract.settlementCurrency()))
+                                            : List.of()),
+                            fill(contract, 1, ExecutionSide.BUY, 1, 200,
+                                    paidCosts ? List.of(commission(factory, 0.2, contract.settlementCurrency()))
+                                            : List.of()),
+                            fill(contract, 2, ExecutionSide.BUY, 1, 300,
+                                    paidCosts ? List.of(commission(factory, 0.3, contract.settlementCurrency()))
+                                            : List.of()),
+                            fill(contract, 3, ExecutionSide.SELL, 2, 300,
+                                    paidCosts ? List.of(commission(factory, 0.4, contract.settlementCurrency()))
+                                            : List.of()),
+                            fill(contract, 4, ExecutionSide.BUY, 1, 400,
+                                    paidCosts ? List.of(commission(factory, 0.5, contract.settlementCurrency()))
+                                            : List.of()),
+                            fill(contract, 5, ExecutionSide.SELL, 1, 450,
+                                    paidCosts ? List.of(commission(factory, 0.6, contract.settlementCurrency()))
+                                            : List.of()));
+                    List<Num> prefixProfits = new ArrayList<>();
+                    double[] independentProfits = contract.settlementType() == FuturesContract.SettlementType.LINEAR
+                            ? new double[] { 0, 1, 3, 3, 4, 5 }
+                            : new double[] { 0, 0.5, 5d / 6d, 5d / 6d, 11d / 12d, 35d / 36d };
+                    double totalCosts = 0;
+                    for (int index = 0; index < executions.size(); index++) {
+                        record.operate(executions.get(index));
+                        if (paidCosts) {
+                            totalCosts += (index + 1) * 0.1;
+                            if (index == 1) {
+                                record.recordCashFlow(FuturesCashFlow.builder()
+                                        .contract(contract)
+                                        .type(FuturesCashFlow.Type.FUNDING)
+                                        .eventId("prefix-funding")
+                                        .index(1)
+                                        .time(T0.plusSeconds(1).plusMillis(500))
+                                        .amount(factory.numOf(-0.05))
+                                        .currency(contract.settlementCurrency())
+                                        .build());
+                                totalCosts += 0.05;
+                            }
+                        }
+                        Num prefix = new CumulativePnL(series, record, index).getValue(index);
+                        assertNumEquals(factory.numOf(independentProfits[index] - totalCosts), prefix, 1e-10);
+                        prefixProfits.add(prefix);
+                    }
+                    for (BaseTradingRecord completed : List.of(record, serializedCopy(record))) {
+                        CumulativePnL history = new CumulativePnL(series, completed);
+                        for (int index = 0; index < executions.size(); index++) {
+                            assertNumEquals(prefixProfits.get(index), history.getValue(index), 1e-10);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

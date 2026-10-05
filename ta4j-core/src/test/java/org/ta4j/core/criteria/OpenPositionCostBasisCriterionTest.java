@@ -255,7 +255,7 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void futuresCostBasisMatchesFifoResidualLotsAndFees() {
+    public void futuresAverageCostBasisUsesProportionalResidualLotsAndFees() {
         FuturesContract contract = linearBtcPerpetual();
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110).build();
         BaseTradingRecord record = BaseTradingRecord.builder()
@@ -270,9 +270,10 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
         Position open = record.getCurrentPosition();
 
         assertNumEquals(numFactory.numOf(105), open.getEntry().getPricePerAsset(), 1e-12);
-        // FIFO consumes the first 100-contract fill; the residual is the second fill.
-        assertNumEquals(numFactory.numOf(117), getCriterion().calculate(series, open), 1e-12);
-        assertNumEquals(numFactory.numOf(117), getCriterion().calculate(series, record), 1e-12);
+        // Average cost retains 50 contracts from each entry: notionals 50 + 55,
+        // plus half of each opening fee (1 + 3.5).
+        assertNumEquals(numFactory.numOf(109.5), getCriterion().calculate(series, open), 1e-12);
+        assertNumEquals(numFactory.numOf(109.5), getCriterion().calculate(series, record), 1e-12);
     }
 
     @Test

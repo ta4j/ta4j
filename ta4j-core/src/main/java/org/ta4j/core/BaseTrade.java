@@ -196,15 +196,6 @@ public class BaseTrade implements Trade {
                 fillSummary.fills(), transactionCostModel));
     }
 
-    /**
-     * Whether the matched trade advertises a basis different from its retained
-     * fills.
-     */
-    static boolean hasAdjustedFillPrice(Trade trade) {
-        return !trade.getPricePerAsset()
-                .isEqual(summarizeFills(trade.getType(), Trade.executionFillsOf(trade)).weightedAveragePrice());
-    }
-
     private BaseTrade(TradeConfig config) {
         this.type = config.type();
         this.index = config.index();

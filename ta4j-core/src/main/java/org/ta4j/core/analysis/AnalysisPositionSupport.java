@@ -362,6 +362,11 @@ final class AnalysisPositionSupport {
         if (entry == null || entry.getIndex() > finalIndex || entry.getIndex() > window.bufferEndIndex()) {
             return -1;
         }
+        if (FuturesPerformanceSupport.isFutures(position)) {
+            // Native curves carry account settlement history. The first exit of a
+            // multi-fill trade neither ends residual exposure nor later settlements.
+            return window.isEmpty() ? -1 : Math.min(finalIndex, window.endIndex());
+        }
         int endIndex = curve.determineEndIndex(position, finalIndex, window.bufferEndIndex());
         if (endIndex < window.beginIndex() && !(carryPrunedHistory && window.carriesBeforeWindow(position))) {
             return -1;

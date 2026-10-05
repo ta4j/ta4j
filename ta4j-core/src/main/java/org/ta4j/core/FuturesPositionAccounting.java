@@ -101,8 +101,7 @@ final class FuturesPositionAccounting {
             ArrayDeque<FillSlice> exits, int finalIndex, Num unexecutedPrice) {
         List<TradeFill> entryFills = executedFills(entry, finalIndex);
         List<ExposureEvent> events = new ArrayList<>(entryFills.size() + exits.size());
-        boolean useTradeBasis = entryFills.size() == Trade.executionFillsOf(entry).size()
-                && (entryFills.size() == 1 || BaseTrade.hasAdjustedFillPrice(entry));
+        boolean useTradeBasis = entryFills.size() == 1 && entryFills.size() == Trade.executionFillsOf(entry).size();
         for (TradeFill entryFill : entryFills) {
             FillSlice entrySlice = fillSlice(entryFill, numFactory);
             if (useTradeBasis) {

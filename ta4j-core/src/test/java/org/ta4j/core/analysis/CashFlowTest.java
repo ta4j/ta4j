@@ -2236,4 +2236,62 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertTrue(changed.get());
         assertEquals(before, curve.stream().toList());
     }
+
+    @Test
+    public void incrementalFuturesCarryExposureAndSettlementPastPreWindowPartialExit() {
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 110, 120);
+        for (int caseIndex = 0; caseIndex < 3; caseIndex++) {
+            Trade entry = Trade.fromFill(
+                    FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 2_000, 100, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+            List<TradeFill> exits = caseIndex == 2
+                    ? List.of(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 2_000, 110, List.of()))
+                    : caseIndex == 1 ? List.of(
+                            FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1_000, 100, List.of()),
+                            FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 1_000, 120, List.of()))
+                            : List.of(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1_000, 100,
+                                    List.of()));
+            Position incoming = new Position(entry,
+                    Trade.fromFills(Trade.TradeType.SELL, exits, RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            BaseTradingRecord full = new BaseTradingRecord() {
+                @Override
+                public FuturesContract getFuturesContract() {
+                    return contract;
+                }
+
+                @Override
+                public Num getInitialCapital() {
+                    return numFactory.numOf(500);
+                }
+
+                @Override
+                public Integer getStartIndex() {
+                    return 2;
+                }
+
+                @Override
+                public Integer getEndIndex() {
+                    return 3;
+                }
+
+                @Override
+                public List<Position> getPositions() {
+                    return List.of(incoming);
+                }
+            };
+            BaseTradingRecord empty = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .initialCapital(numFactory.numOf(500))
+                    .startIndex(2)
+                    .endIndex(3)
+                    .build();
+            CashFlow direct = new CashFlow(series, full);
+            CashFlow incremental = new CashFlow(series, empty);
+            incremental.calculatePosition(incoming, 3);
+            assertNumEquals(caseIndex == 2 ? 1.4 : 1.4, direct.getValue(3));
+            assertNumEquals(direct.getValue(3), incremental.getValue(3), 1e-10);
+        }
+    }
 }

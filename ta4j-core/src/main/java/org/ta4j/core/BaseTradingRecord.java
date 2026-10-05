@@ -3274,8 +3274,10 @@ public class BaseTradingRecord implements TradingRecord {
             Num entryFeePortion = lot.fee().isZero() ? lot.fee()
                     : FuturesPositionAccounting.proportional(lot.fee(), closeAmount, lotAmount);
             List<TradeFill> originalFills = lot.fills();
-            List<TradeFill> entryFills = lot.allocateFills(closeAmount);
-            CashFlowAllocation cashFlowAllocation = lot.allocateCashFlows(closeAmount, timeOf(trade), originalFills);
+            boolean proportional = futuresContract != null && matchPolicy == ExecutionMatchPolicy.AVG_COST;
+            List<TradeFill> entryFills = lot.allocateFills(closeAmount, proportional);
+            CashFlowAllocation cashFlowAllocation = lot.allocateCashFlows(closeAmount, timeOf(trade), originalFills,
+                    proportional);
             List<FuturesCashFlow> sliceCashFlows = new ArrayList<>(cashFlowAllocation.allocated());
             List<TradeFee> entryComponents = lot.allocateFeeComponents(closeAmount);
             boolean closesLot = closeAmount.isEqual(lotAmount);
@@ -3606,25 +3608,31 @@ public class BaseTradingRecord implements TradingRecord {
             }
 
             /**
-             * Allocates the closed portion of the recorded fee components and retains the
-             * remainder on the open lot.
+             * Allocates entry fills and their fees to the closed quantity, preserving each
+             * original execution's price and time. Native average-cost lots share every
+             * fill proportionally, so their completed histories remain causal.
              *
-             * @param portion closed amount
-             * @return fee components allocated to the closed portion
+             * @param portion      closed amount
+             * @param proportional whether every fill shares the same closing fraction
+             * @return entry execution slices allocated to the closed portion
              */
-            private List<TradeFill> allocateFills(Num portion) {
+            private List<TradeFill> allocateFills(Num portion, boolean proportional) {
                 if (fills.isEmpty()) {
                     return List.of();
                 }
                 Num remaining = portion;
+                Num allocatedAmount = amount.getNumFactory().zero();
+                Num retainedTotal = amount.getNumFactory().zero();
                 List<TradeFill> allocated = new ArrayList<>();
                 List<TradeFill> retained = new ArrayList<>();
-                for (TradeFill fill : fills) {
+                for (int i = 0; i < fills.size(); i++) {
+                    TradeFill fill = fills.get(i);
                     if (!remaining.isPositive()) {
                         retained.add(fill);
                         continue;
                     }
-                    Num closeAmount = remaining.isLessThan(fill.amount()) ? remaining : fill.amount();
+                    Num closeAmount = closingFillAmount(fill.amount(), remaining, portion, proportional,
+                            i == fills.size() - 1);
                     TradeFill.Builder builder = fill.toBuilder().amount(closeAmount);
                     if (futuresContract == null) {
                         builder.fee(FuturesPositionAccounting.proportional(fill.fee(), closeAmount, fill.amount()));
@@ -3632,8 +3640,13 @@ public class BaseTradingRecord implements TradingRecord {
                         builder.fees(scaleFeeComponents(fill.fees(), closeAmount, fill.amount()));
                     }
                     allocated.add(builder.build());
-                    remaining = remaining.minus(closeAmount);
+                    allocatedAmount = allocatedAmount.plus(closeAmount);
+                    remaining = proportional ? portion.minus(allocatedAmount) : remaining.minus(closeAmount);
                     Num retainedAmount = fill.amount().minus(closeAmount);
+                    if (proportional && i == fills.size() - 1) {
+                        retainedAmount = amount.minus(portion).minus(retainedTotal);
+                    }
+                    retainedTotal = retainedTotal.plus(retainedAmount);
                     if (retainedAmount.isPositive()) {
                         TradeFill.Builder retainedBuilder = fill.toBuilder().amount(retainedAmount);
                         if (futuresContract == null) {
@@ -3647,6 +3660,16 @@ public class BaseTradingRecord implements TradingRecord {
                 }
                 fills = List.copyOf(retained);
                 return List.copyOf(allocated);
+            }
+
+            /** Keeps average-cost slices causal by sharing every original execution. */
+            private Num closingFillAmount(Num fillAmount, Num remaining, Num portion, boolean proportional,
+                    boolean lastFill) {
+                if (!proportional) {
+                    return remaining.isLessThan(fillAmount) ? remaining : fillAmount;
+                }
+                // The final fill absorbs rounding so closed quantities sum to the exit.
+                return lastFill ? remaining : FuturesPositionAccounting.proportional(fillAmount, portion, amount);
             }
 
             private List<TradeFee> allocateFeeComponents(Num portion) {
@@ -3669,8 +3692,11 @@ public class BaseTradingRecord implements TradingRecord {
              * @param originalFills fill slices before allocating the closing portion
              * @return allocated and deferred cash flows
              */
-            private CashFlowAllocation allocateCashFlows(Num portion, Instant exitTime, List<TradeFill> originalFills) {
+            private CashFlowAllocation allocateCashFlows(Num portion, Instant exitTime, List<TradeFill> originalFills,
+                    boolean proportional) {
                 Num remaining = portion;
+                Num allocatedAmount = amount.getNumFactory().zero();
+                Num retainedTotal = amount.getNumFactory().zero();
                 List<FuturesCashFlow> allocated = new ArrayList<>();
                 List<FuturesCashFlow> deferredAfterExit = new ArrayList<>();
                 if (exitTime != null) {
@@ -3683,8 +3709,13 @@ public class BaseTradingRecord implements TradingRecord {
                 List<List<FuturesCashFlow>> retainedSlices = new ArrayList<>();
                 for (int i = 0; i < cashFlowSlices.size(); i++) {
                     Num sliceAmount = originalFills.isEmpty() ? amount : originalFills.get(i).amount();
-                    Num closeAmount = remaining.isLessThan(sliceAmount) ? remaining : sliceAmount;
+                    Num closeAmount = closingFillAmount(sliceAmount, remaining, portion, proportional,
+                            i == cashFlowSlices.size() - 1);
                     Num retainedAmount = sliceAmount.minus(closeAmount);
+                    if (proportional && i == cashFlowSlices.size() - 1) {
+                        retainedAmount = amount.minus(portion).minus(retainedTotal);
+                    }
+                    retainedTotal = retainedTotal.plus(retainedAmount);
                     List<FuturesCashFlow> retainedSlice = new ArrayList<>();
                     for (FuturesCashFlow cashFlow : cashFlowSlices.get(i)) {
                         if (exitTime != null && cashFlow.time().isAfter(exitTime)) {
@@ -3701,7 +3732,8 @@ public class BaseTradingRecord implements TradingRecord {
                     if (retainedAmount.isPositive()) {
                         retainedSlices.add(retainedSlice);
                     }
-                    remaining = remaining.minus(closeAmount);
+                    allocatedAmount = allocatedAmount.plus(closeAmount);
+                    remaining = proportional ? portion.minus(allocatedAmount) : remaining.minus(closeAmount);
                 }
                 if (!deferredAfterExit.isEmpty() && !retainedSlices.isEmpty()) {
                     List<List<FuturesCashFlow>> deferredSlices = FuturesPositionAccounting
