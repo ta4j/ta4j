@@ -216,7 +216,7 @@ final class ElliottResearchRelations {
         return new Totals(counts[0], counts[1], counts[2], counts[3], peak[0]);
     }
 
-    private static ScaleRelationExtractor.Identity identity() {
+    static ScaleRelationExtractor.Identity identity() {
         return new ScaleRelationExtractor.Identity() {
             @Override
             public String key(final TopologyCandidate candidate) {
@@ -230,7 +230,7 @@ final class ElliottResearchRelations {
         };
     }
 
-    private static void writeLine(final BufferedWriter writer, final JsonObject line) throws IOException {
+    static void writeLine(final BufferedWriter writer, final JsonObject line) throws IOException {
         JSON.toJson(line, writer);
         writer.write('\n');
     }
@@ -242,18 +242,7 @@ final class ElliottResearchRelations {
         json.addProperty("partition", frame.partition());
         json.addProperty("asOfIndex", frame.asOfIndex());
         json.addProperty("asOfTime", frame.asOfTime().toString());
-        final ScaleRelation.Coverage coverage = frame.coverage();
-        final JsonObject cov = new JsonObject();
-        cov.addProperty("parentCandidates", coverage.parentCandidates());
-        cov.addProperty("legsChecked", coverage.legsChecked());
-        cov.addProperty("edgesGenerated", coverage.edgesGenerated());
-        cov.addProperty("edgesRetained", coverage.edgesRetained());
-        cov.addProperty("edgesOmitted", coverage.edgesOmitted());
-        cov.addProperty("edgeCap", coverage.edgeCap());
-        cov.addProperty("decompositionLegsTruncated", coverage.decompositionLegsTruncated());
-        cov.addProperty("truncated", coverage.truncated());
-        cov.addProperty("incomplete", coverage.incomplete());
-        json.add("coverage", cov);
+        json.add("coverage", coverageJson(frame.coverage()));
         final JsonArray events = new JsonArray();
         for (final ScaleRelation.Event event : frame.events()) {
             final JsonObject entry = new JsonObject();
@@ -287,26 +276,44 @@ final class ElliottResearchRelations {
         edge.childPivots().forEach(pivot -> pivots.add(pivotJson(pivot)));
         json.add("childPivots", pivots);
         json.addProperty("childPivotCount", edge.childPivotCount());
-        final JsonArray predicates = new JsonArray();
-        for (final ScaleRelation.Predicate predicate : edge.predicates()) {
-            final JsonObject entry = new JsonObject();
-            entry.addProperty("id", predicate.id());
-            entry.addProperty("state", predicate.state().name());
-            entry.addProperty("detail", predicate.detail());
-            predicates.add(entry);
-        }
-        json.add("predicates", predicates);
+        json.add("predicates", predicatesJson(edge.predicates()));
         json.addProperty("availableAt", edge.availableAt());
         return json;
     }
 
-    private static JsonObject pivotJson(final ConfirmedPivot pivot) {
+    static JsonObject pivotJson(final ConfirmedPivot pivot) {
         final JsonObject json = new JsonObject();
         json.addProperty("index", pivot.pivotIndex());
         json.addProperty("price", pivot.price().toString());
         json.addProperty("type", pivot.type().name());
         json.addProperty("confirmationIndex", pivot.confirmationIndex());
         return json;
+    }
+
+    static JsonObject coverageJson(final ScaleRelation.Coverage coverage) {
+        final JsonObject json = new JsonObject();
+        json.addProperty("parentCandidates", coverage.parentCandidates());
+        json.addProperty("legsChecked", coverage.legsChecked());
+        json.addProperty("edgesGenerated", coverage.edgesGenerated());
+        json.addProperty("edgesRetained", coverage.edgesRetained());
+        json.addProperty("edgesOmitted", coverage.edgesOmitted());
+        json.addProperty("edgeCap", coverage.edgeCap());
+        json.addProperty("decompositionLegsTruncated", coverage.decompositionLegsTruncated());
+        json.addProperty("truncated", coverage.truncated());
+        json.addProperty("incomplete", coverage.incomplete());
+        return json;
+    }
+
+    static JsonArray predicatesJson(final List<ScaleRelation.Predicate> predicates) {
+        final JsonArray array = new JsonArray();
+        for (final ScaleRelation.Predicate predicate : predicates) {
+            final JsonObject entry = new JsonObject();
+            entry.addProperty("id", predicate.id());
+            entry.addProperty("state", predicate.state().name());
+            entry.addProperty("detail", predicate.detail());
+            array.add(entry);
+        }
+        return array;
     }
 
     // ----------------------------------------------------------------- read
@@ -323,6 +330,21 @@ final class ElliottResearchRelations {
      *                                  unsupported or a line is corrupt
      */
     static Meta read(final Path path, final Consumer<JsonObject> sink) throws IOException {
+        return read(path, SCHEMA, ElliottResearchRelations::requireFrame, sink);
+    }
+
+    /** Checks one frame line's shape, throwing {@link IllegalArgumentException}. */
+    @FunctionalInterface
+    interface FrameCheck {
+        void check(Path path, long line, JsonObject frame);
+    }
+
+    /**
+     * Streams a header/frame/footer artifact of {@code schema}; shared by the
+     * artifacts that follow the relation file's line protocol.
+     */
+    static Meta read(final Path path, final String schema, final FrameCheck frameCheck,
+            final Consumer<JsonObject> sink) throws IOException {
         final boolean newlineTerminated = endsWithNewline(path);
         try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
             final String headerLine = reader.readLine();
@@ -330,9 +352,9 @@ final class ElliottResearchRelations {
                 throw corrupt(path, 1, "missing header");
             }
             final JsonObject header = parse(path, 1, headerLine);
-            final JsonElement schema = header.get("schema");
-            if (schema == null || !schema.isJsonPrimitive() || !SCHEMA.equals(schema.getAsString())) {
-                throw corrupt(path, 1, "unsupported schema " + schema);
+            final JsonElement declared = header.get("schema");
+            if (declared == null || !declared.isJsonPrimitive() || !schema.equals(declared.getAsString())) {
+                throw corrupt(path, 1, "unsupported schema " + declared);
             }
             JsonObject footer = null;
             long frames = 0;
@@ -354,7 +376,7 @@ final class ElliottResearchRelations {
                     throw corrupt(path, lineNumber, "content after footer");
                 }
                 if ("frame".equals(text(object, "kind"))) {
-                    requireFrame(path, lineNumber, object);
+                    frameCheck.check(path, lineNumber, object);
                     frames++;
                     sink.accept(object);
                 } else if (object.has("complete") && !object.has("kind")) {
@@ -394,12 +416,12 @@ final class ElliottResearchRelations {
         }
     }
 
-    private static String text(final JsonObject object, final String key) {
+    static String text(final JsonObject object, final String key) {
         final JsonElement element = object.get(key);
         return element == null || !element.isJsonPrimitive() ? null : element.getAsString();
     }
 
-    private static JsonObject parse(final Path path, final long line, final String text) {
+    static JsonObject parse(final Path path, final long line, final String text) {
         try {
             final JsonElement element = JsonParser.parseString(text);
             if (!element.isJsonObject()) {
@@ -411,7 +433,7 @@ final class ElliottResearchRelations {
         }
     }
 
-    private static IllegalArgumentException corrupt(final Path path, final long line, final String message) {
+    static IllegalArgumentException corrupt(final Path path, final long line, final String message) {
         return new IllegalArgumentException(path + ": line " + line + ": " + message);
     }
 

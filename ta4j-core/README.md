@@ -233,6 +233,55 @@ lists its child pivots with their confirmation bars and every predicate with its
 explanation, and says so when more child pivots exist than the sidecar stores. Runs without a
 `hierarchy` write no `relations/` directory.
 
+### Corrective families (`CF-589`, experimental)
+
+On top of a `hierarchy`, an `explore` recipe may opt into corrective-family
+experiments. Each profile is a strict, independently selectable hypothesis, not
+a general Elliott law:
+
+```json
+"families": {
+  "profiles": [
+    {"id": "zigzag"},
+    {"id": "regular-flat", "minRetracement": "0.9", "maxOvershoot": "0.1"},
+    {"id": "expanded-flat"},
+    {"id": "contracting-triangle"}
+  ],
+  "maxCompositions": 8
+}
+```
+
+`zigzag` expects 5-3-5 child subdivision, `regular-flat` and `expanded-flat` 3-3-5,
+and `contracting-triangle` 3-3-3-3-3 inside a strictly contracting envelope. Only
+`regular-flat` has tolerance bands; they are declared experimental settings, not
+fitted optima, and the declared values are part of the run's identity. The
+profiles judge the candidates of each parent scale with the relation edges to its
+adjacent finer scale, so `families` requires `hierarchy` and the recipe is rejected otherwise.
+Unsupported variants (diagonals, combinations, running or expanding triangles)
+have no profile and are never approximated by another one.
+
+Every verdict carries the profile id and revision, the envelope predicates over
+the parent's normalized prices, and for each parent leg the child edges consulted
+(key, version, state, availability bar) with the leg's subdivision state. The
+status is `verified` (envelope and every leg proven), `shape-compatible` (envelope
+passes, subdivision pending or without evidence), `outside-profile` (a statement
+about that profile only) or `unavailable`. A parent that fails its base count is
+never rescued by a family, nothing here forecasts a continuation, and a verdict is
+not a trading signal. Verdicts are causal: they appear only from the bar at which
+the parent and every consulted child edge are available. Compositions are bounded
+by `maxCompositions` and the relations `edgeCap`; frames report when either bound
+truncated the evidence. Verdicts are observed on the real series only, so the file
+states `comparisonStatus: descriptive`: there are no matched real/null comparison
+rows, and verdict counts must not be ranked across profiles or read as efficacy.
+
+Artifacts: `families/<dataset>.jsonl` and a "Corrective families (experimental)"
+section in `summary.md`. Inspect with
+`ElliottResearch families <runDir> <dataset> [--as-of IDX] [--limit N] [--verdict KEY]`
+(exit 2 when the file is missing, incomplete or from another run). Runs without
+`families` write no `families/` directory, and every other artifact is
+byte-identical apart from the recipe fingerprint that covers the declared
+profiles.
+
 ## Companion user guides
 
 - Backtesting: https://ta4j.github.io/ta4j-wiki/Backtesting.html
