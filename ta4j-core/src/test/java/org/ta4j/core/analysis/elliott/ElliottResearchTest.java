@@ -119,6 +119,15 @@ class ElliottResearchTest {
         assertEquals(0, inspect.code(), inspect.err());
         assertTrue(inspect.out().contains(denominator + " in this row's scope"), inspect.out());
         assertTrue(inspect.out().contains("-> match"), inspect.out());
+
+        for (final String artifact : List.of("events.jsonl", "outcomes.csv", "outcomes-summary.csv")) {
+            assertTrue(Files.isRegularFile(smokeRun.resolve(artifact)), artifact);
+        }
+        final List<String> eventLines = Files.readAllLines(smokeRun.resolve("events.jsonl"));
+        assertTrue(eventLines.get(0).contains("ta4j-elliott-research-events/1"), eventLines.get(0));
+        assertTrue(eventLines.get(eventLines.size() - 1).contains("\"complete\":true"), "events footer");
+        assertEquals("events.jsonl", run.getAsJsonObject("outcomes").get("events").getAsString());
+        assertTrue(summary.contains("Forward outcomes"), summary);
     }
 
     @Test

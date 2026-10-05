@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import org.ta4j.core.BarSeries;
+
 /**
  * Package-private streaming sink for per-bar study observations.
  *
@@ -59,6 +61,30 @@ interface StudyObserver {
      */
     void alternative(Scope scope, String partition, int recordedIndex, Instant asOfEnd,
             List<ConfirmedPivot> visiblePivots, String outcome, Set<String> labels);
+
+    /**
+     * Announces the freshly generated tape one null ensemble member is about to
+     * replay for one partition, before any of that tape's observations.
+     *
+     * <p>
+     * The member series is rebased to index zero; add {@code sourceOffset} to a
+     * member index to obtain the source coordinate that observations report. The
+     * tape ends at the partition's last bar, so an observer that labels the future
+     * of an observation can never read beyond the partition. The default ignores
+     * the announcement.
+     * </p>
+     *
+     * @param nullBlockLength null block length
+     * @param nullMemberIndex null ensemble member index
+     * @param partition       locked partition name the tape belongs to
+     * @param sourceOffset    source index of the member's first bar
+     * @param member          the member's causal prefix tape
+     * @since 0.26.1
+     */
+    default void nullTape(final int nullBlockLength, final int nullMemberIndex, final String partition,
+            final int sourceOffset, final BarSeries member) {
+        // no tape-aware observer by default
+    }
 
     /**
      * Identity of the study mode that recorded an observation.

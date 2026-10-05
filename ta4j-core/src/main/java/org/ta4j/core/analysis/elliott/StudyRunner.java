@@ -431,6 +431,10 @@ final class StudyRunner {
     private void recordNullMember(final BarSeries member, final int memberIndex, final int partition,
             final int blockLength, final int start, final int sourceBegin, final StudyObserver observer,
             final NullOutcomeSink sink) {
+        if (observer != null) {
+            observer.nullTape(blockLength, memberIndex, configuration.partitions().entries().get(partition).name(),
+                    sourceBegin, member);
+        }
         final Partitions partitions = configuration.partitions();
         final ConfirmationTracker.CausalReplay replay = observeReplay(member);
         // Members are freshly-built series rebased to index 0; the requested

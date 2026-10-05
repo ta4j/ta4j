@@ -187,6 +187,26 @@ so a recapture against a changed configuration or edited candles fails instead o
 tracing different data. Coverage marks a partition `partial` when it has no bars or
 a gap longer than seven bar periods.
 
+Every run also records causal forward-outcome evidence for enrolled `MOTIVE_5`
+events (events enroll once per placement, when it first becomes visible to the
+detector at its decision bar): `events.jsonl` (header, one lifecycle record per
+event, completion footer), `outcomes.csv` (one row per event and horizon with the
+structural label and the price outcome) and `outcomes-summary.csv` (per dataset,
+stream, partition and horizon tallies, comparators and a non-overlapping
+cohort). Horizons are clipped to the partition, so labels never read beyond it
+and unresolved events are censored rather than counted as failures. Structural
+labels are success, invalidated/withdrawn, expired or censored; price outcomes
+report raw and direction-aligned returns, excursions, and target/invalidation
+touch order under the research rule and the released
+`ElliottWaveOutcomeLabeler` same-bar rule. Comparators are the unconditional and
+momentum-matched forward returns on the same tape. Summaries report counts and
+bounds only, never significance, because events overlap. Null-member events are
+included for the member chosen with `--trace selected-null-member`. An `explore`
+recipe may add an optional `"outcomes"` object
+(`{"horizons":[5,20,60],"structuralMode":"classical-all","invalidation":"origin-pivot"}`;
+`invalidation` is `origin-pivot` or `origin-price`); the choices are recorded in
+`run.json` and fixed before labels are read.
+
 ## Companion user guides
 
 - Backtesting: https://ta4j.github.io/ta4j-wiki/Backtesting.html

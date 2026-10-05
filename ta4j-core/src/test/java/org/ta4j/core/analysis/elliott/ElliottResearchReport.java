@@ -711,7 +711,7 @@ final class ElliottResearchReport {
         return cell.isEmpty() ? Double.NaN : Double.parseDouble(cell);
     }
 
-    private static void writeTable(final Path path, final List<String> header, final List<List<String>> table) {
+    static void writeTable(final Path path, final List<String> header, final List<List<String>> table) {
         try {
             final Path parent = path.toAbsolutePath().getParent();
             if (parent != null) {
@@ -746,7 +746,7 @@ final class ElliottResearchReport {
         writer.write("\r\n");
     }
 
-    private static List<List<String>> parseCsv(final Path path) {
+    static List<List<String>> parseCsv(final Path path) {
         final String text;
         try {
             text = Files.readString(path, StandardCharsets.UTF_8);
