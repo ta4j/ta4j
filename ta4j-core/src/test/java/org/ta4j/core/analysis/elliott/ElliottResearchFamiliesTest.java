@@ -19,6 +19,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -110,6 +112,70 @@ class ElliottResearchFamiliesTest {
     }
 
     @Test
+    void everyStoredChildEdgeCarriesItsExactChildPivotSequence() throws IOException {
+        final List<JsonObject> edges = storedEdges();
+        assertFalse(edges.isEmpty());
+        for (final JsonObject edge : edges) {
+            final JsonArray pivots = edge.getAsJsonArray("childPivots");
+            assertEquals(edge.get("childPivotCount").getAsInt(), pivots.size());
+            assertTrue(pivots.size() >= 4, "a leg subdivision rests on at least four pivots: " + edge);
+            int previous = -1;
+            for (final JsonElement element : pivots) {
+                final JsonObject pivot = element.getAsJsonObject();
+                assertTrue(pivot.get("index").getAsInt() > previous);
+                previous = pivot.get("index").getAsInt();
+                assertNotNull(pivot.get("price"));
+                assertTrue(pivot.get("type").getAsString().matches("HIGH|LOW"));
+                assertTrue(pivot.get("confirmationIndex").getAsInt() >= previous);
+            }
+        }
+        final List<Integer> firstLeg = new ArrayList<>();
+        for (final JsonElement element : edges.get(0).getAsJsonArray("childPivots")) {
+            firstLeg.add(element.getAsJsonObject().get("index").getAsInt());
+        }
+        assertEquals(List.of(0, 2, 3, 6, 7, 10), firstLeg);
+    }
+
+    @Test
+    void inspectionPrintsTheChildPivotSequenceOfEveryEdgeWithItsConfirmationBar() throws IOException {
+        final String key = ElliottResearchFamilies.replay(file, null, null).active().keySet().iterator().next();
+        final String text = printed(null, 5, key);
+        for (final JsonObject edge : storedEdges()) {
+            final List<String> rendered = new ArrayList<>();
+            for (final JsonElement element : edge.getAsJsonArray("childPivots")) {
+                final JsonObject pivot = element.getAsJsonObject();
+                rendered.add(pivot.get("index").getAsInt() + " " + pivot.get("type").getAsString() + " "
+                        + pivot.get("price").getAsString() + " (confirmed @"
+                        + pivot.get("confirmationIndex").getAsInt() + ")");
+            }
+            assertTrue(text.contains("child pivots: " + String.join(" -> ", rendered)), text);
+        }
+    }
+
+    @Test
+    void anArtifactWithoutChildPivotsOnAnEdgeIsRejectedAsCorrupt() throws IOException {
+        final List<String> lines = new ArrayList<>(Files.readAllLines(file, StandardCharsets.UTF_8));
+        for (int i = 1; i < lines.size() - 1; i++) {
+            if (lines.get(i).contains("\"childPivots\"")) {
+                final JsonObject frame = JsonParser.parseString(lines.get(i)).getAsJsonObject();
+                for (final JsonElement event : frame.getAsJsonArray("events")) {
+                    for (final JsonElement leg : event.getAsJsonObject().getAsJsonObject("verdict")
+                            .getAsJsonArray("legs")) {
+                        for (final JsonElement edge : leg.getAsJsonObject().getAsJsonArray("edges")) {
+                            edge.getAsJsonObject().remove("childPivots");
+                        }
+                    }
+                }
+                lines.set(i, frame.toString());
+                Files.write(file, lines, StandardCharsets.UTF_8);
+                assertTrue(rejection().contains("line " + (i + 1)));
+                return;
+            }
+        }
+        throw new AssertionError("no stored edge found");
+    }
+
+    @Test
     void printBeforeAnyFrameStatesThatNothingWasObservable() throws IOException {
         assertTrue(printed(-1, 5, null).contains("no verdict was observable yet"));
     }
@@ -193,6 +259,25 @@ class ElliottResearchFamiliesTest {
     private String rejection() {
         return assertThrows(IllegalArgumentException.class, () -> ElliottResearchFamilies.read(file, frame -> {
         })).getMessage();
+    }
+
+    private List<JsonObject> storedEdges() throws IOException {
+        final List<JsonObject> edges = new ArrayList<>();
+        for (final String line : Files.readAllLines(file, StandardCharsets.UTF_8)) {
+            if (!line.contains("\"childPivots\"")) {
+                continue;
+            }
+            final JsonObject frame = JsonParser.parseString(line).getAsJsonObject();
+            for (final JsonElement event : frame.getAsJsonArray("events")) {
+                for (final JsonElement leg : event.getAsJsonObject().getAsJsonObject("verdict")
+                        .getAsJsonArray("legs")) {
+                    for (final JsonElement edge : leg.getAsJsonObject().getAsJsonArray("edges")) {
+                        edges.add(edge.getAsJsonObject());
+                    }
+                }
+            }
+        }
+        return edges;
     }
 
     private String printed(final Integer asOf, final int limit, final String key) throws IOException {

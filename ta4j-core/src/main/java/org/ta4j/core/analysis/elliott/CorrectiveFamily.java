@@ -235,13 +235,20 @@ final class CorrectiveFamily {
      * @param version         edge version
      * @param state           relation state
      * @param childCandidateKey child candidate identity, or {@code null}
-     * @param childPivotCount   child pivots the edge relies on
+     * @param childPivots       child pivots the edge relies on, verbatim from the
+     *                          relation edge (at most
+     *                          {@link ScaleRelation#MAX_STORED_CHILD_PIVOTS})
+     * @param childPivotCount   number of child pivots the edge relies on; exceeds
+     *                          {@code childPivots.size()} when the stored sequence
+     *                          is truncated
      * @param availableAt     confirmation index of the edge's evidence
      * @param predicates      the edge's tested predicates
      */
     record ChildEdge(String key, String version, ScaleRelation.State state, String childCandidateKey,
-            int childPivotCount, int availableAt, List<ScaleRelation.Predicate> predicates) {
+            List<ConfirmedPivot> childPivots, int childPivotCount, int availableAt,
+            List<ScaleRelation.Predicate> predicates) {
         ChildEdge {
+            childPivots = List.copyOf(childPivots);
             predicates = List.copyOf(predicates);
         }
     }
@@ -457,7 +464,7 @@ final class CorrectiveFamily {
                             && edge.childGrammar() == expected.get(index))
                     .sorted(Comparator.comparing(ScaleRelation.Edge::key))
                     .map(edge -> new ChildEdge(edge.key(), edge.version(), edge.state(), edge.childCandidateKey(),
-                            edge.childPivotCount(), edge.availableAt(), edge.predicates()))
+                            edge.childPivots(), edge.childPivotCount(), edge.availableAt(), edge.predicates()))
                     .toList();
             final LegState state;
             if (forLeg.stream().anyMatch(edge -> edge.state() == ScaleRelation.State.SUBDIVISION_SUPPORTED)) {

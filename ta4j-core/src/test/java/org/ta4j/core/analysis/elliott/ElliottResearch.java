@@ -743,6 +743,10 @@ final class ElliottResearch {
             throw new IllegalArgumentException(
                     "recipe.families requires recipe.hierarchy: family verdicts read the declared parent/child relations");
         }
+        if (hierarchy.interior() != ScaleRelation.Interior.CONTIGUOUS) {
+            throw new IllegalArgumentException(
+                    "recipe.families requires recipe.hierarchy.interiorAnchors to be contiguous: a family child sequence may not skip interior pivots, and allow-skipped would hide extra waves inside a leg");
+        }
         final JsonObject object = objectOf(element, "recipe.families");
         rejectUnknown(object, "recipe.families", Set.of("profiles", "maxCompositions"));
         final JsonArray array = arrayOf(required(object, "profiles", "recipe.families"), "recipe.families.profiles");

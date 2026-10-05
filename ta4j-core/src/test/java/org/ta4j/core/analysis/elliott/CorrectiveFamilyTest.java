@@ -133,6 +133,23 @@ class CorrectiveFamilyTest {
     }
 
     @Test
+    void everyChildEdgeKeepsTheExactChildPivotSequenceItRestsOn() {
+        final CorrectiveFamily.Verdict verdict = verdict(
+                frames(ZIGZAG_PARENT, ZIGZAG_CHILD, CorrectiveFamily.Profile.ZIGZAG), CorrectiveFamily.Profile.ZIGZAG);
+
+        final List<List<Integer>> expected = List.of(List.of(0, 2, 3, 6, 7, 10), List.of(10, 12, 13, 15),
+                List.of(15, 17, 19, 24, 26, 30));
+        for (int leg = 0; leg < expected.size(); leg++) {
+            final CorrectiveFamily.ChildEdge edge = verdict.legs().get(leg).edges().get(0);
+            assertEquals(expected.get(leg), edge.childPivots().stream().map(ConfirmedPivot::pivotIndex).toList());
+            assertEquals(edge.childPivots().size(), edge.childPivotCount());
+            assertTrue(edge.childPivots().stream().allMatch(pivot -> pivot.confirmationIndex() <= edge.availableAt()));
+        }
+        assertEquals(0, new BigDecimal("185").compareTo(
+                new BigDecimal(verdict.legs().get(0).edges().get(0).childPivots().get(1).price().toString())));
+    }
+
+    @Test
     void everyVerdictCarriesPerPredicateEvidenceAndAnAvailabilityNotAfterItsObservation() {
         final List<CorrectiveFamilyStudy.Frame> frames = frames(ZIGZAG_PARENT, ZIGZAG_CHILD,
                 CorrectiveFamily.Profile.ZIGZAG);
@@ -356,6 +373,132 @@ class CorrectiveFamilyTest {
         assertTrue(finalVerdicts(frames).isEmpty(), "nothing replaces a parent that is no longer reported");
     }
 
+    private static List<Pt> mirror(final List<Pt> tape) {
+        return tape.stream()
+                .map(point -> new Pt(point.index(), 400 - point.price(),
+                        point.type() == SwingPivotType.HIGH ? SwingPivotType.LOW : SwingPivotType.HIGH))
+                .toList();
+    }
+
+    private static List<String> predicateStates(final CorrectiveFamily.Verdict verdict) {
+        return verdict.envelope().stream().map(predicate -> predicate.id() + "=" + predicate.state()).toList();
+    }
+
+    private record Case(CorrectiveFamily.Profile profile, List<Pt> parent, List<Pt> child,
+            CorrectiveFamily.Status status) {
+    }
+
+    @Test
+    void mirroredCorrectionsReceiveTheSameVerdictInTheOppositeDirection() {
+        final List<Case> cases = List.of(
+                new Case(CorrectiveFamily.Profile.ZIGZAG, ZIGZAG_PARENT, ZIGZAG_CHILD,
+                        CorrectiveFamily.Status.VERIFIED),
+                new Case(CorrectiveFamily.Profile.REGULAR_FLAT, REGULAR_PARENT, REGULAR_CHILD,
+                        CorrectiveFamily.Status.VERIFIED),
+                new Case(CorrectiveFamily.Profile.EXPANDED_FLAT, EXPANDED_PARENT, EXPANDED_CHILD,
+                        CorrectiveFamily.Status.VERIFIED),
+                new Case(CorrectiveFamily.Profile.CONTRACTING_TRIANGLE, TRIANGLE_PARENT, TRIANGLE_CHILD,
+                        CorrectiveFamily.Status.VERIFIED),
+                new Case(CorrectiveFamily.Profile.REGULAR_FLAT, EXPANDED_PARENT, EXPANDED_CHILD,
+                        CorrectiveFamily.Status.OUTSIDE_PROFILE),
+                new Case(CorrectiveFamily.Profile.ZIGZAG, REGULAR_PARENT, REGULAR_CHILD,
+                        CorrectiveFamily.Status.OUTSIDE_PROFILE));
+        for (final Case scenario : cases) {
+            final CorrectiveFamily.Verdict original = verdict(
+                    frames(scenario.parent(), scenario.child(), scenario.profile()), scenario.profile());
+            final CorrectiveFamily.Verdict mirrored = verdict(
+                    frames(mirror(scenario.parent()), mirror(scenario.child()), scenario.profile()),
+                    scenario.profile());
+            final String label = scenario.profile().id() + " " + scenario.parent().get(0);
+
+            assertEquals(scenario.status(), original.status(), label);
+            assertEquals(original.status(), mirrored.status(), label);
+            assertEquals(original.reason(), mirrored.reason(), label);
+            assertEquals(predicateStates(original), predicateStates(mirrored), label);
+            assertEquals(original.legs().stream().map(CorrectiveFamily.Leg::state).toList(),
+                    mirrored.legs().stream().map(CorrectiveFamily.Leg::state).toList(), label);
+            assertEquals(original.compositionCount(), mirrored.compositionCount(), label);
+            assertNotEquals(original.parentDirection(), mirrored.parentDirection(), label);
+            assertEquals(original.parentDirection() == WaveDirection.BEARISH ? WaveDirection.BULLISH
+                    : WaveDirection.BEARISH, mirrored.parentDirection(), label);
+        }
+    }
+
+    @Test
+    void holdingTheParentEnvelopeFixedOnlyTheChildSubdivisionDecidesBetweenZigzagAndRegularFlat() {
+        final List<Pt> fiveThreeFive = List.of(pt(0, 200, 'H'), pt(2, 185, 'L'), pt(3, 192, 'H'), pt(6, 160, 'L'),
+                pt(7, 175, 'H'), pt(10, 150, 'L'), pt(12, 165, 'H'), pt(13, 157, 'L'), pt(15, 196, 'H'),
+                pt(17, 175, 'L'), pt(19, 185, 'H'), pt(24, 160, 'L'), pt(26, 170, 'H'), pt(30, 148, 'L'));
+
+        final List<CorrectiveFamilyStudy.Frame> zigzagChild = frames(REGULAR_PARENT, fiveThreeFive,
+                CorrectiveFamily.Profile.ZIGZAG, CorrectiveFamily.Profile.REGULAR_FLAT);
+        final List<CorrectiveFamilyStudy.Frame> flatChild = frames(REGULAR_PARENT, REGULAR_CHILD,
+                CorrectiveFamily.Profile.ZIGZAG, CorrectiveFamily.Profile.REGULAR_FLAT);
+
+        final CorrectiveFamily.Verdict zigzagWithFiveThreeFive = verdict(zigzagChild,
+                CorrectiveFamily.Profile.ZIGZAG);
+        final CorrectiveFamily.Verdict flatWithFiveThreeFive = verdict(zigzagChild,
+                CorrectiveFamily.Profile.REGULAR_FLAT);
+        final CorrectiveFamily.Verdict zigzagWithThreeThreeFive = verdict(flatChild,
+                CorrectiveFamily.Profile.ZIGZAG);
+        final CorrectiveFamily.Verdict flatWithThreeThreeFive = verdict(flatChild,
+                CorrectiveFamily.Profile.REGULAR_FLAT);
+
+        assertEquals(CorrectiveFamily.Status.VERIFIED, zigzagWithFiveThreeFive.status());
+        assertNotEquals(CorrectiveFamily.Status.VERIFIED, flatWithFiveThreeFive.status());
+        assertEquals(CorrectiveFamily.Status.VERIFIED, flatWithThreeThreeFive.status());
+        assertNotEquals(CorrectiveFamily.Status.VERIFIED, zigzagWithThreeThreeFive.status());
+        for (final CorrectiveFamily.Verdict verdict : List.of(zigzagWithFiveThreeFive, flatWithFiveThreeFive,
+                zigzagWithThreeThreeFive, flatWithThreeThreeFive)) {
+            assertTrue(verdict.envelope().stream().allMatch(predicate -> predicate.state() == EvidenceState.PASS),
+                    "the A/B/C envelope is satisfied by both profiles: " + verdict.envelope());
+        }
+        assertEquals(zigzagWithFiveThreeFive.parentCandidateKey(), zigzagWithThreeThreeFive.parentCandidateKey());
+        assertEquals(zigzagWithFiveThreeFive.parentVersion(), zigzagWithThreeThreeFive.parentVersion());
+        assertEquals(flatWithFiveThreeFive.parentVersion(), flatWithThreeThreeFive.parentVersion());
+        assertEquals(zigzagWithFiveThreeFive.parentVersion(), flatWithThreeThreeFive.parentVersion());
+        assertEquals(zigzagWithFiveThreeFive.parentPivots(), flatWithThreeThreeFive.parentPivots());
+    }
+
+    // -------------------------------------------------- contiguous children
+
+    private static ScaleRelation.Policy skippingPolicy(final CorrectiveFamily.Profile profile) {
+        final ScaleRelation.Policy defaults = ScaleRelation.Policy.defaults();
+        final List<TopologyGrammar> signature = profile.childGrammars();
+        return new ScaleRelation.Policy(profile.parentGrammar(), ScaleRelation.Interior.ALLOW_SKIPPED,
+                defaults.edgeCap(), defaults.maxDecompositionsPerLeg(), defaults.nodeBudgetPerLeg(),
+                (parent, leg) -> parent == profile.parentGrammar() && leg < signature.size()
+                        ? List.of(signature.get(leg))
+                        : List.of());
+    }
+
+    @Test
+    void anExtraWavePairInsideALegIsNotSubdividedAwayByAFamilyStudy() {
+        final List<Pt> extraPair = ScaleRelationFixtures.with(ZIGZAG_CHILD, pt(4, 181, 'L'), pt(5, 188, 'H'));
+
+        final CorrectiveFamily.Verdict contiguous = verdict(
+                frames(ZIGZAG_PARENT, extraPair, CorrectiveFamily.Profile.ZIGZAG), CorrectiveFamily.Profile.ZIGZAG);
+        assertNotEquals(CorrectiveFamily.Status.VERIFIED, contiguous.status(),
+                "seven waves inside leg A are not a five-wave subdivision");
+        assertNotEquals(CorrectiveFamily.LegState.SUPPORTED, contiguous.legs().get(0).state());
+
+        final ScaleRelationStudy skipping = ScaleRelationFixtures.study(
+                List.of(ScaleRelationFixtures.input("parent", ZIGZAG_PARENT, PARENT_LAG),
+                        ScaleRelationFixtures.input("child", extraPair, CHILD_LAG)),
+                skippingPolicy(CorrectiveFamily.Profile.ZIGZAG));
+        final List<ScaleRelation.Edge> edges = ScaleRelationFixtures
+                .activeAt(ScaleRelationFixtures.run(skipping, BARS, BARS - 1), BARS - 1);
+        assertTrue(edges.stream()
+                .anyMatch(edge -> edge.parentLeg() == 0 && edge.state() == ScaleRelation.State.SUBDIVISION_SUPPORTED),
+                "skipping interior pivots is what would let the extra pair be ignored");
+
+        final IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> frames(ZIGZAG_PARENT, PARENT_LAG, extraPair, CHILD_LAG,
+                        skippingPolicy(CorrectiveFamily.Profile.ZIGZAG),
+                        List.of(spec(CorrectiveFamily.Profile.ZIGZAG))));
+        assertTrue(error.getMessage().contains("contiguous"), error.getMessage());
+    }
+
     // ------------------------------------------------------- pure evaluation
 
     private static ConfirmedPivot pivot(final int index, final double price, final SwingPivotType type) {
@@ -368,6 +511,59 @@ class CorrectiveFamilyTest {
                 List.of(pivot(0, a0, SwingPivotType.HIGH), pivot(10, a1, SwingPivotType.LOW),
                         pivot(15, b, SwingPivotType.HIGH), pivot(30, c, SwingPivotType.LOW)));
         return new ScaleRelationExtractor.Parent(candidate, "parent-key", "parent-version");
+    }
+
+    /** The same A/B/C mirrored around 200 into a bullish correction. */
+    private static ScaleRelationExtractor.Parent bullishAbcParent(final double a0, final double a1, final double b,
+            final double c) {
+        final TopologyCandidate candidate = new TopologyCandidate(TopologyGrammar.CORRECTIVE_3, WaveDirection.BULLISH,
+                List.of(pivot(0, 400 - a0, SwingPivotType.LOW), pivot(10, 400 - a1, SwingPivotType.HIGH),
+                        pivot(15, 400 - b, SwingPivotType.LOW), pivot(30, 400 - c, SwingPivotType.HIGH)));
+        return new ScaleRelationExtractor.Parent(candidate, "parent-key", "parent-version");
+    }
+
+    /** Envelope state of {@code id} for an A=200-&gt;150 correction in both directions. */
+    private static void assertBoundary(final CorrectiveFamily.Profile profile, final double b, final double c,
+            final String id, final String expected) {
+        final CorrectiveFamily.Spec spec = CorrectiveFamily.Spec.defaults(profile);
+        for (final ScaleRelationExtractor.Parent parent : List.of(abcParent(200, 150, b, c),
+                bullishAbcParent(200, 150, b, c))) {
+            final CorrectiveFamily.Verdict verdict = CorrectiveFamily.evaluate(spec, "parent", parent, List.of(),
+                    true, 8);
+            assertEquals(expected, predicate(verdict, id),
+                    profile.id() + " " + parent.candidate().direction() + " B=" + b + " C=" + c + " " + id + ": "
+                            + verdict.envelope());
+        }
+    }
+
+    @Test
+    void regularFlatBandBoundariesAreInclusiveAndExactInBothDirections() {
+        final CorrectiveFamily.Profile flat = CorrectiveFamily.Profile.REGULAR_FLAT;
+        // rB = 0.9 (B=195) is the lower edge, rB = 1 (B=200) the upper edge
+        assertBoundary(flat, 195, 145, "b-retracement", "PASS");
+        assertBoundary(flat, 194.5, 145, "b-retracement", "FAIL");
+        assertBoundary(flat, 200, 145, "b-retracement", "PASS");
+        assertBoundary(flat, 200.5, 145, "b-retracement", "FAIL");
+        // oC = 0.1 (C=145) is the upper edge, oC = 0 (C=150) is excluded
+        assertBoundary(flat, 196, 145, "c-overshoot", "PASS");
+        assertBoundary(flat, 196, 144.5, "c-overshoot", "FAIL");
+        assertBoundary(flat, 196, 149.5, "c-overshoot", "PASS");
+        assertBoundary(flat, 196, 150, "c-overshoot", "FAIL");
+    }
+
+    @Test
+    void expandedFlatAndZigzagBoundariesMeetAtBEqualToTheOrigin() {
+        final CorrectiveFamily.Profile expanded = CorrectiveFamily.Profile.EXPANDED_FLAT;
+        assertBoundary(expanded, 200, 145, "b-retracement", "FAIL");
+        assertBoundary(expanded, 200.5, 145, "b-retracement", "PASS");
+        assertBoundary(expanded, 200.5, 150, "c-overshoot", "FAIL");
+        assertBoundary(expanded, 200.5, 149.5, "c-overshoot", "PASS");
+
+        final CorrectiveFamily.Profile zigzag = CorrectiveFamily.Profile.ZIGZAG;
+        assertBoundary(zigzag, 200, 145, "b-retracement", "FAIL");
+        assertBoundary(zigzag, 199.5, 145, "b-retracement", "PASS");
+        assertBoundary(zigzag, 170, 150, "c-overshoot", "FAIL");
+        assertBoundary(zigzag, 170, 149.5, "c-overshoot", "PASS");
     }
 
     private static ScaleRelation.Edge edge(final ScaleRelationExtractor.Parent parent, final int leg,

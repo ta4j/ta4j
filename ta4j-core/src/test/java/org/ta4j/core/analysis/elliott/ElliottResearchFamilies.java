@@ -272,6 +272,9 @@ final class ElliottResearchFamilies {
                 child.addProperty("version", edge.version());
                 child.addProperty("state", edge.state().label());
                 child.addProperty("childCandidateKey", edge.childCandidateKey());
+                final JsonArray childPivots = new JsonArray();
+                edge.childPivots().forEach(pivot -> childPivots.add(ElliottResearchRelations.pivotJson(pivot)));
+                child.add("childPivots", childPivots);
                 child.addProperty("childPivotCount", edge.childPivotCount());
                 child.addProperty("availableAt", edge.availableAt());
                 child.add("predicates", ElliottResearchRelations.predicatesJson(edge.predicates()));
@@ -336,6 +339,19 @@ final class ElliottResearchFamilies {
                 verdict.get("status").getAsString();
                 object.get("lifecycle").getAsString();
                 object.get("reason").getAsString();
+                for (final JsonElement leg : verdict.getAsJsonArray("legs")) {
+                    for (final JsonElement edge : leg.getAsJsonObject().getAsJsonArray("edges")) {
+                        final JsonObject edgeObject = edge.getAsJsonObject();
+                        edgeObject.get("childPivotCount").getAsInt();
+                        for (final JsonElement pivot : edgeObject.getAsJsonArray("childPivots")) {
+                            final JsonObject pivotObject = pivot.getAsJsonObject();
+                            pivotObject.get("index").getAsInt();
+                            pivotObject.get("type").getAsString();
+                            pivotObject.get("price").getAsString();
+                            pivotObject.get("confirmationIndex").getAsInt();
+                        }
+                    }
+                }
             }
         } catch (final RuntimeException e) {
             throw ElliottResearchRelations.corrupt(path, line, "malformed frame: " + e.getMessage());
@@ -580,6 +596,7 @@ final class ElliottResearchFamilies {
                 lines.add(indent + "    relation " + edge.get("key").getAsString() + " "
                         + edge.get("state").getAsString() + " pivots=" + edge.get("childPivotCount").getAsInt()
                         + " availableAt=" + edge.get("availableAt").getAsInt());
+                lines.addAll(childPivotLines(edge, indent + "        "));
                 for (final JsonElement predicateElement : edge.getAsJsonArray("predicates")) {
                     final JsonObject predicate = predicateElement.getAsJsonObject();
                     final String state = predicate.get("state").getAsString();
@@ -600,6 +617,30 @@ final class ElliottResearchFamilies {
         if (verdict.get("compositionsTruncated").getAsBoolean()) {
             lines.add(indent + "note: " + verdict.get("compositionCount").getAsLong() + " compositions exist but only "
                     + verdict.getAsJsonArray("compositions").size() + " are listed; the list is truncated");
+        }
+        return lines;
+    }
+
+    /**
+     * Child pivot sequence of one stored relation edge with each pivot's
+     * confirmation bar, plus a note when the stored sequence is truncated.
+     */
+    private static List<String> childPivotLines(final JsonObject edge, final String indent) {
+        final List<String> lines = new ArrayList<>();
+        final JsonArray pivots = edge.getAsJsonArray("childPivots");
+        final List<String> rendered = new ArrayList<>();
+        for (final JsonElement element : pivots) {
+            final JsonObject pivot = element.getAsJsonObject();
+            rendered.add(pivot.get("index").getAsInt() + " " + pivot.get("type").getAsString() + " "
+                    + pivot.get("price").getAsString() + " (confirmed @" + pivot.get("confirmationIndex").getAsInt()
+                    + ")");
+        }
+        lines.add(indent + "child pivots: " + (rendered.isEmpty() ? "(none)" : String.join(" -> ", rendered)));
+        final int count = edge.get("childPivotCount").getAsInt();
+        if (count > pivots.size()) {
+            lines.add(indent + "note: " + count + " child pivots rely on this edge but only the first "
+                    + pivots.size() + " are stored (limit " + ScaleRelation.MAX_STORED_CHILD_PIVOTS
+                    + "); the sequence above is truncated");
         }
         return lines;
     }

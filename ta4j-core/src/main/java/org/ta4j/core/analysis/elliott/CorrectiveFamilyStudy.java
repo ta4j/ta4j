@@ -112,6 +112,11 @@ final class CorrectiveFamilyStudy {
         }
     }
 
+    /** Why a family study refuses a policy that lets child sequences skip interior pivots. */
+    static final String INTERIOR_REJECTION = "corrective-family experiments require contiguous child subdivision:"
+            + " interior anchors must be contiguous because a family child sequence may not skip pivots"
+            + " (a skipped interior pair would hide extra waves inside a leg)";
+
     private final List<ScaleRelation.Scale> scales;
     private final List<ScaleRelationStudy.ScaleInput> inputs;
     private final List<Group> groups;
@@ -143,6 +148,9 @@ final class CorrectiveFamilyStudy {
         this.scales = ScaleRelation.validateScales(declared);
         ScaleRelation.validateLinks(scales, ScaleRelation.adjacentLinks(scales));
         Objects.requireNonNull(basePolicy, "basePolicy");
+        if (basePolicy.interior() != ScaleRelation.Interior.CONTIGUOUS) {
+            throw new IllegalArgumentException(INTERIOR_REJECTION);
+        }
         this.identity = Objects.requireNonNull(identity, "identity");
         this.partitions = Objects.requireNonNull(partitions, "partitions");
         if (maxCompositions < 1) {
