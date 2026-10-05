@@ -433,9 +433,10 @@ final class ReplayTraceIndex {
             in.seek(entry.offset());
             in.readFully(bytes);
             final JsonObject record = parseRecord(new String(bytes, StandardCharsets.UTF_8), display);
-            if (!record.has("asOfIndex") || record.get("asOfIndex").getAsInt() != entry.asOfIndex()) {
-                throw new ReplayArtifactException("trace " + display + " changed on disk after it was indexed (as-of "
-                        + entry.asOfIndex() + " moved); reopen the replay");
+            if (!record.has("asOfIndex") || record.get("asOfIndex").getAsInt() != entry.asOfIndex()
+                    || !signature(record).equals(entry.signature())) {
+                throw new ReplayArtifactException("trace " + display + " changed on disk after it was indexed (record "
+                        + "as-of " + entry.asOfIndex() + " differs from the scanned one); reopen the replay");
             }
             return record;
         } catch (IOException e) {

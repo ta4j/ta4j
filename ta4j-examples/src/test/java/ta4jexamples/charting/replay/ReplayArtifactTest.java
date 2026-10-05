@@ -212,6 +212,19 @@ class ReplayArtifactTest {
     }
 
     @Test
+    void symbolicLinksLeavingTheBundleAreRejected() throws IOException {
+        final Path run = ReplayFixture.write(temp.resolve("run"));
+        final Path outside = temp.resolve("outside.jsonl");
+        final Path trace = run.resolve("traces/d1-real.jsonl");
+        Files.move(trace, outside);
+        Files.createSymbolicLink(trace, outside);
+
+        final String failure = failureOf(run, ReplayFixture.RULES_KEY);
+        assertTrue(failure.contains("outside the run directory"), failure);
+        assertTrue(failure.contains("links to"), failure);
+    }
+
+    @Test
     void unknownKeySuggestsRecordedKeys() {
         final Path run = ReplayFixture.write(temp.resolve("run"));
 

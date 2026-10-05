@@ -234,6 +234,21 @@ class ReplaySessionTest {
     }
 
     @Test
+    void sameLengthTraceEditAfterIndexingIsRejectedInsteadOfProjected() throws java.io.IOException {
+        final Path run = ReplayFixture.write(temp.resolve("run"));
+        final ReplaySession session = open(run);
+        final Path trace = run.resolve("traces/d1-real.jsonl");
+        final String original = java.nio.file.Files.readString(trace);
+        final String edited = original.replace("\"v2\"", "\"v9\"");
+        assertNotEquals(original, edited);
+        assertEquals(original.length(), edited.length());
+        java.nio.file.Files.writeString(trace, edited, java.nio.charset.StandardCharsets.UTF_8);
+
+        final String failure = assertThrows(ReplayArtifactException.class, () -> session.seek(43)).getMessage();
+        assertTrue(failure.contains("changed on disk after it was indexed"), failure);
+    }
+
+    @Test
     void selectionIsKeyedAndSurvivesNavigation() {
         final ReplaySession session = open(ReplayFixture.write(temp.resolve("run")));
         session.seek(36);

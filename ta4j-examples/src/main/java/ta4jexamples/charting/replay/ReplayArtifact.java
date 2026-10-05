@@ -313,6 +313,18 @@ final class ReplayArtifact {
             throw new ReplayArtifactException("run.json references '" + relative
                     + "' outside the run directory; artifact links must stay relative to " + directory);
         }
+        if (Files.exists(resolved)) {
+            try {
+                final Path real = resolved.toRealPath();
+                if (!real.startsWith(directory.toRealPath())) {
+                    throw new ReplayArtifactException("run.json references '" + relative + "', which links to " + real
+                            + " outside the run directory; artifact files must live inside " + directory);
+                }
+            } catch (IOException e) {
+                throw new ReplayArtifactException(
+                        "cannot resolve '" + relative + "' in " + directory + ": " + e.getMessage(), e);
+            }
+        }
         return resolved;
     }
 
