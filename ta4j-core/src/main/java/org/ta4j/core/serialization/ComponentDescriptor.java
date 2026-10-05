@@ -80,19 +80,40 @@ public final class ComponentDescriptor {
         if (type == null || type.isBlank()) {
             return null;
         }
+        return resolveSubtype(type, Object.class, "org.ta4j.core.rules", "org.ta4j.core.indicators", "org.ta4j.core");
+    }
+
+    /**
+     * Resolves an untrusted descriptor type name without running any class
+     * initializer. The name is tried as-is first, then relative to each fallback
+     * package; only candidates assignable to {@code expectedType} are accepted.
+     * <p>
+     * Classes are loaded with {@code initialize=false}, so static initializers of
+     * arbitrary classpath-reachable classes never run during resolution; callers
+     * initialize the returned type only when they instantiate it. Because a missing
+     * class and a class of the wrong kind both yield {@code null}, callers report
+     * one failure message and cannot be used as a classpath-probing oracle.
+     *
+     * @param typeName         fully qualified or simple class name
+     * @param expectedType     required supertype
+     * @param fallbackPackages packages tried, in order, for simple names
+     * @param <T>              required supertype
+     * @return the resolved, uninitialized subtype, or {@code null} when no
+     *         candidate is assignable to {@code expectedType}
+     */
+    static <T> Class<? extends T> resolveSubtype(String typeName, Class<T> expectedType, String... fallbackPackages) {
+        Class<? extends T> resolved = loadSubtype(typeName, expectedType);
+        for (int i = 0; resolved == null && i < fallbackPackages.length; i++) {
+            resolved = loadSubtype(fallbackPackages[i] + '.' + typeName, expectedType);
+        }
+        return resolved;
+    }
+
+    private static <T> Class<? extends T> loadSubtype(String className, Class<T> expectedType) {
         try {
-            // Try fully qualified name first
-            return Class.forName(type, false, ComponentDescriptor.class.getClassLoader());
-        } catch (ClassNotFoundException e) {
-            // Try simple name in standard packages
-            String[] standardPackages = { "org.ta4j.core.rules", "org.ta4j.core.indicators", "org.ta4j.core.strategy" };
-            for (String pkg : standardPackages) {
-                try {
-                    return Class.forName(pkg + "." + type, false, ComponentDescriptor.class.getClassLoader());
-                } catch (ClassNotFoundException ignored) {
-                    // Continue to next package
-                }
-            }
+            Class<?> candidate = Class.forName(className, false, ComponentDescriptor.class.getClassLoader());
+            return expectedType.isAssignableFrom(candidate) ? candidate.asSubclass(expectedType) : null;
+        } catch (ClassNotFoundException ex) {
             return null;
         }
     }

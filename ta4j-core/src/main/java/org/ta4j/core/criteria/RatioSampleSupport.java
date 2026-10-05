@@ -46,31 +46,35 @@ final class RatioSampleSupport {
 
     private static Stream<Sample> timeBasedSamples(BarSeries series, SamplingFrequency samplingFrequency,
             ZoneId groupingZoneId, ExcessReturns excessReturns) {
-        int beginIndex = series.getBeginIndex();
+        int beginIndex = excessReturns.getBeginIndex();
         boolean includeInitialReturn = excessReturns.hasInitialReturn();
         int startIndex = includeInitialReturn ? beginIndex : beginIndex + 1;
         int anchorIndex = includeInitialReturn ? beginIndex - 1 : beginIndex;
-        int endIndex = series.getEndIndex();
+        int endIndex = excessReturns.getEndIndex();
         SamplingFrequencyIndexes samplingFrequencyIndexes = new SamplingFrequencyIndexes(samplingFrequency,
                 groupingZoneId);
         if (includeInitialReturn && beginIndex == endIndex) {
             return Stream.of(toSample(series, new IndexPair(anchorIndex, beginIndex), excessReturns));
         }
-        return samplingFrequencyIndexes.sample(series, anchorIndex, startIndex, endIndex)
+        return samplingFrequencyIndexes.sample(excessReturns::getCapturedEndTime, anchorIndex, startIndex, endIndex)
                 .map(indexPair -> toSample(series, indexPair, excessReturns));
     }
 
     private static Stream<Sample> tradeSamples(BarSeries series, TradingRecord tradingRecord,
             ExcessReturns excessReturns, OpenPositionHandling openPositionHandling) {
-        int beginIndex = series.getBeginIndex();
-        int finalIndex = series.getEndIndex();
+        int beginIndex = excessReturns.getBeginIndex();
+        int finalIndex = excessReturns.getEndIndex();
         return tradePairs(tradingRecord, beginIndex, finalIndex, excessReturns, openPositionHandling)
                 .map(indexPair -> toSample(series, indexPair, excessReturns));
     }
 
     private static Stream<IndexPair> tradePairs(TradingRecord tradingRecord, int beginIndex, int finalIndex,
             ExcessReturns excessReturns, OpenPositionHandling openPositionHandling) {
-        List<Position> positions = tradingRecord.getPositions();
+        List<Position> positions = tradingRecord.getPositions()
+                .stream()
+                .filter(position -> openPositionHandling != OpenPositionHandling.IGNORE || position != null
+                        && position.getExit() != null && position.getExit().getIndex() <= finalIndex)
+                .toList();
         Stream<IndexPair> closedPairs = positions.stream()
                 .map(position -> toTradePair(position, beginIndex, finalIndex, excessReturns, openPositionHandling))
                 .filter(Objects::nonNull);
@@ -130,6 +134,12 @@ final class RatioSampleSupport {
         if (currentIndex < entryIndex) {
             return null;
         }
+        if (entry.getIndex() < beginIndex && currentIndex == entryIndex) {
+            // Entered before the retained window and exited on its first bar:
+            // nothing of the trade remains observable, unlike a genuine
+            // zero-duration trade entered on that bar.
+            return null;
+        }
         return new IndexPair(entryIndex, currentIndex);
     }
 
@@ -180,18 +190,8 @@ final class RatioSampleSupport {
     private static Sample toSample(BarSeries series, IndexPair indexPair, ExcessReturns excessReturns) {
         int previousIndex = indexPair.previousIndex();
         int currentIndex = indexPair.currentIndex();
-        Num deltaYears;
-        if (previousIndex == series.getBeginIndex() - 1 && excessReturns.hasInitialReturn()) {
-            long seconds = Math
-                    .max(0, Duration
-                            .between(series.getBar(series.getBeginIndex()).getBeginTime(),
-                                    series.getBar(currentIndex).getEndTime())
-                            .getSeconds());
-            NumFactory numFactory = series.numFactory();
-            deltaYears = numFactory.numOf(seconds).dividedBy(numFactory.numOf(TimeConstants.SECONDS_PER_YEAR));
-        } else {
-            deltaYears = BarSeriesUtils.deltaYears(series, previousIndex, currentIndex);
-        }
-        return new Sample(excessReturns.excessReturn(previousIndex, currentIndex), deltaYears);
+        return new Sample(excessReturns.excessReturn(previousIndex, currentIndex),
+                BarSeriesUtils.deltaYears(excessReturns.getCapturedEndTime(previousIndex),
+                        excessReturns.getCapturedEndTime(currentIndex), series.numFactory()));
     }
 }

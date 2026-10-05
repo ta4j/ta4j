@@ -7,6 +7,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.analysis.PerformanceIndicator;
 import org.ta4j.core.analysis.CumulativePnL;
 import org.ta4j.core.num.Num;
 
@@ -96,30 +97,60 @@ public final class Drawdown {
     private static Scan scan(BarSeries series, TradingRecord tradingRecord, Indicator<Num> curve, boolean relative) {
         var numFactory = series.numFactory();
         var zero = numFactory.zero();
-        var begin = tradingRecord == null ? series.getBeginIndex() : tradingRecord.getStartIndex(series);
-        var end = tradingRecord == null ? series.getEndIndex() : tradingRecord.getEndIndex(series);
-
-        if (series.isEmpty() || begin > end) {
-            return new Scan(zero, 0);
-        }
-
-        var initialCapitalBaseline = curve instanceof CashFlow cashFlow && cashFlow.hasInitialReturn()
-                && begin == series.getBeginIndex();
-        var peak = initialCapitalBaseline ? numFactory.one() : curve.getValue(begin);
-        var peakIndex = initialCapitalBaseline ? begin - 1 : begin;
+        var peak = zero;
         var maxDrawdown = zero;
         var maxLength = 0;
 
-        for (var i = begin; i <= end; i++) {
-            var value = curve.getValue(i);
-            if (value.isGreaterThan(peak)) {
-                peak = value;
-                peakIndex = i;
+        int begin;
+        int end;
+        if (curve instanceof PerformanceIndicator performanceCurve) {
+            // A performance curve's captured window is authoritative: an
+            // explicitly bounded curve must not be widened from the live series
+            // or record bounds, but an explicitly bounded record narrows it.
+            begin = performanceCurve.getBeginIndex();
+            end = performanceCurve.getEndIndex();
+            if (tradingRecord != null) {
+                Integer explicitStartIndex = tradingRecord.getStartIndex();
+                if (explicitStartIndex != null) {
+                    begin = Math.max(begin, explicitStartIndex);
+                }
+                Integer explicitEndIndex = tradingRecord.getEndIndex();
+                if (explicitEndIndex != null) {
+                    end = Math.min(end, explicitEndIndex);
+                }
             }
-            var drop = relative ? peak.minus(value).dividedBy(peak) : peak.minus(value);
-            if (drop.isGreaterThan(maxDrawdown)) {
-                maxDrawdown = drop;
-                maxLength = i - peakIndex;
+        } else {
+            begin = tradingRecord == null ? series.getBeginIndex() : tradingRecord.getStartIndex(series);
+            end = tradingRecord == null ? series.getEndIndex() : tradingRecord.getEndIndex(series);
+        }
+
+        // Lengths are measured from the scanned window's start, never from a
+        // live series begin that may have moved since the curve was captured.
+        int peakIndex = begin;
+        // An empty series reports [-1, -1]; never read a curve at a negative index.
+        if (begin >= 0 && begin <= end && (curve instanceof PerformanceIndicator || !series.isEmpty())) {
+            if (curve instanceof PerformanceIndicator performanceCurve) {
+                // The equity entering the window is the first peak: a result realized in
+                // the first slot (a trade closed on the window's first bar) is a move
+                // away from it, not a new starting level. A record narrowing the window
+                // starts from the slot before it.
+                peak = begin == performanceCurve.getBeginIndex() ? performanceCurve.getBaselineValue()
+                        : curve.getValue(begin - 1);
+                peakIndex = begin - 1;
+            }
+            for (long i = begin; i <= end; i++) {
+                int index = (int) i;
+                Num value = curve.getValue(index);
+                // A first slot level with the baseline is the peak itself: no move preceded it.
+                if (value.isGreaterThan(peak) || (index == begin && value.isEqual(peak))) {
+                    peak = value;
+                    peakIndex = index;
+                }
+                var drop = relative ? peak.minus(value).dividedBy(peak) : peak.minus(value);
+                if (drop.isGreaterThan(maxDrawdown)) {
+                    maxDrawdown = drop;
+                    maxLength = index - peakIndex;
+                }
             }
         }
 

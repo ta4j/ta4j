@@ -3,29 +3,34 @@
  */
 package org.ta4j.core.criteria.drawdown;
 
+import java.util.List;
+import org.ta4j.core.FuturesContract;
+import org.ta4j.core.TradeFill;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
-import org.ta4j.core.FuturesContract;
-import org.ta4j.core.TradeFill;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
-import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
+
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 
 public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
@@ -167,21 +172,6 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void positionReturnClampsTerminalFillToSeriesEnd() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 90, 100).build();
-        Trade entry = Trade.fromFills(Trade.TradeType.BUY,
-                List.of(new TradeFill(0, numFactory.numOf(100), numFactory.numOf(2))), new ZeroCostModel());
-        Trade exit = Trade
-                .fromFills(Trade.TradeType.SELL,
-                        List.of(new TradeFill(1, numFactory.numOf(90), numFactory.one()),
-                                new TradeFill(Integer.MAX_VALUE, numFactory.numOf(90), numFactory.one())),
-                        new ZeroCostModel());
-        Position position = new Position(entry, exit);
-
-        assertNumEquals(-10d / 19d, new ReturnOverMaxDrawdownCriterion().calculate(series, position));
-    }
-
-    @Test
     public void testNoDrawDownForOpenPosition() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 105, 95, 100, 90, 95, 80, 120)
@@ -210,6 +200,17 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void nullTradingRecordReturnsTheRepresentationNeutralValue() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 90, 120).build();
+        TradingRecord noRecord = null;
+
+        assertNumEquals(numFactory.zero(),
+                new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL).calculate(series, noRecord));
+        assertNumEquals(numFactory.one(),
+                new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.MULTIPLICATIVE).calculate(series, noRecord));
+    }
+
+    @Test
     public void includesOpenPositionWhenMarkToMarket() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 90).build();
         var tradingRecord = new BaseTradingRecord();
@@ -228,6 +229,22 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         var expected = netReturn.dividedBy(maxDrawdown);
 
         assertNumEquals(expected, result);
+    }
+
+    @Test
+    public void scoresAnExitAfterTheWindowAsOpenAtTheWindowEnd() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("romad-trailing-exit", numFactory, 1,
+                100d, 110d, 55d);
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+        BarSeries truncated = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 110d).build();
+        TradingRecord openAtWindowEnd = new BaseTradingRecord(Trade.buyAt(0, truncated));
+        ReturnOverMaxDrawdownCriterion criterion = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL);
+
+        Num result = criterion.calculate(series, tradingRecord);
+
+        // +10% at the window close with no drawdown; the later exit (-45%) is unseen.
+        assertNumEquals(0.1, result);
+        assertNumEquals(criterion.calculate(truncated, openAtWindowEnd), result);
     }
 
     @Test
@@ -413,6 +430,51 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void carriedPreWindowProfitDoesNotAffectWindowReturn() {
+        BarSeries pruned = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 1000, 100, 110, 100, 80, 100, 105)
+                .build();
+        TradingRecord prunedRecord = new BaseTradingRecord(Trade.buyAt(0, pruned), Trade.sellAt(1, pruned),
+                Trade.buyAt(2, pruned), Trade.sellAt(3, pruned), Trade.buyAt(4, pruned), Trade.sellAt(5, pruned),
+                Trade.buyAt(6, pruned), Trade.sellAt(7, pruned));
+        pruned.setMaximumBarCount(6);
+
+        BarSeries fresh = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 110, 100, 80, 100, 105)
+                .build();
+        TradingRecord freshRecord = new BaseTradingRecord(Trade.buyAt(0, fresh), Trade.sellAt(1, fresh),
+                Trade.buyAt(2, fresh), Trade.sellAt(3, fresh), Trade.buyAt(4, fresh), Trade.sellAt(5, fresh));
+
+        assertNumEquals(returnOverMaxDrawDown.calculate(fresh, freshRecord),
+                returnOverMaxDrawDown.calculate(pruned, prunedRecord));
+    }
+
+    @Test
+    public void sameBarRoundTripInASingleBarWindowKeepsItsRealizedReturn() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d).build();
+        BaseTradingRecord gain = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel());
+        gain.enter(0, numFactory.hundred(), numFactory.one());
+        gain.exit(0, numFactory.numOf(110), numFactory.one());
+
+        // The realized ratio fills the only slot; there is no earlier slot to rebase
+        // on.
+        assertNumEquals(0.1, returnOverMaxDrawDown.calculate(series, gain));
+    }
+
+    @Test
+    public void exitSeededAtTheConstrainedBeginCountsAsWindowReturn() {
+        BarSeries series = ConstrainedSeriesSupport.offsetSeries("romad-seeded-begin", numFactory, 1, 3, 0, 100d, 100d,
+                100d, 110d);
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel());
+        record.enter(0, numFactory.hundred(), numFactory.one());
+        record.exit(1, numFactory.numOf(105), numFactory.one());
+
+        // Exiting at 105 on the first retained bar (close 100) realizes +5% inside the
+        // window; nothing was pruned, so that is not carried pre-window equity.
+        assertNumEquals(0.05, returnOverMaxDrawDown.calculate(series, record));
+    }
+
+    @Test
     public void testTradingRecordWithMultiplePositionsAllRepresentations() {
         // Multiple positions with gains and drawdowns
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
@@ -554,6 +616,48 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
         Num logResult = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.LOG).calculate(series, position);
         assertNumEquals(ReturnRepresentation.LOG.toRepresentationFromRateOfReturn(rawRatio), logResult);
+    }
+
+    @Test
+    public void matchesFreshSeriesAcrossWindowShapesAndPositionBoundaries() {
+        for (ConstrainedSeriesSupport.CriterionWindowFixture fixture : ConstrainedSeriesSupport
+                .criterionWindowFixtures(numFactory)) {
+            for (EquityCurveMode mode : EquityCurveMode.values()) {
+                for (OpenPositionHandling handling : OpenPositionHandling.values()) {
+                    for (ReturnRepresentation representation : ReturnRepresentation.values()) {
+                        var criterion = new ReturnOverMaxDrawdownCriterion(representation, mode, handling);
+                        Num actual = criterion.calculate(fixture.series(), fixture.tradingRecord());
+                        Num expected = criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord(mode));
+                        assertEquals(fixture.name() + ": " + mode + "/" + handling + "/" + representation,
+                                expected.doubleValue(), actual.doubleValue(), 1e-10);
+                        Position expectedPosition = fixture.equivalentPosition(mode);
+                        if (fixture.position() != null && expectedPosition != null) {
+                            Num actualPosition = criterion.calculate(fixture.series(), fixture.position());
+                            Num expectedPositionValue = !fixture.position().isOpened() && expectedPosition.isOpened()
+                                    ? criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord(mode))
+                                    : criterion.calculate(fixture.equivalentSeries(), expectedPosition);
+                            assertEquals(fixture.name() + ": position " + mode + "/" + handling + "/" + representation,
+                                    expectedPositionValue.doubleValue(), actualPosition.doubleValue(), 1e-10);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void positionReturnClampsTerminalFillToSeriesEnd() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 90, 100).build();
+        Trade entry = Trade.fromFills(Trade.TradeType.BUY,
+                List.of(new TradeFill(0, numFactory.numOf(100), numFactory.numOf(2))), new ZeroCostModel());
+        Trade exit = Trade
+                .fromFills(Trade.TradeType.SELL,
+                        List.of(new TradeFill(1, numFactory.numOf(90), numFactory.one()),
+                                new TradeFill(Integer.MAX_VALUE, numFactory.numOf(90), numFactory.one())),
+                        new ZeroCostModel());
+        Position position = new Position(entry, exit);
+
+        assertNumEquals(-10d / 19d, new ReturnOverMaxDrawdownCriterion().calculate(series, position));
     }
 
     @Test

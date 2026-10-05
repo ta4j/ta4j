@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.backtest;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
@@ -347,13 +349,19 @@ public interface PositionSizer {
      * @param fillTime             resolved execution timestamp of the entry target,
      *                             or {@code null} when unknown
      * @param strategy             strategy being evaluated
-     * @param barSeries            backtested bar series
+     * @param barSeries            backtested bar series; during a
+     *                             {@link BarSeriesManager} run, a read-only view of
+     *                             the caller's series that keeps its indexes and
+     *                             ends at the run's last index
      * @param tradeType            entry trade type
      * @param tradingRecord        trading record for the current run
      * @param transactionCostModel transaction cost model
      * @param holdingCostModel     holding cost model
      * @since 0.22.9
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "The context borrows the run's series view, "
+            + "trading record and cost models so sizing observes the same bars the strategy rules and "
+            + "execution models see; accessors expose them by contract.")
     public record Context(int signalIndex, int entryIndex, Num entryPrice, Instant fillTime, Strategy strategy,
             BarSeries barSeries, TradeType tradeType, TradingRecord tradingRecord, CostModel transactionCostModel,
             CostModel holdingCostModel) {
@@ -366,7 +374,7 @@ public interface PositionSizer {
         public Context {
             Objects.requireNonNull(entryPrice, "entryPrice");
             strategy = StrategySnapshots.copy(strategy);
-            barSeries = snapshotSeries(barSeries);
+            barSeries = Objects.requireNonNull(barSeries, "barSeries");
             Objects.requireNonNull(tradeType, "tradeType");
             Objects.requireNonNull(tradingRecord, "tradingRecord");
             Objects.requireNonNull(transactionCostModel, "transactionCostModel");
@@ -398,11 +406,6 @@ public interface PositionSizer {
                 CostModel holdingCostModel) {
             this(signalIndex, entryIndex, entryPrice, null, strategy, barSeries, tradeType, tradingRecord,
                     transactionCostModel, holdingCostModel);
-        }
-
-        @Override
-        public BarSeries barSeries() {
-            return snapshotSeries(barSeries);
         }
 
         @Override

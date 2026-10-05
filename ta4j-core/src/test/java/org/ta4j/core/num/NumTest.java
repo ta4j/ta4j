@@ -297,7 +297,7 @@ public class NumTest extends AbstractIndicatorTest<Object, Num> {
                 assertNumEquals(numOf(numBD), numOf(sqrtBD.multiply(sqrtBD, new MathContext(99999, HALF_UP))));
                 assertNumNotEquals(numOf(numBD), sqrt.multipliedBy(sqrt));
             } catch (final IOException ioe) {
-                ioe.printStackTrace();
+                throw new IllegalStateException("Failed to load numTest.properties", ioe);
             }
         }
     }

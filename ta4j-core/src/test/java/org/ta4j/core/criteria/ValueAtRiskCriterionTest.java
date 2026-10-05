@@ -3,38 +3,38 @@
  */
 package org.ta4j.core.criteria;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import org.junit.Test;
-import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.FuturesContract;
+import org.ta4j.core.TradeFill;
+import org.ta4j.core.num.DecimalNumFactory;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+import org.junit.Test;
+import org.ta4j.core.ConstrainedSeriesSupport;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
-import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 public class ValueAtRiskCriterionTest {
-
     private static final Instant T0 = Instant.parse("2025-01-01T00:00:00Z");
-
     private BarSeries series;
 
     private NumFactory numFactory = DoubleNumFactory.getInstance();
@@ -128,10 +128,50 @@ public class ValueAtRiskCriterionTest {
     }
 
     @Test
+    public void calculateWithUndefinedFirstRetainedReturnDoesNotSlicePastRawValues() {
+        // The pre-window entry is valued at the first retained close, 0, and
+        // exits there at 0: the undefined 0/0 return occupies the first raw
+        // slot and must not shift the slice past the raw values.
+        series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.setMaximumBarCount(2);
+        series.barBuilder().closePrice(10d).add();
+        Trade entry = Trade.buyAt(0, series);
+        series.barBuilder().closePrice(0d).add();
+        Trade exit = Trade.sellAt(1, series);
+        series.barBuilder().closePrice(30d).add();
+        TradingRecord tradingRecord = new BaseTradingRecord(entry, exit);
+
+        Num result = getCriterion().calculate(series, tradingRecord);
+
+        assertTrue(result.isNaN());
+    }
+
+    @Test
     public void betterThan() {
         AnalysisCriterion criterion = getCriterion();
         assertTrue(criterion.betterThan(numFactory.numOf(-0.1), numFactory.numOf(-0.2)));
         assertFalse(criterion.betterThan(numFactory.numOf(-0.1), numFactory.numOf(0.0)));
+    }
+
+    @Test
+    public void matchesFreshSeriesAcrossWindowShapesAndPositionBoundaries() {
+        for (ConstrainedSeriesSupport.CriterionWindowFixture fixture : ConstrainedSeriesSupport
+                .criterionWindowFixtures(numFactory)) {
+            for (ReturnRepresentation representation : ReturnRepresentation.values()) {
+                ValueAtRiskCriterion criterion = new ValueAtRiskCriterion(0.95, representation);
+                Num actual = criterion.calculate(fixture.series(), fixture.tradingRecord());
+                Num expected = criterion.calculate(fixture.equivalentSeries(), fixture.markedEquivalentRecord());
+                assertEquals(fixture.name() + ": trading-record return window", expected.doubleValue(),
+                        actual.doubleValue(), 1e-10);
+                if (fixture.position() != null && fixture.markedEquivalentPosition() != null) {
+                    Num actualPosition = criterion.calculate(fixture.series(), fixture.position());
+                    Num expectedPosition = criterion.calculate(fixture.equivalentSeries(),
+                            fixture.markedEquivalentPosition());
+                    assertEquals(fixture.name() + ": position return window", expectedPosition.doubleValue(),
+                            actualPosition.doubleValue(), 1e-10);
+                }
+            }
+        }
     }
 
     @Test

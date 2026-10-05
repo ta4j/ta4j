@@ -149,6 +149,16 @@ public class NumericIndicatorTest extends AbstractIndicatorTest<NumericIndicator
     }
 
     @Test
+    public void pow() {
+        final NumericIndicator numericIndicator = NumericIndicator.of(cp1);
+        assertNumEquals(2, numericIndicator.pow(0.5).getValue(3));
+        assertNumEquals(3, numericIndicator.pow(0.5).getValue(8));
+        assertNumEquals(8, numericIndicator.pow(1.5).getValue(3));
+        assertNumEquals(81, numericIndicator.pow(2).getValue(8));
+        assertNumEquals(1, numericIndicator.pow(0).getValue(8));
+    }
+
+    @Test
     public void indicators() {
         final NumericIndicator numericIndicator = NumericIndicator.of(cp1);
 

@@ -26,36 +26,24 @@ final class RiskTailSupport {
     }
 
     /**
-     * Returns the raw return rates of the given series, sorted ascending.
-     *
-     * <p>
-     * The placeholder value at the first stored position is excluded: a windowed
-     * futures series reports an actual first-bar return and keeps it, while every
-     * other layout has a synthetic placeholder there. A first value that only
-     * repeats the equity accumulated before the retained head is excluded as well,
-     * because it is a cumulative result rather than a period return.
-     * </p>
+     * Returns the raw return rates of the given series, sorted ascending, or
+     * {@code null} when any return in the distribution is undefined. The leading
+     * no-prior-close placeholder is excluded based on the materialized return
+     * count; any other undefined return (for example a seeded first slot whose
+     * entry price is zero) makes the tail undefined instead of being sorted into an
+     * arbitrary position or silently dropped.
      *
      * @param returns the return series
-     * @return the sorted raw return rates
+     * @return the sorted raw return rates, or {@code null} if one is undefined
      */
     static List<Num> sortedRates(Returns returns) {
-        BarSeries series = returns.getBarSeries();
-        int seriesBegin = series.getBeginIndex();
-        boolean hasFirstReturn = returns.hasFirstBarReturn() && !returns.hasSeededFirstBarReturn();
-        if (!hasFirstReturn && seriesBegin == Integer.MAX_VALUE) {
-            return List.of();
-        }
-        int firstReturnIndex = hasFirstReturn ? seriesBegin : seriesBegin + 1;
-        int lastReturnIndex = series.getEndIndex();
-        if (firstReturnIndex > lastReturnIndex) {
-            return List.of();
-        }
-        long returnCount = (long) lastReturnIndex - firstReturnIndex + 1;
-        List<Num> returnRates = new ArrayList<>((int) Math.min(returnCount, series.getBarCount()));
-        for (long index = firstReturnIndex; index <= lastReturnIndex; index++) {
-            Num returnRate = returns.getValue((int) index);
-            returnRates.add(returnRate);
+        List<Num> rawValues = returns.getRawValues();
+        List<Num> returnRates = new ArrayList<>(rawValues.subList(
+                rawValues.size() - returns.getSize() + (returns.hasSeededFirstBarReturn() ? 1 : 0), rawValues.size()));
+        for (Num rate : returnRates) {
+            if (rate.isNaN()) {
+                return null;
+            }
         }
         Collections.sort(returnRates);
         return returnRates;

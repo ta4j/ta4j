@@ -609,6 +609,15 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void deltaYearsBetweenCapturedEndTimes() {
+        Instant start = Instant.parse("2024-01-01T00:00:00Z");
+        Instant oneYearLater = start.plusSeconds((long) TimeConstants.SECONDS_PER_YEAR);
+
+        assertEquals(numFactory.one(), BarSeriesUtils.deltaYears(start, oneYearLater, numFactory));
+        assertEquals(numFactory.zero(), BarSeriesUtils.deltaYears(oneYearLater, start, numFactory));
+    }
+
+    @Test
     public void sortBarsPreservesInsertionOrderForEqualEndTimes() {
         final Instant endTime = Instant.parse("2019-06-01T01:01:00Z");
 

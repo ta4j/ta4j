@@ -3,6 +3,12 @@
  */
 package org.ta4j.core.criteria;
 
+import java.util.List;
+import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.FuturesContract;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFill;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.criteria.RatioCriterionTestSupport.alwaysInvested;
@@ -21,17 +27,12 @@ import java.time.ZoneOffset;
 import java.util.stream.IntStream;
 
 import org.junit.Test;
-import java.util.List;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.ExecutionSide;
-import org.ta4j.core.FuturesContract;
-import org.ta4j.core.Trade;
-import org.ta4j.core.TradeFill;
-import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
-import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
@@ -341,6 +342,39 @@ public class SortinoRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void ignoreIgnoresPositionExitingAfterTheRecordEndWhenCashEarnsRiskFree() {
+        BarSeries series = buildDailySeries(getBarSeries("post_end_exit_series"),
+                new double[] { 100d, 110d, 99d, 120d, 130d, 140d }, Instant.parse("2024-01-01T00:00:00Z"));
+        Num amount = series.numFactory().one();
+        BaseTradingRecord withoutLatePosition = new BaseTradingRecord(TradeType.BUY, 0, 4, new ZeroCostModel(),
+                new ZeroCostModel());
+        BaseTradingRecord withLatePosition = new BaseTradingRecord(TradeType.BUY, 0, 4, new ZeroCostModel(),
+                new ZeroCostModel());
+        for (BaseTradingRecord record : new BaseTradingRecord[] { withoutLatePosition, withLatePosition }) {
+            record.enter(0, series.getBar(0).getClosePrice(), amount);
+            record.exit(2, series.getBar(2).getClosePrice(), amount);
+        }
+        withLatePosition.enter(3, series.getBar(3).getClosePrice(), amount);
+        withLatePosition.exit(5, series.getBar(5).getClosePrice(), amount);
+        SortinoRatioCriterion criterion = new SortinoRatioCriterion(0.05d, SamplingFrequency.BAR, Annualization.PERIOD,
+                ZoneOffset.UTC, CashReturnPolicy.CASH_EARNS_RISK_FREE, OpenPositionHandling.IGNORE);
+
+        Num expected = criterion.calculate(series, withoutLatePosition);
+        Num actual = criterion.calculate(series, withLatePosition);
+
+        assertFalse(expected.isNaN());
+        assertNumEquals(expected, actual, 1e-12);
+    }
+
+    private SortinoRatioCriterion criterion(SamplingFrequency samplingFrequency, Annualization annualization) {
+        return (SortinoRatioCriterion) getCriterion(0d, samplingFrequency, annualization, ZoneOffset.UTC);
+    }
+
+    private SortinoRatioCriterion criterion() {
+        return (SortinoRatioCriterion) getCriterion(0.05d, SamplingFrequency.BAR, Annualization.PERIOD, ZoneOffset.UTC);
+    }
+
+    @Test
     public void returnsFuturesEconomics_whenPositionIsEvaluatedDirectly() {
         BarSeries series = buildDailySeries(getBarSeries("futures_sortino"), new double[] { 100d, 110d, 100d, 110d },
                 Instant.parse("2024-01-01T00:00:00Z"));
@@ -382,13 +416,4 @@ public class SortinoRatioCriterionTest extends AbstractCriterionTest {
                 .fees(List.of())
                 .build();
     }
-
-    private SortinoRatioCriterion criterion(SamplingFrequency samplingFrequency, Annualization annualization) {
-        return (SortinoRatioCriterion) getCriterion(0d, samplingFrequency, annualization, ZoneOffset.UTC);
-    }
-
-    private SortinoRatioCriterion criterion() {
-        return (SortinoRatioCriterion) getCriterion(0.05d, SamplingFrequency.BAR, Annualization.PERIOD, ZoneOffset.UTC);
-    }
-
 }

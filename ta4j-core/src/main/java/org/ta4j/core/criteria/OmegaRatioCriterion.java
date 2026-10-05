@@ -196,36 +196,53 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         EquityCurveMode mode = openPositionHandling == OpenPositionHandling.IGNORE ? EquityCurveMode.REALIZED
                 : equityCurveMode;
         Returns returns = new Returns(series, position, ReturnRepresentation.DECIMAL, mode);
-        return calculate(returns, series.getBeginIndex(), series.getEndIndex());
+        return calculate(returns,
+                returns.hasFirstBarReturn() && !returns.hasSeededFirstBarReturn() ? returns.getBeginIndex()
+                        : returns.getBeginIndex() + 1L);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
-        if (tradingRecord == null || series.isEmpty()) {
+        if (tradingRecord == null) {
+            return zero;
+        }
+        return calculateTradingRecord(series, tradingRecord, zero);
+    }
+
+    private Num calculateTradingRecord(BarSeries series, TradingRecord tradingRecord, Num zero) {
+        if (series.isEmpty()) {
             return zero;
         }
 
-        int beginIndex = tradingRecord.getStartIndex(series);
-        int endIndex = tradingRecord.getEndIndex(series);
         Returns returns = new Returns(series, tradingRecord, ReturnRepresentation.DECIMAL, equityCurveMode,
                 openPositionHandling);
-        return calculate(returns, beginIndex, endIndex);
+        // Bounds come from the captured return window, not the live series, so a
+        // series that rolls after materialization cannot shift them.
+        Integer explicitStartIndex = tradingRecord.getStartIndex();
+        int beginIndex = explicitStartIndex == null ? returns.getBeginIndex()
+                : Math.max(explicitStartIndex, returns.getBeginIndex());
+        if (returns.getEndIndex() < beginIndex) {
+            return zero;
+        }
+
+        boolean includeOpenPositionMarks = equityCurveMode != EquityCurveMode.REALIZED
+                && openPositionHandling != OpenPositionHandling.IGNORE;
+        boolean initialReturn = tradingRecord.getFuturesContract() == null
+                ? marksAt(tradingRecord, beginIndex, returns.getEndIndex(), includeOpenPositionMarks)
+                : returns.hasFirstBarReturn() && !returns.hasSeededFirstBarReturn();
+        return calculate(returns, initialReturn ? beginIndex : beginIndex + 1L);
     }
 
-    private Num calculate(Returns returns, int beginIndex, int endIndex) {
+    private Num calculate(Returns returns, long firstRateIndex) {
         NumFactory numFactory = returns.getBarSeries().numFactory();
         Num zero = numFactory.zero();
-        boolean hasFirstReturn = returns.hasFirstBarReturn() && !returns.hasSeededFirstBarReturn()
-                && beginIndex == returns.getBarSeries().getBeginIndex();
-        long firstReturnIndex = (long) beginIndex + (hasFirstReturn ? 0 : 1);
         Num thresholdNum = numFactory.numOf(threshold);
         Num upsideExcess = zero;
         Num downsideShortfall = zero;
-
-        for (long index = firstReturnIndex; index <= endIndex; index++) {
-            Num returnRate = returns.getValue((int) index);
+        for (long i = firstRateIndex; i <= returns.getEndIndex(); i++) {
+            Num returnRate = returns.getValue((int) i);
             if (returnRate.isNaN()) {
                 continue;
             }
@@ -243,6 +260,24 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         }
         Num ratio = upsideExcess.dividedBy(downsideShortfall);
         return toRepresentation(ratio);
+    }
+
+    /** Returns whether the record has a mark or exit at the bounded start. */
+    private static boolean marksAt(TradingRecord tradingRecord, int index, int analysisEndIndex,
+            boolean includeOpenPositionMarks) {
+        for (Position position : tradingRecord.getPositions()) {
+            if (position.getExit() == null) {
+                continue;
+            }
+            int exitIndex = position.getExit().getIndex();
+            if (exitIndex == index || includeOpenPositionMarks && exitIndex > analysisEndIndex
+                    && analysisEndIndex == index && position.getEntry().getIndex() <= index) {
+                return true;
+            }
+        }
+        Position current = tradingRecord.getCurrentPosition();
+        return includeOpenPositionMarks && current != null && current.isOpened() && analysisEndIndex == index
+                && current.getEntry().getIndex() <= index;
     }
 
     @Override

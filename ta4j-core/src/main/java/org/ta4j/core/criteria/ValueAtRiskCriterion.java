@@ -7,6 +7,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.Returns;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -77,6 +78,9 @@ public class ValueAtRiskCriterion extends AbstractAnalysisCriterion {
         NumFactory numFactory = returns.getBarSeries().numFactory();
         // raw return rates excluding the initial placeholder, sorted ascending
         List<Num> returnRates = RiskTailSupport.sortedRates(returns);
+        if (returnRates == null) {
+            return NaN.NaN;
+        }
         if (returnRates.isEmpty()) {
             return RiskTailSupport.neutralValue(numFactory, returnRepresentation);
         }

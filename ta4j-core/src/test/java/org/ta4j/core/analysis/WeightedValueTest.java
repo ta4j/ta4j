@@ -38,6 +38,15 @@ public class WeightedValueTest {
     }
 
     @Test
+    public void constructorAllowsFiniteDecimalWeightBeyondDoubleRange() {
+        Num weight = DecimalNumFactory.getInstance().numOf("1E400");
+
+        WeightedValue<String> weightedValue = new WeightedValue<>("large", weight);
+
+        assertThat(weightedValue.weight()).isEqualByComparingTo(weight);
+    }
+
+    @Test
     public void normalizeWeightsReturnsUnitSumInOriginalOrder() {
         List<WeightedValue<String>> normalized = WeightedValue
                 .normalizeWeights(List.of(new WeightedValue<>("alpha", NUM_FACTORY.numOf(3.0)),

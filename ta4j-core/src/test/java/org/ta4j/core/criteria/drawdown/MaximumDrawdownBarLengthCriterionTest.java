@@ -3,12 +3,14 @@
  */
 package org.ta4j.core.criteria.drawdown;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
@@ -66,6 +68,19 @@ public class MaximumDrawdownBarLengthCriterionTest extends AbstractCriterionTest
     }
 
     @Test
+    public void lossRealizedAtTheConstrainedBeginFallsOneBarFromTheWindowStart() {
+        var series = ConstrainedSeriesSupport.offsetSeries("mdd-length-seeded-begin", numFactory, 1, 3, 0, 100d, 100d,
+                100d, 110d);
+        var record = new BaseTradingRecord();
+        record.enter(0, numFactory.hundred(), numFactory.one());
+        record.exit(1, numFactory.numOf(95), numFactory.one());
+
+        // The equity entered the window at the neutral 1 and stood at 0.95 in the first
+        // slot.
+        assertNumEquals(1, getCriterion().calculate(series, record));
+    }
+
+    @Test
     public void calculateWithOpenPositionHandlingChangesDrawdownLength() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 80).build();
         var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
@@ -109,6 +124,23 @@ public class MaximumDrawdownBarLengthCriterionTest extends AbstractCriterionTest
             var explicit = new MaximumDrawdownBarLengthCriterion(EquityCurveMode.MARK_TO_MARKET, handling);
 
             assertNumEquals(explicit.calculate(series, tradingRecord), singleArg.calculate(series, tradingRecord));
+        }
+    }
+
+    @Test
+    public void matchesRecordCalculationAcrossWindowShapesAndPositionBoundaries() {
+        for (var fixture : ConstrainedSeriesSupport.criterionWindowFixtures(numFactory)) {
+            if (fixture.position() == null || fixture.position().isOpened()) {
+                continue;
+            }
+            for (var mode : EquityCurveMode.values()) {
+                for (var handling : OpenPositionHandling.values()) {
+                    var criterion = new MaximumDrawdownBarLengthCriterion(mode, handling);
+                    double expected = criterion.calculate(fixture.series(), fixture.tradingRecord()).doubleValue();
+                    double actual = criterion.calculate(fixture.series(), fixture.position()).doubleValue();
+                    assertEquals(fixture.name() + " " + mode + "/" + handling, expected, actual, 1e-10);
+                }
+            }
         }
     }
 

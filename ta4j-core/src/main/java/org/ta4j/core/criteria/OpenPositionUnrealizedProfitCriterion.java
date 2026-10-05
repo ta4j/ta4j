@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.criteria;
 
+import java.util.List;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
@@ -13,13 +15,12 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * Analysis criterion that returns the unrealized profit/loss for the open
- * position.
+ * Analysis criterion that returns the unrealized profit/loss for the position
+ * active at the end of the effective series or trading-record window.
  *
  * <p>
- * This marks the current open position to the series end price via
- * {@link Position#getProfit(int, Num)}. Returns zero when no open position
- * exists.
+ * Positions exited after the window are treated as open and marked at the last
+ * included bar. Returns zero when no position is active at the window end.
  * </p>
  *
  * <p>
@@ -38,34 +39,73 @@ public class OpenPositionUnrealizedProfitCriterion extends AbstractAnalysisCrite
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        NumFactory factory = series.numFactory();
-        if (position.getFuturesContract() == null && !position.isOpened()) {
-            return factory.zero();
-        }
-        int endIndex = series.getEndIndex();
-        boolean noMark = series.getBarCount() == 0 || endIndex < series.getBeginIndex();
-        Num closePrice = noMark ? NaN.NaN : series.getBar(endIndex).getClosePrice();
-        int valuationIndex = series.getBarCount() == 0 && endIndex < 0 && position.getFuturesContract() != null
-                ? Integer.MAX_VALUE
-                : endIndex;
-        Num profit = unrealizedProfit(position, closePrice, valuationIndex);
-        return toSeriesNum(factory, profit);
+        return calculateAt(series, position,
+                series.isEmpty() && position.getFuturesContract() != null ? Integer.MAX_VALUE : series.getEndIndex());
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        NumFactory factory = series.numFactory();
+        int finalIndex = series.isEmpty() && tradingRecord.getFuturesContract() != null
+                ? tradingRecord.getEndIndex() == null ? Integer.MAX_VALUE : tradingRecord.getEndIndex()
+                : Math.min(series.getEndIndex(), tradingRecord.getEndIndex(series));
+        Num totalProfit = series.numFactory().zero();
+        for (Position position : tradingRecord.getPositions()) {
+            if (isOpenAt(position, finalIndex)) {
+                totalProfit = totalProfit.plus(calculateAt(series, position, finalIndex));
+            }
+        }
+        for (Position openLot : openLots(tradingRecord)) {
+            if (isOpenAt(openLot, finalIndex)) {
+                totalProfit = totalProfit.plus(calculateAt(series, openLot, finalIndex));
+            }
+        }
+        return totalProfit;
+    }
+
+    /**
+     * Per-lot open positions, so a lot entered after the logical end is excluded on
+     * its own; the aggregated current position keeps the earliest entry.
+     */
+    static List<Position> openLots(TradingRecord tradingRecord) {
+        List<Position> openLots = tradingRecord.getOpenPositions();
+        if (!openLots.isEmpty()) {
+            return openLots;
+        }
         Position current = tradingRecord.getCurrentPosition();
-        if (current.getFuturesContract() == null && !current.isOpened()) {
+        return current != null && (current.isOpened() || current.getFuturesContract() != null) ? List.of(current)
+                : List.of();
+    }
+
+    private boolean isOpenAt(Position position, int finalIndex) {
+        if (position == null || position.getEntry() == null || position.getEntry().getIndex() > finalIndex) {
+            return false;
+        }
+        return position.getFuturesContract() != null || position.getExit() == null
+                || position.getExit().getIndex() > finalIndex;
+    }
+
+    private Num calculateAt(BarSeries series, Position position, int finalIndex) {
+        NumFactory factory = series.numFactory();
+        if (position.getEntry() == null || position.getEntry().getIndex() > finalIndex) {
             return factory.zero();
         }
-        int endIndex = tradingRecord.getEndIndex(series);
-        boolean noMark = series.getBarCount() == 0 || endIndex < series.getBeginIndex();
-        Num closePrice = noMark ? NaN.NaN : series.getBar(endIndex).getClosePrice();
-        int valuationIndex = series.getBarCount() == 0 && endIndex < 0 && current.getFuturesContract() != null
-                ? Integer.MAX_VALUE
-                : endIndex;
-        Num profit = unrealizedProfit(current, closePrice, valuationIndex);
+        if (position.getFuturesContract() != null) {
+            Num mark = series.isEmpty() || finalIndex < series.getBeginIndex() ? NaN.NaN
+                    : series.getBar(finalIndex).getClosePrice();
+            return toSeriesNum(factory, unrealizedProfit(position, mark, finalIndex));
+        }
+        if (finalIndex < series.getBeginIndex()) {
+            return factory.zero();
+        }
+        if (!position.isOpened()) {
+            if (position.getExit().getIndex() <= finalIndex) {
+                return factory.zero();
+            }
+            position = new Position(position.getEntry(), position.getTransactionCostModel(),
+                    position.getHoldingCostModel());
+        }
+        Num closePrice = series.getBar(finalIndex).getClosePrice();
+        Num profit = position.getProfit(finalIndex, closePrice);
         return toSeriesNum(factory, profit);
     }
 

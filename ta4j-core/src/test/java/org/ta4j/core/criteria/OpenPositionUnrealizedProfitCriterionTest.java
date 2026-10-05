@@ -3,26 +3,28 @@
  */
 package org.ta4j.core.criteria;
 
-import java.time.Instant;
 import java.util.List;
+import org.ta4j.core.Position;
+import org.ta4j.core.FuturesCashFlow;
+import org.ta4j.core.FuturesContract;
+import org.ta4j.core.TradeFee;
+import org.ta4j.core.TradeFill;
+import java.time.Instant;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseTrade;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Position;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
+import org.ta4j.core.Trade;
+import org.ta4j.core.BaseTrade;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
-import org.ta4j.core.FuturesCashFlow;
-import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.Trade;
-import org.ta4j.core.TradeFee;
-import org.ta4j.core.TradeFill;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -32,6 +34,15 @@ public class OpenPositionUnrealizedProfitCriterionTest extends AbstractCriterion
 
     public OpenPositionUnrealizedProfitCriterionTest(NumFactory numFactory) {
         super(params -> new OpenPositionUnrealizedProfitCriterion(), numFactory);
+    }
+
+    @Test
+    public void includesPositionClosedAfterLogicalEnd() {
+        BarSeries series = ConstrainedSeriesSupport.trailingConstrainedSeries("unrealized-end", numFactory, 1, 10d, 20d,
+                30d);
+        BaseTradingRecord record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+
+        assertNumEquals(10d, getCriterion().calculate(series, record));
     }
 
     @Test
@@ -94,6 +105,89 @@ public class OpenPositionUnrealizedProfitCriterionTest extends AbstractCriterion
     }
 
     @Test
+    public void betterThanPrefersHigherProfit() {
+        var criterion = getCriterion();
+
+        assertTrue(criterion.betterThan(numFactory.two(), numFactory.one()));
+        assertFalse(criterion.betterThan(numFactory.one(), numFactory.two()));
+    }
+
+    @Test
+    public void matchesFreshSeriesAcrossWindowShapesAndPositionBoundaries() {
+        var criterion = new OpenPositionUnrealizedProfitCriterion();
+        for (ConstrainedSeriesSupport.CriterionWindowFixture fixture : ConstrainedSeriesSupport
+                .criterionWindowFixtures(numFactory)) {
+            Num actual = criterion.calculate(fixture.series(), fixture.tradingRecord());
+            Num expected = criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord());
+            assertEquals(fixture.name(), expected.doubleValue(), actual.doubleValue(), 1e-10);
+            if (fixture.position() != null && fixture.equivalentPosition() != null) {
+                Num actualPosition = criterion.calculate(fixture.series(), fixture.position());
+                Num expectedPosition = criterion.calculate(fixture.equivalentSeries(), fixture.equivalentPosition());
+                assertNumEquals(expectedPosition, actualPosition, 1e-10);
+            }
+        }
+    }
+
+    @Test
+    public void sumsEveryClosedLotStillOpenAtLogicalEnd() {
+        BarSeries series = multiLotSeries();
+        BaseTradingRecord record = multiLotRecord(false);
+
+        assertEquals(2, record.getPositions().size());
+        assertTrue(record.getOpenPositions().isEmpty());
+        assertNumEquals(numFactory.numOf(30), getCriterion().calculate(series, record));
+    }
+
+    @Test
+    public void includesHistoricalLotsWhenCurrentLotStartsAfterLogicalEnd() {
+        BarSeries series = multiLotSeries();
+        BaseTradingRecord record = multiLotRecord(true);
+
+        assertEquals(2, record.getPositions().size());
+        assertEquals(1, record.getOpenPositions().size());
+        assertEquals(7, record.getCurrentPosition().getEntry().getIndex());
+        assertNumEquals(numFactory.numOf(30), getCriterion().calculate(series, record));
+    }
+
+    @Test
+    public void marksOnlyOpenLotsEnteredByLogicalEnd() {
+        BarSeries series = multiLotSeries();
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        record.operate(new BaseTrade(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.zero(),
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(7, Instant.EPOCH.plusSeconds(7), numFactory.numOf(130), numFactory.one(),
+                numFactory.zero(), ExecutionSide.BUY, null, null));
+
+        assertEquals(2, record.getOpenPositions().size());
+        // Only the lot entered at 0 exists at the logical end (5, close 120).
+        assertNumEquals(numFactory.numOf(20), getCriterion().calculate(series, record));
+    }
+
+    private BarSeries multiLotSeries() {
+        return ConstrainedSeriesSupport.trailingConstrainedSeries("unrealized-multi-lot", numFactory, 5, 100d, 110d,
+                110d, 110d, 110d, 120d, 120d, 120d, 130d, 130d, 130d, 130d);
+    }
+
+    private BaseTradingRecord multiLotRecord(boolean addLaterOpenLot) {
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        record.operate(new BaseTrade(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.zero(),
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(1, Instant.EPOCH.plusSeconds(1), numFactory.numOf(110), numFactory.one(),
+                numFactory.zero(), ExecutionSide.BUY, null, null));
+        if (addLaterOpenLot) {
+            record.operate(new BaseTrade(7, Instant.EPOCH.plusSeconds(7), numFactory.numOf(120), numFactory.one(),
+                    numFactory.zero(), ExecutionSide.BUY, null, null));
+        }
+        record.operate(new BaseTrade(10, Instant.EPOCH.plusSeconds(10), numFactory.numOf(130), numFactory.one(),
+                numFactory.zero(), ExecutionSide.SELL, null, null));
+        record.operate(new BaseTrade(11, Instant.EPOCH.plusSeconds(11), numFactory.numOf(130), numFactory.one(),
+                numFactory.zero(), ExecutionSide.SELL, null, null));
+        return record;
+    }
+
+    @Test
     public void futuresOpenPositionProfitUsesContractQuantity() {
         FuturesContract contract = linearBtcPerpetual();
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110).build();
@@ -128,14 +222,6 @@ public class OpenPositionUnrealizedProfitCriterionTest extends AbstractCriterion
 
         // 3 of the +10 mark-to-market move is settled cash, 7 is still unrealized.
         assertNumEquals(numFactory.numOf(7), getCriterion().calculate(series, record), 1e-12);
-    }
-
-    @Test
-    public void betterThanPrefersHigherProfit() {
-        var criterion = getCriterion();
-
-        assertTrue(criterion.betterThan(numFactory.two(), numFactory.one()));
-        assertFalse(criterion.betterThan(numFactory.one(), numFactory.two()));
     }
 
     private FuturesContract linearBtcPerpetual() {

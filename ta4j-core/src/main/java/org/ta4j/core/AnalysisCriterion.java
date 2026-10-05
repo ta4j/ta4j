@@ -397,15 +397,11 @@ public interface AnalysisCriterion {
 
     private static Position createMarkToMarketPosition(BarSeries series, Position currentPosition, int windowEndIndex,
             CostModel holdingCostModel) {
-        if (currentPosition == null || !currentPosition.isOpened()) {
+        if (!isOpenAtWindowEnd(currentPosition, windowEndIndex)) {
             return null;
         }
 
         Trade entryTrade = currentPosition.getEntry();
-        if (entryTrade == null || entryTrade.getIndex() > windowEndIndex) {
-            return null;
-        }
-
         Num amount = entryTrade.getAmount();
         Num closePrice = series.getBar(windowEndIndex).getClosePrice();
         CostModel transactionCostModel = entryTrade.getCostModel();
@@ -522,20 +518,37 @@ public interface AnalysisCriterion {
     }
 
     private static List<Position> openPositionsForMarkToMarket(TradingRecord source, int windowEndIndex) {
+        List<Position> positions = new ArrayList<>();
         List<Position> openPositions = source.getOpenPositions();
         if (!openPositions.isEmpty()) {
-            return openPositionsWithinWindow(openPositions, windowEndIndex);
+            for (Position position : openPositions) {
+                if (isOpenAtWindowEnd(position, windowEndIndex)) {
+                    positions.add(position);
+                }
+            }
+        } else {
+            Position currentPosition = source.getCurrentPosition();
+            if (currentPosition != null && currentPosition.isOpened()
+                    && isOpenAtWindowEnd(currentPosition, windowEndIndex)) {
+                positions.add(currentPosition);
+            }
         }
-        Position currentPosition = source.getCurrentPosition();
-        if (currentPosition == null || !currentPosition.isOpened()) {
-            return List.of();
+        for (Position position : source.getPositions()) {
+            if (position != null && position.isClosed() && isOpenAtWindowEnd(position, windowEndIndex)) {
+                positions.add(position);
+            }
         }
-        return List.of(currentPosition);
+        return positions;
     }
 
     private static List<Position> futuresPositionsForMarkToMarket(TradingRecord source, int windowStartIndex,
             int windowEndIndex, PositionInclusionPolicy inclusionPolicy) {
-        List<Position> positions = new ArrayList<>(openPositionsForMarkToMarket(source, windowEndIndex));
+        List<Position> openPositions = source.getOpenPositions();
+        if (openPositions.isEmpty()) {
+            Position current = source.getCurrentPosition();
+            openPositions = current != null && current.isOpened() ? List.of(current) : List.of();
+        }
+        List<Position> positions = new ArrayList<>(openPositionsWithinWindow(openPositions, windowEndIndex));
         for (Position closedPosition : source.getPositions()) {
             Trade entry = closedPosition.getEntry();
             Trade exit = closedPosition.getExit();
@@ -798,4 +811,11 @@ public interface AnalysisCriterion {
      *         the second one, false otherwise
      */
     boolean betterThan(Num criterionValue1, Num criterionValue2);
+
+    private static boolean isOpenAtWindowEnd(Position position, int windowEndIndex) {
+        if (position == null || position.getEntry() == null || position.getEntry().getIndex() > windowEndIndex) {
+            return false;
+        }
+        return !position.isClosed() || position.getExit().getIndex() > windowEndIndex;
+    }
 }

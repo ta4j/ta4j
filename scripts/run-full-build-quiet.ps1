@@ -126,8 +126,8 @@ function Test-StackOrExceptionLine {
 function Test-UnexpectedLine {
     param([string] $Line)
     $lower = $Line.ToLowerInvariant()
-    return $Line -match '\[ERROR\]' `
-        -or $Line -match '(^|\s)ERROR(\s|:|$)' `
+    return $Line -cmatch '\[ERROR\]' `
+        -or $Line -cmatch '(^|\s)ERROR(\s|:|$)' `
         -or $lower.Contains("unexpected") `
         -or $lower.Contains("fatal") `
         -or $lower.Contains("timed out") `

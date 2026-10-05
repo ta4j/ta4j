@@ -84,6 +84,8 @@ public class BaseTradingRecord implements TradingRecord {
     private transient List<Trade> tradesCache;
     private transient long tradesCacheVersion;
     private long modificationCount;
+    private transient List<Position> closedPositionsCache;
+    private transient long closedPositionsCacheVersion;
     private Num totalFees;
     private transient NumFactory numFactory;
     private long nextSequence;
@@ -756,6 +758,9 @@ public class BaseTradingRecord implements TradingRecord {
         long entrySequence = nextSequence++;
         long exitSequence = nextSequence++;
         positionBook.adopt(adoptedPosition, entrySequence, exitSequence);
+        modificationCount++;
+        tradesCache = null;
+        closedPositionsCache = null;
         advanceNextTradeIndex(adoptedPosition.getEntry());
         advanceNextTradeIndex(adoptedPosition.getExit());
     }
@@ -987,6 +992,7 @@ public class BaseTradingRecord implements TradingRecord {
                         "Cash flow " + cashFlow.eventId() + " is already recorded with different values");
             }
             positionBook.allocateCashFlow(cashFlow);
+            closedPositionsCache = null;
             processedEvents.put(cashFlow.eventId(), cashFlow);
             cashFlows.add(cashFlow);
             advanceHorizonThrough(cashFlow.time());
@@ -1570,6 +1576,7 @@ public class BaseTradingRecord implements TradingRecord {
                     "Cash flow " + cashFlow.eventId() + " is already recorded with different values");
         }
         positionBook.allocateCashFlow(cashFlow);
+        closedPositionsCache = null;
         processedEvents.put(cashFlow.eventId(), cashFlow);
         cashFlows.add(cashFlow);
     }
@@ -1584,6 +1591,7 @@ public class BaseTradingRecord implements TradingRecord {
                     "Cash flow " + cashFlow.eventId() + " is already recorded with different values");
         }
         positionBook.allocateFundingCashFlow(cashFlow);
+        closedPositionsCache = null;
         processedEvents.put(cashFlow.eventId(), cashFlow);
         cashFlows.add(cashFlow);
     }
@@ -1845,6 +1853,7 @@ public class BaseTradingRecord implements TradingRecord {
 
     private void restoreState(RecordState state) {
         positionBook.restoreState(state.positionBookState());
+        closedPositionsCache = null;
         nextTradeIndex = state.nextTradeIndex();
         terminalTradeIndexRecorded = state.terminalTradeIndexRecorded();
         tradesCache = state.tradesCache();
@@ -1907,6 +1916,7 @@ public class BaseTradingRecord implements TradingRecord {
             totalFees = nextTotalFees;
             modificationCount++;
             tradesCache = null;
+            closedPositionsCache = null;
         } finally {
             lock.writeLock().unlock();
         }
@@ -1930,6 +1940,11 @@ public class BaseTradingRecord implements TradingRecord {
         return sideOf(net.getEntry().getType());
     }
 
+    /**
+     * Returns the open positions as freshly built {@link Position} snapshots. Each
+     * call rebuilds the list so callers never share mutable position instances with
+     * the record or with other calls.
+     */
     private List<Position> openPositionsSnapshot() {
         lock.readLock().lock();
         try {
@@ -1951,9 +1966,21 @@ public class BaseTradingRecord implements TradingRecord {
     private List<Position> closedPositionsSnapshot() {
         lock.readLock().lock();
         try {
-            return List.copyOf(positionBook.closedPositions());
+            if (closedPositionsCache != null && closedPositionsCacheVersion == modificationCount) {
+                return closedPositionsCache;
+            }
         } finally {
             lock.readLock().unlock();
+        }
+        lock.writeLock().lock();
+        try {
+            if (closedPositionsCache == null || closedPositionsCacheVersion != modificationCount) {
+                closedPositionsCache = List.copyOf(positionBook.closedPositions());
+                closedPositionsCacheVersion = modificationCount;
+            }
+            return closedPositionsCache;
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 
@@ -2101,6 +2128,8 @@ public class BaseTradingRecord implements TradingRecord {
         tradesCache = null;
         tradesCacheVersion = -1L;
         modificationCount = 0L;
+        closedPositionsCache = null;
+        closedPositionsCacheVersion = -1L;
         numFactory = restoredNumFactory();
         if (cashFlows == null) {
             cashFlows = new ArrayList<>();
@@ -2178,6 +2207,8 @@ public class BaseTradingRecord implements TradingRecord {
         this.transactionCostModel = resolvedTransaction;
         this.holdingCostModel = resolvedHolding;
         positionBook.rehydrateCostModels(resolvedTransaction, resolvedHolding);
+        closedPositionsCache = null;
+        closedPositionsCacheVersion = -1L;
     }
 
     private static Instant resolveExecutionTime(Instant fillTime, Instant fallbackTime) {

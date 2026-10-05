@@ -58,8 +58,8 @@ final class ExecutionModelSupport {
     }
 
     private static boolean hasAccessibleBar(int signalIndex, BarSeries barSeries) {
-        int rawIndex = signalIndex - barSeries.getRemovedBarsCount();
-        return rawIndex >= 0 && rawIndex < barSeries.getBarData().size();
+        long visibleOffset = (long) signalIndex - barSeries.getBeginIndex();
+        return visibleOffset >= 0 && visibleOffset < barSeries.getBarCount();
     }
 
     static TradeType nextTradeType(TradingRecord tradingRecord) {
