@@ -1783,12 +1783,17 @@ final class ElliottResearch {
         /**
          * The command that replays this row's trace in the examples-module viewer, or
          * the reason it cannot: runs written before price bars were persisted lack
-         * them. The viewer reads a real trace by default, so a run that retained only a
-         * selected null member names that mode.
+         * them, and a selected null member records only h1 and h2 rows. The viewer
+         * reads a real trace by default, so a run that retained only a selected null
+         * member names that mode.
          */
         private String replayLine(final boolean nullMemberOnly) {
             if (dataset.get("priceBars") == null || dataset.get("priceBars").isJsonNull()) {
                 return "Replay: unavailable, this run persisted no price bars. Regenerate the run to enable replay.";
+            }
+            if (nullMemberOnly && !"h1".equals(row.section()) && !"h2".equals(row.section())) {
+                return "Replay: unavailable, this run retained only a selected null member, which records only h1"
+                        + " and h2 rows. Recapture with --trace real to replay this row.";
             }
             final String args = execQuoted(displayPath(dir)) + " --key " + execQuoted(row.key())
                     + (nullMemberOnly ? " --trace " + ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER : "");

@@ -190,13 +190,17 @@ final class ReplayTraceIndex {
             if (header == null) {
                 throw new ReplayArtifactException("trace " + display + " is empty; regenerate it with --trace real");
             }
-            if (footer == null || !footer.has("complete") || !footer.get("complete").getAsBoolean()) {
+            final JsonElement complete = footer == null ? null : footer.get("complete");
+            if (complete == null || !complete.isJsonPrimitive() || !complete.getAsJsonPrimitive().isBoolean()
+                    || !complete.getAsBoolean()) {
                 throw new ReplayArtifactException("trace " + display
                         + " is truncated: no completion footer. Regenerate it with the original recipe and --trace real");
             }
-            if (footer.get("records").getAsLong() != records) {
-                throw new ReplayArtifactException("trace " + display + " footer declares " + footer.get("records")
-                        + " records but " + records + " were read; regenerate the run");
+            final JsonElement declared = footer.get("records");
+            if (declared == null || !declared.isJsonPrimitive() || !declared.getAsJsonPrimitive().isNumber()
+                    || declared.getAsLong() != records) {
+                throw new ReplayArtifactException("trace " + display + " footer declares " + declared + " records but "
+                        + records + " were read; regenerate the run");
             }
             return new ReplayTraceIndex(file, display, header, records, entries);
         }

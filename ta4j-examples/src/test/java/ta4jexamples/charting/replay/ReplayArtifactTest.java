@@ -171,6 +171,23 @@ class ReplayArtifactTest {
     }
 
     @Test
+    void malformedFooterIsRejectedAsArtifactError() throws IOException {
+        final String footer = "{\"complete\":true,\"records\":150}";
+        for (final String replacement : List.of("{\"complete\":[],\"records\":150}", "{\"complete\":true}",
+                "{\"complete\":true,\"records\":\"150\"}")) {
+            final Path run = ReplayFixture.write(temp.resolve("run-" + Math.abs(replacement.hashCode())));
+            final Path trace = run.resolve("traces/d1-real.jsonl");
+            final String original = Files.readString(trace);
+            assertTrue(original.contains(footer), original);
+            Files.writeString(trace, original.replace(footer, replacement), StandardCharsets.UTF_8);
+
+            final String message = failureOf(run, ReplayFixture.RULES_KEY);
+            assertTrue(message.contains("truncated") || message.contains("footer declares"),
+                    replacement + ": " + message);
+        }
+    }
+
+    @Test
     void traceOfAnotherRunIsRejected() throws IOException {
         final Path run = ReplayFixture.write(temp.resolve("run"));
         final Path trace = run.resolve("traces/d1-real.jsonl");

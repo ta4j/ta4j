@@ -369,6 +369,23 @@ class ElliottResearchTest {
         final Result summary = launch("summarize", run.toString());
         assertEquals(0, summary.code(), summary.err());
         assertTrue(Files.readString(run.resolve("summary.md")).contains("--trace real"));
+
+        // The null member records only h1 and h2 rows. A competing row with a null
+        // block length must name the unavailable reason, not a command the viewer
+        // refuses.
+        final Path comparisons = run.resolve("comparisons.csv");
+        final String competingKey = OCCUPANCY_KEY.replace("smoke|h1|", "smoke|competing|");
+        final String relabeled = Files.readString(comparisons, StandardCharsets.UTF_8)
+                .lines()
+                .map(line -> line.startsWith(OCCUPANCY_KEY + ",")
+                        ? competingKey + line.substring(OCCUPANCY_KEY.length()).replace(",h1,", ",competing,")
+                        : line)
+                .collect(java.util.stream.Collectors.joining("\n", "", "\n"));
+        Files.writeString(comparisons, relabeled, StandardCharsets.UTF_8);
+        final Result competing = launch("inspect", run.toString(), competingKey);
+        assertEquals(0, competing.code(), competing.err());
+        assertTrue(replayLine(competing.out()).startsWith("Replay: unavailable, this run retained only a selected"),
+                competing.out());
     }
 
     @Test
