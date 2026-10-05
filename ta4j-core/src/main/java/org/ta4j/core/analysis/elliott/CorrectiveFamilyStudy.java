@@ -95,8 +95,7 @@ final class CorrectiveFamilyStudy {
      * @param coverage  coverage of every group in group order
      * @param events    verdict lifecycle events at this observation
      */
-    record Frame(String partition, int asOfIndex, Instant asOfTime, List<GroupCoverage> coverage,
-            List<Event> events) {
+    record Frame(String partition, int asOfIndex, Instant asOfTime, List<GroupCoverage> coverage, List<Event> events) {
         Frame {
             coverage = List.copyOf(coverage);
             events = List.copyOf(events);
@@ -112,7 +111,10 @@ final class CorrectiveFamilyStudy {
         }
     }
 
-    /** Why a family study refuses a policy that lets child sequences skip interior pivots. */
+    /**
+     * Why a family study refuses a policy that lets child sequences skip interior
+     * pivots.
+     */
     static final String INTERIOR_REJECTION = "corrective-family experiments require contiguous child subdivision:"
             + " interior anchors must be contiguous because a family child sequence may not skip pivots"
             + " (a skipped interior pair would hide extra waves inside a leg)";
@@ -162,10 +164,11 @@ final class CorrectiveFamilyStudy {
         final List<ScaleRelation.Policy> builtPolicies = new ArrayList<>(groups.size());
         for (final Group group : groups) {
             final List<TopologyGrammar> signature = group.childGrammars();
-            final ScaleRelation.Policy policy = new ScaleRelation.Policy(group.parentGrammar(),
-                    basePolicy.interior(), basePolicy.edgeCap(), basePolicy.maxDecompositionsPerLeg(),
-                    basePolicy.nodeBudgetPerLeg(), (parent, leg) -> parent == group.parentGrammar()
-                            && leg < signature.size() ? List.of(signature.get(leg)) : List.of());
+            final ScaleRelation.Policy policy = new ScaleRelation.Policy(group.parentGrammar(), basePolicy.interior(),
+                    basePolicy.edgeCap(), basePolicy.maxDecompositionsPerLeg(), basePolicy.nodeBudgetPerLeg(),
+                    (parent, leg) -> parent == group.parentGrammar() && leg < signature.size()
+                            ? List.of(signature.get(leg))
+                            : List.of());
             builtPolicies.add(policy);
             built.add(new ScaleRelationExtractor(policy, childRules, identity));
         }
@@ -222,7 +225,8 @@ final class CorrectiveFamilyStudy {
      * @param series  series every scale is detected on
      * @param start   first observed bar
      * @param end     last observed bar
-     * @param replays replay cache; shared only for the series and end it is bound to
+     * @param replays replay cache; shared only for the series and end it is bound
+     *                to
      * @param sink    receives each changed observation in bar order
      * @return number of observations emitted
      */

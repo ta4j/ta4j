@@ -20,17 +20,17 @@ import org.ta4j.core.num.NumFactory;
  *
  * <p>
  * A profile names one strict research hypothesis (zigzag 5-3-5, regular or
- * expanded flat 3-3-5, contracting triangle 3-3-3-3-3), never a general
- * Elliott law. A {@link Verdict} combines two independent kinds of evidence for
- * one parent candidate: the <em>envelope</em> predicates over the parent's
+ * expanded flat 3-3-5, contracting triangle 3-3-3-3-3), never a general Elliott
+ * law. A {@link Verdict} combines two independent kinds of evidence for one
+ * parent candidate: the <em>envelope</em> predicates over the parent's
  * normalized prices, and the <em>subdivision</em> evidence of each parent leg
  * taken from the causal {@link ScaleRelation.Edge relations} of the child
  * scale. A parent whose outer shape fits the envelope but whose child
  * subdivision is not proven is only {@link Status#SHAPE_COMPATIBLE}; a shape
  * excluded by a profile is {@link Status#OUTSIDE_PROFILE}, which is a statement
  * about that profile and nothing else. Evaluation is a pure function of its
- * inputs: it never searches, skips pivots, substitutes another family, or
- * reads anything beyond the supplied parent pivots and edges.
+ * inputs: it never searches, skips pivots, substitutes another family, or reads
+ * anything beyond the supplied parent pivots and edges.
  *
  * <p>
  * Package-private research machinery; it reuses the released
@@ -68,8 +68,8 @@ final class CorrectiveFamily {
         EXPANDED_FLAT("expanded-flat", ScenarioType.CORRECTIVE_FLAT, TopologyGrammar.CORRECTIVE_3,
                 List.of(TopologyGrammar.CORRECTIVE_3, TopologyGrammar.CORRECTIVE_3, TopologyGrammar.MOTIVE_5)),
         /**
-         * A/B/C/D/E with 3-3-3-3-3 children inside a strictly contracting
-         * envelope; the five legs are carried by a six-pivot container.
+         * A/B/C/D/E with 3-3-3-3-3 children inside a strictly contracting envelope; the
+         * five legs are carried by a six-pivot container.
          */
         CONTRACTING_TRIANGLE("contracting-triangle", ScenarioType.CORRECTIVE_TRIANGLE, TopologyGrammar.MOTIVE_5,
                 List.of(TopologyGrammar.CORRECTIVE_3, TopologyGrammar.CORRECTIVE_3, TopologyGrammar.CORRECTIVE_3,
@@ -142,14 +142,14 @@ final class CorrectiveFamily {
      *
      * <p>
      * Only the regular flat has bands: {@code minRetracement} is the smallest B
-     * retracement of A and {@code maxOvershoot} the largest C overshoot of A's
-     * end, both as fractions of A's amplitude. The defaults are declared
-     * experimental settings, not fitted optima.
+     * retracement of A and {@code maxOvershoot} the largest C overshoot of A's end,
+     * both as fractions of A's amplitude. The defaults are declared experimental
+     * settings, not fitted optima.
      *
-     * @param profile         selected profile
-     * @param minRetracement  regular flat only, in {@code (0, 1]}; {@code null}
-     *                        otherwise
-     * @param maxOvershoot    regular flat only, positive; {@code null} otherwise
+     * @param profile        selected profile
+     * @param minRetracement regular flat only, in {@code (0, 1]}; {@code null}
+     *                       otherwise
+     * @param maxOvershoot   regular flat only, positive; {@code null} otherwise
      * @since 0.26.1
      */
     record Spec(Profile profile, BigDecimal minRetracement, BigDecimal maxOvershoot) {
@@ -231,9 +231,9 @@ final class CorrectiveFamily {
     /**
      * A child relation consulted for one parent leg.
      *
-     * @param key             edge key
-     * @param version         edge version
-     * @param state           relation state
+     * @param key               edge key
+     * @param version           edge version
+     * @param state             relation state
      * @param childCandidateKey child candidate identity, or {@code null}
      * @param childPivots       child pivots the edge relies on, verbatim from the
      *                          relation edge (at most
@@ -241,8 +241,8 @@ final class CorrectiveFamily {
      * @param childPivotCount   number of child pivots the edge relies on; exceeds
      *                          {@code childPivots.size()} when the stored sequence
      *                          is truncated
-     * @param availableAt     confirmation index of the edge's evidence
-     * @param predicates      the edge's tested predicates
+     * @param availableAt       confirmation index of the edge's evidence
+     * @param predicates        the edge's tested predicates
      */
     record ChildEdge(String key, String version, ScaleRelation.State state, String childCandidateKey,
             List<ConfirmedPivot> childPivots, int childPivotCount, int availableAt,
@@ -324,8 +324,8 @@ final class CorrectiveFamily {
      * @param parentScale      parent scale name
      * @param parent           parent candidate with identity
      * @param edges            relations of this parent (any leg, any state)
-     * @param evidenceComplete whether the child relation search of this
-     *                         observation examined everything it was asked to
+     * @param evidenceComplete whether the child relation search of this observation
+     *                         examined everything it was asked to
      * @param maxCompositions  most compositions listed
      * @return the verdict
      */
@@ -383,8 +383,7 @@ final class CorrectiveFamily {
             status = Status.SHAPE_COMPATIBLE;
             reason = "child-subdivision-unproven";
         }
-        final String key = ScaleRelation
-                .digest("family|" + spec.version() + "|" + parentScale + "|" + parent.key());
+        final String key = ScaleRelation.digest("family|" + spec.version() + "|" + parentScale + "|" + parent.key());
         final List<Composition> compositions = new ArrayList<>();
         long total = 0;
         boolean truncated = false;
@@ -404,8 +403,8 @@ final class CorrectiveFamily {
                 for (int leg = 0; leg < cursor.length; leg++) {
                     edgeKeys.add(supported.get(leg).get(cursor[leg]).key());
                 }
-                compositions.add(new Composition(ScaleRelation.digest(key + "|" + String.join(",", edgeKeys)),
-                        edgeKeys));
+                compositions
+                        .add(new Composition(ScaleRelation.digest(key + "|" + String.join(",", edgeKeys)), edgeKeys));
                 for (int leg = cursor.length - 1; leg >= 0; leg--) {
                     if (++cursor[leg] < supported.get(leg).size()) {
                         break;
@@ -437,9 +436,9 @@ final class CorrectiveFamily {
         }
         compositions.forEach(composition -> identity.append('|').append(composition.key()));
         identity.append('|').append(total).append(truncated);
-        return new Verdict(key, key + "@" + ScaleRelation.digest(identity.toString()), spec, parentScale,
-                parent.key(), parent.version(), candidate.direction(), pivots, status, reason, envelope, legs,
-                compositions, total, truncated, evidenceComplete, availableAt);
+        return new Verdict(key, key + "@" + ScaleRelation.digest(identity.toString()), spec, parentScale, parent.key(),
+                parent.version(), candidate.direction(), pivots, status, reason, envelope, legs, compositions, total,
+                truncated, evidenceComplete, availableAt);
     }
 
     private static boolean isSupported(final ChildEdge edge) {
@@ -483,8 +482,7 @@ final class CorrectiveFamily {
 
     // ------------------------------------------------------------- envelope
 
-    private static List<ScaleRelation.Predicate> abcEnvelope(final Spec spec,
-            final List<ConfirmedPivot> pivots) {
+    private static List<ScaleRelation.Predicate> abcEnvelope(final Spec spec, final List<ConfirmedPivot> pivots) {
         final Num origin = pivots.get(0).price();
         final NumFactory factory = origin.getNumFactory();
         final Num first = pivots.get(1).price().minus(origin);
@@ -506,19 +504,19 @@ final class CorrectiveFamily {
         final String ratios = "rB=" + retracement.dividedBy(u1) + " oC=" + overshoot.dividedBy(u1);
         switch (spec.profile()) {
         case ZIGZAG -> {
-            predicates.add(state("b-retracement", retracement.isPositive() && u2.isPositive(),
-                    ratios + " required 0<rB<1"));
+            predicates.add(
+                    state("b-retracement", retracement.isPositive() && u2.isPositive(), ratios + " required 0<rB<1"));
             predicates.add(state("c-overshoot", overshoot.isPositive(), ratios + " required oC>0"));
         }
         case REGULAR_FLAT -> {
             final Num min = factory.numOf(spec.minRetracement().toPlainString());
             final Num max = factory.numOf(spec.maxOvershoot().toPlainString());
-            predicates.add(state("b-retracement",
-                    retracement.isGreaterThanOrEqual(min.multipliedBy(u1)) && !u2.isNegative(),
-                    ratios + " required " + spec.minRetracement().toPlainString() + "<=rB<=1"));
-            predicates.add(state("c-overshoot",
-                    overshoot.isPositive() && overshoot.isLessThanOrEqual(max.multipliedBy(u1)),
-                    ratios + " required 0<oC<=" + spec.maxOvershoot().toPlainString()));
+            predicates.add(
+                    state("b-retracement", retracement.isGreaterThanOrEqual(min.multipliedBy(u1)) && !u2.isNegative(),
+                            ratios + " required " + spec.minRetracement().toPlainString() + "<=rB<=1"));
+            predicates.add(
+                    state("c-overshoot", overshoot.isPositive() && overshoot.isLessThanOrEqual(max.multipliedBy(u1)),
+                            ratios + " required 0<oC<=" + spec.maxOvershoot().toPlainString()));
         }
         case EXPANDED_FLAT -> {
             predicates.add(state("b-retracement", u2.isNegative(), ratios + " required rB>1"));
@@ -552,8 +550,8 @@ final class CorrectiveFamily {
         predicates.add(new ScaleRelation.Predicate("amplitude", EvidenceState.PASS, "a=" + u[1]));
         predicates.add(state("upper-extrema-inward", u[1].isGreaterThan(u[3]) && u[3].isGreaterThan(u[5]),
                 "A=" + u[1] + " C=" + u[3] + " E=" + u[5] + " required A>C>E"));
-        predicates.add(state("lower-extrema-inward", u[2].isLessThan(u[4]),
-                "B=" + u[2] + " D=" + u[4] + " required B<D"));
+        predicates.add(
+                state("lower-extrema-inward", u[2].isLessThan(u[4]), "B=" + u[2] + " D=" + u[4] + " required B<D"));
         predicates.add(state("b-inside-start-envelope", u[2].isPositive() && u[2].isLessThan(u[1]),
                 "B=" + u[2] + " required 0<B<A=" + u[1]));
         final Num upperAtStart = u[1];
@@ -566,9 +564,10 @@ final class CorrectiveFamily {
                 "width@" + i1 + "=" + widthStart + " width@" + i5 + "=" + widthEnd + " required both >0"));
         predicates.add(state("envelope-contracting", widthStart.isGreaterThan(widthEnd),
                 "width@" + i1 + "=" + widthStart + " width@" + i5 + "=" + widthEnd + " required start>end"));
-        predicates.add(state("e-inside-envelope", u[5].isLessThanOrEqual(upperAtEnd) && u[5].isGreaterThanOrEqual(lowerAtEnd),
-                "E=" + u[5] + " upper@" + i5 + "=" + upperAtEnd + " lower@" + i5 + "=" + lowerAtEnd
-                        + " required lower<=E<=upper (no throw-over)"));
+        predicates.add(
+                state("e-inside-envelope", u[5].isLessThanOrEqual(upperAtEnd) && u[5].isGreaterThanOrEqual(lowerAtEnd),
+                        "E=" + u[5] + " upper@" + i5 + "=" + upperAtEnd + " lower@" + i5 + "=" + lowerAtEnd
+                                + " required lower<=E<=upper (no throw-over)"));
         return predicates;
     }
 

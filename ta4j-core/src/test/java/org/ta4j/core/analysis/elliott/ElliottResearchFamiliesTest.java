@@ -145,8 +145,8 @@ class ElliottResearchFamiliesTest {
             for (final JsonElement element : edge.getAsJsonArray("childPivots")) {
                 final JsonObject pivot = element.getAsJsonObject();
                 rendered.add(pivot.get("index").getAsInt() + " " + pivot.get("type").getAsString() + " "
-                        + pivot.get("price").getAsString() + " (confirmed @"
-                        + pivot.get("confirmationIndex").getAsInt() + ")");
+                        + pivot.get("price").getAsString() + " (confirmed @" + pivot.get("confirmationIndex").getAsInt()
+                        + ")");
             }
             assertTrue(text.contains("child pivots: " + String.join(" -> ", rendered)), text);
         }
@@ -159,7 +159,8 @@ class ElliottResearchFamiliesTest {
             if (lines.get(i).contains("\"childPivots\"")) {
                 final JsonObject frame = JsonParser.parseString(lines.get(i)).getAsJsonObject();
                 for (final JsonElement event : frame.getAsJsonArray("events")) {
-                    for (final JsonElement leg : event.getAsJsonObject().getAsJsonObject("verdict")
+                    for (final JsonElement leg : event.getAsJsonObject()
+                            .getAsJsonObject("verdict")
                             .getAsJsonArray("legs")) {
                         for (final JsonElement edge : leg.getAsJsonObject().getAsJsonArray("edges")) {
                             edge.getAsJsonObject().remove("childPivots");
@@ -269,7 +270,8 @@ class ElliottResearchFamiliesTest {
             }
             final JsonObject frame = JsonParser.parseString(line).getAsJsonObject();
             for (final JsonElement event : frame.getAsJsonArray("events")) {
-                for (final JsonElement leg : event.getAsJsonObject().getAsJsonObject("verdict")
+                for (final JsonElement leg : event.getAsJsonObject()
+                        .getAsJsonObject("verdict")
                         .getAsJsonArray("legs")) {
                     for (final JsonElement edge : leg.getAsJsonObject().getAsJsonArray("edges")) {
                         edges.add(edge.getAsJsonObject());

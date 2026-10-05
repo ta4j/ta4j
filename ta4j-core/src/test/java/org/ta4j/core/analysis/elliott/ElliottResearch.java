@@ -642,7 +642,8 @@ final class ElliottResearch {
         final ElliottResearchRelations.Hierarchy hierarchy = root.has("hierarchy")
                 ? hierarchy(root.get("hierarchy"), datasetId, primary, robustness)
                 : null;
-        final ElliottResearchFamilies.Families families = root.has("families") ? families(root.get("families"), hierarchy)
+        final ElliottResearchFamilies.Families families = root.has("families")
+                ? families(root.get("families"), hierarchy)
                 : null;
         final Setup setup = new Setup("explore-" + sha256(recipeBytes), runnerPartitions, primary, robustness,
                 activeRules, barCount, competing, blockLengths, ensembleSize, seed, hierarchy, families);
@@ -785,8 +786,8 @@ final class ElliottResearch {
 
     private static BigDecimal decimal(final JsonElement element, final String where) {
         try {
-            if (element.isJsonPrimitive() && (element.getAsJsonPrimitive().isNumber()
-                    || element.getAsJsonPrimitive().isString())) {
+            if (element.isJsonPrimitive()
+                    && (element.getAsJsonPrimitive().isNumber() || element.getAsJsonPrimitive().isString())) {
                 return element.getAsBigDecimal();
             }
         } catch (final NumberFormatException e) {
@@ -1717,7 +1718,10 @@ final class ElliottResearch {
         return expected;
     }
 
-    /** Header fields a relation or family file must carry to belong to this run and dataset. */
+    /**
+     * Header fields a relation or family file must carry to belong to this run and
+     * dataset.
+     */
     private static JsonObject expectedSidecarHeader(final JsonObject run, final JsonObject dataset) {
         final JsonObject expected = new JsonObject();
         expected.add("dataset", dataset.get("id"));
@@ -1919,8 +1923,8 @@ final class ElliottResearch {
                     });
             final String mismatch = headerMismatch(meta.header(), expectedSidecarHeader(run, dataset));
             if (mismatch != null) {
-                throw new Diagnostic(sidecar.fileNoun + " " + file + " does not belong to this run (header "
-                        + mismatch + " differs); rerun the recipe");
+                throw new Diagnostic(sidecar.fileNoun + " " + file + " does not belong to this run (header " + mismatch
+                        + " differs); rerun the recipe");
             }
             final boolean complete = sidecar == Sidecar.RELATIONS
                     ? ElliottResearchRelations.print(out, file, asOf, limit, item)

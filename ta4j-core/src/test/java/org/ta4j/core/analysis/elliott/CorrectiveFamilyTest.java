@@ -31,28 +31,28 @@ class CorrectiveFamilyTest {
 
     static final List<Pt> ZIGZAG_PARENT = List.of(pt(0, 200, 'H'), pt(10, 150, 'L'), pt(15, 170, 'H'),
             pt(30, 120, 'L'));
-    static final List<Pt> ZIGZAG_CHILD = List.of(pt(0, 200, 'H'), pt(2, 185, 'L'), pt(3, 192, 'H'),
-            pt(6, 160, 'L'), pt(7, 175, 'H'), pt(10, 150, 'L'), pt(12, 165, 'H'), pt(13, 157, 'L'), pt(15, 170, 'H'),
-            pt(17, 155, 'L'), pt(19, 163, 'H'), pt(24, 135, 'L'), pt(26, 145, 'H'), pt(30, 120, 'L'));
+    static final List<Pt> ZIGZAG_CHILD = List.of(pt(0, 200, 'H'), pt(2, 185, 'L'), pt(3, 192, 'H'), pt(6, 160, 'L'),
+            pt(7, 175, 'H'), pt(10, 150, 'L'), pt(12, 165, 'H'), pt(13, 157, 'L'), pt(15, 170, 'H'), pt(17, 155, 'L'),
+            pt(19, 163, 'H'), pt(24, 135, 'L'), pt(26, 145, 'H'), pt(30, 120, 'L'));
 
     private static final List<Pt> REGULAR_PARENT = List.of(pt(0, 200, 'H'), pt(10, 150, 'L'), pt(15, 196, 'H'),
             pt(30, 148, 'L'));
     private static final List<Pt> REGULAR_CHILD = List.of(pt(0, 200, 'H'), pt(3, 170, 'L'), pt(5, 182, 'H'),
-            pt(10, 150, 'L'), pt(12, 190, 'H'), pt(13, 170, 'L'), pt(15, 196, 'H'), pt(17, 178, 'L'),
-            pt(19, 188, 'H'), pt(24, 160, 'L'), pt(26, 170, 'H'), pt(30, 148, 'L'));
+            pt(10, 150, 'L'), pt(12, 190, 'H'), pt(13, 170, 'L'), pt(15, 196, 'H'), pt(17, 178, 'L'), pt(19, 188, 'H'),
+            pt(24, 160, 'L'), pt(26, 170, 'H'), pt(30, 148, 'L'));
 
     private static final List<Pt> EXPANDED_PARENT = List.of(pt(0, 200, 'H'), pt(10, 150, 'L'), pt(15, 205, 'H'),
             pt(30, 135, 'L'));
     private static final List<Pt> EXPANDED_CHILD = List.of(pt(0, 200, 'H'), pt(3, 170, 'L'), pt(5, 182, 'H'),
-            pt(10, 150, 'L'), pt(12, 195, 'H'), pt(13, 175, 'L'), pt(15, 205, 'H'), pt(17, 180, 'L'),
-            pt(19, 195, 'H'), pt(24, 155, 'L'), pt(26, 170, 'H'), pt(30, 135, 'L'));
+            pt(10, 150, 'L'), pt(12, 195, 'H'), pt(13, 175, 'L'), pt(15, 205, 'H'), pt(17, 180, 'L'), pt(19, 195, 'H'),
+            pt(24, 155, 'L'), pt(26, 170, 'H'), pt(30, 135, 'L'));
 
     private static final List<Pt> TRIANGLE_PARENT = List.of(pt(0, 100, 'L'), pt(10, 140, 'H'), pt(20, 115, 'L'),
             pt(30, 132, 'H'), pt(40, 120, 'L'), pt(50, 123.5, 'H'));
     private static final List<Pt> TRIANGLE_CHILD = List.of(pt(0, 100, 'L'), pt(4, 125, 'H'), pt(6, 112, 'L'),
-            pt(10, 140, 'H'), pt(13, 120, 'L'), pt(15, 130, 'H'), pt(20, 115, 'L'), pt(23, 128, 'H'),
-            pt(25, 122, 'L'), pt(30, 132, 'H'), pt(33, 124, 'L'), pt(35, 129, 'H'), pt(40, 120, 'L'),
-            pt(43, 123, 'H'), pt(45, 121, 'L'), pt(50, 123.5, 'H'));
+            pt(10, 140, 'H'), pt(13, 120, 'L'), pt(15, 130, 'H'), pt(20, 115, 'L'), pt(23, 128, 'H'), pt(25, 122, 'L'),
+            pt(30, 132, 'H'), pt(33, 124, 'L'), pt(35, 129, 'H'), pt(40, 120, 'L'), pt(43, 123, 'H'), pt(45, 121, 'L'),
+            pt(50, 123.5, 'H'));
 
     private static CorrectiveFamily.Spec spec(final CorrectiveFamily.Profile profile) {
         return CorrectiveFamily.Spec.defaults(profile);
@@ -79,8 +79,7 @@ class CorrectiveFamilyTest {
     }
 
     /** Latest active verdict of each profile after the whole replay. */
-    private static Map<String, CorrectiveFamily.Verdict> finalVerdicts(
-            final List<CorrectiveFamilyStudy.Frame> frames) {
+    private static Map<String, CorrectiveFamily.Verdict> finalVerdicts(final List<CorrectiveFamilyStudy.Frame> frames) {
         final Map<String, CorrectiveFamily.Verdict> active = new TreeMap<>();
         for (final CorrectiveFamilyStudy.Frame frame : frames) {
             for (final CorrectiveFamilyStudy.Event event : frame.events()) {
@@ -261,8 +260,9 @@ class CorrectiveFamilyTest {
         assertEquals(5, verdict.legs().size());
         assertEquals("3-3-3-3-3", verdict.spec().profile().subdivision());
         assertEquals(ScenarioType.CORRECTIVE_TRIANGLE, verdict.spec().profile().scenarioType());
-        assertEquals(List.of("amplitude", "upper-extrema-inward", "lower-extrema-inward", "b-inside-start-envelope",
-                "boundaries-not-crossed", "envelope-contracting", "e-inside-envelope"),
+        assertEquals(
+                List.of("amplitude", "upper-extrema-inward", "lower-extrema-inward", "b-inside-start-envelope",
+                        "boundaries-not-crossed", "envelope-contracting", "e-inside-envelope"),
                 verdict.envelope().stream().map(ScaleRelation.Predicate::id).toList());
         assertTrue(verdict.envelope().stream().allMatch(predicate -> predicate.state() == EvidenceState.PASS));
     }
@@ -304,8 +304,9 @@ class CorrectiveFamilyTest {
     @Test
     void wrongSubdivisionOfALegIsNeverCountedAsSupport() {
         final List<Pt> threeThreeFive = REGULAR_CHILD;
-        final CorrectiveFamily.Verdict verdict = verdict(frames(REGULAR_PARENT, threeThreeFive,
-                CorrectiveFamily.Profile.ZIGZAG), CorrectiveFamily.Profile.ZIGZAG);
+        final CorrectiveFamily.Verdict verdict = verdict(
+                frames(REGULAR_PARENT, threeThreeFive, CorrectiveFamily.Profile.ZIGZAG),
+                CorrectiveFamily.Profile.ZIGZAG);
 
         assertNotEquals(CorrectiveFamily.Status.VERIFIED, verdict.status());
         assertNotEquals(CorrectiveFamily.LegState.SUPPORTED, verdict.legs().get(0).state(),
@@ -316,19 +317,17 @@ class CorrectiveFamilyTest {
     void enablingAnotherProfileNeverChangesAProfilesEvidence() {
         final CorrectiveFamily.Verdict alone = verdict(
                 frames(ZIGZAG_PARENT, ZIGZAG_CHILD, CorrectiveFamily.Profile.ZIGZAG), CorrectiveFamily.Profile.ZIGZAG);
-        final CorrectiveFamily.Verdict together = verdict(
-                frames(ZIGZAG_PARENT, ZIGZAG_CHILD, CorrectiveFamily.Profile.ZIGZAG,
-                        CorrectiveFamily.Profile.REGULAR_FLAT, CorrectiveFamily.Profile.EXPANDED_FLAT,
-                        CorrectiveFamily.Profile.CONTRACTING_TRIANGLE),
+        final CorrectiveFamily.Verdict together = verdict(frames(ZIGZAG_PARENT, ZIGZAG_CHILD,
+                CorrectiveFamily.Profile.ZIGZAG, CorrectiveFamily.Profile.REGULAR_FLAT,
+                CorrectiveFamily.Profile.EXPANDED_FLAT, CorrectiveFamily.Profile.CONTRACTING_TRIANGLE),
                 CorrectiveFamily.Profile.ZIGZAG);
         assertEquals(alone.version(), together.version());
 
         final CorrectiveFamily.Verdict regularAlone = verdict(
                 frames(REGULAR_PARENT, REGULAR_CHILD, CorrectiveFamily.Profile.REGULAR_FLAT),
                 CorrectiveFamily.Profile.REGULAR_FLAT);
-        final CorrectiveFamily.Verdict regularWithExpanded = verdict(
-                frames(REGULAR_PARENT, REGULAR_CHILD, CorrectiveFamily.Profile.EXPANDED_FLAT,
-                        CorrectiveFamily.Profile.REGULAR_FLAT),
+        final CorrectiveFamily.Verdict regularWithExpanded = verdict(frames(REGULAR_PARENT, REGULAR_CHILD,
+                CorrectiveFamily.Profile.EXPANDED_FLAT, CorrectiveFamily.Profile.REGULAR_FLAT),
                 CorrectiveFamily.Profile.REGULAR_FLAT);
         assertEquals(regularAlone.version(), regularWithExpanded.version());
     }
@@ -356,9 +355,9 @@ class CorrectiveFamilyTest {
         final CorrectiveFamilyStudy study = new CorrectiveFamilyStudy(
                 List.of(ScaleRelationFixtures.input("parent", ScaleRelationFixtures.scripted(superseded)),
                         ScaleRelationFixtures.input("child", ZIGZAG_CHILD, CHILD_LAG)),
-                ScaleRelation.Policy.defaults(), ScaleRelationFixtures.passingRules(),
-                ScaleRelationFixtures.identity(), ScaleRelationFixtures.PARTITIONS,
-                List.of(spec(CorrectiveFamily.Profile.ZIGZAG)), CorrectiveFamily.DEFAULT_MAX_COMPOSITIONS);
+                ScaleRelation.Policy.defaults(), ScaleRelationFixtures.passingRules(), ScaleRelationFixtures.identity(),
+                ScaleRelationFixtures.PARTITIONS, List.of(spec(CorrectiveFamily.Profile.ZIGZAG)),
+                CorrectiveFamily.DEFAULT_MAX_COMPOSITIONS);
         final List<CorrectiveFamilyStudy.Frame> frames = new ArrayList<>();
         study.run(ScaleRelationFixtures.series(BARS), 0, BARS - 1, DetectorReplays.uncached(), frames::add);
 
@@ -419,8 +418,9 @@ class CorrectiveFamilyTest {
                     mirrored.legs().stream().map(CorrectiveFamily.Leg::state).toList(), label);
             assertEquals(original.compositionCount(), mirrored.compositionCount(), label);
             assertNotEquals(original.parentDirection(), mirrored.parentDirection(), label);
-            assertEquals(original.parentDirection() == WaveDirection.BEARISH ? WaveDirection.BULLISH
-                    : WaveDirection.BEARISH, mirrored.parentDirection(), label);
+            assertEquals(
+                    original.parentDirection() == WaveDirection.BEARISH ? WaveDirection.BULLISH : WaveDirection.BEARISH,
+                    mirrored.parentDirection(), label);
         }
     }
 
@@ -435,12 +435,10 @@ class CorrectiveFamilyTest {
         final List<CorrectiveFamilyStudy.Frame> flatChild = frames(REGULAR_PARENT, REGULAR_CHILD,
                 CorrectiveFamily.Profile.ZIGZAG, CorrectiveFamily.Profile.REGULAR_FLAT);
 
-        final CorrectiveFamily.Verdict zigzagWithFiveThreeFive = verdict(zigzagChild,
-                CorrectiveFamily.Profile.ZIGZAG);
+        final CorrectiveFamily.Verdict zigzagWithFiveThreeFive = verdict(zigzagChild, CorrectiveFamily.Profile.ZIGZAG);
         final CorrectiveFamily.Verdict flatWithFiveThreeFive = verdict(zigzagChild,
                 CorrectiveFamily.Profile.REGULAR_FLAT);
-        final CorrectiveFamily.Verdict zigzagWithThreeThreeFive = verdict(flatChild,
-                CorrectiveFamily.Profile.ZIGZAG);
+        final CorrectiveFamily.Verdict zigzagWithThreeThreeFive = verdict(flatChild, CorrectiveFamily.Profile.ZIGZAG);
         final CorrectiveFamily.Verdict flatWithThreeThreeFive = verdict(flatChild,
                 CorrectiveFamily.Profile.REGULAR_FLAT);
 
@@ -488,8 +486,10 @@ class CorrectiveFamilyTest {
                 skippingPolicy(CorrectiveFamily.Profile.ZIGZAG));
         final List<ScaleRelation.Edge> edges = ScaleRelationFixtures
                 .activeAt(ScaleRelationFixtures.run(skipping, BARS, BARS - 1), BARS - 1);
-        assertTrue(edges.stream()
-                .anyMatch(edge -> edge.parentLeg() == 0 && edge.state() == ScaleRelation.State.SUBDIVISION_SUPPORTED),
+        assertTrue(
+                edges.stream()
+                        .anyMatch(edge -> edge.parentLeg() == 0
+                                && edge.state() == ScaleRelation.State.SUBDIVISION_SUPPORTED),
                 "skipping interior pivots is what would let the extra pair be ignored");
 
         final IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
@@ -522,17 +522,19 @@ class CorrectiveFamilyTest {
         return new ScaleRelationExtractor.Parent(candidate, "parent-key", "parent-version");
     }
 
-    /** Envelope state of {@code id} for an A=200-&gt;150 correction in both directions. */
+    /**
+     * Envelope state of {@code id} for an A=200-&gt;150 correction in both
+     * directions.
+     */
     private static void assertBoundary(final CorrectiveFamily.Profile profile, final double b, final double c,
             final String id, final String expected) {
         final CorrectiveFamily.Spec spec = CorrectiveFamily.Spec.defaults(profile);
         for (final ScaleRelationExtractor.Parent parent : List.of(abcParent(200, 150, b, c),
                 bullishAbcParent(200, 150, b, c))) {
-            final CorrectiveFamily.Verdict verdict = CorrectiveFamily.evaluate(spec, "parent", parent, List.of(),
-                    true, 8);
-            assertEquals(expected, predicate(verdict, id),
-                    profile.id() + " " + parent.candidate().direction() + " B=" + b + " C=" + c + " " + id + ": "
-                            + verdict.envelope());
+            final CorrectiveFamily.Verdict verdict = CorrectiveFamily.evaluate(spec, "parent", parent, List.of(), true,
+                    8);
+            assertEquals(expected, predicate(verdict, id), profile.id() + " " + parent.candidate().direction() + " B="
+                    + b + " C=" + c + " " + id + ": " + verdict.envelope());
         }
     }
 
@@ -566,18 +568,17 @@ class CorrectiveFamilyTest {
         assertBoundary(zigzag, 170, 149.5, "c-overshoot", "PASS");
     }
 
-    private static ScaleRelation.Edge edge(final ScaleRelationExtractor.Parent parent, final int leg,
-            final String key, final ScaleRelation.State state, final TopologyGrammar grammar) {
+    private static ScaleRelation.Edge edge(final ScaleRelationExtractor.Parent parent, final int leg, final String key,
+            final ScaleRelation.State state, final TopologyGrammar grammar) {
         final List<ConfirmedPivot> pivots = parent.candidate().pivots();
         return new ScaleRelation.Edge(key, key + "@v", "parent", "child", parent.key(), parent.version(),
-                parent.candidate().grammar(), parent.candidate().direction(), leg, pivots.get(leg),
-                pivots.get(leg + 1), state, grammar, "child-" + key, "child-version-" + key, List.of(),
-                grammar.requiredPivots(), List.of(new ScaleRelation.Predicate("anchor", EvidenceState.PASS, "exact")),
-                20 + leg);
+                parent.candidate().grammar(), parent.candidate().direction(), leg, pivots.get(leg), pivots.get(leg + 1),
+                state, grammar, "child-" + key, "child-version-" + key, List.of(), grammar.requiredPivots(),
+                List.of(new ScaleRelation.Predicate("anchor", EvidenceState.PASS, "exact")), 20 + leg);
     }
 
-    private static List<ScaleRelation.Edge> supportedEdges(final ScaleRelationExtractor.Parent parent,
-            final int first, final int second, final int third) {
+    private static List<ScaleRelation.Edge> supportedEdges(final ScaleRelationExtractor.Parent parent, final int first,
+            final int second, final int third) {
         final List<TopologyGrammar> grammars = CorrectiveFamily.Profile.ZIGZAG.childGrammars();
         final int[] counts = { first, second, third };
         final List<ScaleRelation.Edge> edges = new ArrayList<>();
@@ -645,12 +646,15 @@ class CorrectiveFamilyTest {
         final CorrectiveFamily.Spec spec = CorrectiveFamily.Spec.defaults(CorrectiveFamily.Profile.ZIGZAG);
         final List<TopologyGrammar> grammars = CorrectiveFamily.Profile.ZIGZAG.childGrammars();
 
-        final CorrectiveFamily.Verdict pending = CorrectiveFamily.evaluate(spec, "parent", parent,
-                List.of(edge(parent, 0, "a", ScaleRelation.State.SUBDIVISION_SUPPORTED, grammars.get(0)),
-                        edge(parent, 1, "b", ScaleRelation.State.PENDING_CONFIRMATION, grammars.get(1))),
-                true, 8);
-        assertEquals(List.of(CorrectiveFamily.LegState.SUPPORTED, CorrectiveFamily.LegState.PENDING,
-                CorrectiveFamily.LegState.NO_EVIDENCE), pending.legs().stream().map(CorrectiveFamily.Leg::state).toList());
+        final CorrectiveFamily.Verdict pending = CorrectiveFamily
+                .evaluate(spec, "parent", parent,
+                        List.of(edge(parent, 0, "a", ScaleRelation.State.SUBDIVISION_SUPPORTED, grammars.get(0)),
+                                edge(parent, 1, "b", ScaleRelation.State.PENDING_CONFIRMATION, grammars.get(1))),
+                        true, 8);
+        assertEquals(
+                List.of(CorrectiveFamily.LegState.SUPPORTED, CorrectiveFamily.LegState.PENDING,
+                        CorrectiveFamily.LegState.NO_EVIDENCE),
+                pending.legs().stream().map(CorrectiveFamily.Leg::state).toList());
         assertEquals(CorrectiveFamily.Status.SHAPE_COMPATIBLE, pending.status());
 
         final CorrectiveFamily.Verdict conflicting = CorrectiveFamily.evaluate(spec, "parent", parent,
@@ -658,8 +662,8 @@ class CorrectiveFamilyTest {
         assertEquals(CorrectiveFamily.Status.OUTSIDE_PROFILE, conflicting.status());
         assertEquals("child-subdivision", conflicting.reason());
 
-        final CorrectiveFamily.Verdict incomplete = CorrectiveFamily.evaluate(spec, "parent", parent, List.of(),
-                false, 8);
+        final CorrectiveFamily.Verdict incomplete = CorrectiveFamily.evaluate(spec, "parent", parent, List.of(), false,
+                8);
         assertEquals(CorrectiveFamily.Status.UNAVAILABLE, incomplete.status());
         assertEquals("search-bound-hit", incomplete.reason());
     }
@@ -680,8 +684,8 @@ class CorrectiveFamilyTest {
                 "motive", "motive-version");
         assertThrows(IllegalArgumentException.class,
                 () -> CorrectiveFamily.evaluate(spec, "parent", motive, List.of(), true, 8));
-        assertThrows(IllegalArgumentException.class, () -> CorrectiveFamily.evaluate(spec, "parent",
-                abcParent(200, 150, 170, 120), List.of(), true, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> CorrectiveFamily.evaluate(spec, "parent", abcParent(200, 150, 170, 120), List.of(), true, 0));
     }
 
     // ------------------------------------------------------ declarations
@@ -704,25 +708,25 @@ class CorrectiveFamilyTest {
         assertNull(CorrectiveFamily.Spec.defaults(CorrectiveFamily.Profile.ZIGZAG).minRetracement());
         assertEquals(new BigDecimal("0.9"),
                 CorrectiveFamily.Spec.defaults(CorrectiveFamily.Profile.REGULAR_FLAT).minRetracement());
-        assertThrows(IllegalArgumentException.class, () -> new CorrectiveFamily.Spec(CorrectiveFamily.Profile.ZIGZAG,
-                new BigDecimal("0.5"), null));
-        assertThrows(IllegalArgumentException.class, () -> new CorrectiveFamily.Spec(
-                CorrectiveFamily.Profile.EXPANDED_FLAT, null, new BigDecimal("0.1")));
+        assertThrows(IllegalArgumentException.class,
+                () -> new CorrectiveFamily.Spec(CorrectiveFamily.Profile.ZIGZAG, new BigDecimal("0.5"), null));
+        assertThrows(IllegalArgumentException.class,
+                () -> new CorrectiveFamily.Spec(CorrectiveFamily.Profile.EXPANDED_FLAT, null, new BigDecimal("0.1")));
         for (final BigDecimal bad : List.of(BigDecimal.ZERO, new BigDecimal("1.01"), new BigDecimal("-0.1"))) {
-            assertThrows(IllegalArgumentException.class, () -> new CorrectiveFamily.Spec(
-                    CorrectiveFamily.Profile.REGULAR_FLAT, bad, new BigDecimal("0.1")));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new CorrectiveFamily.Spec(CorrectiveFamily.Profile.REGULAR_FLAT, bad, new BigDecimal("0.1")));
         }
-        assertThrows(IllegalArgumentException.class, () -> new CorrectiveFamily.Spec(
-                CorrectiveFamily.Profile.REGULAR_FLAT, new BigDecimal("0.9"), BigDecimal.ZERO));
-        assertEquals(CorrectiveFamily.Spec.defaults(CorrectiveFamily.Profile.REGULAR_FLAT),
-                new CorrectiveFamily.Spec(CorrectiveFamily.Profile.REGULAR_FLAT, new BigDecimal("0.90"),
-                        new BigDecimal("0.100")));
+        assertThrows(IllegalArgumentException.class,
+                () -> new CorrectiveFamily.Spec(CorrectiveFamily.Profile.REGULAR_FLAT, new BigDecimal("0.9"),
+                        BigDecimal.ZERO));
+        assertEquals(CorrectiveFamily.Spec.defaults(CorrectiveFamily.Profile.REGULAR_FLAT), new CorrectiveFamily.Spec(
+                CorrectiveFamily.Profile.REGULAR_FLAT, new BigDecimal("0.90"), new BigDecimal("0.100")));
     }
 
     @Test
     void selectionsGroupBySubdivisionSignatureAndRejectDuplicatesOrNothing() {
-        final List<CorrectiveFamilyStudy.Group> groups = CorrectiveFamilyStudy.groupSpecs(
-                List.of(spec(CorrectiveFamily.Profile.EXPANDED_FLAT), spec(CorrectiveFamily.Profile.ZIGZAG),
+        final List<CorrectiveFamilyStudy.Group> groups = CorrectiveFamilyStudy
+                .groupSpecs(List.of(spec(CorrectiveFamily.Profile.EXPANDED_FLAT), spec(CorrectiveFamily.Profile.ZIGZAG),
                         spec(CorrectiveFamily.Profile.REGULAR_FLAT)));
         assertEquals(2, groups.size());
         assertEquals(List.of(CorrectiveFamily.Profile.EXPANDED_FLAT, CorrectiveFamily.Profile.REGULAR_FLAT),

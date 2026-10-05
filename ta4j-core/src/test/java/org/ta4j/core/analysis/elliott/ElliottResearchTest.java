@@ -870,20 +870,19 @@ class ElliottResearchTest {
 
     private static final String TWO_SCALES = "{\"scales\":[{\"detector\":\"fractal-w5\"},{\"detector\":\"fractal-w3\"}]}";
 
-    private Result runWithFamilies(final String name, final String hierarchy, final String families)
-            throws Exception {
+    private Result runWithFamilies(final String name, final String hierarchy, final String families) throws Exception {
         return runWithFamilies(name, hierarchy, families, "off");
     }
 
-    private Result runWithFamilies(final String name, final String hierarchy, final String families,
-            final String trace) throws Exception {
+    private Result runWithFamilies(final String name, final String hierarchy, final String families, final String trace)
+            throws Exception {
         final Path candles = work.resolve(name + "-candles.json");
         writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
         final Path recipe = work.resolve(name + "-recipe.json");
         Files.writeString(recipe, hierarchyRecipe(hierarchy).replace("\"null\":{",
                 (families == null ? "" : "\"families\":" + families + ",") + "\"null\":{"));
-        return launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(), "--trace",
-                trace, "--out", work.resolve(name).toString());
+        return launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(), "--trace", trace,
+                "--out", work.resolve(name).toString());
     }
 
     /** Candidate rule outcomes {@code state -> count} across a run's real trace. */
@@ -905,9 +904,10 @@ class ElliottResearchTest {
     @Test
     void failedBaseRuleCandidatesStayVisibleAndCountedWhenFamiliesAreEnabled() throws Exception {
         assertEquals(0, runWithFamilies("base-plain", TWO_SCALES, null, "real").code());
-        assertEquals(0, runWithFamilies("base-fam", TWO_SCALES,
-                "{\"profiles\":[{\"id\":\"zigzag\"},{\"id\":\"regular-flat\"},{\"id\":\"expanded-flat\"}]}", "real")
-                .code());
+        assertEquals(0,
+                runWithFamilies("base-fam", TWO_SCALES,
+                        "{\"profiles\":[{\"id\":\"zigzag\"},{\"id\":\"regular-flat\"},{\"id\":\"expanded-flat\"}]}",
+                        "real").code());
         final Path plainTrace = work.resolve("base-plain/traces/toy-real.jsonl");
         final Path familyTrace = work.resolve("base-fam/traces/toy-real.jsonl");
 
@@ -1019,7 +1019,10 @@ class ElliottResearchTest {
         assertTrue(none.err().contains("the recipe declares no families"), none.err());
     }
 
-    /** The recipe fingerprint legitimately covers the families block; everything else must match byte for byte. */
+    /**
+     * The recipe fingerprint legitimately covers the families block; everything
+     * else must match byte for byte.
+     */
     private static String fingerprintless(final String text) {
         return text.replaceAll("explore-[0-9a-f]+", "explore-FINGERPRINT");
     }
@@ -1029,8 +1032,8 @@ class ElliottResearchTest {
         final Map<String, String[]> cases = new java.util.LinkedHashMap<>();
         cases.put("families without hierarchy", new String[] { null, "{\"profiles\":[{\"id\":\"zigzag\"}]}",
                 "recipe.families requires recipe.hierarchy" });
-        cases.put("unknown profile", new String[] { TWO_SCALES, "{\"profiles\":[{\"id\":\"diagonal\"}]}",
-                "recipe.families.profiles[0]" });
+        cases.put("unknown profile",
+                new String[] { TWO_SCALES, "{\"profiles\":[{\"id\":\"diagonal\"}]}", "recipe.families.profiles[0]" });
         cases.put("bands on a bandless profile", new String[] { TWO_SCALES,
                 "{\"profiles\":[{\"id\":\"zigzag\",\"minRetracement\":0.5}]}", "has no tolerance bands" });
         cases.put("duplicate profile", new String[] { TWO_SCALES,
@@ -1056,7 +1059,8 @@ class ElliottResearchTest {
                 + "\"interiorAnchors\":\"allow-skipped\"}";
         final Result rejected = runWithFamilies("fam-skip", skipping, "{\"profiles\":[{\"id\":\"zigzag\"}]}");
         assertEquals(1, rejected.code());
-        assertTrue(rejected.err().contains("recipe.families requires recipe.hierarchy.interiorAnchors"), rejected.err());
+        assertTrue(rejected.err().contains("recipe.families requires recipe.hierarchy.interiorAnchors"),
+                rejected.err());
         assertTrue(rejected.err().contains("contiguous"), rejected.err());
         assertFalse(Files.exists(work.resolve("fam-skip")));
 

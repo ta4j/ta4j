@@ -343,8 +343,8 @@ final class ElliottResearchRelations {
      * Streams a header/frame/footer artifact of {@code schema}; shared by the
      * artifacts that follow the relation file's line protocol.
      */
-    static Meta read(final Path path, final String schema, final FrameCheck frameCheck,
-            final Consumer<JsonObject> sink) throws IOException {
+    static Meta read(final Path path, final String schema, final FrameCheck frameCheck, final Consumer<JsonObject> sink)
+            throws IOException {
         final boolean newlineTerminated = endsWithNewline(path);
         try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
             final String headerLine = reader.readLine();

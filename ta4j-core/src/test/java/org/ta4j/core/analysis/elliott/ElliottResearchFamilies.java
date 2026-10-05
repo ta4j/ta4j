@@ -521,11 +521,10 @@ final class ElliottResearchFamilies {
             }
             for (final JsonObject event : replay.history()) {
                 final JsonObject verdict = event.getAsJsonObject("verdict");
-                out.println("  @" + event.get("asOfIndex").getAsInt() + " " + event.get("lifecycle").getAsString()
-                        + " " + event.get("reason").getAsString() + " status=" + verdict.get("status").getAsString()
-                        + " (" + verdict.get("reason").getAsString() + ") version="
-                        + verdict.get("version").getAsString() + " availableAt="
-                        + verdict.get("availableAt").getAsInt());
+                out.println("  @" + event.get("asOfIndex").getAsInt() + " " + event.get("lifecycle").getAsString() + " "
+                        + event.get("reason").getAsString() + " status=" + verdict.get("status").getAsString() + " ("
+                        + verdict.get("reason").getAsString() + ") version=" + verdict.get("version").getAsString()
+                        + " availableAt=" + verdict.get("availableAt").getAsInt());
                 evidence(verdict, "      ").forEach(out::println);
             }
         }
@@ -589,8 +588,8 @@ final class ElliottResearchFamilies {
         }
         for (final JsonElement element : verdict.getAsJsonArray("legs")) {
             final JsonObject leg = element.getAsJsonObject();
-            lines.add(indent + "leg " + (leg.get("leg").getAsInt() + 1) + " expects " + leg.get("expected").getAsString()
-                    + ": " + leg.get("state").getAsString());
+            lines.add(indent + "leg " + (leg.get("leg").getAsInt() + 1) + " expects "
+                    + leg.get("expected").getAsString() + ": " + leg.get("state").getAsString());
             for (final JsonElement edgeElement : leg.getAsJsonArray("edges")) {
                 final JsonObject edge = edgeElement.getAsJsonObject();
                 lines.add(indent + "    relation " + edge.get("key").getAsString() + " "
@@ -611,8 +610,7 @@ final class ElliottResearchFamilies {
             final JsonObject composition = element.getAsJsonObject();
             final List<String> keys = new ArrayList<>();
             composition.getAsJsonArray("edgeKeys").forEach(key -> keys.add(key.getAsString()));
-            lines.add(indent + "composition " + composition.get("key").getAsString() + ": "
-                    + String.join(" + ", keys));
+            lines.add(indent + "composition " + composition.get("key").getAsString() + ": " + String.join(" + ", keys));
         }
         if (verdict.get("compositionsTruncated").getAsBoolean()) {
             lines.add(indent + "note: " + verdict.get("compositionCount").getAsLong() + " compositions exist but only "
@@ -638,8 +636,8 @@ final class ElliottResearchFamilies {
         lines.add(indent + "child pivots: " + (rendered.isEmpty() ? "(none)" : String.join(" -> ", rendered)));
         final int count = edge.get("childPivotCount").getAsInt();
         if (count > pivots.size()) {
-            lines.add(indent + "note: " + count + " child pivots rely on this edge but only the first "
-                    + pivots.size() + " are stored (limit " + ScaleRelation.MAX_STORED_CHILD_PIVOTS
+            lines.add(indent + "note: " + count + " child pivots rely on this edge but only the first " + pivots.size()
+                    + " are stored (limit " + ScaleRelation.MAX_STORED_CHILD_PIVOTS
                     + "); the sequence above is truncated");
         }
         return lines;
@@ -675,8 +673,8 @@ final class ElliottResearchFamilies {
             for (final Map.Entry<String, JsonElement> field : expectedHeader.entrySet()) {
                 final JsonElement actual = meta.header().get(field.getKey());
                 if (!field.getValue().equals(actual == null ? JsonNull.INSTANCE : actual)) {
-                    lines.add("- `" + datasetId + "`: family file does not belong to this run (header "
-                            + field.getKey() + " differs); rerun the recipe");
+                    lines.add("- `" + datasetId + "`: family file does not belong to this run (header " + field.getKey()
+                            + " differs); rerun the recipe");
                     return lines;
                 }
             }
@@ -688,9 +686,9 @@ final class ElliottResearchFamilies {
             final JsonObject footer = meta.footer();
             lines.add("- `" + datasetId + "`: " + profileNames(meta.header()) + ", " + meta.frames() + " frame(s), "
                     + footer.get("events").getAsLong() + " event(s); latest status of every observed verdict "
-                    + (replay.latestStatus().isEmpty() ? "(none)" : replay.latestStatus())
-                    + "; ever verified " + (replay.everVerified().isEmpty() ? "(none)" : replay.everVerified())
-                    + "; ended by reason " + (replay.endedByReason().isEmpty() ? "(none)" : replay.endedByReason())
+                    + (replay.latestStatus().isEmpty() ? "(none)" : replay.latestStatus()) + "; ever verified "
+                    + (replay.everVerified().isEmpty() ? "(none)" : replay.everVerified()) + "; ended by reason "
+                    + (replay.endedByReason().isEmpty() ? "(none)" : replay.endedByReason())
                     + "; frames with omitted edges " + footer.get("truncatedFrames").getAsLong()
                     + ", with an unexamined bound " + footer.get("incompleteFrames").getAsLong()
                     + "; verdicts with truncated compositions " + footer.get("truncatedCompositions").getAsLong()
