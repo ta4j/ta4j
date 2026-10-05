@@ -607,7 +607,15 @@ public class BaseTrade implements Trade {
 
     private static Num resolveCost(CostModel transactionCostModel, Num pricePerAsset, Num amount, List<TradeFill> fills,
             FuturesContract contract) {
-        if (contract != null || transactionCostModel instanceof RecordedTradeCostModel) {
+        if (contract != null) {
+            SettlementAmountSupport.CompensatedSum total = new SettlementAmountSupport.CompensatedSum(
+                    pricePerAsset.getNumFactory(), "fill fee", "total fill fees");
+            for (TradeFill fill : fills) {
+                total.add(fill.fee());
+            }
+            return total.total();
+        }
+        if (transactionCostModel instanceof RecordedTradeCostModel) {
             return sumFillFees(pricePerAsset.getNumFactory().zero(), fills);
         }
         return transactionCostModel.calculate(pricePerAsset, amount);

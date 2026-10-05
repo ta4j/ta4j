@@ -87,6 +87,8 @@ public class BaseTradingRecord implements TradingRecord {
     private transient List<Position> closedPositionsCache;
     private transient long closedPositionsCacheVersion;
     private Num totalFees;
+    // Persist the residual separately so a later recorded rebate can recover it.
+    private Num feeCompensation;
     private transient NumFactory numFactory;
     private long nextSequence;
     private List<FuturesCashFlow> cashFlows = new ArrayList<>();
@@ -189,6 +191,7 @@ public class BaseTradingRecord implements TradingRecord {
         this.terminalTradeIndexRecorded = config.terminalTradeIndexRecorded();
         this.modificationCount = config.modificationCount();
         this.totalFees = config.totalFees();
+        this.feeCompensation = config.feeCompensation();
         this.numFactory = config.numFactory();
         this.nextSequence = config.nextSequence();
         this.cashFlows = new ArrayList<>(config.cashFlows());
@@ -218,7 +221,7 @@ public class BaseTradingRecord implements TradingRecord {
         PositionBook positionBook = new PositionBook(startingType, matchPolicy, resolvedTransactionCostModel,
                 resolvedHoldingCostModel, futuresContract);
         return new RecordConfig(startingType, matchPolicy, resolvedTransactionCostModel, resolvedHoldingCostModel,
-                positionBook, startIndex, endIndex, 0, false, 0L, null, null, 0L, futuresContract, initialCapital,
+                positionBook, startIndex, endIndex, 0, false, 0L, null, null, null, 0L, futuresContract, initialCapital,
                 initialMarginRate, sortedFundingSchedule(fundingSchedule), List.of(), Map.of());
     }
 
@@ -543,13 +546,17 @@ public class BaseTradingRecord implements TradingRecord {
         CostModel transactionCostModel = transactionCostModelOf(chronologicalPositions);
         BaseTradingRecord initialized = new BaseTradingRecord(recordConfig(entry.getType(), ExecutionMatchPolicy.FIFO,
                 transactionCostModel, holdingCostModel, null, null, contract, null, null, List.of()));
-        Num totalFees = null;
+        SettlementAmountSupport.CompensatedSum fees = initialized
+                .recordedFeeSum(entry.getPricePerAsset().getNumFactory());
         for (Position position : chronologicalPositions) {
             initialized.adoptPosition(position);
-            totalFees = accumulateRecordedFees(totalFees, position);
+            addExecutedFees(fees, position.getEntry());
+            addExecutedFees(fees, position.getExit());
         }
         initialized.aggregateProjectedCashFlows(chronologicalPositions, Integer.MAX_VALUE);
-        initialized.totalFees = totalFees == null ? initialized.defaultNumFactory().zero() : totalFees;
+        fees.total();
+        initialized.totalFees = fees.rawSum();
+        initialized.feeCompensation = fees.compensation();
         return initialized.toRecordConfig();
     }
 
@@ -614,14 +621,19 @@ public class BaseTradingRecord implements TradingRecord {
         BaseTradingRecord projected = new BaseTradingRecord(recordConfig(source.getStartingType(), matchPolicy,
                 source.getTransactionCostModel(), source.getHoldingCostModel(), start, end, contract,
                 source.getInitialCapital(), source.getInitialMarginRate(), List.of()));
-        Num totalFees = null;
+        NumFactory feeFactory = positions.isEmpty() ? projected.getTotalFees().getNumFactory()
+                : positions.getFirst().getEntry().getPricePerAsset().getNumFactory();
+        SettlementAmountSupport.CompensatedSum fees = projected.recordedFeeSum(feeFactory);
         for (Position position : positions) {
             Position projectedPosition = trimmedToWindow(position, end);
             projected.adoptPosition(projectedPosition, false);
-            totalFees = accumulateRecordedFees(totalFees, projectedPosition);
+            addExecutedFees(fees, projectedPosition.getEntry());
+            addExecutedFees(fees, projectedPosition.getExit());
         }
         projected.validateProjectedExposure();
-        projected.totalFees = totalFees;
+        fees.total();
+        projected.totalFees = fees.rawSum();
+        projected.feeCompensation = fees.compensation();
         projected.aggregateProjectedCashFlows(positions, end);
         projected.readOnly = true;
         return projected;
@@ -709,30 +721,35 @@ public class BaseTradingRecord implements TradingRecord {
                 && Objects.equals(left.currency(), right.currency()) && Objects.equals(left.source(), right.source());
     }
 
-    private static Num accumulateRecordedFees(Num totalFees, Position position) {
-        Num accumulated = plusExecutedFees(totalFees, position.getEntry());
-        return plusExecutedFees(accumulated, position.getExit());
+    private SettlementAmountSupport.CompensatedSum recordedFeeSum(NumFactory factory) {
+        SettlementAmountSupport.CompensatedSum sum = new SettlementAmountSupport.CompensatedSum(factory, "recorded fee",
+                "recorded fee total");
+        if (totalFees != null) {
+            sum.add(totalFees);
+        }
+        if (feeCompensation != null) {
+            sum.add(feeCompensation);
+        }
+        return sum;
     }
 
-    private static Num plusExecutedFees(Num totalFees, Trade trade) {
+    private static void addExecutedFees(SettlementAmountSupport.CompensatedSum sum, Trade trade) {
         if (trade == null) {
-            return totalFees;
+            return;
         }
-        Num fee = trade.getFuturesContract() == null ? feeOf(trade) : executedFeeOf(trade);
-        return totalFees == null ? fee : totalFees.plus(totalFees.getNumFactory().numOf(fee.getDelegate()));
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            // Deferred fills have not incurred a recorded execution fee yet.
+            if (fill.index() >= 0 && fill.fee() != null && !fill.fee().isNaN()) {
+                sum.add(fill.fee());
+            }
+        }
     }
 
     private static Num executedFeeOf(Trade trade) {
-        Num total = null;
-        for (TradeFill fill : Trade.executionFillsOf(trade)) {
-            // A deferred fill carries no execution yet, so its fee is not a
-            // recorded cost of the position.
-            if (fill.index() < 0 || fill.fee() == null || fill.fee().isNaN()) {
-                continue;
-            }
-            total = total == null ? fill.fee() : total.plus(total.getNumFactory().numOf(fill.fee().getDelegate()));
-        }
-        return total == null ? trade.getPricePerAsset().getNumFactory().zero() : total;
+        SettlementAmountSupport.CompensatedSum sum = new SettlementAmountSupport.CompensatedSum(
+                trade.getPricePerAsset().getNumFactory(), "recorded fee", "recorded fee total");
+        addExecutedFees(sum, trade);
+        return sum.total();
     }
 
     private void adoptPosition(Position position) {
@@ -880,8 +897,8 @@ public class BaseTradingRecord implements TradingRecord {
     private RecordConfig toRecordConfig() {
         return new RecordConfig(startingType, matchPolicy, transactionCostModel, holdingCostModel, positionBook,
                 startIndex, endIndex, nextTradeIndex, terminalTradeIndexRecorded, modificationCount, totalFees,
-                numFactory, nextSequence, futuresContract, initialCapital, initialMarginRate, fundingSchedule,
-                List.copyOf(cashFlows), new LinkedHashMap<>(processedEvents));
+                feeCompensation, numFactory, nextSequence, futuresContract, initialCapital, initialMarginRate,
+                fundingSchedule, List.copyOf(cashFlows), new LinkedHashMap<>(processedEvents));
     }
 
     private static FuturesContract contractOf(Trade... trades) {
@@ -1857,8 +1874,8 @@ public class BaseTradingRecord implements TradingRecord {
 
     private RecordState snapshotState() {
         return new RecordState(positionBook.snapshotState(), nextTradeIndex, terminalTradeIndexRecorded, tradesCache,
-                tradesCacheVersion, modificationCount, totalFees, numFactory, nextSequence, new ArrayList<>(cashFlows),
-                new LinkedHashMap<>(processedEvents), fundingCursor, eventHorizon);
+                tradesCacheVersion, modificationCount, totalFees, feeCompensation, numFactory, nextSequence,
+                new ArrayList<>(cashFlows), new LinkedHashMap<>(processedEvents), fundingCursor, eventHorizon);
     }
 
     private void restoreState(RecordState state) {
@@ -1870,6 +1887,7 @@ public class BaseTradingRecord implements TradingRecord {
         tradesCacheVersion = state.tradesCacheVersion();
         modificationCount = state.modificationCount();
         totalFees = state.totalFees();
+        feeCompensation = state.feeCompensation();
         numFactory = state.numFactory();
         nextSequence = state.nextSequence();
         cashFlows = new ArrayList<>(state.cashFlows());
@@ -1880,7 +1898,7 @@ public class BaseTradingRecord implements TradingRecord {
 
     private record RecordState(PositionBook.PositionBookState positionBookState, int nextTradeIndex,
             boolean terminalTradeIndexRecorded, List<Trade> tradesCache, long tradesCacheVersion,
-            long modificationCount, Num totalFees, NumFactory numFactory, long nextSequence,
+            long modificationCount, Num totalFees, Num feeCompensation, NumFactory numFactory, long nextSequence,
             List<FuturesCashFlow> cashFlows, Map<String, FuturesCashFlow> processedEvents, int fundingCursor,
             Instant eventHorizon) {
     }
@@ -1896,7 +1914,17 @@ public class BaseTradingRecord implements TradingRecord {
         NumFactory feeFactory = hasNumFactory() ? numFactory
                 : price != null && !price.isNaN() ? price.getNumFactory() : defaultNumFactory();
         Num currentTotalFees = totalFees == null ? feeFactory.zero() : totalFees;
-        Num nextTotalFees = currentTotalFees.plus(fee);
+        Num nextTotalFees;
+        Num nextFeeCompensation = feeCompensation;
+        if (futuresContract != null) {
+            SettlementAmountSupport.CompensatedSum fees = recordedFeeSum(feeFactory);
+            addExecutedFees(fees, trade);
+            fees.total();
+            nextTotalFees = fees.rawSum();
+            nextFeeCompensation = fees.compensation();
+        } else {
+            nextTotalFees = currentTotalFees.plus(fee);
+        }
         if (!Num.isFinite(nextTotalFees) && !Num.isNaNOrNull(nextTotalFees)) {
             throw new IllegalArgumentException("recorded fee total exceeds the record number factory range");
         }
@@ -1924,6 +1952,7 @@ public class BaseTradingRecord implements TradingRecord {
                 numFactory = price.getNumFactory();
             }
             totalFees = nextTotalFees;
+            feeCompensation = nextFeeCompensation;
             modificationCount++;
             tradesCache = null;
             closedPositionsCache = null;
@@ -2095,7 +2124,8 @@ public class BaseTradingRecord implements TradingRecord {
                 }
                 return (factory == null ? DoubleNumFactory.getInstance() : factory).zero();
             }
-            return totalFees;
+            return futuresContract == null || feeCompensation == null ? totalFees
+                    : FuturesValidation.requireFinite(totalFees.plus(feeCompensation), "recorded fee total");
         } finally {
             lock.readLock().unlock();
         }
@@ -2402,9 +2432,10 @@ public class BaseTradingRecord implements TradingRecord {
     private record RecordConfig(TradeType startingType, ExecutionMatchPolicy matchPolicy,
             CostModel transactionCostModel, CostModel holdingCostModel, PositionBook positionBook, Integer startIndex,
             Integer endIndex, int nextTradeIndex, boolean terminalTradeIndexRecorded, long modificationCount,
-            Num totalFees, NumFactory numFactory, long nextSequence, FuturesContract futuresContract,
-            Num initialCapital, Num initialMarginRate, List<FuturesFunding> fundingSchedule,
-            List<FuturesCashFlow> cashFlows, Map<String, FuturesCashFlow> processedEvents) {
+            Num totalFees, Num feeCompensation, NumFactory numFactory, long nextSequence,
+            FuturesContract futuresContract, Num initialCapital, Num initialMarginRate,
+            List<FuturesFunding> fundingSchedule, List<FuturesCashFlow> cashFlows,
+            Map<String, FuturesCashFlow> processedEvents) {
     }
 
     /**

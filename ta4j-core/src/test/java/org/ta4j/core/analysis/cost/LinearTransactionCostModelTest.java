@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.analysis.cost;
 
+import org.ta4j.core.num.DoubleNumFactory;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.*;
@@ -15,7 +16,6 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.FixedRule;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.LinkedList;
@@ -262,5 +262,34 @@ public class LinearTransactionCostModelTest {
         Num overallProfit = firstPositionProfit.plus(secondPositionProfit);
 
         assertEquals(overallProfit, strategyResult.getPerformanceReport().getPerformanceMetric());
+    }
+
+    @Test
+    public void nativeRecordedFeesAcrossFillsRetainCancellationResidualDouble() {
+        assertNativeFeeCompensation(DoubleNumFactory.getInstance(), false);
+    }
+
+    @Test
+    public void nativeRecordedFeesAcrossFillsRetainCancellationResidualDecimal() {
+        assertNativeFeeCompensation(DecimalNumFactory.getInstance(), false);
+    }
+
+    @Test
+    public void nativeRecordedFeesAcrossTradesRetainCancellationResidualDouble() {
+        assertNativeFeeCompensation(DoubleNumFactory.getInstance(), true);
+    }
+
+    @Test
+    public void nativeRecordedFeesAcrossTradesRetainCancellationResidualDecimal() {
+        assertNativeFeeCompensation(DecimalNumFactory.getInstance(), true);
+    }
+
+    private static void assertNativeFeeCompensation(NumFactory factory, boolean splitAcrossTrades) {
+        CostModel model = new LinearTransactionCostModel(0.03);
+        Position position = RecordedTradeCostModelTest.feeCancellationPosition(factory, model, splitAcrossTrades);
+        assertNumEquals(1, model.calculate(position, 2));
+        assertNumEquals(1, model.calculate(position));
+        assertNumEquals(1, position.getPositionCost(2));
+        assertNumEquals(1e16, model.calculate(position, 0));
     }
 }

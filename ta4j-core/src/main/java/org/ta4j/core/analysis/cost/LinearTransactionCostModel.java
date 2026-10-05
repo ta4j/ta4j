@@ -9,7 +9,6 @@ import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * With this cost model, the trading costs for opening or closing a position
@@ -40,7 +39,7 @@ public class LinearTransactionCostModel implements CostModel {
     public Num calculate(Position position, int currentIndex) {
         Trade entryTrade = position.getEntry();
         if (entryTrade != null && entryTrade.getFuturesContract() != null) {
-            return calculateFuturesPosition(position, currentIndex);
+            return RecordedTradeCostModel.sumFuturesFillCosts(position, currentIndex, this);
         }
         return this.calculate(position);
     }
@@ -49,7 +48,7 @@ public class LinearTransactionCostModel implements CostModel {
     public Num calculate(Position position) {
         Trade entryTrade = position.getEntry();
         if (entryTrade != null && entryTrade.getFuturesContract() != null) {
-            return calculateFuturesPosition(position, Integer.MAX_VALUE);
+            return RecordedTradeCostModel.sumFuturesFillCosts(position, Integer.MAX_VALUE, this);
         }
         Num totalPositionCost = null;
         if (entryTrade != null) {
@@ -60,29 +59,6 @@ public class LinearTransactionCostModel implements CostModel {
             }
         }
         return totalPositionCost;
-    }
-
-    private Num calculateFuturesPosition(Position position, int currentIndex) {
-        Num totalPositionCost = calculateFuturesTradeCost(position.getEntry(), currentIndex);
-        Trade exitTrade = position.getExit();
-        if (exitTrade != null) {
-            Num exitCost = calculateFuturesTradeCost(exitTrade, currentIndex);
-            totalPositionCost = totalPositionCost.plus(totalPositionCost.getNumFactory().numOf(exitCost.getDelegate()));
-        }
-        return totalPositionCost;
-    }
-
-    private Num calculateFuturesTradeCost(Trade trade, int currentIndex) {
-        NumFactory numFactory = trade.getPricePerAsset().getNumFactory();
-        Num totalTradeCost = numFactory.zero();
-        for (TradeFill fill : Trade.executionFillsOf(trade)) {
-            if (fill.index() < 0 || fill.index() > currentIndex) {
-                continue;
-            }
-            Num fillCost = fill.hasRecordedFees() ? fill.fee() : calculate(fill);
-            totalTradeCost = totalTradeCost.plus(numFactory.numOf(fillCost.getDelegate()));
-        }
-        return totalTradeCost;
     }
 
     @Override

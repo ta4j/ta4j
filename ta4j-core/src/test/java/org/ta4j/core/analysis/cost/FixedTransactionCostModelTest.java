@@ -3,6 +3,10 @@
  */
 package org.ta4j.core.analysis.cost;
 
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.NumFactory;
+
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -147,5 +151,34 @@ public class FixedTransactionCostModelTest {
                 model);
 
         assertNumEquals(2, model.calculate(position, 1));
+    }
+
+    @Test
+    public void nativeRecordedFeesAcrossFillsRetainCancellationResidualDouble() {
+        assertNativeFeeCompensation(DoubleNumFactory.getInstance(), false);
+    }
+
+    @Test
+    public void nativeRecordedFeesAcrossFillsRetainCancellationResidualDecimal() {
+        assertNativeFeeCompensation(DecimalNumFactory.getInstance(), false);
+    }
+
+    @Test
+    public void nativeRecordedFeesAcrossTradesRetainCancellationResidualDouble() {
+        assertNativeFeeCompensation(DoubleNumFactory.getInstance(), true);
+    }
+
+    @Test
+    public void nativeRecordedFeesAcrossTradesRetainCancellationResidualDecimal() {
+        assertNativeFeeCompensation(DecimalNumFactory.getInstance(), true);
+    }
+
+    private static void assertNativeFeeCompensation(NumFactory factory, boolean splitAcrossTrades) {
+        CostModel model = new FixedTransactionCostModel(7);
+        Position position = RecordedTradeCostModelTest.feeCancellationPosition(factory, model, splitAcrossTrades);
+        assertNumEquals(1, model.calculate(position, 2));
+        assertNumEquals(1, model.calculate(position));
+        assertNumEquals(1, position.getPositionCost(2));
+        assertNumEquals(1e16, model.calculate(position, 0));
     }
 }

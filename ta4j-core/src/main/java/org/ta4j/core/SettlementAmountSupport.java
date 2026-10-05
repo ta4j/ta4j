@@ -149,5 +149,13 @@ final class SettlementAmountSupport {
             }
             return total;
         }
+
+        Num rawSum() {
+            return sum;
+        }
+
+        Num compensation() {
+            return compensation;
+        }
     }
 }

@@ -277,4 +277,36 @@ class FuturesTransactionCostModelTest {
         assertTrue(doubleModel.equals(decimalModel));
         assertTrue(decimalModel.equals(doubleModel));
     }
+
+    @Test
+    void nativeRecordedFeesAcrossFillsRetainCancellationResidualDouble() {
+        assertNativeFeeCompensation(DoubleNumFactory.getInstance(), false);
+    }
+
+    @Test
+    void nativeRecordedFeesAcrossFillsRetainCancellationResidualDecimal() {
+        assertNativeFeeCompensation(DecimalNumFactory.getInstance(), false);
+    }
+
+    @Test
+    void nativeRecordedFeesAcrossTradesRetainCancellationResidualDouble() {
+        assertNativeFeeCompensation(DoubleNumFactory.getInstance(), true);
+    }
+
+    @Test
+    void nativeRecordedFeesAcrossTradesRetainCancellationResidualDecimal() {
+        assertNativeFeeCompensation(DecimalNumFactory.getInstance(), true);
+    }
+
+    private static void assertNativeFeeCompensation(NumFactory factory, boolean splitAcrossTrades) {
+        CostModel model = FuturesTransactionCostModel.builder()
+                .makerRate(factory.numOf(0.01))
+                .takerRate(factory.numOf(0.02))
+                .build();
+        Position position = RecordedTradeCostModelTest.feeCancellationPosition(factory, model, splitAcrossTrades);
+        assertNumEquals(1, model.calculate(position, 2));
+        assertNumEquals(1, model.calculate(position));
+        assertNumEquals(1, position.getPositionCost(2));
+        assertNumEquals(1e16, model.calculate(position, 0));
+    }
 }

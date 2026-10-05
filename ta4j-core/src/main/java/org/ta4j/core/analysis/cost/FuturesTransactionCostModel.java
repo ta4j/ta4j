@@ -80,6 +80,9 @@ public final class FuturesTransactionCostModel implements CostModel {
         if (entry == null) {
             return DoubleNumFactory.getInstance().zero();
         }
+        if (entry.getFuturesContract() != null) {
+            return RecordedTradeCostModel.sumFuturesFillCosts(position, currentIndex, this);
+        }
         NumFactory numFactory = entry.getPricePerAsset().getNumFactory();
         Num total = numFactory.zero();
         total = total.plus(numFactory.numOf(sumModeledFees(entry, currentIndex).getDelegate()));

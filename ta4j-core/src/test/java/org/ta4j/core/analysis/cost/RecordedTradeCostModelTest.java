@@ -3,6 +3,13 @@
  */
 package org.ta4j.core.analysis.cost;
 
+import java.util.ArrayList;
+import org.ta4j.core.TradeFee;
+import org.ta4j.core.FuturesContract;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.NumFactory;
+
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Instant;
@@ -33,5 +40,83 @@ public class RecordedTradeCostModelTest {
 
         assertNumEquals(0.1, costAtFirstFill);
         assertNumEquals(0.3, costAtSecondFill);
+    }
+
+    @Test
+    public void nativeRecordedFeesAcrossFillsRetainCancellationResidualDouble() {
+        assertNativeFeeCompensation(DoubleNumFactory.getInstance(), false);
+    }
+
+    @Test
+    public void nativeRecordedFeesAcrossFillsRetainCancellationResidualDecimal() {
+        assertNativeFeeCompensation(DecimalNumFactory.getInstance(), false);
+    }
+
+    @Test
+    public void nativeRecordedFeesAcrossTradesRetainCancellationResidualDouble() {
+        assertNativeFeeCompensation(DoubleNumFactory.getInstance(), true);
+    }
+
+    @Test
+    public void nativeRecordedFeesAcrossTradesRetainCancellationResidualDecimal() {
+        assertNativeFeeCompensation(DecimalNumFactory.getInstance(), true);
+    }
+
+    private static void assertNativeFeeCompensation(NumFactory factory, boolean splitAcrossTrades) {
+        CostModel model = RecordedTradeCostModel.INSTANCE;
+        Position position = RecordedTradeCostModelTest.feeCancellationPosition(factory, model, splitAcrossTrades);
+        assertNumEquals(1, model.calculate(position, 2));
+        assertNumEquals(1, model.calculate(position));
+        assertNumEquals(1, position.getPositionCost(2));
+        assertNumEquals(1e16, model.calculate(position, 0));
+    }
+
+    static Position feeCancellationPosition(NumFactory factory, CostModel model, boolean splitAcrossTrades) {
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(factory.one())
+                .build();
+        List<TradeFill> entries = new ArrayList<>();
+        double[] fees = { 1e16, 1d, -1e16 };
+        for (int index = 0; index < (splitAcrossTrades ? 2 : 3); index++) {
+            TradeFee fee = TradeFee.builder()
+                    .type(TradeFee.Type.COMMISSION)
+                    .amount(factory.numOf(fees[index]))
+                    .currency("USD")
+                    .build();
+            entries.add(TradeFill.builder()
+                    .index(index)
+                    .time(Instant.EPOCH.plusSeconds(index))
+                    .side(ExecutionSide.BUY)
+                    .price(factory.hundred())
+                    .amount(factory.one())
+                    .futuresContract(contract)
+                    .fees(List.of(fee))
+                    .build());
+        }
+        Trade entry = Trade.fromFills(Trade.TradeType.BUY, entries, model);
+        if (!splitAcrossTrades)
+            return new Position(entry, model, new ZeroCostModel());
+        TradeFee exitFee = TradeFee.builder()
+                .type(TradeFee.Type.COMMISSION)
+                .amount(factory.numOf(-1e16))
+                .currency("USD")
+                .build();
+        Trade exit = Trade.fromFill(TradeFill.builder()
+                .index(2)
+                .time(Instant.EPOCH.plusSeconds(2))
+                .side(ExecutionSide.SELL)
+                .price(factory.hundred())
+                .amount(factory.two())
+                .futuresContract(contract)
+                .fees(List.of(exitFee))
+                .build(), model);
+        return new Position(entry, exit, model, new ZeroCostModel());
     }
 }

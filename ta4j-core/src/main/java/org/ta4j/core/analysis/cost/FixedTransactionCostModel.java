@@ -33,16 +33,18 @@ public class FixedTransactionCostModel implements CostModel {
     }
 
     /**
-     * @param position     the position
-     * @param currentIndex the current bar index (irrelevant for
-     *                     {@code FixedTransactionCostModel})
+     * @param position     the position Native positions include only fills executed
+     *                     through {@code currentIndex}, charging the fixed fee once
+     *                     per fill when no recorded fees are available.
+     *
+     * @param currentIndex the current bar index (irrelevant for spot positions)
      * @return the transaction cost of the single {@code position}
      */
     @Override
     public Num calculate(Position position, int currentIndex) {
         Trade entry = position.getEntry();
         if (entry != null && entry.getFuturesContract() != null) {
-            return sumExecutedFillCosts(position, currentIndex);
+            return RecordedTradeCostModel.sumFuturesFillCosts(position, currentIndex, this);
         }
         final var numFactory = position.getEntry().getPricePerAsset().getNumFactory();
         Num multiplier = numFactory.one();
@@ -53,47 +55,13 @@ public class FixedTransactionCostModel implements CostModel {
     }
 
     /**
-     * <b>Note:</b> A partially executed native trade charges only the fills already
-     * executed no later than {@code currentIndex}.
-     *
-     * <p>
-     * The fixed fee is applied once per executed fill, because the venue charges
-     * per contract execution rather than per entry/exit trade.
-     * </p>
-     */
-    private Num sumExecutedFillCosts(Position position, int currentIndex) {
-        Trade entry = position.getEntry();
-        Num total = entry.getPricePerAsset().getNumFactory().zero();
-        Num entryCost = sumFillCosts(entry, currentIndex);
-        total = total.plus(total.getNumFactory().numOf(entryCost.getDelegate()));
-        Trade exit = position.getExit();
-        if (exit != null) {
-            Num exitCost = sumFillCosts(exit, currentIndex);
-            total = total.plus(total.getNumFactory().numOf(exitCost.getDelegate()));
-        }
-        return total;
-    }
-
-    private Num sumFillCosts(Trade trade, int currentIndex) {
-        Num total = trade.getPricePerAsset().getNumFactory().zero();
-        for (TradeFill fill : Trade.executionFillsOf(trade)) {
-            if (fill.index() < 0 || fill.index() > currentIndex) {
-                continue;
-            }
-            Num fillCost = fill.hasRecordedFees() ? fill.fee() : calculate(fill);
-            total = total.plus(total.getNumFactory().numOf(fillCost.getDelegate()));
-        }
-        return total;
-    }
-
-    /**
      * @return the transaction cost of the single {@code position}
      */
     @Override
     public Num calculate(Position position) {
         Trade entry = position.getEntry();
         if (entry != null && entry.getFuturesContract() != null) {
-            return sumExecutedFillCosts(position, Integer.MAX_VALUE);
+            return RecordedTradeCostModel.sumFuturesFillCosts(position, Integer.MAX_VALUE, this);
         }
         return this.calculate(position, 0);
     }

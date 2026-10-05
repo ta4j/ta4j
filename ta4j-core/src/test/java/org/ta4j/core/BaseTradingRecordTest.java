@@ -3775,4 +3775,135 @@ class BaseTradingRecordTest {
             }
         }
     }
+
+    @Test
+    void nativeLiveRecordingRetainsSignedFeeResidualDouble() throws Exception {
+        assertNativeRecordedFeeCompensation(DoubleNumFactory.getInstance(), 0);
+    }
+
+    @Test
+    void nativeLiveRecordingRetainsSignedFeeResidualDecimal() throws Exception {
+        assertNativeRecordedFeeCompensation(DecimalNumFactory.getInstance(), 0);
+    }
+
+    @Test
+    void nativePositionImportRetainsSignedFeeResidualDouble() throws Exception {
+        assertNativeRecordedFeeCompensation(DoubleNumFactory.getInstance(), 1);
+    }
+
+    @Test
+    void nativePositionImportRetainsSignedFeeResidualDecimal() throws Exception {
+        assertNativeRecordedFeeCompensation(DecimalNumFactory.getInstance(), 1);
+    }
+
+    @Test
+    void nativeProjectionRetainsSignedFeeResidualDouble() throws Exception {
+        assertNativeRecordedFeeCompensation(DoubleNumFactory.getInstance(), 2);
+    }
+
+    @Test
+    void nativeProjectionRetainsSignedFeeResidualDecimal() throws Exception {
+        assertNativeRecordedFeeCompensation(DecimalNumFactory.getInstance(), 2);
+    }
+
+    @Test
+    void nativeMultiplePositionImportRetainsSignedFeeResidualDouble() throws Exception {
+        assertNativeRecordedFeeCompensation(DoubleNumFactory.getInstance(), 3);
+    }
+
+    @Test
+    void nativeMultiplePositionImportRetainsSignedFeeResidualDecimal() throws Exception {
+        assertNativeRecordedFeeCompensation(DecimalNumFactory.getInstance(), 3);
+    }
+
+    private static void assertNativeRecordedFeeCompensation(NumFactory factory, int mode) throws Exception {
+        FuturesContract contract = linearBtcPerpetual(factory);
+        List<TradeFill> fills = new ArrayList<>();
+        double[] fees = { 1e16, 1d, -1e16 };
+        for (int index = 0; index < fees.length; index++) {
+            fills.add(fill(contract, index, ExecutionSide.BUY, 1, 100,
+                    List.of(commission(factory, fees[index], contract.settlementCurrency()))));
+        }
+        BaseTradingRecord record;
+        if (mode == 0) {
+            record = BaseTradingRecord.builder().futuresContract(contract).build();
+            record.operate(fills.get(0));
+            record.operate(fills.get(1));
+            record = serializedCopy(record);
+            record.operate(fills.get(2));
+        } else if (mode == 3) {
+            List<Position> positions = new ArrayList<>();
+            for (TradeFill entry : fills) {
+                TradeFill exit = fill(contract, entry.index(), ExecutionSide.SELL, 1, 100, List.of()).toBuilder()
+                        .time(entry.time().plusMillis(500))
+                        .build();
+                positions.add(new Position(Trade.fromFill(entry, RecordedTradeCostModel.INSTANCE),
+                        Trade.fromFill(exit, RecordedTradeCostModel.INSTANCE), RecordedTradeCostModel.INSTANCE,
+                        new ZeroCostModel()));
+            }
+            record = new BaseTradingRecord(positions);
+            assertNumEquals(1, BaseTradingRecord.projectedFutures(record, positions, 0, 2).getTotalFees());
+        } else {
+            Trade entry = Trade.fromFills(TradeType.BUY, fills, RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            record = new BaseTradingRecord(List.of(position));
+            if (mode == 2) {
+                record = BaseTradingRecord.projectedFutures(record, List.of(position), 0, 2);
+            }
+        }
+        assertNumEquals(1, record.getTotalFees());
+        assertNumEquals(1, record.getRecordedTotalFees());
+        assertNumEquals(1, serializedCopy(record).getTotalFees());
+        assertEquals(factory.getClass(), record.getTotalFees().getNumFactory().getClass());
+    }
+
+    @Test
+    void nativeFeeCompensationSurvivesRejectedBatchAndLaterCancellation() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        FuturesContract contract = linearBtcPerpetual(factory);
+        BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(contract).build();
+        record.operate(fill(contract, 0, ExecutionSide.BUY, 1, 100,
+                List.of(commission(factory, 9e307, contract.settlementCurrency()))));
+        record.operate(fill(contract, 1, ExecutionSide.BUY, 1, 100,
+                List.of(commission(factory, 1, contract.settlementCurrency()))));
+        Trade rejected = Trade.fromFills(TradeType.BUY,
+                List.of(fill(contract, 2, ExecutionSide.BUY, 1, 100,
+                        List.of(commission(factory, 4e307, contract.settlementCurrency()))),
+                        fill(contract, 3, ExecutionSide.BUY, 1, 100,
+                                List.of(commission(factory, 6e307, contract.settlementCurrency())))),
+                RecordedTradeCostModel.INSTANCE);
+        assertThrows(IllegalArgumentException.class, () -> record.operate(rejected));
+        assertEquals(2, record.getOpenPositions().size());
+        record.operate(fill(contract, 2, ExecutionSide.BUY, 1, 100,
+                List.of(commission(factory, -9e307, contract.settlementCurrency()))));
+        assertNumEquals(1, record.getTotalFees());
+    }
+
+    @Test
+    void nativeImportedFeeCompensationSurvivesSerializationAndLaterRebateDouble() throws Exception {
+        assertImportedFeeCompensation(DoubleNumFactory.getInstance());
+    }
+
+    @Test
+    void nativeImportedFeeCompensationSurvivesSerializationAndLaterRebateDecimal() throws Exception {
+        assertImportedFeeCompensation(DecimalNumFactory.getInstance());
+    }
+
+    private static void assertImportedFeeCompensation(NumFactory factory) throws Exception {
+        FuturesContract contract = linearBtcPerpetual(factory);
+        Trade entry = Trade.fromFills(TradeType.BUY,
+                List.of(fill(contract, 0, ExecutionSide.BUY, 1, 100,
+                        List.of(commission(factory, 1e16, contract.settlementCurrency()))),
+                        fill(contract, 1, ExecutionSide.BUY, 1, 100,
+                                List.of(commission(factory, 1, contract.settlementCurrency())))),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        BaseTradingRecord record = serializedCopy(new BaseTradingRecord(List.of(position)));
+        record.operate(fill(contract, 2, ExecutionSide.BUY, 1, 100,
+                List.of(commission(factory, -1e16, contract.settlementCurrency()))));
+        assertNumEquals(1, record.getTotalFees());
+        record.operate(fill(contract, 3, ExecutionSide.SELL, 3, 100, List.of()));
+        assertTrue(record.getOpenPositions().isEmpty());
+        assertNumEquals(1, record.getTotalFees());
+    }
 }

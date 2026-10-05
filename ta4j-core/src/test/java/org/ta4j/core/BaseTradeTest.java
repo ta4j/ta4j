@@ -16,6 +16,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.time.Instant;
 import java.util.List;
+import java.util.ArrayList;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
@@ -363,5 +364,49 @@ class BaseTradeTest {
         Trade trade = Trade.fromFills(TradeType.BUY, List.of(tinyFill, maximumFill), RecordedTradeCostModel.INSTANCE);
 
         assertNumEquals(maximumAmount, trade.getPricePerAsset());
+    }
+
+    @Test
+    void nativeCrossFillFeesRetainSmallSignedComponentsDouble() {
+        assertNativeCrossFillFeeCompensation(DoubleNumFactory.getInstance());
+    }
+
+    @Test
+    void nativeCrossFillFeesRetainSmallSignedComponentsDecimal() {
+        assertNativeCrossFillFeeCompensation(DecimalNumFactory.getInstance());
+    }
+
+    private static void assertNativeCrossFillFeeCompensation(NumFactory factory) {
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(factory.one())
+                .build();
+        List<TradeFill> fills = new ArrayList<>();
+        double[] fees = { 1e16, 1d, -1e16 };
+        for (int index = 0; index < fees.length; index++) {
+            TradeFee fee = TradeFee.builder()
+                    .type(TradeFee.Type.COMMISSION)
+                    .amount(factory.numOf(fees[index]))
+                    .currency("USD")
+                    .build();
+            fills.add(TradeFill.builder()
+                    .index(index)
+                    .time(Instant.EPOCH.plusSeconds(index))
+                    .side(ExecutionSide.BUY)
+                    .price(factory.hundred())
+                    .amount(factory.one())
+                    .futuresContract(contract)
+                    .fees(List.of(fee))
+                    .build());
+        }
+        Trade trade = Trade.fromFills(TradeType.BUY, fills, RecordedTradeCostModel.INSTANCE);
+        assertNumEquals(1, trade.getCost());
+        assertNumEquals(factory.hundred().plus(factory.one().dividedBy(factory.three())), trade.getNetPrice(), 1e-12);
     }
 }
