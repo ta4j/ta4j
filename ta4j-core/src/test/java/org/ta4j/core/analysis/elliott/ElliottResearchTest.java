@@ -653,9 +653,8 @@ class ElliottResearchTest {
         final Path recipe = work.resolve("noncontiguous-gappy-recipe.json");
         Files.writeString(recipe, noncontiguousRecipe());
         final Path candles = work.resolve("noncontiguous-gappy-candles.json");
-        writeCandles(candles, LocalDate.of(2020, 1, 1), 152,
-                date -> date.getMonthValue() % 2 == 1
-                        && (date.isBefore(LocalDate.of(2020, 3, 10)) || date.isAfter(LocalDate.of(2020, 3, 18))));
+        writeCandles(candles, LocalDate.of(2020, 1, 1), 152, date -> date.getMonthValue() % 2 == 1
+                && (date.isBefore(LocalDate.of(2020, 3, 10)) || date.isAfter(LocalDate.of(2020, 3, 18))));
         final Path out = work.resolve("explore-noncontiguous-gappy");
         final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(),
                 "--out", out.toString());
