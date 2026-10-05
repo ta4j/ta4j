@@ -65,6 +65,7 @@ final class ElliottResearchEvents implements StudyObserver {
      * @param structuralMode study mode whose {@code CYCLE_5_3} observations define
      *                       correction completion
      * @param maxHorizon     longest horizon in bars whose lifecycle is tracked
+     * @since 0.26.1
      */
     ElliottResearchEvents(final String structuralMode, final int maxHorizon) {
         this.structuralMode = Objects.requireNonNull(structuralMode, "structuralMode");
@@ -80,6 +81,7 @@ final class ElliottResearchEvents implements StudyObserver {
      *
      * @param observers receiving observers in call order
      * @return the single observer, a tee, or {@code null} when none is present
+     * @since 0.26.1
      */
     static StudyObserver tee(final StudyObserver... observers) {
         final List<StudyObserver> present = new ArrayList<>(observers.length);
@@ -125,12 +127,16 @@ final class ElliottResearchEvents implements StudyObserver {
      * labelling after the run; recognition never sees it through this recorder.
      *
      * @param series real source series
+     * @since 0.26.1
      */
     void bindRealTape(final BarSeries series) {
         this.realTape = new Tape(series, 0);
     }
 
-    /** @return the streams in first-observation order */
+    /**
+     * @return the streams in first-observation order
+     * @since 0.26.1
+     */
     List<Stream> streams() {
         return List.copyOf(streams.values());
     }
@@ -139,17 +145,20 @@ final class ElliottResearchEvents implements StudyObserver {
      * @param stream observed stream
      * @return the tape that stream's labels read, or {@code null} when none was
      *         announced
+     * @since 0.26.1
      */
     Tape tapeOf(final Stream stream) {
         return stream.key().real() ? realTape : nullTapes.get(stream.key());
     }
 
+    /** @since 0.26.1 */
     @Override
     public void nullTape(final int nullBlockLength, final int nullMemberIndex, final String partition,
             final int sourceOffset, final BarSeries member) {
         nullTapes.put(new StreamKey(nullBlockLength, nullMemberIndex, partition), new Tape(member, sourceOffset));
     }
 
+    /** @since 0.26.1 */
     @Override
     public void topology(final Scope scope, final String partition, final int recordedIndex, final Instant asOfEnd,
             final List<ConfirmedPivot> visiblePivots, final TopologyAnalysis analysis,
@@ -166,6 +175,7 @@ final class ElliottResearchEvents implements StudyObserver {
         }
     }
 
+    /** @since 0.26.1 */
     @Override
     public void alternative(final Scope scope, final String partition, final int recordedIndex, final Instant asOfEnd,
             final List<ConfirmedPivot> visiblePivots, final String outcome, final Set<String> labels) {
@@ -186,7 +196,7 @@ final class ElliottResearchEvents implements StudyObserver {
         final Iterator<Event> tracked = stream.tracked.iterator();
         while (tracked.hasNext()) {
             final Event event = tracked.next();
-            if (index > event.enrollIndex + maxHorizon) {
+            if (index > (long) event.enrollIndex + maxHorizon) {
                 tracked.remove();
                 continue;
             }
@@ -247,7 +257,7 @@ final class ElliottResearchEvents implements StudyObserver {
             return;
         }
         while (stream.cursor < stream.events.size()
-                && index > stream.events.get(stream.cursor).enrollIndex + maxHorizon) {
+                && index > (long) stream.events.get(stream.cursor).enrollIndex + maxHorizon) {
             stream.cursor++;
         }
         final List<TopologyCandidate> candidates = analysis.candidates();
@@ -256,7 +266,7 @@ final class ElliottResearchEvents implements StudyObserver {
             if (event.enrollIndex > index) {
                 break;
             }
-            if (event.completionIndex >= 0) {
+            if (event.completionIndex >= 0 || event.withdrawnIndex >= 0 && index >= event.withdrawnIndex) {
                 continue;
             }
             for (int slot = 0; slot < candidates.size(); slot++) {

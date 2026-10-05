@@ -1414,8 +1414,14 @@ final class ElliottResearch {
             markdown.append("\n## Traces\n\n");
             traces.forEach(name -> markdown.append("- `").append(name).append("`\n"));
         }
-        final Path outcomesSummary = dir.resolve(ElliottResearchOutcomes.SUMMARY_FILE);
-        if (Files.isRegularFile(outcomesSummary)) {
+        if (run.has("outcomes")) {
+            // A run that declares outcome artifacts is incomplete without them; only a
+            // run written before outcomes existed legitimately has none.
+            final Path outcomesSummary = dir.resolve(ElliottResearchOutcomes.SUMMARY_FILE);
+            if (!Files.isRegularFile(outcomesSummary)) {
+                throw new Diagnostic(ElliottResearchOutcomes.SUMMARY_FILE + " is declared by " + RUN_FILE
+                        + " but missing in " + dir + "; the run is incomplete, rerun the recipe");
+            }
             markdown.append('\n').append(ElliottResearchOutcomes.summaryMarkdown(outcomesSummary));
             markdown.append("\nEvent lifecycles are in `")
                     .append(ElliottResearchOutcomes.EVENTS_FILE)

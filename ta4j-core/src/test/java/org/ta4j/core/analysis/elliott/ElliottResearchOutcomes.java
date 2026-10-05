@@ -304,7 +304,8 @@ final class ElliottResearchOutcomes {
          */
         int structuralAvailableIndex() {
             return switch (structural) {
-            case CORRECTION_COMPLETED, INVALIDATED_OR_WITHDRAWN, ALREADY_RESOLVED -> resolutionIndex;
+            case CORRECTION_COMPLETED, INVALIDATED_OR_WITHDRAWN -> resolutionIndex;
+            case ALREADY_RESOLVED -> Math.max(resolutionIndex, event.enrollIndex);
             case HORIZON_EXPIRED -> event.enrollIndex + horizon;
             case CENSORED -> Integer.MAX_VALUE;
             };
@@ -735,11 +736,11 @@ final class ElliottResearchOutcomes {
         if (decision < tape.first() || horizon > limit - decision) {
             return Price.unavailable("HORIZON_BEYOND_PARTITION");
         }
-        final Num start = close(tape, decision);
-        final Num end = close(tape, decision + horizon);
-        if (start == null || end == null) {
+        if (!eligibleWindow(tape, decision, horizon)) {
             return Price.unavailable("INVALID_PRICE");
         }
+        final Num start = close(tape, decision);
+        final Num end = close(tape, decision + horizon);
         final boolean bullish = event.direction == WaveDirection.BULLISH;
         final Num target = event.wave4().price();
         final Num invalidation = event.end().price();
@@ -750,9 +751,6 @@ final class ElliottResearchOutcomes {
         for (int index = decision + 1; index <= decision + horizon; index++) {
             final Num high = high(tape, index);
             final Num low = low(tape, index);
-            if (high == null || low == null) {
-                return Price.unavailable("INVALID_PRICE");
-            }
             maxHigh = maxHigh == null || high.isGreaterThan(maxHigh) ? high : maxHigh;
             minLow = minLow == null || low.isLessThan(minLow) ? low : minLow;
             if (research == Touch.NEITHER) {
@@ -792,6 +790,24 @@ final class ElliottResearchOutcomes {
     }
 
     /**
+     * Whether a decision date's whole forward window is priced: positive, non-NaN
+     * closes at the decision and horizon bars and a positive, non-NaN high and low
+     * on every bar in between. Event price labels and comparator dates share this
+     * policy so base rates and event outcomes cover the same availability.
+     */
+    private static boolean eligibleWindow(final Tape tape, final int decision, final int horizon) {
+        if (close(tape, decision) == null || close(tape, decision + horizon) == null) {
+            return false;
+        }
+        for (int index = decision + 1; index <= decision + horizon; index++) {
+            if (high(tape, index) == null || low(tape, index) == null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Deterministic non-overlapping sensitivity cohort: prospective events in
      * decision order with the candidate key breaking same-time ties; an event is
      * skipped while the previously kept event's horizon is still running.
@@ -827,11 +843,11 @@ final class ElliottResearchOutcomes {
         final int limit = Math.min(stream.lastObserved(), tape.last());
         final int first = Math.max(stream.firstObserved(), tape.first());
         for (int date = first; (long) date + horizon <= limit; date++) {
-            final Num start = close(tape, date);
-            final Num end = close(tape, date + horizon);
-            if (start == null || end == null) {
+            if (!eligibleWindow(tape, date, horizon)) {
                 continue;
             }
+            final Num start = close(tape, date);
+            final Num end = close(tape, date + horizon);
             final double raw = end.dividedBy(start).minus(start.getNumFactory().one()).doubleValue();
             tally.unconditionalDates++;
             tally.unconditionalSum += raw;

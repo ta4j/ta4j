@@ -293,7 +293,11 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         return json;
     }
 
-    /** Serialised rule evidence exactly as the trace records it. */
+    /**
+     * Serialised rule evidence exactly as the trace records it.
+     *
+     * @since 0.26.1
+     */
     static JsonArray rulesJson(final List<RuleEvidence> evidence) {
         final JsonArray rules = new JsonArray();
         for (final RuleEvidence rule : evidence) {
@@ -310,7 +314,11 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         return rules;
     }
 
-    /** {@code <candidateKey>@<evidenceKey>} for serialised rule evidence. */
+    /**
+     * {@code <candidateKey>@<evidenceKey>} for serialised rule evidence.
+     *
+     * @since 0.26.1
+     */
     static String version(final String candidateKey, final JsonArray rules) {
         return candidateKey + "@" + digest(rules.toString());
     }
@@ -323,7 +331,11 @@ final class ElliottResearchTrace implements StudyObserver, Closeable {
         return candidateKey(candidate.grammar().name(), candidate.direction().name(), candidate.pivots());
     }
 
-    /** Identity of a named grammar and direction over a full pivot placement. */
+    /**
+     * Identity of a named grammar and direction over a full pivot placement.
+     *
+     * @since 0.26.1
+     */
     static String candidateKey(final String grammar, final String direction, final List<ConfirmedPivot> pivots) {
         final StringBuilder identity = new StringBuilder();
         identity.append(grammar).append('|').append(direction);

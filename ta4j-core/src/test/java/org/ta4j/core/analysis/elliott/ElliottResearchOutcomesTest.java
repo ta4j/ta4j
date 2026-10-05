@@ -152,6 +152,28 @@ class ElliottResearchOutcomesTest {
         assertEquals("origin-price-invalidation", byPrice.cause());
     }
 
+    @Test
+    void originPriceBreachBetweenTheMotiveEndAndLateEnrollmentIsNotAdministrativelyKnownBeforeEnrollment() {
+        final Settings priceSettings = new Settings(List.of(5), "classical-all", Invalidation.ORIGIN_PRICE);
+        // Pivots sit at bars 4..9 but are only confirmed (and the event only enrolled) at bar 20.
+        final List<ConfirmedPivot> pivots = new ArrayList<>();
+        final double[] prices = { 100, 120, 110, 140, 130, 160 };
+        for (int at = 0; at < prices.length; at++) {
+            pivots.add(new ConfirmedPivot(4 + at, 20, DecimalNum.valueOf(prices[at]),
+                    at % 2 == 0 ? SwingPivotType.LOW : SwingPivotType.HIGH));
+        }
+        final Event lateEnrolled = new Event(REAL, "late", "version", WaveDirection.BULLISH, pivots, "late", 20,
+                Instant.parse("2018-01-01T00:00:00Z"), TopologyStatus.COMPLETE, List.of());
+
+        final Label label = ElliottResearchOutcomes.label(lateEnrolled, 5, 100, null, priceSettings, 12);
+
+        assertEquals(Structural.ALREADY_RESOLVED, label.structural());
+        assertEquals(12, label.resolutionIndex());
+        assertEquals(20, label.structuralAvailableIndex());
+        assertTrue(ElliottResearchOutcomes.purgeStructural(List.of(label), 19).isEmpty());
+        assertEquals(1, ElliottResearchOutcomes.purgeStructural(List.of(label), 20).size());
+    }
+
     // ----------------------------------------------------------------- price
 
     @Test
@@ -461,6 +483,59 @@ class ElliottResearchOutcomesTest {
     }
 
     @Test
+    void horizonArithmeticDoesNotOverflowForAnUnboundedMaxHorizon() {
+        final ElliottResearchEvents recorder = new ElliottResearchEvents("classical-all", Integer.MAX_VALUE);
+        final List<ConfirmedPivot> cycle = bullishCyclePivots();
+        observeMotive(recorder, 9, cycle.subList(0, 6));
+        observeNoMatch(recorder, 10, cycle.subList(0, 7));
+        observeCycle(recorder, 12, cycle);
+
+        final Event event = soleEvent(recorder);
+        assertEquals(9, event.enrollIndex);
+        assertEquals(12, event.completionIndex, "an enrolled event stays tracked when enrollIndex + maxHorizon exceeds int");
+    }
+
+    @Test
+    void withdrawnPlacementNeverCompletesAtOrAfterWithdrawalButKeepsEarlierCompletion() {
+        final List<ConfirmedPivot> cycle = bullishCyclePivots();
+
+        final ElliottResearchEvents readmitted = new ElliottResearchEvents("classical-all", 10);
+        observeMotive(readmitted, 9, cycle.subList(0, 6));
+        observeNoMatch(readmitted, 10, cycle.subList(0, 5));
+        observeNoMatch(readmitted, 11, cycle.subList(0, 7));
+        observeCycle(readmitted, 11, cycle);
+        final Event withdrawn = soleEvent(readmitted);
+        assertEquals(10, withdrawn.withdrawnIndex);
+        assertEquals(-1, withdrawn.completionIndex, "a withdrawn placement must not complete after withdrawal");
+
+        final ElliottResearchEvents completedFirst = new ElliottResearchEvents("classical-all", 10);
+        observeMotive(completedFirst, 9, cycle.subList(0, 6));
+        observeCycle(completedFirst, 10, cycle);
+        observeNoMatch(completedFirst, 11, cycle.subList(0, 5));
+        observeNoMatch(completedFirst, 12, cycle.subList(0, 7));
+        observeCycle(completedFirst, 12, cycle);
+        final Event kept = soleEvent(completedFirst);
+        assertEquals(10, kept.completionIndex);
+        assertEquals(11, kept.withdrawnIndex);
+        assertEquals(Structural.CORRECTION_COMPLETED,
+                ElliottResearchOutcomes.label(kept, 5, 100, null, SETTINGS, -1).structural());
+    }
+
+    @Test
+    void comparatorDatesShareTheEventPriceWindowEligibility() {
+        final BarSeries clean = seriesOf(30, index -> 100 + index);
+        // A zero low on bar 20 invalidates every five-bar window that reads it.
+        final BarSeries zeroLow = seriesOf(30, index -> 100 + index, index -> index == 20 ? 0 : 99 + index);
+
+        final Tally cleanTally = evaluate(clean).all("real", 5).tally();
+        final Tally zeroTally = evaluate(zeroLow).all("real", 5).tally();
+
+        assertTrue(cleanTally.unconditionalDates > 5);
+        assertEquals(cleanTally.unconditionalDates - 5, zeroTally.unconditionalDates,
+                "windows 15..19 read the zero low and must leave the comparator dates");
+    }
+
+    @Test
     void evaluationSummaryIsDeterministicAndSumsPartitionsIntoAllRows() {
         final BarSeries series = syntheticSeries(30);
         final ElliottResearchOutcomes.Result one = evaluate(series);
@@ -506,6 +581,51 @@ class ElliottResearchOutcomesTest {
     }
 
     // --------------------------------------------------------------- helpers
+
+    private static final Instant AS_OF = Instant.parse("2018-01-01T00:00:00Z");
+
+    /** Nine bullish pivots at bars 4..12: a motive followed by a corrective block. */
+    private static List<ConfirmedPivot> bullishCyclePivots() {
+        final double[] prices = { 100, 120, 110, 140, 130, 160, 145, 155, 135 };
+        final List<ConfirmedPivot> pivots = new ArrayList<>();
+        for (int at = 0; at < prices.length; at++) {
+            pivots.add(new ConfirmedPivot(4 + at, 4 + at, DecimalNum.valueOf(prices[at]),
+                    at % 2 == 0 ? SwingPivotType.LOW : SwingPivotType.HIGH));
+        }
+        return pivots;
+    }
+
+    private static void observeMotive(final ElliottResearchEvents recorder, final int index,
+            final List<ConfirmedPivot> visible) {
+        final TopologyCandidate motive = new TopologyCandidate(TopologyGrammar.MOTIVE_5, WaveDirection.BULLISH,
+                visible.subList(0, 6));
+        recorder.topology(StudyObserver.Scope.real("h1", "classical-all", "MOTIVE_5", List.of(), "synthetic"),
+                "calibration", index, AS_OF, visible,
+                new TopologyAnalysis(TopologyStatus.COMPLETE, null, List.of(motive), "motive", -1, -1),
+                List.of(List.of()));
+    }
+
+    private static void observeNoMatch(final ElliottResearchEvents recorder, final int index,
+            final List<ConfirmedPivot> visible) {
+        recorder.topology(StudyObserver.Scope.real("h1", "classical-all", "MOTIVE_5", List.of(), "synthetic"),
+                "calibration", index, AS_OF, visible, TopologyAnalysis.noMatch("none"), List.of());
+    }
+
+    private static void observeCycle(final ElliottResearchEvents recorder, final int index,
+            final List<ConfirmedPivot> visible) {
+        final TopologyCandidate cycle = new TopologyCandidate(TopologyGrammar.CYCLE_5_3, WaveDirection.BULLISH,
+                visible);
+        recorder.topology(StudyObserver.Scope.real("h2", "classical-all", "CYCLE_5_3", List.of(), "synthetic"),
+                "calibration", index, AS_OF, visible,
+                new TopologyAnalysis(TopologyStatus.COMPLETE, null, List.of(cycle), "cycle", -1, -1),
+                List.of(List.of()));
+    }
+
+    private static Event soleEvent(final ElliottResearchEvents recorder) {
+        assertEquals(1, recorder.streams().size());
+        assertEquals(1, recorder.streams().get(0).events().size());
+        return recorder.streams().get(0).events().get(0);
+    }
 
     private static Event bullishEvent(final int enrollIndex) {
         return event(enrollIndex, WaveDirection.BULLISH, new double[] { 100, 120, 110, 140, 130, 160 });
@@ -562,6 +682,10 @@ class ElliottResearchOutcomesTest {
     }
 
     private static BarSeries seriesOf(final int count, final Curve close) {
+        return seriesOf(count, close, index -> close.at(index) - 1);
+    }
+
+    private static BarSeries seriesOf(final int count, final Curve close, final Curve low) {
         final BarSeries series = new BaseBarSeriesBuilder().withName("synthetic").build();
         final Instant start = Instant.parse("2018-01-01T00:00:00Z");
         for (int index = 0; index < count; index++) {
@@ -571,7 +695,7 @@ class ElliottResearchOutcomesTest {
                     .endTime(start.plus(Duration.ofDays(index + 1L)))
                     .openPrice(value)
                     .highPrice(value + 1)
-                    .lowPrice(value - 1)
+                    .lowPrice(low.at(index))
                     .closePrice(value)
                     .volume(1)
                     .amount(value)

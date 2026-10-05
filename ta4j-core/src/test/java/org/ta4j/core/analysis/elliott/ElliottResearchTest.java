@@ -163,6 +163,37 @@ class ElliottResearchTest {
     }
 
     @Test
+    void summarizeDiagnosesAMissingOutcomesSummaryThatTheRunDeclares() throws Exception {
+        final Path copy = work.resolve("no-outcomes-summary");
+        copyTree(smokeRun, copy);
+        Files.delete(copy.resolve("outcomes-summary.csv"));
+        Files.delete(copy.resolve("summary.md"));
+
+        final Result result = launch("summarize", copy.toString());
+
+        assertEquals(2, result.code());
+        assertTrue(result.err().contains("outcomes-summary.csv is declared by run.json but missing"), result.err());
+        assertFalse(Files.exists(copy.resolve("summary.md")), "an incomplete run must not get a summary");
+    }
+
+    @Test
+    void summarizeStaysCleanForARunWrittenBeforeOutcomesExisted() throws Exception {
+        final Path copy = work.resolve("legacy-run");
+        copyTree(smokeRun, copy);
+        final JsonObject run = readJson(copy.resolve("run.json"));
+        run.remove("outcomes");
+        Files.writeString(copy.resolve("run.json"), run.toString());
+        for (final String artifact : List.of("events.jsonl", "outcomes.csv", "outcomes-summary.csv")) {
+            Files.delete(copy.resolve(artifact));
+        }
+
+        final Result result = launch("summarize", copy.toString());
+
+        assertEquals(0, result.code(), result.err());
+        assertFalse(Files.readString(copy.resolve("summary.md")).contains("Forward outcomes"));
+    }
+
+    @Test
     void missingTraceExitsTwoWithRecaptureCommand() throws Exception {
         final Path copy = work.resolve("no trace");
         copyTree(smokeRun, copy);
