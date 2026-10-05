@@ -226,7 +226,7 @@ public final class IndicatorFamilyManager {
             Indicator<Num> indicator = IndicatorUtils.requireIndicator(entry.getValue(), "indicator " + name);
             BarSeries indicatorSeries = Objects.requireNonNull(indicator.getBarSeries(),
                     "indicator " + name + " must reference a bar series");
-            if (indicatorSeries != barSeries) {
+            if (!IndicatorUtils.isSameSeries(indicatorSeries, barSeries)) {
                 throw new IllegalArgumentException("indicator " + name + " must use the manager bar series");
             }
             orderedIndicators.put(name, indicator);
@@ -334,7 +334,7 @@ public final class IndicatorFamilyManager {
                 "similarityMetricFactory must return an indicator");
         BarSeries metricSeries = Objects.requireNonNull(similarityMetric.getBarSeries(),
                 "similarity metric must reference a bar series");
-        if (metricSeries != barSeries) {
+        if (!IndicatorUtils.isSameSeries(metricSeries, barSeries)) {
             throw new IllegalArgumentException("similarity metric must use the manager bar series");
         }
 
