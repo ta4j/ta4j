@@ -167,7 +167,7 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         assertThat(covar.getValue(7).isNaN()).isTrue();
         // Five pairs remain unavailable; the complete window starts at index nine.
         assertThat(covar.getValue(8).isNaN()).isTrue();
-        assertThat(covar.getCountOfUnstableBars()).isEqualTo(9);
+        assertThat(covar.getCountOfUnstableBars()).isEqualTo(5);
         // Window [4..9]: sum of products = 13.5 over 6 observations
         assertNumEquals(2.25, covar.getValue(9));
     }
@@ -195,7 +195,7 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         retained.setMaximumBarCount(4);
         ClosePriceIndicator source = new ClosePriceIndicator(retained);
         CovarianceIndicator metric = new CovarianceIndicator(source, source, 3);
-        assertThat(metric.getCountOfUnstableBars()).isEqualTo(4);
+        assertThat(metric.getCountOfUnstableBars()).isEqualTo(2);
         assertThat(metric.getValue(3).isNaN()).isTrue();
         assertNumEquals(2.0 / 3, metric.getValue(4));
     }
@@ -260,9 +260,9 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     @Test
     public void retainedBoundaryAlsoHonorsSourceWarmup() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(1, 2, 3, 4, 5, 6, 7, 8)
+                .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
                 .build();
-        series.setMaximumBarCount(6);
+        series.setMaximumBarCount(8);
         Indicator<Num> source = new ClosePriceIndicator(series) {
             @Override
             public int getCountOfUnstableBars() {
@@ -271,7 +271,7 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         };
         CovarianceIndicator metric = new CovarianceIndicator(source, source, 3);
         assertThat(metric.getCountOfUnstableBars()).isEqualTo(6);
-        assertThat(metric.getValue(5).isNaN()).isTrue();
-        assertNumEquals(2.0 / 3, metric.getValue(6));
+        assertThat(metric.getValue(7).isNaN()).isTrue();
+        assertNumEquals(2.0 / 3, metric.getValue(8));
     }
 }

@@ -141,13 +141,21 @@ public class IndicatorFamilyManagerTest {
 
             @Override
             public int getCountOfUnstableBars() {
-                return Integer.MAX_VALUE;
+                return 0;
             }
         };
         IndicatorFamilyResult result = new IndicatorFamilyManager(series, (left, right) -> metric)
                 .analyze(Map.of("a", metric, "b", metric));
         assertThat(reads).hasValue(1);
         assertThat(result.pairSimilarities().get(0).sampleCount()).isEqualTo(1);
+
+        IndicatorFamilyResult beyondEnd = new IndicatorFamilyManager(series, 2)
+                .analyze(Map.of("a", metric, "b", metric), 0);
+        assertThat(beyondEnd.stableIndex()).isEqualTo(Integer.MAX_VALUE);
+        assertThat(beyondEnd.pairSimilarities().get(0).sampleCount()).isZero();
+        assertThat(beyondEnd.pairSimilarities().get(0).similarity().isNaN()).isTrue();
+        assertThat(beyondEnd.families()).hasSize(2);
+        assertThat(reads).hasValue(1);
     }
 
     @Test
@@ -244,6 +252,56 @@ public class IndicatorFamilyManagerTest {
         assertThat(result.stableIndex()).isEqualTo(269);
         assertThat(result.families()).hasSize(2);
         assertThat(result.pairSimilarities().get(0).similarity().isNaN()).isTrue();
+    }
+
+    @Test
+    public void retainedFullWindowStartsAtAbsoluteBoundary() {
+        BarSeries series = increasingSeries(10);
+        series.setMaximumBarCount(6);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        IndicatorFamilyResult result = new IndicatorFamilyManager(series, 6).analyze(Map.of("a", close, "b", close));
+        assertThat(result.stableIndex()).isEqualTo(9);
+        assertThat(result.pairSimilarities().get(0).sampleCount()).isEqualTo(1);
+    }
+
+    @Test
+    public void customMetricWarmupIsRelativeToRetainedBegin() {
+        BarSeries series = increasingSeries(10);
+        series.setMaximumBarCount(8);
+        List<Integer> readIndexes = new ArrayList<>();
+        Indicator<Num> metric = new AbstractIndicator<>(series) {
+            @Override
+            public Num getValue(int index) {
+                readIndexes.add(index);
+                return series.numFactory().one();
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 4;
+            }
+        };
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        IndicatorFamilyResult result = new IndicatorFamilyManager(series, (left, right) -> metric)
+                .analyze(Map.of("a", close, "b", close));
+        assertThat(result.stableIndex()).isEqualTo(6);
+        assertThat(result.pairSimilarities().get(0).sampleCount()).isEqualTo(4);
+        assertThat(readIndexes).containsExactly(6, 7, 8, 9);
+    }
+
+    @Test
+    public void retainedSourceWarmupIsAddedExactlyOnce() {
+        BarSeries series = increasingSeries(10);
+        series.setMaximumBarCount(8);
+        Indicator<Num> source = new ClosePriceIndicator(series) {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 4;
+            }
+        };
+        IndicatorFamilyResult result = new IndicatorFamilyManager(series, 3).analyze(Map.of("a", source, "b", source));
+        assertThat(result.stableIndex()).isEqualTo(8);
+        assertThat(result.pairSimilarities().get(0).sampleCount()).isEqualTo(2);
     }
 
     @Test

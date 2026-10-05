@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.statistics;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -136,7 +137,7 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         assertNumEquals(5.0 / 3, variance.getValue(7));
         // Last unstable index: five observations give sample variance = 10 / 4.
         assertNumEquals(2.5, variance.getValue(8));
-        assertThat(variance.getCountOfUnstableBars()).isEqualTo(9);
+        assertThat(variance.getCountOfUnstableBars()).isEqualTo(5);
         assertNumEquals(3.5, variance.getValue(9));
     }
 
@@ -164,12 +165,51 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
     }
 
     @Test
+    public void retainedStabilityCountsRemainRelativeForComposedConsumers() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+                .build();
+        series.setMaximumBarCount(6);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        List<Indicator<Num>> indicators = List.of(new VarianceIndicator(close, 6),
+                new CovarianceIndicator(close, close, 6), new StandardDeviationIndicator(close, 6),
+                new StandardErrorIndicator(close, 6), new CorrelationCoefficientIndicator(close, close, 6));
+        assertThat(series.getBeginIndex()).isEqualTo(4);
+        assertThat(series.getBarCount()).isEqualTo(6);
+        for (Indicator<Num> indicator : indicators) {
+            assertThat(indicator.getCountOfUnstableBars()).as(indicator.getClass().getSimpleName()).isEqualTo(5);
+            assertThat(indicator.isStable()).as(indicator.getClass().getSimpleName()).isTrue();
+            assertThat(Num.isFinite(indicator.getValue(9))).isTrue();
+        }
+    }
+
+    @Test
+    public void retainedHeadKeepsAlreadyStableCachedValues() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+                .build();
+        AtomicInteger calculations = new AtomicInteger();
+        VarianceIndicator variance = new VarianceIndicator(new ClosePriceIndicator(series), 3) {
+            @Override
+            protected Num calculate(int index) {
+                calculations.incrementAndGet();
+                return super.calculate(index);
+            }
+        };
+        assertNumEquals(1, variance.getValue(8));
+        assertThat(calculations).hasValue(1);
+        series.setMaximumBarCount(6);
+        assertNumEquals(1, variance.getValue(8));
+        assertThat(calculations).hasValue(1);
+    }
+
+    @Test
     public void retainedWindowBoundaryRequiresFullStableHistory() {
         BarSeries retained = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
         retained.setMaximumBarCount(4);
         ClosePriceIndicator source = new ClosePriceIndicator(retained);
         VarianceIndicator metric = VarianceIndicator.ofPopulation(source, 3);
-        assertThat(metric.getCountOfUnstableBars()).isEqualTo(4);
+        assertThat(metric.getCountOfUnstableBars()).isEqualTo(2);
         assertNumEquals(0, metric.getValue(0));
         assertNumEquals(0, metric.getValue(2));
         // Last unstable index has the legacy two-observation population value.

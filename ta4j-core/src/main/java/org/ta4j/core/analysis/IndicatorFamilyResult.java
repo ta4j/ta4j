@@ -47,7 +47,9 @@ public final class IndicatorFamilyResult {
      * retained end.
      * 
      * @return first logical index where all pair metrics are stable; may exceed the
-     *         retained end.
+     *         retained end. Boundaries beyond the integer index range are reported
+     *         as {@link Integer#MAX_VALUE}, while their pair measurements remain
+     *         unavailable.
      * @since 0.26.1
      */
     public int stableIndex() {

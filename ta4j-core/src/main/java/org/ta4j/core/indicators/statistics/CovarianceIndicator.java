@@ -14,11 +14,13 @@ import org.ta4j.core.num.Num;
  * <p>
  * Zero-origin warm-up retains legacy partial-window calculations. After either
  * source loses history, incomplete retained windows return {@link NaN#NaN}. The
- * stability boundary includes both sources and their retained begin indexes.
- * Undefined source values return {@link NaN#NaN}, including singleton windows.
- * Unlike {@link VarianceIndicator}, which preserves legacy partial retained
- * calculation values, covariance is unavailable before its full retained/source
- * stability boundary; correlation therefore remains unavailable there too.
+ * absolute availability boundary includes both sources and their retained begin
+ * indexes; the public unstable-bar count remains relative to the retained
+ * begin. Undefined source values return {@link NaN#NaN}, including singleton
+ * windows. Unlike {@link VarianceIndicator}, which preserves legacy partial
+ * retained calculation values, covariance is unavailable before its full
+ * retained/source stability boundary; correlation therefore remains unavailable
+ * there too.
  */
 public class CovarianceIndicator extends CachedIndicator<Num> {
 
@@ -141,14 +143,13 @@ public class CovarianceIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return CorrelationWindowSupport.clampUnstableBars(stableBoundary());
+        return CorrelationWindowSupport.unstableBars(barCount, indicator1, indicator2);
     }
 
     private long stableBoundary() {
-        long firstStart = Math.max(Math.max(0L, indicator1.getBarSeries().getBeginIndex()),
-                indicator1.getCountOfUnstableBars());
-        long secondStart = Math.max(Math.max(0L, indicator2.getBarSeries().getBeginIndex()),
-                indicator2.getCountOfUnstableBars());
+        long firstStart = Math.max(0L, indicator1.getBarSeries().getBeginIndex()) + indicator1.getCountOfUnstableBars();
+        long secondStart = Math.max(0L, indicator2.getBarSeries().getBeginIndex())
+                + indicator2.getCountOfUnstableBars();
         long retainedStart = Math.max(Math.max(firstStart, secondStart), getBarSeries().getBeginIndex());
         return retainedStart + (long) barCount - 1L;
     }

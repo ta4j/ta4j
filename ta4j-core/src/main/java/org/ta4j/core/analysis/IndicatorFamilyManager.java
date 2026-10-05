@@ -39,7 +39,8 @@ import org.ta4j.core.num.NumFactory;
  * Custom metric factories may be supplied when a different signed similarity
  * stream is more appropriate. The returned metric indicator must use the same
  * {@link BarSeries} and must return values in {@code [-1, 1]}; invalid values
- * are skipped.
+ * are skipped. Unstable-bar counts remain relative to the retained begin; the
+ * manager translates them to absolute eligibility indexes before sampling.
  *
  * @since 0.26.1
  */
@@ -62,6 +63,7 @@ public final class IndicatorFamilyManager
     private final BarSeries barSeries;
     private final BiFunction<Indicator<Num>, Indicator<Num>, Indicator<Num>> similarityMetricFactory;
     private final int maxParallelism;
+    private final int correlationWindow;
 
     /**
      * Constructor using the default rolling correlation window.
@@ -90,7 +92,7 @@ public final class IndicatorFamilyManager
      * @since 0.26.1
      */
     public IndicatorFamilyManager(BarSeries barSeries, int correlationWindow) {
-        this(barSeries, defaultSimilarityMetric(correlationWindow), 1);
+        this(barSeries, correlationWindow, 1);
     }
 
     /**
@@ -133,7 +135,7 @@ public final class IndicatorFamilyManager
      * @since 0.26.1
      */
     public IndicatorFamilyManager(BarSeries barSeries, int correlationWindow, int maxParallelism) {
-        this(barSeries, defaultSimilarityMetric(correlationWindow), maxParallelism);
+        this(barSeries, defaultSimilarityMetric(correlationWindow), maxParallelism, correlationWindow);
     }
 
     /**
@@ -160,6 +162,12 @@ public final class IndicatorFamilyManager
      */
     public IndicatorFamilyManager(BarSeries barSeries,
             BiFunction<Indicator<Num>, Indicator<Num>, Indicator<Num>> similarityMetricFactory, int maxParallelism) {
+        this(barSeries, similarityMetricFactory, maxParallelism, 0);
+    }
+
+    private IndicatorFamilyManager(BarSeries barSeries,
+            BiFunction<Indicator<Num>, Indicator<Num>, Indicator<Num>> similarityMetricFactory, int maxParallelism,
+            int correlationWindow) {
         this.barSeries = Objects.requireNonNull(barSeries, "barSeries");
         if (barSeries.isEmpty()) {
             throw new IllegalArgumentException("barSeries must not be empty");
@@ -169,6 +177,7 @@ public final class IndicatorFamilyManager
         }
         this.similarityMetricFactory = Objects.requireNonNull(similarityMetricFactory, "similarityMetricFactory");
         this.maxParallelism = maxParallelism;
+        this.correlationWindow = correlationWindow;
     }
 
     /**
@@ -202,7 +211,7 @@ public final class IndicatorFamilyManager
         List<PairRequest> pairRequests = buildPairRequests(indicatorNames, indicatorValues);
         List<PairAnalysis> pairAnalyses = analyzePairs(pairRequests);
 
-        int stableIndex = Math.max(barSeries.getBeginIndex(), maximumUnstableBars(indicatorValues));
+        int stableIndex = clampStableIndex(maximumStableBoundary(indicatorValues));
         List<IndicatorFamilyResult.PairSimilarity> pairSimilarities = new ArrayList<>(pairAnalyses.size());
         for (PairAnalysis pairAnalysis : pairAnalyses) {
             stableIndex = Math.max(stableIndex, pairAnalysis.stableIndex());
@@ -282,12 +291,21 @@ public final class IndicatorFamilyManager
         return threshold;
     }
 
-    private static int maximumUnstableBars(List<Indicator<Num>> indicators) {
-        int unstableBars = 0;
+    private static long maximumStableBoundary(List<Indicator<Num>> indicators) {
+        long boundary = 0;
         for (Indicator<Num> indicator : indicators) {
-            unstableBars = Math.max(unstableBars, indicator.getCountOfUnstableBars());
+            boundary = Math.max(boundary, stableBoundary(indicator));
         }
-        return unstableBars;
+        return boundary;
+    }
+
+    private static long stableBoundary(Indicator<Num> indicator) {
+        return Math.max(0L, indicator.getBarSeries().getBeginIndex())
+                + Math.max(0L, indicator.getCountOfUnstableBars());
+    }
+
+    private static int clampStableIndex(long boundary) {
+        return (int) Math.min(Integer.MAX_VALUE, boundary);
     }
 
     private List<PairRequest> buildPairRequests(List<String> indicatorNames, List<Indicator<Num>> indicatorValues) {
@@ -369,16 +387,20 @@ public final class IndicatorFamilyManager
             throw new IllegalArgumentException("similarity metric must use the manager bar series");
         }
 
-        int stableIndex = Math.max(metricSeries.getBeginIndex(), similarityMetric.getCountOfUnstableBars());
-        IndicatorFamilyResult.PairSimilarity pairSimilarity = estimatePairSimilarity(pairRequest, similarityMetric);
-        return new PairAnalysis(pairRequest.ordinal(), pairRequest.leftIndex(), pairRequest.rightIndex(), stableIndex,
-                pairSimilarity);
+        long sourceBoundary = Math.max(stableBoundary(pairRequest.leftIndicator()),
+                stableBoundary(pairRequest.rightIndicator()));
+        // Keep the built-in full-window boundary exact even when its public int
+        // unstable count saturates. Custom metrics declare their own relative count.
+        long windowBoundary = sourceBoundary + Math.max(0L, (long) correlationWindow - 1L);
+        long boundary = Math.max(windowBoundary, stableBoundary(similarityMetric));
+        IndicatorFamilyResult.PairSimilarity pairSimilarity = estimatePairSimilarity(pairRequest, similarityMetric,
+                boundary);
+        return new PairAnalysis(pairRequest.ordinal(), pairRequest.leftIndex(), pairRequest.rightIndex(),
+                clampStableIndex(boundary), pairSimilarity);
     }
 
     private static IndicatorFamilyResult.PairSimilarity estimatePairSimilarity(PairRequest pairRequest,
-            Indicator<Num> similarityMetric) {
-        int startIndex = Math.max(Math.max(0, similarityMetric.getBarSeries().getBeginIndex()),
-                similarityMetric.getCountOfUnstableBars());
+            Indicator<Num> similarityMetric, long startIndex) {
         int endIndex = similarityMetric.getBarSeries().getEndIndex();
         NumFactory numFactory = similarityMetric.getBarSeries().numFactory();
         Num absoluteTotal = numFactory.zero();

@@ -215,7 +215,10 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
         CorrelationCoefficientIndicator visibleCorrelation = CorrelationCoefficientIndicator
                 .ofPopulation(new ClosePriceIndicator(visibleSeries), new VolumeIndicator(visibleSeries), 5);
 
-        for (int index = rollingCorrelation.getCountOfUnstableBars(); index <= rollingSeries.getEndIndex(); index++) {
+        int stableIndex = rollingSeries.getBeginIndex() + rollingCorrelation.getCountOfUnstableBars();
+        assertThat(rollingCorrelation.getCountOfUnstableBars()).isEqualTo(4);
+        assertThat(rollingCorrelation.getValue(stableIndex - 1).isNaN()).isTrue();
+        for (int index = stableIndex; index <= rollingSeries.getEndIndex(); index++) {
             assertNumEquals(visibleCorrelation.getValue(index - rollingSeries.getBeginIndex()),
                     rollingCorrelation.getValue(index), 1.0e-12);
         }

@@ -19,8 +19,8 @@ import org.ta4j.core.num.NumFactory;
  * (or the {@link SampleType} constructor) when population variance is required.
  * </p>
  * Warm-up and partial retained windows preserve legacy calculation values. The
- * stability boundary still requires a full window of stable source values and
- * includes the retained begin; it does not suppress partial-window
+ * unstable-bar count is relative to the retained begin and requires a full
+ * window of stable source values; it does not suppress partial-window
  * calculations. In contrast, {@link CovarianceIndicator} returns an unavailable
  * value for incomplete retained windows, so correlation remains unavailable
  * until the full window is stable.
@@ -107,12 +107,8 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return CorrelationWindowSupport.clampUnstableBars(stableBoundary());
-    }
-
-    private long stableBoundary() {
-        long start = Math.max(Math.max(0L, getBarSeries().getBeginIndex()), indicator.getCountOfUnstableBars());
-        return start + (long) barCount - 1L;
+        long unstableBars = (long) indicator.getCountOfUnstableBars() + barCount - 1L;
+        return CorrelationWindowSupport.clampUnstableBars(unstableBars);
     }
 
     @Override
