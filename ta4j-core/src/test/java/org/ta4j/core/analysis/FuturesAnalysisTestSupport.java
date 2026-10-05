@@ -125,4 +125,31 @@ final class FuturesAnalysisTestSupport {
     static BaseTradingRecord fundedRecord(FuturesContract contract, NumFactory numFactory, double capital) {
         return BaseTradingRecord.builder().futuresContract(contract).initialCapital(numFactory.numOf(capital)).build();
     }
+
+    static BaseTradingRecord crossLotFeeRecord(FuturesContract contract, Trade.TradeType type, boolean closed) {
+        NumFactory factory = contract.contractSize().getNumFactory();
+        ExecutionSide entrySide = type == Trade.TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .startingType(type)
+                .initialCapital(factory.numOf(500))
+                .build();
+        TradeFill first = fill(contract, 1, entrySide, 1, 100,
+                List.of(commission(factory, 1e16).toBuilder().currency(contract.settlementCurrency()).build(),
+                        commission(factory, 1).toBuilder().currency(contract.settlementCurrency()).build()));
+        TradeFill second = fill(contract, 1, entrySide, 1, 100,
+                List.of(commission(factory, -1e16).toBuilder().currency(contract.settlementCurrency()).build()))
+                .toBuilder()
+                .time(first.time().plusNanos(1))
+                .build();
+        record.operate(first);
+        record.operate(second);
+        if (closed) {
+            ExecutionSide exitSide = type == Trade.TradeType.BUY ? ExecutionSide.SELL : ExecutionSide.BUY;
+            record.operate(fill(contract, 2, exitSide, 1, 100, List.of()));
+            record.operate(fill(contract, 3, exitSide, 1, 100, List.of()));
+        }
+        return record;
+    }
+
 }

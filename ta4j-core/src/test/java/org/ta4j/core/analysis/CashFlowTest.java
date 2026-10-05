@@ -2358,4 +2358,20 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertSame(original, assertThrows(RuntimeException.class, () -> new CashFlow(series, record, mark, 2,
                 EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET)));
     }
+
+    @Test
+    public void crossLotFeeResidualReducesAccountEquity() {
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 100, 100);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory)
+                .toBuilder()
+                .contractSize(numFactory.one())
+                .build();
+        BaseTradingRecord record = FuturesAnalysisTestSupport.crossLotFeeRecord(contract, TradeType.BUY, true);
+        CashFlow flow = new CashFlow(series, record);
+        assertNumEquals(1, flow.getValue(0));
+        assertNumEquals(0.998, flow.getValue(1));
+        assertNumEquals(0.998, flow.getValue(2));
+        assertNumEquals(0.998, flow.getValue(3));
+    }
+
 }

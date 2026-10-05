@@ -1524,4 +1524,20 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertSame(original, assertThrows(RuntimeException.class, () -> new Returns(series, record, mark, 2,
                 ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET)));
     }
+
+    @Test
+    public void crossLotFeeResidualProducesOneExecutedLoss() {
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 100, 100);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory)
+                .toBuilder()
+                .contractSize(numFactory.one())
+                .build();
+        BaseTradingRecord record = FuturesAnalysisTestSupport.crossLotFeeRecord(contract, TradeType.BUY, true);
+        Returns returns = new Returns(series, record, ReturnRepresentation.DECIMAL);
+        assertTrue(returns.getValue(0).isNaN());
+        assertNumEquals(-0.002, returns.getValue(1));
+        assertNumEquals(0, returns.getValue(2));
+        assertNumEquals(0, returns.getValue(3));
+    }
+
 }

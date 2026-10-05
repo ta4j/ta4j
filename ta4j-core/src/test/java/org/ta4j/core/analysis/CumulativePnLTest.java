@@ -13,6 +13,7 @@ import org.ta4j.core.num.NaN;
 import java.util.ArrayList;
 import org.ta4j.core.FuturesContract;
 import org.ta4j.core.TradeFill;
+import org.ta4j.core.TradeFee;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
@@ -1427,4 +1428,56 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         assertSame(original, assertThrows(RuntimeException.class, () -> new CumulativePnL(series, record, mark, 2,
                 EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET)));
     }
+
+    @Test
+    public void crossLotFeesRemainExactBeforeAndAfterSettlement() {
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 100, 100);
+        for (FuturesContract.SettlementType settlement : FuturesContract.SettlementType.values()) {
+            FuturesContract template = settlement == FuturesContract.SettlementType.LINEAR
+                    ? FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory)
+                    : FuturesAnalysisTestSupport.inverseBtcPerpetual(numFactory);
+            FuturesContract contract = template.toBuilder()
+                    .contractSize(numFactory.one())
+                    .settlementType(settlement)
+                    .build();
+            for (TradeType type : TradeType.values()) {
+                for (boolean closed : new boolean[] { false, true }) {
+                    BaseTradingRecord record = FuturesAnalysisTestSupport.crossLotFeeRecord(contract, type, closed);
+                    assertNumEquals(1, record.getTotalFees());
+                    for (EquityCurveMode mode : EquityCurveMode.values()) {
+                        CumulativePnL pnl = new CumulativePnL(series, record, 3, mode,
+                                OpenPositionHandling.MARK_TO_MARKET);
+                        assertNumEquals(0, pnl.getValue(0));
+                        assertNumEquals(-1, pnl.getValue(1));
+                        assertNumEquals(-1, pnl.getValue(2));
+                        assertNumEquals(-1, pnl.getValue(3));
+                        assertNumEquals(-1,
+                                new CumulativePnL(series, record, 1, mode, OpenPositionHandling.MARK_TO_MARKET)
+                                        .getValue(1));
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void sourceFactoryComponentsAreRoundedOnlyAfterAccountAggregation() {
+        NumFactory source = DecimalNumFactory.getInstance();
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(source)
+                .toBuilder()
+                .contractSize(source.one())
+                .build();
+        TradeFee fee = TradeFee.builder()
+                .type(TradeFee.Type.COMMISSION)
+                .currency("USD")
+                .amount(source.numOf("1e-400"))
+                .build();
+        BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, source, 500);
+        record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1, 100, List.of(fee)));
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 101, 101);
+        CumulativePnL pnl = new CumulativePnL(series, record);
+        assertNumEquals(1, pnl.getValue(0));
+        assertNumEquals(1, pnl.getValue(1));
+    }
+
 }

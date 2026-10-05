@@ -1619,4 +1619,59 @@ public class PositionTest {
         assertNumEquals(0, explicitZero.getProfit(0, factory.hundred()));
         assertNumEquals(0, FuturesPositionAccounting.executedFees(explicitZero, 0));
     }
+
+    @Test
+    public void profitComponentsPreserveFeesCashFlowsAndExposureBeforeRounding() {
+        for (NumFactory factory : factories()) {
+            Trade entry = Trade.fromFills(TradeType.BUY, BaseTradeTest.groupedFeeFills(factory),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            List<Num> components = position.getProfitComponents(1, factory.hundred());
+            assertTrue(components.contains(factory.minusOne()));
+            assertThrows(UnsupportedOperationException.class, () -> components.add(factory.one()));
+            SettlementAmountSupport.CompensatedSum total = new SettlementAmountSupport.CompensatedSum(factory,
+                    "profit component", "profit total");
+            components.forEach(total::add);
+            assertNumEquals(-1, total.total());
+            assertNumEquals(0, position.getProfitComponents(-1, null).stream().reduce(factory.zero(), Num::plus));
+
+            FuturesContract contract = entry.getFuturesContract();
+            Trade single = Trade.fromFill(
+                    futuresFill(contract, 0, 100, 1, ExecutionSide.BUY).toBuilder().fees(List.of()).build(),
+                    RecordedTradeCostModel.INSTANCE);
+            List<FuturesCashFlow> flows = List.of(
+                    FuturesCashFlow.builder()
+                            .contract(contract)
+                            .type(FuturesCashFlow.Type.FUNDING)
+                            .eventId("funding-components")
+                            .index(1)
+                            .time(T0.plusSeconds(1))
+                            .currency("USD")
+                            .amount(factory.numOf(3))
+                            .build(),
+                    FuturesCashFlow.builder()
+                            .contract(contract)
+                            .type(FuturesCashFlow.Type.VARIATION_MARGIN)
+                            .eventId("variation-components")
+                            .index(1)
+                            .time(T0.plusSeconds(1))
+                            .currency("USD")
+                            .amount(factory.numOf(4))
+                            .build());
+            Position open = new Position(single, RecordedTradeCostModel.INSTANCE, new ZeroCostModel(), flows);
+            assertNumEquals(0, open.getProfitComponents(0, null).stream().reduce(factory.zero(), Num::plus));
+            assertNumEquals(7, open.getProfitComponents(1, null).stream().reduce(factory.zero(), Num::plus));
+            assertNumEquals(13,
+                    open.getProfitComponents(1, factory.numOf(110)).stream().reduce(factory.zero(), Num::plus));
+            Trade close = Trade.fromFill(
+                    futuresFill(contract, 2, 110, 1, ExecutionSide.SELL).toBuilder().fees(List.of()).build(),
+                    RecordedTradeCostModel.INSTANCE);
+            Position closed = new Position(single, close, RecordedTradeCostModel.INSTANCE, new ZeroCostModel(), flows);
+            assertNumEquals(13, closed.getProfitComponents(2, null).stream().reduce(factory.zero(), Num::plus));
+            Position spot = new Position(Trade.buyAt(0, factory.hundred(), factory.one()),
+                    Trade.sellAt(1, factory.numOf(110), factory.one()));
+            assertEquals(List.of(factory.numOf(10)), spot.getProfitComponents(1, null));
+        }
+    }
+
 }

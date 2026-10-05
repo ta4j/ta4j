@@ -123,18 +123,27 @@ final class FuturesOrderQuantitySupport {
      * @param requested quantity available for this execution attempt
      * @param price     execution quote
      * @return a quantity to close now, or zero when no increment-safe chunk fits
+     * @throws IllegalArgumentException if a positive chunk cannot reduce the
+     *                                  remaining quantity in its number factory
      */
     static Num completeCloseChunk(FuturesContract contract, Num remaining, Num requested, Num price) {
+        requirePositiveFinite(remaining, "remaining close quantity");
         Num maximum = maximumOrderQuantity(contract, requested, price);
-        if (maximum.isGreaterThanOrEqual(remaining)) {
-            return requested;
+        Num chunk = requested;
+        if (maximum.isLessThan(remaining)) {
+            chunk = roundDown(contract, maximum);
+            Num increment = toNum(contract.quantityIncrement(), remaining.getNumFactory());
+            if (increment != null && chunk.isGreaterThan(maximum)) {
+                chunk = chunk.minus(increment);
+            }
         }
-        Num rounded = roundDown(contract, maximum);
-        Num increment = toNum(contract.quantityIncrement(), remaining.getNumFactory());
-        if (increment != null && rounded.isGreaterThan(maximum)) {
-            rounded = rounded.minus(increment);
+        if (chunk.isPositive()) {
+            Num nextRemaining = remaining.minus(chunk);
+            if (!Num.isFinite(nextRemaining) || nextRemaining.isNegative() || !nextRemaining.isLessThan(remaining)) {
+                throw new IllegalArgumentException("complete close chunk must make representable quantity progress");
+            }
         }
-        return rounded;
+        return chunk;
     }
 
     /**

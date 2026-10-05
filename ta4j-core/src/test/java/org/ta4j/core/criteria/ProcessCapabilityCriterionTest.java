@@ -29,6 +29,7 @@ import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
+import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.analysis.AnalysisWindow;
 import org.ta4j.core.indicators.statistics.SinglePrecisionNumFactory;
@@ -1077,4 +1078,235 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
                 .fees(List.of())
                 .build();
     }
+
+    @Test
+    public void decimalRecoveryRetainsLegacyScalarFillRepresentation() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 100, 110).build();
+        for (double size : new double[] { 1, Double.MIN_VALUE }) {
+            FuturesContract contract = linearBtcPerpetual().toBuilder().contractSize(numFactory.numOf(size)).build();
+            Position first = legacyScalarPosition(contract, 0, 120);
+            Position second = legacyScalarPosition(contract, 2, 110);
+            List<Position> positions = List.of(first, second);
+            TradingRecord record = new BaseTradingRecord() {
+                @Override
+                public List<Position> getPositions() {
+                    return positions;
+                }
+
+                @Override
+                public FuturesContract getFuturesContract() {
+                    return contract;
+                }
+            };
+            assertTrue(first.isClosed());
+            assertEquals(contract, first.getEntry().getFuturesContract());
+            assertEquals(null, first.getEntry().getFills().getFirst().futuresContract());
+            assertNumEquals(1, first.getEntry().getFills().getFirst().fee());
+            assertNumEquals(numFactory.one(), getCriterion(0.7, 1.3).calculate(series, record), 1e-12);
+            // Gross-price recovery must not rewrite the accepted source metadata or scalar
+            // fees.
+            assertEquals(null, first.getEntry().getFills().getFirst().futuresContract());
+            assertNumEquals(1, first.getEntry().getFills().getFirst().fee());
+        }
+    }
+
+    private Position legacyScalarPosition(FuturesContract contract, int index, double exitPrice) {
+        Trade entry = legacyNativeTrade(contract, TradeType.BUY,
+                List.of(new TradeFill(index, Instant.EPOCH.plusSeconds(index), numFactory.hundred(),
+                        numFactory.numOf(0.5), numFactory.one(), ExecutionSide.BUY, null, null),
+                        new TradeFill(-1, Instant.EPOCH.minusSeconds(1), numFactory.numOf(300), numFactory.numOf(0.5),
+                                numFactory.one(), ExecutionSide.BUY, null, null)));
+        Trade exit = legacyNativeTrade(contract, TradeType.SELL,
+                List.of(new TradeFill(index + 1, Instant.EPOCH.plusSeconds(index + 1), numFactory.numOf(exitPrice),
+                        numFactory.numOf(0.5), numFactory.one(), ExecutionSide.SELL, null, null)));
+        return new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+    }
+
+    private Trade legacyNativeTrade(FuturesContract contract, TradeType type, List<TradeFill> fills) {
+        List<TradeFill> nativePriceFills = fills.stream()
+                .map(fill -> fill.toBuilder().futuresContract(contract).fee(null).fees(List.of()).build())
+                .toList();
+        Trade delegate = Trade.fromFills(type, nativePriceFills, RecordedTradeCostModel.INSTANCE);
+        return new Trade() {
+            @Override
+            public TradeType getType() {
+                return type;
+            }
+
+            @Override
+            public int getIndex() {
+                return delegate.getIndex();
+            }
+
+            @Override
+            public Num getPricePerAsset() {
+                return delegate.getPricePerAsset();
+            }
+
+            @Override
+            public Num getNetPrice() {
+                return delegate.getNetPrice();
+            }
+
+            @Override
+            public Num getAmount() {
+                return delegate.getAmount();
+            }
+
+            @Override
+            public Num getCost() {
+                return delegate.getCost();
+            }
+
+            @Override
+            public CostModel getCostModel() {
+                return delegate.getCostModel();
+            }
+
+            @Override
+            public FuturesContract getFuturesContract() {
+                return contract;
+            }
+
+            @Override
+            public List<TradeFill> getFills() {
+                return fills;
+            }
+        };
+    }
+
+    @Test
+    public void legacyNativeFillPartitionsKeepContractAwareRecovery() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 100, 120).build();
+        for (FuturesContract template : List.of(linearBtcPerpetual(), inverseBtcPerpetual())) {
+            boolean inverse = template.settlementType() == FuturesContract.SettlementType.INVERSE;
+            for (TradeType type : TradeType.values()) {
+                boolean rising = inverse ? type == TradeType.SELL : type == TradeType.BUY;
+                double firstEntry = inverse ? (rising ? 110 : 90) : 100;
+                double firstExit = inverse ? 100 : (rising ? 110 : 90);
+                double anchorEntry = inverse ? (rising ? 120 : 80) : 100;
+                double anchorExit = inverse ? 100 : (rising ? 120 : 80);
+                for (double size : new double[] { 1, Double.MIN_VALUE }) {
+                    FuturesContract contract = template.toBuilder().contractSize(numFactory.numOf(size)).build();
+                    Position anchor = new Position(legacyPartitionTrade(contract, type, 2, 2, anchorEntry),
+                            legacyPartitionTrade(contract, type.complementType(), 2, 3, anchorExit),
+                            RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+                    for (int entryPartition = 0; entryPartition < 3; entryPartition++) {
+                        for (int exitPartition = 0; exitPartition < 3; exitPartition++) {
+                            Trade entry = legacyPartitionTrade(contract, type, entryPartition, 0, firstEntry);
+                            Trade exit = legacyPartitionTrade(contract, type.complementType(), exitPartition, 1,
+                                    exitPartition == 0 ? 300 : firstExit);
+                            if (entryPartition == 0 && exitPartition != 0) {
+                                assertThrows(IllegalArgumentException.class, () -> new Position(entry, exit,
+                                        RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+                                continue;
+                            }
+                            // Executed-entry/deferred-only-exit belongs to the open-position
+                            // partition, already owned by the native record/window matrix.
+                            if (entryPartition != 0 && exitPartition == 0) {
+                                continue;
+                            }
+                            Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE,
+                                    new ZeroCostModel());
+                            TradingRecord record = legacyPositionRecord(contract, List.of(position, anchor));
+                            assertNumEquals(numFactory.numOf(entryPartition == 0 ? 2d / 3 : 1),
+                                    getCriterion(0.7, 1.3).calculate(series, record), 1e-12);
+                            assertEquals(null, entry.getFills().getFirst().futuresContract());
+                            assertNumEquals(1, entry.getFills().getFirst().fee());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void legacyInverseRecoveryUsesUnequalExecutedHarmonicPrices() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(120, 100, 110, 100).build();
+        for (double size : new double[] { 1, Double.MIN_VALUE }) {
+            FuturesContract contract = inverseBtcPerpetual().toBuilder().contractSize(numFactory.numOf(size)).build();
+            Position nativeFirst = closedPositionWithDeferredEntry(contract, TradeType.SELL,
+                    List.of(futuresFill(contract, 0, ExecutionSide.SELL, 100, 0.25),
+                            futuresFill(contract, 0, ExecutionSide.SELL, 150, 0.25)),
+                    1, 100);
+            Position nativeSecond = closedPositionWithDeferredEntry(contract, TradeType.SELL,
+                    List.of(futuresFill(contract, 2, ExecutionSide.SELL, 110, 0.5)), 3, 100);
+            List<Position> legacy = new ArrayList<>();
+            for (Position position : List.of(nativeFirst, nativeSecond)) {
+                legacy.add(new Position(asLegacyNativeTrade(position.getEntry()),
+                        asLegacyNativeTrade(position.getExit()), RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+            }
+            assertNumEquals(numFactory.one(),
+                    getCriterion(0.7, 1.3).calculate(series, legacyPositionRecord(contract, legacy)), 1e-12);
+        }
+    }
+
+    private TradingRecord legacyPositionRecord(FuturesContract contract, List<Position> positions) {
+        // Custom native Trades with scalar fills are supported as public Positions;
+        // the native record import adapter does not accept this representation.
+        return new BaseTradingRecord() {
+            @Override
+            public List<Position> getPositions() {
+                return positions;
+            }
+
+            @Override
+            public FuturesContract getFuturesContract() {
+                return contract;
+            }
+        };
+    }
+
+    private Trade legacyPartitionTrade(FuturesContract contract, TradeType type, int partition, int index,
+            double price) {
+        return asLegacyNativeTrade(executionPartitionTrade(contract, type, partition, index, price));
+    }
+
+    private Trade asLegacyNativeTrade(Trade trade) {
+        List<TradeFill> scalar = trade.getFills()
+                .stream()
+                .map(fill -> new TradeFill(fill.index(), fill.time(), fill.price(), fill.amount(), numFactory.one(),
+                        fill.side(), fill.orderId(), fill.correlationId()))
+                .toList();
+        return legacyNativeTrade(trade.getFuturesContract(), trade.getType(), scalar);
+    }
+
+    @Test
+    public void decimalRecoveryAcceptsMixedScalarAndNativeExecutedFills() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 100, 110).build();
+        for (FuturesContract template : List.of(linearBtcPerpetual(), inverseBtcPerpetual())) {
+            boolean inverse = template.settlementType() == FuturesContract.SettlementType.INVERSE;
+            TradeType type = inverse ? TradeType.SELL : TradeType.BUY;
+            ExecutionSide side = inverse ? ExecutionSide.SELL : ExecutionSide.BUY;
+            for (double size : new double[] { 1, Double.MIN_VALUE }) {
+                FuturesContract contract = template.toBuilder().contractSize(numFactory.numOf(size)).build();
+                double firstEntry = inverse ? 120 : 100;
+                double firstExit = inverse ? 100 : 120;
+                double secondEntry = inverse ? 110 : 100;
+                double secondExit = inverse ? 100 : 110;
+                Position first = closedPositionWithDeferredEntry(contract, type,
+                        List.of(futuresFill(contract, 0, side, firstEntry, 0.25),
+                                futuresFill(contract, 0, side, firstEntry, 0.25)),
+                        1, firstExit);
+                Position second = closedPositionWithDeferredEntry(contract, type,
+                        List.of(futuresFill(contract, 2, side, secondEntry, 0.5)), 3, secondExit);
+                List<TradeFill> mixed = new ArrayList<>();
+                for (int index = 0; index < first.getEntry().getFills().size(); index++) {
+                    TradeFill fill = first.getEntry().getFills().get(index);
+                    mixed.add(index == 1 ? fill
+                            : new TradeFill(fill.index(), fill.time(), fill.price(), fill.amount(), numFactory.one(),
+                                    fill.side(), fill.orderId(), fill.correlationId()));
+                }
+                Trade entry = legacyNativeTrade(contract, type, mixed);
+                Position accepted = new Position(entry, first.getExit(), RecordedTradeCostModel.INSTANCE,
+                        new ZeroCostModel());
+                assertTrue(accepted.isClosed());
+                assertNumEquals(numFactory.one(), getCriterion(0.7, 1.3).calculate(series,
+                        legacyPositionRecord(contract, List.of(accepted, second))), 1e-12);
+                assertEquals(null, entry.getFills().getFirst().futuresContract());
+                assertEquals(contract, entry.getFills().get(1).futuresContract());
+            }
+        }
+    }
+
 }

@@ -418,6 +418,33 @@ public class Position implements Serializable {
     }
 
     /**
+     * Returns signed economic components for profit at an execution cutoff, before
+     * fees and cash flows are rounded into a position subtotal. Account analysis
+     * can accumulate these components across lots with compensated summation.
+     *
+     * <p>
+     * For futures, components are in the position's settlement currency and number
+     * factory: payoff, individual executed fee charges/rebates, funding, holding
+     * cost, and paid variation margin when only realized profit is requested. A
+     * non-null mark includes outstanding exposure instead of variation margin. Spot
+     * positions return their existing profit calculation as one component.
+     * </p>
+     *
+     * @param finalIndex last execution and cash-flow index included
+     * @param markPrice  mark for outstanding exposure; {@code null} for realized
+     *                   profit
+     * @return immutable signed components, which must be summed without rounding
+     *         individual lot subtotals first
+     * @since 0.26.1
+     */
+    public List<Num> getProfitComponents(int finalIndex, Num markPrice) {
+        if (futuresContract != null) {
+            return FuturesPositionAccounting.profitComponents(this, finalIndex, markPrice);
+        }
+        return List.of(markPrice == null ? getRealizedProfit(finalIndex) : getProfit(finalIndex, markPrice));
+    }
+
+    /**
      * Calculates the realized profit of the position as of {@code finalIndex}.
      *
      * <p>

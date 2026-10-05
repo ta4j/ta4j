@@ -3,6 +3,9 @@
  */
 package org.ta4j.core.backtest;
 
+import java.math.MathContext;
+import java.math.RoundingMode;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -754,4 +757,64 @@ class FuturesExecutionTest {
                     FuturesOrderQuantitySupport.largestTradable(contract, numFactory.numOf(10), numFactory.numOf(100)));
         }
     }
+
+    @Test
+    void nonprogressingCompleteCloseIsRejectedBeforeAnyFillIsBooked() {
+        for (NumFactory factory : List.of(DecimalNumFactory.getInstance(new MathContext(2, RoundingMode.HALF_UP)),
+                DoubleNumFactory.getInstance())) {
+            Num quantity = factory.numOf(factory instanceof DoubleNumFactory ? 1e16 : 1000);
+            for (int route = 0; route < 3; route++) {
+                FuturesContract contract = linearContract(factory, 1).toBuilder()
+                        .maximumQuantity(factory.one())
+                        .build();
+                BarSeries series = flatSeries(factory, 100, 100, 100);
+                Trade entry = Trade
+                        .fromFill(fill(contract, 0, ExecutionSide.BUY, quantity, factory.hundred()).toBuilder()
+                                .time(series.getBar(0).getEndTime())
+                                .build(), RecordedTradeCostModel.INSTANCE);
+                BoundedCloseRecord record = new BoundedCloseRecord(
+                        new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+                List<Trade> before = record.getTrades();
+                Num beforeFees = record.getTotalFees();
+                StopLimitExecutionModel pending = new StopLimitExecutionModel(factory.zero(), factory.zero(),
+                        factory.one(), 2);
+                Runnable close = route == 0 ? () -> new TradeOnCurrentCloseModel().execute(1, record, series, quantity)
+                        : route == 1
+                                ? () -> new ExitOnRunEndModel(new TradeOnNextOpenModel()).onRunEnd(1, record, series)
+                                : () -> {
+                                    pending.execute(0, record, series, quantity);
+                                    pending.onBar(1, record, series);
+                                };
+                IllegalArgumentException failure = assertThrows(IllegalArgumentException.class, close::run);
+                assertTrue(failure.getMessage().contains("progress"));
+                assertEquals(0, record.attemptedFills);
+                assertEquals(before, record.getTrades());
+                assertEquals(beforeFees, record.getTotalFees());
+                assertEquals(quantity, record.getCurrentPosition().amount());
+                assertEquals(quantity, record.getOpenPositions().getFirst().amount());
+                assertEquals(0, record.getPositionCount());
+            }
+        }
+    }
+
+    /**
+     * Stops the pre-fix loop after three calls rather than leaving a runaway test
+     * thread.
+     */
+    private static final class BoundedCloseRecord extends BaseTradingRecord {
+        private int attemptedFills;
+
+        private BoundedCloseRecord(Position position) {
+            super(position);
+        }
+
+        @Override
+        public void operate(TradeFill fill) {
+            if (++attemptedFills > 3) {
+                throw new AssertionError("complete close did not make progress after three chunks");
+            }
+            super.operate(fill);
+        }
+    }
+
 }

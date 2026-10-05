@@ -209,13 +209,35 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         // Reuse native aggregation for arithmetic or inverse harmonic basis,
         // retaining decimal precision when contract notional underflows. Fees
         // do not participate in a gross price ratio.
-        List<TradeFill> decimalFills = executedFills.stream()
-                .map(fill -> fill.toBuilder()
-                        .price(DecimalNum.valueOf(fill.price().bigDecimalValue(), context))
-                        .amount(DecimalNum.valueOf(fill.amount().bigDecimalValue(), context))
-                        .fees(List.of())
-                        .build())
-                .toList();
+        List<TradeFill> decimalFills = executedFills.stream().map(fill -> {
+            TradeFill.Builder builder = fill.toBuilder()
+                    .price(DecimalNum.valueOf(fill.price().bigDecimalValue(), context))
+                    .amount(DecimalNum.valueOf(fill.amount().bigDecimalValue(), context));
+            if (fill.futuresContract() == null) {
+                // A native custom Trade may expose legacy scalar fills. Keep that
+                // representation: component metadata is illegal without a fill contract.
+                builder.fee(DecimalNum.valueOf(0, context));
+            } else {
+                builder.fee(null).fees(List.of());
+            }
+            return builder.build();
+        }).toList();
+        if (decimalFills.stream().anyMatch(fill -> fill.futuresContract() == null)) {
+            // A custom native Trade can expose scalar fills, including a mixed
+            // scalar/native list that Trade.fromFills cannot aggregate. Keep the
+            // representation and use the owning contract's arithmetic/harmonic basis.
+            boolean inverse = trade.getFuturesContract().settlementType() == FuturesContract.SettlementType.INVERSE;
+            BigDecimal amount = BigDecimal.ZERO;
+            BigDecimal weightedPrice = BigDecimal.ZERO;
+            for (TradeFill fill : decimalFills) {
+                BigDecimal quantity = fill.amount().bigDecimalValue();
+                BigDecimal price = fill.price().bigDecimalValue();
+                amount = amount.add(quantity, context);
+                weightedPrice = weightedPrice
+                        .add(inverse ? quantity.divide(price, context) : quantity.multiply(price, context), context);
+            }
+            return inverse ? amount.divide(weightedPrice, context) : weightedPrice.divide(amount, context);
+        }
         return Trade.fromFills(trade.getType(), decimalFills).getPricePerAsset().bigDecimalValue();
     }
 

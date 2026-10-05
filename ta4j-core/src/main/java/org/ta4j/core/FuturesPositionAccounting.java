@@ -293,6 +293,45 @@ final class FuturesPositionAccounting {
         return realizedPayoff.minus(fees).plus(funding).minus(holdingCost).plus(variationMargin(position, finalIndex));
     }
 
+    /**
+     * Keeps fee and cash-flow components intact until account-level aggregation.
+     */
+    static List<Num> profitComponents(Position position, int finalIndex, Num markPrice) {
+        NumFactory factory = position.getEntry().getPricePerAsset().getNumFactory();
+        List<Num> components = new ArrayList<>();
+        components.add(
+                markPrice == null ? executedPayoff(position, finalIndex) : payoff(position, markPrice, finalIndex));
+        for (Trade trade : position.getExit() == null ? List.of(position.getEntry())
+                : List.of(position.getEntry(), position.getExit())) {
+            for (TradeFill fill : executedFills(trade, finalIndex)) {
+                if (fill.hasRecordedFees()) {
+                    for (TradeFee fee : fill.fees()) {
+                        components.add(fee.settlementAmount().negate());
+                    }
+                } else {
+                    components.add(fill.fee().negate());
+                }
+            }
+        }
+        boolean realizedVariation = markPrice == null && !isFullyExecutedExit(position, finalIndex);
+        for (FuturesCashFlow flow : position.getCashFlows()) {
+            if (flow.index() <= finalIndex && (flow.type() == FuturesCashFlow.Type.FUNDING || realizedVariation)) {
+                components.add(flow.settlementAmount() == null ? flow.amount() : flow.settlementAmount());
+            }
+        }
+        components.add(holdingCost(position, finalIndex).negate());
+        List<Num> normalized = new ArrayList<>(components.size());
+        for (Num component : components) {
+            Num value = factory.numOf(component.getDelegate());
+            FuturesValidation.requireFinite(value, "profit component");
+            if (value.isZero() && !component.isZero()) {
+                throw new IllegalArgumentException("profit component cannot be represented in position number factory");
+            }
+            normalized.add(value);
+        }
+        return List.copyOf(normalized);
+    }
+
     private static Num holdingCost(Position position, int finalIndex) {
         return position.getHoldingCost(finalIndex);
     }

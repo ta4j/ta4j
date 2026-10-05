@@ -432,9 +432,10 @@ final class FuturesPerformanceSupport {
         private final boolean markExposure;
         private final Indicator<Num> markPrice;
         private final NumFactory numFactory;
+        private final NumFactory profitFactory;
         private int activeCount;
         private final boolean[] settledPositions;
-        private Num settledRealized;
+        private final ProfitSum settledRealized;
         private int lastIndex = Integer.MIN_VALUE;
 
         private Cursor(BarSeries series, List<Position> positions, int finalIndex, boolean markExposure,
@@ -445,7 +446,9 @@ final class FuturesPerformanceSupport {
             this.markExposure = markExposure;
             this.markPrice = markPrice;
             this.numFactory = series.numFactory();
-            this.settledRealized = numFactory.zero();
+            this.profitFactory = positions.isEmpty() ? this.numFactory
+                    : positions.getFirst().getEntry().getPricePerAsset().getNumFactory();
+            this.settledRealized = new ProfitSum(profitFactory.zero(), profitFactory.zero());
             this.settledPositions = new boolean[positions.size()];
         }
 
@@ -477,21 +480,20 @@ final class FuturesPerformanceSupport {
                 }
             }
             Num mark = markExposure && hasResidualExposure ? markAt(effectiveIndex) : null;
-            Num total = settledRealized;
+            ProfitSum total = new ProfitSum(settledRealized.sum, settledRealized.compensation);
             for (int i = 0; i < activeCount; i++) {
                 if (settledPositions[i]) {
                     continue;
                 }
                 Position position = positions.get(i);
-                total = total.plus(toFactory(numFactory, position.getRealizedProfit(effectiveIndex)));
-                if (mark != null) {
-                    if (!Num.isFinite(mark)) {
-                        return NaN.NaN;
-                    }
-                    total = total.plus(toFactory(numFactory, position.getUnrealizedProfit(mark, effectiveIndex)));
+                if (mark != null && !Num.isFinite(mark)) {
+                    return NaN.NaN;
+                }
+                for (Num component : position.getProfitComponents(effectiveIndex, mark)) {
+                    total.add(component);
                 }
             }
-            return total;
+            return toFactory(numFactory, total.sum.plus(total.compensation));
         }
 
         private static boolean hasResidualExposure(Position position, int finalIndex) {
@@ -533,8 +535,9 @@ final class FuturesPerformanceSupport {
         private void settle(int effectiveIndex) {
             for (int i = 0; i < activeCount; i++) {
                 if (!settledPositions[i] && isSettled(positions.get(i), effectiveIndex)) {
-                    settledRealized = settledRealized
-                            .plus(toFactory(numFactory, positions.get(i).getRealizedProfit(effectiveIndex)));
+                    for (Num component : positions.get(i).getProfitComponents(effectiveIndex, null)) {
+                        settledRealized.add(component);
+                    }
                     settledPositions[i] = true;
                 }
             }
@@ -574,6 +577,28 @@ final class FuturesPerformanceSupport {
                 }
             }
             return true;
+        }
+
+        /**
+         * Retains the raw sum and residue when settled lots are folded into later bars.
+         */
+        private final class ProfitSum {
+            private Num sum;
+            private Num compensation;
+
+            private ProfitSum(Num sum, Num compensation) {
+                this.sum = sum;
+                this.compensation = compensation;
+            }
+
+            private void add(Num component) {
+                Num value = toFactory(profitFactory, component);
+                Num next = toFactory(profitFactory, sum.plus(value));
+                Num correction = sum.abs().isGreaterThanOrEqual(value.abs()) ? sum.minus(next).plus(value)
+                        : value.minus(next).plus(sum);
+                compensation = toFactory(profitFactory, compensation.plus(correction));
+                sum = next;
+            }
         }
 
         private Num markAt(int index) {
