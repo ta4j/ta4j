@@ -409,4 +409,70 @@ class BaseTradeTest {
         assertNumEquals(1, trade.getCost());
         assertNumEquals(factory.hundred().plus(factory.one().dividedBy(factory.three())), trade.getNetPrice(), 1e-12);
     }
+
+    @Test
+    void groupedNativeFeesPreserveGroupingInvariantDouble() {
+        assertGroupedFeeInvariance(DoubleNumFactory.getInstance());
+    }
+
+    @Test
+    void groupedNativeFeesPreserveGroupingInvariantDecimal() {
+        assertGroupedFeeInvariance(DecimalNumFactory.getInstance());
+    }
+
+    private static void assertGroupedFeeInvariance(NumFactory factory) {
+        List<TradeFill> groupedFills = groupedFeeFills(factory);
+        Trade grouped = Trade.fromFills(TradeType.BUY, groupedFills, RecordedTradeCostModel.INSTANCE);
+        assertNumEquals(1, grouped.getCost());
+        assertNumEquals(factory.hundred().plus(factory.one().dividedBy(factory.two())), grouped.getNetPrice());
+        TradeFill first = groupedFills.getFirst();
+        Num half = factory.one().dividedBy(factory.two());
+        List<TradeFill> splitFills = List.of(
+                first.toBuilder().amount(half).fees(List.of(first.fees().getFirst())).build(),
+                first.toBuilder()
+                        .amount(half)
+                        .time(first.time().plusMillis(500))
+                        .fees(List.of(first.fees().get(1)))
+                        .build(),
+                groupedFills.get(1));
+        Trade split = Trade.fromFills(TradeType.BUY, splitFills, RecordedTradeCostModel.INSTANCE);
+        assertNumEquals(1, split.getCost());
+        assertNumEquals(split.getAmount(), grouped.getAmount());
+        assertNumEquals(split.getNetPrice(), grouped.getNetPrice());
+    }
+
+    static List<TradeFill> groupedFeeFills(NumFactory factory) {
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(factory.one())
+                .build();
+        TradeFee commission = TradeFee.builder()
+                .type(TradeFee.Type.COMMISSION)
+                .amount(factory.numOf(1e16))
+                .currency("USD")
+                .build();
+        TradeFee exchangeFee = TradeFee.builder()
+                .type(TradeFee.Type.EXCHANGE)
+                .amount(factory.one())
+                .currency("USD")
+                .build();
+        TradeFee rebate = commission.toBuilder().amount(factory.numOf(-1e16)).build();
+        TradeFill first = TradeFill.builder()
+                .index(0)
+                .time(Instant.EPOCH)
+                .side(ExecutionSide.BUY)
+                .price(factory.hundred())
+                .amount(factory.one())
+                .futuresContract(contract)
+                .fees(List.of(commission, exchangeFee))
+                .build();
+        return List.of(first,
+                first.toBuilder().index(1).time(Instant.EPOCH.plusSeconds(1)).fees(List.of(rebate)).build());
+    }
 }

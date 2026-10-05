@@ -72,6 +72,11 @@ public class RecordedTradeCostModelTest {
     }
 
     static Position feeCancellationPosition(NumFactory factory, CostModel model, boolean splitAcrossTrades) {
+        return feeCancellationPosition(factory, model, splitAcrossTrades, false);
+    }
+
+    static Position feeCancellationPosition(NumFactory factory, CostModel model, boolean splitAcrossTrades,
+            boolean groupedComponents) {
         FuturesContract contract = FuturesContract.builder()
                 .venue("CDE")
                 .symbol("BTC-PERP")
@@ -100,6 +105,15 @@ public class RecordedTradeCostModelTest {
                     .fees(List.of(fee))
                     .build());
         }
+        if (groupedComponents) {
+            TradeFee smallFee = entries.get(1).fees().getFirst().toBuilder().type(TradeFee.Type.EXCHANGE).build();
+            TradeFill first = entries.getFirst()
+                    .toBuilder()
+                    .fees(List.of(entries.getFirst().fees().getFirst(), smallFee))
+                    .build();
+            entries = splitAcrossTrades ? List.of(first)
+                    : List.of(first, entries.get(2).toBuilder().index(1).time(Instant.EPOCH.plusSeconds(1)).build());
+        }
         Trade entry = Trade.fromFills(Trade.TradeType.BUY, entries, model);
         if (!splitAcrossTrades)
             return new Position(entry, model, new ZeroCostModel());
@@ -113,10 +127,40 @@ public class RecordedTradeCostModelTest {
                 .time(Instant.EPOCH.plusSeconds(2))
                 .side(ExecutionSide.SELL)
                 .price(factory.hundred())
-                .amount(factory.two())
+                .amount(groupedComponents ? factory.one() : factory.two())
                 .futuresContract(contract)
                 .fees(List.of(exitFee))
                 .build(), model);
         return new Position(entry, exit, model, new ZeroCostModel());
+    }
+
+    @Test
+    public void groupedNativeFeesAcrossFillsRetainResidualDouble() {
+        assertGroupedNativeFeeCompensation(DoubleNumFactory.getInstance(), false);
+    }
+
+    @Test
+    public void groupedNativeFeesAcrossFillsRetainResidualDecimal() {
+        assertGroupedNativeFeeCompensation(DecimalNumFactory.getInstance(), false);
+    }
+
+    @Test
+    public void groupedNativeFeesAcrossTradesRetainResidualDouble() {
+        assertGroupedNativeFeeCompensation(DoubleNumFactory.getInstance(), true);
+    }
+
+    @Test
+    public void groupedNativeFeesAcrossTradesRetainResidualDecimal() {
+        assertGroupedNativeFeeCompensation(DecimalNumFactory.getInstance(), true);
+    }
+
+    private static void assertGroupedNativeFeeCompensation(NumFactory factory, boolean splitAcrossTrades) {
+        CostModel model = RecordedTradeCostModel.INSTANCE;
+        Position position = RecordedTradeCostModelTest.feeCancellationPosition(factory, model, splitAcrossTrades, true);
+        assertNumEquals(1, model.calculate(position, 2));
+        assertNumEquals(1, model.calculate(position));
+        assertNumEquals(1, position.getPositionCost(2));
+        assertNumEquals(1e16, model.calculate(position, 0));
+        assertNumEquals(0, model.calculate(position, -1));
     }
 }

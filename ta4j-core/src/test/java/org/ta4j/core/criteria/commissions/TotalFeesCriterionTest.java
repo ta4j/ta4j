@@ -293,4 +293,36 @@ public class TotalFeesCriterionTest extends AbstractCriterionTest {
         Num expected = numFactory.numOf(largeFee).plus(numFactory.numOf(3));
         assertNumEquals(expected, getCriterion().calculate(series, record));
     }
+
+    @Test
+    public void groupedNativeFeesPreserveComponentTotalAndCutoff() {
+        FuturesContract contract = linearBtcPerpetual();
+        TradeFee commission = TradeFee.builder()
+                .type(TradeFee.Type.COMMISSION)
+                .amount(numFactory.numOf(1e16))
+                .currency(contract.settlementCurrency())
+                .build();
+        TradeFee exchangeFee = commission.toBuilder().type(TradeFee.Type.EXCHANGE).amount(numFactory.one()).build();
+        TradeFill first = TradeFill.builder()
+                .index(0)
+                .time(Instant.EPOCH)
+                .side(ExecutionSide.BUY)
+                .price(numFactory.hundred())
+                .amount(numFactory.one())
+                .futuresContract(contract)
+                .fees(List.of(commission, exchangeFee))
+                .build();
+        TradeFill second = first.toBuilder()
+                .index(1)
+                .time(Instant.EPOCH.plusSeconds(1))
+                .fees(List.of(commission.toBuilder().amount(numFactory.numOf(-1e16)).build()))
+                .build();
+        Trade entry = Trade.fromFills(TradeType.BUY, List.of(first, second));
+        Position position = new Position(entry, entry.getCostModel(), new ZeroCostModel());
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 100).build();
+        assertNumEquals(1, getCriterion().calculate(series, position));
+        assertNumEquals(1, getCriterion().calculate(series, new BaseTradingRecord(List.of(position))));
+        BarSeries cutoff = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100).build();
+        assertNumEquals(1e16, getCriterion().calculate(cutoff, position));
+    }
 }

@@ -536,7 +536,7 @@ final class FuturesPositionAccounting {
 
     private static void sumFillFees(SettlementAmountSupport.CompensatedSum total, Trade trade, int finalIndex) {
         for (TradeFill fill : executedFills(trade, finalIndex)) {
-            total.add(fill.fee());
+            total.addFees(fill.fees());
         }
     }
 

@@ -8,6 +8,7 @@ import java.util.List;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFee;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
@@ -143,7 +144,9 @@ public class TotalFeesCriterion extends AbstractAnalysisCriterion {
     private void addFee(CompensatedSum total, Trade trade, int finalIndex) {
         for (TradeFill fill : Trade.executionFillsOf(trade)) {
             if (fill.index() >= 0 && fill.index() <= finalIndex && fill.fee() != null && !fill.fee().isNaN()) {
-                total.add(fill.fee());
+                for (TradeFee fee : fill.fees()) {
+                    total.add(fee.settlementAmount());
+                }
             }
         }
     }

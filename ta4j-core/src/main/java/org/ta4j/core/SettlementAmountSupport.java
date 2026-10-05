@@ -92,9 +92,7 @@ final class SettlementAmountSupport {
     static Num sumSettlementAmounts(List<TradeFee> fees, NumFactory numFactory) {
         CompensatedSum sum = new CompensatedSum(numFactory, "fee settlement amount", "fee settlement total");
         if (fees != null) {
-            for (TradeFee fee : fees) {
-                sum.add(fee.settlementAmount());
-            }
+            sum.addFees(fees);
         }
         return sum.total();
     }
@@ -140,6 +138,13 @@ final class SettlementAmountSupport {
             }
             sum = nextSum;
             compensation = nextCompensation;
+        }
+
+        /** Accumulates resolved components without rounding a fill subtotal first. */
+        void addFees(List<TradeFee> fees) {
+            for (TradeFee fee : fees) {
+                add(fee.settlementAmount());
+            }
         }
 
         Num total() {

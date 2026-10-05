@@ -740,7 +740,7 @@ public class BaseTradingRecord implements TradingRecord {
         for (TradeFill fill : Trade.executionFillsOf(trade)) {
             // Deferred fills have not incurred a recorded execution fee yet.
             if (fill.index() >= 0 && fill.fee() != null && !fill.fee().isNaN()) {
-                sum.add(fill.fee());
+                sum.addFees(fill.fees());
             }
         }
     }

@@ -309,4 +309,37 @@ class FuturesTransactionCostModelTest {
         assertNumEquals(1, position.getPositionCost(2));
         assertNumEquals(1e16, model.calculate(position, 0));
     }
+
+    @Test
+    void groupedNativeFeesAcrossFillsRetainResidualDouble() {
+        assertGroupedNativeFeeCompensation(DoubleNumFactory.getInstance(), false);
+    }
+
+    @Test
+    void groupedNativeFeesAcrossFillsRetainResidualDecimal() {
+        assertGroupedNativeFeeCompensation(DecimalNumFactory.getInstance(), false);
+    }
+
+    @Test
+    void groupedNativeFeesAcrossTradesRetainResidualDouble() {
+        assertGroupedNativeFeeCompensation(DoubleNumFactory.getInstance(), true);
+    }
+
+    @Test
+    void groupedNativeFeesAcrossTradesRetainResidualDecimal() {
+        assertGroupedNativeFeeCompensation(DecimalNumFactory.getInstance(), true);
+    }
+
+    private static void assertGroupedNativeFeeCompensation(NumFactory factory, boolean splitAcrossTrades) {
+        CostModel model = FuturesTransactionCostModel.builder()
+                .makerRate(factory.numOf(0.01))
+                .takerRate(factory.numOf(0.02))
+                .build();
+        Position position = RecordedTradeCostModelTest.feeCancellationPosition(factory, model, splitAcrossTrades, true);
+        assertNumEquals(1, model.calculate(position, 2));
+        assertNumEquals(1, model.calculate(position));
+        assertNumEquals(1, position.getPositionCost(2));
+        assertNumEquals(1e16, model.calculate(position, 0));
+        assertNumEquals(0, model.calculate(position, -1));
+    }
 }

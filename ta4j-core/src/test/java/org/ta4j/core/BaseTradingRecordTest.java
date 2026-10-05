@@ -3906,4 +3906,60 @@ class BaseTradingRecordTest {
         assertTrue(record.getOpenPositions().isEmpty());
         assertNumEquals(1, record.getTotalFees());
     }
+
+    @Test
+    void groupedNativeFeesPreserveLiveRecordTotalDouble() throws Exception {
+        assertGroupedRecordFees(DoubleNumFactory.getInstance(), 0);
+    }
+
+    @Test
+    void groupedNativeFeesPreserveLiveRecordTotalDecimal() throws Exception {
+        assertGroupedRecordFees(DecimalNumFactory.getInstance(), 0);
+    }
+
+    @Test
+    void groupedNativeFeesPreserveImportedRecordTotalDouble() throws Exception {
+        assertGroupedRecordFees(DoubleNumFactory.getInstance(), 1);
+    }
+
+    @Test
+    void groupedNativeFeesPreserveImportedRecordTotalDecimal() throws Exception {
+        assertGroupedRecordFees(DecimalNumFactory.getInstance(), 1);
+    }
+
+    @Test
+    void groupedNativeFeesPreserveProjectedRecordTotalDouble() throws Exception {
+        assertGroupedRecordFees(DoubleNumFactory.getInstance(), 2);
+    }
+
+    @Test
+    void groupedNativeFeesPreserveProjectedRecordTotalDecimal() throws Exception {
+        assertGroupedRecordFees(DecimalNumFactory.getInstance(), 2);
+    }
+
+    private static void assertGroupedRecordFees(NumFactory factory, int mode) throws Exception {
+        List<TradeFill> fills = BaseTradeTest.groupedFeeFills(factory);
+        FuturesContract contract = fills.getFirst().futuresContract();
+        BaseTradingRecord record;
+        if (mode == 2) {
+            Position position = new Position(Trade.fromFills(TradeType.BUY, fills, RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            BaseTradingRecord source = new BaseTradingRecord(List.of(position));
+            record = BaseTradingRecord.projectedFutures(source, List.of(position), 0, 1);
+        } else {
+            if (mode == 0) {
+                record = BaseTradingRecord.builder().futuresContract(contract).build();
+                record.operate(fills.getFirst());
+            } else {
+                record = new BaseTradingRecord(
+                        List.of(new Position(Trade.fromFill(fills.getFirst(), RecordedTradeCostModel.INSTANCE),
+                                RecordedTradeCostModel.INSTANCE, new ZeroCostModel())));
+            }
+            record = serializedCopy(record);
+            record.operate(fills.get(1));
+        }
+        assertNumEquals(1, record.getTotalFees());
+        assertNumEquals(1, record.getRecordedTotalFees());
+        assertNumEquals(1, serializedCopy(record).getTotalFees());
+    }
 }

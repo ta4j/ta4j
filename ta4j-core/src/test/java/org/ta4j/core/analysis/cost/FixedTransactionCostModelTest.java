@@ -181,4 +181,34 @@ public class FixedTransactionCostModelTest {
         assertNumEquals(1, position.getPositionCost(2));
         assertNumEquals(1e16, model.calculate(position, 0));
     }
+
+    @Test
+    public void groupedNativeFeesAcrossFillsRetainResidualDouble() {
+        assertGroupedNativeFeeCompensation(DoubleNumFactory.getInstance(), false);
+    }
+
+    @Test
+    public void groupedNativeFeesAcrossFillsRetainResidualDecimal() {
+        assertGroupedNativeFeeCompensation(DecimalNumFactory.getInstance(), false);
+    }
+
+    @Test
+    public void groupedNativeFeesAcrossTradesRetainResidualDouble() {
+        assertGroupedNativeFeeCompensation(DoubleNumFactory.getInstance(), true);
+    }
+
+    @Test
+    public void groupedNativeFeesAcrossTradesRetainResidualDecimal() {
+        assertGroupedNativeFeeCompensation(DecimalNumFactory.getInstance(), true);
+    }
+
+    private static void assertGroupedNativeFeeCompensation(NumFactory factory, boolean splitAcrossTrades) {
+        CostModel model = new FixedTransactionCostModel(7);
+        Position position = RecordedTradeCostModelTest.feeCancellationPosition(factory, model, splitAcrossTrades, true);
+        assertNumEquals(1, model.calculate(position, 2));
+        assertNumEquals(1, model.calculate(position));
+        assertNumEquals(1, position.getPositionCost(2));
+        assertNumEquals(1e16, model.calculate(position, 0));
+        assertNumEquals(0, model.calculate(position, -1));
+    }
 }

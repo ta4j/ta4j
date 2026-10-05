@@ -1573,4 +1573,23 @@ public class PositionTest {
         }
     }
 
+    @Test
+    public void groupedNativeFeesPreserveMarkedProfitDouble() {
+        assertGroupedFeeProfit(DoubleNumFactory.getInstance());
+    }
+
+    @Test
+    public void groupedNativeFeesPreserveMarkedProfitDecimal() {
+        assertGroupedFeeProfit(DecimalNumFactory.getInstance());
+    }
+
+    private static void assertGroupedFeeProfit(NumFactory factory) {
+        Trade entry = Trade.fromFills(TradeType.BUY, BaseTradeTest.groupedFeeFills(factory),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        assertNumEquals(-1, position.getProfit(1, factory.hundred()));
+        assertNumEquals(1, FuturesPositionAccounting.executedFees(position, 1));
+        assertNumEquals(-1e16, position.getProfit(0, factory.hundred()));
+        assertNumEquals(0, position.getProfit(-1, NaN));
+    }
 }

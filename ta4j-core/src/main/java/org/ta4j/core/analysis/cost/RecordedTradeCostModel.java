@@ -99,8 +99,8 @@ public final class RecordedTradeCostModel implements CostModel {
     }
 
     /**
-     * Keeps one compensation across entry and exit fills, before rounding the
-     * total.
+     * Keeps one compensation across resolved fee components of entry and exit
+     * fills, before rounding the total.
      */
     static Num sumFuturesFillCosts(Position position, int finalIndex, CostModel model) {
         NumFactory factory = position.getEntry().getPricePerAsset().getNumFactory();
@@ -115,23 +115,31 @@ public final class RecordedTradeCostModel implements CostModel {
                 if (fill.index() < 0 || fill.index() > finalIndex) {
                     continue;
                 }
-                Num fee = fill.hasRecordedFees() ? fill.fee() : model.calculate(fill);
-                Num normalized = factory.numOf(fee.getDelegate());
-                if (!Num.isFinite(normalized) || (!fee.isZero() && normalized.isZero())) {
-                    throw new IllegalArgumentException(
-                            "futures fee must be finite and representable in position number factory");
+                List<TradeFee> components = fill.fees();
+                int componentCount = fill.hasRecordedFees() ? components.size() : 1;
+                for (int componentIndex = 0; componentIndex < componentCount; componentIndex++) {
+                    Num fee = fill.hasRecordedFees() ? components.get(componentIndex).settlementAmount()
+                            : model.calculate(fill);
+                    Num normalized = factory.numOf(fee.getDelegate());
+                    if (!Num.isFinite(normalized) || (!fee.isZero() && normalized.isZero())) {
+                        throw new IllegalArgumentException(
+                                "futures fee must be finite and representable in position number factory");
+                    }
+                    Num nextSum = sum.plus(normalized);
+                    if (!Num.isFinite(nextSum)) {
+                        throw new IllegalArgumentException(
+                                "futures fee total must be finite in position number factory");
+                    }
+                    Num correction = sum.abs().isGreaterThanOrEqual(normalized.abs())
+                            ? sum.minus(nextSum).plus(normalized)
+                            : normalized.minus(nextSum).plus(sum);
+                    compensation = compensation.plus(correction);
+                    if (!Num.isFinite(compensation)) {
+                        throw new IllegalArgumentException(
+                                "futures fee total must be finite in position number factory");
+                    }
+                    sum = nextSum;
                 }
-                Num nextSum = sum.plus(normalized);
-                if (!Num.isFinite(nextSum)) {
-                    throw new IllegalArgumentException("futures fee total must be finite in position number factory");
-                }
-                Num correction = sum.abs().isGreaterThanOrEqual(normalized.abs()) ? sum.minus(nextSum).plus(normalized)
-                        : normalized.minus(nextSum).plus(sum);
-                compensation = compensation.plus(correction);
-                if (!Num.isFinite(compensation)) {
-                    throw new IllegalArgumentException("futures fee total must be finite in position number factory");
-                }
-                sum = nextSum;
             }
         }
         Num total = sum.plus(compensation);
