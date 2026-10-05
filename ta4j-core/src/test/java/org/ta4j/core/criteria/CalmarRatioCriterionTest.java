@@ -25,6 +25,7 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
@@ -224,8 +225,51 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
                 new double[] { 100d, 100.05d, 100.1d }, Instant.parse("2024-01-01T00:00:00Z"));
         Position position = futuresPosition(series, 100d, 100.1d);
         Num actual = ((CalmarRatioCriterion) getCriterion()).calculate(series, position);
-        double expected = Math.pow(1.001d, TimeConstants.SECONDS_PER_YEAR / (2d * 86_400d)) - 1d;
+        double expected = Math.pow(1.001d, TimeConstants.SECONDS_PER_YEAR / (3d * 86_400d)) - 1d;
         assertNumEquals(numFactory.numOf(expected), actual, 1e-12);
+    }
+
+    @Test
+    public void annualizesFirstBarFuturesLossOverTheEntireBarDuration() {
+        for (Duration firstBarDuration : List.of(Duration.ofDays(1), Duration.ofHours(6))) {
+            BarSeries series = getBarSeries("calmar_first_bar_loss");
+            Instant firstEnd = Instant.parse("2024-01-02T00:00:00Z");
+            for (int index = 0; index < 2; index++) {
+                series.addBar(series.barBuilder()
+                        .timePeriod(index == 0 ? firstBarDuration : Duration.ofDays(1))
+                        .endTime(firstEnd.plus(Duration.ofDays(index)))
+                        .openPrice(100)
+                        .highPrice(100)
+                        .lowPrice(100)
+                        .closePrice(100)
+                        .volume(1)
+                        .build());
+            }
+            FuturesContract contract = futuresPosition(series, 100d, 100d).getFuturesContract();
+            TradeFill entryFill = fill(contract, series.getBeginIndex(), ExecutionSide.BUY, 100d).toBuilder()
+                    .time(firstEnd.minusSeconds(60))
+                    .build();
+            TradeFill exitFill = fill(contract, series.getBeginIndex(), ExecutionSide.SELL, 99.9d).toBuilder()
+                    .time(firstEnd)
+                    .build();
+            BaseTradingRecord record = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .initialCapital(numFactory.one())
+                    .build();
+            record.operate(entryFill);
+            record.operate(exitFill);
+            CashFlow cashFlow = new CashFlow(series, record);
+            assertTrue(cashFlow.hasInitialReturn());
+            assertNumEquals(numFactory.numOf(0.999d), cashFlow.getValue(series.getBeginIndex()), 1e-12);
+            assertNumEquals(cashFlow.getValue(series.getBeginIndex()), cashFlow.getValue(series.getEndIndex()), 0d);
+
+            double elapsedSeconds = firstBarDuration.plus(Duration.ofDays(1)).getSeconds();
+            double expected = (Math.pow(0.999d, TimeConstants.SECONDS_PER_YEAR / elapsedSeconds) - 1d) / 0.001d;
+            CalmarRatioCriterion criterion = (CalmarRatioCriterion) getCriterion();
+            assertNumEquals(numFactory.numOf(expected), criterion.calculate(series, record), 1e-9);
+            assertNumEquals(numFactory.numOf(expected), criterion.calculate(series, record.getPositions().getFirst()),
+                    1e-9);
+        }
     }
 
     @Test
@@ -255,7 +299,7 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
 
         Num actual = ((CalmarRatioCriterion) getCriterion()).calculate(series, position);
         double years = Duration
-                .between(series.getBar(series.getBeginIndex()).getEndTime(),
+                .between(series.getBar(series.getBeginIndex()).getBeginTime(),
                         series.getBar(series.getEndIndex()).getEndTime())
                 .getSeconds() / (double) TimeConstants.SECONDS_PER_YEAR;
         double expected = (Math.pow(0.8d, 1d / years) - 1d) / 0.2d;
@@ -287,7 +331,7 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
         ConstantIndicator<Num> markPrice = new ConstantIndicator<>(series, numFactory.numOf(90d));
         CalmarRatioCriterion criterion = (CalmarRatioCriterion) getCriterion();
         double years = Duration
-                .between(series.getBar(series.getBeginIndex()).getEndTime(),
+                .between(series.getBar(series.getBeginIndex()).getBeginTime(),
                         series.getBar(series.getEndIndex()).getEndTime())
                 .getSeconds() / (double) TimeConstants.SECONDS_PER_YEAR;
         Num expectedMarked = numFactory.numOf((Math.pow(0.9d, 1d / years) - 1d) / 0.1d);

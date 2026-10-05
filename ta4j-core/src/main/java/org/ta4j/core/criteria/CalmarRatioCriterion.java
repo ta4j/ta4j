@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.criteria;
 
+import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -20,6 +21,7 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.utils.BarSeriesUtils;
+import org.ta4j.core.utils.TimeConstants;
 
 /**
  * Computes the Calmar ratio.
@@ -32,6 +34,9 @@ import org.ta4j.core.utils.BarSeriesUtils;
  * </pre>
  *
  * where annualized return is calculated as CAGR over the evaluated time range.
+ * When the equity curve includes a first-bar return from initial capital, this
+ * range starts at the first bar's begin time; otherwise it starts at its end
+ * time.
  *
  * <p>
  * <b>Implementation details.</b> This criterion reuses existing analysis
@@ -233,12 +238,19 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
         Num one = numFactory.one();
-        Num years = BarSeriesUtils.deltaYears(series, beginIndex, endIndex);
+        Num years;
+        if (cashFlow.hasInitialReturn()) {
+            long seconds = Math.max(0,
+                    Duration.between(series.getBar(beginIndex).getBeginTime(), series.getBar(endIndex).getEndTime())
+                            .getSeconds());
+            years = numFactory.numOf(seconds).dividedBy(numFactory.numOf(TimeConstants.SECONDS_PER_YEAR));
+        } else {
+            years = BarSeriesUtils.deltaYears(series, beginIndex, endIndex);
+        }
         if (years.isZero()) {
             return zero;
         }
-        Num startValue = cashFlow.hasInitialReturn() ? cashFlow.getBarSeries().numFactory().one()
-                : cashFlow.getValue(beginIndex);
+        Num startValue = cashFlow.hasInitialReturn() ? one : cashFlow.getValue(beginIndex);
         if (startValue.isNaN() || startValue.isZero()) {
             return NaN.NaN;
         }
