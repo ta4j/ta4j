@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
@@ -20,12 +21,15 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.FuturesContract;
+import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradeFee;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.indicators.statistics.SinglePrecisionNumFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
@@ -784,6 +788,59 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
 
         AnalysisCriterion cpk = getCriterion(0.7, 1.3);
         assertNumEquals(numFactory.numOf(1), cpk.calculate(series, record), 1e-12);
+    }
+
+    @Test
+    public void decimalFallbackIgnoresDeferredLinearEntryBasis() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 100, 110).build();
+        for (double size : new double[] { 1, Double.MIN_VALUE }) {
+            FuturesContract contract = linearBtcPerpetual().toBuilder().contractSize(numFactory.numOf(size)).build();
+            Position first = closedPositionWithDeferredEntry(contract, TradeType.BUY,
+                    List.of(futuresFill(contract, 0, ExecutionSide.BUY, 100, 0.5)), 1, 120);
+            Position second = closedPositionWithDeferredEntry(contract, TradeType.BUY,
+                    List.of(futuresFill(contract, 2, ExecutionSide.BUY, 100, 0.5)), 3, 110);
+            BaseTradingRecord record = new BaseTradingRecord(List.of(first, second));
+
+            assertEquals(2, record.getPositionCount());
+            assertTrue(record.isClosed());
+            // The deferred 0.5 @ 300 makes the aggregate trade price 200,
+            // but executed returns remain 120/100 and 110/100, giving Cpk 1.
+            assertNumEquals(200, record.getPositions().getFirst().getEntry().getPricePerAsset());
+            assertNumEquals(numFactory.one(), getCriterion(0.7, 1.3).calculate(series, record), 1e-12);
+        }
+    }
+
+    @Test
+    public void decimalFallbackUsesExecutedInverseHarmonicEntryBasis() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(120, 100, 110, 100).build();
+        for (double size : new double[] { 1, Double.MIN_VALUE }) {
+            FuturesContract contract = inverseBtcPerpetual().toBuilder().contractSize(numFactory.numOf(size)).build();
+            Position first = closedPositionWithDeferredEntry(contract, TradeType.SELL,
+                    List.of(futuresFill(contract, 0, ExecutionSide.SELL, 100, 0.25),
+                            futuresFill(contract, 0, ExecutionSide.SELL, 150, 0.25)),
+                    1, 100);
+            Position second = closedPositionWithDeferredEntry(contract, TradeType.SELL,
+                    List.of(futuresFill(contract, 2, ExecutionSide.SELL, 110, 0.5)), 3, 100);
+            BaseTradingRecord record = new BaseTradingRecord(List.of(first, second));
+
+            assertEquals(2, record.getPositionCount());
+            assertTrue(record.isClosed());
+            // The first executed entry has harmonic basis 120, not arithmetic
+            // basis 125 or the basis including the deferred 0.5 @ 300.
+            assertNumEquals(numFactory.one(), getCriterion(0.7, 1.3).calculate(series, record), 1e-12);
+        }
+    }
+
+    private Position closedPositionWithDeferredEntry(FuturesContract contract, TradeType type,
+            List<TradeFill> executedEntries, int exitIndex, double exitPrice) {
+        ExecutionSide entrySide = type == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+        ExecutionSide exitSide = type == TradeType.BUY ? ExecutionSide.SELL : ExecutionSide.BUY;
+        List<TradeFill> entryFills = new ArrayList<>(executedEntries);
+        entryFills.add(futuresFill(contract, -1, entrySide, 300, 0.5));
+        Trade entry = Trade.fromFills(type, entryFills, RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(futuresFill(contract, exitIndex, exitSide, exitPrice, 0.5),
+                RecordedTradeCostModel.INSTANCE);
+        return new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
     }
 
     private FuturesContract linearBtcPerpetual() {

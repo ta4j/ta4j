@@ -13,6 +13,8 @@ import java.util.Optional;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.num.Num;
@@ -175,6 +177,8 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
     /**
      * Returns the price ratio that drives the gross return of a closed position:
      * exit over entry for a linear contract, entry over exit for an inverse one.
+     * Native futures entry prices exclude deferred fills, matching the executed
+     * notional used by the position's gross return.
      *
      * @param position   the closed position
      * @param entryPrice the entry price
@@ -184,6 +188,25 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
      */
     private static BigDecimal priceRatio(Position position, Num entryPrice, Num exitPrice, MathContext context) {
         BigDecimal entry = entryPrice.bigDecimalValue();
+        if (position.getFuturesContract() != null) {
+            List<TradeFill> entryFills = Trade.executionFillsOf(position.getEntry());
+            List<TradeFill> executedFills = entryFills.stream().filter(fill -> fill.index() >= 0).toList();
+            if (!executedFills.isEmpty() && executedFills.size() != entryFills.size()) {
+                // Reuse native trade aggregation for arithmetic or inverse harmonic
+                // basis, retaining decimal precision when contract notional underflows.
+                // Fees do not participate in a gross price ratio.
+                List<TradeFill> decimalFills = executedFills.stream()
+                        .map(fill -> fill.toBuilder()
+                                .price(DecimalNum.valueOf(fill.price().bigDecimalValue(), context))
+                                .amount(DecimalNum.valueOf(fill.amount().bigDecimalValue(), context))
+                                .fees(List.of())
+                                .build())
+                        .toList();
+                entry = Trade.fromFills(position.getEntry().getType(), decimalFills)
+                        .getPricePerAsset()
+                        .bigDecimalValue();
+            }
+        }
         BigDecimal exit = exitPrice.bigDecimalValue();
         return isInverse(position) ? entry.divide(exit, context) : exit.divide(entry, context);
     }
