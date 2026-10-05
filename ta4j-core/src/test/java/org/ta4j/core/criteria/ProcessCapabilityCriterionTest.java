@@ -30,6 +30,7 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.analysis.AnalysisWindow;
 import org.ta4j.core.indicators.statistics.SinglePrecisionNumFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
@@ -829,6 +830,85 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
             // basis 125 or the basis including the deferred 0.5 @ 300.
             assertNumEquals(numFactory.one(), getCriterion(0.7, 1.3).calculate(series, record), 1e-12);
         }
+    }
+
+    @Test
+    public void decimalFallbackIgnoresDeferredLinearExitBasis() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 100, 110).build();
+        for (double size : new double[] { 1, Double.MIN_VALUE }) {
+            FuturesContract contract = linearBtcPerpetual().toBuilder().contractSize(numFactory.numOf(size)).build();
+            Position first = closedPositionWithDeferredEntry(contract, TradeType.BUY,
+                    List.of(futuresFill(contract, 0, ExecutionSide.BUY, 100, 0.5)), 1, 120);
+            Position second = closedPositionWithDeferredEntry(contract, TradeType.BUY,
+                    List.of(futuresFill(contract, 2, ExecutionSide.BUY, 100, 0.5)), 3, 110);
+            BaseTradingRecord record = new BaseTradingRecord(
+                    List.of(withDeferredExit(first, first.getExit().getFills()),
+                            withDeferredExit(second, second.getExit().getFills())));
+
+            assertTrue(record.isClosed());
+            assertEquals(2, record.getPositionCount());
+            assertNumEquals(210, record.getPositions().getFirst().getExit().getPricePerAsset());
+            assertNumEquals(205, record.getPositions().getLast().getExit().getPricePerAsset());
+            // Deferred entry and exit fills have no executed exposure. The
+            // returns remain 1.2/1.1, rather than 2.1/2.05 from exit metadata.
+            assertNumEquals(numFactory.one(), getCriterion(0.7, 1.3).calculate(series, record), 1e-12);
+        }
+    }
+
+    @Test
+    public void decimalFallbackUsesExecutedInverseHarmonicExitBasis() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(120, 100, 110, 100).build();
+        for (double size : new double[] { 1, Double.MIN_VALUE }) {
+            FuturesContract contract = inverseBtcPerpetual().toBuilder().contractSize(numFactory.numOf(size)).build();
+            Position first = closedPositionWithDeferredEntry(contract, TradeType.SELL,
+                    List.of(futuresFill(contract, 0, ExecutionSide.SELL, 100, 0.25),
+                            futuresFill(contract, 0, ExecutionSide.SELL, 150, 0.25)),
+                    1, 100);
+            Position second = closedPositionWithDeferredEntry(contract, TradeType.SELL,
+                    List.of(futuresFill(contract, 2, ExecutionSide.SELL, 110, 0.5)), 3, 100);
+            BaseTradingRecord record = new BaseTradingRecord(List.of(
+                    withDeferredExit(first,
+                            List.of(futuresFill(contract, 1, ExecutionSide.BUY, 80, 0.25),
+                                    futuresFill(contract, 1, ExecutionSide.BUY, 400d / 3, 0.25))),
+                    withDeferredExit(second, second.getExit().getFills())));
+
+            assertTrue(record.isClosed());
+            assertEquals(2, record.getPositionCount());
+            // Executed inverse entry/exit harmonic bases are 120/100 and
+            // 110/100. The arithmetic exit basis would change the first return.
+            assertNumEquals(numFactory.one(), getCriterion(0.7, 1.3).calculate(series, record), 1e-12);
+        }
+    }
+
+    @Test
+    public void decimalRecoveryExcludesClosedPositionsBeyondTheWindowEnd() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 120, 100, 110, 100, 300)
+                .build();
+        FuturesContract contract = linearBtcPerpetual().toBuilder()
+                .contractSize(numFactory.numOf(Double.MIN_VALUE))
+                .build();
+        Position first = closedPositionWithDeferredEntry(contract, TradeType.BUY,
+                List.of(futuresFill(contract, 0, ExecutionSide.BUY, 100, 0.5)), 1, 120);
+        Position second = closedPositionWithDeferredEntry(contract, TradeType.BUY,
+                List.of(futuresFill(contract, 2, ExecutionSide.BUY, 100, 0.5)), 3, 110);
+        Position future = closedPositionWithDeferredEntry(contract, TradeType.BUY,
+                List.of(futuresFill(contract, 4, ExecutionSide.BUY, 100, 0.5)), 5, 300);
+        BaseTradingRecord record = new BaseTradingRecord(List.of(withDeferredExit(first, first.getExit().getFills()),
+                withDeferredExit(second, second.getExit().getFills()), future));
+
+        AnalysisCriterion criterion = getCriterion(0.7, 1.3);
+        assertNumEquals(numFactory.one(), criterion.calculate(series, record, AnalysisWindow.barRange(0, 3)), 1e-12);
+        assertTrue(criterion.calculate(series, record, AnalysisWindow.barRange(0, 5)).isLessThan(numFactory.zero()));
+    }
+
+    private Position withDeferredExit(Position position, List<TradeFill> executedExits) {
+        TradeType exitType = position.getExit().getType();
+        ExecutionSide exitSide = exitType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+        List<TradeFill> exitFills = new ArrayList<>(executedExits);
+        exitFills.add(futuresFill(position.getFuturesContract(), -1, exitSide, 300, 0.5));
+        Trade exit = Trade.fromFills(exitType, exitFills, RecordedTradeCostModel.INSTANCE);
+        return new Position(position.getEntry(), exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
     }
 
     private Position closedPositionWithDeferredEntry(FuturesContract contract, TradeType type,

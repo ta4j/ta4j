@@ -177,8 +177,8 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
     /**
      * Returns the price ratio that drives the gross return of a closed position:
      * exit over entry for a linear contract, entry over exit for an inverse one.
-     * Native futures entry prices exclude deferred fills, matching the executed
-     * notional used by the position's gross return.
+     * Native futures prices exclude deferred fills on both sides, matching the
+     * executed notional and payoff used by the position's gross return.
      *
      * @param position   the closed position
      * @param entryPrice the entry price
@@ -188,27 +188,35 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
      */
     private static BigDecimal priceRatio(Position position, Num entryPrice, Num exitPrice, MathContext context) {
         BigDecimal entry = entryPrice.bigDecimalValue();
-        if (position.getFuturesContract() != null) {
-            List<TradeFill> entryFills = Trade.executionFillsOf(position.getEntry());
-            List<TradeFill> executedFills = entryFills.stream().filter(fill -> fill.index() >= 0).toList();
-            if (!executedFills.isEmpty() && executedFills.size() != entryFills.size()) {
-                // Reuse native trade aggregation for arithmetic or inverse harmonic
-                // basis, retaining decimal precision when contract notional underflows.
-                // Fees do not participate in a gross price ratio.
-                List<TradeFill> decimalFills = executedFills.stream()
-                        .map(fill -> fill.toBuilder()
-                                .price(DecimalNum.valueOf(fill.price().bigDecimalValue(), context))
-                                .amount(DecimalNum.valueOf(fill.amount().bigDecimalValue(), context))
-                                .fees(List.of())
-                                .build())
-                        .toList();
-                entry = Trade.fromFills(position.getEntry().getType(), decimalFills)
-                        .getPricePerAsset()
-                        .bigDecimalValue();
-            }
-        }
         BigDecimal exit = exitPrice.bigDecimalValue();
+        if (position.getFuturesContract() != null) {
+            entry = executedPrice(position.getEntry(), entryPrice, context);
+            exit = executedPrice(position.getExit(), exitPrice, context);
+        }
         return isInverse(position) ? entry.divide(exit, context) : exit.divide(entry, context);
+    }
+
+    /**
+     * Recovers a native trade's executed price basis without deferred quantities.
+     * Window projections have already removed fills beyond their end index.
+     */
+    private static BigDecimal executedPrice(Trade trade, Num aggregatePrice, MathContext context) {
+        List<TradeFill> fills = Trade.executionFillsOf(trade);
+        List<TradeFill> executedFills = fills.stream().filter(fill -> fill.index() >= 0).toList();
+        if (executedFills.isEmpty() || executedFills.size() == fills.size()) {
+            return aggregatePrice.bigDecimalValue();
+        }
+        // Reuse native aggregation for arithmetic or inverse harmonic basis,
+        // retaining decimal precision when contract notional underflows. Fees
+        // do not participate in a gross price ratio.
+        List<TradeFill> decimalFills = executedFills.stream()
+                .map(fill -> fill.toBuilder()
+                        .price(DecimalNum.valueOf(fill.price().bigDecimalValue(), context))
+                        .amount(DecimalNum.valueOf(fill.amount().bigDecimalValue(), context))
+                        .fees(List.of())
+                        .build())
+                .toList();
+        return Trade.fromFills(trade.getType(), decimalFills).getPricePerAsset().bigDecimalValue();
     }
 
     @Override
