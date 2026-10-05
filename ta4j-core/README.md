@@ -184,8 +184,10 @@ counterexamples and rule disagreements; when the trace is missing or truncated
 it exits with status 2 and prints the recapture command, quoted for a POSIX shell.
 The command carries `--expect-fingerprint` (and, for `explore`, `--expect-source-sha256`),
 so a recapture against a changed configuration or edited candles fails instead of
-tracing different data. Coverage marks a partition `partial` when it has no bars or
-a gap longer than seven bar periods.
+tracing different data. A run that declares `calibration` but captured no trace is
+the exception: `inspect` prints the row's calibration estimates with a "real trace
+not captured" note and exits with status 0. Coverage marks a partition `partial`
+when it has no bars or a gap longer than seven bar periods.
 
 Every run also records causal forward-outcome evidence for enrolled `MOTIVE_5`
 events (events enroll once per placement, when it first becomes visible to the
@@ -213,7 +215,7 @@ only `horizon` is required and it must be one of `outcomes.horizons`). Without i
 a run is unchanged, every artifact above is identical apart from the fingerprint
 that hashes the recipe. With it the run adds `calibration-tables.json`,
 `calibration-predictions.csv`, `calibration-summary.csv`,
-`calibration-reliability.csv` and a "Calibration" section in `summary.md`. The
+`calibration-reliability.csv` and an "Outcome calibration" section in `summary.md`. The
 target is the structural label "the correction completes before invalidation
 within `horizon` bars"; the only feature is the heuristic rule score
 `pass/(pass+fail)` frozen at enrollment (pending, unavailable and not-applicable

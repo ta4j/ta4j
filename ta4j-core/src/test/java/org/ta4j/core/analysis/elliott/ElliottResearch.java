@@ -89,7 +89,10 @@ import com.google.gson.JsonPrimitive;
  * <p>
  * Exit codes: {@code 0} success, {@code 1} usage error or run failure (also a
  * partial or failed run, an unknown key or as-of index), {@code 2} inspection
- * diagnostic (missing, truncated or corrupt trace, failed dataset).
+ * diagnostic (missing, truncated or corrupt trace, failed dataset). A run that
+ * declares {@code calibration} and has no captured trace is still inspectable:
+ * {@code inspect} prints its calibration estimates with a "real trace not
+ * captured" note and exits {@code 0}.
  * </p>
  *
  * @since 0.25.1
@@ -226,7 +229,8 @@ final class ElliottResearch {
                 "calibration-reliability.csv: outcome-calibrated event probabilities, fitted chronologically.",
                 "Null-member events are included for the member chosen with --trace selected-null-member.", "",
                 "Exit codes: 0 ok; 1 usage error or run failure; 2 missing, truncated or corrupt trace, or failed",
-                "dataset while inspecting.");
+                "dataset while inspecting. A run that declares calibration but captured no trace still exits 0:",
+                "inspect prints the calibration estimates with a \"real trace not captured\" note.");
     }
 
     /** Actionable inspection failure that maps to exit code 2. */
