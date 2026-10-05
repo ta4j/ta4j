@@ -202,15 +202,17 @@ candidate across bars, `history` lists its recorded version changes (when the
 stream is longer than the 5,000-record lookback it says where the scanned history
 starts instead of inventing a change), and `export` writes
 `frame-<bar>.json`, `frame-<bar>.txt` and `frame-<bar>.jpg`. `--out` must not be
-the run directory or inside it; the replay refuses before writing anything.
+the run directory or inside it, and none of the three frame files may be a
+symbolic link; the replay refuses before writing anything.
 `--interactive` starts a prompt (`help` lists the commands); `--display` opens the
 chart in a window.
 
-Real-data counterexample walkthrough: run the frozen study
-(`run frozen-cf525 --out <dir>`), `inspect <dir> '<key>'` for a row whose observed
-value sits outside its null band, replay that key with the printed command, jump
-to the listed counterexample bar with `seek`, `select` the candidate the report
-names, and `export` the frame as evidence.
+Real-data counterexample walkthrough: run the frozen study with trace capture
+(`run frozen-cf525 --trace real --out <dir>`; `frozen-cf525` traces nothing by
+default and replay needs the trace), `inspect <dir> '<key>'` for a row whose
+observed value sits outside its null band, replay that key with the printed
+command, jump to the listed counterexample bar with `seek`, `select` the candidate
+the report names, and `export` the frame as evidence.
 
 To replay the resampled null member behind a null reference band, capture it
 with `run ... --trace selected-null-member --block <L> --member <M>` (`L` must be

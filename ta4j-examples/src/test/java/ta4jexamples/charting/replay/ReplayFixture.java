@@ -15,7 +15,9 @@ import java.util.List;
 import java.util.function.UnaryOperator;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 
 /**
  * Writes a small but complete {@code elliott-research-run/1} bundle in the
@@ -149,6 +151,11 @@ final class ReplayFixture {
             final JsonObject identity = new JsonObject();
             identity.addProperty("fingerprint", FINGERPRINT);
             run.add("identity", identity);
+            final JsonObject runTrace = new JsonObject();
+            runTrace.addProperty("mode", options.nullTrace ? "selected-null-member" : "real");
+            runTrace.add("block", options.nullTrace ? new JsonPrimitive(options.nullBlockLength) : JsonNull.INSTANCE);
+            runTrace.add("member", options.nullTrace ? new JsonPrimitive(0) : JsonNull.INSTANCE);
+            run.add("trace", runTrace);
             final JsonArray datasets = new JsonArray();
             datasets.add(dataset);
             run.add("datasets", datasets);

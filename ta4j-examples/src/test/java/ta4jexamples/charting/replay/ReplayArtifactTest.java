@@ -298,6 +298,29 @@ class ReplayArtifactTest {
     }
 
     @Test
+    void nullTraceOfAnotherMemberOfTheSameRunRecipeIsRejected() throws IOException {
+        // Regression: only the row's block length was compared, so a null trace of the
+        // same source, revision and configuration but another member passed run.json's
+        // selected block/member check.
+        final Path run = ReplayFixture.write(temp.resolve("run"), options -> {
+            options.nullTrace = true;
+            return options;
+        });
+        assertEquals(ReplayFixture.FIRST_AS_OF, ReplaySession.open(ReplayArtifact.open(run), ReplayFixture.RULES_KEY,
+                ReplayArtifact.TRACE_MODE_NULL_MEMBER, 120, 8).firstAsOf());
+        final Path trace = run.resolve("traces/d1-null.jsonl");
+        Files.writeString(trace,
+                Files.readString(trace).replaceFirst("\"nullMemberIndex\":0", "\"nullMemberIndex\":1"),
+                StandardCharsets.UTF_8);
+
+        final ReplayArtifactException e = assertThrows(ReplayArtifactException.class, () -> ReplaySession
+                .open(ReplayArtifact.open(run), ReplayFixture.RULES_KEY, ReplayArtifact.TRACE_MODE_NULL_MEMBER, 120, 8));
+
+        assertTrue(e.getMessage().contains("does not belong to this run"), e.getMessage());
+        assertTrue(e.getMessage().contains("nullBlockLength/nullMemberIndex"), e.getMessage());
+    }
+
+    @Test
     void missingOrNonArrayRequiredTraceFieldsAreRejectedWithTheField() throws IOException {
         final Path missing = ReplayFixture.write(temp.resolve("missing"));
         final Path missingTrace = missing.resolve("traces/d1-real.jsonl");

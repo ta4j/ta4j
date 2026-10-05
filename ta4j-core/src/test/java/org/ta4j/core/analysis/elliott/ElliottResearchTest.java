@@ -93,6 +93,10 @@ class ElliottResearchTest {
         throw new AssertionError("row not found: " + key);
     }
 
+    private static String replayLine(final String inspectOutput) {
+        return inspectOutput.lines().filter(line -> line.startsWith("Replay: ")).findFirst().orElseThrow();
+    }
+
     @Test
     void smokeRunWritesEveryArtifactAndInspectMatchesRowDenominator() throws Exception {
         for (final String artifact : List.of("run.json", "comparisons.csv", "coverage.csv", "summary.md",
@@ -131,6 +135,7 @@ class ElliottResearchTest {
         assertEquals(dataset.get("bars").getAsInt() + 1, Files.readAllLines(smokeRun.resolve("bars/smoke.csv")).size());
         assertTrue(inspect.out().contains("Replay: mvn -q -pl ta4j-examples exec:java"), inspect.out());
         assertTrue(inspect.out().contains("ElliottReplayInspector"), inspect.out());
+        assertFalse(replayLine(inspect.out()).contains("--trace"), inspect.out());
         assertTrue(inspect.out().contains(OCCUPANCY_KEY), inspect.out());
     }
 
@@ -335,6 +340,9 @@ class ElliottResearchTest {
         assertEquals(0, inspect.code(), inspect.err());
         assertTrue(inspect.out().contains("Selected null member trace: traces/smoke-null-b20-m3.jsonl"), inspect.out());
         assertTrue(inspect.out().contains("member 3"), inspect.out());
+        // The viewer reads the real trace by default; a run that retained only the null
+        // member must name that mode or the printed command fails.
+        assertTrue(replayLine(inspect.out()).contains("--trace selected-null-member"), inspect.out());
         final JsonObject nullReport = readJson(run.resolve("reports/smoke.json")).getAsJsonArray("nulls")
                 .asList()
                 .stream()

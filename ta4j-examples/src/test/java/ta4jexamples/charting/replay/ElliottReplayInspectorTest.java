@@ -28,6 +28,7 @@ import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.Plot;
 import org.jfree.chart.plot.XYPlot;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -277,5 +278,27 @@ class ElliottReplayInspectorTest {
             assertTrue(result.err().contains("replayed run directory"), result.err());
             assertEquals(before, snapshot(run));
         }
+    }
+
+    @Test
+    void exportRefusesLinkedFrameFilesAndLeavesTheRunUnchanged() throws IOException {
+        final Path run = ReplayFixture.write(temp.resolve("run"));
+        final Path out = Files.createDirectories(temp.resolve("out"));
+        final java.util.Map<String, String> before = snapshot(run);
+        final Path frame = out.resolve("frame-36.json");
+        try {
+            Files.createSymbolicLink(frame, run.resolve("run.json"));
+        } catch (IOException | UnsupportedOperationException e) {
+            Assumptions.abort("this environment cannot create symbolic links: " + e);
+        }
+
+        final Result result = run("", run.toString(), "--key", ReplayFixture.RULES_KEY, "--at", "36", "--out",
+                out.toString());
+
+        assertEquals(2, result.status(), result.out());
+        assertTrue(result.err().contains("symbolic link"), result.err());
+        assertEquals(before, snapshot(run));
+        assertFalse(Files.exists(out.resolve("frame-36.txt")));
+        assertFalse(Files.exists(out.resolve("frame-36.jpg")));
     }
 }

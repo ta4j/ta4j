@@ -193,7 +193,9 @@ a gap longer than seven bar periods.
 (`ta4j-examples`) that steps through the row's trace bar by bar, showing the
 confirmed pivots, every retained candidate and its rule results exactly as
 recorded for that bar. Runs written before `bars/` existed print why replay is
-unavailable; regenerate them. See `ta4j-examples/README.md`.
+unavailable; regenerate them. A run that retained only a `selected-null-member`
+trace prints the command with `--trace selected-null-member`. See
+`ta4j-examples/README.md`.
 
 A `selected-null-member` trace additionally records each as-of bar of the
 resampled member (`bar`: begin, end, open, high, low, close, volume), because

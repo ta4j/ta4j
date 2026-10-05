@@ -1744,7 +1744,7 @@ final class ElliottResearch {
             out.println("Dataset: " + row.dataset() + " (" + row.asset() + ")  section: " + row.section() + "  mode: "
                     + row.mode() + "  grammar: " + row.grammar() + "  detector: " + row.detector() + "  partition: "
                     + row.partition());
-            out.println(replayLine());
+            out.println(replayLine(real == null));
             out.println(
                     "Active rules: " + (row.activeRules().isEmpty() ? "(none)" : String.join(", ", row.activeRules())));
             out.println("Metric: " + row.metric() + "  observed=" + number(row.observed()) + "  numerator="
@@ -1780,13 +1780,15 @@ final class ElliottResearch {
         /**
          * The command that replays this row's trace in the examples-module viewer, or
          * the reason it cannot: runs written before price bars were persisted lack
-         * them.
+         * them. The viewer reads a real trace by default, so a run that retained only a
+         * selected null member names that mode.
          */
-        private String replayLine() {
+        private String replayLine(final boolean nullMemberOnly) {
             if (dataset.get("priceBars") == null || dataset.get("priceBars").isJsonNull()) {
                 return "Replay: unavailable, this run persisted no price bars. Regenerate the run to enable replay.";
             }
-            final String args = execQuoted(displayPath(dir)) + " --key " + execQuoted(row.key());
+            final String args = execQuoted(displayPath(dir)) + " --key " + execQuoted(row.key())
+                    + (nullMemberOnly ? " --trace " + ElliottResearchTrace.MODE_SELECTED_NULL_MEMBER : "");
             return "Replay: mvn -q -pl ta4j-examples exec:java"
                     + " -Dexec.mainClass=ta4jexamples.charting.replay.ElliottReplayInspector "
                     + shellQuoted("-Dexec.args=" + args)

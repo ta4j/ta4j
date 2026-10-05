@@ -283,10 +283,19 @@ final class ReplayArtifact {
         }
         final int block = integer(header, "nullBlockLength");
         final int member = integer(header, "nullMemberIndex");
-        if (TRACE_MODE_REAL.equals(mode) ? block != -1 || member != -1 : block < 1 || member < 0) {
+        final boolean real = TRACE_MODE_REAL.equals(mode);
+        if (block != (real ? -1 : runTraceCoordinate("block")) || member != (real ? -1 : runTraceCoordinate("member"))
+                || !real && (block < 1 || member < 0)) {
             return "nullBlockLength/nullMemberIndex";
         }
         return null;
+    }
+
+    /** @return the block or member run.json selected for its null trace, or -1 if none */
+    private int runTraceCoordinate(final String name) {
+        final JsonElement trace = run.get("trace");
+        final JsonElement value = trace != null && trace.isJsonObject() ? trace.getAsJsonObject().get(name) : null;
+        return value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isNumber() ? value.getAsInt() : -1;
     }
 
     private static int integer(final JsonObject object, final String name) {

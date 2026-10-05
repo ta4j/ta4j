@@ -251,9 +251,10 @@ public final class ElliottReplayInspector {
      */
     private void export() {
         rejectRunDirectory();
+        final String stem = "frame-" + current.cursor();
+        rejectLinkedDestinations(stem);
         try {
             Files.createDirectories(outDirectory);
-            final String stem = "frame-" + current.cursor();
             Files.writeString(outDirectory.resolve(stem + ".json"), current.toSemanticJson(), StandardCharsets.UTF_8);
             Files.writeString(outDirectory.resolve(stem + ".txt"), ReplayEvidenceText.render(current),
                     StandardCharsets.UTF_8);
@@ -282,6 +283,21 @@ public final class ElliottReplayInspector {
             }
         } catch (IOException e) {
             throw new ReplayArtifactException("cannot resolve --out " + outDirectory + ": " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Refuses to write through a symbolic link already standing at a destination
+     * file: writing would replace whatever it points at, which can be a file of the
+     * replayed run.
+     */
+    private void rejectLinkedDestinations(final String stem) {
+        for (final String extension : List.of(".json", ".txt", ".jpg")) {
+            final Path destination = outDirectory.resolve(stem + extension);
+            if (Files.isSymbolicLink(destination)) {
+                throw new ReplayArtifactException("export destination " + destination
+                        + " is a symbolic link; replay never writes through links, so remove it or choose another --out directory");
+            }
         }
     }
 
