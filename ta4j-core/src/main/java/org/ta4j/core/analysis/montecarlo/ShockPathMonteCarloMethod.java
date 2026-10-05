@@ -116,6 +116,18 @@ public final class ShockPathMonteCarloMethod implements MonteCarloMethod {
         return cumulativeReturn;
     }
 
+    /**
+     * Describes the shock and volatility configuration.
+     *
+     * @return the configured shock model, update mode, and decay factor
+     * @since 0.26.1
+     */
+    @Override
+    public String toString() {
+        return "ShockPathMonteCarloMethod[shockModel=" + shockModel + ", volatilityUpdateMode=" + volatilityUpdateMode
+                + ", volatilityDecayFactor=" + volatilityDecayFactor + "]";
+    }
+
     private record ProjectionState(Num mean, Num drift, Num variance, Num volatility) {
 
         private static ProjectionState from(ReturnMoments moments, NumFactory numFactory) {

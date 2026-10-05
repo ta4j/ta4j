@@ -18,6 +18,11 @@
  * {@link org.ta4j.core.analysis.montecarlo.ShockPathMonteCarloMethod}, and the
  * conjugate Bayesian alternative in
  * {@link org.ta4j.core.analysis.montecarlo.NormalInverseGammaForecastMethod}.
+ * Techniques compose through the default methods of
+ * {@link org.ta4j.core.analysis.montecarlo.MonteCarloMethod} (pooling,
+ * recent-volatility widening, Student-t tails) and
+ * {@link org.ta4j.core.analysis.montecarlo.NormalInverseGammaForecastMethod#overResiduals(org.ta4j.core.analysis.montecarlo.MonteCarloMethod)}
+ * (posterior parameter uncertainty over another technique's residual shape).
  *
  * @since 0.24.2
  */
