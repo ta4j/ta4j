@@ -226,13 +226,22 @@ reason and raw support instead of emitting a probability. Fitting is
 chronological: the `validation` table is fitted on the `fit` partition and the
 `evaluation` table on `fit` plus `validation`, and both use only labels whose
 whole window had ended by the cutoff, so a score never uses a table fitted after
-its decision bar. Summaries report coverage, Brier and log-loss against the
-unconditional base rate (reported as differences, never as significance), and
-reliability bins for the group-weighted and non-overlapping-cohort views.
+its decision bar. A candidate lineage (the same candidate key) that has any
+fit-stage row is purged from the scored stage and counted in the `purged`
+column of `calibration-summary.csv`, so one lineage never feeds both a table
+and its score. A table is bound to the primary detector's actual
+configuration (factory and parameters, not just its name) and momentum
+lookback in addition to grammar, mode, rules and horizon, and `estimate`
+rejects any other scope. Summaries report coverage, Brier and log-loss against
+the unconditional base rate (reported as differences, never as significance),
+and reliability bins for the group-weighted and non-overlapping-cohort views.
 Estimates are marginal per alternative and are not normalised across
 simultaneous alternatives. `inspect` shows each alternative's decision-time
-estimate and fit support by default, hides realised outcomes unless
-`--retrospective` is given, and ranks by enrollment order unless
+estimate and fit support by default only for the scope the table was fitted on
+(the primary detector's H1 `MOTIVE_5` rows); robustness-detector, H2 and
+competing-grammar comparison keys print a "calibration not applicable to this
+scope" line naming the differing field instead. It hides realised outcomes
+unless `--retrospective` is given, and ranks by enrollment order unless
 `--rank probability` asks for the estimate. This is calibration of a heuristic
 score, not a forecast: poor calibration or worse-than-baseline loss are
 reported results, and nothing here claims predictive efficacy.

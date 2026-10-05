@@ -39,6 +39,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.ta4j.core.Bar;
@@ -336,6 +337,11 @@ final class ElliottResearch {
                 throw new IllegalArgumentException("detector '" + name + "': factory " + factory + " needs " + expected
                         + " integer parameter(s), got " + params);
             }
+        }
+
+        /** @return the factory and parameters, e.g. {@code fractal(3)} */
+        String configuration() {
+            return factory + params.stream().map(String::valueOf).collect(Collectors.joining(",", "(", ")"));
         }
 
         Supplier<SwingDetector> supplier() {
@@ -1093,12 +1099,13 @@ final class ElliottResearch {
                         }
                     }
                     final List<RelationshipRule> rules = setup.rules();
-                    calibrations.put(id,
-                            ElliottResearchCalibration.compute(outcomes.get(id), lastObserved, setup.calibration(),
-                                    ElliottResearchCalibration.Identity.of(id, setup.primary().name(),
-                                            setup.activeRules(), setup.outcomes(), setup.calibration()),
-                                    new ElliottResearchCalibration.Provenance(setup.fingerprint(), revision),
-                                    event -> ElliottResearchCalibration.enrollmentEvidence(event, rules, series)));
+                    calibrations.put(id, ElliottResearchCalibration.compute(outcomes.get(id), lastObserved,
+                            setup.calibration(),
+                            ElliottResearchCalibration.Identity.of(id, setup.primary().name(),
+                                    setup.primary().configuration(), setup.activeRules(),
+                                    "RSI(" + setup.momentumBarCount() + ")", setup.outcomes(), setup.calibration()),
+                            new ElliottResearchCalibration.Provenance(setup.fingerprint(), revision),
+                            event -> ElliottResearchCalibration.enrollmentEvidence(event, rules, series)));
                 }
                 recorders.remove(id);
                 rows.addAll(ElliottResearchReport.comparisons(id, report));
@@ -1796,14 +1803,25 @@ final class ElliottResearch {
                 List<JsonObject> scope) {
         }
 
-        private void printCalibration(final PrintStream out, final Integer asOf, final String candidate) {
+        private void printCalibration(final PrintStream out, final Integer asOf, final String candidate)
+                throws IOException {
             final Path predictions = dir.resolve(ElliottResearchCalibration.PREDICTIONS_FILE);
             final Path reliability = dir.resolve(ElliottResearchCalibration.RELIABILITY_FILE);
-            for (final Path file : List.of(predictions, reliability)) {
+            final Path tables = dir.resolve(ElliottResearchCalibration.TABLES_FILE);
+            for (final Path file : List.of(predictions, reliability, tables)) {
                 if (!Files.isRegularFile(file)) {
                     throw new Diagnostic(file.getFileName() + " is declared by " + RUN_FILE + " but missing in " + dir
                             + "; the run is incomplete, rerun the recipe");
                 }
+            }
+            final String mismatch = ElliottResearchCalibration.scopeMismatch(tables, row.dataset(), row.section(),
+                    row.grammar(), row.detector());
+            if (mismatch != null) {
+                out.println();
+                out.println("Calibration: not applicable to this scope - the fitted tables describe only the primary"
+                        + " detector's real " + ElliottResearchCalibration.GRAMMAR + " stream; this row differs in "
+                        + mismatch);
+                return;
             }
             ElliottResearchCalibration.inspect(out, predictions, reliability, row.dataset(), row.partition(), candidate,
                     asOf, limit, rank, retrospective);

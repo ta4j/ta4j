@@ -32,8 +32,8 @@ import org.ta4j.core.analysis.elliott.ElliottResearchCalibration.Weighted;
  */
 class ElliottResearchCalibrationTest {
 
-    private static final Identity IDENTITY = new Identity("toy", "fractal-w3", "MOTIVE_5", "classical-all",
-            "origin-pivot", List.of("wave2-origin"), ElliottResearchCalibration.TARGET,
+    private static final Identity IDENTITY = new Identity("toy", "fractal-w3", "fractal(3)", "MOTIVE_5",
+            "classical-all", "origin-pivot", List.of("wave2-origin"), "RSI(14)", ElliottResearchCalibration.TARGET,
             ElliottResearchCalibration.FEATURE, 20);
     private static final Provenance PROVENANCE = new Provenance("fp", "rev");
     private static final String MASK = "wave2-origin";
@@ -99,8 +99,9 @@ class ElliottResearchCalibrationTest {
         final Calibrator table = Calibrator.fit("validation", IDENTITY, PROVENANCE, 1,
                 List.of(labeled(10, "a", 1, 0, Outcome.SUCCESS)), List.of("calibration"), 100);
         final Row later = row("validation", 150, "x", 1, 0, Outcome.SUCCESS, 160, 170);
-        final Identity other = new Identity("toy", "fractal-w5", "MOTIVE_5", "classical-all", "origin-pivot",
-                List.of("wave2-origin"), ElliottResearchCalibration.TARGET, ElliottResearchCalibration.FEATURE, 20);
+        final Identity other = new Identity("toy", "fractal-w5", "fractal(5)", "MOTIVE_5", "classical-all",
+                "origin-pivot", List.of("wave2-origin"), "RSI(14)", ElliottResearchCalibration.TARGET,
+                ElliottResearchCalibration.FEATURE, 20);
         final IllegalArgumentException mismatch = assertThrows(IllegalArgumentException.class,
                 () -> table.estimate(other, later));
         assertTrue(mismatch.getMessage().contains("detector (fractal-w3 vs fractal-w5)"), mismatch.getMessage());
@@ -110,6 +111,56 @@ class ElliottResearchCalibrationTest {
                     () -> table.estimate(IDENTITY, early));
             assertTrue(failure.getMessage().contains("not after the fit cutoff 100"), failure.getMessage());
         }
+    }
+
+    @Test
+    void estimateRefusesTheSameDetectorNameFittedAtAnotherScaleOrMomentumLookback() {
+        final Calibrator table = Calibrator.fit("validation", IDENTITY, PROVENANCE, 1,
+                List.of(labeled(10, "a", 1, 0, Outcome.SUCCESS)), List.of("calibration"), 100);
+        final Row later = row("validation", 150, "x", 1, 0, Outcome.SUCCESS, 160, 170);
+        final Identity otherScale = new Identity("toy", "fractal-w3", "fractal(5)", "MOTIVE_5", "classical-all",
+                "origin-pivot", List.of("wave2-origin"), "RSI(14)", ElliottResearchCalibration.TARGET,
+                ElliottResearchCalibration.FEATURE, 20);
+        final IllegalArgumentException scale = assertThrows(IllegalArgumentException.class,
+                () -> table.estimate(otherScale, later));
+        assertTrue(scale.getMessage().contains("detectorConfig (fractal(3) vs fractal(5))"), scale.getMessage());
+        final Identity otherMomentum = new Identity("toy", "fractal-w3", "fractal(3)", "MOTIVE_5", "classical-all",
+                "origin-pivot", List.of("wave2-origin"), "RSI(21)", ElliottResearchCalibration.TARGET,
+                ElliottResearchCalibration.FEATURE, 20);
+        final IllegalArgumentException momentum = assertThrows(IllegalArgumentException.class,
+                () -> table.estimate(otherMomentum, later));
+        assertTrue(momentum.getMessage().contains("momentum (RSI(14) vs RSI(21))"), momentum.getMessage());
+        assertEquals(List.of(), IDENTITY.differences(IDENTITY));
+    }
+
+    @Test
+    void scopeMatchesOnlyThePrimaryDetectorsRealMotiveStream() {
+        assertEquals(null, IDENTITY.scopeMismatch("h1", "MOTIVE_5", "fractal-w3"));
+        assertTrue(
+                IDENTITY.scopeMismatch("robustness", "MOTIVE_5", "fractal-w5").contains("section (h1 vs robustness)"));
+        assertTrue(IDENTITY.scopeMismatch("robustness", "MOTIVE_5", "fractal-w5")
+                .contains("detector (fractal-w3 vs fractal-w5)"));
+        assertTrue(IDENTITY.scopeMismatch("competing", "CYCLE_5_3", "fractal-w3")
+                .contains("grammar (MOTIVE_5 vs CYCLE_5_3)"));
+        assertTrue(IDENTITY.scopeMismatch("h2", "MOTIVE_5", "fractal-w3").contains("section (h1 vs h2)"));
+    }
+
+    @Test
+    void lineagePresentInTheFitPartitionsIsPurgedFromTheScoredPartition() {
+        final List<Row> rows = List.of(labeled(10, "spans", 1, 0, Outcome.SUCCESS),
+                labeled(11, "fit-only", 1, 0, Outcome.FAILURE),
+                row("validation", 150, "spans", 1, 0, Outcome.FAILURE, 160, 170),
+                row("validation", 151, "fresh", 1, 0, Outcome.SUCCESS, 161, 171),
+                row("evaluation", 250, "spans", 1, 0, Outcome.SUCCESS, 260, 270),
+                row("evaluation", 251, "late", 1, 0, Outcome.SUCCESS, 261, 271));
+        final ElliottResearchCalibration.LineageSplit validation = ElliottResearchCalibration.splitLineages(rows,
+                List.of("calibration"), "validation");
+        assertEquals(List.of("fresh"), validation.heldOut().stream().map(Row::candidateKey).toList());
+        assertEquals(List.of("spans"), validation.purged().stream().map(Row::candidateKey).toList());
+        final ElliottResearchCalibration.LineageSplit evaluation = ElliottResearchCalibration.splitLineages(rows,
+                List.of("calibration", "validation"), "evaluation");
+        assertEquals(List.of("late"), evaluation.heldOut().stream().map(Row::candidateKey).toList());
+        assertEquals(List.of("spans"), evaluation.purged().stream().map(Row::candidateKey).toList());
     }
 
     @Test

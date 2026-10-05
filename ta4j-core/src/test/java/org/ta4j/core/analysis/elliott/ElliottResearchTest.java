@@ -672,15 +672,85 @@ class ElliottResearchTest {
     }
 
     private Path runCalibrated(final String name, final String calibration) throws IOException {
+        return runRecipe(name, calibrationRecipe("cal", calibration));
+    }
+
+    private Path runRecipe(final String name, final String recipeJson) throws IOException {
         final Path candles = work.resolve(name + "-candles.json");
         writeCandles(candles, LocalDate.of(2020, 1, 1), 366, date -> true);
         final Path recipe = work.resolve(name + "-recipe.json");
-        Files.writeString(recipe, calibrationRecipe("cal", calibration));
+        Files.writeString(recipe, recipeJson);
         final Path out = work.resolve(name);
         final Result result = launch("run", "explore", "--source", candles.toString(), "--recipe", recipe.toString(),
                 "--out", out.toString());
         assertEquals(0, result.code(), result.err());
         return out;
+    }
+
+    private static String keyOfSection(final Path run, final String partition, final String section)
+            throws IOException {
+        for (final ElliottResearchReport.Row row : ElliottResearchReport.readCsv(run.resolve("comparisons.csv"))) {
+            if (row.partition().equals(partition) && row.section().equals(section)) {
+                return row.key();
+            }
+        }
+        throw new AssertionError("no " + section + " comparison row in partition " + partition);
+    }
+
+    private static String keyOf(final Path run, final String partition, final String section, final String grammar)
+            throws IOException {
+        for (final ElliottResearchReport.Row row : ElliottResearchReport.readCsv(run.resolve("comparisons.csv"))) {
+            if (row.partition().equals(partition) && row.section().equals(section) && row.grammar().equals(grammar)) {
+                return row.key();
+            }
+        }
+        throw new AssertionError("no " + section + " " + grammar + " comparison row in partition " + partition);
+    }
+
+    @Test
+    void inspectShowsCalibrationOnlyForTheScopeTheTablesWereFitted() throws Exception {
+        final String recipe = calibrationRecipe("cal", "{\"horizon\":5,\"minGroups\":1}").replace("\"momentum\"",
+                "\"robustnessDetectors\":[{\"name\":\"fractal-w5\",\"factory\":\"fractal\",\"params\":[5]}],\n"
+                        + " \"momentum\"");
+        final Path run = runRecipe("scope", recipe);
+        final ElliottResearchCalibration.Identity identity = ElliottResearchCalibration
+                .readTables(run.resolve(ElliottResearchCalibration.TABLES_FILE))
+                .get(0)
+                .identity();
+        assertEquals("fractal-w3", identity.detector());
+        assertEquals("fractal(3)", identity.detectorConfig());
+        assertEquals("RSI(14)", identity.momentum());
+        final List<String> summaryLines = Files.readAllLines(run.resolve(ElliottResearchCalibration.SUMMARY_FILE));
+        assertTrue(List.of(summaryLines.get(0).split(",", -1)).contains("purged"), summaryLines.get(0));
+
+        final Result primary = launch("inspect", run.toString(), keyOf(run, "holdout", "h1", "MOTIVE_5"), "--limit",
+                "2");
+        assertEquals(0, primary.code(), primary.err());
+        assertTrue(primary.out().contains("estimated event probability:"), primary.out());
+        assertFalse(primary.out().contains("not applicable to this scope"), primary.out());
+
+        String robustness = null;
+        for (final ElliottResearchReport.Row row : ElliottResearchReport.readCsv(run.resolve("comparisons.csv"))) {
+            if (row.partition().equals("holdout") && row.section().equals("robustness")
+                    && row.detector().equals("fractal-w5")) {
+                robustness = row.key();
+                break;
+            }
+        }
+        assertTrue(robustness != null, "the recipe must produce a robustness-detector row");
+        final Result other = launch("inspect", run.toString(), robustness, "--limit", "2");
+        assertEquals(0, other.code(), other.err());
+        assertTrue(other.out().contains("not applicable to this scope"), other.out());
+        assertTrue(other.out().contains("section (h1 vs robustness)"), other.out());
+        assertTrue(other.out().contains("detector (fractal-w3 vs fractal-w5)"), other.out());
+        assertFalse(other.out().contains("estimated event probability:"), other.out());
+
+        final Result competing = launch("inspect", run.toString(), keyOfSection(run, "holdout", "competing"), "--limit",
+                "2");
+        assertEquals(0, competing.code(), competing.err());
+        assertTrue(competing.out().contains("not applicable to this scope"), competing.out());
+        assertTrue(competing.out().contains("section (h1 vs competing)"), competing.out());
+        assertFalse(competing.out().contains("estimated event probability:"), competing.out());
     }
 
     private static String keyOfPartition(final Path run, final String partition) throws IOException {
@@ -749,10 +819,11 @@ class ElliottResearchTest {
         final List<String> lines = Files.readAllLines(run.resolve(ElliottResearchCalibration.PREDICTIONS_FILE));
         final List<String> header = List.of(lines.get(0).split(",", -1));
         assertTrue(lines.size() > 1, "the recipe must enroll scored alternatives");
-        assertTrue(lines.subList(1, lines.size())
-                .stream()
-                .noneMatch(line -> line.split(",", -1)[header.indexOf("status")]
-                        .equals(ElliottResearchCalibration.STATUS_NO_FEATURE)),
+        assertTrue(
+                lines.subList(1, lines.size())
+                        .stream()
+                        .noneMatch(line -> line.split(",", -1)[header.indexOf("status")]
+                                .equals(ElliottResearchCalibration.STATUS_NO_FEATURE)),
                 "rules evaluated on the enrolled pivots must give every scored alternative a feature");
         for (final String line : lines.subList(1, lines.size())) {
             final String[] cells = line.split(",", -1);

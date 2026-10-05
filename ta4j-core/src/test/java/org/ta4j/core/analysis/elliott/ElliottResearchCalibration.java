@@ -46,15 +46,15 @@ import org.ta4j.core.analysis.elliott.ElliottResearchOutcomes.Label;
  * {@code correction-completed}: the enrolled motive's declared correction
  * completes before invalidation or withdrawal and within {@code h} bars. The
  * only feature is the heuristic evidence score {@code PASS / (PASS + FAIL)}
- * across the declared rules evaluated on the candidate's frozen enrollment pivots; {@code PENDING},
- * {@code UNAVAILABLE}, and {@code NOT_APPLICABLE} rules are coverage states,
- * not failures, and a candidate with no evaluable rule has no feature and no
- * probability. The estimator is a five-bin, smoothed weighted frequency
- * {@code p = (S + 1) / (W + 2)} fitted per available-rule mask, where each
- * eligible alternative of one dataset, partition, and decision index weighs
- * {@code 1 / m}. A bin abstains, with the exact reason and its raw support,
- * unless it holds enough distinct decision groups and at least one success and
- * one failure.
+ * across the declared rules evaluated on the candidate's frozen enrollment
+ * pivots; {@code PENDING}, {@code UNAVAILABLE}, and {@code NOT_APPLICABLE}
+ * rules are coverage states, not failures, and a candidate with no evaluable
+ * rule has no feature and no probability. The estimator is a five-bin, smoothed
+ * weighted frequency {@code p = (S + 1) / (W + 2)} fitted per available-rule
+ * mask, where each eligible alternative of one dataset, partition, and decision
+ * index weighs {@code 1 / m}. A bin abstains, with the exact reason and its raw
+ * support, unless it holds enough distinct decision groups and at least one
+ * success and one failure.
  * </p>
  *
  * <p>
@@ -109,7 +109,7 @@ final class ElliottResearchCalibration {
             "reason", "fitCutoff", "fitFirstIndex", "fitGroups", "fitWeight", "fitSuccessWeight", "fitSuccesses",
             "fitFailures", "outcome", "availableIndex", "windowEnd", "resolutionIndex", "cohort", "weight");
     private static final List<String> SUMMARY_HEADER = List.of("dataset", "stage", "partition", "view", "target",
-            "horizon", "fitPartitions", "fitCutoff", "estimatorStatus", "validationStatus", "candidates",
+            "horizon", "fitPartitions", "fitCutoff", "estimatorStatus", "validationStatus", "candidates", "purged",
             "alreadyResolved", "censored", "incompleteWindow", "eligible", "groups", "weight", "success", "failure",
             "noFeature", "unsupported", "predicted", "coverage", "modelBrier", "baseBrier", "brierVsBase",
             "modelLogLoss", "baseLogLoss", "logLossVsBase");
@@ -242,51 +242,66 @@ final class ElliottResearchCalibration {
     // ------------------------------------------------------------- identity
 
     /**
-     * Everything a table is only valid for: dataset scope, grammar, detector scale,
-     * rule set, structural policy, target, feature, and horizon.
+     * Everything a table is only valid for: dataset scope, grammar, the detector
+     * and its configuration, rule set and momentum lookback behind the feature,
+     * structural policy, target, feature, and horizon. A detector is identified by
+     * its factory and parameters as well as its display name, so two recipes that
+     * share a name but detect swings at different scales never share a table.
      *
      * @param dataset        dataset id
-     * @param detector       primary detector scale
+     * @param detector       primary detector display name
+     * @param detectorConfig primary detector factory and parameters, e.g.
+     *                       {@code fractal(3)}
      * @param grammar        enrolled grammar
      * @param structuralMode structural mode that defines completion
      * @param invalidation   invalidation policy id
      * @param rules          active rule ids
+     * @param momentum       momentum indicator behind the rule evidence, e.g.
+     *                       {@code RSI(14)}
      * @param target         declared event id
      * @param feature        declared feature id
      * @param horizon        horizon in bars
      * @since 0.26.1
      */
-    record Identity(String dataset, String detector, String grammar, String structuralMode, String invalidation,
-            List<String> rules, String target, String feature, int horizon) {
+    record Identity(String dataset, String detector, String detectorConfig, String grammar, String structuralMode,
+            String invalidation, List<String> rules, String momentum, String target, String feature, int horizon) {
+
+        /** Comparison section whose real stream the calibration events come from. */
+        static final String ENROLLMENT_SECTION = "h1";
 
         Identity {
             rules = List.copyOf(rules);
         }
 
         /**
-         * @param dataset  dataset id
-         * @param detector primary detector scale
-         * @param rules    active rule ids
-         * @param outcomes recipe outcome settings
-         * @param settings calibration settings
+         * @param dataset        dataset id
+         * @param detector       primary detector display name
+         * @param detectorConfig primary detector factory and parameters
+         * @param rules          active rule ids
+         * @param momentum       momentum indicator behind the rule evidence
+         * @param outcomes       recipe outcome settings
+         * @param settings       calibration settings
          * @return the declared identity
          */
-        static Identity of(final String dataset, final String detector, final List<String> rules,
-                final ElliottResearchOutcomes.Settings outcomes, final Settings settings) {
-            return new Identity(dataset, detector, GRAMMAR, outcomes.structuralMode(), outcomes.invalidation().id(),
-                    rules, TARGET, FEATURE, settings.horizon());
+        static Identity of(final String dataset, final String detector, final String detectorConfig,
+                final List<String> rules, final String momentum, final ElliottResearchOutcomes.Settings outcomes,
+                final Settings settings) {
+            return new Identity(dataset, detector, detectorConfig, GRAMMAR, outcomes.structuralMode(),
+                    outcomes.invalidation().id(), rules, momentum, TARGET, FEATURE, settings.horizon());
         }
 
         JsonObject toJson() {
             final JsonObject json = new JsonObject();
             json.addProperty("dataset", dataset);
             json.addProperty("detector", detector);
+            json.addProperty("detectorConfig", detectorConfig);
             json.addProperty("grammar", grammar);
             json.addProperty("structuralMode", structuralMode);
             json.addProperty("invalidation", invalidation);
             final JsonArray array = new JsonArray();
             rules.forEach(array::add);
             json.add("rules", array);
+            json.addProperty("momentum", momentum);
             json.addProperty("target", target);
             json.addProperty("feature", feature);
             json.addProperty("horizon", horizon);
@@ -299,8 +314,9 @@ final class ElliottResearchCalibration {
                 rules.add(element.getAsString());
             }
             return new Identity(json.get("dataset").getAsString(), json.get("detector").getAsString(),
-                    json.get("grammar").getAsString(), json.get("structuralMode").getAsString(),
-                    json.get("invalidation").getAsString(), rules, json.get("target").getAsString(),
+                    json.get("detectorConfig").getAsString(), json.get("grammar").getAsString(),
+                    json.get("structuralMode").getAsString(), json.get("invalidation").getAsString(), rules,
+                    json.get("momentum").getAsString(), json.get("target").getAsString(),
                     json.get("feature").getAsString(), json.get("horizon").getAsInt());
         }
 
@@ -309,14 +325,35 @@ final class ElliottResearchCalibration {
             final List<String> fields = new ArrayList<>();
             check(fields, "dataset", dataset, other.dataset);
             check(fields, "detector", detector, other.detector);
+            check(fields, "detectorConfig", detectorConfig, other.detectorConfig);
             check(fields, "grammar", grammar, other.grammar);
             check(fields, "structuralMode", structuralMode, other.structuralMode);
             check(fields, "invalidation", invalidation, other.invalidation);
             check(fields, "rules", rules, other.rules);
+            check(fields, "momentum", momentum, other.momentum);
             check(fields, "target", target, other.target);
             check(fields, "feature", feature, other.feature);
             check(fields, "horizon", horizon, other.horizon);
             return fields;
+        }
+
+        /**
+         * Checks whether this table's estimates describe an inspected comparison scope.
+         * Calibration events are the primary detector's real {@code h1} stream of the
+         * declared grammar, so a robustness detector, a competing grammar, or the
+         * {@code h2} hypothesis is another scope this table does not cover.
+         *
+         * @param section  comparison section of the inspected row
+         * @param grammar  grammar of the inspected row
+         * @param detector detector of the inspected row
+         * @return the reason the table does not apply, or {@code null} when it does
+         */
+        String scopeMismatch(final String section, final String grammar, final String detector) {
+            final List<String> fields = new ArrayList<>();
+            check(fields, "section", ENROLLMENT_SECTION, section);
+            check(fields, "grammar", this.grammar, grammar);
+            check(fields, "detector", this.detector, detector);
+            return fields.isEmpty() ? null : String.join("; ", fields);
         }
 
         private static void check(final List<String> fields, final String name, final Object left, final Object right) {
@@ -894,10 +931,10 @@ final class ElliottResearchCalibration {
 
     /** One summary line: coverage, support, and loss of one stage and view. */
     record Metrics(String dataset, String stage, String partition, String view, Settings settings,
-            Calibrator calibrator, String validationStatus, int candidates, int alreadyResolved, int censored,
-            int incompleteWindow, int eligible, int groups, double weight, int success, int failure, int noFeature,
-            int unsupported, int predicted, double coverage, double modelBrier, double baseBrier, double modelLogLoss,
-            double baseLogLoss) {
+            Calibrator calibrator, String validationStatus, int candidates, int purged, int alreadyResolved,
+            int censored, int incompleteWindow, int eligible, int groups, double weight, int success, int failure,
+            int noFeature, int unsupported, int predicted, double coverage, double modelBrier, double baseBrier,
+            double modelLogLoss, double baseLogLoss) {
 
         /**
          * @return {@code better}, {@code worse}, {@code equal}, or empty without a
@@ -915,13 +952,14 @@ final class ElliottResearchCalibration {
             return List.of(dataset, stage, partition, view, TARGET, Integer.toString(settings.horizon()),
                     String.join("+", calibrator.fitPartitions()), Integer.toString(calibrator.cutoffIndex()),
                     calibrator.estimatorStatus(), validationStatus, Integer.toString(candidates),
-                    Integer.toString(alreadyResolved), Integer.toString(censored), Integer.toString(incompleteWindow),
-                    Integer.toString(eligible), Integer.toString(groups), ElliottResearchReport.plain(weight),
-                    Integer.toString(success), Integer.toString(failure), Integer.toString(noFeature),
-                    Integer.toString(unsupported), Integer.toString(predicted), ElliottResearchReport.plain(coverage),
-                    ElliottResearchReport.plain(modelBrier), ElliottResearchReport.plain(baseBrier),
-                    versus(modelBrier, baseBrier), ElliottResearchReport.plain(modelLogLoss),
-                    ElliottResearchReport.plain(baseLogLoss), versus(modelLogLoss, baseLogLoss));
+                    Integer.toString(purged), Integer.toString(alreadyResolved), Integer.toString(censored),
+                    Integer.toString(incompleteWindow), Integer.toString(eligible), Integer.toString(groups),
+                    ElliottResearchReport.plain(weight), Integer.toString(success), Integer.toString(failure),
+                    Integer.toString(noFeature), Integer.toString(unsupported), Integer.toString(predicted),
+                    ElliottResearchReport.plain(coverage), ElliottResearchReport.plain(modelBrier),
+                    ElliottResearchReport.plain(baseBrier), versus(modelBrier, baseBrier),
+                    ElliottResearchReport.plain(modelLogLoss), ElliottResearchReport.plain(baseLogLoss),
+                    versus(modelLogLoss, baseLogLoss));
         }
     }
 
@@ -989,28 +1027,77 @@ final class ElliottResearchCalibration {
         final String[] partitions = { settings.validation(), settings.evaluation() };
         final List<List<String>> fits = List.of(validationFit, evaluationFit);
         for (int at = 0; at < stages.length; at++) {
-            final int cutoff = fits.get(at)
-                    .stream()
+            final List<String> fit = fits.get(at);
+            final int cutoff = fit.stream()
                     .mapToInt(partition -> lastObserved.getOrDefault(partition, -1))
                     .max()
                     .orElse(-1);
-            final Calibrator table = Calibrator.fit(stages[at], identity, provenance, settings.minGroups(), rows,
-                    fits.get(at), cutoff);
+            final Calibrator table = Calibrator.fit(stages[at], identity, provenance, settings.minGroups(), rows, fit,
+                    cutoff);
             tables.add(table);
             final String partition = partitions[at];
+            final LineageSplit split = splitLineages(rows, fit, partition);
+            final List<Row> purged = split.purged();
             final List<Prediction> stage = new ArrayList<>();
-            for (final Weighted weighted : weigh(
-                    rows.stream().filter(row -> row.partition().equals(partition)).toList())) {
+            for (final Weighted weighted : weigh(split.heldOut())) {
                 stage.add(new Prediction(stages[at], weighted.row(), table.estimate(identity, weighted.row()),
                         weighted.weight(), table));
             }
             predictions.addAll(stage);
             for (final String view : List.of(VIEW_GROUPED, VIEW_COHORT)) {
-                metrics.add(metrics(result.dataset(), stages[at], partition, view, settings, table, stage));
+                metrics.add(metrics(result.dataset(), stages[at], partition, view, settings, table, stage, purged));
                 reliability.addAll(reliability(result.dataset(), stages[at], view, stage));
             }
         }
         return new Computation(result.dataset(), settings, tables, predictions, metrics, reliability);
+    }
+
+    /**
+     * Rows of a scored partition that survive the lineage purge, and the rows
+     * purged.
+     *
+     * @param heldOut rows whose candidate lineage never appears in a fit partition
+     * @param purged  rows whose lineage appears in a fit partition
+     * @since 0.26.1
+     */
+    record LineageSplit(List<Row> heldOut, List<Row> purged) {
+
+        LineageSplit {
+            heldOut = List.copyOf(heldOut);
+            purged = List.copyOf(purged);
+        }
+    }
+
+    /**
+     * Splits the rows of {@code partition} by candidate lineage. CF-587 enrolls
+     * each partition as its own stream, so one candidate (the same grammar,
+     * direction, and placement, whatever its version) visible across a partition
+     * boundary can contribute a fit-window outcome to the fitted table and a later
+     * outcome to the scored stage. A lineage present in any fit partition is
+     * therefore purged from the scored partition rather than scored against a table
+     * it helped fit.
+     *
+     * @param rows      all candidate rows of the dataset
+     * @param fit       partitions the table is fitted on
+     * @param partition partition the table is scored on
+     * @return the surviving and the purged rows of {@code partition}
+     * @since 0.26.1
+     */
+    static LineageSplit splitLineages(final List<Row> rows, final List<String> fit, final String partition) {
+        final Set<String> fitLineages = new HashSet<>();
+        for (final Row row : rows) {
+            if (fit.contains(row.partition())) {
+                fitLineages.add(row.candidateKey());
+            }
+        }
+        final List<Row> heldOut = new ArrayList<>();
+        final List<Row> purged = new ArrayList<>();
+        for (final Row row : rows) {
+            if (row.partition().equals(partition)) {
+                (fitLineages.contains(row.candidateKey()) ? purged : heldOut).add(row);
+            }
+        }
+        return new LineageSplit(heldOut, purged);
     }
 
     private static double weightIn(final String view, final Prediction prediction) {
@@ -1023,7 +1110,7 @@ final class ElliottResearchCalibration {
     }
 
     private static Metrics metrics(final String dataset, final String stage, final String partition, final String view,
-            final Settings settings, final Calibrator table, final List<Prediction> all) {
+            final Settings settings, final Calibrator table, final List<Prediction> all, final List<Row> purged) {
         final List<Prediction> predictions = inView(view, all);
         int alreadyResolved = 0;
         int censored = 0;
@@ -1075,7 +1162,8 @@ final class ElliottResearchCalibration {
         }
         final String validation = predicted > 0 ? "evaluated with diagnostics" : "not evaluated";
         final double coverage = eligible == 0 ? Double.NaN : (double) predicted / eligible;
-        return new Metrics(dataset, stage, partition, view, settings, table, validation, predictions.size(),
+        final int purgedRows = (int) purged.stream().filter(row -> VIEW_GROUPED.equals(view) || row.cohort()).count();
+        return new Metrics(dataset, stage, partition, view, settings, table, validation, predictions.size(), purgedRows,
                 alreadyResolved, censored, incomplete, eligible, groups.size(), weight, success, failure, noFeature,
                 unsupported, predicted, coverage, scored > 0 ? modelBrier / scored : Double.NaN,
                 scored > 0 ? baseBrier / scored : Double.NaN, scored > 0 ? modelLoss / scored : Double.NaN,
@@ -1175,6 +1263,30 @@ final class ElliottResearchCalibration {
     }
 
     /**
+     * Checks an inspected comparison scope against the identity of the dataset's
+     * calibration tables.
+     *
+     * @param tables   {@code calibration-tables.json}
+     * @param dataset  dataset id of the inspected row
+     * @param section  comparison section of the inspected row
+     * @param grammar  grammar of the inspected row
+     * @param detector detector of the inspected row
+     * @return the reason the calibration does not describe that scope, or
+     *         {@code null} when it does
+     * @throws IOException when the tables cannot be read
+     * @since 0.26.1
+     */
+    static String scopeMismatch(final Path tables, final String dataset, final String section, final String grammar,
+            final String detector) throws IOException {
+        for (final Calibrator table : readTables(tables)) {
+            if (table.identity().dataset().equals(dataset)) {
+                return table.identity().scopeMismatch(section, grammar, detector);
+            }
+        }
+        return "no calibration table for dataset " + dataset;
+    }
+
+    /**
      * Writes {@code calibration-predictions.csv}: one line per estimate with its
      * trace links.
      */
@@ -1258,15 +1370,15 @@ final class ElliottResearchCalibration {
         if (summary.size() <= 1) {
             return text.append("No dataset produced calibration evidence.\n").toString();
         }
-        text.append("| dataset | stage | partition | view | estimator | validation | eligible | groups | predicted"
-                + " | coverage | model Brier | base Brier | Brier vs base | model log loss | base log loss"
-                + " | log loss vs base |\n");
-        text.append("|---|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---|---:|---:|---|\n");
+        text.append("| dataset | stage | partition | view | estimator | validation | purged | eligible | groups"
+                + " | predicted | coverage | model Brier | base Brier | Brier vs base | model log loss"
+                + " | base log loss | log loss vs base |\n");
+        text.append("|---|---|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---|\n");
         for (final List<String> cells : summary.subList(1, summary.size())) {
             text.append("| ");
             for (final String column : List.of("dataset", "stage", "partition", "view", "estimatorStatus",
-                    "validationStatus", "eligible", "groups", "predicted", "coverage", "modelBrier", "baseBrier",
-                    "brierVsBase", "modelLogLoss", "baseLogLoss", "logLossVsBase")) {
+                    "validationStatus", "purged", "eligible", "groups", "predicted", "coverage", "modelBrier",
+                    "baseBrier", "brierVsBase", "modelLogLoss", "baseLogLoss", "logLossVsBase")) {
                 final String cell = cells.get(SUMMARY_HEADER.indexOf(column));
                 text.append(cell.isEmpty() ? "n/a" : rounded(cell)).append(" | ");
             }
