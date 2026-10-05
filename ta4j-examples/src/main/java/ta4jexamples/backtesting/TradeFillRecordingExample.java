@@ -653,13 +653,13 @@ public class TradeFillRecordingExample {
                 .build();
     }
 
-    private static BarSeries markSeries(String name, double... closes) {
+    static BarSeries markSeries(String name, double... closes) {
         BarSeries series = new BaseBarSeriesBuilder().withName(name).withNumFactory(NUM_FACTORY).build();
         for (int i = 0; i < closes.length; i++) {
             double closePrice = closes[i];
             series.barBuilder()
                     .timePeriod(Duration.ofHours(1))
-                    .endTime(FUTURES_START.plusSeconds(i + 1))
+                    .endTime(FUTURES_START.plus(Duration.ofHours(i + 1L)))
                     .openPrice(closePrice)
                     .highPrice(closePrice)
                     .lowPrice(closePrice)

@@ -1460,4 +1460,68 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
             assertNumEquals(direct.getValue(3), incremental.getValue(3), 1e-10);
         }
     }
+
+    @Test
+    public void futuresMaterializationRetriesAfterAMarkReadClearsTheWindow() {
+        BarSeries source = FuturesAnalysisTestSupport.series(numFactory, 100, 110);
+        ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source, lock);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+        record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 100, 100, List.of()));
+        AtomicBoolean cleared = new AtomicBoolean();
+        Indicator<Num> mark = FuturesAnalysisTestSupport.markWithReadAction(series, index -> {
+            assertEquals(0, lock.getReadHoldCount());
+            if (cleared.compareAndSet(false, true))
+                series.clear();
+        });
+        Returns curve = new Returns(series, record, mark, 2, ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        assertTrue(cleared.get());
+        assertEquals(0, curve.getSize());
+    }
+
+    @Test
+    public void incrementalFuturesMarkFailureReportsChangedWindowWithoutPublishing() {
+        BarSeries source = FuturesAnalysisTestSupport.series(numFactory, 100, 110);
+        ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source, lock);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+        AtomicBoolean cleared = new AtomicBoolean();
+        Indicator<Num> mark = FuturesAnalysisTestSupport.markWithReadAction(series, index -> {
+            assertEquals(0, lock.getReadHoldCount());
+            if (cleared.compareAndSet(false, true))
+                series.clear();
+        });
+        Returns curve = new Returns(series, record, mark, 2, ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        List<Num> before = curve.stream().toList();
+        Position position = FuturesAnalysisTestSupport.openPosition(contract, 0, 100, 100);
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> curve.calculatePosition(position, 1));
+        assertTrue(failure.getMessage().contains("changed inside this curve's window"));
+        assertTrue(cleared.get());
+        assertEquals(before, curve.stream().toList());
+    }
+
+    @Test
+    public void futuresMarkFailuresKeepTheirIdentityWhenTheWindowIsUnchanged() {
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 110);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+        RuntimeException original = new IllegalArgumentException("mark source failed");
+        Indicator<Num> mark = FuturesAnalysisTestSupport.markWithReadAction(series, index -> {
+            throw original;
+        });
+        Returns curve = new Returns(series, record, mark, 2, ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        List<Num> before = curve.stream().toList();
+        Position position = FuturesAnalysisTestSupport.openPosition(contract, 0, 100, 100);
+        assertSame(original, assertThrows(RuntimeException.class, () -> curve.calculatePosition(position, 1)));
+        assertEquals(before, curve.stream().toList());
+        record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 100, 100, List.of()));
+        assertSame(original, assertThrows(RuntimeException.class, () -> new Returns(series, record, mark, 2,
+                ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET)));
+    }
 }

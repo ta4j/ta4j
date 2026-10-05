@@ -6,18 +6,21 @@ package org.ta4j.core.analysis;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.function.IntConsumer;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.FuturesCashFlow;
 import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradeFee;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
@@ -62,6 +65,16 @@ final class FuturesAnalysisTestSupport {
 
     static BarSeries series(NumFactory numFactory, double... closes) {
         return new MockBarSeriesBuilder().withNumFactory(numFactory).withData(closes).build();
+    }
+
+    static Indicator<Num> markWithReadAction(BarSeries series, IntConsumer beforeRead) {
+        return new ConstantIndicator<Num>(series, series.numFactory().zero()) {
+            @Override
+            public Num getValue(int index) {
+                beforeRead.accept(index);
+                return series.getBar(index).getClosePrice();
+            }
+        };
     }
 
     static BarSeries markToMarketSeries(NumFactory numFactory) {

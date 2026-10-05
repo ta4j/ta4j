@@ -620,6 +620,7 @@ public class BaseTradingRecord implements TradingRecord {
             projected.adoptPosition(projectedPosition, false);
             totalFees = accumulateRecordedFees(totalFees, projectedPosition);
         }
+        projected.validateProjectedExposure();
         projected.totalFees = totalFees;
         projected.aggregateProjectedCashFlows(positions, end);
         projected.readOnly = true;
@@ -1448,16 +1449,25 @@ public class BaseTradingRecord implements TradingRecord {
 
     private void validateImportedPositionChronology(Position importedPosition, boolean validateTimeChronology) {
         List<ExposureEvent> events = new ArrayList<>();
-        if (!validateTimeChronology) {
-            for (Position position : closedPositionsSnapshot()) {
-                addExposureEvents(events, position);
-            }
-            for (Position position : openPositionsSnapshot()) {
-                addExposureEvents(events, position);
-            }
-        }
         addExposureEvents(events, importedPosition);
+        validateImportedExposure(events, validateTimeChronology);
+    }
 
+    /**
+     * Validates the combined projection once, after each position was validated.
+     */
+    private void validateProjectedExposure() {
+        List<ExposureEvent> events = new ArrayList<>();
+        for (Position position : closedPositionsSnapshot()) {
+            addExposureEvents(events, position);
+        }
+        for (Position position : openPositionsSnapshot()) {
+            addExposureEvents(events, position);
+        }
+        validateImportedExposure(events, false);
+    }
+
+    private static void validateImportedExposure(List<ExposureEvent> events, boolean validateTimeChronology) {
         events.sort(Comparator.comparingInt(ExposureEvent::index)
                 .thenComparing(ExposureEvent::time, Comparator.nullsFirst(Comparator.naturalOrder()))
                 .thenComparing(event -> event.opens() ? 0 : 1));

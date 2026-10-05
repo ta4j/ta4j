@@ -189,7 +189,14 @@ final class AnalysisPositionSupport {
             if (FuturesPerformanceSupport.isFutures(record)) {
                 if (!series.withReadLock(() -> window.isUnchangedIn(series)))
                     continue;
-                T candidate = builder.build(window, positions, holdingCosts);
+                T candidate;
+                try {
+                    candidate = builder.build(window, positions, holdingCosts);
+                } catch (RuntimeException failure) {
+                    if (series.withReadLock(() -> window.isUnchangedIn(series)))
+                        throw failure;
+                    continue;
+                }
                 if (series.withReadLock(() -> window.isUnchangedIn(series)))
                     return candidate;
                 continue;
@@ -264,7 +271,13 @@ final class AnalysisPositionSupport {
                 throw changedWindow(series);
             }
             OffsetNumBuffer staged = values.copy();
-            update.accept(staged);
+            try {
+                update.accept(staged);
+            } catch (RuntimeException failure) {
+                if (series.withReadLock(() -> priced.isUnchangedIn(series, window)))
+                    throw failure;
+                throw changedWindow(series);
+            }
             boolean published = series.withReadLock(() -> {
                 if (!priced.isUnchangedIn(series, window))
                     return false;
