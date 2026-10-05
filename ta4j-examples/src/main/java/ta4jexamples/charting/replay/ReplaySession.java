@@ -4,13 +4,13 @@
 package ta4jexamples.charting.replay;
 
 import java.time.Instant;
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
@@ -49,6 +49,7 @@ final class ReplaySession {
     private final ComparisonRow row;
     private final Dataset dataset;
     private final List<PriceBar> bars;
+    private final int firstBar;
     private final ReplayTraceIndex trace;
     private final String traceFile;
     private final Family family;
@@ -69,15 +70,17 @@ final class ReplaySession {
     private String selected = "";
 
     private ReplaySession(final ReplayArtifact artifact, final ComparisonRow row, final Dataset dataset,
-            final List<PriceBar> bars, final ReplayTraceIndex trace, final String traceFile, final List<Entry> entries,
-            final int window, final int overlayCap, final String ruleEvidenceHint) {
+            final List<PriceBar> bars, final int firstBar, final ReplayTraceIndex trace, final String traceFile,
+            final Family family, final List<Entry> entries, final int window, final int overlayCap,
+            final String ruleEvidenceHint) {
         this.artifact = artifact;
         this.row = row;
         this.dataset = dataset;
         this.bars = bars;
+        this.firstBar = firstBar;
         this.trace = trace;
         this.traceFile = traceFile;
-        this.family = row.family();
+        this.family = family;
         this.entries = entries;
         this.window = window;
         this.overlayCap = overlayCap;
@@ -108,9 +111,13 @@ final class ReplaySession {
         final ComparisonRow row = artifact.comparison(key);
         final Dataset dataset = artifact.dataset(row.dataset());
         final String traceFile = artifact.selectTrace(dataset, traceMode);
-        final Family family = row.family();
+        final boolean nullMember = ReplayArtifact.TRACE_MODE_NULL_MEMBER.equals(traceMode);
+        final Family family = nullMember ? nullFamily(row) : row.family();
         final ReplayTraceIndex trace = ReplayTraceIndex.scan(artifact.resolveInside(traceFile), traceFile,
                 family::equals);
+        if (nullMember) {
+            requireBlockLength(row, trace, traceFile);
+        }
         final List<Entry> entries = trace.entries(family);
         if (entries.isEmpty()) {
             throw new ReplayArtifactException("trace " + traceFile + " holds no as-of records for key '" + key + "' ("
@@ -118,12 +125,58 @@ final class ReplaySession {
                     + (ReplayArtifact.TRACE_MODE_REAL.equals(traceMode) ? ReplayArtifact.TRACE_MODE_NULL_MEMBER
                             : ReplayArtifact.TRACE_MODE_REAL));
         }
-        final List<PriceBar> bars = artifact.bars(dataset);
+        final List<PriceBar> bars = nullMember ? recordedBars(entries, traceFile) : artifact.bars(dataset);
+        final int firstBar = nullMember ? entries.getFirst().asOfIndex() : 0;
         final String hint = hint(artifact, row);
-        final ReplaySession session = new ReplaySession(artifact, row, dataset, bars, trace, traceFile, entries,
-                window, overlayCap, hint);
+        final ReplaySession session = new ReplaySession(artifact, row, dataset, bars, firstBar, trace, traceFile,
+                family, entries, window, overlayCap, hint);
         session.position = session.defaultPosition();
         return session;
+    }
+
+    /**
+     * Maps a comparison row to the stream the producer records for its null
+     * ensemble member: section {@code null}, with the grammar name as mode except
+     * for H2 ablation modes, which keep their own name. Competing and robustness
+     * rows have no null-member counterpart.
+     */
+    private static Family nullFamily(final ComparisonRow row) {
+        if (!"h1".equals(row.section()) && !"h2".equals(row.section())) {
+            throw new ReplayArtifactException("key '" + row.key() + "' is a '" + row.section()
+                    + "' row; the selected null member records only h1 and h2 rows. Replay it with --trace real");
+        }
+        if (row.nullBlockLength() < 1) {
+            throw new ReplayArtifactException("key '" + row.key()
+                    + "' carries no null block length, so no null-member stream corresponds to it; replay it with --trace real");
+        }
+        final String mode = "h2".equals(row.section()) ? row.mode() : row.grammar();
+        return new Family("null", mode, row.grammar(), row.detector(), row.partition());
+    }
+
+    private static void requireBlockLength(final ComparisonRow row, final ReplayTraceIndex trace,
+            final String traceFile) {
+        final int recorded = trace.header().get("nullBlockLength").getAsInt();
+        if (recorded != row.nullBlockLength()) {
+            throw new ReplayArtifactException("key '" + row.key() + "' was measured with null block length "
+                    + row.nullBlockLength() + " but " + traceFile + " records block length " + recorded
+                    + "; regenerate the null trace with --trace selected-null-member --block " + row.nullBlockLength());
+        }
+    }
+
+    /** The member's own prices, exactly as the producer recorded them. */
+    private static List<PriceBar> recordedBars(final List<Entry> entries, final String traceFile) {
+        final List<PriceBar> recorded = new ArrayList<>(entries.size());
+        final int first = entries.getFirst().asOfIndex();
+        for (final Entry entry : entries) {
+            final PriceBar bar = entry.bar();
+            if (bar == null || entry.asOfIndex() != first + recorded.size()) {
+                throw new ReplayArtifactException("null-member trace " + traceFile + " does not record a price bar for "
+                        + "every consecutive as-of (problem at bar " + entry.asOfIndex()
+                        + "); it predates bar recording or is incomplete. Regenerate it with --trace selected-null-member");
+            }
+            recorded.add(bar);
+        }
+        return new RecordedBars(first, List.copyOf(recorded));
     }
 
     private static String hint(final ReplayArtifact artifact, final ComparisonRow row) {
@@ -221,7 +274,7 @@ final class ReplaySession {
         final boolean transition = position == 0
                 || !entries.get(position).signature().equals(entries.get(position - 1).signature());
         final ReplayFrame frame = ReplayFrame.project(row.key(), family, row.activeRules(), record, bars, transition,
-                selected, window, overlayCap, ruleEvidenceHint);
+                selected, window, overlayCap, ruleEvidenceHint, firstBar);
         cache.put(cacheKey, frame);
         return frame;
     }
@@ -259,7 +312,7 @@ final class ReplaySession {
      */
     ReplayFrame seek(final Instant instant) {
         int found = -1;
-        int low = 0;
+        int low = firstBar;
         int high = bars.size() - 1;
         while (low <= high) {
             final int mid = (low + high) >>> 1;
@@ -272,7 +325,7 @@ final class ReplaySession {
         }
         if (found < 0) {
             throw new ReplayArtifactException("instant " + instant + " precedes the first retained bar ending "
-                    + bars.getFirst().end());
+                    + bars.get(firstBar).end());
         }
         return seek(found);
     }
@@ -364,37 +417,97 @@ final class ReplaySession {
      * last. A revised candidate keeps its key but changes its version, so earlier
      * versions stay readable without any recomputation.
      *
+     * <p>
+     * Only the most recent {@link #TIMELINE_LOOKBACK} records are inspected, and
+     * the record just before that window seeds the comparison, so the window start
+     * never reports a change that did not happen. {@link #timelineStartAsOf()}
+     * tells whether and where earlier history was left out.
+     *
      * @param candidateKey the candidate key
-     * @return changes of presence/version, oldest first, limited to the most recent
-     *         {@link #TIMELINE_LOOKBACK} records
+     * @return changes of presence/version, oldest first
      */
     List<TimelineEntry> candidateTimeline(final String candidateKey) {
+        return candidateTimeline(candidateKey, TIMELINE_LOOKBACK);
+    }
+
+    List<TimelineEntry> candidateTimeline(final String candidateKey, final int lookback) {
         final List<TimelineEntry> timeline = new ArrayList<>();
-        final int from = Math.max(0, position - TIMELINE_LOOKBACK + 1);
-        String lastVersion = null;
+        final int from = timelineFrom(lookback);
+        String lastVersion = from > 0 ? versionAt(entries.get(from - 1), candidateKey) : null;
         for (int i = from; i <= position; i++) {
             final Entry entry = entries.get(i);
-            String version = null;
-            if (entry.candidateCount() > 0) {
-                final JsonElement candidates = trace.read(entry).get("candidates");
-                if (candidates != null && candidates.isJsonArray()) {
-                    final JsonArray array = candidates.getAsJsonArray();
-                    for (final JsonElement element : array) {
-                        final JsonObject candidate = element.getAsJsonObject();
-                        if (candidateKey.equals(candidate.get("candidateKey").getAsString())) {
-                            version = candidate.get("version").getAsString();
-                            break;
-                        }
-                    }
-                }
-            }
+            final String version = versionAt(entry, candidateKey);
             if (!Objects.equals(version, lastVersion)) {
-                if (version != null || !timeline.isEmpty()) {
+                if (version != null || lastVersion != null) {
                     timeline.add(new TimelineEntry(entry.asOfIndex(), version == null ? "" : version, version != null));
                 }
                 lastVersion = version;
             }
         }
         return List.copyOf(timeline);
+    }
+
+    /**
+     * @return the as-of index of the oldest record {@link #candidateTimeline}
+     *         inspects, or {@code -1} when it covers the whole stream up to the
+     *         cursor
+     */
+    int timelineStartAsOf() {
+        return timelineStartAsOf(TIMELINE_LOOKBACK);
+    }
+
+    int timelineStartAsOf(final int lookback) {
+        final int from = timelineFrom(lookback);
+        return from == 0 ? -1 : entries.get(from).asOfIndex();
+    }
+
+    private int timelineFrom(final int lookback) {
+        return Math.max(0, position - lookback + 1);
+    }
+
+    private String versionAt(final Entry entry, final String candidateKey) {
+        if (entry.candidateCount() == 0) {
+            return null;
+        }
+        final JsonElement candidates = trace.read(entry).get("candidates");
+        if (candidates != null && candidates.isJsonArray()) {
+            for (final JsonElement element : candidates.getAsJsonArray()) {
+                final JsonObject candidate = element.getAsJsonObject();
+                if (candidateKey.equals(candidate.get("candidateKey").getAsString())) {
+                    return candidate.get("version").getAsString();
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Bars of a null ensemble member. Members are regenerated resampled tapes whose
+     * prices exist only in the trace, so this list holds just the bars the trace
+     * recorded, addressed by their bar index; indices before {@code firstBar} are
+     * not retained.
+     */
+    private static final class RecordedBars extends AbstractList<PriceBar> {
+        private final int firstBar;
+        private final List<PriceBar> recorded;
+
+        RecordedBars(final int firstBar, final List<PriceBar> recorded) {
+            this.firstBar = firstBar;
+            this.recorded = recorded;
+        }
+
+        @Override
+        public PriceBar get(final int index) {
+            if (index < firstBar || index >= size()) {
+                throw new IndexOutOfBoundsException(
+                        "bar " + index + " is outside the recorded null-member bars " + firstBar + ".." + (size() - 1));
+            }
+            return recorded.get(index - firstBar);
+        }
+
+        @Override
+        public int size() {
+            return firstBar + recorded.size();
+        }
     }
 }

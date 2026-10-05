@@ -66,7 +66,7 @@ final class ReplayArtifact {
 
     /** One dataset entry of {@code run.json}. */
     record Dataset(String id, String asset, String coverageStatus, String coverageMessage, List<String> traces,
-            String barsPath, String barsSha256, int barsRows) {
+            String barsPath, String barsSha256, int barsRows, String sourceSha256) {
     }
 
     /** One retained source bar. */
@@ -136,10 +136,14 @@ final class ReplayArtifact {
         final JsonObject bars = object.has("priceBars") && object.get("priceBars").isJsonObject()
                 ? object.getAsJsonObject("priceBars")
                 : null;
+        final JsonObject source = object.has("source") && object.get("source").isJsonObject()
+                ? object.getAsJsonObject("source")
+                : new JsonObject();
         return new Dataset(text(object, "id"), text(object, "asset"), text(coverage, "status"),
                 text(coverage, "message"), List.copyOf(traces), bars == null ? null : text(bars, "path"),
                 bars == null ? null : text(bars, "sha256"),
-                bars == null || !bars.has("rows") ? -1 : bars.get("rows").getAsInt());
+                bars == null || !bars.has("rows") ? -1 : bars.get("rows").getAsInt(),
+                source.has("sha256") && !source.get("sha256").isJsonNull() ? text(source, "sha256") : null);
     }
 
     Path directory() {
@@ -242,15 +246,53 @@ final class ReplayArtifact {
             if (!mode.equals(text(header, "traceMode"))) {
                 continue;
             }
-            if (!dataset.id().equals(text(header, "dataset")) || !fingerprint().equals(text(header, "fingerprint"))) {
+            final String mismatch = headerMismatch(header, dataset, mode);
+            if (mismatch != null) {
                 throw new ReplayArtifactException("trace " + relative
-                        + " does not belong to this run (dataset/fingerprint differ from run.json). " + REGENERATE);
+                        + " does not belong to this run (header " + mismatch + " differs from run.json). " + REGENERATE);
             }
             return relative;
         }
         throw new ReplayArtifactException("run in " + directory + " has no '" + mode + "' trace for dataset '"
                 + dataset.id() + "' (listed: " + dataset.traces() + "). Rerun with --trace " + mode + ". "
                 + REGENERATE);
+    }
+
+    /**
+     * Mirrors the research inspector's expected trace header: dataset, revision,
+     * configuration fingerprint, source digest and null coordinates must all match
+     * the run, so a trace copied from another run with an equal recipe is refused.
+     *
+     * @return the first mismatching header field, or null
+     */
+    private String headerMismatch(final JsonObject header, final Dataset dataset, final String mode) {
+        if (!dataset.id().equals(text(header, "dataset"))) {
+            return "dataset";
+        }
+        if (!revision().equals(text(header, "revision"))) {
+            return "revision";
+        }
+        if (!fingerprint().equals(text(header, "fingerprint"))) {
+            return "fingerprint";
+        }
+        final JsonElement recordedSource = header.get("sourceSha256");
+        final String source = recordedSource == null || recordedSource.isJsonNull() ? null
+                : recordedSource.getAsString();
+        if (!Objects.equals(dataset.sourceSha256(), source)) {
+            return "sourceSha256";
+        }
+        final int block = integer(header, "nullBlockLength");
+        final int member = integer(header, "nullMemberIndex");
+        if (TRACE_MODE_REAL.equals(mode) ? block != -1 || member != -1 : block < 1 || member < 0) {
+            return "nullBlockLength/nullMemberIndex";
+        }
+        return null;
+    }
+
+    private static int integer(final JsonObject object, final String name) {
+        final JsonElement value = object.get(name);
+        return value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isNumber() ? value.getAsInt()
+                : Integer.MIN_VALUE;
     }
 
     Path resolveInside(final String relative) {

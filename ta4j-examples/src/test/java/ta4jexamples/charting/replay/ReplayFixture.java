@@ -41,6 +41,8 @@ final class ReplayFixture {
     static final Instant START = Instant.parse("2020-01-01T00:00:00Z");
 
     private static final int[][] PIVOTS = { { 5, 0, 8 }, { 12, 1, 15 }, { 20, 0, 23 }, { 30, 1, 33 }, { 40, 0, 43 } };
+    /** Price offset of recorded null-member bars versus the real bars. */
+    static final int NULL_BAR_OFFSET = 1000;
     private static final String HEADER = "key,dataset,asset,section,mode,grammar,activeRules,detector,policy,partition,metric,nullBlockLength,observed";
 
     private ReplayFixture() {
@@ -60,6 +62,16 @@ final class ReplayFixture {
         boolean omitBarsFile;
         /** Writes the trace without a trace entry in the dataset. */
         boolean omitTrace;
+        /** Source digest recorded in the run's dataset, or null for none. */
+        String datasetSource;
+        /** Source digest recorded in the trace headers, or null for none. */
+        String traceSource;
+        /** Also writes a selected-null-member trace with recorded member bars. */
+        boolean nullTrace;
+        /** Omits the bar record from the null trace. */
+        boolean nullTraceWithoutBars;
+        /** Block length written in the null trace header and records. */
+        int nullBlockLength = 20;
         String runSchema = "elliott-research-run/1";
         String traceSchema = "elliott-research-trace/1";
         String status = "complete";
@@ -110,7 +122,15 @@ final class ReplayFixture {
             if (!options.omitTrace) {
                 traces.add("traces/d1-real.jsonl");
             }
+            if (options.nullTrace) {
+                traces.add("traces/d1-null.jsonl");
+            }
             dataset.add("traces", traces);
+            if (options.datasetSource != null) {
+                final JsonObject source = new JsonObject();
+                source.addProperty("sha256", options.datasetSource);
+                dataset.add("source", source);
+            }
             if (!options.omitPriceBars) {
                 final JsonObject priceBars = new JsonObject();
                 priceBars.addProperty("path", "bars/d1.csv");
@@ -136,7 +156,10 @@ final class ReplayFixture {
             Files.writeString(directory.resolve("comparisons.csv"), HEADER + "\n" + row(RULES_KEY, "all-rules",
                     "wave2-origin;wave3-not-shortest") + "\n" + row(TOPOLOGY_KEY, "topology-only", "") + "\n",
                     StandardCharsets.UTF_8);
-            writeTrace(directory.resolve("traces/d1-real.jsonl"), options);
+            writeTrace(directory.resolve("traces/d1-real.jsonl"), options, false);
+            if (options.nullTrace) {
+                writeTrace(directory.resolve("traces/d1-null.jsonl"), options, true);
+            }
             return directory;
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -149,24 +172,57 @@ final class ReplayFixture {
                 "calibration", "ambiguousRate", "20", "0.5");
     }
 
-    private static void writeTrace(final Path file, final Options options) throws IOException {
+    private static void writeTrace(final Path file, final Options options, final boolean nullMember)
+            throws IOException {
         final StringBuilder out = new StringBuilder();
         final JsonObject header = new JsonObject();
         header.addProperty("schema", options.traceSchema);
         header.addProperty("dataset", DATASET);
+        header.addProperty("revision", "fixture-revision");
         header.addProperty("fingerprint", FINGERPRINT);
-        header.addProperty("traceMode", "real");
+        if (options.traceSource != null) {
+            header.addProperty("sourceSha256", options.traceSource);
+        }
+        header.addProperty("traceMode", nullMember ? "selected-null-member" : "real");
+        header.addProperty("nullBlockLength", nullMember ? options.nullBlockLength : -1);
+        header.addProperty("nullMemberIndex", nullMember ? 0 : -1);
         out.append(header).append('\n');
         int records = 0;
         for (int asOf = FIRST_AS_OF; asOf < BARS; asOf++) {
-            out.append(record(asOf, "all-rules", true, options)).append('\n');
-            out.append(record(asOf, "topology-only", false, options)).append('\n');
+            final JsonObject rules = record(asOf, "all-rules", true, options);
+            final JsonObject topology = record(asOf, "topology-only", false, options);
+            if (nullMember) {
+                asNullMember(rules, "all-rules", asOf, options);
+                asNullMember(topology, "MOTIVE_5", asOf, options);
+            }
+            out.append(rules).append('\n');
+            out.append(topology).append('\n');
             records += 2;
         }
         if (!options.truncateTrace) {
             out.append("{\"complete\":true,\"records\":").append(records).append("}\n");
         }
         Files.writeString(file, out.toString(), StandardCharsets.UTF_8);
+    }
+
+    /** Rewrites a real record into the producer's null-member stream format. */
+    private static void asNullMember(final JsonObject record, final String mode, final int asOf,
+            final Options options) {
+        record.addProperty("section", "null");
+        record.addProperty("mode", mode);
+        record.addProperty("nullBlockLength", options.nullBlockLength);
+        record.addProperty("nullMemberIndex", 0);
+        if (!options.nullTraceWithoutBars) {
+            final JsonObject bar = new JsonObject();
+            bar.addProperty("begin", START.plus(asOf, ChronoUnit.DAYS).toString());
+            bar.addProperty("end", START.plus(asOf + 1L, ChronoUnit.DAYS).toString());
+            bar.addProperty("open", Integer.toString(NULL_BAR_OFFSET + close(asOf) - 1));
+            bar.addProperty("high", Integer.toString(NULL_BAR_OFFSET + high(asOf)));
+            bar.addProperty("low", Integer.toString(NULL_BAR_OFFSET + low(asOf)));
+            bar.addProperty("close", Integer.toString(NULL_BAR_OFFSET + close(asOf)));
+            bar.addProperty("volume", "1");
+            record.add("bar", bar);
+        }
     }
 
     /** One recorded as-of line of a stream. */
@@ -185,6 +241,8 @@ final class ReplayFixture {
         record.addProperty("detector", "fractal-w5");
         record.addProperty("partition", "calibration");
         record.addProperty("asOfIndex", asOf);
+        record.addProperty("nullBlockLength", -1);
+        record.addProperty("nullMemberIndex", -1);
         record.addProperty("asOfTime", START.plus(asOf + 1L, ChronoUnit.DAYS).toString());
         record.addProperty("kind", "alternative");
         final List<int[]> confirmed = new ArrayList<>();
@@ -239,7 +297,7 @@ final class ReplayFixture {
             final JsonObject rule = new JsonObject();
             rule.addProperty("id", "wave2-origin");
             rule.addProperty("state", "PASS");
-            rule.addProperty("score", "1");
+            rule.addProperty("score", 1);
             final JsonArray observations = new JsonArray();
             observations.add("wave 2 stayed above the origin");
             rule.add("observations", observations);

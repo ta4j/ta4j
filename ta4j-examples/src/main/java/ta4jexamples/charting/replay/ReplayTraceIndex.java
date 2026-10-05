@@ -12,6 +12,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
@@ -20,10 +22,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+
+import ta4jexamples.charting.replay.ReplayArtifact.PriceBar;
 
 /**
  * Byte-offset index over one {@code elliott-research-trace/1} JSONL file.
@@ -51,8 +56,11 @@ final class ReplayTraceIndex {
      * @param signature SHA-256 of the record content without the as-of
      *                  coordinates; consecutive equal signatures mean no state
      *                  change happened between the two as-of bars
+     * @param bar       the price bar recorded with a null-member record, or
+     *                  null when the record carries none (real traces)
      */
-    record Entry(int asOfIndex, long offset, int length, String signature, String status, int candidateCount) {
+    record Entry(int asOfIndex, long offset, int length, String signature, String status, int candidateCount,
+            PriceBar bar) {
     }
 
     private final Path file;
@@ -150,6 +158,7 @@ final class ReplayTraceIndex {
         private JsonObject header;
         private JsonObject footer;
         private long records;
+        private long lineNumber;
 
         Scan(final String display, final Predicate<Family> keep) {
             this.display = display;
@@ -157,6 +166,7 @@ final class ReplayTraceIndex {
         }
 
         void accept(final String text, final long offset, final int length) {
+            lineNumber++;
             if (header == null) {
                 header = parseHeader(text, display);
             } else if (text.isBlank()) {
@@ -166,9 +176,10 @@ final class ReplayTraceIndex {
                         "trace " + display + " has content after its completion footer; regenerate the run");
             } else {
                 final JsonObject record = parseRecord(text, display);
-                if (record.has("complete")) {
+                if (record.has("complete") && !record.has("kind")) {
                     footer = record;
                 } else {
+                    validateRecord(display, lineNumber, record);
                     records++;
                     index(entries, record, offset, length, keep, display);
                 }
@@ -221,13 +232,164 @@ final class ReplayTraceIndex {
         }
         final JsonElement candidates = record.get("candidates");
         list.add(new Entry(asOf, offset, length, signature(record), text(record, "status"),
-                candidates != null && candidates.isJsonArray() ? candidates.getAsJsonArray().size() : 0));
+                candidates != null && candidates.isJsonArray() ? candidates.getAsJsonArray().size() : 0,
+                bar(record)));
+    }
+
+    /** The recorded null-member price bar, or null when the trace carries none. */
+    private static PriceBar bar(final JsonObject record) {
+        final JsonElement element = record.get("bar");
+        if (element == null || !element.isJsonObject()) {
+            return null;
+        }
+        final JsonObject bar = element.getAsJsonObject();
+        return new PriceBar(record.get("asOfIndex").getAsInt(), Instant.parse(text(bar, "begin")),
+                Instant.parse(text(bar, "end")), text(bar, "open"), text(bar, "high"), text(bar, "low"),
+                text(bar, "close"), text(bar, "volume"));
+    }
+
+    /**
+     * Rejects a record that deviates from the shape the research trace writer
+     * emits, so a hand-edited or foreign line fails with the trace, line and field
+     * instead of being projected as an empty layer.
+     */
+    private static void validateRecord(final String display, final long line, final JsonObject record) {
+        final String kind = textOrNull(record, "kind");
+        if (!"topology".equals(kind) && !"alternative".equals(kind)) {
+            throw corrupt(display, line, "record kind " + record.get("kind") + " is not topology or alternative");
+        }
+        final String where = kind + " record field ";
+        for (final String field : List.of("dataset", "section", "mode", "grammar", "detector", "partition",
+                "asOfTime", "status")) {
+            requireText(display, line, record, field, where);
+        }
+        for (final String field : List.of("nullBlockLength", "nullMemberIndex", "asOfIndex")) {
+            requireInteger(display, line, record, field, where);
+        }
+        final JsonElement direction = record.get("direction");
+        if (direction == null || !direction.isJsonNull() && textOrNull(record, "direction") == null) {
+            throw corrupt(display, line, where + "direction is missing or not a string or null");
+        }
+        requireTexts(display, line, record, "activeRules", where);
+        final JsonElement bar = record.get("bar");
+        if (bar != null) {
+            final JsonObject barObject = requireObject(display, line, bar, where + "bar");
+            for (final String field : List.of("begin", "end", "open", "high", "low", "close", "volume")) {
+                requireText(display, line, barObject, field, where + "bar.");
+            }
+            try {
+                Instant.parse(barObject.get("begin").getAsString());
+                Instant.parse(barObject.get("end").getAsString());
+            } catch (DateTimeParseException e) {
+                throw corrupt(display, line, where + "bar begin/end is not an ISO-8601 instant");
+            }
+        }
+        final JsonArray pivots = requireArray(display, line, record, "pivots", where);
+        for (int i = 0; i < pivots.size(); i++) {
+            final JsonObject pivot = requirePlacement(display, line, pivots.get(i), where + "pivots[" + i + "]");
+            requireInteger(display, line, pivot, "confirmationIndex", where + "pivots[" + i + "].");
+        }
+        final JsonArray candidates = requireArray(display, line, record, "candidates", where);
+        for (int i = 0; i < candidates.size(); i++) {
+            final String at = where + "candidates[" + i + "]";
+            final JsonObject candidate = requireObject(display, line, candidates.get(i), at);
+            for (final String field : List.of("candidateKey", "version", "direction")) {
+                requireText(display, line, candidate, field, at + ".");
+            }
+            final JsonArray placement = requireArray(display, line, candidate, "placement", at + ".");
+            for (int p = 0; p < placement.size(); p++) {
+                requirePlacement(display, line, placement.get(p), at + ".placement[" + p + "]");
+            }
+            final JsonArray rules = requireArray(display, line, candidate, "rules", at + ".");
+            for (int r = 0; r < rules.size(); r++) {
+                final String ruleAt = at + ".rules[" + r + "]";
+                final JsonObject rule = requireObject(display, line, rules.get(r), ruleAt);
+                for (final String field : List.of("id", "state", "explanation")) {
+                    requireText(display, line, rule, field, ruleAt + ".");
+                }
+                final JsonElement score = rule.get("score");
+                if (score == null || !score.isJsonNull()
+                        && !(score.isJsonPrimitive() && score.getAsJsonPrimitive().isNumber())) {
+                    throw corrupt(display, line, ruleAt + ".score is missing or not a number or null");
+                }
+                requireTexts(display, line, rule, "observations", ruleAt + ".");
+            }
+        }
+        if ("alternative".equals(kind)) {
+            requireTexts(display, line, record, "labels", where);
+        }
+    }
+
+    private static JsonObject requirePlacement(final String display, final long line, final JsonElement element,
+            final String at) {
+        final JsonObject placement = requireObject(display, line, element, at);
+        requireInteger(display, line, placement, "index", at + ".");
+        requireText(display, line, placement, "price", at + ".");
+        requireText(display, line, placement, "type", at + ".");
+        return placement;
+    }
+
+    private static JsonObject requireObject(final String display, final long line, final JsonElement element,
+            final String at) {
+        if (element == null || !element.isJsonObject()) {
+            throw corrupt(display, line, at + " is not an object");
+        }
+        return element.getAsJsonObject();
+    }
+
+    private static JsonArray requireArray(final String display, final long line, final JsonObject owner,
+            final String field, final String where) {
+        final JsonElement value = owner.get(field);
+        if (value == null || !value.isJsonArray()) {
+            throw corrupt(display, line, where + field + " is missing or not an array");
+        }
+        return value.getAsJsonArray();
+    }
+
+    private static void requireTexts(final String display, final long line, final JsonObject owner,
+            final String field, final String where) {
+        final JsonArray array = requireArray(display, line, owner, field, where);
+        for (int i = 0; i < array.size(); i++) {
+            final JsonElement element = array.get(i);
+            if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
+                throw corrupt(display, line, where + field + "[" + i + "] is not a string");
+            }
+        }
+    }
+
+    private static void requireText(final String display, final long line, final JsonObject owner,
+            final String field, final String where) {
+        if (textOrNull(owner, field) == null) {
+            throw corrupt(display, line, where + field + " is missing or not a string");
+        }
+    }
+
+    private static void requireInteger(final String display, final long line, final JsonObject owner,
+            final String field, final String where) {
+        final JsonElement value = owner.get(field);
+        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()
+                || value.getAsDouble() != Math.rint(value.getAsDouble())) {
+            throw corrupt(display, line, where + field + " is missing or not an integer");
+        }
+    }
+
+    private static String textOrNull(final JsonObject object, final String name) {
+        final JsonElement value = object.get(name);
+        return value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()
+                ? value.getAsString()
+                : null;
+    }
+
+    private static ReplayArtifactException corrupt(final String display, final long line, final String message) {
+        return new ReplayArtifactException("trace " + display + " line " + line + ": " + message
+                + "; the trace is corrupt or foreign, regenerate the run");
     }
 
     private static String signature(final JsonObject record) {
         final JsonObject copy = record.deepCopy();
         copy.remove("asOfIndex");
         copy.remove("asOfTime");
+        copy.remove("bar");
         try {
             return HexFormat.of()
                     .formatHex(MessageDigest.getInstance("SHA-256").digest(copy.toString().getBytes(StandardCharsets.UTF_8)));

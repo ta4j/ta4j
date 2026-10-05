@@ -273,4 +273,79 @@ class ReplaySessionTest {
                 .filter(layer -> layer.name().equals("As-of bar"))
                 .count());
     }
+
+    private static ReplaySession openNull(final Path directory, final String key) {
+        return ReplaySession.open(ReplayArtifact.open(directory), key, ReplayArtifact.TRACE_MODE_NULL_MEMBER, 120, 8);
+    }
+
+    private Path nullRun(final String name) {
+        return ReplayFixture.write(temp.resolve(name), options -> {
+            options.nullTrace = true;
+            return options;
+        });
+    }
+
+    @Test
+    void nullMemberReplayMapsRowsToTheProducersNullSectionAndUsesRecordedPrices() {
+        final Path run = nullRun("run");
+
+        for (final String key : List.of(ReplayFixture.RULES_KEY, ReplayFixture.TOPOLOGY_KEY)) {
+            final ReplaySession session = openNull(run, key);
+            assertEquals("null", session.family().section());
+            assertEquals(33, session.cursor());
+            assertEquals(2, session.frame().candidates().size());
+            assertEquals(Integer.toString(ReplayFixture.NULL_BAR_OFFSET + ReplayFixture.close(40)),
+                    session.bars().get(40).close());
+            assertNotEquals(open(run, key, 120, 8).bars().get(40).close(), session.bars().get(40).close());
+            final ReplayChartModel model = ReplayChartModel.of(session.seek(40), session.bars());
+            assertTrue(model.series().getLastBar().getClosePrice().doubleValue() > ReplayFixture.NULL_BAR_OFFSET);
+        }
+        assertEquals("MOTIVE_5", openNull(run, ReplayFixture.TOPOLOGY_KEY).family().mode());
+        assertEquals("all-rules", openNull(run, ReplayFixture.RULES_KEY).family().mode());
+    }
+
+    @Test
+    void nullMemberReplayRejectsUnsupportedRowsAndMismatchedRecordings() throws java.io.IOException {
+        final Path run = nullRun("run");
+        final Path csv = run.resolve("comparisons.csv");
+        java.nio.file.Files.writeString(csv,
+                java.nio.file.Files.readString(csv) + ReplayFixture.RULES_KEY.replace("|h2|", "|competing|")
+                        + ",d1,FIXTURE,competing,all-rules,MOTIVE_5,,fractal-w5,kernel-topology,calibration,ambiguousRate,20,0.5\n",
+                java.nio.charset.StandardCharsets.UTF_8);
+        final String competing = assertThrows(ReplayArtifactException.class,
+                () -> openNull(run, ReplayFixture.RULES_KEY.replace("|h2|", "|competing|"))).getMessage();
+        assertTrue(competing.contains("records only h1 and h2 rows"), competing);
+
+        final Path block = ReplayFixture.write(temp.resolve("block"), options -> {
+            options.nullTrace = true;
+            options.nullBlockLength = 30;
+            return options;
+        });
+        final String blockFailure = assertThrows(ReplayArtifactException.class,
+                () -> openNull(block, ReplayFixture.RULES_KEY)).getMessage();
+        assertTrue(blockFailure.contains("null block length 20"), blockFailure);
+        assertTrue(blockFailure.contains("records block length 30"), blockFailure);
+
+        final Path noBars = ReplayFixture.write(temp.resolve("nobars"), options -> {
+            options.nullTrace = true;
+            options.nullTraceWithoutBars = true;
+            return options;
+        });
+        assertTrue(assertThrows(ReplayArtifactException.class, () -> openNull(noBars, ReplayFixture.RULES_KEY))
+                .getMessage()
+                .contains("does not record a price bar"));
+    }
+
+    @Test
+    void truncatedTimelineSeedsFromThePrecedingRecordAndReportsTheCut() {
+        final ReplaySession session = open(ReplayFixture.write(temp.resolve("run")));
+        session.seek(40);
+
+        assertEquals(List.of(new TimelineEntry(23, "v1", true), new TimelineEntry(33, "v2", true)),
+                session.candidateTimeline("c-A"));
+        assertEquals(-1, session.timelineStartAsOf());
+        assertEquals(List.of(), session.candidateTimeline("c-A", 3));
+        assertEquals(38, session.timelineStartAsOf(3));
+        assertEquals(List.of(new TimelineEntry(33, "v2", true)), session.candidateTimeline("c-A", 8));
+    }
 }

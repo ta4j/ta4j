@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import org.ta4j.core.Bar;
+
 /**
  * Package-private streaming sink for per-bar study observations.
  *
@@ -59,6 +61,23 @@ interface StudyObserver {
      */
     void alternative(Scope scope, String partition, int recordedIndex, Instant asOfEnd,
             List<ConfirmedPivot> visiblePivots, String outcome, Set<String> labels);
+
+    /**
+     * Receives the price bar of a null ensemble member immediately before the
+     * {@link #topology} observation recorded for the same as-of bar. Null members
+     * are regenerated resampled tapes whose prices exist nowhere in the dataset;
+     * observers that make a null-member trace replayable persist them with the
+     * observation. The default ignores the bar.
+     *
+     * @param scope         study section and mode about to record the bar
+     * @param partition     locked partition name
+     * @param recordedIndex bar index in source coordinates
+     * @param bar           member bar evaluated at {@code recordedIndex}
+     * @since 0.25.1
+     */
+    default void nullBar(Scope scope, String partition, int recordedIndex, Bar bar) {
+        // real-data observers have no use for member prices
+    }
 
     /**
      * Identity of the study mode that recorded an observation.

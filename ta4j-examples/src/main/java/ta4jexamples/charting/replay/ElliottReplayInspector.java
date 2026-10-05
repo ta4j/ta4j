@@ -234,7 +234,12 @@ public final class ElliottReplayInspector {
             throw new ReplayArtifactException("history needs a candidate key: select one first or pass `history <key>`");
         }
         final List<TimelineEntry> timeline = session.candidateTimeline(key);
+        final int truncatedBefore = session.timelineStartAsOf();
         out.println("history of " + key + " up to bar " + current.cursor() + " (" + timeline.size() + " change(s)):");
+        if (truncatedBefore >= 0) {
+            out.println("  (earlier history before bar " + truncatedBefore + " is not inspected: only the latest "
+                    + ReplaySession.TIMELINE_LOOKBACK + " records are scanned)");
+        }
         for (final TimelineEntry entry : timeline) {
             out.println("  bar " + entry.asOfIndex() + (entry.present() ? " version " + entry.version() : " absent"));
         }
@@ -245,6 +250,7 @@ public final class ElliottReplayInspector {
      * directory.
      */
     private void export() {
+        rejectRunDirectory();
         try {
             Files.createDirectories(outDirectory);
             final String stem = "frame-" + current.cursor();
@@ -263,6 +269,31 @@ public final class ElliottReplayInspector {
         } catch (IOException e) {
             throw new ReplayArtifactException("cannot write to " + outDirectory + ": " + e.getMessage(), e);
         }
+    }
+
+    /** Refuses an output directory that is, or lies inside, the replayed run. */
+    private void rejectRunDirectory() {
+        try {
+            final Path run = session.artifact().directory().toRealPath();
+            final Path target = realPathThroughExistingAncestor(outDirectory.toAbsolutePath().normalize());
+            if (target.startsWith(run)) {
+                throw new ReplayArtifactException("--out " + outDirectory + " is the replayed run directory " + run
+                        + " or lies inside it; choose another output directory so the evidence bundle stays unchanged");
+            }
+        } catch (IOException e) {
+            throw new ReplayArtifactException("cannot resolve --out " + outDirectory + ": " + e.getMessage(), e);
+        }
+    }
+
+    private static Path realPathThroughExistingAncestor(final Path path) throws IOException {
+        Path existing = path;
+        while (existing != null && !Files.exists(existing)) {
+            existing = existing.getParent();
+        }
+        if (existing == null) {
+            return path;
+        }
+        return existing.toRealPath().resolve(existing.relativize(path)).normalize();
     }
 
     private static void require(final String argument, final String usage) {

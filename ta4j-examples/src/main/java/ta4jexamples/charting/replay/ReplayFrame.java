@@ -105,21 +105,24 @@ record ReplayFrame(String comparisonKey, Family family, List<String> activeRules
      * @param window           visible bar count
      * @param cap              maximum simultaneous overlays
      * @param ruleEvidenceHint pointer shown when the mode evaluates no rules
+     * @param firstBar         first bar index with retained prices (0 for real
+     *                         traces; later for null members, which record bars
+     *                         only from the first as-of)
      * @return the frame
      */
     static ReplayFrame project(final String comparisonKey, final Family family, final List<String> activeRules,
             final JsonObject record, final List<PriceBar> bars, final boolean transition, final String selected,
-            final int window, final int cap, final String ruleEvidenceHint) {
+            final int window, final int cap, final String ruleEvidenceHint, final int firstBar) {
         Objects.requireNonNull(selected, "selected");
         if (window < 1 || cap < 1) {
             throw new IllegalArgumentException("window and overlay cap must be positive");
         }
         final int cursor = record.get("asOfIndex").getAsInt();
-        if (cursor >= bars.size()) {
+        if (cursor >= bars.size() || cursor < firstBar) {
             throw new ReplayArtifactException("trace records as-of " + cursor + " but the retained price bars end at "
                     + (bars.size() - 1) + "; the bundle is inconsistent. Regenerate the run.");
         }
-        final int windowStart = Math.max(0, cursor - window + 1);
+        final int windowStart = Math.max(firstBar, cursor - window + 1);
         int suppressed = 0;
         final List<Pivot> pivots = new ArrayList<>();
         final List<Integer> rejected = new ArrayList<>();
@@ -170,7 +173,7 @@ record ReplayFrame(String comparisonKey, Family family, List<String> activeRules
                     List.copyOf(placement), List.copyOf(rules), overlay, key.equals(selected)));
         }
         final List<String> labels = new ArrayList<>();
-        array(record, "labels").forEach(label -> labels.add(label.getAsString()));
+        optionalArray(record, "labels").forEach(label -> labels.add(label.getAsString()));
         final int overlayed = overlaySlots.size();
         return new ReplayFrame(comparisonKey, family, activeRules, cursor, text(record, "asOfTime"),
                 text(record, "kind"), text(record, "status"), text(record, "direction"), windowStart, pivots, candidates,
@@ -333,6 +336,16 @@ record ReplayFrame(String comparisonKey, Family family, List<String> activeRules
     }
 
     private static JsonArray array(final JsonObject object, final String name) {
+        final JsonElement value = object.get(name);
+        if (value == null || !value.isJsonArray()) {
+            throw new ReplayArtifactException("trace record field '" + name + "' is missing or not an array; "
+                    + "the trace is corrupt or foreign, regenerate the run");
+        }
+        return value.getAsJsonArray();
+    }
+
+    /** Labels exist only on alternative records; a topology record carries none. */
+    private static JsonArray optionalArray(final JsonObject object, final String name) {
         final JsonElement value = object.get(name);
         return value != null && value.isJsonArray() ? value.getAsJsonArray() : new JsonArray();
     }

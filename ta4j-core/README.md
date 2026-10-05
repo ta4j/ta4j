@@ -195,6 +195,10 @@ confirmed pivots, every retained candidate and its rule results exactly as
 recorded for that bar. Runs written before `bars/` existed print why replay is
 unavailable; regenerate them. See `ta4j-examples/README.md`.
 
+A `selected-null-member` trace additionally records each as-of bar of the
+resampled member (`bar`: begin, end, open, high, low, close, volume), because
+those prices exist nowhere else; replay shows them instead of the real series.
+
 ## Companion user guides
 
 - Backtesting: https://ta4j.github.io/ta4j-wiki/Backtesting.html

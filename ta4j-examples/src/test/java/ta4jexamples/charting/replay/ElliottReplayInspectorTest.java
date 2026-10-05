@@ -251,4 +251,31 @@ class ElliottReplayInspectorTest {
         assertTrue(result.out().contains("candidates retained: 0"));
         assertTrue(Files.size(temp.resolve("out").resolve("frame-12.jpg")) > 0);
     }
+
+    private static java.util.Map<String, String> snapshot(final Path directory) throws IOException {
+        final java.util.Map<String, String> files = new java.util.TreeMap<>();
+        try (java.util.stream.Stream<Path> walk = Files.walk(directory)) {
+            for (final Path file : (Iterable<Path>) walk::iterator) {
+                files.put(directory.relativize(file).toString(),
+                        Files.isDirectory(file) ? "<dir>" : java.util.Base64.getEncoder().encodeToString(Files.readAllBytes(file)));
+            }
+        }
+        return files;
+    }
+
+    @Test
+    void exportIntoTheReplayedRunDirectoryIsRejectedAndLeavesItUnchanged() throws IOException {
+        final Path run = ReplayFixture.write(temp.resolve("run"));
+        final java.util.Map<String, String> before = snapshot(run);
+
+        for (final Path out : List.of(run, run.resolve("exports"), run.resolve("bars").resolve("..").resolve("again"),
+                temp.resolve("run").resolve("traces").resolve("deeper").resolve("still"))) {
+            final Result result = run("", run.toString(), "--key", ReplayFixture.RULES_KEY, "--at", "36", "--out",
+                    out.toString());
+
+            assertEquals(2, result.status(), out.toString());
+            assertTrue(result.err().contains("replayed run directory"), result.err());
+            assertEquals(before, snapshot(run));
+        }
+    }
 }

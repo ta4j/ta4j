@@ -260,4 +260,64 @@ class ReplayArtifactTest {
         assertTrue(assertThrows(ReplayArtifactException.class, () -> session.seek(590)).getMessage()
                 .contains("retained price bars end at 59"));
     }
+
+    @Test
+    void traceOfTheSameRecipeOnAnotherSourceIsRejected() {
+        final Path run = ReplayFixture.write(temp.resolve("run"), options -> {
+            options.datasetSource = "aaaa";
+            options.traceSource = "bbbb";
+            return options;
+        });
+
+        final String failure = failureOf(run, ReplayFixture.RULES_KEY);
+
+        assertTrue(failure.contains("does not belong to this run"), failure);
+        assertTrue(failure.contains("sourceSha256"), failure);
+        final Path matching = ReplayFixture.write(temp.resolve("matching"), options -> {
+            options.datasetSource = "aaaa";
+            options.traceSource = "aaaa";
+            return options;
+        });
+        assertEquals(33, ReplaySession.open(ReplayArtifact.open(matching), ReplayFixture.RULES_KEY,
+                ReplayArtifact.TRACE_MODE_REAL, 120, 8).cursor());
+    }
+
+    @Test
+    void traceOfAnotherRevisionOrBlockIsRejected() throws IOException {
+        final Path revision = ReplayFixture.write(temp.resolve("revision"));
+        final Path trace = revision.resolve("traces/d1-real.jsonl");
+        Files.writeString(trace, Files.readString(trace).replace("fixture-revision", "other"), StandardCharsets.UTF_8);
+        assertTrue(failureOf(revision, ReplayFixture.RULES_KEY).contains("revision"));
+
+        final Path block = ReplayFixture.write(temp.resolve("block"));
+        final Path blockTrace = block.resolve("traces/d1-real.jsonl");
+        Files.writeString(blockTrace,
+                Files.readString(blockTrace).replaceFirst("\"nullBlockLength\":-1", "\"nullBlockLength\":20"),
+                StandardCharsets.UTF_8);
+        assertTrue(failureOf(block, ReplayFixture.RULES_KEY).contains("nullBlockLength"));
+    }
+
+    @Test
+    void missingOrNonArrayRequiredTraceFieldsAreRejectedWithTheField() throws IOException {
+        final Path missing = ReplayFixture.write(temp.resolve("missing"));
+        final Path missingTrace = missing.resolve("traces/d1-real.jsonl");
+        Files.writeString(missingTrace, Files.readString(missingTrace).replace("\"candidates\"", "\"candidatez\""),
+                StandardCharsets.UTF_8);
+        final String missingFailure = failureOf(missing, ReplayFixture.RULES_KEY);
+        assertTrue(missingFailure.contains("candidates is missing or not an array"), missingFailure);
+        assertTrue(missingFailure.contains("line 2"), missingFailure);
+
+        final Path nonArray = ReplayFixture.write(temp.resolve("nonarray"));
+        final Path nonArrayTrace = nonArray.resolve("traces/d1-real.jsonl");
+        Files.writeString(nonArrayTrace,
+                Files.readString(nonArrayTrace).replace("\"candidates\":[]", "\"candidates\":{}"),
+                StandardCharsets.UTF_8);
+        assertTrue(failureOf(nonArray, ReplayFixture.RULES_KEY).contains("candidates is missing or not an array"));
+
+        final Path rules = ReplayFixture.write(temp.resolve("rules"));
+        final Path rulesTrace = rules.resolve("traces/d1-real.jsonl");
+        Files.writeString(rulesTrace, Files.readString(rulesTrace).replace("\"rules\":[", "\"rulez\":["),
+                StandardCharsets.UTF_8);
+        assertTrue(failureOf(rules, ReplayFixture.RULES_KEY).contains("rules is missing or not an array"));
+    }
 }

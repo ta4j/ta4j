@@ -252,6 +252,12 @@ class ElliottResearchTraceTest {
             assertEquals("null", record.get("section").getAsString());
             assertEquals(2, record.get("nullBlockLength").getAsInt());
             assertEquals(1, record.get("nullMemberIndex").getAsInt());
+            final JsonObject bar = record.getAsJsonObject("bar");
+            for (final String field : List.of("begin", "end", "open", "high", "low", "close", "volume")) {
+                assertTrue(bar.has(field) && !bar.get(field).getAsString().isEmpty(), field);
+            }
+            assertTrue(Instant.parse(bar.get("begin").getAsString())
+                    .isBefore(Instant.parse(bar.get("end").getAsString())));
         }
     }
 
