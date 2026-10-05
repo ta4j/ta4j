@@ -7,6 +7,7 @@ import java.util.Objects;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -18,6 +19,9 @@ import org.ta4j.core.num.NumFactory;
  * {@code n - 1}) for rolling windows. Use {@link #ofPopulation(Indicator, int)}
  * (or the {@link SampleType} constructor) when population variance is required.
  * </p>
+ * Zero-origin warm-up retains the legacy partial-window calculations. After
+ * history removal, incomplete retained windows return {@link NaN#NaN}; the
+ * stability boundary always includes source warm-up and the retained begin.
  */
 public class VarianceIndicator extends CachedIndicator<Num> {
 
@@ -77,15 +81,19 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        final int startIndex = Math.max(Math.max(0, getBarSeries().getBeginIndex()), index - barCount + 1);
+        if (getBarSeries().getBeginIndex() > 0 && index < stableBoundary()) {
+            return NaN.NaN;
+        }
+        final int startIndex = (int) Math.max(Math.max(0L, getBarSeries().getBeginIndex()),
+                (long) index - barCount + 1L);
         final int numberOfObservations = index - startIndex + 1;
         NumFactory numFactory = getBarSeries().numFactory();
         Num anchor = indicator.getValue(startIndex);
         Num averageOffset = numFactory.zero();
         Num squaredDeviationTotal = numFactory.zero();
         int observationCount = 1;
-        for (int i = startIndex + 1; i <= index; i++) {
-            Num offset = indicator.getValue(i).minus(anchor);
+        for (long i = (long) startIndex + 1L; i <= (long) index; i++) {
+            Num offset = indicator.getValue((int) i).minus(anchor);
             observationCount++;
             Num difference = offset.minus(averageOffset);
             averageOffset = averageOffset.plus(difference.dividedBy(numFactory.numOf(observationCount)));
@@ -100,7 +108,12 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return indicator.getCountOfUnstableBars() + barCount - 1;
+        return CorrelationWindowSupport.clampUnstableBars(stableBoundary());
+    }
+
+    private long stableBoundary() {
+        long start = Math.max(Math.max(0L, getBarSeries().getBeginIndex()), indicator.getCountOfUnstableBars());
+        return start + (long) barCount - 1L;
     }
 
     @Override

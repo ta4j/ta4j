@@ -1,7 +1,9 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.analysis;
+
+import org.ta4j.core.indicators.AbstractIndicator;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertThrows;
@@ -34,6 +36,10 @@ public class IndicatorFamilyManagerTest {
     @Test
     public void analysisApiLivesOutsideIndicatorsAndOwnsConstruction() {
         assertThat(IndicatorFamilyManager.class.getPackageName()).isEqualTo("org.ta4j.core.analysis");
+    }
+
+    @Test
+    public void publicResultsHaveProducerOwnedConstruction() {
         assertThat(IndicatorFamilyResult.class.getConstructors()).isEmpty();
         assertThat(IndicatorFamilyResult.Family.class.getConstructors()).isEmpty();
         assertThat(IndicatorFamilyResult.PairSimilarity.class.getConstructors()).isEmpty();
@@ -43,9 +49,12 @@ public class IndicatorFamilyManagerTest {
     public void sameCatalogHasCanonicalResultsAcrossMapOrders() {
         BarSeries series = increasingSeries(3);
         Indicator<Num> source = mockIndicator(series, index -> index);
-        IndicatorFamilyManager manager = new IndicatorFamilyManager(series, (left, right) -> constantIndicator(series, "0.95"));
-        Map<String, Indicator<Num>> forward = namedIndicators(testIndicator("a", source), testIndicator("b", source), testIndicator("c", source));
-        Map<String, Indicator<Num>> reverse = namedIndicators(testIndicator("c", source), testIndicator("b", source), testIndicator("a", source));
+        IndicatorFamilyManager manager = new IndicatorFamilyManager(series,
+                (left, right) -> constantIndicator(series, "0.95"));
+        Map<String, Indicator<Num>> forward = namedIndicators(testIndicator("a", source), testIndicator("b", source),
+                testIndicator("c", source));
+        Map<String, Indicator<Num>> reverse = namedIndicators(testIndicator("c", source), testIndicator("b", source),
+                testIndicator("a", source));
         IndicatorFamilyResult first = manager.analyze(forward);
         IndicatorFamilyResult second = manager.analyze(reverse);
         assertThat(second).isEqualTo(first);
@@ -57,9 +66,18 @@ public class IndicatorFamilyManagerTest {
         BarSeries series = increasingSeries(2);
         AtomicInteger calls = new AtomicInteger();
         Map<String, Indicator<Num>> oversized = new java.util.AbstractMap<>() {
-            @Override public int size() { return 46_342; }
-            @Override public boolean isEmpty() { return false; }
-            @Override public java.util.Set<Entry<String, Indicator<Num>>> entrySet() {
+            @Override
+            public int size() {
+                return 46_342;
+            }
+
+            @Override
+            public boolean isEmpty() {
+                return false;
+            }
+
+            @Override
+            public java.util.Set<Entry<String, Indicator<Num>>> entrySet() {
                 throw new AssertionError("Oversized catalog must be rejected before traversal");
             }
         };
@@ -67,7 +85,8 @@ public class IndicatorFamilyManagerTest {
             calls.incrementAndGet();
             return constantIndicator(series, "0.95");
         });
-        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class, () -> manager.analyze(oversized));
+        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                () -> manager.analyze(oversized));
         assertThat(failure).hasMessageContaining("pair budget");
         assertThat(calls).hasValue(0);
     }
@@ -76,24 +95,54 @@ public class IndicatorFamilyManagerTest {
     public void inclusiveScanVisitsTerminalIntIndexExactlyOnce() {
         NumFactory factory = seriesOf(1).numFactory();
         BarSeries series = new org.ta4j.core.BaseBarSeries("terminal", List.of()) {
-            @Override public NumFactory numFactory() { return factory; }
-            @Override public int getBeginIndex() { return Integer.MAX_VALUE; }
-            @Override public int getEndIndex() { return Integer.MAX_VALUE; }
-            @Override public int getBarCount() { return 1; }
-            @Override public boolean isEmpty() { return false; }
-            @Override public int getMaximumBarCount() { return 1; }
-            @Override public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long revision) {
+            @Override
+            public NumFactory numFactory() {
+                return factory;
+            }
+
+            @Override
+            public int getBeginIndex() {
+                return Integer.MAX_VALUE;
+            }
+
+            @Override
+            public int getEndIndex() {
+                return Integer.MAX_VALUE;
+            }
+
+            @Override
+            public int getBarCount() {
+                return 1;
+            }
+
+            @Override
+            public boolean isEmpty() {
+                return false;
+            }
+
+            @Override
+            public int getMaximumBarCount() {
+                return 1;
+            }
+
+            @Override
+            public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long revision) {
                 return new BarSeriesChangeSnapshot(0, Integer.MAX_VALUE, Integer.MAX_VALUE - 1, 1, Integer.MAX_VALUE);
             }
         };
         AtomicInteger reads = new AtomicInteger();
         Indicator<Num> metric = new AbstractIndicator<>(series) {
-            @Override public Num getValue(int index) {
+            @Override
+            public Num getValue(int index) {
                 assertThat(index).isEqualTo(Integer.MAX_VALUE);
                 reads.incrementAndGet();
                 return factory.one();
             }
-            @Override public int getCountOfUnstableBars() { return Integer.MAX_VALUE; }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return Integer.MAX_VALUE;
+            }
         };
         IndicatorFamilyResult result = new IndicatorFamilyManager(series, (left, right) -> metric)
                 .analyze(Map.of("a", metric, "b", metric));
@@ -118,7 +167,7 @@ public class IndicatorFamilyManagerTest {
     }
 
     @Test
-    public void analyzesNamedIndicatorsInCallerOrder() {
+    public void analyzesNamedIndicatorsInCanonicalOrder() {
         BarSeries series = seriesOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         SMAIndicator smoothed = new SMAIndicator(close, 3);
@@ -443,6 +492,63 @@ public class IndicatorFamilyManagerTest {
                 () -> new IndicatorFamilyManager(series, wrongSeriesMetricFactory).analyze(twoIndicators));
         assertThrows(IllegalArgumentException.class,
                 () -> new IndicatorFamilyManager(series, outOfRangeMetricFactory).analyze(twoIndicators));
+    }
+
+    @Test
+    public void supportsSharedAnalysisRunnerContract() {
+        BarSeries series = increasingSeries(3);
+        Indicator<Num> source = mockIndicator(series, index -> index);
+        AnalysisRunner<Map<String, Indicator<Num>>, IndicatorFamilyResult> runner = new IndicatorFamilyManager(series,
+                2);
+        Map<String, Indicator<Num>> catalog = Map.of("only", source);
+        assertThat(runner.analyze(series, catalog).familyByIndicator()).containsOnlyKeys("only");
+        assertThrows(IllegalArgumentException.class, () -> runner.analyze(increasingSeries(3), catalog));
+    }
+
+    @Test
+    public void rejectsFirstCatalogOutsideAdmittedBudget() {
+        BarSeries series = increasingSeries(2);
+        Indicator<Num> source = mockIndicator(series, index -> index);
+        Map<String, Indicator<Num>> catalog = new LinkedHashMap<>();
+        for (int index = 0; index < 129; index++) {
+            catalog.put("indicator-" + index, source);
+        }
+        AtomicInteger calls = new AtomicInteger();
+        IndicatorFamilyManager manager = new IndicatorFamilyManager(series, (left, right) -> {
+            calls.incrementAndGet();
+            return source;
+        });
+        assertThrows(IllegalArgumentException.class, () -> manager.analyze(catalog));
+        assertThat(calls).hasValue(0);
+    }
+
+    @Test
+    public void constantPairsRemainUnavailableAtZeroThreshold() {
+        BarSeries series = seriesOf(1, 1, 1);
+        ClosePriceIndicator source = new ClosePriceIndicator(series);
+        IndicatorFamilyResult result = new IndicatorFamilyManager(series, 2).analyze(Map.of("a", source, "b", source),
+                0);
+        assertThat(result.pairSimilarities().get(0).sampleCount()).isZero();
+        assertThat(result.pairSimilarities().get(0).similarity().isNaN()).isTrue();
+        assertThat(result.families()).hasSize(2);
+    }
+
+    @org.junit.jupiter.api.Test
+    @org.junit.jupiter.api.Tag("benchmark")
+    public void admittedPairBudgetBenchmarked() {
+        BarSeries series = increasingSeries(40);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        Map<String, Indicator<Num>> catalog = new LinkedHashMap<>();
+        for (int index = 0; index < 128; index++) {
+            catalog.put(String.format(java.util.Locale.ROOT, "indicator-%03d", index),
+                    BinaryOperationIndicator.product(close, index + 1));
+        }
+        IndicatorFamilyResult result = new IndicatorFamilyManager(series, 20).analyze(catalog, 0.99);
+        assertThat(result.pairSimilarities()).hasSize(IndicatorFamilyManager.MAX_PAIR_COUNT);
+        assertThat(result.families()).hasSize(1);
+        assertThat(result.families().get(0).minimumInternalSimilarity())
+                .isGreaterThanOrEqualTo(series.numFactory().numOf("0.99"));
+        assertThat(result.pairSimilarities()).allSatisfy(pair -> assertThat(pair.sampleCount()).isEqualTo(21));
     }
 
     private static BarSeries increasingSeries(int barCount) {

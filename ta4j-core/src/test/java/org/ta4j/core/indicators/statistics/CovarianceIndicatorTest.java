@@ -115,10 +115,11 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
         var covar = new CovarianceIndicator(new ClosePriceIndicator(pruned), new VolumeIndicator(pruned, 1), 6);
 
-        // Window [4..7]: closes {5,6,7,8}, volumes {10,5,14,7}: sum of products = 0
-        assertNumEquals(0, covar.getValue(7));
-        // Window [4..8]: sum of products = 18 over 5 observations
-        assertNumEquals(3.6, covar.getValue(8));
+        // Four retained pairs are insufficient for the six-bar window.
+        assertThat(covar.getValue(7).isNaN()).isTrue();
+        // Five pairs remain unavailable; the complete window starts at index nine.
+        assertThat(covar.getValue(8).isNaN()).isTrue();
+        assertThat(covar.getCountOfUnstableBars()).isEqualTo(9);
         // Window [4..9]: sum of products = 13.5 over 6 observations
         assertNumEquals(2.25, covar.getValue(9));
     }
@@ -153,24 +154,76 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
 
     @Test
     public void terminalIndexWindowVisitsSourceExactlyOnce() {
+        BarSeries fixture = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1).build();
         BarSeries terminalSeries = new org.ta4j.core.BaseBarSeries("terminal", List.of()) {
-            @Override public NumFactory numFactory() { return numFactory; }
-            @Override public int getBeginIndex() { return Integer.MAX_VALUE; }
-            @Override public int getEndIndex() { return Integer.MAX_VALUE; }
-            @Override public int getBarCount() { return 1; }
-            @Override public boolean isEmpty() { return false; }
-            @Override public int getMaximumBarCount() { return 1; }
-            @Override public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long revision) {
+            @Override
+            public org.ta4j.core.Bar getBar(int index) {
+                assertThat(index).isEqualTo(Integer.MAX_VALUE);
+                return fixture.getBar(0);
+            }
+
+            @Override
+            public NumFactory numFactory() {
+                return numFactory;
+            }
+
+            @Override
+            public int getBeginIndex() {
+                return Integer.MAX_VALUE;
+            }
+
+            @Override
+            public int getEndIndex() {
+                return Integer.MAX_VALUE;
+            }
+
+            @Override
+            public int getBarCount() {
+                return 1;
+            }
+
+            @Override
+            public boolean isEmpty() {
+                return false;
+            }
+
+            @Override
+            public int getMaximumBarCount() {
+                return 1;
+            }
+
+            @Override
+            public BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(long revision) {
                 return new BarSeriesChangeSnapshot(0, Integer.MAX_VALUE, Integer.MAX_VALUE - 1, 1, Integer.MAX_VALUE);
             }
         };
-        Indicator<Num> source = new org.ta4j.core.indicators.helpers.ConstantIndicator<>(terminalSeries, numFactory.one()) {
-            @Override public Num getValue(int index) {
+        Indicator<Num> source = new org.ta4j.core.indicators.helpers.ConstantIndicator<>(terminalSeries,
+                numFactory.one()) {
+            @Override
+            public Num getValue(int index) {
                 assertThat(index).isEqualTo(Integer.MAX_VALUE);
                 return numFactory.one();
             }
         };
         CovarianceIndicator metric = new CovarianceIndicator(source, source, 1);
         assertNumEquals(0, metric.calculate(Integer.MAX_VALUE));
+    }
+
+    @Test
+    public void retainedBoundaryAlsoHonorsSourceWarmup() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6, 7, 8)
+                .build();
+        series.setMaximumBarCount(6);
+        Indicator<Num> source = new ClosePriceIndicator(series) {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 4;
+            }
+        };
+        CovarianceIndicator metric = new CovarianceIndicator(source, source, 3);
+        assertThat(metric.getCountOfUnstableBars()).isEqualTo(6);
+        assertThat(metric.getValue(5).isNaN()).isTrue();
+        assertNumEquals(2.0 / 3, metric.getValue(6));
     }
 }

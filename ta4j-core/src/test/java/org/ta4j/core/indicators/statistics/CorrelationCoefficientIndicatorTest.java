@@ -145,9 +145,9 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
         // Window [4..8]: covariance = 3.6, variance(close) = 2, variance(volume) =
         // 22.16
         // -> correlation = 3.6 / sqrt(2 * 22.16) = 0.5408
-        assertNumEquals(0.5408, new CorrelationCoefficientIndicator(close, volume, 6).getValue(8));
+        assertThat(new CorrelationCoefficientIndicator(close, volume, 6).getValue(8).isNaN()).isTrue();
         // Sample scaling (n / (n - 1)) cancels in the correlation ratio
-        assertNumEquals(0.5408, CorrelationCoefficientIndicator.ofSample(close, volume, 6).getValue(8));
+        assertThat(CorrelationCoefficientIndicator.ofSample(close, volume, 6).getValue(8).isNaN()).isTrue();
         // Window [4..9]: covariance = 2.25, variances = 17.5/6 and 113.5/6 -> 0.3029
         assertNumEquals(0.3029, new CorrelationCoefficientIndicator(close, volume, 6).getValue(9));
     }
@@ -216,7 +216,7 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
         CorrelationCoefficientIndicator visibleCorrelation = CorrelationCoefficientIndicator
                 .ofPopulation(new ClosePriceIndicator(visibleSeries), new VolumeIndicator(visibleSeries), 5);
 
-        for (int index = rollingSeries.getBeginIndex(); index <= rollingSeries.getEndIndex(); index++) {
+        for (int index = rollingCorrelation.getCountOfUnstableBars(); index <= rollingSeries.getEndIndex(); index++) {
             assertNumEquals(visibleCorrelation.getValue(index - rollingSeries.getBeginIndex()),
                     rollingCorrelation.getValue(index), 1.0e-12);
         }

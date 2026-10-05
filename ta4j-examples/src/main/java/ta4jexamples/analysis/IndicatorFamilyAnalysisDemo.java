@@ -20,8 +20,8 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.CCIIndicator;
-import org.ta4j.core.indicators.IndicatorFamilyManager;
-import org.ta4j.core.indicators.IndicatorFamilyResult;
+import org.ta4j.core.analysis.IndicatorFamilyManager;
+import org.ta4j.core.analysis.IndicatorFamilyResult;
 import org.ta4j.core.indicators.MACDIndicator;
 import org.ta4j.core.indicators.PPOIndicator;
 import org.ta4j.core.indicators.ROCIndicator;
@@ -63,11 +63,11 @@ import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
  * through several similarity thresholds, and logs how broad groupings at lower
  * thresholds split into tighter near-duplicate families at higher thresholds.
  *
- * @since 0.22.7
+ * @since 0.26.1
  */
 public final class IndicatorFamilyAnalysisDemo {
 
-    static final String SP500_WEEKLY_RESOURCE = "YahooFinance-SP500-PT7D-19500103_20260310.json";
+    static final String SP500_WEEKLY_RESOURCE = "YahooFinance-SP500-PT7D-19500103_20260730.json";
     static final List<Double> SIMILARITY_THRESHOLDS = List.of(0.80, 0.90, 0.97);
 
     private static final Logger LOG = LogManager.getLogger(IndicatorFamilyAnalysisDemo.class);
@@ -84,7 +84,7 @@ public final class IndicatorFamilyAnalysisDemo {
      * Runs the analysis demo.
      *
      * @param args ignored
-     * @since 0.22.7
+     * @since 0.26.1
      */
     public static void main(String[] args) {
         BarSeries series = loadSeries();
@@ -270,6 +270,7 @@ public final class IndicatorFamilyAnalysisDemo {
     private static String topPairs(List<IndicatorFamilyResult.PairSimilarity> pairSimilarities) {
         StringJoiner joiner = new StringJoiner("; ");
         pairSimilarities.stream()
+                .filter(pair -> pair.sampleCount() > 0)
                 .sorted(Comparator
                         .comparingDouble((IndicatorFamilyResult.PairSimilarity pair) -> pair.similarity().doubleValue())
                         .reversed())

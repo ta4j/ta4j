@@ -13,7 +13,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.IndicatorFamilyResult;
+import org.ta4j.core.analysis.IndicatorFamilyResult;
 import org.ta4j.core.num.Num;
 
 public class IndicatorFamilyAnalysisDemoTest {
