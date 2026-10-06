@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import static org.ta4j.core.acceleration.AccelerationRuntime.open;
@@ -46,6 +47,7 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.acceleration.AccelerationRuntime.Assessment;
 import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
+import org.ta4j.core.acceleration.AccelerationRuntime.Determinism;
 import org.ta4j.core.acceleration.AccelerationRuntime.Diagnostic;
 import org.ta4j.core.acceleration.AccelerationRuntime.DiagnosticCode;
 import org.ta4j.core.acceleration.AccelerationRuntime.KernelRequest;
@@ -65,6 +67,7 @@ import org.ta4j.core.indicators.helpers.LogReturnIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.AbstractRule;
@@ -76,6 +79,7 @@ class AccelerationRuntimeTest {
     void resetRuntime() {
         System.clearProperty(AccelerationRuntime.PROPERTY);
         System.clearProperty(AccelerationRuntime.MAX_DEVICE_BYTES_PROPERTY);
+        System.clearProperty(AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY);
         AccelerationRuntime.resetProvidersForTests();
     }
 
@@ -216,41 +220,29 @@ class AccelerationRuntimeTest {
     }
 
     @Test
-    void decimalForecastInsideDoubleScopeRemainsScalar() {
-        BarSeries indicatorSeries = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
+    void decimalForecastAcceleratesAndMatchesTheScalarLane() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
                 .withData(100, 102, 101, 104, 103, 105, 106, 104, 108, 109)
                 .build();
-        BarSeries scopedSeries = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
-                .withData(100, 102, 101, 104, 103, 105, 106, 104, 108, 109)
-                .build();
-        MonteCarloPriceForecastIndicator reference = MonteCarloPriceForecastIndicator
-                .builder(new ClosePriceIndicator(indicatorSeries),
-                        new EwmaReturnForecastStateIndicator(new LogReturnIndicator(indicatorSeries), 3, 0.94d))
+        MonteCarloPriceForecastIndicator.Builder builder = MonteCarloPriceForecastIndicator
+                .builder(new ClosePriceIndicator(series),
+                        new EwmaReturnForecastStateIndicator(new LogReturnIndicator(series), 3, 0.94d))
                 .horizon(2)
                 .iterationCount(4)
                 .lookbackBarCount(3)
-                .seed(11L)
-                .build();
-        Forecast scalar = reference.getValue(8);
+                .seed(11L);
+        Forecast scalar = builder.build().getValue(8);
         assertTrue(scalar.isStable());
         // Fresh instance: a pre-scope read caches the scalar value, so the scoped
         // read must run on its own indicator to consult the runtime at all.
-        MonteCarloPriceForecastIndicator scoped = MonteCarloPriceForecastIndicator
-                .builder(new ClosePriceIndicator(indicatorSeries),
-                        new EwmaReturnForecastStateIndicator(new LogReturnIndicator(indicatorSeries), 3, 0.94d))
-                .horizon(2)
-                .iterationCount(4)
-                .lookbackBarCount(3)
-                .seed(11L)
-                .build();
-        EchoProvider provider = new EchoProvider(Backend.CPU, "cpu", 1L, 1_000L);
-        useProvidersForTests(List.of(provider));
+        MonteCarloPriceForecastIndicator scoped = builder.build();
+        ReferenceShockPathKernel kernel = new ReferenceShockPathKernel();
+        useProvidersForTests(List.of(kernel));
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
-        try (Scope ignored = open(scopedSeries, 8, 8)) {
-            Forecast actual = scoped.getValue(8);
-            assertEquals(scalar.mean(), actual.mean());
-            assertEquals(0, provider.executions.get());
+        try (Scope ignored = open(series, 8, 8)) {
+            assertSameForecast(scalar, scoped.getValue(8));
         }
+        assertEquals(1, kernel.executions.get());
     }
 
     @ParameterizedTest
@@ -325,8 +317,9 @@ class AccelerationRuntimeTest {
     @ParameterizedTest
     @CsvSource({ "833334, false", "666667, false", "666666, true", "625000, true" })
     void automaticSelectionRequiresAPredictedSpeedupOfOnePointFive(long predictedNanos, boolean admitted) {
-        // The planner fixture estimates the scalar baseline at 1,000,000ns: 1.2x and
-        // just under 1.5x stay scalar, while 1.5x and 1.6x engage.
+        // Reading the last index plans a one-row batch whose scalar baseline is
+        // 1,000,000ns: 1.2x and just under 1.5x stay scalar, while 1.5x and 1.6x
+        // engage.
         BarSeries series = series();
         ScopeAwareIndicator indicator = new ScopeAwareIndicator(series);
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
@@ -334,7 +327,7 @@ class AccelerationRuntimeTest {
         AccelerationRuntime.useProvidersForTests(List.of(provider));
 
         try (AccelerationRuntime.Scope ignored = AccelerationRuntime.open(series, 0, series.getEndIndex())) {
-            indicator.getValue(2);
+            indicator.getValue(series.getEndIndex());
             assertEquals(admitted ? DiagnosticCode.ACCELERATED : DiagnosticCode.CPU_FASTER,
                     AccelerationRuntime.lastDiagnostic().orElseThrow().code());
         }
@@ -439,7 +432,8 @@ class AccelerationRuntimeTest {
             assertEquals(series.numFactory().numOf(100), indicator.getValue(0));
             assertEquals(1, provider.executions.get());
             series.addBar(series.getBar(series.getEndIndex()), true);
-            assertEquals(series.numFactory().numOf(100), indicator.getValue(0));
+            assertEquals(series.numFactory().numOf(100 + series.getEndIndex()),
+                    indicator.getValue(series.getEndIndex()));
             assertEquals(2, provider.executions.get());
         }
     }
@@ -455,7 +449,8 @@ class AccelerationRuntimeTest {
             assertEquals(series.numFactory().numOf(102), indicator.getValue(2));
             assertEquals(1, provider.executions.get());
             series.setMaximumBarCount(2);
-            assertEquals(series.numFactory().numOf(102), indicator.getValue(2));
+            assertEquals(series.numFactory().numOf(100 + series.getEndIndex()),
+                    indicator.getValue(series.getEndIndex()));
             assertEquals(2, provider.executions.get());
         }
     }
@@ -469,7 +464,6 @@ class AccelerationRuntimeTest {
         SeriesValueIndicator indicator = new SeriesValueIndicator(series, () -> replaceLastBarWithClose(series, 42d));
 
         try (Scope ignored = open(series, 0, series.getEndIndex())) {
-            assertEquals(series.numFactory().numOf(42), indicator.getValue(series.getEndIndex()));
             assertEquals(series.numFactory().numOf(42), indicator.getValue(series.getEndIndex()));
             assertEquals(DiagnosticCode.STALE_SERIES, AccelerationRuntime.lastDiagnostic().orElseThrow().code());
         }
@@ -494,7 +488,6 @@ class AccelerationRuntimeTest {
         SeriesValueIndicator indicator = new SeriesValueIndicator(series, null);
 
         try (Scope ignored = open(series, 0, series.getEndIndex())) {
-            assertEquals(series.numFactory().numOf(42), indicator.getValue(series.getEndIndex()));
             assertEquals(series.numFactory().numOf(42), indicator.getValue(series.getEndIndex()));
             assertEquals(DiagnosticCode.STALE_SERIES, AccelerationRuntime.lastDiagnostic().orElseThrow().code());
         }
@@ -549,13 +542,12 @@ class AccelerationRuntimeTest {
         BarSeries series = series();
         ScopeAwareIndicator first = new ScopeAwareIndicator(series);
         try (AccelerationRuntime.Scope ignored = AccelerationRuntime.open(series, 0, series.getEndIndex())) {
-            assertEquals(series.numFactory().numOf(100), AccelerationRuntime.value(first, 0).orElseThrow());
-            assertEquals(series.numFactory().numOf(100), first.getValue(0));
+            assertEquals(series.numFactory().numOf(100), AccelerationRuntime.batchValue(first, 0));
         }
         System.setProperty(AccelerationRuntime.PROPERTY, "off");
 
-        assertEquals(series.numFactory().zero(), first.getValue(0));
-        assertFalse(AccelerationRuntime.value(first, 0).isPresent());
+        assertNull(AccelerationRuntime.batchValue(first, 0));
+        assertEquals(series.numFactory().zero(), new ScopeAwareIndicator(series).getValue(0));
     }
 
     @Test
@@ -569,10 +561,10 @@ class AccelerationRuntimeTest {
         try (AccelerationRuntime.Scope outer = AccelerationRuntime.open(series, 0, series.getEndIndex())) {
             System.setProperty(AccelerationRuntime.PROPERTY, "off");
             try (AccelerationRuntime.Scope ignored = AccelerationRuntime.open(series, 0, series.getEndIndex())) {
-                assertFalse(AccelerationRuntime.value(indicator, 0).isPresent());
+                assertNull(AccelerationRuntime.batchValue(indicator, 0));
             }
             System.setProperty(AccelerationRuntime.PROPERTY, "auto");
-            assertEquals(series.numFactory().numOf(100), AccelerationRuntime.value(indicator, 0).orElseThrow());
+            assertEquals(series.numFactory().numOf(100), AccelerationRuntime.batchValue(indicator, 0));
         }
     }
 
@@ -883,9 +875,30 @@ class AccelerationRuntimeTest {
         MonteCarloPriceForecastIndicator accelerated = longForecast(series);
         try (Scope ignored = open(series, 0, series.getEndIndex())) {
             assertFalse(accelerated.getValue(251).isStable());
-            assertEquals(252, kernel.requests.getFirst().fromInclusive());
             assertTrue(accelerated.getValue(252).isStable());
+            assertEquals(252, kernel.requests.getFirst().fromInclusive());
         }
+    }
+
+    @Test
+    void batchRequestsCarryTheOptedInDeterminismContract() {
+        System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        BarSeries series = longSeries();
+        KernelProvider kernel = new KernelProvider();
+        useProvidersForTests(List.of(kernel));
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            longForecast(series).getValue(252);
+        }
+        System.setProperty(AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY, "0.001");
+        try (Scope ignored = open(series, 0, series.getEndIndex())) {
+            longForecast(series).getValue(252);
+        }
+
+        assertEquals(2, kernel.requests.size());
+        assertEquals(Determinism.BITWISE_IDENTICAL, kernel.requests.get(0).determinism());
+        assertTrue(Double.isNaN(kernel.requests.get(0).tolerance()));
+        assertEquals(Determinism.APPROXIMATE, kernel.requests.get(1).determinism());
+        assertEquals(0.001d, kernel.requests.get(1).tolerance(), 0d);
     }
 
     @Test
@@ -900,7 +913,7 @@ class AccelerationRuntimeTest {
             assertFalse(forecast.getValue(0).isStable());
             assertFalse(forecast.getValue(100).isStable());
             assertFalse(forecast.getValue(251).isStable());
-            assertEquals(1, kernel.executions.get());
+            assertEquals(0, kernel.executions.get());
             assertTrue(forecast.getValue(252).isStable());
             assertTrue(forecast.getValue(299).isStable());
             assertEquals(1, kernel.executions.get());
@@ -953,15 +966,10 @@ class AccelerationRuntimeTest {
     }
 
     @Test
-    void lastDiagnosticSurvivesBarSeriesManagerAndNamesTheUnsupportedFactory() {
-        double[] prices = new double[300];
-        for (int i = 0; i < prices.length; i++) {
-            prices[i] = 100 + i;
-        }
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
-                .withData(prices)
-                .build();
+    void lastDiagnosticSurvivesBarSeriesManagerAndReportsTheMissingProvider() {
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        useProvidersForTests(List.of());
+        BarSeries series = longSeries();
         MonteCarloPriceForecastIndicator forecast = longForecast(series);
         Strategy strategy = new BaseStrategy(new ForecastRule(forecast, 260), new IndexRule(series.getEndIndex()));
 
@@ -970,8 +978,7 @@ class AccelerationRuntimeTest {
 
         assertTrue(AccelerationRuntime.lastDiagnostic().isPresent());
         Diagnostic diagnostic = AccelerationRuntime.lastDiagnostic().orElseThrow();
-        assertEquals(DiagnosticCode.UNSUPPORTED, diagnostic.code());
-        assertTrue(diagnostic.detail().contains("DoubleNum"), diagnostic.detail());
+        assertEquals(DiagnosticCode.NO_PROVIDER, diagnostic.code());
     }
 
     private static void assertSameTradingRecord(TradingRecord expected, TradingRecord actual) {
@@ -1016,24 +1023,23 @@ class AccelerationRuntimeTest {
             Diagnostic declined = AccelerationRuntime.lastDiagnostic().orElseThrow();
             assertEquals(DiagnosticCode.UNSUPPORTED, declined.code());
             assertEquals("none", declined.providerId());
-            assertEquals("test indicator declines acceleration", declined.detail());
+            assertTrue(declined.detail().contains("exceeds the host, device"), declined.detail());
         }
     }
 
     @Test
-    void chunkedBatchesContinueAcrossTheBatchEnd() {
+    void deviceBudgetChunksBatchesThatContinueAcrossTheBatchEnd() {
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
+        System.setProperty(AccelerationRuntime.MAX_DEVICE_BYTES_PROPERTY, String.valueOf(2 * MarkerKernel.ROW_BYTES));
         BarSeries series = series();
         RecordingEchoProvider provider = new RecordingEchoProvider();
         useProvidersForTests(List.of(provider));
-        ChunkedIndicator indicator = new ChunkedIndicator(series, 2);
+        ScopeAwareIndicator indicator = new ScopeAwareIndicator(series);
 
         try (Scope ignored = open(series, 0, series.getEndIndex())) {
             for (int index = 0; index <= series.getEndIndex(); index++) {
                 assertEquals(series.numFactory().numOf(100 + index), indicator.getValue(index), "index " + index);
             }
-            // A read before the cached batch start stays scalar without re-planning.
-            assertEquals(series.numFactory().numOf(0), indicator.getValue(0));
         }
 
         assertEquals(2, provider.executions.get());
@@ -1295,24 +1301,91 @@ class AccelerationRuntimeTest {
     }
 
     /**
-     * Plans a one-output kernel whose expected output is a per-index marker, so
-     * {@code EchoProvider} answers with the marker the indicator would compute.
+     * One-input, one-output kernel echoing a per-index marker, so the CPU lane
+     * yields the marker while {@code EchoProvider} answers {@code 100 + marker}.
      */
-    private abstract static class AcceleratedTestIndicator extends CachedIndicator<Num>
-            implements AcceleratableIndicator<Num> {
+    private static class MarkerKernel implements Kernel {
+
+        static final long ROW_BYTES = 16L;
+
+        @Override
+        public AccelerationRuntime.Operation operation() {
+            return AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1;
+        }
+
+        @Override
+        public long seed() {
+            return 7L;
+        }
+
+        @Override
+        public double[] params() {
+            return new double[] { 1d, 0d, 1d, 8d, 4d, 0.94d };
+        }
+
+        @Override
+        public int inputsPerRow() {
+            return 1;
+        }
+
+        @Override
+        public int windowLength() {
+            return 0;
+        }
+
+        @Override
+        public int outputsPerRow() {
+            return 1;
+        }
+
+        @Override
+        public long deviceBytesPerRow() {
+            return ROW_BYTES;
+        }
+
+        @Override
+        public long scalarNanosPerRow() {
+            return 1_000_000L;
+        }
+
+        @Override
+        public void run(KernelRequest request, int row, double[] outputs) {
+            outputs[0] = request.input(0, row);
+        }
+    }
+
+    private abstract static class AcceleratedTestIndicator extends KernelIndicator<Num> {
 
         private AcceleratedTestIndicator(BarSeries series) {
-            super(series);
+            this(series, new MarkerKernel());
+        }
+
+        private AcceleratedTestIndicator(BarSeries series, Kernel kernel) {
+            super(kernel, series);
         }
 
         @Override
-        public Num getValue(int index) {
-            return AccelerationRuntime.value(this, index).orElseGet(() -> super.getValue(index));
+        protected boolean snapshot(int index, double[] rowInputs) {
+            rowInputs[0] = marker(index);
+            afterSnapshot();
+            return true;
         }
 
         @Override
-        protected Num calculate(int index) {
-            return getBarSeries().numFactory().numOf(marker(index));
+        protected double windowValue(int barIndex) {
+            throw new AssertionError("marker kernels read no window");
+        }
+
+        @Override
+        protected Num decode(int index, double[] outputs) {
+            Num decoded = getBarSeries().numFactory().numOf(outputs[0]);
+            afterDecoding();
+            return decoded;
+        }
+
+        @Override
+        protected Num unavailable(int index) {
+            return NaN.NaN;
         }
 
         @Override
@@ -1320,31 +1393,11 @@ class AccelerationRuntimeTest {
             return 0;
         }
 
-        @Override
-        public AccelerationPlan<Num> planAcceleration(int fromInclusive, int toInclusive, long memoryLimitBytes) {
-            int size = toInclusive - fromInclusive + 1;
-            double[] markers = new double[size];
-            for (int row = 0; row < size; row++) {
-                markers[row] = marker(fromInclusive + row);
-            }
-            KernelRequest request = new KernelRequest(AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1,
-                    fromInclusive, toInclusive, 1, AccelerationRuntime.NumericEncoding.FLOAT64,
-                    AccelerationRuntime.Determinism.BITWISE_IDENTICAL, 7L, Double.NaN,
-                    new double[] { 1d, 0d, 1d, 8d, 4d, 0.94d }, List.of(markers), 1_000_000L, 1_000_000L);
-            afterPlanning();
-            NumFactory factory = getBarSeries().numFactory();
-            return AccelerationPlan.of(request, (slice, index) -> {
-                Num decoded = factory.numOf(slice[0]);
-                afterDecoding();
-                return decoded;
-            });
-        }
-
         double marker(int index) {
             return index;
         }
 
-        void afterPlanning() {
+        void afterSnapshot() {
         }
 
         void afterDecoding() {
@@ -1358,46 +1411,30 @@ class AccelerationRuntimeTest {
         }
     }
 
-    private static final class ChunkedIndicator extends AcceleratedTestIndicator {
-
-        private final int chunkSize;
-
-        private ChunkedIndicator(BarSeries series, int chunkSize) {
-            super(series);
-            this.chunkSize = chunkSize;
-        }
-
-        @Override
-        public AccelerationPlan<Num> planAcceleration(int fromInclusive, int toInclusive, long memoryLimitBytes) {
-            return super.planAcceleration(fromInclusive, Math.min(toInclusive, fromInclusive + chunkSize - 1),
-                    memoryLimitBytes);
-        }
-    }
-
     private static final class DecliningIndicator extends AcceleratedTestIndicator {
 
         private DecliningIndicator(BarSeries series) {
-            super(series);
-        }
-
-        @Override
-        public AccelerationPlan<Num> planAcceleration(int fromInclusive, int toInclusive, long memoryLimitBytes) {
-            return AccelerationPlan.unsupported("test indicator declines acceleration");
+            super(series, new MarkerKernel() {
+                @Override
+                public long deviceBytesPerRow() {
+                    return Long.MAX_VALUE;
+                }
+            });
         }
     }
 
     private static final class SeriesValueIndicator extends AcceleratedTestIndicator {
 
-        private final Runnable afterPlanning;
+        private Runnable afterFirstSnapshot;
         private final Runnable afterDecoding;
 
-        private SeriesValueIndicator(BarSeries series, Runnable afterPlanning) {
-            this(series, afterPlanning, null);
+        private SeriesValueIndicator(BarSeries series, Runnable afterFirstSnapshot) {
+            this(series, afterFirstSnapshot, null);
         }
 
-        private SeriesValueIndicator(BarSeries series, Runnable afterPlanning, Runnable afterDecoding) {
+        private SeriesValueIndicator(BarSeries series, Runnable afterFirstSnapshot, Runnable afterDecoding) {
             super(series);
-            this.afterPlanning = afterPlanning;
+            this.afterFirstSnapshot = afterFirstSnapshot;
             this.afterDecoding = afterDecoding;
         }
 
@@ -1407,9 +1444,11 @@ class AccelerationRuntimeTest {
         }
 
         @Override
-        void afterPlanning() {
-            if (afterPlanning != null) {
-                afterPlanning.run();
+        void afterSnapshot() {
+            Runnable hook = afterFirstSnapshot;
+            afterFirstSnapshot = null;
+            if (hook != null) {
+                hook.run();
             }
         }
 
@@ -1482,7 +1521,7 @@ class AccelerationRuntimeTest {
         final List<KernelRequest> requests = new ArrayList<>();
 
         private RecordingEchoProvider() {
-            super(Backend.CPU, "cpu", 1L, 1_000L);
+            super(Backend.CPU, "cpu", 1L, 0L);
         }
 
         @Override

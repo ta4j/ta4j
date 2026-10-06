@@ -47,11 +47,10 @@ final class MonteCarloSimulation {
 
     MonteCarloSimulation(ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator,
             MonteCarloSettings settings, MonteCarloMethod method) {
-        this.stateIndicator = validateStateIndicator(stateIndicator);
-        this.returnIndicator = this.stateIndicator.getReturnIndicator();
+        this.stateIndicator = stateIndicator;
+        this.returnIndicator = validatedReturnIndicator(stateIndicator);
         this.settings = Objects.requireNonNull(settings, "settings must not be null");
         this.method = Objects.requireNonNull(method, "method must not be null");
-        IndicatorUtils.requireSameSeries(returnIndicator, this.stateIndicator);
     }
 
     /**
@@ -115,6 +114,14 @@ final class MonteCarloSimulation {
     }
 
     int getCountOfUnstableBars() {
+        return countOfUnstableBars(stateIndicator, returnIndicator, settings);
+    }
+
+    /**
+     * Returns the first index whose state and full return window are stable.
+     */
+    static int countOfUnstableBars(ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator,
+            ReturnIndicator returnIndicator, MonteCarloSettings settings) {
         return Math.max(stateIndicator.getCountOfUnstableBars(),
                 returnIndicator.getCountOfUnstableBars() + settings.lookbackBarCount() - 1);
     }
@@ -135,7 +142,11 @@ final class MonteCarloSimulation {
         return historicalReturns;
     }
 
-    private static ReturnForecastStateIndicator<? extends ReturnMomentState> validateStateIndicator(
+    /**
+     * Validates a log-return state source and returns its return indicator, which
+     * must belong to the state's series.
+     */
+    static ReturnIndicator validatedReturnIndicator(
             ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator) {
         ReturnForecastStateIndicator<? extends ReturnMomentState> validated = Objects.requireNonNull(stateIndicator,
                 "stateIndicator must not be null");
@@ -145,7 +156,8 @@ final class MonteCarloSimulation {
                 || validated.getReturnRepresentation() != ReturnRepresentation.LOG) {
             throw new IllegalArgumentException("stateIndicator must use ReturnRepresentation.LOG");
         }
-        return validated;
+        IndicatorUtils.requireSameSeries(source, validated);
+        return source;
     }
 
     private static Num normalize(Num value, NumFactory numFactory) {
@@ -184,6 +196,11 @@ final class MonteCarloSimulation {
 
         static DeterministicRandom forPath(long seed, int decisionIndex, int horizon, int pathIndex) {
             return new DeterministicRandom(MonteCarloKernel.initialPathState(seed, decisionIndex, horizon, pathIndex));
+        }
+
+        /** Restarts this generator at the first draw of another path's stream. */
+        void resetToPath(long seed, int decisionIndex, int horizon, int pathIndex) {
+            state = MonteCarloKernel.initialPathState(seed, decisionIndex, horizon, pathIndex);
         }
 
         @Override
