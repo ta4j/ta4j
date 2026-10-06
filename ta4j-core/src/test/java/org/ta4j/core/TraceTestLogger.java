@@ -5,8 +5,10 @@ package org.ta4j.core;
 
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.logging.log4j.Level;
@@ -27,6 +29,7 @@ public final class TraceTestLogger {
 
     private final Set<String> configuredLoggerNames = new HashSet<>();
     private final List<Appender> detachedAppenders = new ArrayList<>();
+    private final Map<String, LoggerConfig> originalLoggerConfigs = new HashMap<>();
     private LoggerContext loggerContext;
     private StringWriter logOutput;
     private Appender appender;
@@ -76,10 +79,9 @@ public final class TraceTestLogger {
         }
 
         Configuration config = loggerContext.getConfiguration();
-        for (String loggerName : configuredLoggerNames) {
-            config.removeLogger(loggerName);
+        for (String loggerName : new ArrayList<>(configuredLoggerNames)) {
+            restoreLoggerConfig(loggerName);
         }
-        configuredLoggerNames.clear();
 
         for (Appender detached : detachedAppenders) {
             rootLoggerConfig.addAppender(detached, null, null);
@@ -96,6 +98,9 @@ public final class TraceTestLogger {
     public void setLoggerLevel(Class<?> loggerClass, Level level) {
         String loggerName = loggerClass.getName();
         Configuration config = loggerContext.getConfiguration();
+        if (!originalLoggerConfigs.containsKey(loggerName)) {
+            originalLoggerConfigs.put(loggerName, config.getLoggers().get(loggerName));
+        }
         config.removeLogger(loggerName);
         config.addLogger(loggerName, new LoggerConfig(loggerName, level, true));
         configuredLoggerNames.add(loggerName);
@@ -103,11 +108,21 @@ public final class TraceTestLogger {
     }
 
     public void clearLoggerLevel(Class<?> loggerClass) {
-        String loggerName = loggerClass.getName();
+        restoreLoggerConfig(loggerClass.getName());
+        loggerContext.updateLoggers();
+    }
+
+    private void restoreLoggerConfig(String loggerName) {
+        if (!originalLoggerConfigs.containsKey(loggerName)) {
+            return;
+        }
         Configuration config = loggerContext.getConfiguration();
         config.removeLogger(loggerName);
+        LoggerConfig originalConfig = originalLoggerConfigs.remove(loggerName);
+        if (originalConfig != null) {
+            config.addLogger(loggerName, originalConfig);
+        }
         configuredLoggerNames.remove(loggerName);
-        loggerContext.updateLoggers();
     }
 
     public void clear() {

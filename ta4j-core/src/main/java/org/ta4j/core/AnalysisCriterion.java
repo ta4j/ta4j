@@ -371,8 +371,7 @@ public interface AnalysisCriterion {
         }
 
         if (context.openPositionHandling() == OpenPositionHandling.MARK_TO_MARKET) {
-            List<Position> openPositions = openPositionsForMarkToMarket(source, end, transactionCostModel,
-                    holdingCostModel);
+            List<Position> openPositions = openPositionsForMarkToMarket(source, end);
             for (Position openPosition : openPositions) {
                 Position syntheticPosition = createMarkToMarketPosition(series, openPosition, end, holdingCostModel);
                 if (syntheticPosition != null
@@ -394,15 +393,11 @@ public interface AnalysisCriterion {
 
     private static Position createMarkToMarketPosition(BarSeries series, Position currentPosition, int windowEndIndex,
             CostModel holdingCostModel) {
-        if (currentPosition == null || !currentPosition.isOpened()) {
+        if (!isOpenAtWindowEnd(currentPosition, windowEndIndex)) {
             return null;
         }
 
         Trade entryTrade = currentPosition.getEntry();
-        if (entryTrade == null || entryTrade.getIndex() > windowEndIndex) {
-            return null;
-        }
-
         Num amount = entryTrade.getAmount();
         Num closePrice = series.getBar(windowEndIndex).getClosePrice();
         CostModel transactionCostModel = entryTrade.getCostModel();
@@ -412,31 +407,35 @@ public interface AnalysisCriterion {
         return new Position(entryTrade, syntheticExit, transactionCostModel, holdingCostModel);
     }
 
-    private static List<Position> openPositionsForMarkToMarket(TradingRecord source, int windowEndIndex,
-            CostModel transactionCostModel, CostModel holdingCostModel) {
+    private static List<Position> openPositionsForMarkToMarket(TradingRecord source, int windowEndIndex) {
+        List<Position> positions = new ArrayList<>();
         List<Position> openPositions = source.getOpenPositions();
         if (!openPositions.isEmpty()) {
-            return openPositionsWithinWindow(openPositions, windowEndIndex);
-        }
-        Position currentPosition = source.getCurrentPosition();
-        if (currentPosition == null || !currentPosition.isOpened()) {
-            return List.of();
-        }
-        return List.of(currentPosition);
-    }
-
-    private static List<Position> openPositionsWithinWindow(List<Position> openPositions, int windowEndIndex) {
-        List<Position> positions = new ArrayList<>();
-        for (Position openPosition : openPositions) {
-            if (openPosition == null || !openPosition.isOpened()) {
-                continue;
+            for (Position position : openPositions) {
+                if (isOpenAtWindowEnd(position, windowEndIndex)) {
+                    positions.add(position);
+                }
             }
-            if (openPosition.getEntry().getIndex() > windowEndIndex) {
-                continue;
+        } else {
+            Position currentPosition = source.getCurrentPosition();
+            if (currentPosition != null && currentPosition.isOpened()
+                    && isOpenAtWindowEnd(currentPosition, windowEndIndex)) {
+                positions.add(currentPosition);
             }
-            positions.add(openPosition);
+        }
+        for (Position position : source.getPositions()) {
+            if (position != null && position.isClosed() && isOpenAtWindowEnd(position, windowEndIndex)) {
+                positions.add(position);
+            }
         }
         return positions;
+    }
+
+    private static boolean isOpenAtWindowEnd(Position position, int windowEndIndex) {
+        if (position == null || position.getEntry() == null || position.getEntry().getIndex() > windowEndIndex) {
+            return false;
+        }
+        return !position.isClosed() || position.getExit().getIndex() > windowEndIndex;
     }
 
     private static boolean includeClosedPosition(Position position, int start, int end,

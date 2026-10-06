@@ -9,6 +9,7 @@ import static org.junit.Assert.assertThrows;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -69,29 +70,70 @@ public class WyckoffCycleFacadeTest extends AbstractIndicatorTest<BarSeries, Num
     }
 
     /**
-     * Verifies that facade accessors do not expose internal mutable references.
+     * Compares a constrained and pruned facade with a fresh series of its logical
+     * bars.
      */
     @Test
-    public void shouldReturnDefensiveSeriesAndPhaseSnapshots() {
+    public void constrainedAndPrunedFacadeMatchesFreshLogicalSeries() {
+        double[] logicalCloses = { 10, 50, 5, 40 };
+        BarSeries logicalOnly = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(logicalCloses).build();
+        int beginIndex = 3;
+        BarSeries window = ConstrainedSeriesSupport.offsetSeries("wyckoff-window", numFactory, beginIndex,
+                beginIndex + logicalCloses.length - 1, 2, 999, 10, 50, 5, 40, 777);
+        WyckoffCycleFacade windowFacade = WyckoffCycleFacade.builder(window)
+                .withSwingConfiguration(1, 1, 0)
+                .withVolumeWindows(1, 4)
+                .build();
+        WyckoffCycleFacade equivalentFacade = WyckoffCycleFacade.builder(logicalOnly)
+                .withSwingConfiguration(1, 1, 0)
+                .withVolumeWindows(1, 4)
+                .build();
+
+        assertThat(windowFacade.series()).isSameAs(window);
+        assertThat(windowFacade.phase().getBarSeries().getBeginIndex()).isEqualTo(beginIndex);
+        assertThat(windowFacade.phase().getBarSeries().getEndIndex()).isEqualTo(window.getEndIndex());
+        for (int index = beginIndex; index <= window.getEndIndex(); index++) {
+            int logicalIndex = index - beginIndex;
+            assertThat(windowFacade.phase().getValue(index)).as("phase at logical index " + logicalIndex)
+                    .isEqualTo(equivalentFacade.phase().getValue(logicalIndex));
+            assertThat(windowFacade.tradingRangeLow(index)).as("range low at logical index " + logicalIndex)
+                    .isEqualTo(equivalentFacade.tradingRangeLow(logicalIndex));
+            assertThat(windowFacade.tradingRangeHigh(index)).as("range high at logical index " + logicalIndex)
+                    .isEqualTo(equivalentFacade.tradingRangeHigh(logicalIndex));
+            int equivalentTransition = equivalentFacade.lastPhaseTransitionIndex(logicalIndex);
+            int expectedTransition = equivalentTransition < 0 ? equivalentTransition
+                    : equivalentTransition + beginIndex;
+            assertThat(windowFacade.lastPhaseTransitionIndex(index))
+                    .as("transition index at logical index " + logicalIndex)
+                    .isEqualTo(expectedTransition);
+        }
+    }
+
+    /**
+     * Verifies that the facade exposes the borrowed live series and fresh phase
+     * indicators stay bound to it.
+     */
+    @Test
+    public void returnsLiveSeriesAndPhaseIndicatorsBoundToIt() {
         WyckoffCycleFacade facade = WyckoffCycleFacade.builder(series)
                 .withSwingConfiguration(1, 1, 0)
                 .withVolumeWindows(1, 4)
                 .build();
-        BarSeries firstSeriesSnapshot = facade.series();
-        BarSeries secondSeriesSnapshot = facade.series();
-        WyckoffPhaseIndicator firstPhaseSnapshot = facade.phase();
-        WyckoffPhaseIndicator secondPhaseSnapshot = facade.phase();
+        BarSeries firstSeries = facade.series();
+        BarSeries secondSeries = facade.series();
+        WyckoffPhaseIndicator firstPhaseIndicator = facade.phase();
+        WyckoffPhaseIndicator secondPhaseIndicator = facade.phase();
 
         addBar(series, 120, 125, 119, 123, 700);
 
-        assertThat(firstSeriesSnapshot).isNotSameAs(series);
-        assertThat(firstSeriesSnapshot).isNotSameAs(secondSeriesSnapshot);
-        assertThat(firstSeriesSnapshot.getBarCount()).isEqualTo(9);
-        assertThat(secondSeriesSnapshot.getBarCount()).isEqualTo(9);
-        assertThat(facade.series().getBarCount()).isEqualTo(9);
-        assertThat(firstPhaseSnapshot).isNotSameAs(secondPhaseSnapshot);
-        assertThat(firstPhaseSnapshot.getBarSeries().getBarCount()).isEqualTo(9);
-        assertThat(secondPhaseSnapshot.getBarSeries().getBarCount()).isEqualTo(9);
+        assertThat(firstSeries).isSameAs(series);
+        assertThat(secondSeries).isSameAs(series);
+        assertThat(facade.series().getBarCount()).isEqualTo(10);
+        assertThat(firstPhaseIndicator).isNotSameAs(secondPhaseIndicator);
+        assertThat(firstPhaseIndicator.getBarSeries().getBarCount()).isEqualTo(10);
+        assertThat(secondPhaseIndicator.getBarSeries().getBarCount()).isEqualTo(10);
+        assertThat(firstPhaseIndicator.getBarSeries().getEndIndex())
+                .isEqualTo(firstPhaseIndicator.getBarSeries().getBarCount() - 1);
     }
 
     /**

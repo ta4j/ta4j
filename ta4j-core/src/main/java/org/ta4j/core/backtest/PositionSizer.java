@@ -3,12 +3,12 @@
  */
 package org.ta4j.core.backtest;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Objects;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
@@ -247,13 +247,19 @@ public interface PositionSizer {
      * @param entryIndex           estimated execution bar index
      * @param entryPrice           estimated entry price
      * @param strategy             strategy being evaluated
-     * @param barSeries            backtested bar series
+     * @param barSeries            backtested bar series; during a
+     *                             {@link BarSeriesManager} run, a read-only view of
+     *                             the caller's series that keeps its indexes and
+     *                             ends at the run's last index
      * @param tradeType            entry trade type
      * @param tradingRecord        trading record for the current run
      * @param transactionCostModel transaction cost model
      * @param holdingCostModel     holding cost model
      * @since 0.22.9
      */
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "The context borrows the run's series view, "
+            + "strategy, trading record and cost models so sizing observes the same bars the strategy rules and "
+            + "execution models see; accessors expose them by contract.")
     public record Context(int signalIndex, int entryIndex, Num entryPrice, Strategy strategy, BarSeries barSeries,
             TradeType tradeType, TradingRecord tradingRecord, CostModel transactionCostModel,
             CostModel holdingCostModel) {
@@ -268,16 +274,11 @@ public interface PositionSizer {
         public Context {
             Objects.requireNonNull(entryPrice, "entryPrice");
             strategy = StrategySnapshots.copy(strategy);
-            barSeries = snapshotSeries(barSeries);
+            barSeries = Objects.requireNonNull(barSeries, "barSeries");
             Objects.requireNonNull(tradeType, "tradeType");
             Objects.requireNonNull(tradingRecord, "tradingRecord");
             Objects.requireNonNull(transactionCostModel, "transactionCostModel");
             Objects.requireNonNull(holdingCostModel, "holdingCostModel");
-        }
-
-        @Override
-        public BarSeries barSeries() {
-            return snapshotSeries(barSeries);
         }
 
         @Override
@@ -387,13 +388,5 @@ public interface PositionSizer {
             return low;
         }
 
-        private static BarSeries snapshotSeries(BarSeries barSeries) {
-            BarSeries series = Objects.requireNonNull(barSeries, "barSeries");
-            return new BaseBarSeriesBuilder().withName(series.getName())
-                    .withNumFactory(series.numFactory())
-                    .withBars(series.getBarData())
-                    .withMaxBarCount(series.getMaximumBarCount())
-                    .build();
-        }
     }
 }

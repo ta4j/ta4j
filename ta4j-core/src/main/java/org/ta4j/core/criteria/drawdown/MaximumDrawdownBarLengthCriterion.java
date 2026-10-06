@@ -4,6 +4,7 @@
 package org.ta4j.core.criteria.drawdown;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
@@ -72,11 +73,10 @@ public class MaximumDrawdownBarLengthCriterion extends AbstractEquityCurveSettin
      */
     @Override
     public Num calculate(BarSeries series, Position position) {
-        if (position == null || position.getEntry() == null || position.getExit() == null) {
+        if (position == null || position.getEntry() == null || position.isOpened()) {
             return series.numFactory().zero();
         }
-        CashFlow cashFlow = new CashFlow(series, position, equityCurveMode);
-        return Drawdown.length(series, null, cashFlow);
+        return calculate(series, new BaseTradingRecord(position));
     }
 
     /**

@@ -96,10 +96,11 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
             return series.numFactory().one();
         }
 
+        int finalIndex = series.getEndIndex();
         boolean countPosition = switch (statusFilter) {
-        case CLOSED -> position != null && position.isClosed();
-        case OPEN -> position != null && position.isOpened();
-        case ALL -> position != null && (position.isClosed() || position.isOpened());
+        case CLOSED -> isClosedAt(position, finalIndex);
+        case OPEN -> isOpenAt(position, finalIndex);
+        case ALL -> isClosedAt(position, finalIndex) || isOpenAt(position, finalIndex);
         };
         return countPosition ? series.numFactory().one() : series.numFactory().zero();
     }
@@ -143,12 +144,13 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
     }
 
     private int countPositions(BarSeries series, TradingRecord tradingRecord) {
-        int closedPositions = tradingRecord.getPositionCount();
+        int finalIndex = tradingRecord.getEndIndex(series);
+        int closedPositions = countClosedPositionsAtOrBefore(tradingRecord, finalIndex);
         if (statusFilter == PositionStatusFilter.CLOSED) {
             return closedPositions;
         }
 
-        int openPositions = countOpenPositionsAtOrBefore(tradingRecord, tradingRecord.getEndIndex(series));
+        int openPositions = countOpenPositionsAtOrBefore(tradingRecord, finalIndex);
         return statusFilter == PositionStatusFilter.OPEN ? openPositions : closedPositions + openPositions;
     }
 
@@ -160,12 +162,27 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
         return Objects.requireNonNull(projectedRecordRef.get(), "projectedRecord");
     }
 
+    private static int countClosedPositionsAtOrBefore(TradingRecord tradingRecord, int endIndex) {
+        int count = 0;
+        for (Position position : tradingRecord.getPositions()) {
+            if (isClosedAt(position, endIndex)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
     private static int countOpenPositionsAtOrBefore(TradingRecord tradingRecord, int endIndex) {
+        int count = 0;
+        for (Position position : tradingRecord.getPositions()) {
+            if (isOpenAt(position, endIndex)) {
+                count++;
+            }
+        }
         List<Position> openPositions = tradingRecord.getOpenPositions();
         if (openPositions != null && !openPositions.isEmpty()) {
-            int count = 0;
             for (Position openPosition : openPositions) {
-                if (isOpenedAtOrBefore(openPosition, endIndex)) {
+                if (isOpenAt(openPosition, endIndex)) {
                     count++;
                 }
             }
@@ -173,15 +190,21 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
         }
 
         Position currentPosition = tradingRecord.getCurrentPosition();
-        return isOpenedAtOrBefore(currentPosition, endIndex) ? 1 : 0;
+        return currentPosition != null && currentPosition.isOpened() && isOpenAt(currentPosition, endIndex) ? count + 1
+                : count;
     }
 
     private static int countOpenPositionsBetween(TradingRecord tradingRecord, int startIndex, int endIndex) {
+        int count = 0;
+        for (Position position : tradingRecord.getPositions()) {
+            if (isOpenBetween(position, startIndex, endIndex)) {
+                count++;
+            }
+        }
         List<Position> openPositions = tradingRecord.getOpenPositions();
         if (openPositions != null && !openPositions.isEmpty()) {
-            int count = 0;
             for (Position openPosition : openPositions) {
-                if (isOpenedBetween(openPosition, startIndex, endIndex)) {
+                if (isOpenBetween(openPosition, startIndex, endIndex)) {
                     count++;
                 }
             }
@@ -189,16 +212,24 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
         }
 
         Position currentPosition = tradingRecord.getCurrentPosition();
-        return isOpenedBetween(currentPosition, startIndex, endIndex) ? 1 : 0;
+        return currentPosition != null && currentPosition.isOpened()
+                && isOpenBetween(currentPosition, startIndex, endIndex) ? count + 1 : count;
     }
 
-    private static boolean isOpenedAtOrBefore(Position position, int endIndex) {
-        return position != null && position.isOpened() && position.getEntry() != null
-                && position.getEntry().getIndex() <= endIndex;
+    private static boolean isOpenAt(Position position, int endIndex) {
+        if (position == null || position.getEntry() == null || position.getEntry().getIndex() > endIndex) {
+            return false;
+        }
+        return position.getExit() == null || position.getExit().getIndex() > endIndex;
     }
 
-    private static boolean isOpenedBetween(Position position, int startIndex, int endIndex) {
-        return isOpenedAtOrBefore(position, endIndex) && position.getEntry().getIndex() >= startIndex;
+    private static boolean isClosedAt(Position position, int endIndex) {
+        return position != null && position.getEntry() != null && position.getEntry().getIndex() <= endIndex
+                && position.getExit() != null && position.getExit().getIndex() <= endIndex;
+    }
+
+    private static boolean isOpenBetween(Position position, int startIndex, int endIndex) {
+        return isOpenAt(position, endIndex) && position.getEntry().getIndex() >= startIndex;
     }
 
     private static final class ProjectionCaptureCriterion extends AbstractAnalysisCriterion {
