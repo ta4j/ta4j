@@ -72,10 +72,6 @@ import org.ta4j.core.rules.AbstractRule;
 @Execution(ExecutionMode.SAME_THREAD)
 class AccelerationRuntimeTest {
 
-    static {
-        AccelerationRuntime.registerPlanner(new TestPlanner());
-    }
-
     @AfterEach
     void resetRuntime() {
         System.clearProperty(AccelerationRuntime.PROPERTY);
@@ -1011,21 +1007,16 @@ class AccelerationRuntimeTest {
     }
 
     @Test
-    void recognizedPlannerDeclineReachesLastDiagnosticUnchanged() {
+    void indicatorDeclineReachesLastDiagnosticUnchanged() {
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
         BarSeries series = series();
 
         try (Scope ignored = open(series, 0, series.getEndIndex())) {
             assertEquals(series.numFactory().numOf(1), new DecliningIndicator(series).getValue(1));
-            Diagnostic recognized = AccelerationRuntime.lastDiagnostic().orElseThrow();
-            assertEquals(DiagnosticCode.UNSUPPORTED, recognized.code());
-            assertEquals("none", recognized.providerId());
-            assertEquals("test planner cannot lower the declining indicator", recognized.detail());
-
-            assertEquals(series.numFactory().numOf(2), new UnclaimedIndicator(series).getValue(2));
-            Diagnostic unclaimed = AccelerationRuntime.lastDiagnostic().orElseThrow();
-            assertEquals(DiagnosticCode.UNSUPPORTED, unclaimed.code());
-            assertEquals("no operation planner claims UnclaimedIndicator", unclaimed.detail());
+            Diagnostic declined = AccelerationRuntime.lastDiagnostic().orElseThrow();
+            assertEquals(DiagnosticCode.UNSUPPORTED, declined.code());
+            assertEquals("none", declined.providerId());
+            assertEquals("test indicator declines acceleration", declined.detail());
         }
     }
 
@@ -1303,50 +1294,14 @@ class AccelerationRuntimeTest {
                 .build();
     }
 
-    private static final class TestPlanner implements OperationPlanner {
+    /**
+     * Plans a one-output kernel whose expected output is a per-index marker, so
+     * {@code EchoProvider} answers with the marker the indicator would compute.
+     */
+    private abstract static class AcceleratedTestIndicator extends CachedIndicator<Num>
+            implements AcceleratableIndicator<Num> {
 
-        @Override
-        public PlanAttempt plan(Indicator<?> indicator, int fromInclusive, int toInclusive, NumFactory factory,
-                long memoryLimitBytes) {
-            if (indicator instanceof DecliningIndicator) {
-                return PlanAttempt
-                        .declined(PlanDecline.unsupported("test planner cannot lower the declining indicator"));
-            }
-            if (indicator instanceof UnclaimedIndicator) {
-                return PlanAttempt.declined(PlanDecline.unclaimed());
-            }
-            SeriesValueIndicator seriesValue = indicator instanceof SeriesValueIndicator value ? value : null;
-            ChunkedIndicator chunked = indicator instanceof ChunkedIndicator value ? value : null;
-            if (!(indicator instanceof ScopeAwareIndicator) && seriesValue == null && chunked == null) {
-                return PlanAttempt.declined(PlanDecline.unclaimed());
-            }
-            int end = chunked != null ? Math.min(toInclusive, fromInclusive + chunked.chunkSize() - 1) : toInclusive;
-            int size = end - fromInclusive + 1;
-            double[] markers = new double[size];
-            for (int row = 0; row < size; row++) {
-                int index = fromInclusive + row;
-                markers[row] = seriesValue == null ? index : seriesValue.markerAt(index);
-            }
-            KernelRequest request = new KernelRequest(AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1,
-                    fromInclusive, end, 1, AccelerationRuntime.NumericEncoding.FLOAT64,
-                    AccelerationRuntime.Determinism.BITWISE_IDENTICAL, 7L, Double.NaN,
-                    new double[] { 1d, 0d, 1d, 8d, 4d, 0.94d }, List.of(markers), 1_000_000L, 1_000_000L);
-            if (seriesValue != null) {
-                seriesValue.runAfterPlanning();
-            }
-            return PlanAttempt.planned(new PlannedOperation(request, (slice, index, decodingFactory) -> {
-                Num decoded = decodingFactory.numOf(slice[0]);
-                if (seriesValue != null) {
-                    seriesValue.runAfterDecoding();
-                }
-                return decoded;
-            }));
-        }
-    }
-
-    private static final class ScopeAwareIndicator extends CachedIndicator<Num> {
-
-        private ScopeAwareIndicator(BarSeries series) {
+        private AcceleratedTestIndicator(BarSeries series) {
             super(series);
         }
 
@@ -1357,16 +1312,53 @@ class AccelerationRuntimeTest {
 
         @Override
         protected Num calculate(int index) {
-            return getBarSeries().numFactory().numOf(index);
+            return getBarSeries().numFactory().numOf(marker(index));
         }
 
         @Override
         public int getCountOfUnstableBars() {
             return 0;
         }
+
+        @Override
+        public AccelerationPlan<Num> planAcceleration(int fromInclusive, int toInclusive, long memoryLimitBytes) {
+            int size = toInclusive - fromInclusive + 1;
+            double[] markers = new double[size];
+            for (int row = 0; row < size; row++) {
+                markers[row] = marker(fromInclusive + row);
+            }
+            KernelRequest request = new KernelRequest(AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1,
+                    fromInclusive, toInclusive, 1, AccelerationRuntime.NumericEncoding.FLOAT64,
+                    AccelerationRuntime.Determinism.BITWISE_IDENTICAL, 7L, Double.NaN,
+                    new double[] { 1d, 0d, 1d, 8d, 4d, 0.94d }, List.of(markers), 1_000_000L, 1_000_000L);
+            afterPlanning();
+            NumFactory factory = getBarSeries().numFactory();
+            return AccelerationPlan.of(request, (slice, index) -> {
+                Num decoded = factory.numOf(slice[0]);
+                afterDecoding();
+                return decoded;
+            });
+        }
+
+        double marker(int index) {
+            return index;
+        }
+
+        void afterPlanning() {
+        }
+
+        void afterDecoding() {
+        }
     }
 
-    private static final class ChunkedIndicator extends CachedIndicator<Num> {
+    private static final class ScopeAwareIndicator extends AcceleratedTestIndicator {
+
+        private ScopeAwareIndicator(BarSeries series) {
+            super(series);
+        }
+    }
+
+    private static final class ChunkedIndicator extends AcceleratedTestIndicator {
 
         private final int chunkSize;
 
@@ -1375,71 +1367,26 @@ class AccelerationRuntimeTest {
             this.chunkSize = chunkSize;
         }
 
-        private int chunkSize() {
-            return chunkSize;
-        }
-
         @Override
-        public Num getValue(int index) {
-            return AccelerationRuntime.value(this, index).orElseGet(() -> super.getValue(index));
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            return getBarSeries().numFactory().numOf(index);
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return 0;
+        public AccelerationPlan<Num> planAcceleration(int fromInclusive, int toInclusive, long memoryLimitBytes) {
+            return super.planAcceleration(fromInclusive, Math.min(toInclusive, fromInclusive + chunkSize - 1),
+                    memoryLimitBytes);
         }
     }
 
-    private static final class DecliningIndicator extends CachedIndicator<Num> {
+    private static final class DecliningIndicator extends AcceleratedTestIndicator {
 
         private DecliningIndicator(BarSeries series) {
             super(series);
         }
 
         @Override
-        public Num getValue(int index) {
-            return AccelerationRuntime.value(this, index).orElseGet(() -> super.getValue(index));
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            return getBarSeries().numFactory().numOf(index);
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return 0;
+        public AccelerationPlan<Num> planAcceleration(int fromInclusive, int toInclusive, long memoryLimitBytes) {
+            return AccelerationPlan.unsupported("test indicator declines acceleration");
         }
     }
 
-    private static final class UnclaimedIndicator extends CachedIndicator<Num> {
-
-        private UnclaimedIndicator(BarSeries series) {
-            super(series);
-        }
-
-        @Override
-        public Num getValue(int index) {
-            return AccelerationRuntime.value(this, index).orElseGet(() -> super.getValue(index));
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            return getBarSeries().numFactory().numOf(index);
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return 0;
-        }
-    }
-
-    private static final class SeriesValueIndicator extends CachedIndicator<Num> {
+    private static final class SeriesValueIndicator extends AcceleratedTestIndicator {
 
         private final Runnable afterPlanning;
         private final Runnable afterDecoding;
@@ -1455,31 +1402,19 @@ class AccelerationRuntimeTest {
         }
 
         @Override
-        public Num getValue(int index) {
-            return AccelerationRuntime.value(this, index).orElseGet(() -> super.getValue(index));
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            return getBarSeries().getBar(index).getClosePrice();
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return 0;
-        }
-
-        private double markerAt(int index) {
+        double marker(int index) {
             return getBarSeries().getBar(index).getClosePrice().doubleValue();
         }
 
-        private void runAfterPlanning() {
+        @Override
+        void afterPlanning() {
             if (afterPlanning != null) {
                 afterPlanning.run();
             }
         }
 
-        private void runAfterDecoding() {
+        @Override
+        void afterDecoding() {
             if (afterDecoding != null) {
                 afterDecoding.run();
             }

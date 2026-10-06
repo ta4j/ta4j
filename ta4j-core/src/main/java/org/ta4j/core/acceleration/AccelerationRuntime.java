@@ -23,30 +23,30 @@ import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.acceleration.AccelerationPlan.Decoder;
 
 /**
  * Scoped entry point for accelerated indicator evaluation.
  *
  * <p>
- * Providers never observe ta4j domain graphs. Core-internal planners lower a
- * supported calculation into an immutable versioned {@link KernelRequest} built
- * exclusively from primitives, workload shapes, and numeric contracts.
- * Providers answer with raw primitives ({@link KernelResult}); the runtime
- * validates the raw output, reconstructs domain values through the owning
- * {@link NumFactory}, and falls back to the scalar lane on any failure. An
- * indicator that no planner claims never reaches provider code, and assessment
- * never initializes native code.
+ * Providers never observe ta4j domain graphs. An {@link AcceleratableIndicator}
+ * plans a supported calculation into an immutable versioned
+ * {@link KernelRequest} built exclusively from primitives, workload shapes, and
+ * numeric contracts. Providers answer with raw primitives
+ * ({@link KernelResult}); the runtime validates the raw output, reconstructs
+ * domain values through the plan's decoder, and falls back to the scalar lane
+ * on any failure. An indicator whose plan declines never reaches provider code,
+ * and assessment never initializes native code.
  *
  * <p>
  * Selection is cost-based. Every discovered provider is assessed; supported
  * assessments are ranked by predicted end-to-end cost with a documented stable
- * tie-break, compared against the planner's scalar baseline (CPU crossover),
- * and executed best-first with per-attempt fallback. Failure isolation is keyed
- * by provider, device, and operation version.
+ * tie-break, compared against the plan's scalar baseline (CPU crossover), and
+ * executed best-first with per-attempt fallback. Failure isolation is keyed by
+ * provider, device, and operation version.
  *
  * <p>
- * Planner declines are typed. A transient decline (a warm-up prefix, a stale
+ * Plan declines are typed. A transient decline (a warm-up prefix, a stale
  * snapshot, a resource limit a shorter range could satisfy) only defers the
  * range to its retry index, so an early read cannot disable acceleration for
  * the rest of the scope; a permanent decline falls back to the scalar lane for
@@ -62,10 +62,10 @@ import org.ta4j.core.num.NumFactory;
  * Today exactly one calculation is eligible:
  * {@link org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator}
  * built with the default shock-path method (no custom {@code MonteCarloMethod})
- * over a series whose {@link NumFactory} is {@code DoubleNumFactory}. It lowers
- * to {@link Operation#MONTE_CARLO_SHOCK_PATHS_V1}. Every other indicator, and
- * any forecast with a custom method or another {@code Num} type, always runs on
- * the scalar lane; the scope diagnostic says why.
+ * over a {@code DoubleNum} series. It lowers to
+ * {@link Operation#MONTE_CARLO_SHOCK_PATHS_V1}. Every other indicator, and any
+ * forecast with a custom method or another {@code Num} type, always runs on the
+ * scalar lane; the scope diagnostic says why.
  *
  * <h2>Control</h2>
  * <ul>
@@ -85,30 +85,8 @@ import org.ta4j.core.num.NumFactory;
  *
  * <h2>Making another indicator eligible</h2>
  * <p>
- * A calculation qualifies only when all of the following hold:
- * <ul>
- * <li><b>Core-owned lowering.</b> A core {@link OperationPlanner}, registered
- * through {@link #registerPlanner(OperationPlanner)}, claims the indicator and
- * a new versioned {@link Operation} constant names its kernel contract.
- * Providers never receive indicators, series or {@code Num} values.</li>
- * <li><b>Primitive snapshot.</b> Every input the kernel reads can be captured
- * on the CPU as primitive arrays in a {@link KernelRequest}, with all inputs
- * drawn from the scope's series so a mid-run change is detectable.</li>
- * <li><b>Independent, batchable work.</b> Given that snapshot, each index (and
- * each unit of work inside it, such as a Monte Carlo path) is computed without
- * reading another index's output, so ranges can be batched and chunked.</li>
- * <li><b>Exact reproducibility.</b> A {@link NumericEncoding#FLOAT64} kernel on
- * {@code DoubleNum} whose output is {@link Determinism#BITWISE_IDENTICAL} to a
- * scalar reference kernel, independent of thread or device scheduling;
- * randomness must come from counter-based per-unit streams, never a shared
- * sequential generator.</li>
- * <li><b>Enough work.</b> Per-index compute heavy enough that a device beats
- * the scalar baseline after transfer costs, with memory that is bounded and
- * estimable per row so requests fit {@value #MAX_DEVICE_BYTES_PROPERTY}.</li>
- * </ul>
- * Path-dependent recursions (EMA-style state carried across indexes),
- * {@code DecimalNum} arithmetic, and user-supplied callbacks fail these
- * requirements and stay on the CPU.
+ * Implement {@link AcceleratableIndicator}; its documentation states the
+ * conditions a calculation must meet.
  *
  * @since 0.26.1
  */
@@ -161,38 +139,9 @@ public final class AccelerationRuntime {
      */
     private static final int MAX_CONSECUTIVE_DISCOVERY_FAILURES = 64;
 
-    /**
-     * Published copy-on-write: readers never take the registration lock.
-     */
-    private static volatile List<OperationPlanner> planners = List.of();
-
     private static volatile List<Provider> discoveredProviders;
 
     private AccelerationRuntime() {
-    }
-
-    /**
-     * Registers a core-internal operation planner.
-     *
-     * <p>
-     * Core-internal extension point: planners are core-owned lowering code, not
-     * provider extensions. Provider artifacts must implement {@link Provider}
-     * instead and must never call this method. Registration is additive and
-     * idempotent per planner class.
-     *
-     * @param planner planner to register
-     * @since 0.26.1
-     */
-    public static synchronized void registerPlanner(OperationPlanner planner) {
-        Objects.requireNonNull(planner, "planner must not be null");
-        for (OperationPlanner registered : planners) {
-            if (registered.getClass() == planner.getClass()) {
-                return;
-            }
-        }
-        List<OperationPlanner> updated = new ArrayList<>(planners);
-        updated.add(planner);
-        planners = List.copyOf(updated);
     }
 
     /**
@@ -228,7 +177,7 @@ public final class AccelerationRuntime {
      * @return accelerated value, or empty to use scalar evaluation
      * @since 0.26.1
      */
-    public static <T> Optional<T> value(Indicator<T> indicator, int index) {
+    public static <T> Optional<T> value(AcceleratableIndicator<T> indicator, int index) {
         Context context = CURRENT.get();
         if (context == null || context.suspended) {
             return Optional.empty();
@@ -774,7 +723,7 @@ public final class AccelerationRuntime {
         }
 
         @SuppressWarnings("unchecked")
-        private <T> Optional<T> value(Indicator<T> indicator, int index) {
+        private <T> Optional<T> value(AcceleratableIndicator<T> indicator, int index) {
             Objects.requireNonNull(indicator, "indicator must not be null");
             BarSeries indicatorSeries = indicator.getBarSeries();
             if (index < fromInclusive || index > toInclusive || fromInclusive < indicatorSeries.getBeginIndex()
@@ -811,7 +760,7 @@ public final class AccelerationRuntime {
             return retryFromIndex != null && index < retryFromIndex;
         }
 
-        private <T> Evaluation evaluate(Indicator<T> indicator, int index) {
+        private <T> Evaluation evaluate(AcceleratableIndicator<T> indicator, int index) {
             requested = true;
             BarSeries indicatorSeries = indicator.getBarSeries();
             BarSeriesChangeSnapshot beforePlanning = indicatorSeries.getBarSeriesChangeSnapshot(-1L);
@@ -820,21 +769,21 @@ public final class AccelerationRuntime {
                         "series does not track bar-data revisions; accelerated batches cannot be invalidated");
                 return Evaluation.unsupported();
             }
-            PlanAttempt attempt;
+            AccelerationPlan<T> plan;
             try {
-                attempt = plan(indicator, index);
+                plan = Objects.requireNonNull(indicator.planAcceleration(index, toInclusive, memoryLimitBytes),
+                        "planAcceleration returned null");
             } catch (LinkageError | RuntimeException exception) {
-                diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none", "planner failed for "
+                diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none", "planning failed for "
                         + indicator.getClass().getSimpleName() + ": " + failureMessage(exception));
                 return Evaluation.unsupported();
             }
-            if (!attempt.isPlanned()) {
-                PlanDecline decline = attempt.decline();
-                diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none", decline.detail());
-                return decline.permanent() ? Evaluation.unsupported() : Evaluation.retryFrom(decline.retryFromIndex());
+            if (!plan.isPlanned()) {
+                diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none", plan.reason());
+                return plan.isPermanentDecline() ? Evaluation.unsupported()
+                        : Evaluation.retryFrom(plan.retryFromIndex());
             }
-            PlannedOperation planned = attempt.operation();
-            KernelRequest request = planned.request();
+            KernelRequest request = plan.request();
             if (request.peakDeviceBytesEstimate() > memoryLimitBytes) {
                 diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none", "peak device estimate "
                         + request.peakDeviceBytesEstimate() + " exceeds budget " + memoryLimitBytes);
@@ -896,7 +845,7 @@ public final class AccelerationRuntime {
                 }
                 List<Object> decoded;
                 try {
-                    decoded = decodeAll(request, rawOutputs, planned, indicatorSeries);
+                    decoded = decodeAll(request, rawOutputs, plan.decoder());
                 } catch (LinkageError | RuntimeException exception) {
                     quarantine.put(quarantineKey(candidate, request), failureMessage(exception));
                     diagnostic = new Diagnostic(DiagnosticCode.INVALID_RESULT, candidate.providerId,
@@ -1017,42 +966,14 @@ public final class AccelerationRuntime {
             return null;
         }
 
-        private PlanAttempt plan(Indicator<?> indicator, int index) {
-            List<OperationPlanner> snapshot = planners;
-            PlanDecline retryable = null;
-            PlanDecline permanent = null;
-            for (OperationPlanner planner : snapshot) {
-                PlanAttempt attempt = Objects.requireNonNull(planner.plan(indicator, index, toInclusive,
-                        indicator.getBarSeries().numFactory(), memoryLimitBytes), "planner returned no attempt");
-                if (attempt.isPlanned()) {
-                    return attempt;
-                }
-                PlanDecline decline = attempt.decline();
-                if (!decline.permanent()) {
-                    if (retryable == null || decline.retryFromIndex() < retryable.retryFromIndex()) {
-                        retryable = decline;
-                    }
-                } else if (permanent == null && !decline.equals(PlanDecline.unclaimed())) {
-                    permanent = decline;
-                }
-            }
-            PlanDecline decline = retryable != null ? retryable
-                    : permanent != null ? permanent
-                            : PlanDecline
-                                    .unsupported("no operation planner claims " + indicator.getClass().getSimpleName());
-            return PlanAttempt.declined(decline);
-        }
-
-        private List<Object> decodeAll(KernelRequest request, double[] rawOutputs, PlannedOperation planned,
-                BarSeries indicatorSeries) {
-            NumFactory factory = indicatorSeries.numFactory();
+        private static List<Object> decodeAll(KernelRequest request, double[] rawOutputs, Decoder<?> decoder) {
             List<Object> decoded = new ArrayList<>(request.size());
             // One slice is reused across indexes; decoders must not retain it.
             double[] slice = new double[request.outputsPerIndex()];
             for (int position = 0; position < request.size(); position++) {
                 int index = request.fromInclusive() + position;
                 System.arraycopy(rawOutputs, position * request.outputsPerIndex(), slice, 0, slice.length);
-                Object value = planned.decoder().decode(slice, index, factory);
+                Object value = decoder.decode(slice, index);
                 if (value == null) {
                     throw new IllegalStateException(
                             "decoder returned null for index " + index + " of " + request.operation());

@@ -9,12 +9,8 @@ import java.util.List;
 import java.util.Objects;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.acceleration.AccelerationPlan;
 import org.ta4j.core.acceleration.AccelerationRuntime;
-import org.ta4j.core.acceleration.OperationDecoder;
-import org.ta4j.core.acceleration.OperationPlanner;
-import org.ta4j.core.acceleration.PlanAttempt;
-import org.ta4j.core.acceleration.PlanDecline;
-import org.ta4j.core.acceleration.PlannedOperation;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.ReturnIndicator;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
@@ -45,7 +41,7 @@ import org.ta4j.core.num.NumFactory;
  *
  * @since 0.26.1
  */
-final class MonteCarloShockPathPlanner implements OperationPlanner {
+final class MonteCarloShockPathPlanner {
 
     /** Order-of-magnitude scalar cost per simulated path step, in nanoseconds. */
     static final long NANOS_PER_PATH_STEP = 50L;
@@ -56,31 +52,31 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
     /** Per-row scalar inputs: price, mean, drift and variance. */
     private static final long SCALAR_INPUTS_PER_ROW = 4L;
 
-    @Override
-    public PlanAttempt plan(Indicator<?> indicator, int fromInclusive, int toInclusive, NumFactory factory,
-            long memoryLimitBytes) {
-        // Keep host staging below a quarter of the maximum heap, independently of
-        // the device budget, leaving headroom for series caches and decoded values.
-        return plan(indicator, fromInclusive, toInclusive, factory, memoryLimitBytes,
-                Runtime.getRuntime().maxMemory() / 4L);
+    private MonteCarloShockPathPlanner() {
     }
 
-    PlanAttempt plan(Indicator<?> indicator, int fromInclusive, int toInclusive, NumFactory factory,
-            long memoryLimitBytes, long hostMemoryLimitBytes) {
-        Objects.requireNonNull(indicator, "indicator must not be null");
-        Objects.requireNonNull(factory, "factory must not be null");
-        if (!(indicator instanceof MonteCarloPriceForecastIndicator forecast)) {
-            return PlanAttempt.declined(PlanDecline.unclaimed());
-        }
+    static AccelerationPlan<Forecast> plan(MonteCarloPriceForecastIndicator forecast, int fromInclusive,
+            int toInclusive, long memoryLimitBytes) {
+        // Keep host staging below a quarter of the maximum heap, independently of
+        // the device budget, leaving headroom for series caches and decoded values.
+        return plan(forecast, fromInclusive, toInclusive, memoryLimitBytes, Runtime.getRuntime().maxMemory() / 4L);
+    }
+
+    static AccelerationPlan<Forecast> plan(MonteCarloPriceForecastIndicator forecast, int fromInclusive,
+            int toInclusive, long memoryLimitBytes, long hostMemoryLimitBytes) {
+        Objects.requireNonNull(forecast, "forecast must not be null");
+        NumFactory factory = forecast.getBarSeries().numFactory();
         if (!(factory instanceof DoubleNumFactory)) {
-            return unsupported("requires DoubleNumFactory; the series uses " + factory.getClass().getSimpleName());
+            return AccelerationPlan
+                    .unsupported("requires DoubleNumFactory; the series uses " + factory.getClass().getSimpleName());
         }
         MonteCarloPriceForecastIndicator.ShockPathKernelConfig config = forecast.shockPathKernelConfig();
         if (config == null) {
-            return unsupported("a custom MonteCarloMethod is not lowered; only the default shock-path method is");
+            return AccelerationPlan
+                    .unsupported("a custom MonteCarloMethod is not lowered; only the default shock-path method is");
         }
         if (fromInclusive < 0 || toInclusive < fromInclusive) {
-            return unsupported("invalid request range [" + fromInclusive + ", " + toInclusive + "]");
+            return AccelerationPlan.unsupported("invalid request range [" + fromInclusive + ", " + toInclusive + "]");
         }
         MonteCarloSettings settings = config.settings();
         int iterations = settings.iterationCount();
@@ -105,8 +101,8 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
             rowHostBytes = Math.addExact(Math.multiplyExact(rowInputBytes, 3L), Math.multiplyExact(rowOutputBytes, 4L));
             fixedHostBytes = Math.multiplyExact(fixedDeviceBytes, 3L);
         } catch (ArithmeticException exception) {
-            return unsupported("one decision index overflows batch dimensions (lookback " + lookback + ", iterations "
-                    + iterations + ", horizon " + horizon + ")");
+            return AccelerationPlan.unsupported("one decision index overflows batch dimensions (lookback " + lookback
+                    + ", iterations " + iterations + ", horizon " + horizon + ")");
         }
         // Returns and output buffers are int-indexed arrays.
         long rowsThatFit = Math.min(
@@ -114,9 +110,9 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
                         Math.max(0L, hostMemoryLimitBytes - fixedHostBytes) / rowHostBytes),
                 Math.min(Integer.MAX_VALUE - (lookback - 1L), Integer.MAX_VALUE / iterations));
         if (rowsThatFit < 1L) {
-            return unsupported("one decision index needs " + (fixedDeviceBytes + rowDeviceBytes) + " device bytes and "
-                    + (fixedHostBytes + rowHostBytes) + " host bytes, above the " + memoryLimitBytes
-                    + "-byte device or " + hostMemoryLimitBytes + "-byte host budget");
+            return AccelerationPlan.unsupported("one decision index needs " + (fixedDeviceBytes + rowDeviceBytes)
+                    + " device bytes and " + (fixedHostBytes + rowHostBytes) + " host bytes, above the "
+                    + memoryLimitBytes + "-byte device or " + hostMemoryLimitBytes + "-byte host budget");
         }
         // Scalar simulation reports an unstable forecast before its own first
         // stable index, so that prefix must stay on the scalar lane rather than be
@@ -124,8 +120,8 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         // forecast the scalar lane still reports as unstable.
         int firstStableIndex = Math.max(fromInclusive, forecast.getCountOfUnstableBars());
         if (firstStableIndex > toInclusive) {
-            return PlanAttempt.declined(PlanDecline.ineligible(firstStableIndex,
-                    "index " + fromInclusive + " precedes the first stable forecast index " + firstStableIndex));
+            return AccelerationPlan.retryFrom(firstStableIndex,
+                    "index " + fromInclusive + " precedes the first stable forecast index " + firstStableIndex);
         }
         ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator = config.stateIndicator();
         ReturnIndicator returnIndicator = stateIndicator.getReturnIndicator();
@@ -133,8 +129,8 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         long firstRetainedOrigin = (long) returnIndicator.getBarSeries().getBeginIndex() + lookback - 1L;
         if (windowStart < returnIndicator.getBarSeries().getBeginIndex()) {
             int retryFromIndex = (int) Math.min(Integer.MAX_VALUE, firstRetainedOrigin);
-            return PlanAttempt.declined(PlanDecline.ineligible(retryFromIndex,
-                    "index " + firstStableIndex + " needs returns before the first retained bar"));
+            return AccelerationPlan.retryFrom(retryFromIndex,
+                    "index " + firstStableIndex + " needs returns before the first retained bar");
         }
         Indicator<Num> priceIndicator = config.priceIndicator();
         // The scalar lane maps terminal prices in the price's own factory; the
@@ -142,7 +138,7 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         // DoubleNum prices keep both lanes in the same numeric domain.
         Num firstPrice = priceIndicator.getValue(firstStableIndex);
         if (Num.isFinite(firstPrice) && !(firstPrice instanceof DoubleNum)) {
-            return unsupported(
+            return AccelerationPlan.unsupported(
                     "requires DoubleNum prices; the price indicator returns " + firstPrice.getClass().getSimpleName());
         }
         int rows = (int) Math.min((long) toInclusive - firstStableIndex + 1L, rowsThatFit);
@@ -156,8 +152,8 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
             stateRows++;
         }
         if (stateRows == 0) {
-            return PlanAttempt.declined(PlanDecline.ineligible(firstStableIndex + 1,
-                    "index " + firstStableIndex + " has no stable forecast state or positive finite price"));
+            return AccelerationPlan.retryFrom(firstStableIndex + 1,
+                    "index " + firstStableIndex + " has no stable forecast state or positive finite price");
         }
         rows = stateRows;
         // Consecutive windows overlap in lookback - 1 returns: read each return once
@@ -173,8 +169,7 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
                 int affectedRow = barIndex - firstStableIndex;
                 if (affectedRow <= 0) {
                     int retryFromIndex = (int) Math.min(Integer.MAX_VALUE, (long) barIndex + lookback);
-                    return PlanAttempt.declined(
-                            PlanDecline.ineligible(retryFromIndex, "return at index " + barIndex + " is not finite"));
+                    return AccelerationPlan.retryFrom(retryFromIndex, "return at index " + barIndex + " is not finite");
                 }
                 rows = affectedRow;
                 break;
@@ -218,11 +213,11 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         List<Double> quantiles = List.copyOf(settings.quantileProbabilities());
         double[] spotPrices = prices;
         int firstRowIndex = firstStableIndex;
-        OperationDecoder decoder = (slice, index, decodingFactory) -> {
+        AccelerationPlan.Decoder<Forecast> decoder = (slice, index) -> {
             // Kernels return cumulative log-returns; the scalar lane's own mapping
             // applies the exponential and every terminal guard.
-            Num price = decodingFactory.numOf(spotPrices[index - firstRowIndex]);
-            Num exponentLimit = decodingFactory.numOf(MonteCarloKernel.MAX_EXPONENT);
+            Num price = factory.numOf(spotPrices[index - firstRowIndex]);
+            Num exponentLimit = factory.numOf(MonteCarloKernel.MAX_EXPONENT);
             List<Num> samples = new ArrayList<>(slice.length);
             for (double raw : slice) {
                 if (!Double.isFinite(raw)) {
@@ -230,8 +225,7 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
                 }
                 Num terminal;
                 try {
-                    terminal = MonteCarloPriceForecastIndicator.terminalPrice(price, decodingFactory.numOf(raw),
-                            exponentLimit);
+                    terminal = MonteCarloPriceForecastIndicator.terminalPrice(price, factory.numOf(raw), exponentLimit);
                 } catch (ArithmeticException exception) {
                     return Forecast.unstable(index, horizon);
                 }
@@ -242,11 +236,7 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
             }
             return Forecast.ofSamples(index, horizon, samples, quantiles);
         };
-        return PlanAttempt.planned(new PlannedOperation(request, decoder));
-    }
-
-    private static PlanAttempt unsupported(String detail) {
-        return PlanAttempt.declined(PlanDecline.unsupported(detail));
+        return AccelerationPlan.of(request, decoder);
     }
 
     private static boolean snapshotState(int index, Indicator<Num> priceIndicator,

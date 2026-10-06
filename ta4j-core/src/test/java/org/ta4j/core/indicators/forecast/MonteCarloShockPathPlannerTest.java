@@ -6,7 +6,6 @@ package org.ta4j.core.indicators.forecast;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
@@ -18,8 +17,8 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.acceleration.AccelerationRuntime;
-import org.ta4j.core.acceleration.PlanAttempt;
-import org.ta4j.core.acceleration.PlanDecline;
+import org.ta4j.core.acceleration.AccelerationPlan;
+import org.ta4j.core.acceleration.AccelerationPlans;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloTestFixtures.FixedReturnIndicator;
@@ -58,11 +57,10 @@ public class MonteCarloShockPathPlannerTest {
     public void snapshotsScalarInputsExactly() {
         Fixture fixture = fixture(DoubleNumFactory.getInstance());
 
-        PlanAttempt attempt = new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 3,
-                fixture.series.numFactory(), Long.MAX_VALUE);
+        AccelerationPlan<Forecast> attempt = MonteCarloShockPathPlanner.plan(fixture.indicator, 2, 3, Long.MAX_VALUE);
 
-        assertTrue(attempt.isPlanned());
-        AccelerationRuntime.KernelRequest request = attempt.operation().request();
+        assertTrue(AccelerationPlans.isPlanned(attempt));
+        AccelerationRuntime.KernelRequest request = AccelerationPlans.request(attempt);
         assertEquals(AccelerationRuntime.Operation.MONTE_CARLO_SHOCK_PATHS_V1, request.operation());
         assertEquals(2, request.fromInclusive());
         assertEquals(3, request.toInclusive());
@@ -89,10 +87,8 @@ public class MonteCarloShockPathPlannerTest {
         Fixture fixture = fixture(DoubleNumFactory.getInstance());
         System.setProperty(AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY, "0.001");
 
-        AccelerationRuntime.KernelRequest request = new MonteCarloShockPathPlanner()
-                .plan(fixture.indicator, 2, 3, fixture.series.numFactory(), Long.MAX_VALUE)
-                .operation()
-                .request();
+        AccelerationRuntime.KernelRequest request = AccelerationPlans
+                .request(MonteCarloShockPathPlanner.plan(fixture.indicator, 2, 3, Long.MAX_VALUE));
 
         assertEquals(AccelerationRuntime.Determinism.APPROXIMATE, request.determinism());
         assertEquals(0.001d, request.tolerance(), 0d);
@@ -103,9 +99,9 @@ public class MonteCarloShockPathPlannerTest {
         NumFactory factory = DoubleNumFactory.getInstance();
         Fixture fixture = fixture(factory, false, factory.numOf(0), factory.numOf(-0.0d), factory.numOf(UP));
 
-        PlanAttempt attempt = new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 2, factory, Long.MAX_VALUE);
+        AccelerationPlan<Forecast> attempt = MonteCarloShockPathPlanner.plan(fixture.indicator, 2, 2, Long.MAX_VALUE);
 
-        double[] windows = attempt.operation().request().inputs().get(MonteCarloKernel.INPUT_RETURNS);
+        double[] windows = AccelerationPlans.request(attempt).inputs().get(MonteCarloKernel.INPUT_RETURNS);
         assertEquals(0L, Double.doubleToRawLongBits(windows[0]));
         assertEquals(UP, windows[1], 0d);
     }
@@ -114,8 +110,7 @@ public class MonteCarloShockPathPlannerTest {
     public void declinesPermanentlyWhenOneDecisionIndexExceedsTheDeviceBudget() {
         Fixture fixture = fixture(DoubleNumFactory.getInstance());
 
-        PlanAttempt attempt = new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 3,
-                fixture.series.numFactory(), 1L);
+        AccelerationPlan<Forecast> attempt = MonteCarloShockPathPlanner.plan(fixture.indicator, 2, 3, 1L);
 
         assertPermanent(attempt, "device");
     }
@@ -123,19 +118,19 @@ public class MonteCarloShockPathPlannerTest {
     @Test
     public void lowersTheLongestPrefixThatFitsTheHostBudget() {
         Fixture fixture = fixture(DoubleNumFactory.getInstance());
-        MonteCarloShockPathPlanner planner = new MonteCarloShockPathPlanner();
-        NumFactory factory = fixture.series.numFactory();
 
         // One row of this fixture stages 184 host bytes plus 24 for the shared return.
-        PlanAttempt oneRow = planner.plan(fixture.indicator, 2, 3, factory, Long.MAX_VALUE, 300L);
-        assertTrue(oneRow.isPlanned());
-        assertEquals(2, oneRow.operation().request().fromInclusive());
-        assertEquals(2, oneRow.operation().request().toInclusive());
+        AccelerationPlan<Forecast> oneRow = MonteCarloShockPathPlanner.plan(fixture.indicator, 2, 3, Long.MAX_VALUE,
+                300L);
+        assertTrue(AccelerationPlans.isPlanned(oneRow));
+        assertEquals(2, AccelerationPlans.request(oneRow).fromInclusive());
+        assertEquals(2, AccelerationPlans.request(oneRow).toInclusive());
 
-        PlanAttempt fullRange = planner.plan(fixture.indicator, 2, 3, factory, Long.MAX_VALUE, 1024L);
-        assertEquals(3, fullRange.operation().request().toInclusive());
+        AccelerationPlan<Forecast> fullRange = MonteCarloShockPathPlanner.plan(fixture.indicator, 2, 3, Long.MAX_VALUE,
+                1024L);
+        assertEquals(3, AccelerationPlans.request(fullRange).toInclusive());
 
-        assertPermanent(planner.plan(fixture.indicator, 2, 3, factory, Long.MAX_VALUE, 100L), "host");
+        assertPermanent(MonteCarloShockPathPlanner.plan(fixture.indicator, 2, 3, Long.MAX_VALUE, 100L), "host");
     }
 
     @Test
@@ -149,28 +144,27 @@ public class MonteCarloShockPathPlannerTest {
                 .lookbackBarCount(Integer.MAX_VALUE)
                 .build();
 
-        assertPermanent(new MonteCarloShockPathPlanner().plan(forecast, Integer.MAX_VALUE - 1, Integer.MAX_VALUE,
-                fixture.series.numFactory(), Long.MAX_VALUE), "one decision index");
+        assertPermanent(
+                MonteCarloShockPathPlanner.plan(forecast, Integer.MAX_VALUE - 1, Integer.MAX_VALUE, Long.MAX_VALUE),
+                "one decision index");
     }
 
     @Test
     public void declinesRangesThatEndBeforeTheFirstCompleteWindow() {
         Fixture fixture = fixture(DoubleNumFactory.getInstance());
 
-        assertIneligible(new MonteCarloShockPathPlanner().plan(fixture.indicator, 0, 0, fixture.series.numFactory(),
-                Long.MAX_VALUE), 1);
+        assertIneligible(MonteCarloShockPathPlanner.plan(fixture.indicator, 0, 0, Long.MAX_VALUE), 1);
     }
 
     @Test
     public void preservesTheUnavailablePrefixWhenPlanning() {
         Fixture fixture = fixture(DoubleNumFactory.getInstance());
 
-        PlanAttempt attempt = new MonteCarloShockPathPlanner().plan(fixture.indicator, 0, 3,
-                fixture.series.numFactory(), Long.MAX_VALUE);
+        AccelerationPlan<Forecast> attempt = MonteCarloShockPathPlanner.plan(fixture.indicator, 0, 3, Long.MAX_VALUE);
 
-        assertTrue(attempt.isPlanned());
-        assertEquals(1, attempt.operation().request().fromInclusive());
-        assertEquals(3, attempt.operation().request().toInclusive());
+        assertTrue(AccelerationPlans.isPlanned(attempt));
+        assertEquals(1, AccelerationPlans.request(attempt).fromInclusive());
+        assertEquals(3, AccelerationPlans.request(attempt).toInclusive());
     }
 
     @Test
@@ -178,15 +172,14 @@ public class MonteCarloShockPathPlannerTest {
         NumFactory factory = DoubleNumFactory.getInstance();
         Fixture fixture = fixture(factory, false, factory.numOf(0), factory.numOf(DOWN), factory.numOf(UP),
                 factory.numOf(Double.NaN), factory.numOf(UP), factory.numOf(DOWN));
-        MonteCarloShockPathPlanner planner = new MonteCarloShockPathPlanner();
 
-        PlanAttempt prefix = planner.plan(fixture.indicator, 1, 5, factory, Long.MAX_VALUE);
-        assertTrue(prefix.isPlanned());
-        assertEquals(1, prefix.operation().request().fromInclusive());
-        assertEquals(2, prefix.operation().request().toInclusive());
+        AccelerationPlan<Forecast> prefix = MonteCarloShockPathPlanner.plan(fixture.indicator, 1, 5, Long.MAX_VALUE);
+        assertTrue(AccelerationPlans.isPlanned(prefix));
+        assertEquals(1, AccelerationPlans.request(prefix).fromInclusive());
+        assertEquals(2, AccelerationPlans.request(prefix).toInclusive());
 
         // Origins 3 and 4 both read the NaN at index 3; retry after the last one.
-        assertIneligible(planner.plan(fixture.indicator, 3, 5, factory, Long.MAX_VALUE), 5);
+        assertIneligible(MonteCarloShockPathPlanner.plan(fixture.indicator, 3, 5, Long.MAX_VALUE), 5);
     }
 
     @Test
@@ -206,31 +199,26 @@ public class MonteCarloShockPathPlannerTest {
                 .lookbackBarCount(252)
                 .seed(3L)
                 .build();
-        MonteCarloShockPathPlanner planner = new MonteCarloShockPathPlanner();
 
         assertEquals(1, returns.getCountOfUnstableBars());
         assertEquals(252, forecast.getCountOfUnstableBars());
-        assertIneligible(planner.plan(forecast, 250, 251, factory, Long.MAX_VALUE), 252);
+        assertIneligible(MonteCarloShockPathPlanner.plan(forecast, 250, 251, Long.MAX_VALUE), 252);
 
-        PlanAttempt attempt = planner.plan(forecast, 251, 299, factory, Long.MAX_VALUE);
-        assertTrue(attempt.isPlanned());
-        assertEquals(252, attempt.operation().request().fromInclusive());
-        assertEquals(299, attempt.operation().request().toInclusive());
+        AccelerationPlan<Forecast> attempt = MonteCarloShockPathPlanner.plan(forecast, 251, 299, Long.MAX_VALUE);
+        assertTrue(AccelerationPlans.isPlanned(attempt));
+        assertEquals(252, AccelerationPlans.request(attempt).fromInclusive());
+        assertEquals(299, AccelerationPlans.request(attempt).toInclusive());
     }
 
     @Test
     public void decodesLogReturnsThroughTheScalarTerminalPriceGuards() {
         Fixture fixture = fixture(DoubleNumFactory.getInstance());
         NumFactory factory = fixture.series.numFactory();
-        PlanAttempt attempt = new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 2, factory, Long.MAX_VALUE);
+        AccelerationPlan<Forecast> attempt = MonteCarloShockPathPlanner.plan(fixture.indicator, 2, 2, Long.MAX_VALUE);
 
-        Forecast nonFinite = (Forecast) attempt.operation()
-                .decoder()
-                .decode(new double[] { Double.NaN, 0d }, 2, factory);
-        Forecast beyondExponentLimit = (Forecast) attempt.operation()
-                .decoder()
-                .decode(new double[] { -701d, 0d }, 2, factory);
-        Forecast finite = (Forecast) attempt.operation().decoder().decode(new double[] { -0.1d, 0.1d }, 2, factory);
+        Forecast nonFinite = AccelerationPlans.decoder(attempt).decode(new double[] { Double.NaN, 0d }, 2);
+        Forecast beyondExponentLimit = AccelerationPlans.decoder(attempt).decode(new double[] { -701d, 0d }, 2);
+        Forecast finite = AccelerationPlans.decoder(attempt).decode(new double[] { -0.1d, 0.1d }, 2);
 
         assertFalse(nonFinite.isStable());
         assertFalse(beyondExponentLimit.isStable());
@@ -243,8 +231,7 @@ public class MonteCarloShockPathPlannerTest {
     public void declinesNonDoubleNumericsWithTheirReason() {
         Fixture fixture = fixture(DecimalNumFactory.getInstance());
 
-        assertPermanent(new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 2, fixture.series.numFactory(),
-                Long.MAX_VALUE), "DoubleNumFactory");
+        assertPermanent(MonteCarloShockPathPlanner.plan(fixture.indicator, 2, 2, Long.MAX_VALUE), "DoubleNumFactory");
     }
 
     @Test
@@ -273,38 +260,26 @@ public class MonteCarloShockPathPlannerTest {
                 .shockModel(MonteCarloReturnProjectionIndicator.ShockModel.HISTORICAL_BOOTSTRAP)
                 .build();
 
-        assertPermanent(new MonteCarloShockPathPlanner().plan(indicator, 2, 2, factory, Long.MAX_VALUE),
-                "DoubleNum prices");
+        assertPermanent(MonteCarloShockPathPlanner.plan(indicator, 2, 2, Long.MAX_VALUE), "DoubleNum prices");
     }
 
     @Test
     public void declinesCustomMonteCarloMethodsWithTheirReason() {
         Fixture fixture = fixture(DoubleNumFactory.getInstance(), true);
 
-        assertPermanent(new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 2, fixture.series.numFactory(),
-                Long.MAX_VALUE), "MonteCarloMethod");
+        assertPermanent(MonteCarloShockPathPlanner.plan(fixture.indicator, 2, 2, Long.MAX_VALUE), "MonteCarloMethod");
     }
 
-    @Test
-    public void doesNotClaimOtherIndicators() {
-        Fixture fixture = fixture(DoubleNumFactory.getInstance());
-
-        PlanAttempt attempt = new MonteCarloShockPathPlanner().plan(new ClosePriceIndicator(fixture.series), 2, 2,
-                fixture.series.numFactory(), Long.MAX_VALUE);
-
-        assertSame(PlanDecline.unclaimed(), attempt.decline());
+    private static void assertIneligible(AccelerationPlan<Forecast> attempt, int retryFromIndex) {
+        assertFalse(AccelerationPlans.isPlanned(attempt));
+        assertFalse(AccelerationPlans.isPermanentDecline(attempt));
+        assertEquals(retryFromIndex, AccelerationPlans.retryFromIndex(attempt));
     }
 
-    private static void assertIneligible(PlanAttempt attempt, int retryFromIndex) {
-        assertFalse(attempt.isPlanned());
-        assertFalse(attempt.decline().permanent());
-        assertEquals(retryFromIndex, attempt.decline().retryFromIndex());
-    }
-
-    private static void assertPermanent(PlanAttempt attempt, String reason) {
-        assertFalse(attempt.isPlanned());
-        assertTrue(attempt.decline().permanent());
-        assertTrue(attempt.decline().detail(), attempt.decline().detail().contains(reason));
+    private static void assertPermanent(AccelerationPlan<Forecast> attempt, String reason) {
+        assertFalse(AccelerationPlans.isPlanned(attempt));
+        assertTrue(AccelerationPlans.isPermanentDecline(attempt));
+        assertTrue(AccelerationPlans.reason(attempt), AccelerationPlans.reason(attempt).contains(reason));
     }
 
     private static BarSeries longSeries() {
