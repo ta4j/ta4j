@@ -97,6 +97,7 @@ jobs:
           -Dta4j.excludedTestTags=
           -Djava.awt.headless=false
           -Dta4j.chart.disableDisplay=false
+          -Dta4j.test.forkCount=1
           -Dta4j.analysisDemoInstrument="${TA4J_ANALYSIS_DEMO_INSTRUMENT}"
           -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave
 
