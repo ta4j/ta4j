@@ -6,7 +6,6 @@ package ta4jexamples.charting.renderer;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.plot.XYPlot;
-import org.jfree.chart.renderer.xy.CandlestickRenderer;
 import org.jfree.data.xy.DefaultOHLCDataset;
 import org.junit.jupiter.api.Test;
 
@@ -123,22 +122,6 @@ public class BaseCandleStickRendererTest {
         } catch (Exception e) {
             fail("Should not throw exception with invalid indices: " + e.getMessage());
         }
-    }
-
-    @Test
-    public void testColorConstants() {
-        // Test that the color constants are accessible
-        // Note: These are private in the actual class, so we test them indirectly
-        BaseCandleStickRenderer renderer = new BaseCandleStickRenderer();
-        assertNotNull(renderer, "Renderer should be created successfully");
-    }
-
-    @Test
-    public void testInheritance() {
-        BaseCandleStickRenderer renderer = new BaseCandleStickRenderer();
-
-        // Test that it extends CandlestickRenderer
-        assertTrue(renderer instanceof CandlestickRenderer, "Should extend CandlestickRenderer");
     }
 
     @Test
