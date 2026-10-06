@@ -224,7 +224,9 @@ public class CashFlow implements PerformanceIndicator {
         this.futuresSpotFactors = futures
                 ? AnalysisPositionSupport.buffer(window, barSeries.numFactory().one(), barSeries.numFactory().one())
                 : values.copy();
-        this.futuresCapital = record.getInitialCapital() == null ? fallbackCapital : record.getInitialCapital();
+        Num initialCapital = record.getInitialCapital() == null ? fallbackCapital : record.getInitialCapital();
+        // Deferred-only exposure has not established normalization capital yet.
+        this.futuresCapital = initialCapital == null || initialCapital.isZero() ? null : initialCapital;
         this.futuresMark = markPriceIndicator;
         this.markFuturesExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
         this.preWindowFuturesActivity = futures
