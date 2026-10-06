@@ -3,6 +3,7 @@
  */
 package org.ta4j.acceleration.internal.providers;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -189,15 +190,15 @@ public final class MetalAccelerationProvider extends ShockPathKernelProvider {
             return null;
         } finally {
             if (process != null) {
-                closeStreams(process);
+                closeQuietly(process.getOutputStream());
+                closeQuietly(process.getInputStream());
             }
         }
     }
 
-    private static void closeStreams(Process process) {
+    private static void closeQuietly(Closeable stream) {
         try {
-            process.getOutputStream().close();
-            process.getInputStream().close();
+            stream.close();
         } catch (IOException exception) {
             // The probe already has its answer; a failed close leaves nothing to recover.
         }
