@@ -45,7 +45,7 @@ public record MonteCarloContext(int index, int horizon, int iterationCount, List
 
     /**
      * Validates a context. The eight-component form carrying {@code perPathRandoms}
-     * is canonical since 0.25.1.
+     * is canonical since 0.26.1.
      *
      * @since 0.26.1
      */

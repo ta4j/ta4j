@@ -34,8 +34,11 @@ package org.ta4j.core.indicators.forecast;
  * <p>
  * Request parameters are indexed by the {@code PARAM_*} constants. The base
  * seed travels in the request seed field. Output is row-major cumulative
- * log-returns ({@code [n][iterationCount]}); a non-finite value marks its
- * decision index unstable.
+ * log-returns ({@code [n][iterationCount]}). A non-finite value means the
+ * scalar lane reports that decision index unstable; the runtime cannot tell it
+ * from a faulty provider, so a batch containing one is rejected, the provider
+ * is quarantined for this operation, and the indicator is recomputed on the
+ * scalar lane.
  *
  * <p>
  * Path algorithm for decision row {@code r} at decision index {@code i} and

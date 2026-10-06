@@ -19,6 +19,8 @@ import org.ta4j.core.indicators.forecast.projection.ForecastProjectionIndicator;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.state.ReturnMomentState;
 import org.ta4j.core.indicators.helpers.LogReturnIndicator;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -152,7 +154,11 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
      */
     static Num terminalPrice(Num price, Num cumulativeReturn, Num exponentLimit) {
         NumFactory numFactory = price.getNumFactory();
-        Num normalizedReturn = numFactory.numOf(cumulativeReturn.bigDecimalValue());
+        // A double's decimal round trip is the identity except that -0.0 becomes
+        // +0.0, which adding 0.0 reproduces without the per-sample BigDecimal.
+        Num normalizedReturn = cumulativeReturn instanceof DoubleNum && numFactory instanceof DoubleNumFactory
+                ? DoubleNum.valueOf(cumulativeReturn.doubleValue() + 0.0d)
+                : numFactory.numOf(cumulativeReturn.bigDecimalValue());
         if (!Num.isFinite(normalizedReturn) || normalizedReturn.isZero() && !cumulativeReturn.isZero()
                 || normalizedReturn.abs().isGreaterThan(exponentLimit)) {
             return null;

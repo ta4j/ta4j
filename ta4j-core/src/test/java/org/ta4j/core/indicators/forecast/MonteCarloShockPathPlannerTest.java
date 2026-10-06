@@ -15,10 +15,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.acceleration.AccelerationRuntime;
 import org.ta4j.core.acceleration.PlanAttempt;
 import org.ta4j.core.acceleration.PlanDecline;
 import org.ta4j.core.criteria.ReturnRepresentation;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloTestFixtures.FixedReturnIndicator;
 import org.ta4j.core.indicators.forecast.MonteCarloTestFixtures.FixedReturnStateIndicator;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
@@ -219,6 +221,36 @@ public class MonteCarloShockPathPlannerTest {
 
         assertPermanent(new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 2, fixture.series.numFactory(),
                 Long.MAX_VALUE), "DoubleNumFactory");
+    }
+
+    @Test
+    public void declinesNonDoubleNumPricesOnADoubleSeriesWithTheirReason() {
+        NumFactory factory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(factory).withData(100d, 100d, 100d, 100d).build();
+        Indicator<Num> decimalPrices = new AbstractIndicator<>(series) {
+            @Override
+            public Num getValue(int index) {
+                return DecimalNumFactory.getInstance().numOf(100);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+        };
+        FixedReturnIndicator returns = new FixedReturnIndicator(series, ReturnRepresentation.LOG, factory.numOf(0),
+                factory.numOf(DOWN), factory.numOf(UP), factory.numOf(0));
+        MonteCarloPriceForecastIndicator indicator = MonteCarloPriceForecastIndicator
+                .builder(decimalPrices, new FixedReturnStateIndicator(returns, ReturnRepresentation.LOG))
+                .horizon(1)
+                .iterationCount(2)
+                .lookbackBarCount(2)
+                .seed(3L)
+                .shockModel(MonteCarloReturnProjectionIndicator.ShockModel.HISTORICAL_BOOTSTRAP)
+                .build();
+
+        assertPermanent(new MonteCarloShockPathPlanner().plan(indicator, 2, 2, factory, Long.MAX_VALUE),
+                "DoubleNum prices");
     }
 
     @Test

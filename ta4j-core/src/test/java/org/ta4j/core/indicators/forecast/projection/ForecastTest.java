@@ -57,6 +57,17 @@ class ForecastTest {
     }
 
     @Test
+    void normalizesNegativeZeroDoubleSamples() {
+        Forecast forecast = Forecast.ofSamples(3, 1,
+                List.of(NUM_FACTORY.numOf(1), NUM_FACTORY.numOf(-0.0d), NUM_FACTORY.numOf(-1)), List.of(0.5));
+
+        assertThat(Double.doubleToRawLongBits(forecast.median().doubleValue())).isZero();
+        assertThat(Double.doubleToRawLongBits(forecast.quantile(0.5).doubleValue())).isZero();
+        assertThat(forecast.mean().isZero()).isTrue();
+        assertThat(forecast.standardDeviation()).isEqualByComparingTo(NUM_FACTORY.numOf(Math.sqrt(2d / 3d)));
+    }
+
+    @Test
     void builderCreatesDefensiveFactoryCoherentSummary() {
         Map<Double, Num> inputQuantiles = new LinkedHashMap<>();
         inputQuantiles.put(0.95, DecimalNumFactory.getInstance(40).numOf(5));

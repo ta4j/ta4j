@@ -10,9 +10,10 @@ import org.ta4j.core.num.NumFactory;
  *
  * <p>
  * Decoders run inside the acceleration scope after the runtime validates raw
- * shapes and series snapshots. They map primitives through the owning
- * {@link NumFactory} and must return {@code null} only via an exception: a
- * {@code null} return is treated as malformed provider output.
+ * shapes, rejects any non-finite output, and checks series snapshots. They map
+ * primitives through the owning {@link NumFactory} and must return {@code null}
+ * only via an exception: a {@code null} return is treated as malformed provider
+ * output.
  *
  * <p>
  * Public visibility connects core planners in domain packages (for example,

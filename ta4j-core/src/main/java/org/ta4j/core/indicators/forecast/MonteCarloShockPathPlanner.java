@@ -139,12 +139,20 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
             return PlanAttempt.declined(PlanDecline.ineligible(retryFromIndex,
                     "index " + firstStableIndex + " needs returns before the first retained bar"));
         }
+        Indicator<Num> priceIndicator = config.priceIndicator();
+        // The scalar lane maps terminal prices in the price's own factory; the
+        // decoder rebuilds prices through the series' double factory, so only
+        // DoubleNum prices keep both lanes in the same numeric domain.
+        Num firstPrice = priceIndicator.getValue(firstStableIndex);
+        if (Num.isFinite(firstPrice) && !(firstPrice instanceof DoubleNum)) {
+            return unsupported(
+                    "requires DoubleNum prices; the price indicator returns " + firstPrice.getClass().getSimpleName());
+        }
         int rows = (int) Math.min((long) toInclusive - firstStableIndex + 1L, rowsThatFit);
         double[] prices = new double[rows];
         double[] means = new double[rows];
         double[] drifts = new double[rows];
         double[] variances = new double[rows];
-        Indicator<Num> priceIndicator = config.priceIndicator();
         int stateRows = 0;
         while (stateRows < rows && snapshotState(firstStableIndex + stateRows, priceIndicator, stateIndicator, prices,
                 means, drifts, variances, stateRows)) {
@@ -244,7 +252,7 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
             ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator, double[] prices, double[] means,
             double[] drifts, double[] variances, int row) {
         Num price = priceIndicator.getValue(index);
-        if (!Num.isFinite(price) || !price.isPositive()) {
+        if (!(price instanceof DoubleNum) || !Num.isFinite(price) || !price.isPositive()) {
             return false;
         }
         ReturnMomentState rawState = stateIndicator.getValue(index);
