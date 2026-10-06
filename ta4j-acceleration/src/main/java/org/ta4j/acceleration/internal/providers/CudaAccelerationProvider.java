@@ -67,7 +67,12 @@ public final class CudaAccelerationProvider extends ShockPathKernelProvider {
                 throw new NativeProviderException("cuda", load.detail());
             }
             CudaNativeBridge nativeBridge = new JniCudaNativeBridge();
-            CudaProbeResult probe = nativeBridge.probe();
+            CudaProbeResult probe;
+            try {
+                probe = nativeBridge.probe();
+            } catch (LinkageError | RuntimeException exception) {
+                throw new NativeProviderException("cuda", exception);
+            }
             if (!probe.available()) {
                 throw new NativeProviderException("cuda", probe.detail());
             }
