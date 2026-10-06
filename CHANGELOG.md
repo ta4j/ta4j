@@ -8,6 +8,7 @@
 ### Changed
 
 - **Faster `DoubleNum` Monte Carlo forecasts**: Large Monte Carlo price forecasts on `DoubleNum` series run roughly twice as fast on the CPU, with identical results. Other `Num` types are unchanged.
+- **Seeded shock-path forecasts draw one random stream per path**: `ShockPathMonteCarloMethod`, the default method of `MonteCarloPriceForecastIndicator`, now gives each simulated path its own deterministic random stream (also inside ensembles), so the same seed produces the same forecast on the CPU and on an accelerator. Forecasts remain reproducible for a given seed, but seeded shock-path values differ from 0.26.0; re-baseline any stored seeded outputs. Methods that draw only from `MonteCarloContext.random()` are unchanged.
 
 ### Fixed
 
