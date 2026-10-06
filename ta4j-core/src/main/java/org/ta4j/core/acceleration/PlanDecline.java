@@ -21,7 +21,7 @@ import java.util.Objects;
  * @param retryFromIndex first decision index that may be eligible again, or
  *                       {@code -1} for permanent declines
  * @param detail         concise operator-facing reason
- * @since 0.25.1
+ * @since 0.26.1
  */
 public record PlanDecline(boolean permanent, int retryFromIndex, String detail) {
 
@@ -31,7 +31,7 @@ public record PlanDecline(boolean permanent, int retryFromIndex, String detail) 
     /**
      * Validates a decline.
      *
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public PlanDecline {
         Objects.requireNonNull(detail, "detail must not be null");
@@ -48,7 +48,7 @@ public record PlanDecline(boolean permanent, int retryFromIndex, String detail) 
      *
      * @param detail concise operator-facing reason
      * @return permanent decline
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public static PlanDecline unsupported(String detail) {
         return new PlanDecline(true, -1, detail);
@@ -62,7 +62,7 @@ public record PlanDecline(boolean permanent, int retryFromIndex, String detail) 
      * actionable reason instead.
      *
      * @return shared unclaimed decline
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public static PlanDecline unclaimed() {
         return UNCLAIMED;
@@ -74,7 +74,7 @@ public record PlanDecline(boolean permanent, int retryFromIndex, String detail) 
      * @param retryFromIndex first decision index that may be eligible again
      * @param detail         concise operator-facing reason
      * @return transient decline
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public static PlanDecline ineligible(int retryFromIndex, String detail) {
         return new PlanDecline(false, retryFromIndex, detail);

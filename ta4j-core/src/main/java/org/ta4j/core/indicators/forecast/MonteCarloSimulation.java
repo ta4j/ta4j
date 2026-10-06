@@ -33,28 +33,17 @@ import org.ta4j.core.num.NumFactory;
  * {@link MonteCarloContext} and generates the terminal samples.
  *
  * <p>
- * The engine also selects the forecast RNG stream: by default the historical
- * shared {@link SplittableRandom} stream is handed to the method, while RNG
- * version {@code 1} provides independent per-path streams so that forecasts are
- * reproducible regardless of path execution order -- the mode required for
- * accelerated and native-parity evaluation.
+ * Every simulated path draws from its own deterministic stream
+ * ({@link MonteCarloContext#randomForPath(int)}), so forecasts are reproducible
+ * regardless of path execution order -- the property that lets accelerated
+ * evaluation match the CPU lane bit for bit.
  */
 final class MonteCarloSimulation {
-
-    /**
-     * Selects the forecast RNG stream. Version {@code 0} (default) restores the
-     * historical shared stream per decision index; version {@code 1} selects the
-     * deterministic per-path stream used for native parity and acceleration. The
-     * property is read once when a simulation is built, so one indicator never
-     * mixes streams in its cache and invalid values fail at construction.
-     */
-    static final String RNG_VERSION_PROPERTY = "ta4j.forecast.rngVersion";
 
     private final ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator;
     private final ReturnIndicator returnIndicator;
     private final MonteCarloSettings settings;
     private final MonteCarloMethod method;
-    private final boolean perPathRng;
 
     MonteCarloSimulation(ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator,
             MonteCarloSettings settings, MonteCarloMethod method) {
@@ -62,7 +51,6 @@ final class MonteCarloSimulation {
         this.returnIndicator = this.stateIndicator.getReturnIndicator();
         this.settings = Objects.requireNonNull(settings, "settings must not be null");
         this.method = Objects.requireNonNull(method, "method must not be null");
-        this.perPathRng = perPathRngConfigured();
         IndicatorUtils.requireSameSeries(returnIndicator, this.stateIndicator);
     }
 
@@ -97,9 +85,8 @@ final class MonteCarloSimulation {
         }
 
         RandomGenerator random = new SplittableRandom(mixSeed(settings.seed(), index, settings.horizon()));
-        IntFunction<RandomGenerator> perPathRandoms = perPathRng
-                ? path -> DeterministicRandom.forPath(settings.seed(), index, settings.horizon(), path)
-                : null;
+        IntFunction<RandomGenerator> perPathRandoms = path -> DeterministicRandom.forPath(settings.seed(), index,
+                settings.horizon(), path);
         List<Num> terminalSamples = method.terminalReturns(new MonteCarloContext(index, settings.horizon(),
                 settings.iterationCount(), historicalReturns, moments, random, numFactory, perPathRandoms));
         if (terminalSamples == null || terminalSamples.size() != settings.iterationCount()) {
@@ -134,29 +121,6 @@ final class MonteCarloSimulation {
 
     int getHorizon() {
         return settings.horizon();
-    }
-
-    /**
-     * Whether this simulation draws from the explicit per-path stream selected by
-     * {@code -Dta4j.forecast.rngVersion=1} when it was built. Accelerated
-     * evaluation may only run in this mode because it relies on
-     * path-order-independent reproducibility.
-     */
-    boolean usesPerPathRng() {
-        return perPathRng;
-    }
-
-    private static boolean perPathRngConfigured() {
-        String configured = System.getProperty(RNG_VERSION_PROPERTY);
-        if (configured == null || configured.isBlank()) {
-            return false;
-        }
-        return switch (configured.trim()) {
-        case "0" -> false;
-        case "1" -> true;
-        default -> throw new IllegalArgumentException(
-                RNG_VERSION_PROPERTY + " must be '0' or '1', but was '" + configured + "'");
-        };
     }
 
     private List<Num> historicalReturns(int index, NumFactory numFactory) {

@@ -657,8 +657,7 @@ public class BarSeriesManager {
                     tradeExecutionModel.onBar(i, tradingRecord, runSeries);
                     // For each bar between both indexes...
                     if (strategy.shouldOperate(i, tradingRecord)) {
-                        tradeExecutionModel.execute(i, tradingRecord, runSeries,
-                                amountResolver.amount(i, runSeries));
+                        tradeExecutionModel.execute(i, tradingRecord, runSeries, amountResolver.amount(i, runSeries));
                     }
                     if (i == runEndIndex) {
                         break;

@@ -80,7 +80,6 @@ class AccelerationRuntimeTest {
     void resetRuntime() {
         System.clearProperty(AccelerationRuntime.PROPERTY);
         System.clearProperty(AccelerationRuntime.MAX_DEVICE_BYTES_PROPERTY);
-        System.clearProperty("ta4j.forecast.rngVersion");
         AccelerationRuntime.resetProvidersForTests();
     }
 
@@ -228,7 +227,6 @@ class AccelerationRuntimeTest {
         BarSeries scopedSeries = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 102, 101, 104, 103, 105, 106, 104, 108, 109)
                 .build();
-        System.setProperty("ta4j.forecast.rngVersion", "1");
         MonteCarloPriceForecastIndicator reference = MonteCarloPriceForecastIndicator
                 .builder(new ClosePriceIndicator(indicatorSeries),
                         new EwmaReturnForecastStateIndicator(new LogReturnIndicator(indicatorSeries), 3, 0.94d))
@@ -265,7 +263,6 @@ class AccelerationRuntimeTest {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 102, 101, 104, 103, 105, 106, 104, 108, 109)
                 .build();
-        System.setProperty("ta4j.forecast.rngVersion", "1");
         MonteCarloPriceForecastIndicator.Builder builder = MonteCarloPriceForecastIndicator
                 .builder(new ClosePriceIndicator(series),
                         new EwmaReturnForecastStateIndicator(new LogReturnIndicator(series), 3, 0.94d))
@@ -627,7 +624,6 @@ class AccelerationRuntimeTest {
     @Test
     void monteCarloShockPathsDecodeThroughOwningFactory() {
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
-        System.setProperty("ta4j.forecast.rngVersion", "1");
         monteCarloDecode();
     }
 
@@ -699,7 +695,6 @@ class AccelerationRuntimeTest {
     void referenceKernelReproducesTheScalarLaneBitForBit(MonteCarloReturnProjectionIndicator.ShockModel model,
             MonteCarloReturnProjectionIndicator.VolatilityUpdateMode mode) {
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
-        System.setProperty("ta4j.forecast.rngVersion", "1");
         double[] prices = new double[60];
         for (int i = 0; i < prices.length; i++) {
             prices[i] = 100d + 5d * Math.sin(i * 0.7d) + 0.3d * i;
@@ -880,7 +875,6 @@ class AccelerationRuntimeTest {
     @Test
     void accelerationKeepsTheScalarStabilityBoundary() {
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
-        System.setProperty("ta4j.forecast.rngVersion", "1");
         BarSeries series = longSeries();
         MonteCarloPriceForecastIndicator scalar = longForecast(series);
         assertEquals(252, scalar.getCountOfUnstableBars());
@@ -901,7 +895,6 @@ class AccelerationRuntimeTest {
     @Test
     void warmUpReadsStayScalarWithoutDisablingLaterAcceleration() {
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
-        System.setProperty("ta4j.forecast.rngVersion", "1");
         BarSeries series = longSeries();
         KernelProvider kernel = new KernelProvider();
         useProvidersForTests(List.of(kernel));
@@ -921,7 +914,6 @@ class AccelerationRuntimeTest {
     @Test
     void defaultStrategyJourneyAcceleratesAfterTheForecastWarmUp() {
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
-        System.setProperty("ta4j.forecast.rngVersion", "1");
         BarSeries series = longSeries();
         KernelProvider kernel = new KernelProvider();
         useProvidersForTests(List.of(kernel));
@@ -939,7 +931,6 @@ class AccelerationRuntimeTest {
     @Test
     void acceleratedForecastCachesAcrossRunsAndMatchesTheScalarRecord() {
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
-        System.setProperty("ta4j.forecast.rngVersion", "1");
         BarSeries series = longSeries();
         KernelProvider kernel = new KernelProvider();
         useProvidersForTests(List.of(kernel));
@@ -975,7 +966,6 @@ class AccelerationRuntimeTest {
                 .withData(prices)
                 .build();
         System.setProperty(AccelerationRuntime.PROPERTY, "auto");
-        System.setProperty("ta4j.forecast.rngVersion", "1");
         MonteCarloPriceForecastIndicator forecast = longForecast(series);
         Strategy strategy = new BaseStrategy(new ForecastRule(forecast, 260), new IndexRule(series.getEndIndex()));
 

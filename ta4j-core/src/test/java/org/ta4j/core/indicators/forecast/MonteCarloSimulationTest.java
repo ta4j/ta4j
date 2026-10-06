@@ -11,12 +11,8 @@ import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.SplittableRandom;
 import java.util.random.RandomGenerator;
-import java.util.function.IntFunction;
 
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.criteria.ReturnRepresentation;
@@ -29,26 +25,16 @@ import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
 /**
- * Owns the forecast RNG stream contract: the version-1 per-path stream matches
- * its golden vectors, and seeded {@link MonteCarloPriceForecastIndicator}
- * forecasts reproduce the historical shared stream by default.
+ * Owns the forecast RNG stream contract: the per-path stream matches its golden
+ * vectors, and seeded {@link MonteCarloPriceForecastIndicator} forecasts draw
+ * every path from its own stream.
  */
 public class MonteCarloSimulationTest {
 
     private static final List<Num> HISTORY = List.of(numOf(Math.log(0.9d)), numOf(Math.log(1.1d)));
 
-    @Before
-    public void clearConfiguredRngVersion() {
-        System.clearProperty(MonteCarloSimulation.RNG_VERSION_PROPERTY);
-    }
-
-    @After
-    public void clearRngVersion() {
-        System.clearProperty(MonteCarloSimulation.RNG_VERSION_PROPERTY);
-    }
-
     @Test
-    public void publicRawStateAndMixedOutputFollowVersionOneStream() {
+    public void publicRawStateAndMixedOutputFollowPerPathStream() {
         long state = MonteCarloKernel.initialPathState(42L, 317, 12, 5);
         MonteCarloSimulation.DeterministicRandom random = stream();
         for (long expected : new long[] { 0xacdefb464966b93cL, 0x6c87c018610d701aL, 0x85b233fcd16e891cL }) {
@@ -59,7 +45,7 @@ public class MonteCarloSimulationTest {
     }
 
     @Test
-    public void boundedSelectionMatchesVersionOneGoldenVectors() {
+    public void boundedSelectionMatchesPerPathGoldenVectors() {
         assertVector(1, 0, 0, 0, 0, 0, 0, 0, 0);
         assertVector(2, 0, 1, 0, 0, 1, 0, 0, 1);
         assertVector(7, 2, 3, 2, 5, 1, 5, 1, 5);
@@ -69,7 +55,7 @@ public class MonteCarloSimulationTest {
     }
 
     @Test
-    public void gaussianSelectionMatchesVersionOneGoldenVector() {
+    public void gaussianSelectionMatchesPerPathGoldenVector() {
         MonteCarloSimulation.DeterministicRandom random = stream();
 
         double[] actual = new double[6];
@@ -93,37 +79,8 @@ public class MonteCarloSimulationTest {
     }
 
     @Test
-    public void defaultAndLegacyRngVersionsReproducePreUpgradeForecastValues() {
-        assertForecastMatches(replay(path -> null), indicator().getValue(2));
-
-        System.setProperty(MonteCarloSimulation.RNG_VERSION_PROPERTY, "0");
-
-        assertForecastMatches(replay(path -> null), indicator().getValue(2));
-    }
-
-    @Test
-    public void perPathRngVersionDrawsEachPathFromItsOwnStream() {
-        System.setProperty(MonteCarloSimulation.RNG_VERSION_PROPERTY, "1");
-
-        assertForecastMatches(replay(path -> MonteCarloSimulation.DeterministicRandom.forPath(3L, 2, 2, path)),
-                indicator().getValue(2));
-    }
-
-    @Test
-    public void rngVersionIsResolvedWhenTheForecastIsBuilt() {
-        System.setProperty(MonteCarloSimulation.RNG_VERSION_PROPERTY, "1");
-        MonteCarloPriceForecastIndicator perPath = indicator();
-        System.clearProperty(MonteCarloSimulation.RNG_VERSION_PROPERTY);
-
-        assertForecastMatches(replay(path -> MonteCarloSimulation.DeterministicRandom.forPath(3L, 2, 2, path)),
-                perPath.getValue(2));
-    }
-
-    @Test
-    public void invalidRngVersionFailsWhenTheForecastIsBuilt() {
-        System.setProperty(MonteCarloSimulation.RNG_VERSION_PROPERTY, "2");
-
-        assertThrows(IllegalArgumentException.class, MonteCarloSimulationTest::indicator);
+    public void seededForecastsDrawEachPathFromItsOwnStream() {
+        assertForecastMatches(replay(), indicator().getValue(2));
     }
 
     private static MonteCarloPriceForecastIndicator indicator() {
@@ -142,16 +99,13 @@ public class MonteCarloSimulationTest {
     }
 
     /**
-     * Replays the historical bootstrap outside the engine. A {@code null} per-path
-     * stream selects the shared {@link SplittableRandom} seeded with the legacy
-     * {@code mixSeed} derivation for the whole decision.
+     * Replays the historical bootstrap outside the engine, drawing each path from
+     * its own per-path stream.
      */
-    private static Forecast replay(IntFunction<RandomGenerator> perPathStreams) {
-        RandomGenerator shared = new SplittableRandom(mixSeed(3L, 2, 2));
+    private static Forecast replay() {
         List<Num> terminals = new ArrayList<>();
         for (int path = 0; path < 4; path++) {
-            RandomGenerator pathStream = perPathStreams.apply(path);
-            RandomGenerator random = pathStream == null ? shared : pathStream;
+            RandomGenerator random = MonteCarloSimulation.DeterministicRandom.forPath(3L, 2, 2, path);
             double cumulative = 0d;
             for (int step = 0; step < 2; step++) {
                 cumulative += HISTORY.get(random.nextInt(2)).doubleValue();
@@ -171,15 +125,6 @@ public class MonteCarloSimulationTest {
         for (Double probability : expected.quantiles().keySet()) {
             assertEquals(expected.quantile(probability).doubleValue(), actual.quantile(probability).doubleValue(), 0d);
         }
-    }
-
-    private static long mixSeed(long seed, int index, int horizon) {
-        long value = seed;
-        value ^= 0x9E3779B97F4A7C15L + ((long) index << 32) + index;
-        value = Long.rotateLeft(value, 27) * 0x3C79AC492BA7B653L;
-        value ^= 0x1C69B3F74AC4AE35L + horizon;
-        value = Long.rotateLeft(value, 31) * 0x1C69B3F74AC4AE35L;
-        return value ^ value >>> 33;
     }
 
     private static Num numOf(double value) {

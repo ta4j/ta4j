@@ -22,10 +22,15 @@ import org.ta4j.core.num.NumFactory;
  * only defers the range until {@link PlanDecline#retryFromIndex()}.
  *
  * <p>
+ * The runtime invalidates accelerated batches only through the bar-history
+ * revision of {@link Indicator#getBarSeries()}, so a planner must lower only
+ * graphs whose every input reads that same series.
+ *
+ * <p>
  * Core-internal extension point, not provider API: provider artifacts must
  * implement {@link AccelerationRuntime.Provider} instead.
  *
- * @since 0.25.1
+ * @since 0.26.1
  */
 public interface OperationPlanner {
 
@@ -40,7 +45,7 @@ public interface OperationPlanner {
      * @param memoryLimitBytes scope-captured memory ceiling, checked before
      *                         allocating snapshot or output buffers
      * @return planned operation or typed decline, never {@code null}
-     * @since 0.25.1
+     * @since 0.26.1
      */
     PlanAttempt plan(Indicator<?> indicator, int fromInclusive, int toInclusive, NumFactory factory,
             long memoryLimitBytes);

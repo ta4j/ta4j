@@ -73,7 +73,6 @@ foreach ($workload in $workloads) {
             "-Dta4j.runBenchmarks=true",
             "-Dta4j.acceleration.cuda.library=$library",
             "-Dta4j.acceleration.approximateTolerance=1e-4",
-            "-Dta4j.forecast.rngVersion=1",
             "-Dta4j.cuda.benchmark.decisions=$($workload.decisions)",
             "-Dta4j.cuda.benchmark.paths=$($workload.paths)",
             "-Dta4j.cuda.benchmark.horizon=$($workload.horizon)",

@@ -57,7 +57,60 @@ import org.ta4j.core.num.NumFactory;
  * run a request, the scope diagnostic keeps the first provider-attributed
  * decline.
  *
- * @since 0.25.1
+ * <h2>Eligible indicators</h2>
+ * <p>
+ * Today exactly one calculation is eligible:
+ * {@link org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator}
+ * built with the default shock-path method (no custom {@code MonteCarloMethod})
+ * over a series whose {@link NumFactory} is {@code DoubleNumFactory}. It lowers
+ * to {@link Operation#MONTE_CARLO_SHOCK_PATHS_V1}. Every other indicator, and
+ * any forecast with a custom method or another {@code Num} type, always runs on
+ * the scalar lane; the scope diagnostic says why.
+ *
+ * <h2>Control</h2>
+ * <ul>
+ * <li>{@value #PROPERTY}: {@code auto} or {@code true} enables scopes; unset,
+ * {@code off} or {@code false} (the default) keeps every run on the CPU without
+ * touching provider code.</li>
+ * <li>A {@link Provider} implementation on the classpath, discovered through
+ * {@link ServiceLoader}. Without one, enabled scopes fall back to the CPU.</li>
+ * <li>A scope: {@code BarSeriesManager} opens one around each run; other
+ * callers use {@link #open(BarSeries, int, int)} with try-with-resources.
+ * Values read outside a scope are computed on the CPU.</li>
+ * <li>{@value #MAX_DEVICE_BYTES_PROPERTY} caps the per-request device memory
+ * estimate (default 1 GiB); larger workloads are chunked or declined.</li>
+ * <li>{@link #lastDiagnostic()} reports whether the current or last closed
+ * scope accelerated and, if not, the typed reason.</li>
+ * </ul>
+ *
+ * <h2>Making another indicator eligible</h2>
+ * <p>
+ * A calculation qualifies only when all of the following hold:
+ * <ul>
+ * <li><b>Core-owned lowering.</b> A core {@link OperationPlanner}, registered
+ * through {@link #registerPlanner(OperationPlanner)}, claims the indicator and
+ * a new versioned {@link Operation} constant names its kernel contract.
+ * Providers never receive indicators, series or {@code Num} values.</li>
+ * <li><b>Primitive snapshot.</b> Every input the kernel reads can be captured
+ * on the CPU as primitive arrays in a {@link KernelRequest}, with all inputs
+ * drawn from the scope's series so a mid-run change is detectable.</li>
+ * <li><b>Independent, batchable work.</b> Given that snapshot, each index (and
+ * each unit of work inside it, such as a Monte Carlo path) is computed without
+ * reading another index's output, so ranges can be batched and chunked.</li>
+ * <li><b>Exact reproducibility.</b> A {@link NumericEncoding#FLOAT64} kernel on
+ * {@code DoubleNum} whose output is {@link Determinism#BITWISE_IDENTICAL} to a
+ * scalar reference kernel, independent of thread or device scheduling;
+ * randomness must come from counter-based per-unit streams, never a shared
+ * sequential generator.</li>
+ * <li><b>Enough work.</b> Per-index compute heavy enough that a device beats
+ * the scalar baseline after transfer costs, with memory that is bounded and
+ * estimable per row so requests fit {@value #MAX_DEVICE_BYTES_PROPERTY}.</li>
+ * </ul>
+ * Path-dependent recursions (EMA-style state carried across indexes),
+ * {@code DecimalNum} arithmetic, and user-supplied callbacks fail these
+ * requirements and stay on the CPU.
+ *
+ * @since 0.26.1
  */
 public final class AccelerationRuntime {
 
@@ -128,7 +181,7 @@ public final class AccelerationRuntime {
      * idempotent per planner class.
      *
      * @param planner planner to register
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public static synchronized void registerPlanner(OperationPlanner planner) {
         Objects.requireNonNull(planner, "planner must not be null");
@@ -150,7 +203,7 @@ public final class AccelerationRuntime {
      * @param from   inclusive run begin index
      * @param to     inclusive run end index
      * @return scope handle closing back to the enclosing scope
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public static Scope open(BarSeries series, int from, int to) {
         Objects.requireNonNull(series, "series must not be null");
@@ -173,7 +226,7 @@ public final class AccelerationRuntime {
      * @param index     requested index
      * @param <T>       value type
      * @return accelerated value, or empty to use scalar evaluation
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public static <T> Optional<T> value(Indicator<T> indicator, int index) {
         Context context = CURRENT.get();
@@ -190,7 +243,7 @@ public final class AccelerationRuntime {
      *
      * @return current or last-closed diagnostic, or empty when no automatic scope
      *         was ever closed on this thread
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public static Optional<Diagnostic> lastDiagnostic() {
         Context context = CURRENT.get();
@@ -306,7 +359,7 @@ public final class AccelerationRuntime {
      *
      * @param iterator provider discovery iterator, typically from ServiceLoader
      * @return immutable discovered providers, possibly empty
-     * @since 0.25.1
+     * @since 0.26.1
      */
     static List<Provider> loadProviders(Iterator<Provider> iterator) {
         List<Provider> loaded = new ArrayList<>();
@@ -339,7 +392,7 @@ public final class AccelerationRuntime {
     /**
      * Auto-closeable acceleration scope.
      *
-     * @since 0.25.1
+     * @since 0.26.1
      */
     @FunctionalInterface
     public interface Scope extends AutoCloseable {
@@ -347,7 +400,7 @@ public final class AccelerationRuntime {
         /**
          * Closes the scope and restores any enclosing execution scope.
          *
-         * @since 0.25.1
+         * @since 0.26.1
          */
         @Override
         void close();
@@ -371,7 +424,7 @@ public final class AccelerationRuntime {
          * Returns the operation contract version.
          *
          * @return contract version
-         * @since 0.25.1
+         * @since 0.26.1
          */
         public int version() {
             return version;
@@ -425,7 +478,7 @@ public final class AccelerationRuntime {
      * @param code       stable code
      * @param providerId provider identifier, or {@code none}
      * @param detail     concise detail
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public record Diagnostic(DiagnosticCode code, String providerId, String detail) {
 
@@ -491,7 +544,7 @@ public final class AccelerationRuntime {
      * @param peakDeviceBytesEstimate declared peak device memory in bytes
      * @throws IllegalArgumentException if the range, output width, peak estimate or
      *                                  determinism/tolerance pairing is invalid
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public record KernelRequest(Operation operation, int fromInclusive, int toInclusive, int outputsPerIndex,
             NumericEncoding numeric, Determinism determinism, long seed, double tolerance, double[] params,
@@ -536,7 +589,7 @@ public final class AccelerationRuntime {
         /**
          * Returns the number of decision indexes in the batch.
          *
-         * @since 0.25.1
+         * @since 0.26.1
          */
         public int size() {
             return Math.addExact(Math.subtractExact(toInclusive, fromInclusive), 1);
@@ -546,7 +599,7 @@ public final class AccelerationRuntime {
          * Returns the expected raw output length.
          *
          * @return {@code size() * outputsPerIndex}
-         * @since 0.25.1
+         * @since 0.26.1
          */
         public int expectedOutputLength() {
             return Math.multiplyExact(size(), outputsPerIndex);
@@ -556,7 +609,7 @@ public final class AccelerationRuntime {
          * Returns a copy of the operation parameters.
          *
          * @return defensive copy, never the live buffer
-         * @since 0.25.1
+         * @since 0.26.1
          */
         @Override
         public double[] params() {
@@ -572,7 +625,7 @@ public final class AccelerationRuntime {
      *                          {@code request.size() * outputsPerIndex}
      * @param nativeInitialized whether native code was initialized
      * @param elapsedNanos      provider-measured kernel time
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public record KernelResult(double[] outputs, boolean nativeInitialized, long elapsedNanos) {
 
@@ -589,7 +642,7 @@ public final class AccelerationRuntime {
          * Returns a copy of the raw kernel outputs.
          *
          * @return defensive copy, never the live buffer
-         * @since 0.25.1
+         * @since 0.26.1
          */
         @Override
         public double[] outputs() {
@@ -610,7 +663,7 @@ public final class AccelerationRuntime {
      * @param deterministic       whether the provider meets the request determinism
      *                            contract
      * @param diagnostic          explanation when unsupported
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public record Assessment(boolean supported, Backend backend, String deviceId, long predictedTotalNanos,
             long peakDeviceBytes, boolean deterministic, Diagnostic diagnostic) {
@@ -625,7 +678,7 @@ public final class AccelerationRuntime {
         /**
          * Creates a supported assessment.
          *
-         * @since 0.25.1
+         * @since 0.26.1
          */
         public static Assessment supported(Backend backend, String deviceId, long predictedTotalNanos,
                 long peakDeviceBytes, boolean deterministic) {
@@ -636,7 +689,7 @@ public final class AccelerationRuntime {
         /**
          * Creates an unsupported assessment.
          *
-         * @since 0.25.1
+         * @since 0.26.1
          */
         public static Assessment unsupported(Backend backend, String deviceId, DiagnosticCode code, String providerId,
                 String detail) {
@@ -653,7 +706,7 @@ public final class AccelerationRuntime {
      * Provider constructors must not probe devices or load native libraries, and
      * {@link #assess(KernelRequest)} must not initialize native code.
      *
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public interface Provider {
 
@@ -661,7 +714,7 @@ public final class AccelerationRuntime {
          * Returns the stable provider identifier, defaulting to the class name.
          *
          * @return provider id
-         * @since 0.25.1
+         * @since 0.26.1
          */
         default String providerId() {
             return getClass().getName();
@@ -672,7 +725,7 @@ public final class AccelerationRuntime {
          *
          * @param request immutable kernel request
          * @return cost assessment
-         * @since 0.25.1
+         * @since 0.26.1
          */
         Assessment assess(KernelRequest request);
 
@@ -687,7 +740,7 @@ public final class AccelerationRuntime {
          *
          * @param request immutable kernel request
          * @return raw kernel output
-         * @since 0.25.1
+         * @since 0.26.1
          */
         KernelResult execute(KernelRequest request);
     }

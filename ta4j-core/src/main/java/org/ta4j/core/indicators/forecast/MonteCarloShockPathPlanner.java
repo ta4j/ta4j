@@ -33,8 +33,9 @@ import org.ta4j.core.num.NumFactory;
  *
  * <p>
  * The planner replicates the scalar eligibility gates exactly: double-only
- * numerics, the scalar first-stable forecast index, the explicit per-path RNG
- * stream, per-index state stability and window completeness. The unavailable
+ * numerics, the scalar first-stable forecast index, per-index state stability
+ * and window completeness. Both lanes draw each path from the same per-path
+ * stream, so the kernel needs no RNG state beyond the seed. The unavailable
  * prefix before the first stable index stays on the scalar lane and the planner
  * lowers the eligible suffix instead. A range that exceeds the device or host
  * budget is lowered as the longest prefix that fits, and a row that is not
@@ -42,7 +43,7 @@ import org.ta4j.core.num.NumFactory;
  * a later index is read. Only a decision index that can never be lowered is
  * declined permanently, with the specific reason.
  *
- * @since 0.25.1
+ * @since 0.26.1
  */
 final class MonteCarloShockPathPlanner implements OperationPlanner {
 
@@ -77,10 +78,6 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         MonteCarloPriceForecastIndicator.ShockPathKernelConfig config = forecast.shockPathKernelConfig();
         if (config == null) {
             return unsupported("a custom MonteCarloMethod is not lowered; only the default shock-path method is");
-        }
-        if (!forecast.usesPerPathRng()) {
-            return unsupported("requires -D" + MonteCarloSimulation.RNG_VERSION_PROPERTY
-                    + "=1 (per-path stream) when the forecast is built");
         }
         if (fromInclusive < 0 || toInclusive < fromInclusive) {
             return unsupported("invalid request range [" + fromInclusive + ", " + toInclusive + "]");
@@ -139,12 +136,20 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
             return PlanAttempt.declined(PlanDecline.ineligible(retryFromIndex,
                     "index " + firstStableIndex + " needs returns before the first retained bar"));
         }
+        Indicator<Num> priceIndicator = config.priceIndicator();
+        // The scalar lane maps terminal prices in the price's own factory; the
+        // decoder rebuilds prices through the series' double factory, so only
+        // DoubleNum prices keep both lanes in the same numeric domain.
+        Num firstPrice = priceIndicator.getValue(firstStableIndex);
+        if (Num.isFinite(firstPrice) && !(firstPrice instanceof DoubleNum)) {
+            return unsupported(
+                    "requires DoubleNum prices; the price indicator returns " + firstPrice.getClass().getSimpleName());
+        }
         int rows = (int) Math.min((long) toInclusive - firstStableIndex + 1L, rowsThatFit);
         double[] prices = new double[rows];
         double[] means = new double[rows];
         double[] drifts = new double[rows];
         double[] variances = new double[rows];
-        Indicator<Num> priceIndicator = config.priceIndicator();
         int stateRows = 0;
         while (stateRows < rows && snapshotState(firstStableIndex + stateRows, priceIndicator, stateIndicator, prices,
                 means, drifts, variances, stateRows)) {
@@ -248,7 +253,7 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
             ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator, double[] prices, double[] means,
             double[] drifts, double[] variances, int row) {
         Num price = priceIndicator.getValue(index);
-        if (!Num.isFinite(price) || !price.isPositive()) {
+        if (!(price instanceof DoubleNum) || !Num.isFinite(price) || !price.isPositive()) {
             return false;
         }
         ReturnMomentState rawState = stateIndicator.getValue(index);

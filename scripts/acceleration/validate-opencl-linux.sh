@@ -81,7 +81,6 @@ if [[ "$BENCHMARK" == "--benchmark" ]]; then
         -Dta4j.runBenchmarks=true \
         -Dta4j.acceleration.opencl.library="$LIBRARY" \
         -Dta4j.acceleration.approximateTolerance=1e-4 \
-        -Dta4j.forecast.rngVersion=1 \
         test
     if [[ ! -f "$REPORT" ]]; then
         echo "error: benchmark report was not written at $REPORT" >&2
