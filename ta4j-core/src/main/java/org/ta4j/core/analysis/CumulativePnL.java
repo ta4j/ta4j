@@ -207,7 +207,9 @@ public final class CumulativePnL implements PerformanceIndicator {
      * <p>
      * Native settlement components are retained across updates regardless of the
      * constructor's record type. Results carried before the captured window remain
-     * separate from contributions recognized on its retained bars.
+     * separate from contributions recognized on its retained bars. Every accepted
+     * update publishes a view of those retained components, rounding only the final
+     * values.
      * </p>
      *
      * @param position   the position
@@ -237,10 +239,7 @@ public final class CumulativePnL implements PerformanceIndicator {
                 OffsetNumBuffer deltas = AnalysisPositionSupport.buffer(window, zero, zero);
                 calculatePosition(position, finalIndex, window, deltas, priced.holdingCost());
                 pnl.add(deltas);
-                for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
-                    staged.add((int) index, deltas.get((int) index));
-                }
-                staged.addBaseline(deltas.baseline());
+                staged.replaceWith(pnl.values());
             });
             futuresPnL = pnl;
         }

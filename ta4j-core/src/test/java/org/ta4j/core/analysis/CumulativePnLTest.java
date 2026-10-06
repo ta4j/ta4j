@@ -21,6 +21,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.util.List;
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -1331,6 +1332,104 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
             curve.calculatePosition(position, 1);
         }
         assertNumEquals(-1, curve.getValue(1));
+    }
+
+    @Test
+    public void cancellingSpotDeltaPublishesRetainedNativeResidualImmediately() {
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 100, 100);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory)
+                .toBuilder()
+                .contractSize(numFactory.one())
+                .build();
+        CumulativePnL curve = new CumulativePnL(series,
+                FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500), 3, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        Position nativeLot = FuturesAnalysisTestSupport.crossLotFeeRecord(contract, TradeType.BUY, false)
+                .getOpenPositions()
+                .getFirst();
+        curve.calculatePosition(nativeLot, 3);
+        assertNumEquals(-1e16, curve.getValue(2));
+        Position spot = new Position(Trade.buyAt(0, numFactory.hundred(), numFactory.one()),
+                Trade.sellAt(2, numFactory.numOf(1e16 + 100), numFactory.one()), new ZeroCostModel(),
+                new ZeroCostModel());
+        curve.calculatePosition(spot, 3);
+        // Exact components: -(1e16 + 1) + 1e16 = -1, before any later update.
+        assertNumEquals(-1, curve.getValue(2));
+        assertNumEquals(-1, curve.getValue(3));
+        List<Num> beforeZero = curve.stream().toList();
+        BaseTradingRecord zero = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+        zero.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1, 100, List.of()));
+        zero.operate(FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 1, 100, List.of()));
+        curve.calculatePosition(zero.getPositions().getFirst(), 3);
+        assertEquals(beforeZero, curve.stream().toList());
+    }
+
+    @Test
+    public void cancellationViewsStayAuthoritativeAcrossAllUpdateOrders() {
+        BigDecimal feePnl = new BigDecimal("-10000000000000001");
+        BigDecimal spotPnl = new BigDecimal("10000000000000000");
+        for (boolean retained : new boolean[] { false, true }) {
+            for (EquityCurveMode mode : EquityCurveMode.values()) {
+                for (int origin = 0; origin < 4; origin++) {
+                    for (int[] order : List.of(new int[] { 0, 1, 2 }, new int[] { 0, 2, 1 }, new int[] { 1, 0, 2 },
+                            new int[] { 1, 2, 0 }, new int[] { 2, 0, 1 }, new int[] { 2, 1, 0 })) {
+                        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 100, 100);
+                        if (retained)
+                            series.setMaximumBarCount(2);
+                        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory)
+                                .toBuilder()
+                                .contractSize(numFactory.one())
+                                .build();
+                        Position nativeLot = FuturesAnalysisTestSupport
+                                .crossLotFeeRecord(contract, TradeType.BUY, false)
+                                .getOpenPositions()
+                                .getFirst();
+                        Position spot = new Position(Trade.buyAt(0, numFactory.hundred(), numFactory.one()),
+                                Trade.sellAt(2, numFactory.numOf(1e16 + 100), numFactory.one()), new ZeroCostModel(),
+                                new ZeroCostModel());
+                        BaseTradingRecord initial = origin >= 2
+                                ? FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500)
+                                : origin == 1 ? new BaseTradingRecord(spot) : new BaseTradingRecord();
+                        if (origin == 3)
+                            initial.operate(nativeLot.getEntry().getFills().getFirst());
+                        CumulativePnL curve = new CumulativePnL(series, initial, 3, mode,
+                                OpenPositionHandling.MARK_TO_MARKET);
+                        BaseTradingRecord zero = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+                        zero.operate(
+                                FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1, 100, List.of()));
+                        zero.operate(
+                                FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 1, 100, List.of()));
+                        List<Position> updates = List.of(nativeLot, spot, zero.getPositions().getFirst());
+                        BigDecimal expected = origin == 3 ? feePnl : origin == 1 ? spotPnl : BigDecimal.ZERO;
+                        boolean nativeSeen = origin == 3;
+                        for (int next : order) {
+                            if ((next == 0 && origin == 3) || (next == 1 && origin == 1))
+                                continue;
+                            List<Num> before = curve.stream().toList();
+                            Num baseline = curve.getBaselineValue();
+                            curve.calculatePosition(updates.get(next), 3);
+                            if (next == 0) {
+                                expected = expected.add(feePnl);
+                                nativeSeen = true;
+                            } else if (next == 1) {
+                                expected = expected.add(spotPnl);
+                            } else {
+                                assertEquals(before, curve.stream().toList());
+                                assertNumEquals(baseline, curve.getBaselineValue());
+                            }
+                            // Independent prefix sums expose a stale visible value
+                            // immediately, before a native update could repair it.
+                            assertNumEquals(numFactory.numOf(expected), curve.getValue(2));
+                            assertNumEquals(numFactory.numOf(expected), curve.getValue(3));
+                            assertNumEquals(retained && nativeSeen ? numFactory.numOf(feePnl) : numFactory.zero(),
+                                    curve.getBaselineValue());
+                        }
+                        assertNumEquals(-1, curve.getValue(2));
+                        assertNumEquals(-1, curve.getValue(3));
+                    }
+                }
+            }
+        }
     }
 
     @Test
