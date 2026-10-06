@@ -107,6 +107,16 @@ mkdir -p "$local_repo"
 if [[ -n "${FAKE_MAVEN_LOG_DIR:-}" ]]; then
   printf '%s\t%s\t%s\n' "$$" "$PWD" "$local_repo" > "$FAKE_MAVEN_LOG_DIR/$PPID-$$.log"
 fi
+if [[ -n "${FAKE_MAVEN_SEQUENCE:-}" ]]; then
+  phase=install
+  for argument in "$@"; do
+    case "$argument" in
+      "-Dexec.args=performance run"*) phase=run ;;
+      "-Dexec.args=performance compare"*) phase=compare ;;
+    esac
+  done
+  printf '%s %s %s\n' "$(basename "$PWD")" "$phase" "$(basename "$local_repo")" >> "$FAKE_MAVEN_SEQUENCE"
+fi
 
 # Emulate the CLI's artifacts unless the test simulates a skipped exec:java.
 for argument in "$@"; do
@@ -188,12 +198,12 @@ test_concurrent_default_invocations_are_isolated() {
   awk -F '\t' '{ print $3 }' "$TMP"/maven-logs/*.log | sort -u > "$repos_file"
   local repo_count
   repo_count="$(wc -l < "$repos_file" | tr -d ' ')"
-  [[ "$repo_count" == "2" ]] || fail "expected one Maven repository per invocation, got $repo_count"
+  [[ "$repo_count" == "4" ]] || fail "expected one Maven repository per ref per invocation, got $repo_count"
 
   while IFS= read -r local_repo; do
     expect_path_prefix "$local_repo" "$TMP/repo/.agents/benchmarks/performance/comparisons/20260722T193000Z-" \
       "Maven repository should live under an invocation output directory"
-    [[ "$local_repo" == */worktrees/run-*/maven-repository ]] \
+    [[ "$local_repo" == */worktrees/run-*/maven-repository-base || "$local_repo" == */worktrees/run-*/maven-repository-candidate ]] \
       || fail "Maven repository should be invocation-scoped under the temporary worktree root: $local_repo"
     [[ "$local_repo" != "$HOME/.m2/"* ]] || fail "Maven repository must not use the shared ~/.m2 repository"
   done < "$repos_file"
@@ -304,9 +314,45 @@ test_fails_when_exec_produces_no_artifacts() {
   pass "test_fails_when_exec_produces_no_artifacts"
 }
 
+test_builds_both_refs_before_measuring_in_requested_order() {
+  echo "Running test_builds_both_refs_before_measuring_in_requested_order"
+
+  TMP="$(mktemp -d "${TMPDIR:-/tmp}/ta4j-benchmark-script.XXXXXX")"
+  mkdir -p "$TMP/bin" "$TMP/repo"
+  write_fake_date
+  write_fake_git
+  write_fake_maven
+
+  local output="$TMP/ordered"
+  BASH_ENV=/dev/null FAKE_REPO_ROOT="$TMP/repo" FAKE_MAVEN_SEQUENCE="$TMP/sequence" BENCHMARK_ORDER=candidate-first \
+    PATH="$TMP/bin:$PATH" \
+    "$SCRIPT" base-a candidate-a "$output" -- --experiment fixture --bar-counts 1 --scenarios endOnly --repetitions 1 \
+    > "$TMP/ordered.out"
+  local expected
+  expected="$(printf '%s\n' \
+    "base install maven-repository-base" \
+    "candidate install maven-repository-candidate" \
+    "candidate run maven-repository-candidate" \
+    "base run maven-repository-base" \
+    "candidate compare maven-repository-candidate")"
+  [[ "$(cat "$TMP/sequence")" == "$expected" ]] || fail "unexpected maven sequence: $(cat "$TMP/sequence")"
+  [[ "$(cat "$output/run-order.txt")" == candidate-first ]] || fail "run order was not recorded"
+
+  local err="$TMP/bad-order.err"
+  if BASH_ENV=/dev/null FAKE_REPO_ROOT="$TMP/repo" BENCHMARK_ORDER=sideways PATH="$TMP/bin:$PATH" \
+      "$SCRIPT" base-a candidate-a > /dev/null 2> "$err"; then
+    fail "an unknown BENCHMARK_ORDER should be rejected"
+  fi
+  grep -q "BENCHMARK_ORDER must be base-first or candidate-first" "$err" || fail "missing order error: $(cat "$err")"
+
+  rm -rf "$TMP"
+  pass "test_builds_both_refs_before_measuring_in_requested_order"
+}
+
 test_requires_explicit_base_ref
 test_fails_when_exec_produces_no_artifacts
 test_rejects_base_ref_without_harness
 test_rejects_unresolvable_ref
+test_builds_both_refs_before_measuring_in_requested_order
 
 test_concurrent_default_invocations_are_isolated

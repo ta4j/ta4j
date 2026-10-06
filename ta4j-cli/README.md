@@ -479,7 +479,9 @@ ta4j-cli/scripts/benchmark-performance-experiment.sh <base-ref> HEAD -- \
   --repetitions 5
 ```
 
-The base ref is required and must resolve to a commit containing `ta4j-cli/pom.xml`, otherwise the baseline worktree cannot run the ta4j-cli harness. When `output-dir` is omitted, the helper creates a unique timestamp-suffixed comparison directory and uses one temporary Maven local repository for the whole invocation, so concurrent benchmark runs do not share mutable SNAPSHOT artifacts.
+The base ref is required and must resolve to a commit containing `ta4j-cli/pom.xml`, otherwise the baseline worktree cannot run the ta4j-cli harness. When `output-dir` is omitted, the helper creates a unique timestamp-suffixed comparison directory. Each invocation gives each ref its own temporary Maven local repository, so the two refs never resolve each other's SNAPSHOT jars and concurrent benchmark runs do not share mutable artifacts.
+
+The helper builds both refs before measuring either, then runs the measurements back to back in the order selected by `BENCHMARK_ORDER` (`base-first` by default, or `candidate-first`) and records it in `<output-dir>/run-order.txt`. Thermal, clock, and cache drift can favor whichever side runs second, so confirm a borderline verdict by rerunning with the opposite order.
 
 Reported median durations average the two middle measurements when `--repetitions` is even, so `performance compare` thresholds are evaluated against the true median of the run times.
 

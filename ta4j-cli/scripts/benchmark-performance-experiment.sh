@@ -13,9 +13,17 @@ Defaults:
 
 The baseline and candidate refs must both contain the ta4j-cli harness, otherwise
 the baseline worktree cannot run ta4j-cli performance run.
-The script runs ta4j-cli performance run in
-temporary worktrees for both refs, then compares performance.json artifacts with
-ta4j-cli performance compare.
+The script builds both refs in temporary worktrees (each with its own Maven
+repository, so neither ref's snapshot jars replace the other's) before measuring
+either, runs ta4j-cli performance run for each ref, then compares the
+performance.json artifacts with ta4j-cli performance compare.
+
+Environment:
+  BENCHMARK_ORDER: base-first (default) or candidate-first. Measurements run
+                   back to back in this order, which is recorded in
+                   <output-dir>/run-order.txt. Thermal, clock, and cache drift
+                   favor one side, so confirm a borderline verdict by repeating
+                   the comparison with the opposite order.
 
 Example:
   ta4j-cli/scripts/benchmark-performance-experiment.sh <base-ref> HEAD -- \
@@ -53,6 +61,11 @@ fi
 if [[ -z "$base_ref" ]]; then
   echo "error: base-ref is required; it must resolve to a commit containing ta4j-cli/pom.xml" >&2
   usage >&2
+  exit 2
+fi
+benchmark_order="${BENCHMARK_ORDER:-base-first}"
+if [[ "$benchmark_order" != base-first && "$benchmark_order" != candidate-first ]]; then
+  echo "error: BENCHMARK_ORDER must be base-first or candidate-first, not '$benchmark_order'" >&2
   exit 2
 fi
 for ref in "$base_ref" "$candidate_ref"; do
@@ -93,7 +106,8 @@ mkdir -p "$output_dir" "$worktree_parent"
 worktree_root="$(mktemp -d "$worktree_parent/run-XXXXXX")"
 base_worktree="$worktree_root/base"
 candidate_worktree="$worktree_root/candidate"
-maven_repo="$worktree_root/maven-repository"
+base_maven_repo="$worktree_root/maven-repository-base"
+candidate_maven_repo="$worktree_root/maven-repository-candidate"
 base_output="$output_dir/base"
 candidate_output="$output_dir/candidate"
 comparison_output="$output_dir/comparison"
@@ -148,16 +162,25 @@ clear_artifacts() {
   rm -f "$dir/performance.json" "$dir/comparison.json" "$dir/summary.md"
 }
 
-run_ref() {
+build_ref() {
   local worktree="$1"
-  local run_output="$2"
+  local maven_repo="$2"
+  (
+    cd "$worktree"
+    mvn -q -Dmaven.repo.local="$maven_repo" -pl ta4j-cli -am install -DskipTests
+  )
+}
+
+measure_ref() {
+  local worktree="$1"
+  local maven_repo="$2"
+  local run_output="$3"
   mkdir -p "$run_output"
   clear_artifacts "$run_output"
   local exec_args
   exec_args="$(join_exec_args "${runner_args[@]}" --output-dir "$run_output")"
   (
     cd "$worktree"
-    mvn -q -Dmaven.repo.local="$maven_repo" -pl ta4j-cli -am install -DskipTests
     mvn -q -Dmaven.repo.local="$maven_repo" -pl ta4j-cli exec:java \
       -Dexec.mainClass=org.ta4j.cli.Ta4jCli \
       -Dexec.args="performance run $exec_args"
@@ -165,14 +188,25 @@ run_ref() {
   require_artifact "$run_output/performance.json"
 }
 
-run_ref "$base_worktree" "$base_output"
-run_ref "$candidate_worktree" "$candidate_output"
+# Build both refs before measuring either so the build of the second ref cannot
+# shift the machine state between the two measurements.
+build_ref "$base_worktree" "$base_maven_repo"
+build_ref "$candidate_worktree" "$candidate_maven_repo"
+
+printf '%s\n' "$benchmark_order" > "$output_dir/run-order.txt"
+if [[ "$benchmark_order" == candidate-first ]]; then
+  measure_ref "$candidate_worktree" "$candidate_maven_repo" "$candidate_output"
+  measure_ref "$base_worktree" "$base_maven_repo" "$base_output"
+else
+  measure_ref "$base_worktree" "$base_maven_repo" "$base_output"
+  measure_ref "$candidate_worktree" "$candidate_maven_repo" "$candidate_output"
+fi
 
 clear_artifacts "$comparison_output"
 comparison_args="$(join_exec_args --base-dir "$base_output" --candidate-dir "$candidate_output" --output-dir "$comparison_output")"
 (
   cd "$candidate_worktree"
-  mvn -q -Dmaven.repo.local="$maven_repo" -pl ta4j-cli exec:java \
+  mvn -q -Dmaven.repo.local="$candidate_maven_repo" -pl ta4j-cli exec:java \
     -Dexec.mainClass=org.ta4j.cli.Ta4jCli \
     -Dexec.args="performance compare $comparison_args"
 )
