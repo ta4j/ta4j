@@ -1,5 +1,15 @@
 ## Unreleased
 
+### Added
+
+- **Composable Monte Carlo techniques**: any `MonteCarloMethod` now chains decorators fluently: `pooledWith(other)` pools two techniques 50/50 through derived sub-generators, `widenedByRecentVolatility()` widens terminal samples by the bounded ratio of recent realized to state volatility, and `withStudentTScaleMixing()` fattens tails with a mean-normalized Student-t scale-mixing factor; `NormalInverseGammaForecastMethod.overResiduals(method)` and `overSmoothedResiduals()` layer posterior parameter uncertainty over another technique's standardized residual paths. For example `shockPath.pooledWith(NormalInverseGammaForecastMethod.withEmpiricalPriors().overSmoothedResiduals()).widenedByRecentVolatility().withStudentTScaleMixing()` is passed straight to `.monteCarloMethod(...)`. Every composition draws exclusively from `MonteCarloContext.random()`, so seeded forecasts stay reproducible, and degrades to an unstable forecast when a component returns null, miscounts, or emits non-finite samples. Widening scales around the inner technique's empirical center (dispersion only, never a location shift); Student-t mixing stays finite with bounded expected cost for arbitrarily large degrees of freedom; and foreign-precision inner samples are normalized through the context's `NumFactory`. `WalkForwardCalibrationBakeoffExample` builds its arms with this API, forecasts through `MonteCarloReturnProjectionIndicator`, persists per-arm checkpoints incrementally, and serializes empty volatility regimes as `null`.
+
+### Fixed
+
+- **Gamma boosts exclude the zero endpoint**: Shape-below-one gamma sampling now uses an open-closed uniform boost, keeping inverse-gamma forecasts finite for valid low-shape priors even when a supplied generator returns the legal value `0.0`. This reflects the boost draw for seeded shape-below-one streams while leaving shape-at-least-one streams unchanged; the uniform distribution and sampler correctness are preserved.
+
+## 0.26.0 (2026-10-05)
+
 > **Upgrading from 0.25.0: backtest and analysis results change, and backtesting a live series that changes mid-run now throws.** Runs no longer use prices from after their window, walk-forward folds close their open positions (paying the exit cost), and mark-to-market curves follow period-return conventions for holding costs and for positions opened before the window. Backtests and analyses of a `ConcurrentBarSeries` that changes underneath them now throw `IllegalStateException` instead of silently mixing old and new bars, and they no longer lock the series while strategies run, which removes a deadlock with live feeds. Read **Breaking** before upgrading.
 
 ### Breaking
