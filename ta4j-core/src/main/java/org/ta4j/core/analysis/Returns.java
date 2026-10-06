@@ -154,9 +154,9 @@ public class Returns implements PerformanceIndicator {
                                 .pnl(FuturesPerformanceSupport.cursor(barSeries, record, captured.endIndex(),
                                         FuturesPerformanceSupport.includesExposure(handling, equityCurveMode),
                                         markPriceIndicator), captured, barSeries.numFactory(), capital);
-                        seeded = fillFuturesReturnFactors(pnl, capital,
-                                FuturesPerformanceSupport.hasActivityAtIndex(record, captured.beginIndex()), captured,
-                                factors);
+                        seeded = publishReturnFactors(pnl, capital,
+                                FuturesPerformanceSupport.hasActivityAtIndex(record, captured.beginIndex()), false,
+                                AnalysisPositionSupport.buffer(captured, initial, NaN.NaN), captured, factors);
                     } else
                         for (Position position : positions) {
                             seeded |= calculatePosition(position, captured.finalIndex(), captured, factors,
@@ -426,7 +426,10 @@ public class Returns implements PerformanceIndicator {
      * Accepted spot period factors remain composed with the native account's return
      * factors across later updates, including when an ordinary record supplied the
      * constructor. A retained-head period established by a spot return keeps that
-     * meaning when later native activity arrives.
+     * meaning when later native activity arrives. Each update composes the retained
+     * spot factors with normalized native periods once; rounding a previous
+     * combined view does not become input to a later update. With no native
+     * contribution, the established spot-only composition is preserved.
      * </p>
      *
      * @param position   a single position
@@ -456,17 +459,8 @@ public class Returns implements PerformanceIndicator {
             AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, returnFactors, staged -> {
                 FuturesPerformanceSupport.addPositionPnL(barSeries, position, finalIndex, window, markFuturesExposure,
                         futuresMark, pnl, capital);
-                Num initial = representation == ReturnRepresentation.LOG ? barSeries.numFactory().zero()
-                        : barSeries.numFactory().one();
-                OffsetNumBuffer factors = AnalysisPositionSupport.buffer(window, initial, NaN.NaN);
-                firstReported[0] = fillFuturesReturnFactors(pnl, capital, firstActivity, window, factors);
-                for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
-                    if (representation == ReturnRepresentation.LOG)
-                        factors.add((int) index, spotReturnFactors.get((int) index));
-                    else
-                        factors.multiply((int) index, spotReturnFactors.get((int) index));
-                }
-                staged.replaceWith(factors);
+                firstReported[0] = publishReturnFactors(pnl, capital, firstActivity, spotDefinesHeadPeriod,
+                        spotReturnFactors, window, staged);
             }, true);
             futuresPnL = pnl;
             firstRetainedSlotSeeded = firstReported[0] || spotFirstRetainedSlotSeeded;
@@ -488,13 +482,16 @@ public class Returns implements PerformanceIndicator {
             for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
                 Num factor = contribution.get((int) index);
                 if (representation == ReturnRepresentation.LOG) {
-                    staged.add((int) index, factor);
                     spotFactors.add((int) index, factor);
                 } else {
-                    staged.multiply((int) index, factor);
                     spotFactors.multiply((int) index, factor);
                 }
             }
+            // Spot changes do not alter the already-validated native components.
+            // Recompose both retained representations instead of chaining the
+            // rounded combined view into the next spot publication.
+            publishReturnFactors(futuresPnL, null, firstBarFuturesActivity,
+                    spotDefinesHeadPeriod || seeded[0] && !firstRetainedSlotSeeded, spotFactors, window, staged);
         });
         spotReturnFactors = spotFactors;
         if (seeded[0] && !firstRetainedSlotSeeded)
@@ -658,19 +655,30 @@ public class Returns implements PerformanceIndicator {
                 markPriceIndicator, null);
     }
 
-    private boolean fillFuturesReturnFactors(FuturesPerformanceSupport.PnLAccumulator pnl, Num capital,
-            boolean firstActivity, AnalysisPositionSupport.Window captured, OffsetNumBuffer factors) {
-        if (captured.isEmpty() || capital.isZero())
+    /**
+     * Publishes one composition of normalized native periods and retained spot
+     * factors. A null capital reuses native components already validated before a
+     * spot-only update; native construction and mutations validate with their
+     * account capital before publication.
+     */
+    private boolean publishReturnFactors(FuturesPerformanceSupport.PnLAccumulator pnl, Num capital,
+            boolean firstActivity, boolean spotHeadPeriod, OffsetNumBuffer spotFactors,
+            AnalysisPositionSupport.Window captured, OffsetNumBuffer target) {
+        if (captured.isEmpty() || capital != null && capital.isZero())
             return false;
-        boolean firstReported = captured.beginIndex() > 0 && (firstActivity || spotDefinesHeadPeriod);
+        Num initial = representation == ReturnRepresentation.LOG ? barSeries.numFactory().zero()
+                : barSeries.numFactory().one();
+        OffsetNumBuffer factors = AnalysisPositionSupport.buffer(captured, initial, NaN.NaN);
+        boolean firstReported = captured.beginIndex() > 0 && (firstActivity || spotHeadPeriod);
         // A spot return that first defined this slot remains a period sample;
         // later native activity must not replace it with a historical capital seed.
         int previousIndex = captured.beginIndex() - 1;
         for (long index = captured.beginIndex(); index <= captured.bufferEndIndex(); index++) {
-            pnl.validatePnL((int) index, capital);
+            if (capital != null)
+                pnl.validatePnL((int) index, capital);
             if (index > captured.beginIndex() || firstReported) {
                 Num ratio = pnl.equityRatio((int) index, previousIndex,
-                        index == captured.beginIndex() && spotDefinesHeadPeriod);
+                        index == captured.beginIndex() && spotHeadPeriod);
                 if (representation == ReturnRepresentation.LOG) {
                     factors.add((int) index, ratio.isPositive() ? ratio.log() : NaN.NaN);
                 } else {
@@ -681,7 +689,12 @@ public class Returns implements PerformanceIndicator {
             // a retained head without activity is instead the first prior equity value.
             if (index > captured.beginIndex() || captured.beginIndex() > 0)
                 previousIndex = (int) index;
+            if (representation == ReturnRepresentation.LOG)
+                factors.add((int) index, spotFactors.get((int) index));
+            else
+                factors.multiply((int) index, spotFactors.get((int) index));
         }
+        target.replaceWith(factors);
         return firstReported;
     }
 
