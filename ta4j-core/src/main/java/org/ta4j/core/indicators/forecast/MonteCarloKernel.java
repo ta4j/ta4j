@@ -79,7 +79,7 @@ package org.ta4j.core.indicators.forecast;
  * {@link StrictMath} (fdlibm) semantics, so native kernels must use a bitwise
  * port of those two functions; {@code sqrt} is correctly rounded everywhere.
  *
- * @since 0.25.1
+ * @since 0.26.1
  */
 public final class MonteCarloKernel {
 
@@ -159,7 +159,7 @@ public final class MonteCarloKernel {
      *
      * @param observationCount number of standardized residuals
      * @return bandwidth factor multiplied by the residual standard deviation
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public static double smoothingBandwidthFactor(int observationCount) {
         return 1.06d * Math.pow(observationCount, -0.2d);
@@ -180,7 +180,7 @@ public final class MonteCarloKernel {
      * @param horizon       forecast horizon in bars
      * @param pathIndex     path ordinal within the decision index
      * @return initial stream state
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public static long initialPathState(long seed, int decisionIndex, int horizon, int pathIndex) {
         if (decisionIndex < 0) {
@@ -206,7 +206,7 @@ public final class MonteCarloKernel {
      *
      * @param state current raw stream state
      * @return next raw stream state
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public static long advanceState(long state) {
         return state + GOLDEN_GAMMA;
@@ -217,7 +217,7 @@ public final class MonteCarloKernel {
      *
      * @param mixed mixed output bits
      * @return uniform double
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public static double toUnitDouble(long mixed) {
         return (mixed >>> 11) * DOUBLE_UNIT;
@@ -230,7 +230,7 @@ public final class MonteCarloKernel {
      * @param first  first uniform
      * @param second second uniform
      * @return standard normal draw
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public static double gaussian(double first, double second) {
         double radius = StrictMath.sqrt(-2d * StrictMath.log(1d - first));
@@ -242,7 +242,7 @@ public final class MonteCarloKernel {
      *
      * @param value raw stream state
      * @return mixed output bits, not the state for the next draw
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public static long mix64(long value) {
         value = (value ^ value >>> 30) * 0xBF58476D1CE4E5B9L;

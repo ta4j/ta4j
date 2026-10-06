@@ -47,7 +47,7 @@ public record MonteCarloContext(int index, int horizon, int iterationCount, List
      * Validates a context. The eight-component form carrying {@code perPathRandoms}
      * is canonical since 0.25.1.
      *
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public MonteCarloContext {
         if (index < 0) {
@@ -91,7 +91,7 @@ public record MonteCarloContext(int index, int horizon, int iterationCount, List
      *
      * @param pathIndex zero-based index of the simulated path
      * @return the deterministic random generator for that path
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public RandomGenerator randomForPath(int pathIndex) {
         return perPathRandoms != null ? perPathRandoms.apply(pathIndex) : random;

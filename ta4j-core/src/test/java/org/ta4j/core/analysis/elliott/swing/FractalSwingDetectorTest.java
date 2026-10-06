@@ -11,10 +11,18 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SplittableRandom;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.Bar;
@@ -22,6 +30,8 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
@@ -40,6 +50,52 @@ class FractalSwingDetectorTest {
         for (int index = 0; index < series.getBarCount(); index++) {
             assertThat(shared.detectPivots(series, index)).as("cached result at bar " + index)
                     .isEqualTo(new FractalSwingDetector(2).detectPivots(series, index));
+        }
+    }
+
+    @Test
+    void logicalWindowsMatchFreshSeriesAtAndOutsideBounds() {
+        final double[] logicalCloses = { 10, 50, 5, 40 };
+        final BarSeries logicalOnly = new MockBarSeriesBuilder().withData(logicalCloses).build();
+        final NumFactory numFactory = logicalOnly.numFactory();
+        final List<BarSeries> windows = List.of(
+                ConstrainedSeriesSupport.offsetSeries("constrained", numFactory, 2, 5, 0, 999, 888, 10, 50, 5, 40, 777),
+                ConstrainedSeriesSupport.offsetSeries("pruned", numFactory, 2, 5, 2, 10, 50, 5, 40, 777),
+                ConstrainedSeriesSupport.offsetSeries("constrained-pruned", numFactory, 3, 6, 2, 999, 10, 50, 5, 40,
+                        777),
+                ConstrainedSeriesSupport.emptyLogicalSeries("empty", numFactory),
+                ConstrainedSeriesSupport.offsetSeries("single", numFactory, 5, 5, 4, 999, 7, 888, 777, 666));
+
+        for (BarSeries window : windows) {
+            FractalSwingDetector incremental = new FractalSwingDetector(1);
+            int beginIndex = window.getBeginIndex();
+            int endIndex = window.getEndIndex();
+            if (window.isEmpty()) {
+                assertThat(incremental.detectPivots(window, endIndex)).as(window.getName()).isEmpty();
+                continue;
+            }
+            for (int index = beginIndex; index <= endIndex; index++) {
+                List<SwingPivot> expected = new FractalSwingDetector(1).detectPivots(logicalOnly, index - beginIndex)
+                        .stream()
+                        .map(pivot -> new SwingPivot(pivot.index() + beginIndex, pivot.price(), pivot.type()))
+                        .toList();
+                assertThat(incremental.detectPivots(window, index)).as(window.getName() + " at " + index)
+                        .isEqualTo(expected);
+                assertThat(new FractalSwingDetector(1).detectPivots(window, index))
+                        .as(window.getName() + " fresh replay at " + index)
+                        .isEqualTo(expected);
+            }
+            for (int requestedIndex : new int[] { beginIndex - 1, endIndex + 1 }) {
+                int clampedIndex = Math.max(beginIndex, Math.min(requestedIndex, endIndex));
+                List<SwingPivot> expected = new FractalSwingDetector(1)
+                        .detectPivots(logicalOnly, clampedIndex - beginIndex)
+                        .stream()
+                        .map(pivot -> new SwingPivot(pivot.index() + beginIndex, pivot.price(), pivot.type()))
+                        .toList();
+                assertThat(incremental.detectPivots(window, requestedIndex))
+                        .as(window.getName() + " outside logical bounds at " + requestedIndex)
+                        .isEqualTo(expected);
+            }
         }
     }
 
@@ -214,6 +270,43 @@ class FractalSwingDetectorTest {
         emptyChecks.set(0);
         armClear.set(true);
         assertThat(detector.detectPivots(series, endIndex)).isEmpty();
+    }
+
+    @Test
+    void earlierBarMutationDuringUnlockedReplayOnRevisionlessSeriesRetriesTheReplay() {
+        // The replay confirms HIGH@1 at price 6, then bar 1's high is raised to 20 when
+        // it
+        // first reads bar 4. Without a series revision only value snapshots can notice;
+        // the
+        // replay must be re-verified against every retained bar, not just the last one.
+        final RevisionlessSeries series = new RevisionlessSeries(
+                seriesWithHighsAndLows(new double[] { 5, 6, 5, 7, 5, 6 }, new double[] { 4, 5, 3, 6, 4, 5 })
+                        .getBarData());
+        final FractalSwingDetector detector = new FractalSwingDetector(1);
+        assertThat(detector.detectPivots(series, 0)).isEmpty();
+
+        series.mutateOnFirstRead(4, () -> series.getBar(1).addPrice(series.numFactory().numOf(20)));
+        final List<SwingPivot> replayed = detector.detectPivots(series, series.getEndIndex());
+
+        assertThat(series.getBar(1).getHighPrice()).isEqualTo(series.numFactory().numOf(20));
+        assertThat(replayed).isEqualTo(new FractalSwingDetector(1).detectPivots(series, series.getEndIndex()));
+        assertThat(replayed).contains(new SwingPivot(1, series.numFactory().numOf(20), SwingPivotType.HIGH));
+    }
+
+    @Test
+    void earlierBarMutationBetweenAscendingQueriesOnRevisionlessSeriesRebuildsTheReplay() {
+        final RevisionlessSeries series = new RevisionlessSeries(
+                seriesWithHighsAndLows(new double[] { 5, 6, 5, 7, 5, 6 }, new double[] { 4, 5, 3, 6, 4, 5 })
+                        .getBarData());
+        final FractalSwingDetector detector = new FractalSwingDetector(1);
+        assertThat(detector.detectPivots(series, 3))
+                .contains(new SwingPivot(1, series.numFactory().numOf(6), SwingPivotType.HIGH));
+
+        series.getBar(1).addPrice(series.numFactory().numOf(20));
+        final List<SwingPivot> ascending = detector.detectPivots(series, series.getEndIndex());
+
+        assertThat(ascending).isEqualTo(new FractalSwingDetector(1).detectPivots(series, series.getEndIndex()));
+        assertThat(ascending).contains(new SwingPivot(1, series.numFactory().numOf(20), SwingPivotType.HIGH));
     }
 
     @Test
@@ -553,6 +646,169 @@ class FractalSwingDetectorTest {
         @Override
         public void addPrice(final Num price) {
             delegate.addPrice(price);
+        }
+    }
+
+    @Test
+    void detectionDoesNotHoldSeriesLockWhileEvaluatingSwingIndicators() throws Exception {
+        final BarSeries source = noisySeries(40, 44L);
+        final int endIndex = source.getEndIndex();
+        final PausedBarRead pause = new PausedBarRead(5);
+        final ReentrantReadWriteLock seriesLock = new ReentrantReadWriteLock();
+        final ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source, seriesLock,
+                pause::beforeBarRead);
+        series.setMaximumBarCount(Integer.MAX_VALUE);
+        final FractalSwingDetector detector = new FractalSwingDetector(2);
+        // Creates the replay state first, so the paused read below comes from the
+        // swing indicators evaluating the ascending replay.
+        detector.detectPivots(series, series.getBeginIndex());
+        final Bar last = series.getLastBar();
+        final Bar appended = new BaseBar(last.getTimePeriod(), last.getEndTime(),
+                last.getEndTime().plus(last.getTimePeriod()), last.getClosePrice(), last.getClosePrice(),
+                last.getClosePrice(), last.getClosePrice(), last.getVolume(), last.getAmount(), 1L);
+        final ExecutorService threads = daemonThreads();
+        try {
+            final Future<List<SwingPivot>> detection = threads
+                    .submit(() -> pause.run(() -> detector.detectPivots(series, endIndex)));
+            awaitLatch(pause.paused);
+
+            // A feed writer must not wait for the detection's indicator work; its bound
+            // stays below the paused read's, so a held series lock surfaces here.
+            threads.submit(() -> series.addBar(appended)).get(2, TimeUnit.SECONDS);
+            final List<SwingPivot> expected = new FractalSwingDetector(2).detectPivots(source, endIndex);
+            // Nor does another query wait for the busy replay state.
+            assertThat(threads.submit(() -> detector.detectPivots(series, endIndex)).get(2, TimeUnit.SECONDS))
+                    .isEqualTo(expected);
+            pause.release.countDown();
+
+            assertThat(detection.get(5, TimeUnit.SECONDS)).isEqualTo(expected);
+            assertThat(seriesLock.getReadLockCount()).isZero();
+        } finally {
+            pause.release.countDown();
+            threads.shutdownNow();
+        }
+    }
+
+    @Test
+    void detectionReplaysAgainWhenHistoryChangesDuringEvaluation() throws Exception {
+        final BarSeries source = noisySeries(40, 45L);
+        final int endIndex = source.getEndIndex();
+        final PausedBarRead pause = new PausedBarRead(endIndex - 1);
+        final ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source,
+                new ReentrantReadWriteLock(), pause::beforeBarRead);
+        final FractalSwingDetector detector = new FractalSwingDetector(2);
+        detector.detectPivots(series, series.getBeginIndex());
+        final List<SwingPivot> before = new FractalSwingDetector(2).detectPivots(source, endIndex);
+        // Raises a pivot high the paused replay has already merged: its index stays
+        // a confirmed swing, so only a re-verified replay can report the new price.
+        final int replacedIndex = before.stream()
+                .filter(pivot -> pivot.type() == SwingPivotType.HIGH && pivot.index() <= endIndex - 5)
+                .reduce((earlier, later) -> later)
+                .orElseThrow()
+                .index();
+        final Bar original = series.getBar(replacedIndex);
+        final Num spike = original.getHighPrice().multipliedBy(series.numFactory().numOf(2));
+        final Bar replacement = new BaseBar(original.getTimePeriod(), original.getBeginTime(), original.getEndTime(),
+                original.getOpenPrice(), spike, original.getLowPrice(), original.getClosePrice(), original.getVolume(),
+                original.getAmount(), original.getTrades());
+        final ExecutorService threads = daemonThreads();
+        try {
+            final Future<List<SwingPivot>> detection = threads
+                    .submit(() -> pause.run(() -> detector.detectPivots(series, endIndex)));
+            awaitLatch(pause.paused);
+
+            threads.submit(() -> series.replaceBar(replacedIndex, replacement)).get(2, TimeUnit.SECONDS);
+            pause.release.countDown();
+
+            final List<SwingPivot> after = new FractalSwingDetector(2).detectPivots(series, endIndex);
+            assertThat(after).isNotEqualTo(before);
+            assertThat(detection.get(5, TimeUnit.SECONDS)).isEqualTo(after);
+        } finally {
+            pause.release.countDown();
+            threads.shutdownNow();
+        }
+    }
+
+    private static ExecutorService daemonThreads() {
+        return Executors.newFixedThreadPool(2, runnable -> {
+            final Thread thread = new Thread(runnable, "fractal-detector-lock-order");
+            thread.setDaemon(true);
+            return thread;
+        });
+    }
+
+    private static void awaitLatch(final CountDownLatch latch) {
+        try {
+            assertThat(latch.await(5, TimeUnit.SECONDS)).as("latch was not released").isTrue();
+        } catch (InterruptedException interruption) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError(interruption);
+        }
+    }
+
+    /**
+     * Pauses the first read of one bar index made by the thread inside
+     * {@link #run(Supplier)} until released.
+     */
+    private static final class PausedBarRead {
+        private final int pausedIndex;
+        private final AtomicReference<Thread> pausedThread = new AtomicReference<>();
+        private final CountDownLatch paused = new CountDownLatch(1);
+        private final CountDownLatch release = new CountDownLatch(1);
+
+        private PausedBarRead(final int pausedIndex) {
+            this.pausedIndex = pausedIndex;
+        }
+
+        private <T> T run(final Supplier<T> action) {
+            pausedThread.set(Thread.currentThread());
+            return action.get();
+        }
+
+        private void beforeBarRead(final int index) {
+            if (index == pausedIndex && Thread.currentThread() == pausedThread.get() && paused.getCount() > 0) {
+                paused.countDown();
+                awaitLatch(release);
+            }
+        }
+    }
+
+    /**
+     * Legacy series that publishes no bar-history revision and can run one action
+     * when a chosen bar index is first read.
+     */
+    private static final class RevisionlessSeries extends BaseBarSeries {
+        private static final long serialVersionUID = 1L;
+        private transient int triggerIndex = -1;
+        private transient Runnable trigger;
+
+        private RevisionlessSeries(final List<Bar> bars) {
+            super("revisionless", new ArrayList<>(bars));
+        }
+
+        private void mutateOnFirstRead(final int index, final Runnable action) {
+            triggerIndex = index;
+            trigger = action;
+        }
+
+        @Override
+        public synchronized long getBarHistoryRevision() {
+            return -1L;
+        }
+
+        @Override
+        public synchronized BarSeriesChangeSnapshot getBarSeriesChangeSnapshot(final long sinceRevision) {
+            return new BarSeriesChangeSnapshot(-1L, -1, getRemovedBarsCount() - 1, getMaximumBarCount(), getEndIndex());
+        }
+
+        @Override
+        public Bar getBar(final int index) {
+            if (index == triggerIndex && trigger != null) {
+                final Runnable action = trigger;
+                trigger = null;
+                action.run();
+            }
+            return super.getBar(index);
         }
     }
 

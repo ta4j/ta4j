@@ -42,7 +42,7 @@ import org.ta4j.core.num.NumFactory;
  * a later index is read. Only a decision index that can never be lowered is
  * declined permanently, with the specific reason.
  *
- * @since 0.25.1
+ * @since 0.26.1
  */
 final class MonteCarloShockPathPlanner implements OperationPlanner {
 

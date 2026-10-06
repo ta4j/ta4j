@@ -15,6 +15,7 @@ import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ConcurrentBarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
@@ -32,6 +33,14 @@ import org.ta4j.core.walkforward.WalkForwardSplitter;
 
 /**
  * Executes one strategy in walk-forward mode with a backtest-symmetric API.
+ * Splits are computed on the series window captured when execution starts, and
+ * folds run without holding any series lock, so a live
+ * {@link ConcurrentBarSeries} keeps accepting writes. Execution fails with an
+ * {@link IllegalStateException} if bars inside that window change before it
+ * completes; appended bars are ignored. Every fold ends flat: a position still
+ * open at the fold's last bar is exited at that bar's close and pays the
+ * transaction cost (see {@link ExitOnRunEndModel}), so folds never hand an open
+ * position to the next fold's data and their records can be chained.
  *
  * @since 0.22.4
  */
@@ -98,7 +107,7 @@ public class StrategyWalkForwardExecutor {
 
     StrategyWalkForwardExecutor(BarSeriesManager seriesManager, TradingStatementGenerator tradingStatementGenerator,
             WalkForwardSplitter splitter) {
-        this.seriesManager = Objects.requireNonNull(seriesManager, "seriesManager");
+        this.seriesManager = Objects.requireNonNull(seriesManager, "seriesManager").exitingOnRunEnd();
         this.tradingStatementGenerator = Objects.requireNonNull(tradingStatementGenerator, "tradingStatementGenerator");
         this.splitter = Objects.requireNonNull(splitter, "splitter");
     }
@@ -196,10 +205,19 @@ public class StrategyWalkForwardExecutor {
             WalkForwardConfig config, Consumer<Integer> progressCallback) {
         Objects.requireNonNull(strategy, "strategy");
         Objects.requireNonNull(tradeType, "tradeType");
+        return execute(strategy, tradeType, amount, config, progressCallback,
+                BacktestExecutionResult.snapshot(seriesManager.getBarSeries()));
+    }
+
+    /** Executes over a window the caller already captured and shares. */
+    StrategyWalkForwardExecutionResult execute(Strategy strategy, Trade.TradeType tradeType, Num amount,
+            WalkForwardConfig config, Consumer<Integer> progressCallback, BarSeries baseline) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(tradeType, "tradeType");
         Objects.requireNonNull(amount, "amount");
         Objects.requireNonNull(config, "config");
         return execute(strategy, config, progressCallback,
-                split -> seriesManager.run(strategy, tradeType, amount, split.testStart(), split.testEnd()));
+                split -> seriesManager.run(strategy, tradeType, amount, split.testStart(), split.testEnd()), baseline);
     }
 
     /**
@@ -219,20 +237,34 @@ public class StrategyWalkForwardExecutor {
             PositionSizer positionSizer, WalkForwardConfig config, Consumer<Integer> progressCallback) {
         Objects.requireNonNull(strategy, "strategy");
         Objects.requireNonNull(tradeType, "tradeType");
+        return execute(strategy, tradeType, positionSizer, config, progressCallback,
+                BacktestExecutionResult.snapshot(seriesManager.getBarSeries()));
+    }
+
+    /** Executes over a window the caller already captured and shares. */
+    StrategyWalkForwardExecutionResult execute(Strategy strategy, Trade.TradeType tradeType,
+            PositionSizer positionSizer, WalkForwardConfig config, Consumer<Integer> progressCallback,
+            BarSeries baseline) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(tradeType, "tradeType");
         Objects.requireNonNull(positionSizer, "positionSizer");
         Objects.requireNonNull(config, "config");
         return execute(strategy, config, progressCallback,
-                split -> seriesManager.run(strategy, tradeType, positionSizer, split.testStart(), split.testEnd()));
+                split -> seriesManager.run(strategy, tradeType, positionSizer, split.testStart(), split.testEnd()),
+                baseline);
     }
 
+    /**
+     * Splits and reports on the baseline window while folds run against the live
+     * series without holding its lock, then verifies the window did not change.
+     */
     private StrategyWalkForwardExecutionResult execute(Strategy strategy, WalkForwardConfig config,
-            Consumer<Integer> progressCallback, Function<WalkForwardSplit, TradingRecord> foldRecordRunner) {
-        Objects.requireNonNull(foldRecordRunner, "foldRecordRunner");
-
-        BarSeries series = seriesManager.getBarSeries();
-        List<WalkForwardSplit> splits = splitter.split(series, config);
+            Consumer<Integer> progressCallback, Function<WalkForwardSplit, TradingRecord> foldRecordRunner,
+            BarSeries baseline) {
+        List<WalkForwardSplit> splits = splitter.split(baseline, config);
         if (splits.isEmpty()) {
-            return new StrategyWalkForwardExecutionResult(series, strategy, config, List.of(),
+            BacktestExecutionResult.verifyUnchanged(seriesManager.getBarSeries(), baseline);
+            return new StrategyWalkForwardExecutionResult(baseline, strategy, config, List.of(),
                     WalkForwardRuntimeReport.empty());
         }
 
@@ -248,7 +280,7 @@ public class StrategyWalkForwardExecutor {
             long foldStart = System.nanoTime();
             try {
                 TradingRecord foldRecord = foldRecordRunner.apply(split);
-                TradingStatement statement = tradingStatementGenerator.generate(strategy, foldRecord, series);
+                TradingStatement statement = tradingStatementGenerator.generate(strategy, foldRecord, baseline);
                 Duration foldRuntime = Duration.ofNanos(System.nanoTime() - foldStart);
 
                 foldResults.add(
@@ -271,7 +303,8 @@ public class StrategyWalkForwardExecutor {
 
         Duration overallRuntime = Duration.ofNanos(System.nanoTime() - overallStart);
         WalkForwardRuntimeReport runtimeReport = buildRuntimeReport(foldRuntimes, overallRuntime);
-        return new StrategyWalkForwardExecutionResult(series, strategy, config, foldResults, runtimeReport,
+        BacktestExecutionResult.verifyUnchanged(seriesManager.getBarSeries(), baseline);
+        return new StrategyWalkForwardExecutionResult(baseline, strategy, config, foldResults, runtimeReport,
                 foldFailures);
     }
 
