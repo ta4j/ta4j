@@ -507,6 +507,32 @@ final class FuturesPerformanceSupport {
             return total.value(factory);
         }
 
+        /**
+         * Compares normalized equity before either side is rounded or rescaled. A
+         * previous index before the window represents initial capital; entering equity
+         * is selected independently for a spot-defined retained-head period.
+         */
+        Num equityRatio(int index, int previousIndex, boolean entering) {
+            ProfitSum current = sums.get(index - window.beginIndex());
+            ProfitSum previous = entering ? baseline
+                    : previousIndex < window.beginIndex() ? new ProfitSum()
+                            : sums.get(previousIndex - window.beginIndex());
+            if (current == null || previous == null)
+                return NaN.NaN;
+            ProfitSum numerator = new ProfitSum(current);
+            ProfitSum denominator = new ProfitSum(previous);
+            numerator.add(factory.one());
+            denominator.add(factory.one());
+            if (denominator.sum.signum() <= 0)
+                return NaN.NaN;
+            ProfitSum ratio = new ProfitSum();
+            ratio.sum = numerator.sum.multiply(denominator.divisor);
+            ratio.divisor = numerator.divisor.multiply(denominator.sum);
+            ratio.reduce();
+            Num result = ratio.roundedValue(factory);
+            return Num.isFinite(result) ? result : NaN.NaN;
+        }
+
         Num get(int index) {
             return scaledValue(index, factory.one());
         }

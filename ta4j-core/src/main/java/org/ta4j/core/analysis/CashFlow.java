@@ -20,6 +20,8 @@ import org.ta4j.core.num.Num;
 /**
  * Allows to follow the money cash flow involved by a list of positions over a
  * bar series, either marked to market or using realized values only.
+ * Incremental native values and entering equity are published from the retained
+ * components after each update, before rounding the visible total.
  */
 public class CashFlow implements PerformanceIndicator {
 
@@ -271,17 +273,9 @@ public class CashFlow implements PerformanceIndicator {
             boolean initialReturn = !preWindow && firstActivity;
             FuturesPerformanceSupport.PnLAccumulator pnl = futuresPnL.copy();
             AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values, staged -> {
-                Num one = barSeries.numFactory().one();
                 FuturesPerformanceSupport.addPositionPnL(barSeries, position, finalIndex, window, markFuturesExposure,
                         futuresMark, pnl, capital, futuresCapital == null);
-                OffsetNumBuffer result = AnalysisPositionSupport.buffer(window, one, one);
-                for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
-                    if (futuresCapital != null)
-                        pnl.validatePnL((int) index, capital);
-                    result.multiply((int) index, pnl.equity((int) index, futuresSpotFactors.get((int) index)));
-                }
-                result.multiplyBaseline(pnl.enteringEquity(futuresSpotFactors.baseline()));
-                staged.replaceWith(result);
+                publishFuturesValues(pnl, futuresSpotFactors, window, staged, futuresCapital == null ? null : capital);
             }, true);
             futuresPnL = pnl;
             preWindowFuturesActivity = preWindow;
@@ -301,11 +295,10 @@ public class CashFlow implements PerformanceIndicator {
                 pnl.multiply(factors);
                 for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
                     Num factor = factors.get((int) index);
-                    staged.multiply((int) index, factor);
                     spotFactors.multiply((int) index, factor);
                 }
-                staged.multiplyBaseline(factors.baseline());
                 spotFactors.multiplyBaseline(factors.baseline());
+                publishFuturesValues(pnl, spotFactors, window, staged, futuresCapital);
             });
             futuresPnL = pnl;
             futuresSpotFactors = spotFactors;
@@ -561,11 +554,22 @@ public class CashFlow implements PerformanceIndicator {
                 captured.endIndex(), markExposure, markPrice);
         FuturesPerformanceSupport.PnLAccumulator pnl = FuturesPerformanceSupport.pnl(cursor, captured, factory,
                 capital);
-        for (long index = captured.beginIndex(); index <= captured.bufferEndIndex(); index++) {
-            pnl.validatePnL((int) index, capital);
-            buffer.multiply((int) index, pnl.equity((int) index, factory.one()));
-        }
-        buffer.multiplyBaseline(pnl.enteringEquity(factory.one()));
+        publishFuturesValues(pnl, AnalysisPositionSupport.buffer(captured, factory.one(), factory.one()), captured,
+                buffer, capital);
         return pnl;
+    }
+
+    /** Publishes entering and retained equity from the same authoritative state. */
+    private void publishFuturesValues(FuturesPerformanceSupport.PnLAccumulator pnl, OffsetNumBuffer spotFactors,
+            AnalysisPositionSupport.Window captured, OffsetNumBuffer buffer, Num capital) {
+        Num one = barSeries.numFactory().one();
+        OffsetNumBuffer result = AnalysisPositionSupport.buffer(captured, one, one);
+        for (long index = captured.beginIndex(); index <= captured.bufferEndIndex(); index++) {
+            if (capital != null)
+                pnl.validatePnL((int) index, capital);
+            result.multiply((int) index, pnl.equity((int) index, spotFactors.get((int) index)));
+        }
+        result.multiplyBaseline(pnl.enteringEquity(spotFactors.baseline()));
+        buffer.replaceWith(result);
     }
 }

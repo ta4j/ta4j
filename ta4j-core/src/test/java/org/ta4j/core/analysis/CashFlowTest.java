@@ -2755,4 +2755,141 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         }
     }
 
+    @Test
+    public void roundedRealizedCashPublishesState() {
+        assertRoundedCashPublication(EquityCurveMode.REALIZED, true);
+    }
+
+    @Test
+    public void roundedRealizedCashIgnoresZeroContribution() {
+        assertRoundedCashPublication(EquityCurveMode.REALIZED, false);
+    }
+
+    @Test
+    public void roundedMarkedCashPublishesState() {
+        assertRoundedCashPublication(EquityCurveMode.MARK_TO_MARKET, true);
+    }
+
+    @Test
+    public void roundedMarkedCashIgnoresZeroContribution() {
+        assertRoundedCashPublication(EquityCurveMode.MARK_TO_MARKET, false);
+    }
+
+    private void assertRoundedCashPublication(EquityCurveMode mode, boolean assertImmediate) {
+        NumFactory factory = DecimalNumFactory
+                .getInstance(new java.math.MathContext(2, java.math.RoundingMode.HALF_UP));
+        BarSeries series = FuturesAnalysisTestSupport.series(factory, 100, 100, 100);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(factory)
+                .toBuilder()
+                .contractSize(factory.one())
+                .build();
+        CashFlow curve = new CashFlow(series, FuturesAnalysisTestSupport.fundedRecord(contract, factory, 500), 2, mode,
+                OpenPositionHandling.MARK_TO_MARKET);
+        BaseTradingRecord first = FuturesAnalysisTestSupport.fundedRecord(contract, factory, 500);
+        first.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.BUY, 1, 100,
+                List.of(FuturesAnalysisTestSupport.commission(factory, -24))));
+        curve.calculatePosition(first.getOpenPositions().getFirst(), 2);
+        assertNumEquals(1, curve.getValue(1));
+        Position spot = new Position(Trade.buyAt(0, factory.hundred(), factory.one()),
+                Trade.sellAt(1, factory.numOf(110), factory.one()), new ZeroCostModel(), new ZeroCostModel());
+        curve.calculatePosition(spot, 2);
+        if (assertImmediate) {
+            // Exact normalized retained state: 1.1 + 0.048*1.1 = 1.1528 -> 1.2.
+            assertNumEquals(1.2, curve.getValue(1));
+        } else {
+            List<Num> beforeZero = curve.stream().toList();
+            BaseTradingRecord zero = FuturesAnalysisTestSupport.fundedRecord(contract, factory, 500);
+            zero.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.BUY, 1, 100, List.of()));
+            zero.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.SELL, 1, 100, List.of()));
+            curve.calculatePosition(zero.getPositions().getFirst(), 2);
+            assertNumEquals(1.2, curve.getValue(1));
+            assertEquals(beforeZero, curve.stream().toList());
+        }
+    }
+
+    @Test
+    public void retainedCashPublicationUsesIndependentOrderedComponents() {
+        List<NumFactory> precisions = numFactory instanceof DecimalNumFactory
+                ? List.of(DecimalNumFactory.getInstance(new java.math.MathContext(2, java.math.RoundingMode.HALF_UP)),
+                        DecimalNumFactory.getInstance(new java.math.MathContext(3, java.math.RoundingMode.HALF_UP)),
+                        numFactory)
+                : List.of(numFactory);
+        for (NumFactory factory : precisions) {
+            for (boolean retained : new boolean[] { false, true }) {
+                for (EquityCurveMode mode : EquityCurveMode.values()) {
+                    for (int origin = 0; origin < 4; origin++) {
+                        for (int[] order : List.of(new int[] { 0, 1, 2 }, new int[] { 1, 0, 2 })) {
+                            BarSeries series = FuturesAnalysisTestSupport.series(factory, 100, 100, 100, 100);
+                            if (retained)
+                                series.setMaximumBarCount(2);
+                            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(factory)
+                                    .toBuilder()
+                                    .contractSize(factory.one())
+                                    .build();
+                            BaseTradingRecord nativeRecord = FuturesAnalysisTestSupport.fundedRecord(contract, factory,
+                                    150);
+                            nativeRecord.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.BUY, 1, 100,
+                                    List.of(FuturesAnalysisTestSupport.commission(factory, -7.2))));
+                            Position nativeLot = nativeRecord.getOpenPositions().getFirst();
+                            Position spot = new Position(Trade.buyAt(0, factory.hundred(), factory.one()),
+                                    Trade.sellAt(2, factory.numOf(110), factory.one()), new ZeroCostModel(),
+                                    new ZeroCostModel());
+                            BaseTradingRecord initial = origin == 0 ? new BaseTradingRecord()
+                                    : origin == 1 ? new BaseTradingRecord(spot)
+                                            : origin == 2
+                                                    ? FuturesAnalysisTestSupport.fundedRecord(contract, factory, 150)
+                                                    : nativeRecord;
+                            CashFlow curve = new CashFlow(series, initial, 3, mode,
+                                    OpenPositionHandling.MARK_TO_MARKET);
+                            BaseTradingRecord zero = FuturesAnalysisTestSupport.fundedRecord(contract, factory, 150);
+                            zero.operate(
+                                    FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 2, 100, List.of()));
+                            zero.operate(FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 2, 100,
+                                    List.of()));
+                            java.math.BigDecimal nativeContribution = new java.math.BigDecimal("7.2")
+                                    .divide(java.math.BigDecimal.valueOf(origin < 2 ? 100 : 150));
+                            java.math.BigDecimal spotFactor = new java.math.BigDecimal("1.1");
+                            java.math.BigDecimal spotState = origin == 1 ? spotFactor : java.math.BigDecimal.ONE;
+                            java.math.BigDecimal nativeState = origin == 3 ? nativeContribution
+                                    : java.math.BigDecimal.ZERO;
+                            boolean nativeSeen = origin == 3;
+                            List<Position> updates = List.of(nativeLot, spot, zero.getPositions().getFirst());
+                            for (int next : order) {
+                                if ((next == 0 && origin == 3) || (next == 1 && origin == 1))
+                                    continue;
+                                List<Num> before = curve.stream().toList();
+                                Num beforeBaseline = curve.getBaselineValue();
+                                curve.calculatePosition(updates.get(next), 3);
+                                if (next == 0) {
+                                    nativeState = nativeState.add(nativeContribution);
+                                    nativeSeen = true;
+                                } else if (next == 1) {
+                                    spotState = spotState.multiply(spotFactor);
+                                    nativeState = nativeState.multiply(spotFactor);
+                                } else {
+                                    assertEquals(before, curve.stream().toList());
+                                    assertNumEquals(beforeBaseline, curve.getBaselineValue());
+                                }
+                                // Native cash is additive; later spot gains scale only
+                                // the components already accepted. Entering equity is
+                                // before the spot exit on the retained head.
+                                Num expected = factory.numOf(spotState.add(nativeState));
+                                assertNumEquals(expected, curve.getValue(2));
+                                assertNumEquals(expected, curve.getValue(3));
+                                assertNumEquals(factory.numOf(java.math.BigDecimal.ONE
+                                        .add(retained && nativeSeen ? nativeContribution : java.math.BigDecimal.ZERO)),
+                                        curve.getBaselineValue());
+                            }
+                            List<Num> frozen = curve.stream().toList();
+                            Num baseline = curve.getBaselineValue();
+                            curve.calculatePosition(zero.getPositions().getFirst(), 3);
+                            assertEquals(frozen, curve.stream().toList());
+                            assertNumEquals(baseline, curve.getBaselineValue());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 }

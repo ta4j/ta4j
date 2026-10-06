@@ -42,6 +42,10 @@ import org.ta4j.core.num.Num;
  * rather than at an exit that happened later. {@link #getValue(int)} returns
  * {@link NaN#NaN} outside that materialized range.
  *
+ * <p>
+ * Native period factors compare normalized entering and current equity before
+ * rounding either amount or rescaling by account capital.
+ *
  * @see ReturnRepresentation
  * @see ReturnRepresentationPolicy
  */
@@ -661,36 +665,24 @@ public class Returns implements PerformanceIndicator {
         boolean firstReported = captured.beginIndex() > 0 && (firstActivity || spotDefinesHeadPeriod);
         // A spot return that first defined this slot remains a period sample;
         // later native activity must not replace it with a historical capital seed.
-        Num previousEquity = spotDefinesHeadPeriod && captured.beginIndex() > 0
-                ? pnl.enteringEquity(barSeries.numFactory().one()).multipliedBy(capital)
-                : capital;
+        int previousIndex = captured.beginIndex() - 1;
         for (long index = captured.beginIndex(); index <= captured.bufferEndIndex(); index++) {
             pnl.validatePnL((int) index, capital);
-            Num equity = pnl.equity((int) index, barSeries.numFactory().one(), capital);
             if (index > captured.beginIndex() || firstReported) {
-                Num factor = returnFactor(previousEquity, equity);
-                if (representation == ReturnRepresentation.LOG)
-                    factors.add((int) index, factor);
-                else
-                    factors.multiply((int) index, factor);
+                Num ratio = pnl.equityRatio((int) index, previousIndex,
+                        index == captured.beginIndex() && spotDefinesHeadPeriod);
+                if (representation == ReturnRepresentation.LOG) {
+                    factors.add((int) index, ratio.isPositive() ? ratio.log() : NaN.NaN);
+                } else {
+                    factors.multiply((int) index, ratio);
+                }
             }
             // At absolute index zero preserve the established capital-based next sample;
             // a retained head without activity is instead the first prior equity value.
             if (index > captured.beginIndex() || captured.beginIndex() > 0)
-                previousEquity = equity;
+                previousIndex = (int) index;
         }
         return firstReported;
-    }
-
-    private Num returnFactor(Num previousEquity, Num equity) {
-        if (!previousEquity.isPositive() || !Num.isFinite(previousEquity) || !Num.isFinite(equity)) {
-            return NaN.NaN;
-        }
-        Num ratio = equity.dividedBy(previousEquity);
-        if (representation == ReturnRepresentation.LOG) {
-            return ratio.isPositive() ? ratio.log() : NaN.NaN;
-        }
-        return ratio;
     }
 
     /**

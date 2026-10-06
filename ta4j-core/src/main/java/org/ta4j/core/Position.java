@@ -818,7 +818,9 @@ public class Position implements Serializable {
     /**
      * Calculates the holding cost of the closed position. Entry fills of a native
      * futures position accrue over their own exposure interval, so a position whose
-     * fills span several executions is charged to its completion index.
+     * fills span several executions is charged to its completion index. Sliced
+     * trades retain the owning contract and the accepted fill metadata, including
+     * scalar fees and absent legacy timestamps.
      *
      * @return the cost of the position
      */
@@ -905,14 +907,82 @@ public class Position implements Serializable {
      * @return sub-position covering the slice
      */
     private Position slicePosition(TradeFill entryFill, TradeFill closingFill, Num amount) {
-        Trade sliceEntry = Trade.fromFills(entry.getType(), List.of(sliceFill(entryFill, amount)),
-                getTransactionCostModel());
+        Trade sliceEntry = sliceTrade(entry, entryFill, amount);
         if (closingFill == null) {
             return new Position(sliceEntry, getTransactionCostModel(), getHoldingCostModel());
         }
-        Trade sliceExit = Trade.fromFills(exit.getType(), List.of(sliceFill(closingFill, amount)),
-                getTransactionCostModel());
+        Trade sliceExit = sliceTrade(exit, closingFill, amount);
         return new Position(sliceEntry, sliceExit, getTransactionCostModel(), getHoldingCostModel());
+    }
+
+    /**
+     * Keeps the owning contract without rewriting accepted scalar fill metadata.
+     */
+    private Trade sliceTrade(Trade source, TradeFill fill, Num amount) {
+        Trade delegate = Trade.fromFills(source.getType(), List.of(sliceFill(fill, amount)), getTransactionCostModel());
+        if (delegate.getFuturesContract() != null)
+            return delegate;
+        return new Trade() {
+            @Override
+            public TradeType getType() {
+                return delegate.getType();
+            }
+
+            @Override
+            public int getIndex() {
+                return delegate.getIndex();
+            }
+
+            @Override
+            public Num getPricePerAsset() {
+                return delegate.getPricePerAsset();
+            }
+
+            @Override
+            public Num getNetPrice() {
+                return delegate.getNetPrice();
+            }
+
+            @Override
+            public Num getAmount() {
+                return delegate.getAmount();
+            }
+
+            @Override
+            public Num getCost() {
+                return delegate.getCost();
+            }
+
+            @Override
+            public CostModel getCostModel() {
+                return delegate.getCostModel();
+            }
+
+            @Override
+            public FuturesContract getFuturesContract() {
+                return futuresContract;
+            }
+
+            @Override
+            public Instant getTime() {
+                return delegate.getTime();
+            }
+
+            @Override
+            public String getOrderId() {
+                return delegate.getOrderId();
+            }
+
+            @Override
+            public String getCorrelationId() {
+                return delegate.getCorrelationId();
+            }
+
+            @Override
+            public List<TradeFill> getFills() {
+                return delegate.getFills();
+            }
+        };
     }
 
     private static TradeFill sliceFill(TradeFill fill, Num amount) {

@@ -1668,4 +1668,139 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         }
     }
 
+    @Test
+    public void fixedCapitalRetainedReturnIgnoresZeroContribution() {
+        NumFactory factory = DecimalNumFactory.getInstance(new MathContext(2, RoundingMode.HALF_UP));
+        BarSeries series = FuturesAnalysisTestSupport.series(factory, 100, 100, 100, 100);
+        series.setMaximumBarCount(2);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(factory)
+                .toBuilder()
+                .contractSize(factory.one())
+                .build();
+        BaseTradingRecord historical = FuturesAnalysisTestSupport.fundedRecord(contract, factory, 150);
+        historical.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1, 100,
+                List.of(FuturesAnalysisTestSupport.commission(factory, -7.2))));
+        historical.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1, 100, List.of()));
+        Returns curve = new Returns(series, historical, 3, ReturnRepresentation.DECIMAL, EquityCurveMode.REALIZED,
+                OpenPositionHandling.MARK_TO_MARKET);
+        Position spot = new Position(Trade.buyAt(0, factory.hundred(), factory.one()),
+                Trade.sellAt(2, factory.numOf(110), factory.one()), new ZeroCostModel(), new ZeroCostModel());
+        curve.calculatePosition(spot, 3);
+        assertNumEquals(0.1, curve.getValue(2));
+        List<Num> beforeZero = curve.stream().toList();
+        BaseTradingRecord zero = FuturesAnalysisTestSupport.fundedRecord(contract, factory, 150);
+        zero.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1, 100, List.of()));
+        zero.operate(FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 1, 100, List.of()));
+        curve.calculatePosition(zero.getPositions().getFirst(), 3);
+        // Entering and current normalized native equity are identical: native factor 1.
+        assertNumEquals(0.1, curve.getValue(2));
+        assertEquals(beforeZero, curve.stream().toList());
+    }
+
+    @Test
+    public void normalizedEquityPeriodsStayInvariantAcrossOriginsOrdersAndRepresentations() {
+        // This owner covers the complete head/period/representation cross-product.
+        // CashFlow has two representative cash orderings with its separate additive
+        // equation.
+        List<NumFactory> precisions = numFactory instanceof DecimalNumFactory
+                ? List.of(DecimalNumFactory.getInstance(new MathContext(2, RoundingMode.HALF_UP)),
+                        DecimalNumFactory.getInstance(new MathContext(3, RoundingMode.HALF_UP)), numFactory)
+                : List.of(numFactory);
+        for (NumFactory factory : precisions) {
+            for (boolean retained : new boolean[] { false, true }) {
+                for (EquityCurveMode mode : EquityCurveMode.values()) {
+                    for (ReturnRepresentation representation : ReturnRepresentation.values()) {
+                        for (int origin = 0; origin < 4; origin++) {
+                            for (int[] order : List.of(new int[] { 0, 1, 2 }, new int[] { 0, 2, 1 },
+                                    new int[] { 1, 0, 2 }, new int[] { 1, 2, 0 }, new int[] { 2, 0, 1 },
+                                    new int[] { 2, 1, 0 })) {
+                                BarSeries series = FuturesAnalysisTestSupport.series(factory, 100, 100, 100, 100);
+                                if (retained)
+                                    series.setMaximumBarCount(2);
+                                FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(factory)
+                                        .toBuilder()
+                                        .contractSize(factory.one())
+                                        .build();
+                                BaseTradingRecord historical = FuturesAnalysisTestSupport.fundedRecord(contract,
+                                        factory, 150);
+                                historical.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1,
+                                        100, List.of(FuturesAnalysisTestSupport.commission(factory, -7.2))));
+                                historical.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1,
+                                        100, List.of()));
+                                Position nativeLot = historical.getPositions().getFirst();
+                                Position spot = new Position(Trade.buyAt(0, factory.hundred(), factory.one()),
+                                        Trade.sellAt(2, factory.numOf(110), factory.one()), new ZeroCostModel(),
+                                        new ZeroCostModel());
+                                BaseTradingRecord initial = origin == 0 ? new BaseTradingRecord()
+                                        : origin == 1 ? new BaseTradingRecord(spot)
+                                                : origin == 2
+                                                        ? FuturesAnalysisTestSupport.fundedRecord(contract, factory,
+                                                                150)
+                                                        : historical;
+                                Returns curve = new Returns(series, initial, 3, representation, mode,
+                                        OpenPositionHandling.MARK_TO_MARKET);
+                                BaseTradingRecord zero = FuturesAnalysisTestSupport.fundedRecord(contract, factory,
+                                        150);
+                                // Fallback notional 200 differs from the historical lot's
+                                // 100. The configured capital remains 150 when supplied.
+                                zero.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 2, 100,
+                                        List.of()));
+                                zero.operate(FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 2, 100,
+                                        List.of()));
+                                List<Position> updates = List.of(nativeLot, spot, zero.getPositions().getFirst());
+                                java.math.BigDecimal equity = java.math.BigDecimal.ONE
+                                        .add(new java.math.BigDecimal("7.2")
+                                                .divide(java.math.BigDecimal.valueOf(origin < 2 ? 100 : 150)));
+                                boolean nativeSeen = origin == 3;
+                                boolean spotSeen = origin == 1;
+                                boolean zeroSeen = false;
+                                boolean reportedHead = retained && spotSeen;
+                                boolean spotDefinesPeriod = reportedHead;
+                                for (int next : order) {
+                                    if ((next == 0 && origin == 3) || (next == 1 && origin == 1))
+                                        continue;
+                                    List<Num> before = curve.getValues();
+                                    curve.calculatePosition(updates.get(next), 3);
+                                    if (next == 0) {
+                                        nativeSeen = true;
+                                    } else if (next == 1) {
+                                        if (retained && !reportedHead)
+                                            spotDefinesPeriod = true;
+                                        spotSeen = true;
+                                        reportedHead |= retained;
+                                    } else {
+                                        zeroSeen = true;
+                                        reportedHead |= retained;
+                                        if (spotSeen)
+                                            assertEquals(before, curve.getValues());
+                                    }
+                                    Num nativeFactor = retained && !spotDefinesPeriod && zeroSeen && nativeSeen
+                                            ? factory.numOf(equity)
+                                            : factory.one();
+                                    Num spotFactor = spotSeen ? factory.numOf(1.1) : factory.one();
+                                    // Equal entering/current native equity has factor 1.
+                                    // A reported historical capital seed is deliberately
+                                    // cumulative; it stays distinct from a spot period.
+                                    Num expected = representation == ReturnRepresentation.LOG
+                                            ? nativeFactor.log().plus(spotFactor.log())
+                                            : representation.toRepresentationFromTotalReturn(
+                                                    nativeFactor.multipliedBy(spotFactor));
+                                    if (!retained || reportedHead)
+                                        assertNumEquals(expected, curve.getValue(2));
+                                    assertNumEquals(
+                                            representation == ReturnRepresentation.MULTIPLICATIVE ? factory.one()
+                                                    : factory.zero(),
+                                            curve.getValue(3));
+                                }
+                                List<Num> frozen = curve.getValues();
+                                curve.calculatePosition(zero.getPositions().getFirst(), 3);
+                                assertEquals(frozen, curve.getValues());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 }

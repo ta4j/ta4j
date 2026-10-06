@@ -1718,4 +1718,208 @@ public class PositionTest {
         }
     }
 
+    @Test
+    public void acceptedMixedExitDoubleHolding() {
+        Position position = acceptedMixedExit(DoubleNumFactory.getInstance());
+        assertNumEquals(0, position.getHoldingCost(1));
+    }
+
+    @Test
+    public void acceptedMixedExitDoubleProfit() {
+        Position position = acceptedMixedExit(DoubleNumFactory.getInstance());
+        assertNumEquals(10, position.getProfit());
+    }
+
+    @Test
+    public void acceptedMixedExitDoubleRealized() {
+        Position position = acceptedMixedExit(DoubleNumFactory.getInstance());
+        assertNumEquals(10, position.getRealizedProfit(1));
+    }
+
+    @Test
+    public void acceptedMixedExitDecimalHolding() {
+        Position position = acceptedMixedExit(DecimalNumFactory.getInstance());
+        assertNumEquals(0, position.getHoldingCost(1));
+    }
+
+    @Test
+    public void acceptedMixedExitDecimalProfit() {
+        Position position = acceptedMixedExit(DecimalNumFactory.getInstance());
+        assertNumEquals(10, position.getProfit());
+    }
+
+    @Test
+    public void acceptedMixedExitDecimalRealized() {
+        Position position = acceptedMixedExit(DecimalNumFactory.getInstance());
+        assertNumEquals(10, position.getRealizedProfit(1));
+    }
+
+    private static Position acceptedMixedExit(NumFactory factory) {
+        FuturesContract contract = BaseTradeTest.groupedFeeFills(factory)
+                .getFirst()
+                .futuresContract()
+                .toBuilder()
+                .contractSize(factory.one())
+                .build();
+        Trade entry = Trade.fromFill(futuresFill(contract, factory, 0, Instant.EPOCH, 100, 0.5, ExecutionSide.BUY),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = legacyNativeTrade(contract, TradeType.SELL,
+                List.of(new TradeFill(1, Instant.EPOCH.plusSeconds(1), factory.numOf(120), factory.numOf(0.25),
+                        factory.zero(), ExecutionSide.SELL, null, null),
+                        futuresFill(contract, factory, 1, Instant.EPOCH.plusSeconds(1), 120, 0.25, ExecutionSide.SELL),
+                        new TradeFill(-1, Instant.EPOCH.minusSeconds(1), factory.numOf(300), factory.numOf(0.5),
+                                factory.zero(), ExecutionSide.SELL, null, null)));
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        assertTrue(position.isClosed());
+        assertNumEquals(210, exit.getPricePerAsset());
+        assertNumEquals(1, exit.getAmount());
+        assertNumEquals(1.2, position.getGrossReturn());
+        return position;
+    }
+
+    private static Trade legacyNativeTrade(FuturesContract contract, TradeType type, List<TradeFill> fills) {
+        List<TradeFill> nativePriceFills = fills.stream()
+                .map(fill -> fill.toBuilder().futuresContract(contract).fee(null).fees(List.of()).build())
+                .toList();
+        Trade delegate = Trade.fromFills(type, nativePriceFills, RecordedTradeCostModel.INSTANCE);
+        return new Trade() {
+            @Override
+            public TradeType getType() {
+                return type;
+            }
+
+            @Override
+            public int getIndex() {
+                return delegate.getIndex();
+            }
+
+            @Override
+            public Num getPricePerAsset() {
+                return delegate.getPricePerAsset();
+            }
+
+            @Override
+            public Num getNetPrice() {
+                return delegate.getNetPrice();
+            }
+
+            @Override
+            public Num getAmount() {
+                return delegate.getAmount();
+            }
+
+            @Override
+            public Num getCost() {
+                return delegate.getCost();
+            }
+
+            @Override
+            public CostModel getCostModel() {
+                return delegate.getCostModel();
+            }
+
+            @Override
+            public FuturesContract getFuturesContract() {
+                return contract;
+            }
+
+            @Override
+            public List<TradeFill> getFills() {
+                return fills;
+            }
+        };
+    }
+
+    @Test
+    public void mixedHoldingSlicesKeepContractFeesTimesAndRealCostCallbacks() {
+        for (NumFactory factory : factories()) {
+            for (FuturesContract.SettlementType settlement : FuturesContract.SettlementType.values()) {
+                FuturesContract contract = BaseTradeTest.groupedFeeFills(factory)
+                        .getFirst()
+                        .futuresContract()
+                        .toBuilder()
+                        .contractSize(factory.one())
+                        .settlementType(settlement)
+                        .settlementCurrency(settlement == FuturesContract.SettlementType.LINEAR ? "USD" : "BTC")
+                        .build();
+                Trade entry = Trade.fromFill(
+                        futuresFill(contract, factory, 0, Instant.EPOCH, 100, 0.5, ExecutionSide.BUY),
+                        RecordedTradeCostModel.INSTANCE);
+                double executionFee = settlement == FuturesContract.SettlementType.LINEAR ? 0.04 : 0.00004;
+                TradeFill scalar = new TradeFill(1, null, factory.numOf(120), factory.numOf(0.25),
+                        factory.numOf(executionFee), ExecutionSide.SELL, "legacy", "correlation");
+                TradeFill nativeExit = futuresFill(contract, factory, 1, Instant.EPOCH.plusSeconds(1), 120, 0.25,
+                        ExecutionSide.SELL);
+                TradeFill deferred = new TradeFill(-1, Instant.EPOCH.minusSeconds(1), factory.numOf(300),
+                        factory.numOf(0.5), factory.zero(), ExecutionSide.SELL, null, null);
+                Trade exit = futuresTradeWithFills(contract, TradeType.SELL, List.of(scalar, nativeExit, deferred));
+                LinearBorrowingCostModel borrowing = new LinearBorrowingCostModel(0.02,
+                        LinearBorrowingCostModel.Applicability.BOTH);
+                List<Position> slices = new ArrayList<>();
+                CostModel costs = new CostModel() {
+                    @Override
+                    public Num calculate(Position slice, int index) {
+                        assertEquals(contract, slice.getFuturesContract());
+                        assertEquals(contract, slice.getEntry().getFuturesContract());
+                        assertEquals(contract, slice.getExit().getFuturesContract());
+                        TradeFill closing = slice.getExit().getFills().getFirst();
+                        if (closing.futuresContract() == null) {
+                            assertNull(closing.time());
+                            assertEquals("legacy", slice.getExit().getOrderId());
+                            assertEquals("correlation", slice.getExit().getCorrelationId());
+                            assertFalse(closing.hasRecordedFees());
+                            assertNumEquals(executionFee, closing.fee());
+                            assertNumEquals(executionFee, slice.getExit().getCost());
+                        } else {
+                            assertTrue(closing.hasRecordedFees());
+                            assertEquals(nativeExit.fees(), closing.fees());
+                            assertEquals(nativeExit.time(), closing.time());
+                        }
+                        slices.add(slice);
+                        return borrowing.calculate(slice, index);
+                    }
+
+                    @Override
+                    public Num calculate(Position slice) {
+                        return calculate(slice, slice.getExit().getIndex());
+                    }
+
+                    @Override
+                    public Num calculate(Num price, Num amount) {
+                        return price.getNumFactory().zero();
+                    }
+
+                    @Override
+                    public boolean equals(CostModel other) {
+                        return this == other;
+                    }
+                };
+                Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, costs);
+                double holding = settlement == FuturesContract.SettlementType.LINEAR ? 1 : 0.0001;
+                double grossProfit = settlement == FuturesContract.SettlementType.LINEAR ? 10
+                        : 0.5 * (1d / 100 - 1d / 120);
+                assertNumEquals(holding, position.getHoldingCost(1));
+                assertNumEquals(holding, position.getHoldingCost());
+                double netProfit = grossProfit - executionFee - holding;
+                assertNumEquals(netProfit, position.getProfit());
+                assertNumEquals(netProfit, position.getRealizedProfit(1));
+                assertNumEquals(netProfit, position.getProfit(1, factory.numOf(120)));
+                assertNumEquals(netProfit,
+                        position.getProfitComponents(1, factory.numOf(120)).stream().reduce(factory.zero(), Num::plus));
+                assertNumEquals(holding + executionFee, position.getPositionCost(1));
+                assertNumEquals(holding + executionFee, position.getPositionCost());
+                assertNumEquals(0, position.getUnrealizedProfit(factory.numOf(120), 1));
+                assertNumEquals(1 + netProfit / 100,
+                        position.getReturnOnMargin(factory.hundred(), factory.numOf(120), 1));
+                assertEquals(18, slices.size());
+                assertSame(scalar, exit.getFills().getFirst());
+                assertSame(nativeExit, exit.getFills().get(1));
+                assertSame(deferred, exit.getFills().getLast());
+                assertNull(scalar.time());
+                assertNull(scalar.futuresContract());
+                assertNumEquals(executionFee, scalar.fee());
+            }
+        }
+    }
+
 }

@@ -134,7 +134,9 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
     }
 
     /**
-     * Returns rejected orders for a trading record.
+     * Returns rejected orders for a trading record. A futures close that completes
+     * at the actual ledger exposure also records any difference between the
+     * original requested quantity and the cumulative booked quantity here.
      *
      * @param tradingRecord trading record
      * @return rejected orders
@@ -217,8 +219,10 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             FuturesOrderQuantitySupport.requireTradable(tradingRecord.getFuturesContract(), requestedAmount,
                     activation.price());
         }
-        putPendingOrder(tradingRecord, new PendingOrder(index, activation.index(), tradeType, requestedAmount,
-                stopPrice, limitPrice, expiryIndex(activation.index(), maxBarsToFill)));
+        putPendingOrder(tradingRecord,
+                new PendingOrder(index, activation.index(), tradeType, requestedAmount, stopPrice, limitPrice,
+                        expiryIndex(activation.index(), maxBarsToFill),
+                        tradingRecord.getFuturesContract() != null && isCompleteClose(tradingRecord, requestedAmount)));
     }
 
     private boolean isCompleteClose(TradingRecord tradingRecord, Num requestedAmount) {
@@ -237,6 +241,10 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         if (order == null || index < order.activationIndex) {
             return;
         }
+        if (order.closesFuturesPosition && tradingRecord.isClosed()) {
+            finishFuturesClose(index, tradingRecord, order);
+            return;
+        }
 
         Bar bar = barSeries.getBar(index);
         if (!order.triggered) {
@@ -245,12 +253,16 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
 
         FuturesContract futuresContract = tradingRecord.getFuturesContract();
         if (order.triggered && limitReachable(order.tradeType, bar, order.limitPrice)) {
-            Num fillAmount = fillAmount(order.remainingAmount(), bar.getVolume(), futuresContract);
-            boolean completeClose = isCompleteClose(tradingRecord, order.remainingAmount());
+            // A close targets the remaining ledger exposure, not a subtraction
+            // from a differently rounded cumulative pending-order view.
+            Num remaining = order.closesFuturesPosition ? tradingRecord.getCurrentPosition().getEntry().getAmount()
+                    : order.remainingAmount();
+            Num fillAmount = fillAmount(remaining, bar.getVolume(), futuresContract);
+            boolean completeClose = order.closesFuturesPosition;
             if (futuresContract != null) {
                 fillAmount = completeClose
-                        ? FuturesOrderQuantitySupport.completeCloseChunk(futuresContract, order.remainingAmount(),
-                                fillAmount, order.limitPrice)
+                        ? FuturesOrderQuantitySupport.completeCloseChunk(futuresContract, remaining, fillAmount,
+                                order.limitPrice)
                         : FuturesOrderQuantitySupport.maximumOrderQuantity(futuresContract, fillAmount,
                                 order.limitPrice);
             }
@@ -263,7 +275,8 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
                     BigDecimal previous = order.futuresFilledAmount == null ? BigDecimal.ZERO
                             : order.futuresFilledAmount;
                     nextFuturesFilledAmount = previous.add(fillAmount.bigDecimalValue());
-                    if (nextFuturesFilledAmount.compareTo(order.requestedAmount.bigDecimalValue()) > 0) {
+                    if (!order.closesFuturesPosition
+                            && nextFuturesFilledAmount.compareTo(order.requestedAmount.bigDecimalValue()) > 0) {
                         throw new IllegalArgumentException("futures fill quantity exceeds the pending amount");
                     }
                     nextFuturesFilledValue = order.requestedAmount.getNumFactory().numOf(nextFuturesFilledAmount);
@@ -282,7 +295,11 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             }
         }
 
-        if (order.isCompletelyFilled()) {
+        if (order.closesFuturesPosition && tradingRecord.isClosed()) {
+            finishFuturesClose(index, tradingRecord, order);
+            return;
+        }
+        if (!order.closesFuturesPosition && order.isCompletelyFilled()) {
             if (futuresContract == null) {
                 tradingRecord.operate(order.toTrade(tradingRecord));
             }
@@ -293,6 +310,20 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         if (index >= order.expiryIndex) {
             expireOrder(index, tradingRecord, order);
         }
+    }
+
+    /**
+     * Keeps the original request and actual booked quantity when the ledger closes.
+     */
+    private void finishFuturesClose(int index, TradingRecord tradingRecord, PendingOrder order) {
+        BigDecimal booked = order.futuresFilledAmount == null ? BigDecimal.ZERO : order.futuresFilledAmount;
+        if (booked.compareTo(order.requestedAmount.bigDecimalValue()) != 0) {
+            addRejectedOrder(tradingRecord,
+                    new RejectedOrder(order.signalIndex, index, order.tradeType, order.requestedAmount,
+                            order.filledAmount,
+                            "Futures close completed at ledger exposure; requested and booked quantities differ"));
+        }
+        removePendingOrder(tradingRecord);
     }
 
     @Override
@@ -575,6 +606,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         private final Num stopPrice;
         private final Num limitPrice;
         private final int expiryIndex;
+        private final boolean closesFuturesPosition;
         private boolean triggered;
         private Num filledAmount;
         private Num bookedAmount;
@@ -582,7 +614,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         private final List<TradeFill> fills;
 
         private PendingOrder(int signalIndex, int activationIndex, TradeType tradeType, Num requestedAmount,
-                Num stopPrice, Num limitPrice, int expiryIndex) {
+                Num stopPrice, Num limitPrice, int expiryIndex, boolean closesFuturesPosition) {
             this.signalIndex = signalIndex;
             this.activationIndex = activationIndex;
             this.tradeType = tradeType;
@@ -590,6 +622,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             this.stopPrice = stopPrice;
             this.limitPrice = limitPrice;
             this.expiryIndex = expiryIndex;
+            this.closesFuturesPosition = closesFuturesPosition;
             this.triggered = false;
             this.filledAmount = requestedAmount.getNumFactory().zero();
             this.bookedAmount = requestedAmount.getNumFactory().zero();
