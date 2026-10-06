@@ -8,6 +8,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.acceleration.AcceleratableIndicator;
+import org.ta4j.core.acceleration.AccelerationPlan;
 import org.ta4j.core.acceleration.AccelerationRuntime;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.CachedIndicator;
@@ -42,11 +44,7 @@ import org.ta4j.core.num.NumFactory;
  * @since 0.22.9
  */
 public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Forecast>
-        implements ForecastProjectionIndicator {
-
-    static {
-        AccelerationRuntime.registerPlanner(new MonteCarloShockPathPlanner());
-    }
+        implements ForecastProjectionIndicator, AcceleratableIndicator<Forecast> {
 
     private final Indicator<Num> priceIndicator;
     private final MonteCarloSimulation simulation;
@@ -149,6 +147,18 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
         }
         Num exponentLimit = price.getNumFactory().numOf(MonteCarloKernel.MAX_EXPONENT);
         return simulation.project(index, cumulativeReturn -> terminalPrice(price, cumulativeReturn, exponentLimit));
+    }
+
+    /**
+     * Lowers the default shock-path method on a {@code DoubleNum} series to
+     * {@link AccelerationRuntime.Operation#MONTE_CARLO_SHOCK_PATHS_V1}; a custom
+     * {@link MonteCarloMethod} or another {@code Num} type is declined.
+     *
+     * @since 0.26.1
+     */
+    @Override
+    public AccelerationPlan<Forecast> planAcceleration(int fromInclusive, int toInclusive, long memoryLimitBytes) {
+        return MonteCarloShockPathPlanner.plan(this, fromInclusive, toInclusive, memoryLimitBytes);
     }
 
     /**
