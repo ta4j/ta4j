@@ -490,34 +490,15 @@ public final class DecimalNum implements Num {
             return DecimalNumFactory.getInstance().zero();
         }
 
-        // Direct implementation of the example in:
-        // https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Babylonian_method
-        BigDecimal estimate = new BigDecimal(this.delegate.toString(), precisionContext);
-        final String string = String.format(Locale.ROOT, "%1.1e", estimate);
-        log.trace("scientific notation {}", string);
-        if (string.contains("e")) {
-            final String[] parts = string.split("e");
-            BigDecimal mantissa = new BigDecimal(parts[0]);
-            BigDecimal exponent = new BigDecimal(parts[1]);
-            if (exponent.remainder(new BigDecimal(2)).compareTo(BigDecimal.ZERO) > 0) {
-                exponent = exponent.subtract(BigDecimal.ONE);
-                mantissa = mantissa.multiply(BigDecimal.TEN);
-                log.trace("modified notatation {}e{}", mantissa, exponent);
-            }
-            final BigDecimal estimatedMantissa = mantissa.compareTo(BigDecimal.TEN) < 0 ? new BigDecimal(2)
-                    : new BigDecimal(6);
-            final BigDecimal estimatedExponent = exponent.divide(new BigDecimal(2));
-            final String estimateString = String.format("%sE%s", estimatedMantissa, estimatedExponent);
-            if (log.isTraceEnabled()) {
-                log.trace("x[0] =~ sqrt({}...*10^{}) =~ {}", mantissa, exponent, estimateString);
-            }
-            final DecimalFormat format = new DecimalFormat();
-            format.setParseBigDecimal(true);
-            try {
-                estimate = (BigDecimal) format.parse(estimateString);
-            } catch (final ParseException e) {
-                log.error("PrecicionNum ParseException:", e);
-            }
+        BigDecimal estimate;
+        final double doubleVal = this.delegate.doubleValue();
+        if (Double.isFinite(doubleVal) && doubleVal > 0) {
+            estimate = BigDecimal.valueOf(Math.sqrt(doubleVal));
+        } else {
+            final MathContext fallbackContext = precisionContext.getPrecision() == 0
+                    ? new MathContext(DEFAULT_PRECISION, precisionContext.getRoundingMode())
+                    : precisionContext;
+            estimate = this.delegate.sqrt(fallbackContext);
         }
         BigDecimal delta;
         BigDecimal test;
