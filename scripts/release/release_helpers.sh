@@ -1462,7 +1462,7 @@ EOF
   while IFS= read -r file; do
     [[ -e "$file" ]] || printf '%s\n' "$file"
   done < "$required_file" | sort > "$missing_file"
-  find . -path './*/target/*.jar' -type f | sed 's#^\./##' | sort > "$existing_file"
+  find . -mindepth 3 -maxdepth 3 -path './*/target/*.jar' -type f | sed 's#^\./##' | sort > "$existing_file"
   grep -Fxf "$existing_file" "$expected_file" > "$present_file" || true
   grep -Fvx -f "$expected_file" "$existing_file" > "$unexpected_file" || true
 

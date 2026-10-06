@@ -77,15 +77,50 @@ class ShockPathErrorBoundTest {
                 new double[] { 0.01d });
 
         assertThat(ShockPathErrorBound.uncertifiableReason(Precision.FP64, SHOCK_STANDARDIZED_EMPIRICAL,
-                VOLATILITY_EWMA, ordinary)).contains("EWMA");
-        assertThat(ShockPathErrorBound.uncertifiableReason(Precision.FP32, SHOCK_NORMAL, VOLATILITY_CONSTANT, ordinary))
+                VOLATILITY_EWMA, 1, ordinary)).contains("EWMA");
+        assertThat(
+                ShockPathErrorBound.uncertifiableReason(Precision.FP32, SHOCK_NORMAL, VOLATILITY_CONSTANT, 1, ordinary))
                 .contains("Box-Muller");
         assertThat(ShockPathErrorBound.uncertifiableReason(Precision.FP32, SHOCK_STANDARDIZED_EMPIRICAL,
-                VOLATILITY_CONSTANT, underflowing)).contains("underflows");
-        assertThat(ShockPathErrorBound.uncertifiableReason(Precision.FP64, SHOCK_NORMAL, VOLATILITY_CONSTANT, ordinary))
+                VOLATILITY_CONSTANT, 1, underflowing)).contains("underflows");
+        assertThat(
+                ShockPathErrorBound.uncertifiableReason(Precision.FP64, SHOCK_NORMAL, VOLATILITY_CONSTANT, 1, ordinary))
                 .isNull();
         assertThat(ShockPathErrorBound.uncertifiableReason(Precision.FP64, SHOCK_STANDARDIZED_EMPIRICAL,
-                VOLATILITY_CONSTANT, underflowing)).isNull();
+                VOLATILITY_CONSTANT, 1, underflowing)).isNull();
+    }
+
+    @Test
+    void requestsWhoseErrorBandCrossesAScalarGuardCannotBeCertified() {
+        // One-step bootstrap, price 1, history [700.00001]: the scalar lane rejects
+        // abs(C) > 700 as unstable, while a lane within its error of the guard could
+        // decode the same sample as a stable price.
+        List<double[]> pastExponentGuard = inputs(new double[] { 0d }, new double[] { 0d }, new double[] { 0d },
+                new double[] { 700.00001d });
+        List<double[]> belowExponentGuard = inputs(new double[] { 0d }, new double[] { 0d }, new double[] { 0d },
+                new double[] { 699d });
+        List<double[]> accumulatesToGuard = inputs(new double[] { 0d }, new double[] { 0d }, new double[] { 0d },
+                new double[] { 100d });
+        List<double[]> nearOverflow = inputs(1e308d, new double[] { 5d });
+        List<double[]> nearUnderflow = inputs(1e-300d, new double[] { 20d });
+
+        for (Precision precision : Precision.values()) {
+            assertThat(ShockPathErrorBound.uncertifiableReason(precision, SHOCK_HISTORICAL_BOOTSTRAP,
+                    VOLATILITY_CONSTANT, 1, pastExponentGuard)).contains("exponent guard");
+            assertThat(ShockPathErrorBound.uncertifiableReason(precision, SHOCK_HISTORICAL_BOOTSTRAP,
+                    VOLATILITY_CONSTANT, 1, belowExponentGuard)).isNull();
+            assertThat(ShockPathErrorBound.uncertifiableReason(precision, SHOCK_HISTORICAL_BOOTSTRAP,
+                    VOLATILITY_CONSTANT, 8, accumulatesToGuard)).contains("exponent guard");
+            assertThat(ShockPathErrorBound.uncertifiableReason(precision, SHOCK_HISTORICAL_BOOTSTRAP,
+                    VOLATILITY_CONSTANT, 1, nearOverflow)).contains("overflow");
+            assertThat(ShockPathErrorBound.uncertifiableReason(precision, SHOCK_HISTORICAL_BOOTSTRAP,
+                    VOLATILITY_CONSTANT, 1, nearUnderflow)).contains("underflow");
+        }
+    }
+
+    private static List<double[]> inputs(double price, double[] returns) {
+        List<double[]> base = inputs(new double[] { 0d }, new double[] { 0d }, new double[] { 0d }, returns);
+        return List.of(new double[] { price }, base.get(1), base.get(2), base.get(3), base.get(4));
     }
 
     private static double maxObservedRelativeError(int shockModel, double mean, double drift, double variance,

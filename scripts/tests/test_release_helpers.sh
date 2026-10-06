@@ -793,6 +793,9 @@ test_artifact_manifest_validates_expected_release_jars() {
     mkdir -p "$(dirname "$file")"
     : > "$file"
   done
+  # Native profiles leave an intermediate resource jar under target/native; it is not a release artifact.
+  mkdir -p ta4j-acceleration/target/native
+  : > ta4j-acceleration/target/native/metal-macos-aarch64-resources.jar
   bash "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --github-output native-outputs.txt --strict
   for file in \
     "ta4j-acceleration/target/ta4j-acceleration-${version}-metal-macos-aarch64.jar" \

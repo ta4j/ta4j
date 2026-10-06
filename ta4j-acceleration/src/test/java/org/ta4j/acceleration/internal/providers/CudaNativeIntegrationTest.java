@@ -5,9 +5,6 @@ package org.ta4j.acceleration.internal.providers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -29,12 +26,7 @@ class CudaNativeIntegrationTest {
 
     @Test
     void nativeProbeSelfTestReportsAvailableDevice() {
-        String configuredLibrary = System.getProperty(CudaNativeLibrary.LIBRARY_PROPERTY);
-        assertThat(configuredLibrary).as(CudaNativeLibrary.LIBRARY_PROPERTY).isNotBlank();
-        assertThat(Files.isRegularFile(Path.of(configuredLibrary))).as("configured library path").isTrue();
-
-        CudaNativeLibrary.LoadResult loaded = CudaNativeLibrary.load();
-        assertThat(loaded.loaded()).as(loaded.detail()).isTrue();
+        ShockPathReference.assumeCudaLane();
 
         CudaProbeResult probe = new JniCudaNativeBridge().probe();
         assertThat(probe.available()).as(probe.detail()).isTrue();

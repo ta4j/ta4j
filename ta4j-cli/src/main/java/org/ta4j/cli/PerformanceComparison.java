@@ -4,6 +4,7 @@
 package org.ta4j.cli;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -236,8 +237,22 @@ final class PerformanceComparison {
         requireString(artifact, file, "gitRef");
         requireNumber(artifact, file, "repetitions");
         requireNumber(artifact, file, "warmups");
-        requireNonEmptyArray(artifact, file, "barCounts");
-        requireNonEmptyArray(artifact, file, "scenarioIds");
+        JsonArray barCounts = requireNonEmptyArray(artifact, file, "barCounts");
+        for (int i = 0; i < barCounts.size(); i++) {
+            if (!isPositiveInt(barCounts.get(i))) {
+                throw new IllegalArgumentException(
+                        "Invalid performance artifact " + file + ": barCounts[" + i + "] must be a positive integer.");
+            }
+        }
+        JsonArray scenarioIds = requireNonEmptyArray(artifact, file, "scenarioIds");
+        for (int i = 0; i < scenarioIds.size(); i++) {
+            JsonElement scenarioId = scenarioIds.get(i);
+            if (!scenarioId.isJsonPrimitive() || !scenarioId.getAsJsonPrimitive().isString()
+                    || scenarioId.getAsString().isBlank()) {
+                throw new IllegalArgumentException("Invalid performance artifact " + file + ": scenarioIds[" + i
+                        + "] must be a non-blank string.");
+            }
+        }
         JsonObject host = requireObject(artifact, file, "host");
         requireString(host, file, "hostId");
         requireString(host, file, "osName");
@@ -262,6 +277,17 @@ final class PerformanceComparison {
             JsonObject stats = requireObject(result, file, "stats");
             requireNumber(stats, file, "medianNanos");
             requireNumber(stats, file, "operationsPerSecond");
+        }
+    }
+
+    private static boolean isPositiveInt(JsonElement value) {
+        if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) {
+            return false;
+        }
+        try {
+            return new BigDecimal(value.getAsString()).intValueExact() > 0;
+        } catch (ArithmeticException | NumberFormatException ex) {
+            return false;
         }
     }
 

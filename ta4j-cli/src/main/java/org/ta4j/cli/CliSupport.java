@@ -280,7 +280,7 @@ final class CliSupport {
         }
         requireFiniteBars(loadedSeries, source);
         if (!csv) {
-            requireCompleteJsonDecode(source, loadedSeries);
+            requireCompleteJsonDecode(normalizedPath, source, loadedSeries);
         }
 
         BarSeries effectiveSeries = loadedSeries;
@@ -362,7 +362,7 @@ final class CliSupport {
         }
     }
 
-    private static void requireCompleteJsonDecode(String dataFile, BarSeries series) {
+    private static void requireCompleteJsonDecode(String dataFile, String source, BarSeries series) {
         JsonObject root;
         try (Reader reader = Files.newBufferedReader(Path.of(dataFile))) {
             root = JsonParser.parseReader(reader).getAsJsonObject();
@@ -370,12 +370,12 @@ final class CliSupport {
             // The datasource already read this file successfully, so a second
             // read failure means the file changed between reads; surface it as
             // an I/O failure like any other unreadable data file.
-            throw new UncheckedIOException("Unable to read bar data from " + dataFile + ".", ex);
+            throw new UncheckedIOException("Unable to read bar data from " + source + ".", ex);
         }
         String barArrayMember = root.has("candles") ? "candles" : "ohlc";
         int sourceBarCount = root.getAsJsonArray(barArrayMember).size();
         if (sourceBarCount != series.getBarCount()) {
-            throw new IllegalArgumentException("Bar data file " + dataFile + " contains " + sourceBarCount + " "
+            throw new IllegalArgumentException("Bar data file " + source + " contains " + sourceBarCount + " "
                     + barArrayMember + " but only " + series.getBarCount()
                     + " could be decoded; refusing to analyze incomplete data. Fix or remove the malformed bars.");
         }
@@ -619,23 +619,33 @@ final class CliSupport {
      * {@link #MAX_BATCH_STRATEGY_WORK} before execution starts.
      * {@code barEvaluations} is the number of series bars each strategy is
      * evaluated over: a full backtest pass for backtests, or the full pass plus the
-     * summed test-bar counts of every fold and holdout for walk-forwards. Each
-     * strategy costs one evaluation per bar plus the per-bar reads of every
-     * rolling-window scanner reachable from its entry and exit rules, so a
-     * serialized strategy cannot hide a large scan behind a single rule. The
-     * product is computed exactly so a wide batch over a long series can never
-     * overflow into an accepted estimate.
+     * summed test-bar counts of every fold and holdout for walk-forwards.
      */
     static void requireBoundedStrategyBatch(List<Strategy> strategies, long barEvaluations) {
+        requireBoundedStrategyBatch(strategies, barEvaluations, barEvaluations);
+    }
+
+    /**
+     * Rejects a strategy batch whose total work exceeds
+     * {@link #MAX_BATCH_STRATEGY_WORK} before execution starts. Each strategy costs
+     * one evaluation per bar in {@code barEvaluations} plus the per-bar reads of
+     * every rolling-window scanner reachable from its entry and exit rules over
+     * {@code scanBarEvaluations}, so a serialized strategy cannot hide a large scan
+     * behind a single rule. Scan bars exceed evaluated bars for walk-forwards:
+     * recursive indicators prefill every preceding index when a fold starts
+     * mid-series, so a scanner feeding one is re-read across each fold's whole
+     * prefix. The product is computed exactly so a wide batch over a long series
+     * can never overflow into an accepted estimate.
+     */
+    static void requireBoundedStrategyBatch(List<Strategy> strategies, long barEvaluations, long scanBarEvaluations) {
         IdentityHashMap<Strategy, Long> scanWorkByStrategy = new IdentityHashMap<>();
-        BigInteger perBarWork = BigInteger.ZERO;
+        BigInteger work = BigInteger.valueOf(strategies.size()).multiply(BigInteger.valueOf(barEvaluations));
         long scanWork = 0L;
         for (Strategy strategy : strategies) {
             long strategyScanWork = scanWorkByStrategy.computeIfAbsent(strategy, CliSupport::strategyWindowWork);
             scanWork = saturatingAdd(scanWork, strategyScanWork);
-            perBarWork = perBarWork.add(BigInteger.ONE).add(BigInteger.valueOf(strategyScanWork));
+            work = work.add(BigInteger.valueOf(strategyScanWork).multiply(BigInteger.valueOf(scanBarEvaluations)));
         }
-        BigInteger work = perBarWork.multiply(BigInteger.valueOf(barEvaluations));
         if (work.compareTo(BigInteger.valueOf(MAX_BATCH_STRATEGY_WORK)) > 0) {
             throw new IllegalArgumentException("Strategy batch of " + strategies.size() + " strategies over "
                     + barEvaluations + " bars requires " + work + " bar-strategy evaluations"
@@ -661,11 +671,16 @@ final class CliSupport {
         List<Long> reportedSpans = new ArrayList<>(splits.size() + 1);
         reportedSpans.add((long) series.getBarCount());
         long evaluatedBars = series.getBarCount();
+        long scanBars = series.getBarCount();
         for (WalkForwardSplit split : splits) {
             reportedSpans.add((long) split.testBarCount());
             evaluatedBars = Math.addExact(evaluatedBars, split.testBarCount());
+            // Each fold's strategy is built over the full series and may prefill
+            // every index before the test range, so scans are charged through
+            // testEnd rather than over the test bars alone.
+            scanBars = Math.addExact(scanBars, (long) split.testEnd() - series.getBeginIndex() + 1L);
         }
-        requireBoundedStrategyBatch(strategies, evaluatedBars);
+        requireBoundedStrategyBatch(strategies, evaluatedBars, scanBars);
         requireBoundedCriterionWork(criteria, reportedSpans, strategies.size(), 0L);
         return splits.size();
     }

@@ -20,6 +20,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -121,6 +123,42 @@ class PerformanceComparisonTest {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> PerformanceComparison.compare(baseDir, candidateDir, tempDir.resolve("comparison"), 5d));
         assertTrue(exception.getMessage().contains("field 'repetitions' must be a number"));
+        assertTrue(exception.getMessage().contains(candidateArtifact.toString()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "null", "{}", "0", "-3", "1.5", "\"16\"" })
+    void comparisonRejectsInvalidBarCountElements(String element) throws Exception {
+        Path baseDir = tempDir.resolve("base");
+        Path candidateDir = tempDir.resolve("candidate");
+        writePerformanceJson(baseDir, 10L, 1_000L);
+        writePerformanceJson(candidateDir, 10L, 900L);
+        Path candidateArtifact = candidateDir.resolve("performance.json");
+        JsonObject candidate = JsonParser.parseString(Files.readString(candidateArtifact)).getAsJsonObject();
+        candidate.getAsJsonArray("barCounts").add(JsonParser.parseString(element));
+        Files.writeString(candidateArtifact, GSON.toJson(candidate), StandardCharsets.UTF_8);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> PerformanceComparison.compare(baseDir, candidateDir, tempDir.resolve("comparison"), 5d));
+        assertTrue(exception.getMessage().contains("barCounts[1] must be a positive integer"));
+        assertTrue(exception.getMessage().contains(candidateArtifact.toString()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "null", "{}", "\"  \"", "7" })
+    void comparisonRejectsInvalidScenarioIdElements(String element) throws Exception {
+        Path baseDir = tempDir.resolve("base");
+        Path candidateDir = tempDir.resolve("candidate");
+        writePerformanceJson(baseDir, 10L, 1_000L);
+        writePerformanceJson(candidateDir, 10L, 900L);
+        Path candidateArtifact = candidateDir.resolve("performance.json");
+        JsonObject candidate = JsonParser.parseString(Files.readString(candidateArtifact)).getAsJsonObject();
+        candidate.getAsJsonArray("scenarioIds").add(JsonParser.parseString(element));
+        Files.writeString(candidateArtifact, GSON.toJson(candidate), StandardCharsets.UTF_8);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> PerformanceComparison.compare(baseDir, candidateDir, tempDir.resolve("comparison"), 5d));
+        assertTrue(exception.getMessage().contains("scenarioIds[1] must be a non-blank string"));
         assertTrue(exception.getMessage().contains(candidateArtifact.toString()));
     }
 

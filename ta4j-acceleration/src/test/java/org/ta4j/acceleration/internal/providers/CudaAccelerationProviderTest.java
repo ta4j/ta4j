@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
@@ -105,8 +106,10 @@ class CudaAccelerationProviderTest {
         params[MonteCarloKernel.PARAM_ITERATIONS] = iterations;
         params[MonteCarloKernel.PARAM_LOOKBACK] = lookback;
         params[MonteCarloKernel.PARAM_DECAY] = 0.94d;
-        List<double[]> inputs = List.of(new double[decisions], new double[decisions], new double[decisions],
-                new double[decisions], new double[decisions + lookback - 1]);
+        double[] prices = new double[decisions];
+        Arrays.fill(prices, 1d);
+        List<double[]> inputs = List.of(prices, new double[decisions], new double[decisions], new double[decisions],
+                new double[decisions + lookback - 1]);
         Determinism determinism = Double.isNaN(tolerance) ? Determinism.BITWISE_IDENTICAL : Determinism.APPROXIMATE;
         return new KernelRequest(Operation.MONTE_CARLO_SHOCK_PATHS_V1, 10, 13, iterations, NumericEncoding.FLOAT64,
                 determinism, 42L, tolerance, params, inputs, 1_000_000_000L, 1_000_000L);

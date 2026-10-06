@@ -53,6 +53,7 @@ public class MonteCarloShockPathPlannerTest {
             System.setProperty(AccelerationRuntime.APPROXIMATE_TOLERANCE_PROPERTY, previousTolerance);
         }
     }
+
     @Test
     public void snapshotsScalarInputsExactly() {
         Fixture fixture = fixture(DoubleNumFactory.getInstance());

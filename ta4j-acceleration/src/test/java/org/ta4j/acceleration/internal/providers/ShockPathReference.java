@@ -5,7 +5,10 @@ package org.ta4j.acceleration.internal.providers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 
@@ -21,10 +24,42 @@ import org.ta4j.core.indicators.forecast.MonteCarloKernel;
  * double precision (the scalar contract) or emulated single precision (the
  * Metal lane: inputs narrowed to {@code float}, float arithmetic, 53-bit RNG
  * state).
+ *
+ * <p>
+ * Public only so hardware-tagged tests in other packages can share the lane
+ * preconditions.
  */
-final class ShockPathReference {
+public final class ShockPathReference {
 
     private ShockPathReference() {
+    }
+
+    /**
+     * Skips the calling test unless the CUDA lane is usable: a library override is
+     * configured and exists, and the native probe reports a device. A library that
+     * is configured but does not load is a real defect and fails.
+     */
+    public static void assumeCudaLane() {
+        assumeLibraryConfigured(CudaNativeLibrary.LIBRARY_PROPERTY);
+        CudaNativeLibrary.LoadResult loaded = CudaNativeLibrary.load();
+        assertThat(loaded.loaded()).as(loaded.detail()).isTrue();
+        CudaProbeResult probe = new JniCudaNativeBridge().probe();
+        assumeTrue(probe.available(), probe.detail());
+    }
+
+    /** OpenCL counterpart of {@link #assumeCudaLane()}. */
+    public static void assumeOpenClLane() {
+        assumeLibraryConfigured(OpenClNativeLibrary.LIBRARY_PROPERTY);
+        OpenClNativeLibrary.LoadResult loaded = OpenClNativeLibrary.load();
+        assertThat(loaded.loaded()).as(loaded.detail()).isTrue();
+        OpenClProbeResult probe = new JniOpenClNativeBridge().probe();
+        assumeTrue(probe.available(), probe.detail());
+    }
+
+    private static void assumeLibraryConfigured(String property) {
+        String configured = System.getProperty(property, "").trim();
+        assumeTrue(!configured.isEmpty(), "-D" + property + " is not configured");
+        assumeTrue(Files.isRegularFile(Path.of(configured)), "-D" + property + " does not name an existing file");
     }
 
     /**

@@ -142,10 +142,17 @@ require_artifact() {
   fi
 }
 
+clear_artifacts() {
+  # A reused output-dir must not let a skipped producer pass with an earlier run's files.
+  local dir="$1"
+  rm -f "$dir/performance.json" "$dir/comparison.json" "$dir/summary.md"
+}
+
 run_ref() {
   local worktree="$1"
   local run_output="$2"
   mkdir -p "$run_output"
+  clear_artifacts "$run_output"
   local exec_args
   exec_args="$(join_exec_args "${runner_args[@]}" --output-dir "$run_output")"
   (
@@ -161,6 +168,7 @@ run_ref() {
 run_ref "$base_worktree" "$base_output"
 run_ref "$candidate_worktree" "$candidate_output"
 
+clear_artifacts "$comparison_output"
 comparison_args="$(join_exec_args --base-dir "$base_output" --candidate-dir "$candidate_output" --output-dir "$comparison_output")"
 (
   cd "$candidate_worktree"

@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.ta4j.acceleration.internal.providers.OpenClAccelerationProvider;
+import org.ta4j.acceleration.internal.providers.ShockPathReference;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.ShockModel;
 import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.VolatilityUpdateMode;
@@ -26,6 +27,7 @@ class OpenClBacktestBenchmarkTest {
 
     @Test
     void compareScalarAndExplicitOpenClEvaluation() throws Exception {
+        ShockPathReference.assumeOpenClLane();
         int decisions = Integer.getInteger("ta4j.opencl.benchmark.decisions", 256);
         int paths = Integer.getInteger("ta4j.opencl.benchmark.paths", 2_048);
         int horizon = Integer.getInteger("ta4j.opencl.benchmark.horizon", 32);

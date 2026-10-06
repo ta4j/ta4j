@@ -30,37 +30,43 @@ if ($Action -eq "Preflight") {
     return
 }
 
-if ($Action -in @("Build", "All")) {
-    & $maven -B -pl ta4j-acceleration -am -Pcuda-windows-x86_64 -DskipTests package
-    if ($LASTEXITCODE -ne 0) {
-        throw "CUDA classifier build failed with exit code $LASTEXITCODE"
+Push-Location $root
+try {
+    if ($Action -in @("Build", "All")) {
+        & $maven -B -pl ta4j-acceleration -am -Pcuda-windows-x86_64 -DskipTests package
+        if ($LASTEXITCODE -ne 0) {
+            throw "CUDA classifier build failed with exit code $LASTEXITCODE"
+        }
     }
-}
-if (-not (Test-Path -LiteralPath $library -PathType Leaf)) {
-    throw "CUDA DLL is absent; run this script with -Action Build or -Action All first: $library"
-}
+    if (-not (Test-Path -LiteralPath $library -PathType Leaf)) {
+        throw "CUDA DLL is absent; run this script with -Action Build or -Action All first: $library"
+    }
 
-if ($Action -in @("Integration", "All")) {
-    & $maven -B -pl ta4j-acceleration -am "-Dtest=CudaNativeIntegrationTest" `
-        "-Dsurefire.failIfNoSpecifiedTests=false" `
-        "-Dgroups=requires-cuda" `
-        "-Dta4j.excludedTestTags=requires-metal" `
-        "-Dta4j.acceleration.cuda.library=$library" test
-    if ($LASTEXITCODE -ne 0) {
-        throw "CUDA integration tests failed with exit code $LASTEXITCODE"
+    if ($Action -in @("Integration", "All")) {
+        & $maven -B -pl ta4j-acceleration -am "-Dtest=CudaNativeIntegrationTest" `
+            "-Dsurefire.failIfNoSpecifiedTests=false" `
+            "-Dgroups=requires-cuda" `
+            "-Dta4j.excludedTestTags=requires-metal" `
+            "-Dta4j.acceleration.cuda.library=$library" test
+        if ($LASTEXITCODE -ne 0) {
+            throw "CUDA integration tests failed with exit code $LASTEXITCODE"
+        }
+    }
+
+    if ($Action -in @("Benchmark", "All")) {
+        & (Join-Path $root "scripts\acceleration\benchmark-cuda-provider.ps1") -RepoRoot $root -LibraryPath $library
+        if ($LASTEXITCODE -ne 0) {
+            throw "CUDA benchmark failed with exit code $LASTEXITCODE"
+        }
+    }
+
+    if ($Action -eq "All") {
+        & (Join-Path $root "scripts\run-full-build-quiet.ps1")
+        if ($LASTEXITCODE -ne 0) {
+            throw "Full Windows build failed with exit code $LASTEXITCODE"
+        }
     }
 }
-
-if ($Action -in @("Benchmark", "All")) {
-    & (Join-Path $root "scripts\acceleration\benchmark-cuda-provider.ps1") -RepoRoot $root -LibraryPath $library
-    if ($LASTEXITCODE -ne 0) {
-        throw "CUDA benchmark failed with exit code $LASTEXITCODE"
-    }
-}
-
-if ($Action -eq "All") {
-    & (Join-Path $root "scripts\run-full-build-quiet.ps1")
-    if ($LASTEXITCODE -ne 0) {
-        throw "Full Windows build failed with exit code $LASTEXITCODE"
-    }
+finally {
+    Pop-Location
 }

@@ -5,9 +5,6 @@ package org.ta4j.acceleration.internal.providers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -29,12 +26,7 @@ class OpenClNativeIntegrationTest {
 
     @Test
     void nativeProbeSelfTestReportsAvailableDevice() {
-        String configuredLibrary = System.getProperty(OpenClNativeLibrary.LIBRARY_PROPERTY);
-        assertThat(configuredLibrary).as(OpenClNativeLibrary.LIBRARY_PROPERTY).isNotBlank();
-        assertThat(Files.isRegularFile(Path.of(configuredLibrary))).as("configured library path").isTrue();
-
-        OpenClNativeLibrary.LoadResult loaded = OpenClNativeLibrary.load();
-        assertThat(loaded.loaded()).as(loaded.detail()).isTrue();
+        ShockPathReference.assumeOpenClLane();
 
         OpenClProbeResult probe = new JniOpenClNativeBridge().probe();
         assertThat(probe.available()).as(probe.detail()).isTrue();

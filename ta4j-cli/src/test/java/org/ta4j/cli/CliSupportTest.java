@@ -39,6 +39,7 @@ import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.averages.WMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedBooleanIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
@@ -740,6 +741,32 @@ class CliSupportTest {
         CliSupport.requireBoundedWalkForward(List.of(strategy), withinBudget, series, config);
     }
 
+    @Test
+    void walkForwardChargesRecursiveIndicatorPrefillOverEachFoldPrefix() {
+        BarSeries longSeries = syntheticSeries(20_000);
+        BarSeries shortSeries = syntheticSeries(2_000);
+        WalkForwardConfig longConfig = CliSupport.buildWalkForwardConfig(longSeries, "100", "100", "100", "0", "0", "0",
+                null, null, null);
+        WalkForwardConfig shortConfig = CliSupport.buildWalkForwardConfig(shortSeries, "100", "100", "100", "0", "0",
+                "0", null, null, null);
+        Strategy longStrategy = recursiveWindowStrategy(longSeries);
+        Strategy shortStrategy = recursiveWindowStrategy(shortSeries);
+
+        // Test bars alone cost 40,000 evaluations of 1 + 1,000 window reads and fit
+        // the budget, but each of the ~199 folds re-fills its whole prefix.
+        assertThatThrownBy(
+                () -> CliSupport.requireBoundedWalkForward(List.of(longStrategy), List.of(), longSeries, longConfig))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("including rolling-window scans");
+        CliSupport.requireBoundedWalkForward(List.of(shortStrategy), List.of(), shortSeries, shortConfig);
+    }
+
+    private static Strategy recursiveWindowStrategy(BarSeries series) {
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        return new BaseStrategy(new OverIndicatorRule(new EMAIndicator(new WMAIndicator(close, 1_000), 10), close),
+                BooleanRule.FALSE);
+    }
+
     private static List<CliSupport.CriterionSpec> monteCarloCriterion(int iterations) {
         MonteCarloMaximumDrawdownCriterion criterion = new MonteCarloMaximumDrawdownCriterion(iterations, null, 42L,
                 Statistics.P95);
@@ -816,6 +843,18 @@ class CliSupportTest {
         } finally {
             logs.close();
         }
+    }
+
+    @Test
+    void jsonStdinIsValidatedAgainstTheSpooledCopyNotAFileNamedStdin() throws Exception {
+        Path dataFile = copyResource("Binance-ETH-USD-PT5M-20230313_20230315.json");
+        BarSeries fromFile = CliSupport.loadSeries(dataFile.toString(), null, InputStream.nullInputStream(), null, null,
+                null);
+        InputStream stdin = new ByteArrayInputStream(Files.readAllBytes(dataFile));
+
+        BarSeries fromStdin = CliSupport.loadSeries("-", "json", stdin, null, null, null);
+
+        assertThat(fromStdin.getBarCount()).isEqualTo(fromFile.getBarCount());
     }
 
     private static BarSeries syntheticSeries(int barCount) {

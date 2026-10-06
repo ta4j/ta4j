@@ -212,7 +212,7 @@ abstract class ShockPathKernelProvider implements Provider {
         }
         if (!exact) {
             String reason = ShockPathErrorBound.uncertifiableReason(precision, shockModel, volatilityMode,
-                    request.inputs());
+                    dimensions.horizon(), request.inputs());
             if (reason != null) {
                 return RequestValidation.unsupported(DiagnosticCode.UNSUPPORTED,
                         providerId + " cannot certify an approximate tolerance: " + reason + "; scalar path");

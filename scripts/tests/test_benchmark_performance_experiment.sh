@@ -287,6 +287,19 @@ test_fails_when_exec_produces_no_artifacts() {
   ! grep -q "Performance comparison written to" "$TMP/skipped-exec.out" \
     || fail "a failed run must not report a comparison"
 
+  local reused="$TMP/reused-output"
+  mkdir -p "$reused/base" "$reused/candidate" "$reused/comparison"
+  printf '{}\n' > "$reused/base/performance.json"
+  printf '{}\n' > "$reused/candidate/performance.json"
+  printf '{}\n' > "$reused/comparison/comparison.json"
+  if BASH_ENV=/dev/null FAKE_REPO_ROOT="$TMP/repo" FAKE_MAVEN_SKIP_EXEC=1 PATH="$TMP/bin:$PATH" \
+      "$SCRIPT" base-a candidate-a "$reused" -- --experiment fixture --bar-counts 1 --scenarios endOnly --repetitions 1 \
+      > "$TMP/reused-exec.out" 2> "$err"; then
+    fail "a skipped run must not pass with stale artifacts from a reused output-dir"
+  fi
+  grep -q "Expected artifact was not produced: .*base/performance.json" "$err" \
+    || fail "stale artifact was accepted: $(cat "$err")"
+
   rm -rf "$TMP"
   pass "test_fails_when_exec_produces_no_artifacts"
 }

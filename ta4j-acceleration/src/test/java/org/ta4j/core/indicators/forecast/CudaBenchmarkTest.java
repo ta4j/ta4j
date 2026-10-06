@@ -13,6 +13,7 @@ import java.util.Locale;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.ta4j.acceleration.internal.providers.CudaAccelerationProvider;
+import org.ta4j.acceleration.internal.providers.ShockPathReference;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.ShockModel;
 import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.VolatilityUpdateMode;
@@ -27,6 +28,7 @@ class CudaBenchmarkTest {
 
     @Test
     void emitsFreshProcessCrossoverMeasurement() {
+        ShockPathReference.assumeCudaLane();
         int decisions = Integer.getInteger("ta4j.cuda.benchmark.decisions", 8);
         int paths = Integer.getInteger("ta4j.cuda.benchmark.paths", 4_096);
         int horizon = Integer.getInteger("ta4j.cuda.benchmark.horizon", 8);
