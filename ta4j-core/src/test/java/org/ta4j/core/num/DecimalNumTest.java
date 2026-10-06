@@ -467,7 +467,7 @@ public class DecimalNumTest {
         // Non-exact square root with MathContext.UNLIMITED falls back to default
         // precision
         Num twoUnlimited = DecimalNum.valueOf("2", MathContext.UNLIMITED);
-        assertNumEquals(DecimalNum.valueOf("1.414213562373095", MathContext.UNLIMITED), twoUnlimited.sqrt());
+        assertNumEquals(DecimalNum.valueOf("1.414213562373095"), twoUnlimited.sqrt());
 
         // Exact square root with MathContext.UNLIMITED
         Num fourUnlimited = DecimalNum.valueOf("4", MathContext.UNLIMITED);
