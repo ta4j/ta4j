@@ -5,6 +5,8 @@ package org.ta4j.core.analysis;
 
 import java.util.ArrayList;
 import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.BigInteger;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -20,6 +22,7 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.NaN;
+import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -351,17 +354,38 @@ final class FuturesPerformanceSupport {
     /** Captures components before converting the final account total to Num. */
     static PnLAccumulator pnl(Cursor cursor, AnalysisPositionSupport.Window window, NumFactory factory) {
         PnLAccumulator pnl = new PnLAccumulator(window, factory);
-        pnl.add(cursor);
+        pnl.add(cursor, null, false);
+        return pnl;
+    }
+
+    /**
+     * Captures normalized native components, including independent entering equity.
+     */
+    static PnLAccumulator pnl(Cursor cursor, AnalysisPositionSupport.Window window, NumFactory factory, Num capital) {
+        PnLAccumulator pnl = new PnLAccumulator(window, factory);
+        pnl.add(cursor, capital, false);
         return pnl;
     }
 
     /** Adds one position, recognizing fills only through its incremental cutoff. */
     static void addPositionPnL(BarSeries series, Position position, int finalIndex,
             AnalysisPositionSupport.Window window, boolean markExposure, Indicator<Num> mark, PnLAccumulator pnl) {
+        addPositionPnL(series, position, finalIndex, window, markExposure, mark, pnl, null, false);
+    }
+
+    static void addPositionPnL(BarSeries series, Position position, int finalIndex,
+            AnalysisPositionSupport.Window window, boolean markExposure, Indicator<Num> mark, PnLAccumulator pnl,
+            Num capital) {
+        addPositionPnL(series, position, finalIndex, window, markExposure, mark, pnl, capital, false);
+    }
+
+    static void addPositionPnL(BarSeries series, Position position, int finalIndex,
+            AnalysisPositionSupport.Window window, boolean markExposure, Indicator<Num> mark, PnLAccumulator pnl,
+            Num capital, boolean validateArrival) {
         int cutoff = Math.min(finalIndex, window.endIndex());
         Cursor cursor = new Cursor(series, List.of(position), cutoff, markExposure,
                 mark == null ? new ClosePriceIndicator(series) : mark);
-        pnl.add(cursor);
+        pnl.add(cursor, capital, validateArrival);
     }
 
     /** Per-bar component totals retained across staged incremental updates. */
@@ -396,14 +420,28 @@ final class FuturesPerformanceSupport {
             return new PnLAccumulator(this);
         }
 
-        private void add(Cursor cursor) {
+        private void add(Cursor cursor, Num capital, boolean validateArrival) {
+            if (!window.isEmpty()) {
+                ProfitSum contribution = cursor.profitBefore(window.beginIndex());
+                if (baseline == null || contribution == null) {
+                    baseline = null;
+                } else {
+                    if (capital != null)
+                        contribution.divide(capital);
+                    baseline.add(contribution);
+                }
+            }
             for (int offset = 0; offset < sums.size(); offset++) {
                 ProfitSum contribution = cursor.profitAt((int) ((long) window.beginIndex() + offset));
                 ProfitSum sum = sums.get(offset);
                 if (sum == null || contribution == null) {
                     sums.set(offset, null);
                 } else {
-                    sum.sum = sum.sum.add(contribution.sum);
+                    if (validateArrival)
+                        contribution.value(factory);
+                    if (capital != null)
+                        contribution.divide(capital);
+                    sum.add(contribution);
                 }
             }
         }
@@ -437,19 +475,64 @@ final class FuturesPerformanceSupport {
                     sum.sum = sum.sum.multiply(factor.bigDecimalValue());
                 }
             }
+            if (baseline == null || !Num.isFinite(factors.baseline())) {
+                baseline = null;
+            } else {
+                baseline.sum = baseline.sum.multiply(factors.baseline().bigDecimalValue());
+            }
+        }
+
+        /**
+         * Adds a visible base only at final conversion, after component cancellation.
+         */
+        Num equity(int index, Num base) {
+            return equity(index, base, factory.one());
+        }
+
+        Num equity(int index, Num base, Num scale) {
+            ProfitSum sum = sums.get(index - window.beginIndex());
+            if (sum == null || !Num.isFinite(base))
+                return NaN.NaN;
+            ProfitSum total = new ProfitSum(sum);
+            total.add(base);
+            total.sum = total.sum.multiply(scale.bigDecimalValue());
+            return total.value(factory);
+        }
+
+        Num enteringEquity(Num base) {
+            if (baseline == null || !Num.isFinite(base))
+                return NaN.NaN;
+            ProfitSum total = new ProfitSum(baseline);
+            total.add(base);
+            return total.value(factory);
         }
 
         Num get(int index) {
+            return scaledValue(index, factory.one());
+        }
+
+        /** Checks account PnL before its equity base can mask a lossy conversion. */
+        void validatePnL(int index, Num capital) {
+            scaledValue(index, capital);
+        }
+
+        private Num scaledValue(int index, Num scale) {
             if (index < window.beginIndex() || index > window.bufferEndIndex()) {
                 return factory.zero();
             }
             ProfitSum sum = sums.get(index - window.beginIndex());
-            return sum == null ? NaN.NaN : sum.value(factory);
+            if (sum == null)
+                return NaN.NaN;
+            ProfitSum total = new ProfitSum(sum);
+            total.sum = total.sum.multiply(scale.bigDecimalValue());
+            return total.value(factory);
         }
 
         OffsetNumBuffer values() {
             OffsetNumBuffer values = AnalysisPositionSupport.buffer(window, factory.zero(), factory.zero());
-            values.addBaseline(baseline == null ? NaN.NaN : baseline.value(factory));
+            // Raw entering carries follow the factory's usual rounding, like spot
+            // baselines. Their exact components remain available for later carries.
+            values.addBaseline(baseline == null ? NaN.NaN : baseline.roundedValue(factory));
             for (int offset = 0; offset < sums.size(); offset++) {
                 int index = (int) ((long) window.beginIndex() + offset);
                 values.add(index, get(index));
@@ -541,6 +624,8 @@ final class FuturesPerformanceSupport {
         private final boolean[] settledPositions;
         private final ProfitSum settledRealized;
         private int lastIndex = Integer.MIN_VALUE;
+        private int lastMarkIndex = Integer.MIN_VALUE;
+        private Num lastMark;
 
         private Cursor(BarSeries series, List<Position> positions, int finalIndex, boolean markExposure,
                 Indicator<Num> markPrice) {
@@ -592,6 +677,25 @@ final class FuturesPerformanceSupport {
                     return null;
                 }
                 for (Num component : position.getProfitComponents(effectiveIndex, mark)) {
+                    total.add(component);
+                }
+            }
+            return total;
+        }
+
+        /**
+         * Recognizes only pre-head events, valuing retained exposure at the head mark.
+         */
+        private ProfitSum profitBefore(int head) {
+            int cutoff = Math.min(finalIndex, head - 1);
+            ProfitSum total = new ProfitSum();
+            for (Position position : positions) {
+                if (position.getEntry().getIndex() > cutoff)
+                    continue;
+                Num mark = markExposure && hasResidualExposure(position, cutoff) ? markAt(head) : null;
+                if (mark != null && !Num.isFinite(mark))
+                    return null;
+                for (Num component : position.getProfitComponents(cutoff, mark)) {
                     total.add(component);
                 }
             }
@@ -688,7 +792,11 @@ final class FuturesPerformanceSupport {
                 return NaN.NaN;
             }
             int boundedIndex = Math.min(index, seriesEnd);
-            return toFactory(numFactory, markPrice.getValue(boundedIndex));
+            if (boundedIndex != lastMarkIndex) {
+                lastMark = toFactory(numFactory, markPrice.getValue(boundedIndex));
+                lastMarkIndex = boundedIndex;
+            }
+            return lastMark;
         }
     }
 
@@ -700,25 +808,63 @@ final class FuturesPerformanceSupport {
      */
     private static final class ProfitSum {
         private BigDecimal sum;
+        private BigDecimal divisor;
 
         private ProfitSum() {
             this.sum = BigDecimal.ZERO;
+            this.divisor = BigDecimal.ONE;
         }
 
         private ProfitSum(ProfitSum previous) {
             this.sum = previous.sum;
+            this.divisor = previous.divisor;
         }
 
         private void add(Num component) {
-            sum = sum.add(component.bigDecimalValue());
+            sum = sum.add(component.bigDecimalValue().multiply(divisor));
+        }
+
+        private void add(ProfitSum contribution) {
+            if (divisor.compareTo(contribution.divisor) == 0) {
+                sum = sum.add(contribution.sum);
+            } else if (isZero()) {
+                sum = contribution.sum;
+                divisor = contribution.divisor;
+            } else if (!contribution.isZero()) {
+                sum = sum.multiply(contribution.divisor).add(contribution.sum.multiply(divisor));
+                divisor = divisor.multiply(contribution.divisor);
+                reduce();
+            }
+        }
+
+        private void divide(Num capital) {
+            if (!isZero()) {
+                divisor = divisor.multiply(capital.bigDecimalValue());
+                reduce();
+            }
+        }
+
+        private void reduce() {
+            int scale = Math.max(sum.scale(), divisor.scale());
+            BigInteger numerator = sum.scaleByPowerOfTen(scale).toBigIntegerExact();
+            BigInteger denominator = divisor.scaleByPowerOfTen(scale).toBigIntegerExact();
+            BigInteger common = numerator.gcd(denominator);
+            sum = new BigDecimal(numerator.divide(common));
+            divisor = new BigDecimal(denominator.divide(common));
         }
 
         private boolean isZero() {
             return sum.signum() == 0;
         }
 
+        private Num roundedValue(NumFactory factory) {
+            Num one = factory.one();
+            MathContext context = one instanceof DecimalNum decimal ? decimal.getMathContext() : MathContext.DECIMAL128;
+            return factory.numOf(divisor.compareTo(BigDecimal.ONE) == 0 ? sum : sum.divide(divisor, context));
+        }
+
         private Num value(NumFactory factory) {
-            Num value = factory.numOf(sum);
+            Num value = roundedValue(factory);
             if (!Num.isFinite(value)) {
                 throw new IllegalArgumentException("profit total must be finite in analysis number factory");
             }

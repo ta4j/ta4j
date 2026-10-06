@@ -81,10 +81,13 @@ public final class CumulativePnL implements PerformanceIndicator {
                                 markPriceIndicator);
                         pnl = FuturesPerformanceSupport.pnl(cursor, captured, barSeries.numFactory());
                         buffer = pnl.values();
-                    } else
+                    } else {
                         for (Position position : positions) {
                             calculatePosition(position, captured.finalIndex(), captured, buffer, costs.get(position));
                         }
+                        pnl = new FuturesPerformanceSupport.PnLAccumulator(captured, barSeries.numFactory());
+                        pnl.add(buffer);
+                    }
                     return new Materialized(captured, buffer, pnl);
                 });
         this.futuresMark = markPriceIndicator;
@@ -201,6 +204,12 @@ public final class CumulativePnL implements PerformanceIndicator {
     /**
      * Calculates the cumulative PnL for a single position.
      *
+     * <p>
+     * Native settlement components are retained across updates regardless of the
+     * constructor's record type. Results carried before the captured window remain
+     * separate from contributions recognized on its retained bars.
+     * </p>
+     *
      * @param position   the position
      * @param finalIndex the final index to calculate up to
      * @throws IllegalStateException if a bar this curve was materialized from was
@@ -212,44 +221,28 @@ public final class CumulativePnL implements PerformanceIndicator {
         AnalysisPositionSupport.PricedPosition priced = AnalysisPositionSupport.pricePosition(this, barSeries, position,
                 finalIndex, window, true);
         if (priced != null && FuturesPerformanceSupport.isFutures(position)) {
-            boolean nativeCurve = futuresPnL != null;
-            FuturesPerformanceSupport.PnLAccumulator pnl = futuresPnL == null
-                    ? new FuturesPerformanceSupport.PnLAccumulator(window, barSeries.numFactory())
-                    : futuresPnL.copy();
+            FuturesPerformanceSupport.PnLAccumulator pnl = futuresPnL.copy();
             AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values, staged -> {
                 FuturesPerformanceSupport.addPositionPnL(barSeries, position, finalIndex, window, markFuturesExposure,
                         futuresMark, pnl);
-                if (nativeCurve) {
-                    staged.replaceWith(pnl.values());
-                } else {
-                    for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
-                        staged.add((int) index, pnl.get((int) index));
-                    }
-                }
+                staged.replaceWith(pnl.values());
             }, true);
-            if (nativeCurve) {
-                futuresPnL = pnl;
-            }
+            futuresPnL = pnl;
             return;
         }
         if (priced != null) {
-            if (futuresPnL == null) {
-                AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values,
-                        staged -> calculatePosition(position, finalIndex, window, staged, priced.holdingCost()));
-            } else {
-                FuturesPerformanceSupport.PnLAccumulator pnl = futuresPnL.copy();
-                AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values, staged -> {
-                    Num zero = barSeries.numFactory().zero();
-                    OffsetNumBuffer deltas = AnalysisPositionSupport.buffer(window, zero, zero);
-                    calculatePosition(position, finalIndex, window, deltas, priced.holdingCost());
-                    pnl.add(deltas);
-                    for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
-                        staged.add((int) index, deltas.get((int) index));
-                    }
-                    staged.addBaseline(deltas.baseline());
-                });
-                futuresPnL = pnl;
-            }
+            FuturesPerformanceSupport.PnLAccumulator pnl = futuresPnL.copy();
+            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values, staged -> {
+                Num zero = barSeries.numFactory().zero();
+                OffsetNumBuffer deltas = AnalysisPositionSupport.buffer(window, zero, zero);
+                calculatePosition(position, finalIndex, window, deltas, priced.holdingCost());
+                pnl.add(deltas);
+                for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
+                    staged.add((int) index, deltas.get((int) index));
+                }
+                staged.addBaseline(deltas.baseline());
+            });
+            futuresPnL = pnl;
         }
     }
 

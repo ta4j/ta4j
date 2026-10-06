@@ -73,6 +73,9 @@ public class Returns implements PerformanceIndicator {
 
     private final OffsetNumBuffer returnFactors;
     private FuturesPerformanceSupport.PnLAccumulator futuresPnL;
+    private OffsetNumBuffer spotReturnFactors;
+    private boolean spotFirstRetainedSlotSeeded;
+    private boolean spotDefinesHeadPeriod;
     private final Num futuresCapital;
     private final Indicator<Num> futuresMark;
     private final boolean markFuturesExposure;
@@ -146,7 +149,7 @@ public class Returns implements PerformanceIndicator {
                         pnl = FuturesPerformanceSupport
                                 .pnl(FuturesPerformanceSupport.cursor(barSeries, record, captured.endIndex(),
                                         FuturesPerformanceSupport.includesExposure(handling, equityCurveMode),
-                                        markPriceIndicator), captured, barSeries.numFactory());
+                                        markPriceIndicator), captured, barSeries.numFactory(), capital);
                         seeded = fillFuturesReturnFactors(pnl, capital,
                                 FuturesPerformanceSupport.hasActivityAtIndex(record, captured.beginIndex()), captured,
                                 factors);
@@ -159,7 +162,15 @@ public class Returns implements PerformanceIndicator {
                 });
         this.window = materialized.window();
         this.returnFactors = materialized.factors();
-        this.futuresPnL = materialized.pnl();
+        this.futuresPnL = materialized.pnl() == null
+                ? new FuturesPerformanceSupport.PnLAccumulator(window, barSeries.numFactory())
+                : materialized.pnl();
+        Num spotInitial = representation == ReturnRepresentation.LOG ? barSeries.numFactory().zero()
+                : barSeries.numFactory().one();
+        this.spotReturnFactors = futures ? AnalysisPositionSupport.buffer(window, spotInitial, NaN.NaN)
+                : returnFactors.copy();
+        this.spotFirstRetainedSlotSeeded = !futures && materialized.firstRetainedSlotSeeded();
+        this.spotDefinesHeadPeriod = spotFirstRetainedSlotSeeded;
         this.futuresCapital = record.getInitialCapital() == null ? fallbackCapital : record.getInitialCapital();
         this.futuresMark = markPriceIndicator;
         this.markFuturesExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
@@ -407,6 +418,13 @@ public class Returns implements PerformanceIndicator {
     /**
      * Calculates the returns for a single position.
      *
+     * <p>
+     * Accepted spot period factors remain composed with the native account's return
+     * factors across later updates, including when an ordinary record supplied the
+     * constructor. A retained-head period established by a spot return keeps that
+     * meaning when later native activity arrives.
+     * </p>
+     *
      * @param position   a single position
      * @param finalIndex the index up to which the returns of open positions are
      *                   considered
@@ -429,22 +447,26 @@ public class Returns implements PerformanceIndicator {
                     window.beginIndex(), markFuturesExposure);
             boolean firstActivity = firstBarFuturesActivity
                     || FuturesPerformanceSupport.hasActivityAtIndex(position, window.beginIndex());
-            FuturesPerformanceSupport.PnLAccumulator pnl = futuresPnL == null
-                    ? new FuturesPerformanceSupport.PnLAccumulator(window, barSeries.numFactory())
-                    : futuresPnL.copy();
+            FuturesPerformanceSupport.PnLAccumulator pnl = futuresPnL.copy();
             boolean[] firstReported = new boolean[1];
             AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, returnFactors, staged -> {
                 FuturesPerformanceSupport.addPositionPnL(barSeries, position, finalIndex, window, markFuturesExposure,
-                        futuresMark, pnl);
+                        futuresMark, pnl, capital);
                 Num initial = representation == ReturnRepresentation.LOG ? barSeries.numFactory().zero()
                         : barSeries.numFactory().one();
                 OffsetNumBuffer factors = AnalysisPositionSupport.buffer(window, initial, NaN.NaN);
                 firstReported[0] = fillFuturesReturnFactors(pnl, capital, firstActivity, window, factors);
+                for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
+                    if (representation == ReturnRepresentation.LOG)
+                        factors.add((int) index, spotReturnFactors.get((int) index));
+                    else
+                        factors.multiply((int) index, spotReturnFactors.get((int) index));
+                }
                 staged.replaceWith(factors);
             }, true);
             futuresPnL = pnl;
-            firstRetainedSlotSeeded = firstReported[0];
-            seededFirstBarReturn = firstReported[0] && preWindow;
+            firstRetainedSlotSeeded = firstReported[0] || spotFirstRetainedSlotSeeded;
+            seededFirstBarReturn = firstReported[0] && preWindow && !spotDefinesHeadPeriod;
             preWindowFuturesActivity = preWindow;
             firstBarFuturesActivity = firstActivity;
             rawValues.clear();
@@ -453,8 +475,27 @@ public class Returns implements PerformanceIndicator {
             return;
         }
         boolean[] seeded = new boolean[1];
-        AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, returnFactors,
-                staged -> seeded[0] = calculatePosition(position, finalIndex, window, staged, priced.holdingCost()));
+        OffsetNumBuffer spotFactors = spotReturnFactors.copy();
+        AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, returnFactors, staged -> {
+            Num initial = representation == ReturnRepresentation.LOG ? barSeries.numFactory().zero()
+                    : barSeries.numFactory().one();
+            OffsetNumBuffer contribution = AnalysisPositionSupport.buffer(window, initial, NaN.NaN);
+            seeded[0] = calculatePosition(position, finalIndex, window, contribution, priced.holdingCost());
+            for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
+                Num factor = contribution.get((int) index);
+                if (representation == ReturnRepresentation.LOG) {
+                    staged.add((int) index, factor);
+                    spotFactors.add((int) index, factor);
+                } else {
+                    staged.multiply((int) index, factor);
+                    spotFactors.multiply((int) index, factor);
+                }
+            }
+        });
+        spotReturnFactors = spotFactors;
+        if (seeded[0] && !firstRetainedSlotSeeded)
+            spotDefinesHeadPeriod = true;
+        spotFirstRetainedSlotSeeded |= seeded[0];
         // Reached only once the staged factors were verified and published.
         firstRetainedSlotSeeded |= seeded[0];
         rawValues.clear();
@@ -617,10 +658,15 @@ public class Returns implements PerformanceIndicator {
             boolean firstActivity, AnalysisPositionSupport.Window captured, OffsetNumBuffer factors) {
         if (captured.isEmpty() || capital.isZero())
             return false;
-        boolean firstReported = captured.beginIndex() > 0 && firstActivity;
-        Num previousEquity = capital;
+        boolean firstReported = captured.beginIndex() > 0 && (firstActivity || spotDefinesHeadPeriod);
+        // A spot return that first defined this slot remains a period sample;
+        // later native activity must not replace it with a historical capital seed.
+        Num previousEquity = spotDefinesHeadPeriod && captured.beginIndex() > 0
+                ? pnl.enteringEquity(barSeries.numFactory().one()).multipliedBy(capital)
+                : capital;
         for (long index = captured.beginIndex(); index <= captured.bufferEndIndex(); index++) {
-            Num equity = capital.plus(pnl.get((int) index));
+            pnl.validatePnL((int) index, capital);
+            Num equity = pnl.equity((int) index, barSeries.numFactory().one(), capital);
             if (index > captured.beginIndex() || firstReported) {
                 Num factor = returnFactor(previousEquity, equity);
                 if (representation == ReturnRepresentation.LOG)

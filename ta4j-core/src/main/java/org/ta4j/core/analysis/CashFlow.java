@@ -216,9 +216,12 @@ public class CashFlow implements PerformanceIndicator {
                 });
         this.window = curve.window();
         this.values = curve.values();
-        this.futuresPnL = curve.pnl();
-        this.futuresSpotFactors = futuresPnL == null ? null
-                : AnalysisPositionSupport.buffer(window, barSeries.numFactory().one(), barSeries.numFactory().one());
+        this.futuresPnL = curve.pnl() == null
+                ? new FuturesPerformanceSupport.PnLAccumulator(window, barSeries.numFactory())
+                : curve.pnl();
+        this.futuresSpotFactors = futures
+                ? AnalysisPositionSupport.buffer(window, barSeries.numFactory().one(), barSeries.numFactory().one())
+                : values.copy();
         this.futuresCapital = record.getInitialCapital() == null ? fallbackCapital : record.getInitialCapital();
         this.futuresMark = markPriceIndicator;
         this.markFuturesExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
@@ -237,6 +240,13 @@ public class CashFlow implements PerformanceIndicator {
     /**
      * Calculates the cash flow for a single position (including accrued cashflow
      * for open positions).
+     *
+     * <p>
+     * Spot positions multiply prior equity; native settlement PnL adds a
+     * contribution normalized by the configured account capital or the position's
+     * settlement notional. Both retain entering equity independently of
+     * retained-bar values.
+     * </p>
      *
      * @param position   a single position
      * @param finalIndex index up until cash flow of open positions is considered
@@ -259,63 +269,46 @@ public class CashFlow implements PerformanceIndicator {
             boolean firstActivity = firstBarFuturesActivity
                     || FuturesPerformanceSupport.hasActivityAtIndex(position, window.beginIndex());
             boolean initialReturn = !preWindow && firstActivity;
-            boolean nativeCurve = futuresPnL != null;
-            FuturesPerformanceSupport.PnLAccumulator pnl = futuresPnL == null
-                    ? new FuturesPerformanceSupport.PnLAccumulator(window, barSeries.numFactory())
-                    : futuresPnL.copy();
+            FuturesPerformanceSupport.PnLAccumulator pnl = futuresPnL.copy();
             AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values, staged -> {
                 Num one = barSeries.numFactory().one();
                 FuturesPerformanceSupport.addPositionPnL(barSeries, position, finalIndex, window, markFuturesExposure,
-                        futuresMark, pnl);
+                        futuresMark, pnl, capital, futuresCapital == null);
                 OffsetNumBuffer result = AnalysisPositionSupport.buffer(window, one, one);
                 for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
-                    Num equity = nativeCurve
-                            ? capital.multipliedBy(futuresSpotFactors.get((int) index))
-                                    .plus(pnl.get((int) index))
-                                    .dividedBy(capital)
-                            : staged.get((int) index).plus(pnl.get((int) index).dividedBy(capital));
-                    result.multiply((int) index, equity);
+                    if (futuresCapital != null)
+                        pnl.validatePnL((int) index, capital);
+                    result.multiply((int) index, pnl.equity((int) index, futuresSpotFactors.get((int) index)));
                 }
-                if (!initialReturn && !window.isEmpty()) {
-                    result.multiplyBaseline(result.get(window.beginIndex()));
-                } else if (nativeCurve) {
-                    result.multiplyBaseline(futuresSpotFactors.baseline());
-                }
+                result.multiplyBaseline(pnl.enteringEquity(futuresSpotFactors.baseline()));
                 staged.replaceWith(result);
             }, true);
-            if (nativeCurve) {
-                futuresPnL = pnl;
-            }
+            futuresPnL = pnl;
             preWindowFuturesActivity = preWindow;
             firstBarFuturesActivity = firstActivity;
             initialReturnEligible = initialReturn;
             return;
         }
         if (priced != null) {
-            if (futuresPnL == null) {
-                AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values,
-                        staged -> calculatePosition(position, finalIndex, window, staged, priced.holdingCost()));
-            } else {
-                FuturesPerformanceSupport.PnLAccumulator pnl = futuresPnL.copy();
-                OffsetNumBuffer spotFactors = futuresSpotFactors.copy();
-                AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values, staged -> {
-                    Num one = barSeries.numFactory().one();
-                    OffsetNumBuffer factors = AnalysisPositionSupport.buffer(window, one, one);
-                    // Read prices/costs once and test entry equity against the visible
-                    // curve, while capturing the exact accepted spot multipliers.
-                    calculatePosition(position, finalIndex, window, factors, priced.holdingCost(), staged);
-                    pnl.multiply(factors);
-                    for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
-                        Num factor = factors.get((int) index);
-                        staged.multiply((int) index, factor);
-                        spotFactors.multiply((int) index, factor);
-                    }
-                    staged.multiplyBaseline(factors.baseline());
-                    spotFactors.multiplyBaseline(factors.baseline());
-                });
-                futuresPnL = pnl;
-                futuresSpotFactors = spotFactors;
-            }
+            FuturesPerformanceSupport.PnLAccumulator pnl = futuresPnL.copy();
+            OffsetNumBuffer spotFactors = futuresSpotFactors.copy();
+            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values, staged -> {
+                Num one = barSeries.numFactory().one();
+                OffsetNumBuffer factors = AnalysisPositionSupport.buffer(window, one, one);
+                // Read prices/costs once and test entry equity against the visible
+                // curve, while capturing the exact accepted spot multipliers.
+                calculatePosition(position, finalIndex, window, factors, priced.holdingCost(), staged);
+                pnl.multiply(factors);
+                for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
+                    Num factor = factors.get((int) index);
+                    staged.multiply((int) index, factor);
+                    spotFactors.multiply((int) index, factor);
+                }
+                staged.multiplyBaseline(factors.baseline());
+                spotFactors.multiplyBaseline(factors.baseline());
+            });
+            futuresPnL = pnl;
+            futuresSpotFactors = spotFactors;
         }
     }
 
@@ -566,15 +559,13 @@ public class CashFlow implements PerformanceIndicator {
         boolean markExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
         FuturesPerformanceSupport.Cursor cursor = FuturesPerformanceSupport.cursor(barSeries, record,
                 captured.endIndex(), markExposure, markPrice);
-        FuturesPerformanceSupport.PnLAccumulator pnl = FuturesPerformanceSupport.pnl(cursor, captured, factory);
-        boolean initial = !FuturesPerformanceSupport.hasPreWindowActivity(record, captured.beginIndex(), markExposure)
-                && FuturesPerformanceSupport.hasActivityAtIndex(record, captured.beginIndex());
+        FuturesPerformanceSupport.PnLAccumulator pnl = FuturesPerformanceSupport.pnl(cursor, captured, factory,
+                capital);
         for (long index = captured.beginIndex(); index <= captured.bufferEndIndex(); index++) {
-            Num equity = capital.plus(pnl.get((int) index)).dividedBy(capital);
-            buffer.multiply((int) index, equity);
-            if (index == captured.beginIndex() && !initial)
-                buffer.multiplyBaseline(equity);
+            pnl.validatePnL((int) index, capital);
+            buffer.multiply((int) index, pnl.equity((int) index, factory.one()));
         }
+        buffer.multiplyBaseline(pnl.enteringEquity(factory.one()));
         return pnl;
     }
 }

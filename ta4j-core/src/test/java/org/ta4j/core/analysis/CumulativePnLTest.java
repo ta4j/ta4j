@@ -47,6 +47,7 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NumFactory;
 
 public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indicator<Num>, Num> {
@@ -1314,6 +1315,99 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         assertNumEquals(10, curve.getBaselineValue());
         assertNumEquals(10, curve.getValue(2));
         assertNumEquals(20, curve.getValue(3));
+    }
+
+    @Test
+    public void ordinaryConstructorRetainsNativeComponentsAcrossUpdates() {
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory)
+                .toBuilder()
+                .contractSize(numFactory.one())
+                .build();
+        BaseTradingRecord nativeRecord = FuturesAnalysisTestSupport.crossLotFeeRecord(contract, TradeType.BUY, false);
+        CumulativePnL curve = new CumulativePnL(series, new BaseTradingRecord(), 1, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        for (Position position : nativeRecord.getOpenPositions()) {
+            curve.calculatePosition(position, 1);
+        }
+        assertNumEquals(-1, curve.getValue(1));
+    }
+
+    @Test
+    public void persistentComponentsCoverConstructorOriginsAndOrderedUpdates() {
+        // This owner covers the origin/window/mode/permutation matrix; the other
+        // curve owners exercise representative factor and baseline interactions.
+        for (boolean retained : new boolean[] { false, true }) {
+            for (EquityCurveMode mode : EquityCurveMode.values()) {
+                for (int origin = 0; origin < 3; origin++) {
+                    for (int[] order : List.of(new int[] { 0, 1, 2 }, new int[] { 0, 2, 1 }, new int[] { 2, 0, 1 },
+                            new int[] { 1, 2, 0 })) {
+                        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 100, 100);
+                        if (retained)
+                            series.setMaximumBarCount(2);
+                        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory)
+                                .toBuilder()
+                                .contractSize(numFactory.one())
+                                .build();
+                        Position spot = new Position(Trade.buyAt(0, numFactory.hundred(), numFactory.one()),
+                                Trade.sellAt(2, numFactory.numOf(110), numFactory.one()), new ZeroCostModel(),
+                                new ZeroCostModel());
+                        TradingRecord initial = origin == 2
+                                ? FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500)
+                                : origin == 1 ? new BaseTradingRecord(spot) : new BaseTradingRecord();
+                        CumulativePnL curve = new CumulativePnL(series, initial, 3, mode,
+                                OpenPositionHandling.MARK_TO_MARKET);
+                        BaseTradingRecord nativeRecord = FuturesAnalysisTestSupport.crossLotFeeRecord(contract,
+                                TradeType.BUY, false);
+                        List<Position> updates = List.of(nativeRecord.getOpenPositions().getFirst(),
+                                nativeRecord.getOpenPositions().getLast(), spot);
+                        for (int next : order)
+                            curve.calculatePosition(updates.get(next), 3);
+                        // Raw native fees -1e16-1+1e16=-1; each spot position adds 10.
+                        double expected = origin == 1 ? 19 : 9;
+                        assertNumEquals(expected, curve.getValue(2));
+                        assertNumEquals(expected, curve.getValue(3));
+                        assertNumEquals(retained ? -1 : 0, curve.getBaselineValue());
+                        BaseTradingRecord zero = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+                        zero.operate(
+                                FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1, 100, List.of()));
+                        zero.operate(
+                                FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 1, 100, List.of()));
+                        curve.calculatePosition(zero.getPositions().getFirst(), 3);
+                        assertNumEquals(expected, curve.getValue(3));
+                        assertNumEquals(retained ? -1 : 0, curve.getBaselineValue());
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void retainedBaselineKeepsSubprecisionComponentsWithoutRejectingTheCurve() {
+        NumFactory source = DecimalNumFactory.getInstance();
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(source)
+                .toBuilder()
+                .contractSize(source.one())
+                .build();
+        TradeFee tiny = FuturesAnalysisTestSupport.commission(source, 0)
+                .toBuilder()
+                .amount(source.numOf("1e-400"))
+                .build();
+        BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, source, 500);
+        record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1, 100, List.of(tiny)));
+        record.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.SELL, 1, 101, List.of()));
+        BarSeries series = FuturesAnalysisTestSupport.series(DoubleNumFactory.getInstance(), 100, 100, 101, 101);
+        series.setMaximumBarCount(2);
+        CumulativePnL curve = new CumulativePnL(series, record, 3, EquityCurveMode.REALIZED,
+                OpenPositionHandling.MARK_TO_MARKET);
+        assertNumEquals(0, curve.getBaselineValue());
+        assertNumEquals(1, curve.getValue(2));
+        BaseTradingRecord carry = FuturesAnalysisTestSupport.fundedRecord(contract, source, 500);
+        carry.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1, 100, List.of()));
+        carry.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1, 110, List.of()));
+        curve.calculatePosition(carry.getPositions().getFirst(), 3);
+        assertNumEquals(10, curve.getBaselineValue());
+        assertNumEquals(11, curve.getValue(2));
     }
 
     @Test
