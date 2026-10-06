@@ -4,6 +4,7 @@
 package org.ta4j.core.acceleration;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -23,49 +24,45 @@ import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.acceleration.AccelerationPlan.Decoder;
 
 /**
  * Scoped entry point for accelerated indicator evaluation.
  *
  * <p>
- * Providers never observe ta4j domain graphs. An {@link AcceleratableIndicator}
- * plans a supported calculation into an immutable versioned
+ * Providers never observe ta4j domain graphs. A {@link KernelIndicator}
+ * snapshots a run of consecutive decision indexes into an immutable versioned
  * {@link KernelRequest} built exclusively from primitives, workload shapes, and
  * numeric contracts. Providers answer with raw primitives
  * ({@link KernelResult}); the runtime validates the raw output, reconstructs
- * domain values through the plan's decoder, and falls back to the scalar lane
- * on any failure. An indicator whose plan declines never reaches provider code,
- * and assessment never initializes native code.
+ * domain values through the indicator's decoder, and falls back to the CPU on
+ * any failure. The CPU lane runs the indicator's own {@link Kernel} over the
+ * same request shape, so an accelerated value is the CPU value. Assessment
+ * never initializes native code.
  *
  * <p>
  * Selection is cost-based. Every discovered provider is assessed; supported
  * assessments are ranked by predicted end-to-end cost with a documented stable
- * tie-break, compared against the plan's scalar baseline (CPU crossover), and
+ * tie-break, compared against the kernel's scalar baseline (CPU crossover), and
  * executed best-first with per-attempt fallback. Failure isolation is keyed by
  * provider, device, and operation version.
  *
  * <p>
- * Plan declines are typed. A transient decline (a warm-up prefix, a stale
- * snapshot, a resource limit a shorter range could satisfy) only defers the
- * range to its retry index, so an early read cannot disable acceleration for
- * the rest of the scope; a permanent decline falls back to the scalar lane for
- * the whole scope. Provider assessment declines are scope-level decisions about
- * the request shape and are recorded for the scope as well, but their typed
- * diagnostic — provider id, accuracy or library requirement, memory detail — is
- * preserved instead of being replaced by a generic code. When no provider can
- * run a request, the scope diagnostic keeps the first provider-attributed
- * decline.
+ * A read whose index cannot start a batch — an unavailable index, a window the
+ * series no longer retains, a series changed mid-run — is computed on the CPU
+ * and the next read tries again, so an early read cannot disable acceleration
+ * for the rest of the scope. A workload that can never be batched, and a
+ * request no provider accepts, falls back to the CPU for the whole scope.
+ * Provider declines keep their typed diagnostic — provider id, accuracy or
+ * library requirement, memory detail — instead of a generic code. When no
+ * provider can run a request, the scope diagnostic keeps the first
+ * provider-attributed decline.
  *
  * <h2>Eligible indicators</h2>
  * <p>
- * Today exactly one calculation is eligible:
- * {@link org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator}
- * built with the default shock-path method (no custom {@code MonteCarloMethod})
- * over a {@code DoubleNum} series. It lowers to
- * {@link Operation#MONTE_CARLO_SHOCK_PATHS_V1}. Every other indicator, and any
- * forecast with a custom method or another {@code Num} type, always runs on the
- * scalar lane; the scope diagnostic says why.
+ * Every {@link KernelIndicator}. Today that is
+ * {@link org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator},
+ * whose kernel is {@link Operation#MONTE_CARLO_SHOCK_PATHS_V1}. Every other
+ * indicator always runs on the CPU.
  *
  * <h2>Control</h2>
  * <ul>
@@ -82,11 +79,6 @@ import org.ta4j.core.acceleration.AccelerationPlan.Decoder;
  * <li>{@link #lastDiagnostic()} reports whether the current or last closed
  * scope accelerated and, if not, the typed reason.</li>
  * </ul>
- *
- * <h2>Making another indicator eligible</h2>
- * <p>
- * Implement {@link AcceleratableIndicator}; its documentation states the
- * conditions a calculation must meet.
  *
  * @since 0.26.1
  */
@@ -159,21 +151,54 @@ public final class AccelerationRuntime {
     }
 
     /**
-     * Returns an accelerated value from the current scope when one was successfully
-     * produced.
+     * Returns the value the current scope's validated batch holds for an index,
+     * planning and executing a batch starting at {@code index} when none covers it.
      *
-     * @param indicator indicator requesting a value
-     * @param index     requested index
-     * @param <T>       value type
-     * @return accelerated value, or empty to use scalar evaluation
-     * @since 0.26.1
+     * @return accelerated value, or {@code null} to compute on the CPU
      */
-    public static <T> Optional<T> value(AcceleratableIndicator<T> indicator, int index) {
+    static <T> T batchValue(KernelIndicator<T> indicator, int index) {
         Context context = CURRENT.get();
         if (context == null || context.suspended) {
-            return Optional.empty();
+            return null;
         }
         return context.value(indicator, index);
+    }
+
+    /**
+     * Builds the request for {@code rows} decision indexes starting at
+     * {@code fromInclusive}, shared by the CPU lane and provider batches so both
+     * run the same request shape.
+     */
+    static KernelRequest request(Kernel kernel, int fromInclusive, int rows, double[][] rowInputs, double[] window) {
+        int windowLength = kernel.windowLength();
+        List<double[]> inputs = new ArrayList<>(rowInputs.length + (windowLength > 0 ? 1 : 0));
+        Collections.addAll(inputs, rowInputs);
+        if (windowLength > 0) {
+            inputs.add(window);
+        }
+        long scalarNanosPerRow = kernel.scalarNanosPerRow();
+        long scalarNanos = scalarNanosPerRow <= 0L ? 0L : saturatedMultiply(scalarNanosPerRow, rows);
+        long peakDeviceBytes = saturatedAdd(fixedDeviceBytes(kernel),
+                saturatedMultiply(kernel.deviceBytesPerRow(), rows));
+        return new KernelRequest(kernel.operation(), fromInclusive, fromInclusive + rows - 1, kernel.outputsPerRow(),
+                NumericEncoding.FLOAT64, Determinism.BITWISE_IDENTICAL, kernel.seed(), Double.NaN, kernel.params(),
+                inputs, scalarNanos, peakDeviceBytes);
+    }
+
+    /** Device bytes of the window prefix shared by every row of a batch. */
+    private static long fixedDeviceBytes(Kernel kernel) {
+        return Math.max(0L, kernel.windowLength() - 1L) * Double.BYTES;
+    }
+
+    private static long saturatedMultiply(long left, long right) {
+        long high = Math.multiplyHigh(left, right);
+        long low = left * right;
+        return high == 0L && low >= 0L ? low : Long.MAX_VALUE;
+    }
+
+    private static long saturatedAdd(long left, long right) {
+        long sum = left + right;
+        return sum < 0L ? Long.MAX_VALUE : sum;
     }
 
     /**
@@ -393,7 +418,7 @@ public final class AccelerationRuntime {
         /** No optional provider artifact was present. */
         NO_PROVIDER,
 
-        /** No planner claims the calculation, or the workload is ineligible. */
+        /** The workload can never be batched, or no kernel indicator was read. */
         UNSUPPORTED,
 
         /** A provider or device was unavailable. */
@@ -430,9 +455,8 @@ public final class AccelerationRuntime {
      * @param params                  operation parameters (ordinals, counts,
      *                                factors) defined by the operation contract
      * @param inputs                  read-only primitive input buffers
-     * @param estimatedScalarNanos    planner scalar-baseline estimate for the
-     *                                crossover comparison, non-positive when
-     *                                unknown
+     * @param estimatedScalarNanos    scalar-baseline estimate for the crossover
+     *                                comparison, non-positive when unknown
      * @param peakDeviceBytesEstimate declared peak device memory in bytes
      * @since 0.26.1
      */
@@ -487,6 +511,29 @@ public final class AccelerationRuntime {
          */
         public int expectedOutputLength() {
             return Math.multiplyExact(size(), outputsPerIndex);
+        }
+
+        /**
+         * Returns one element of an input buffer without copying it.
+         *
+         * @param buffer   input buffer index
+         * @param position element position within the buffer
+         * @return input value
+         * @since 0.26.1
+         */
+        public double input(int buffer, int position) {
+            return inputs.get(buffer)[position];
+        }
+
+        /**
+         * Returns one operation parameter without copying the parameter array.
+         *
+         * @param index parameter index
+         * @return parameter value
+         * @since 0.26.1
+         */
+        public double param(int index) {
+            return params[index];
         }
 
         /**
@@ -632,7 +679,6 @@ public final class AccelerationRuntime {
         private final long startedNanos = System.nanoTime();
         private final IdentityHashMap<Indicator<?>, CachedBatch> batches = new IdentityHashMap<>();
         private final Set<Indicator<?>> scalarFallback = Collections.newSetFromMap(new IdentityHashMap<>());
-        private final IdentityHashMap<Indicator<?>, Integer> retries = new IdentityHashMap<>();
         private final Map<String, String> quarantine = new HashMap<>();
 
         private boolean suspended;
@@ -652,18 +698,15 @@ public final class AccelerationRuntime {
         }
 
         @SuppressWarnings("unchecked")
-        private <T> Optional<T> value(AcceleratableIndicator<T> indicator, int index) {
+        private <T> T value(KernelIndicator<T> indicator, int index) {
             Objects.requireNonNull(indicator, "indicator must not be null");
-            BarSeries indicatorSeries = indicator.getBarSeries();
-            if (index < fromInclusive || index > toInclusive || fromInclusive < indicatorSeries.getBeginIndex()
-                    || toInclusive > indicatorSeries.getEndIndex() || scalarFallback.contains(indicator)
-                    || retryPending(indicator, index)) {
-                return Optional.empty();
+            if (index < fromInclusive || index > toInclusive || scalarFallback.contains(indicator)) {
+                return null;
             }
+            BarSeries indicatorSeries = indicator.getBarSeries();
             CachedBatch cached = batches.get(indicator);
             if (cached != null && (!cached.matchesCurrentSeries(indicatorSeries) || index > cached.toInclusive)) {
                 batches.remove(indicator);
-                retries.remove(indicator);
                 cached = null;
             }
             if (cached == null) {
@@ -671,48 +714,40 @@ public final class AccelerationRuntime {
                 if (evaluation.batch() == null) {
                     if (evaluation.permanent()) {
                         scalarFallback.add(indicator);
-                    } else {
-                        retries.put(indicator, evaluation.retryFromIndex());
                     }
-                    return Optional.empty();
+                    return null;
                 }
                 batches.put(indicator, evaluation.batch());
-                retries.remove(indicator);
                 cached = evaluation.batch();
             }
-            Object decoded = cached.value(index);
-            return decoded == null ? Optional.empty() : Optional.of((T) decoded);
+            return (T) cached.value(index);
         }
 
-        private boolean retryPending(Indicator<?> indicator, int index) {
-            Integer retryFromIndex = retries.get(indicator);
-            return retryFromIndex != null && index < retryFromIndex;
-        }
-
-        private <T> Evaluation evaluate(AcceleratableIndicator<T> indicator, int index) {
+        private <T> Evaluation evaluate(KernelIndicator<T> indicator, int index) {
             requested = true;
             BarSeries indicatorSeries = indicator.getBarSeries();
-            BarSeriesChangeSnapshot beforePlanning = indicatorSeries.getBarSeriesChangeSnapshot(-1L);
             if (indicatorSeries.getBarHistoryRevision() < 0L) {
                 diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none",
                         "series does not track bar-data revisions; accelerated batches cannot be invalidated");
                 return Evaluation.unsupported();
             }
-            AccelerationPlan<T> plan;
+            BarSeriesChangeSnapshot beforePlanning = indicatorSeries.getBarSeriesChangeSnapshot(-1L);
+            KernelRequest request;
             try {
-                plan = Objects.requireNonNull(indicator.planAcceleration(index, toInclusive, memoryLimitBytes),
-                        "planAcceleration returned null");
+                Plan plan = plan(indicator, index);
+                if (plan.ineligibleReason() != null) {
+                    diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none", plan.ineligibleReason());
+                    return Evaluation.unsupported();
+                }
+                request = plan.request();
             } catch (LinkageError | RuntimeException exception) {
                 diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none", "planning failed for "
                         + indicator.getClass().getSimpleName() + ": " + failureMessage(exception));
                 return Evaluation.unsupported();
             }
-            if (!plan.isPlanned()) {
-                diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none", plan.reason());
-                return plan.isPermanentDecline() ? Evaluation.unsupported()
-                        : Evaluation.retryFrom(plan.retryFromIndex());
+            if (request == null) {
+                return Evaluation.declined();
             }
-            KernelRequest request = plan.request();
             if (request.peakDeviceBytesEstimate() > memoryLimitBytes) {
                 diagnostic = new Diagnostic(DiagnosticCode.UNSUPPORTED, "none", "peak device estimate "
                         + request.peakDeviceBytesEstimate() + " exceeds budget " + memoryLimitBytes);
@@ -738,7 +773,7 @@ public final class AccelerationRuntime {
                 if (!matchesSeriesState(indicatorSeries, beforePlanning)) {
                     diagnostic = new Diagnostic(DiagnosticCode.STALE_SERIES, candidate.providerId,
                             "series changed after planning and before provider execution");
-                    return Evaluation.retryFrom(index + 1);
+                    return Evaluation.declined();
                 }
                 KernelResult result = null;
                 suspended = true;
@@ -759,7 +794,7 @@ public final class AccelerationRuntime {
                 if (!sameSeriesState(beforePlanning, after)) {
                     diagnostic = new Diagnostic(DiagnosticCode.STALE_SERIES, candidate.providerId,
                             "series changed while the provider was evaluating");
-                    return Evaluation.retryFrom(index + 1);
+                    return Evaluation.declined();
                 }
                 if (result == null) {
                     continue;
@@ -774,7 +809,7 @@ public final class AccelerationRuntime {
                 }
                 List<Object> decoded;
                 try {
-                    decoded = decodeAll(request, rawOutputs, plan.decoder());
+                    decoded = decodeAll(request, rawOutputs, indicator);
                 } catch (LinkageError | RuntimeException exception) {
                     quarantine.put(quarantineKey(candidate, request), failureMessage(exception));
                     diagnostic = new Diagnostic(DiagnosticCode.INVALID_RESULT, candidate.providerId,
@@ -789,7 +824,7 @@ public final class AccelerationRuntime {
                 if (!sameSeriesState(after, published)) {
                     diagnostic = new Diagnostic(DiagnosticCode.STALE_SERIES, candidate.providerId,
                             "series changed while decoded results were being prepared");
-                    return Evaluation.retryFrom(index + 1);
+                    return Evaluation.declined();
                 }
                 effectiveBackend = candidate.assessment.backend();
                 providerInUse = candidate.providerId;
@@ -804,6 +839,98 @@ public final class AccelerationRuntime {
                         "every eligible provider is quarantined in this scope");
             }
             return Evaluation.unsupported();
+        }
+
+        /**
+         * Snapshots the longest run of available decision indexes starting at
+         * {@code index} that fits the host and device memory budgets.
+         *
+         * @return the request, a {@code null} request when {@code index} itself is
+         *         unavailable, or the reason the workload can never be batched
+         */
+        private Plan plan(KernelIndicator<?> indicator, int index) {
+            Kernel kernel = indicator.kernel();
+            int windowLength = kernel.windowLength();
+            int inputsPerRow = kernel.inputsPerRow();
+            int outputsPerRow = kernel.outputsPerRow();
+            long deviceBytesPerRow = kernel.deviceBytesPerRow();
+            if (windowLength < 0 || inputsPerRow < 0 || outputsPerRow < 1 || deviceBytesPerRow < 0L) {
+                return Plan.ineligible("kernel declares an invalid row shape");
+            }
+            BarSeries series = indicator.getBarSeries();
+            long windowStart = (long) index - windowLength + 1L;
+            if (index < series.getBeginIndex() || windowStart < series.getBeginIndex()) {
+                return Plan.unavailable();
+            }
+            int prefixLength = Math.max(0, windowLength - 1);
+            long rowHostBytes = (inputsPerRow + (windowLength > 0 ? 1L : 0L)) * Double.BYTES * 3L
+                    + (long) outputsPerRow * Double.BYTES * 4L;
+            long fixedHostBytes = (long) prefixLength * Double.BYTES * 3L;
+            long hostRows = (Runtime.getRuntime().maxMemory() / 4L - fixedHostBytes) / rowHostBytes;
+            long deviceRows = deviceBytesPerRow == 0L ? Long.MAX_VALUE
+                    : (memoryLimitBytes - fixedDeviceBytes(kernel)) / deviceBytesPerRow;
+            long arrayRows = Math.min(Integer.MAX_VALUE - (long) prefixLength, Integer.MAX_VALUE / outputsPerRow);
+            long fittingRows = Math.min(Math.min(hostRows, deviceRows), arrayRows);
+            if (fittingRows < 1L) {
+                return Plan.ineligible("a single " + kernel.operation() + " row exceeds the host, device ("
+                        + memoryLimitBytes + " bytes) or array budget");
+            }
+            int maxRows = (int) Math.min(fittingRows, (long) Math.min(toInclusive, series.getEndIndex()) - index + 1L);
+            if (maxRows < 1) {
+                return Plan.unavailable();
+            }
+            double[] rowInputs = new double[inputsPerRow];
+            if (!indicator.snapshot(index, rowInputs)) {
+                return Plan.unavailable();
+            }
+            double[] window = new double[prefixLength + Math.min(maxRows, 1024)];
+            for (int offset = 0; offset < prefixLength; offset++) {
+                double value = indicator.windowValue((int) windowStart + offset);
+                if (Double.isNaN(value)) {
+                    return Plan.unavailable();
+                }
+                window[offset] = value;
+            }
+            double[][] columns = new double[inputsPerRow][Math.min(maxRows, 1024)];
+            int rows = 0;
+            while (true) {
+                int decisionIndex = index + rows;
+                if (windowLength > 0) {
+                    double newest = indicator.windowValue(decisionIndex);
+                    if (Double.isNaN(newest)) {
+                        break;
+                    }
+                    if (prefixLength + rows == window.length) {
+                        window = Arrays.copyOf(window, prefixLength + grownCapacity(rows, maxRows));
+                    }
+                    window[prefixLength + rows] = newest;
+                }
+                if (inputsPerRow > 0 && rows == columns[0].length) {
+                    int capacity = grownCapacity(rows, maxRows);
+                    for (int buffer = 0; buffer < inputsPerRow; buffer++) {
+                        columns[buffer] = Arrays.copyOf(columns[buffer], capacity);
+                    }
+                }
+                for (int buffer = 0; buffer < inputsPerRow; buffer++) {
+                    columns[buffer][rows] = rowInputs[buffer];
+                }
+                rows++;
+                if (rows == maxRows || !indicator.snapshot(index + rows, rowInputs)) {
+                    break;
+                }
+            }
+            if (rows == 0) {
+                return Plan.unavailable();
+            }
+            for (int buffer = 0; buffer < inputsPerRow; buffer++) {
+                columns[buffer] = Arrays.copyOf(columns[buffer], rows);
+            }
+            double[] rowWindow = windowLength > 0 ? Arrays.copyOf(window, prefixLength + rows) : null;
+            return new Plan(request(kernel, index, rows, columns, rowWindow), null);
+        }
+
+        private static int grownCapacity(int rows, int maxRows) {
+            return (int) Math.min(maxRows, Math.max(1L, rows * 2L));
         }
 
         private List<RankedProvider> assess(KernelRequest request, List<Provider> providers) {
@@ -893,14 +1020,15 @@ public final class AccelerationRuntime {
             return null;
         }
 
-        private static List<Object> decodeAll(KernelRequest request, double[] rawOutputs, Decoder<?> decoder) {
+        private static List<Object> decodeAll(KernelRequest request, double[] rawOutputs,
+                KernelIndicator<?> indicator) {
             List<Object> decoded = new ArrayList<>(request.size());
             // One slice is reused across indexes; decoders must not retain it.
             double[] slice = new double[request.outputsPerIndex()];
             for (int position = 0; position < request.size(); position++) {
                 int index = request.fromInclusive() + position;
                 System.arraycopy(rawOutputs, position * request.outputsPerIndex(), slice, 0, slice.length);
-                Object value = decoder.decode(slice, index);
+                Object value = indicator.decode(index, slice);
                 if (value == null) {
                     throw new IllegalStateException(
                             "decoder returned null for index " + index + " of " + request.operation());
@@ -958,22 +1086,37 @@ public final class AccelerationRuntime {
     }
 
     /**
-     * Result of one runtime evaluation attempt: a publishable batch, or the typed
-     * disposition of a decline. A permanent decline sends the indicator to the
-     * scope's scalar lane; a transient one only defers it to a retry index.
+     * Planned request of one decision index: a request, a {@code null} request when
+     * the index is unavailable, or the reason the workload can never be batched.
      */
-    private record Evaluation(CachedBatch batch, boolean permanent, int retryFromIndex) {
+    private record Plan(KernelRequest request, String ineligibleReason) {
+
+        private static Plan unavailable() {
+            return new Plan(null, null);
+        }
+
+        private static Plan ineligible(String reason) {
+            return new Plan(null, reason);
+        }
+    }
+
+    /**
+     * Result of one runtime evaluation attempt: a publishable batch, a permanent
+     * decline sending the indicator to the CPU for the whole scope, or a transient
+     * decline computing only the current read on the CPU.
+     */
+    private record Evaluation(CachedBatch batch, boolean permanent) {
 
         private static Evaluation accelerated(CachedBatch batch) {
-            return new Evaluation(batch, false, -1);
+            return new Evaluation(batch, false);
         }
 
         private static Evaluation unsupported() {
-            return new Evaluation(null, true, -1);
+            return new Evaluation(null, true);
         }
 
-        private static Evaluation retryFrom(int retryFromIndex) {
-            return new Evaluation(null, false, retryFromIndex);
+        private static Evaluation declined() {
+            return new Evaluation(null, false);
         }
     }
 

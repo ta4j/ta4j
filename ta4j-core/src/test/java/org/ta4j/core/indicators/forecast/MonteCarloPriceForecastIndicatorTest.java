@@ -238,7 +238,7 @@ public class MonteCarloPriceForecastIndicatorTest
         LogReturnIndicator returns = new LogReturnIndicator(series);
         EwmaReturnForecastStateIndicator state = new EwmaReturnForecastStateIndicator(returns, 2, 0.5,
                 EwmaReturnForecastStateIndicator.DriftMode.ZERO);
-        MonteCarloPriceForecastIndicator forecast = MonteCarloPriceForecastIndicator
+        CustomMonteCarloPriceForecastIndicator forecast = MonteCarloPriceForecastIndicator
                 .builder(new ClosePriceIndicator(series), state)
                 .horizon(1)
                 .iterationCount(25)

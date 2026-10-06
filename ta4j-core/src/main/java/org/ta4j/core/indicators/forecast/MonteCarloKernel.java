@@ -3,23 +3,32 @@
  */
 package org.ta4j.core.indicators.forecast;
 
+import java.util.Objects;
+
+import org.ta4j.core.acceleration.AccelerationRuntime.KernelRequest;
+import org.ta4j.core.acceleration.AccelerationRuntime.Operation;
+import org.ta4j.core.acceleration.Kernel;
+import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.ShockModel;
+import org.ta4j.core.indicators.forecast.MonteCarloReturnProjectionIndicator.VolatilityUpdateMode;
+
 /**
- * Versioned native-kernel contract for
- * {@link org.ta4j.core.acceleration.AccelerationRuntime.Operation#MONTE_CARLO_SHOCK_PATHS_V1}.
+ * The {@link Kernel} of {@link MonteCarloPriceForecastIndicator}: the versioned
+ * contract of {@link Operation#MONTE_CARLO_SHOCK_PATHS_V1} and its CPU
+ * implementation.
  *
  * <p>
- * The core planner snapshots every kernel input into primitives; providers
- * simulate the paths and return raw cumulative log-returns. Core maps them to
- * terminal prices through the scalar lane's own guards and exponential, so no
- * provider ever evaluates {@code exp}, {@code pow}, or the terminal guards.
- * Scalar parity is bitwise: for identical inputs the kernel must reproduce the
- * scalar lane's cumulative log-returns exactly.
+ * The indicator snapshots every kernel input into primitives; the kernel
+ * simulates the paths and returns raw cumulative log-returns. The indicator
+ * maps them to terminal prices through its own guards and exponential, so no
+ * provider ever evaluates {@code exp}, {@code pow}, or the terminal guards. A
+ * provider must reproduce {@link #run(KernelRequest, int, double[])} bit for
+ * bit.
  *
  * <p>
  * Input buffers, indexed by the {@code INPUT_*} constants:
  * <ol>
- * <li>{@code prices} — spot price per decision index ({@code [n]}); read only
- * by core when decoding, providers may ignore it.</li>
+ * <li>{@code prices} — spot price per decision index ({@code [n]}); the kernel
+ * ignores it.</li>
  * <li>{@code means} — starting log-return mean per decision index
  * ({@code [n]}).</li>
  * <li>{@code drifts} — forward drift assumption per decision index
@@ -35,10 +44,9 @@ package org.ta4j.core.indicators.forecast;
  * Request parameters are indexed by the {@code PARAM_*} constants. The base
  * seed travels in the request seed field. Output is row-major cumulative
  * log-returns ({@code [n][iterationCount]}). A non-finite value means the
- * scalar lane reports that decision index unstable; the runtime cannot tell it
- * from a faulty provider, so a batch containing one is rejected, the provider
- * is quarantined for this operation, and the indicator is recomputed on the
- * scalar lane.
+ * decision index is reported unstable; the runtime cannot tell it from a faulty
+ * provider, so a batch containing one is rejected, the provider is quarantined
+ * for this operation, and the indicator is recomputed on the CPU.
  *
  * <p>
  * Path algorithm for decision row {@code r} at decision index {@code i} and
@@ -84,7 +92,7 @@ package org.ta4j.core.indicators.forecast;
  *
  * @since 0.26.1
  */
-public final class MonteCarloKernel {
+public final class MonteCarloKernel implements Kernel {
 
     /** Operation buffer order: spot prices. */
     public static final int INPUT_PRICES = 0;
@@ -172,7 +180,185 @@ public final class MonteCarloKernel {
 
     static final double DOUBLE_UNIT = 0x1.0p-53;
 
-    private MonteCarloKernel() {
+    /** Order-of-magnitude CPU cost per simulated path step, in nanoseconds. */
+    private static final long NANOS_PER_PATH_STEP = 50L;
+
+    /** Per-row inputs: price, mean, drift and variance. */
+    private static final int INPUTS_PER_ROW = 4;
+
+    private final MonteCarloSettings settings;
+    private final int shockModel;
+    private final int volatilityUpdateMode;
+    private final double volatilityDecayFactor;
+
+    MonteCarloKernel(MonteCarloSettings settings, ShockModel shockModel, VolatilityUpdateMode volatilityUpdateMode,
+            double volatilityDecayFactor) {
+        this.settings = Objects.requireNonNull(settings, "settings must not be null");
+        this.shockModel = switch (Objects.requireNonNull(shockModel, "shockModel must not be null")) {
+        case HISTORICAL_BOOTSTRAP -> SHOCK_HISTORICAL_BOOTSTRAP;
+        case STANDARDIZED_EMPIRICAL -> SHOCK_STANDARDIZED_EMPIRICAL;
+        case SMOOTHED_EMPIRICAL -> SHOCK_SMOOTHED_EMPIRICAL;
+        case NORMAL -> SHOCK_NORMAL;
+        };
+        this.volatilityUpdateMode = switch (Objects.requireNonNull(volatilityUpdateMode,
+                "volatilityUpdateMode must not be null")) {
+        case CONSTANT -> VOLATILITY_CONSTANT;
+        case EWMA -> VOLATILITY_EWMA;
+        };
+        if (Double.isNaN(volatilityDecayFactor) || volatilityDecayFactor <= 0d || volatilityDecayFactor >= 1d) {
+            throw new IllegalArgumentException("volatilityDecayFactor must be in (0, 1)");
+        }
+        this.volatilityDecayFactor = volatilityDecayFactor;
+    }
+
+    MonteCarloSettings settings() {
+        return settings;
+    }
+
+    @Override
+    public Operation operation() {
+        return Operation.MONTE_CARLO_SHOCK_PATHS_V1;
+    }
+
+    @Override
+    public long seed() {
+        return settings.seed();
+    }
+
+    @Override
+    public double[] params() {
+        double[] params = new double[PARAM_COUNT];
+        params[PARAM_SHOCK_MODEL] = shockModel;
+        params[PARAM_VOLATILITY_MODE] = volatilityUpdateMode;
+        params[PARAM_HORIZON] = settings.horizon();
+        params[PARAM_ITERATIONS] = settings.iterationCount();
+        params[PARAM_LOOKBACK] = settings.lookbackBarCount();
+        params[PARAM_DECAY] = volatilityDecayFactor;
+        params[PARAM_SMOOTHING_FACTOR] = smoothingBandwidthFactor(settings.lookbackBarCount());
+        return params;
+    }
+
+    @Override
+    public int inputsPerRow() {
+        return INPUTS_PER_ROW;
+    }
+
+    @Override
+    public int windowLength() {
+        return settings.lookbackBarCount();
+    }
+
+    @Override
+    public int outputsPerRow() {
+        return settings.iterationCount();
+    }
+
+    /**
+     * Four scalar inputs and one new window return, the output paths, and one
+     * per-step workspace value per path.
+     */
+    @Override
+    public long deviceBytesPerRow() {
+        try {
+            long outputBytes = Math.multiplyExact((long) settings.iterationCount(), Double.BYTES);
+            return Math.addExact((INPUTS_PER_ROW + 1L) * Double.BYTES,
+                    Math.addExact(outputBytes, Math.multiplyExact(outputBytes, settings.horizon())));
+        } catch (ArithmeticException exception) {
+            return Long.MAX_VALUE;
+        }
+    }
+
+    @Override
+    public long scalarNanosPerRow() {
+        long steps = (long) settings.iterationCount() * settings.horizon();
+        return steps > Long.MAX_VALUE / NANOS_PER_PATH_STEP ? Long.MAX_VALUE : steps * NANOS_PER_PATH_STEP;
+    }
+
+    @Override
+    public void run(KernelRequest request, int row, double[] outputs) {
+        int model = (int) request.param(PARAM_SHOCK_MODEL);
+        boolean ewma = (int) request.param(PARAM_VOLATILITY_MODE) == VOLATILITY_EWMA;
+        int horizon = (int) request.param(PARAM_HORIZON);
+        int iterations = (int) request.param(PARAM_ITERATIONS);
+        int lookback = (int) request.param(PARAM_LOOKBACK);
+        double decay = request.param(PARAM_DECAY);
+        double oneMinusDecay = 1d - decay;
+        int decisionIndex = request.fromInclusive() + row;
+        double startMean = request.input(INPUT_MEANS, row);
+        double drift = request.input(INPUT_DRIFTS, row);
+        double startVariance = request.input(INPUT_VARIANCES, row);
+        boolean bootstrap = model == SHOCK_HISTORICAL_BOOTSTRAP;
+        boolean normal = model == SHOCK_NORMAL;
+        double startVolatility = startVariance == 0d ? 0d : Math.sqrt(startVariance);
+        boolean zeroShocks = !bootstrap && !normal && startVolatility == 0d;
+        double[] table = null;
+        double bandwidth = 0d;
+        if (!normal && !zeroShocks) {
+            table = new double[lookback];
+            for (int offset = 0; offset < lookback; offset++) {
+                double value = request.input(INPUT_RETURNS, row + offset);
+                table[offset] = bootstrap ? value : (value - startMean) / startVolatility;
+            }
+            if (model == SHOCK_SMOOTHED_EMPIRICAL) {
+                bandwidth = bandwidth(table, request.param(PARAM_SMOOTHING_FACTOR));
+            }
+        }
+        MonteCarloSimulation.DeterministicRandom random = MonteCarloSimulation.DeterministicRandom
+                .forPath(request.seed(), decisionIndex, horizon, 0);
+        for (int path = 0; path < iterations; path++) {
+            random.resetToPath(request.seed(), decisionIndex, horizon, path);
+            double cumulative = 0d;
+            double mean = startMean;
+            double variance = startVariance;
+            double volatility = startVolatility;
+            for (int step = 0; step < horizon; step++) {
+                double shock;
+                if (normal) {
+                    shock = random.nextGaussian();
+                } else if (zeroShocks) {
+                    shock = 0d;
+                } else {
+                    shock = table[random.nextInt(lookback)];
+                    if (bandwidth != 0d) {
+                        shock = shock + random.nextGaussian() * bandwidth;
+                    }
+                }
+                double stepReturn = bootstrap ? shock : drift + volatility * shock;
+                cumulative = cumulative + stepReturn;
+                if (ewma) {
+                    double deviation = stepReturn - mean;
+                    mean = mean * decay + stepReturn * oneMinusDecay;
+                    variance = variance * decay + deviation * deviation * oneMinusDecay;
+                    volatility = variance == 0d ? 0d : Math.sqrt(variance);
+                }
+            }
+            outputs[path] = cumulative;
+        }
+    }
+
+    /**
+     * Silverman bandwidth of the standardized shocks, {@code 0} when their sample
+     * variance is degenerate.
+     */
+    private static double bandwidth(double[] shocks, double factor) {
+        if (shocks.length < 2) {
+            return 0d;
+        }
+        double sum = 0d;
+        for (double shock : shocks) {
+            sum = sum + shock;
+        }
+        double mean = sum / shocks.length;
+        double squaredDeviationSum = 0d;
+        for (double shock : shocks) {
+            double deviation = shock - mean;
+            squaredDeviationSum = squaredDeviationSum + deviation * deviation;
+        }
+        double variance = squaredDeviationSum / (shocks.length - 1L);
+        if (!Double.isFinite(variance) || variance <= 0d) {
+            return 0d;
+        }
+        return Math.sqrt(variance) * factor;
     }
 
     /**
