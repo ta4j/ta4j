@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -41,6 +42,15 @@ import org.ta4j.core.walkforward.WalkForwardSplitter;
  * open at the fold's last bar is exited at that bar's close and pays the
  * transaction cost (see {@link ExitOnRunEndModel}), so folds never hand an open
  * position to the next fold's data and their records can be chained.
+ *
+ * <p>
+ * Overloads that take a single {@link Strategy} evaluate that same instance in
+ * every fold, so state held by its rules (for example a
+ * {@link org.ta4j.core.rules.JustOnceRule} that already fired) carries from one
+ * fold into the next. Use the overload that takes a
+ * {@code Function<WalkForwardSplit, Strategy>} factory to build an independent
+ * strategy per fold.
+ * </p>
  *
  * @since 0.22.4
  */
@@ -216,8 +226,8 @@ public class StrategyWalkForwardExecutor {
         Objects.requireNonNull(tradeType, "tradeType");
         Objects.requireNonNull(amount, "amount");
         Objects.requireNonNull(config, "config");
-        return execute(strategy, config, progressCallback,
-                split -> seriesManager.run(strategy, tradeType, amount, split.testStart(), split.testEnd()), baseline);
+        return execute(strategy, config, progressCallback, ignored -> strategy, (foldStrategy, split) -> seriesManager
+                .run(foldStrategy, tradeType, amount, split.testStart(), split.testEnd()), baseline);
     }
 
     /**
@@ -235,9 +245,33 @@ public class StrategyWalkForwardExecutor {
      */
     public StrategyWalkForwardExecutionResult execute(Strategy strategy, Trade.TradeType tradeType,
             PositionSizer positionSizer, WalkForwardConfig config, Consumer<Integer> progressCallback) {
-        Objects.requireNonNull(strategy, "strategy");
-        Objects.requireNonNull(tradeType, "tradeType");
-        return execute(strategy, tradeType, positionSizer, config, progressCallback,
+        return execute(strategy, ignored -> strategy, tradeType, positionSizer, config, progressCallback);
+    }
+
+    /**
+     * Executes walk-forward testing with a fresh strategy for each independent
+     * fold.
+     *
+     * <p>
+     * The supplied {@code strategy} is retained as the pristine strategy snapshot
+     * in the result. The factory is invoked once per fold and its strategy is used
+     * for both record execution and statement generation.
+     * </p>
+     *
+     * @param strategy         pristine strategy snapshot for the result
+     * @param strategyFactory  factory creating a fresh strategy for each fold
+     * @param tradeType        trade type used to open positions
+     * @param positionSizer    dynamic entry position sizer
+     * @param config           walk-forward configuration
+     * @param progressCallback optional callback receiving the processed fold count
+     *                         (successful and failed folds)
+     * @return execution result
+     * @since 0.26.1
+     */
+    public StrategyWalkForwardExecutionResult execute(Strategy strategy,
+            Function<WalkForwardSplit, Strategy> strategyFactory, Trade.TradeType tradeType,
+            PositionSizer positionSizer, WalkForwardConfig config, Consumer<Integer> progressCallback) {
+        return execute(strategy, strategyFactory, tradeType, positionSizer, config, progressCallback,
                 BacktestExecutionResult.snapshot(seriesManager.getBarSeries()));
     }
 
@@ -245,13 +279,20 @@ public class StrategyWalkForwardExecutor {
     StrategyWalkForwardExecutionResult execute(Strategy strategy, Trade.TradeType tradeType,
             PositionSizer positionSizer, WalkForwardConfig config, Consumer<Integer> progressCallback,
             BarSeries baseline) {
+        return execute(strategy, ignored -> strategy, tradeType, positionSizer, config, progressCallback, baseline);
+    }
+
+    private StrategyWalkForwardExecutionResult execute(Strategy strategy,
+            Function<WalkForwardSplit, Strategy> strategyFactory, Trade.TradeType tradeType,
+            PositionSizer positionSizer, WalkForwardConfig config, Consumer<Integer> progressCallback,
+            BarSeries baseline) {
         Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(strategyFactory, "strategyFactory");
         Objects.requireNonNull(tradeType, "tradeType");
         Objects.requireNonNull(positionSizer, "positionSizer");
         Objects.requireNonNull(config, "config");
-        return execute(strategy, config, progressCallback,
-                split -> seriesManager.run(strategy, tradeType, positionSizer, split.testStart(), split.testEnd()),
-                baseline);
+        return execute(strategy, config, progressCallback, strategyFactory, (foldStrategy, split) -> seriesManager
+                .run(foldStrategy, tradeType, positionSizer, split.testStart(), split.testEnd()), baseline);
     }
 
     /**
@@ -259,8 +300,8 @@ public class StrategyWalkForwardExecutor {
      * series without holding its lock, then verifies the window did not change.
      */
     private StrategyWalkForwardExecutionResult execute(Strategy strategy, WalkForwardConfig config,
-            Consumer<Integer> progressCallback, Function<WalkForwardSplit, TradingRecord> foldRecordRunner,
-            BarSeries baseline) {
+            Consumer<Integer> progressCallback, Function<WalkForwardSplit, Strategy> strategyFactory,
+            BiFunction<Strategy, WalkForwardSplit, TradingRecord> foldRecordRunner, BarSeries baseline) {
         List<WalkForwardSplit> splits = splitter.split(baseline, config);
         if (splits.isEmpty()) {
             BacktestExecutionResult.verifyUnchanged(seriesManager.getBarSeries(), baseline);
@@ -279,8 +320,9 @@ public class StrategyWalkForwardExecutor {
             WalkForwardSplit split = splits.get(splitIndex);
             long foldStart = System.nanoTime();
             try {
-                TradingRecord foldRecord = foldRecordRunner.apply(split);
-                TradingStatement statement = tradingStatementGenerator.generate(strategy, foldRecord, baseline);
+                Strategy foldStrategy = Objects.requireNonNull(strategyFactory.apply(split), "strategyFactory result");
+                TradingRecord foldRecord = foldRecordRunner.apply(foldStrategy, split);
+                TradingStatement statement = tradingStatementGenerator.generate(foldStrategy, foldRecord, baseline);
                 Duration foldRuntime = Duration.ofNanos(System.nanoTime() - foldStart);
 
                 foldResults.add(

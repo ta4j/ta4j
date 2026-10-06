@@ -1,0 +1,215 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  ta4j-cli/scripts/benchmark-performance-experiment.sh [base-ref] [candidate-ref] [output-dir] [-- runner args...]
+
+Defaults:
+  base-ref:      required; must resolve to a commit containing ta4j-cli/pom.xml
+  candidate-ref: HEAD
+  output-dir:    .agents/benchmarks/performance/comparisons/<timestamp>-<unique>
+
+The baseline and candidate refs must both contain the ta4j-cli harness, otherwise
+the baseline worktree cannot run ta4j-cli performance run.
+The script builds both refs in temporary worktrees (each with its own Maven
+repository, so neither ref's snapshot jars replace the other's) before measuring
+either, runs ta4j-cli performance run for each ref, then compares the
+performance.json artifacts with ta4j-cli performance compare.
+
+Environment:
+  BENCHMARK_ORDER: base-first (default) or candidate-first. Measurements run
+                   back to back in this order, which is recorded in
+                   <output-dir>/run-order.txt. Thermal, clock, and cache drift
+                   favor one side, so confirm a borderline verdict by repeating
+                   the comparison with the opposite order.
+
+Example:
+  ta4j-cli/scripts/benchmark-performance-experiment.sh <base-ref> HEAD -- \
+    --experiment kalman-filter \
+    --bar-counts 1000,5000,10000 \
+    --scenarios sequential,endOnly,endThenReverse,sparseAfterHighWatermark \
+    --repetitions 5
+USAGE
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+repo_root="$(git rev-parse --show-toplevel)"
+timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+base_ref=""
+candidate_ref="HEAD"
+output_dir=""
+default_output_parent="$repo_root/.agents/benchmarks/performance/comparisons"
+
+if [[ "${1:-}" != "" && "${1:-}" != "--" ]]; then
+  base_ref="$1"
+  shift
+fi
+if [[ "${1:-}" != "" && "${1:-}" != "--" ]]; then
+  candidate_ref="$1"
+  shift
+fi
+if [[ "${1:-}" != "" && "${1:-}" != "--" ]]; then
+  output_dir="$1"
+  shift
+fi
+if [[ -z "$base_ref" ]]; then
+  echo "error: base-ref is required; it must resolve to a commit containing ta4j-cli/pom.xml" >&2
+  usage >&2
+  exit 2
+fi
+benchmark_order="${BENCHMARK_ORDER:-base-first}"
+if [[ "$benchmark_order" != base-first && "$benchmark_order" != candidate-first ]]; then
+  echo "error: BENCHMARK_ORDER must be base-first or candidate-first, not '$benchmark_order'" >&2
+  exit 2
+fi
+for ref in "$base_ref" "$candidate_ref"; do
+  if ! git -C "$repo_root" cat-file -e "${ref}^{commit}" 2>/dev/null; then
+    echo "error: ref '$ref' does not resolve to a commit in $repo_root" >&2
+    exit 2
+  fi
+  if [[ -z "$(git -C "$repo_root" ls-tree --name-only "${ref}^{commit}" -- ta4j-cli/pom.xml)" ]]; then
+    echo "error: ref '$ref' does not contain ta4j-cli/pom.xml; both refs must contain the ta4j-cli harness" >&2
+    exit 2
+  fi
+done
+if [[ -z "$output_dir" ]]; then
+  mkdir -p "$default_output_parent"
+  output_dir="$(mktemp -d "$default_output_parent/${timestamp}-XXXXXX")"
+elif [[ "$output_dir" != /* ]]; then
+  output_dir="$repo_root/$output_dir"
+fi
+if [[ "${1:-}" == "--" ]]; then
+  shift
+fi
+
+default_runner_args=(
+  --experiment kalman-filter
+  --bar-counts "1000,5000,10000"
+  --scenarios "sequential,endOnly,endThenReverse,sparseAfterHighWatermark"
+  --repetitions 5
+)
+
+if [[ "$#" -gt 0 ]]; then
+  runner_args=("$@")
+else
+  runner_args=("${default_runner_args[@]}")
+fi
+
+worktree_parent="$output_dir/worktrees"
+mkdir -p "$output_dir" "$worktree_parent"
+worktree_root="$(mktemp -d "$worktree_parent/run-XXXXXX")"
+base_worktree="$worktree_root/base"
+candidate_worktree="$worktree_root/candidate"
+base_maven_repo="$worktree_root/maven-repository-base"
+candidate_maven_repo="$worktree_root/maven-repository-candidate"
+base_output="$output_dir/base"
+candidate_output="$output_dir/candidate"
+comparison_output="$output_dir/comparison"
+
+cleanup() {
+  git -C "$repo_root" worktree remove --force "$base_worktree" >/dev/null 2>&1 || true
+  git -C "$repo_root" worktree remove --force "$candidate_worktree" >/dev/null 2>&1 || true
+  rm -rf "$worktree_root"
+}
+trap cleanup EXIT
+
+git -C "$repo_root" worktree add --detach "$base_worktree" "$base_ref" >/dev/null
+git -C "$repo_root" worktree add --detach "$candidate_worktree" "$candidate_ref" >/dev/null
+
+quote_exec_arg() {
+  local value="$1"
+  if [[ "$value" =~ ^[A-Za-z0-9_./:=,+%-]+$ ]]; then
+    printf '%s' "$value"
+    return
+  fi
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  printf '"%s"' "$value"
+}
+
+join_exec_args() {
+  local exec_args=""
+  local arg
+  for arg in "$@"; do
+    local quoted_arg
+    quoted_arg="$(quote_exec_arg "$arg")"
+    if [[ -n "$exec_args" ]]; then
+      exec_args+=" "
+    fi
+    exec_args+="$quoted_arg"
+  done
+  printf '%s' "$exec_args"
+}
+
+require_artifact() {
+  # exec:java exits 0 without running anything when a ref's POM skips it, so an
+  # absent artifact must fail the benchmark instead of reporting success.
+  if [[ ! -s "$1" ]]; then
+    printf 'Expected artifact was not produced: %s\n' "$1" >&2
+    exit 1
+  fi
+}
+
+clear_artifacts() {
+  # A reused output-dir must not let a skipped producer pass with an earlier run's files.
+  local dir="$1"
+  rm -f "$dir/performance.json" "$dir/comparison.json" "$dir/summary.md"
+}
+
+build_ref() {
+  local worktree="$1"
+  local maven_repo="$2"
+  (
+    cd "$worktree"
+    mvn -q -Dmaven.repo.local="$maven_repo" -pl ta4j-cli -am install -DskipTests
+  )
+}
+
+measure_ref() {
+  local worktree="$1"
+  local maven_repo="$2"
+  local run_output="$3"
+  mkdir -p "$run_output"
+  clear_artifacts "$run_output"
+  local exec_args
+  exec_args="$(join_exec_args "${runner_args[@]}" --output-dir "$run_output")"
+  (
+    cd "$worktree"
+    mvn -q -Dmaven.repo.local="$maven_repo" -pl ta4j-cli exec:java \
+      -Dexec.mainClass=org.ta4j.cli.Ta4jCli \
+      -Dexec.args="performance run $exec_args"
+  )
+  require_artifact "$run_output/performance.json"
+}
+
+# Build both refs before measuring either so the build of the second ref cannot
+# shift the machine state between the two measurements.
+build_ref "$base_worktree" "$base_maven_repo"
+build_ref "$candidate_worktree" "$candidate_maven_repo"
+
+printf '%s\n' "$benchmark_order" > "$output_dir/run-order.txt"
+if [[ "$benchmark_order" == candidate-first ]]; then
+  measure_ref "$candidate_worktree" "$candidate_maven_repo" "$candidate_output"
+  measure_ref "$base_worktree" "$base_maven_repo" "$base_output"
+else
+  measure_ref "$base_worktree" "$base_maven_repo" "$base_output"
+  measure_ref "$candidate_worktree" "$candidate_maven_repo" "$candidate_output"
+fi
+
+clear_artifacts "$comparison_output"
+comparison_args="$(join_exec_args --base-dir "$base_output" --candidate-dir "$candidate_output" --output-dir "$comparison_output")"
+(
+  cd "$candidate_worktree"
+  mvn -q -Dmaven.repo.local="$candidate_maven_repo" -pl ta4j-cli exec:java \
+    -Dexec.mainClass=org.ta4j.cli.Ta4jCli \
+    -Dexec.args="performance compare $comparison_args"
+)
+require_artifact "$comparison_output/comparison.json"
+
+printf 'Performance comparison written to %s\n' "$comparison_output"

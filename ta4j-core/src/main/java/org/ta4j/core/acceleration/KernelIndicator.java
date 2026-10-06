@@ -146,7 +146,7 @@ public abstract class KernelIndicator<T> extends CachedIndicator<T> {
         for (int buffer = 0; buffer < rowInputs.length; buffer++) {
             rows[buffer] = new double[] { rowInputs[buffer] };
         }
-        KernelRequest request = AccelerationRuntime.request(kernel, index, 1, rows, window);
+        KernelRequest request = AccelerationRuntime.request(kernel, index, 1, rows, window, Double.NaN);
         double[] outputs = new double[kernel.outputsPerRow()];
         kernel.run(request, 0, outputs);
         return decode(index, outputs);

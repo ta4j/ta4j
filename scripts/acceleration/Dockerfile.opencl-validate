@@ -1,0 +1,18 @@
+# OpenCL acceleration validation image (Ubuntu Noble + PoCL CPU ICD).
+# Usage (note: ENTRYPOINT is ["bash"], so pass the script directly - a leading
+# "bash" argument would run `bash bash script` and fail with ENOEXEC):
+#   docker build -f scripts/acceleration/Dockerfile.opencl-validate -t ta4j-opencl-validate .
+#   docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD:/workspace" -w /workspace ta4j-opencl-validate \
+#     scripts/acceleration/validate-opencl-linux.sh /workspace aarch64 --benchmark
+#   docker run --rm --platform linux/amd64 --user "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD:/workspace" -w /workspace ta4j-opencl-validate \
+#     scripts/acceleration/validate-opencl-linux.sh /workspace x86_64
+FROM eclipse-temurin:25-jdk-noble
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        cmake make gcc libc6-dev ocl-icd-opencl-dev pocl-opencl-icd clinfo \
+    && rm -rf /var/lib/apt/lists/*
+
+# The documented commands use the host UID/GID and a writable HOME so generated
+# checkout files retain host ownership on Linux as well as Docker Desktop.
+WORKDIR /workspace
+ENTRYPOINT ["bash"]

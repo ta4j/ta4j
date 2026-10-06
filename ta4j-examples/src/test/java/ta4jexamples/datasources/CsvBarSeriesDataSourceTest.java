@@ -6,14 +6,27 @@ package ta4jexamples.datasources;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 
+import java.io.BufferedReader;
+import java.io.File;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.regex.Pattern;
 
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsNull.notNullValue;
 import static org.junit.Assume.assumeThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Unit tests for the {@link CsvFileBarSeriesDataSource} class.
@@ -55,6 +68,63 @@ public class CsvBarSeriesDataSourceTest {
     }
 
     @Test
+    public void testRelativeLocalFileDoesNotShadowBundledClasspathResource() throws Exception {
+        // Regression: loadCsvSeries(...) has always resolved a relative filename
+        // against the classpath, and existing callers (loadSeriesFromFile(),
+        // example-driven tooling) rely on the bundled example data. The local-file
+        // support must not silently prefer a stray local file that happens to share
+        // the relative name, because callers would start analyzing different data
+        // without any signal.
+        String bundledFile = "AAPL-PT1D-20130102_20131231.csv";
+        long bundledBarCount;
+        try (InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(bundledFile)) {
+            assertNotNull(resourceStream, "Missing bundled resource: " + bundledFile);
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(resourceStream, StandardCharsets.UTF_8))) {
+                bundledBarCount = reader.lines().skip(1).count();
+            }
+        }
+
+        Path isolatedDirectory = Files.createTempDirectory("ta4j-csv-precedence-");
+        Path shadow = isolatedDirectory.resolve(bundledFile);
+        try {
+            Files.writeString(shadow, "date,open,high,low,close,volume\n", StandardCharsets.US_ASCII,
+                    StandardOpenOption.CREATE_NEW);
+
+            BarSeries loaded = CsvFileBarSeriesDataSource.loadCsvSeries(bundledFile, isolatedDirectory);
+
+            assertNotNull(loaded, "Bundled classpath data must load despite a same-named local file");
+            assertEquals(bundledBarCount, loaded.getBarCount(),
+                    "Bundled classpath data must win over a same-named local file");
+        } finally {
+            Files.deleteIfExists(shadow);
+            Files.deleteIfExists(isolatedDirectory);
+        }
+    }
+
+    @Test
+    public void testLoadSeriesFromLocalCsvPath() throws Exception {
+        String csvFile = "AAPL-PT1D-20130102_20131231.csv";
+        InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(csvFile);
+        assumeThat("File " + csvFile + " does not exist", resourceStream, is(notNullValue()));
+
+        Path tempFile = Files.createTempFile("ta4j-local-series-", ".csv");
+        try {
+            try (resourceStream) {
+                Files.copy(resourceStream, tempFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+            BarSeries series = CsvFileBarSeriesDataSource.loadCsvSeries(tempFile.toString());
+
+            assertNotNull(series, "Should load series from a local filesystem path");
+            assertTrue(series.getBarCount() > 0, "Series should contain bars");
+            assertEquals(tempFile.getFileName().toString(), series.getName(),
+                    "Series name should match the local file");
+        } finally {
+            Files.deleteIfExists(tempFile);
+        }
+    }
+
+    @Test
     public void testLoadSeriesWithNonExistentTicker() {
         CsvFileBarSeriesDataSource dataSource = new CsvFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-01-02T00:00:00Z");
@@ -63,6 +133,11 @@ public class CsvBarSeriesDataSourceTest {
         BarSeries series = dataSource.loadSeries("NONEXISTENT", Duration.ofDays(1), start, end);
 
         assertNull(series, "Should return null for non-existent ticker");
+    }
+
+    @Test
+    public void testInvalidLocalPathStillFallsBackToClasspathLookup() {
+        assertNull(CsvFileBarSeriesDataSource.loadCsvSeries("invalid\0path.csv"));
     }
 
     @Test
@@ -217,5 +292,40 @@ public class CsvBarSeriesDataSourceTest {
         assertNotNull(series, "Should find file via date-only broader pattern when exact pattern doesn't match");
         assertTrue(series.getBarCount() > 0, "Series should contain bars");
         assertEquals(expectedFile, series.getName(), "Series name should match the found filename");
+    }
+
+    @Test
+    public void testCorruptedRowIsUnparseableRatherThanTruncatingTheSeries() throws Exception {
+        Path tempFile = Files.createTempFile("ta4j-corrupt-row-", ".csv");
+        try {
+            Files.writeString(tempFile, """
+                    date,open,high,low,close,volume
+                    2013-01-02,553.82,555.00,541.63,549.03,20018500
+                    2013-01-03,547.88,549.67,541.00,541.21,12605900
+                    """);
+            Files.write(tempFile, new byte[] { (byte) 0xC3, (byte) 0x28 }, StandardOpenOption.APPEND);
+
+            assertNull(CsvFileBarSeriesDataSource.loadCsvSeries(tempFile.toString()));
+        } finally {
+            Files.deleteIfExists(tempFile);
+        }
+    }
+
+    @Test
+    public void testNonUtf8HeaderBytesAndBlankLinesStillLoad() throws Exception {
+        Path tempFile = Files.createTempFile("ta4j-cp1252-header-", ".csv");
+        try {
+            Files.write(tempFile, new byte[] { 'd', 'a', 't', 'e', (byte) 0xE9, ',', 'o', ',', 'h', ',', 'l', ',', 'c',
+                    ',', 'v', '\n' });
+            Files.writeString(tempFile, "2013-01-02,553.82,555.00,541.63,549.03,20018500\n\n",
+                    StandardOpenOption.APPEND);
+
+            BarSeries series = CsvFileBarSeriesDataSource.loadCsvSeries(tempFile.toString());
+
+            assertNotNull(series);
+            assertEquals(1, series.getBarCount());
+        } finally {
+            Files.deleteIfExists(tempFile);
+        }
     }
 }

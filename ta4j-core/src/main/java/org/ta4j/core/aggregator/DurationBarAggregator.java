@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.aggregator;
 
+import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -63,9 +64,17 @@ public class DurationBarAggregator implements BarAggregator {
         final Bar firstBar = bars.getFirst();
         // get the actual time period
         final Duration actualDur = firstBar.getTimePeriod();
-        // check if new timePeriod is a multiplication of actual time period
-        final boolean isMultiplication = timePeriod.getSeconds() % actualDur.getSeconds() == 0;
-        if (!isMultiplication) {
+        // Compare complete durations so fractional seconds are neither truncated
+        // nor divided by zero; BigInteger also avoids nanosecond conversion overflow.
+        final BigInteger nanosPerSecond = BigInteger.valueOf(1_000_000_000L);
+        final BigInteger targetNanos = BigInteger.valueOf(timePeriod.getSeconds())
+                .multiply(nanosPerSecond)
+                .add(BigInteger.valueOf(timePeriod.getNano()));
+        final BigInteger sourceNanos = BigInteger.valueOf(actualDur.getSeconds())
+                .multiply(nanosPerSecond)
+                .add(BigInteger.valueOf(actualDur.getNano()));
+        if (sourceNanos.signum() <= 0 || targetNanos.signum() <= 0
+                || !targetNanos.remainder(sourceNanos).equals(BigInteger.ZERO)) {
             throw new IllegalArgumentException(
                     "Cannot aggregate bars: the new timePeriod must be a multiplication of the actual timePeriod.");
         }
