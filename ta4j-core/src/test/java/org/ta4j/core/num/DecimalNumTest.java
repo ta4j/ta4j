@@ -454,6 +454,27 @@ public class DecimalNumTest {
     }
 
     @Test
+    public void testSqrtSubnormalAndExactContexts() {
+        // Subnormal number 4E-324 with RoundingMode.UNNECESSARY
+        MathContext mcUnnecessary = new MathContext(16, java.math.RoundingMode.UNNECESSARY);
+        Num subnormalNum = DecimalNum.valueOf("4E-324", mcUnnecessary);
+        assertNumEquals(DecimalNum.valueOf("2E-162", mcUnnecessary), subnormalNum.sqrt());
+
+        // Subnormal number 4E-324 with MathContext.UNLIMITED
+        Num subnormalUnlimited = DecimalNum.valueOf("4E-324", MathContext.UNLIMITED);
+        assertNumEquals(DecimalNum.valueOf("2E-162", MathContext.UNLIMITED), subnormalUnlimited.sqrt());
+
+        // Non-exact square root with MathContext.UNLIMITED falls back to default
+        // precision
+        Num twoUnlimited = DecimalNum.valueOf("2", MathContext.UNLIMITED);
+        assertNumEquals(DecimalNum.valueOf("1.414213562373095", MathContext.UNLIMITED), twoUnlimited.sqrt());
+
+        // Exact square root with MathContext.UNLIMITED
+        Num fourUnlimited = DecimalNum.valueOf("4", MathContext.UNLIMITED);
+        assertNumEquals(DecimalNum.valueOf("2", MathContext.UNLIMITED), fourUnlimited.sqrt());
+    }
+
+    @Test
     public void testExpLargeValue() {
         final Num large = DecimalNum.valueOf(10);
         final Num result = large.exp();
