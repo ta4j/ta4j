@@ -9,7 +9,7 @@ package org.ta4j.acceleration.internal.providers;
  * scalar fallback; the message always names the backend first so quarantines
  * stay attributable.
  *
- * @since 0.25.1
+ * @since 0.26.1
  */
 final class NativeProviderException extends RuntimeException {
 

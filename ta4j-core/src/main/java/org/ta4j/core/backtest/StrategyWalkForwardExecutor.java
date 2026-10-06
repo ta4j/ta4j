@@ -266,7 +266,7 @@ public class StrategyWalkForwardExecutor {
      * @param progressCallback optional callback receiving the processed fold count
      *                         (successful and failed folds)
      * @return execution result
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public StrategyWalkForwardExecutionResult execute(Strategy strategy,
             Function<WalkForwardSplit, Strategy> strategyFactory, Trade.TradeType tradeType,

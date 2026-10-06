@@ -17,7 +17,7 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
  * Assessment remains lazy; loading and probing happen only when the provider is
  * selected.
  *
- * @since 0.25.1
+ * @since 0.26.1
  */
 public final class CudaAccelerationProvider extends ShockPathKernelProvider {
 

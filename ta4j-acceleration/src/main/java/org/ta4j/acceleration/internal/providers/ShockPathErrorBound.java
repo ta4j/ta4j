@@ -51,7 +51,7 @@ import java.util.List;
  * from the scalar draw by more than rounding; and FP32 inputs whose variance
  * underflows single precision, which would silently zero the volatility.
  *
- * @since 0.25.1
+ * @since 0.26.1
  */
 final class ShockPathErrorBound {
 

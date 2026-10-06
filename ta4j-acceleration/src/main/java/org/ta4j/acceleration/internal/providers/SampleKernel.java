@@ -8,7 +8,7 @@ package org.ta4j.acceleration.internal.providers;
  * {@link NativeForecastRequest} into per-sample cumulative log-returns without
  * touching indicators, forecasts, or crossover policy.
  *
- * @since 0.25.1
+ * @since 0.26.1
  */
 interface SampleKernel {
 

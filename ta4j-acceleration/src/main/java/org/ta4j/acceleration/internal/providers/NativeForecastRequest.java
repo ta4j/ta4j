@@ -12,7 +12,7 @@ package org.ta4j.acceleration.internal.providers;
  * {@code shockModel} uses the native codes 0 (historical bootstrap), 1
  * (standardized empirical) and 2 (normal).
  *
- * @since 0.25.1
+ * @since 0.26.1
  */
 record NativeForecastRequest(int fromInclusive, int decisionCount, int horizon, int iterationCount,
         int lookbackBarCount, long seed, int shockModel, int volatilityMode, double volatilityDecayFactor,

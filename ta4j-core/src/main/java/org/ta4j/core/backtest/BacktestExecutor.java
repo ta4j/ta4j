@@ -807,7 +807,7 @@ public class BacktestExecutor {
      * @param config           walk-forward configuration
      * @param progressCallback optional callback receiving completed fold count
      * @return walk-forward execution result
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public StrategyWalkForwardExecutionResult executeWalkForward(Strategy strategy,
             Function<WalkForwardSplit, Strategy> strategyFactory, PositionSizer positionSizer,

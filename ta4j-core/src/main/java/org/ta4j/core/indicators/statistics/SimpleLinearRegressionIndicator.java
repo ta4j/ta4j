@@ -65,7 +65,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
      * Returns the configured regression window for execution work budgeting.
      *
      * @return the configured number of bars
-     * @since 0.25.1
+     * @since 0.26.1
      */
     public int getBarCount() {
         return barCount;

@@ -155,7 +155,7 @@ import java.util.function.Consumer;
  * file-oriented for both users and agents.
  * </p>
  *
- * @since 0.25.1
+ * @since 0.26.1
  */
 final class CliSupport {
 
@@ -2741,7 +2741,7 @@ final class CliSupport {
      * @param json       canonical lossless descriptor JSON
      * @param expression compact expression when the registry can render one
      * @param criterion  resolved analysis criterion instance
-     * @since 0.25.1
+     * @since 0.26.1
      */
     record CriterionSpec(String name, String className, String json, String expression, AnalysisCriterion criterion) {
     }
@@ -2771,7 +2771,7 @@ final class CliSupport {
      * @param calibrationWindow       conformal rolling window
      * @param minimumCalibrationCount minimum matured conformal rows
      * @param quantiles               reported quantile probabilities
-     * @since 0.25.1
+     * @since 0.26.1
      */
     record ForecastRequest(String stateModel, String target, String projectionModel, String calibration,
             String priceModel, Integer index, int horizon, int samples, int lookbackBars, long seed, String shockModel,
@@ -2797,7 +2797,7 @@ final class CliSupport {
      * @param payoffRatio      Kelly payoff ratio, when present
      * @param kellyCoefficient Kelly fraction multiplier, when present
      * @param positionSizer    configured ta4j position sizer
-     * @since 0.25.1
+     * @since 0.26.1
      */
     record PositionSizingSpec(String mode, String capital, String stakeAmount, String winProbability,
             String payoffRatio, String kellyCoefficient, PositionSizer positionSizer) {
@@ -2809,7 +2809,7 @@ final class CliSupport {
      *
      * @param strategies        valid strategies that can be executed
      * @param invalidStrategies descriptive messages for rejected inputs
-     * @since 0.25.1
+     * @since 0.26.1
      */
     record ResolvedStrategies(List<Strategy> strategies, List<String> invalidStrategies) {
     }
@@ -2821,7 +2821,7 @@ final class CliSupport {
      * @param indicator numeric indicator instance
      * @param json      canonical serialized indicator JSON
      * @param typeName  runtime type name
-     * @since 0.25.1
+     * @since 0.26.1
      */
     record ResolvedIndicator(Indicator<Num> indicator, String json, String typeName) {
     }

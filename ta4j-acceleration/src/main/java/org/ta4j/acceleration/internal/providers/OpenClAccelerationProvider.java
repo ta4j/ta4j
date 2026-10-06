@@ -18,7 +18,7 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
  * The FP64 native lane returns row-major per-sample cumulative log-returns and
  * is loaded lazily after assessment selects this provider.
  *
- * @since 0.25.1
+ * @since 0.26.1
  */
 public final class OpenClAccelerationProvider extends ShockPathKernelProvider {
 
