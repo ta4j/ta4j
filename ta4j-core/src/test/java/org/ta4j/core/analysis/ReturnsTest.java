@@ -18,6 +18,7 @@ import static org.junit.Assert.assertTrue;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -2030,39 +2031,117 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         for (boolean retained : new boolean[] { false, true }) {
             for (ReturnRepresentation representation : ReturnRepresentation.values()) {
                 for (EquityCurveMode mode : EquityCurveMode.values()) {
-                    BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 100, 100);
-                    if (retained)
-                        series.setMaximumBarCount(2);
-                    FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory)
-                            .toBuilder()
-                            .contractSize(numFactory.one())
-                            .build();
-                    BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 150);
-                    record.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1, 100,
-                            List.of(FuturesAnalysisTestSupport.commission(numFactory, -10))));
-                    Position position = record.getOpenPositions().getFirst();
-                    BaseTradingRecord nextRecord = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 150);
-                    nextRecord.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1, 100,
-                            List.of(FuturesAnalysisTestSupport.commission(numFactory, -20))));
-                    Position next = nextRecord.getOpenPositions().getFirst();
-                    for (int constructor = 0; constructor < 12; constructor++) {
-                        Returns curve = nativeReturnsConstructor(series, record, position, representation, mode,
-                                constructor);
-                        Returns control = nativeReturnsConstructor(series, record, position, representation, mode,
-                                constructor);
-                        assertNoExecutedNativeUpdatePreservesState(curve, contract);
-                        curve.calculatePosition(next, 3);
-                        control.calculatePosition(next, 3);
-                        assertEquals(control.getValues(), curve.getValues());
-                        assertEquals(control.getRawValues(), curve.getRawValues());
-                        assertEquals(control.getSize(), curve.getSize());
-                        assertEquals(control.hasFirstBarReturn(), curve.hasFirstBarReturn());
-                        assertEquals(control.hasSeededFirstBarReturn(), curve.hasSeededFirstBarReturn());
-                        assertNoExecutedNativeUpdatePreservesState(curve, contract);
+                    for (int initialState = 0; initialState < 3; initialState++) {
+                        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 100, 100);
+                        if (retained)
+                            series.setMaximumBarCount(2);
+                        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory)
+                                .toBuilder()
+                                .contractSize(numFactory.one())
+                                .build();
+                        // Empty, wholly deferred, and already executed construction
+                        // are distinct capital states. Funded records always retain150.
+                        Position position = initialState == 0 ? new Position()
+                                : FuturesAnalysisTestSupport.openPosition(contract, -1, 1, 100);
+                        BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 150);
+                        if (initialState == 1) {
+                            record = new AlternateFuturesRecord(contract, numFactory.numOf(150), List.of(), position);
+                        } else if (initialState == 2) {
+                            record.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1, 100,
+                                    List.of(FuturesAnalysisTestSupport.commission(numFactory, -10))));
+                            position = record.getOpenPositions().getFirst();
+                        }
+                        for (int constructor = 0; constructor < 12; constructor++) {
+                            if (initialState == 0 && constructor >= 1 && constructor <= 4) {
+                                // Position overloads require an entry; empty records
+                                // are the supported empty-construction state.
+                                int emptyConstructor = constructor;
+                                TradingRecord initialRecord = record;
+                                Position empty = position;
+                                assertThrows(IllegalArgumentException.class, () -> nativeReturnsConstructor(series,
+                                        initialRecord, empty, representation, mode, emptyConstructor));
+                                continue;
+                            }
+                            Returns curve = nativeReturnsConstructor(series, record, position, representation, mode,
+                                    constructor);
+                            Returns control = nativeReturnsConstructor(series, record, position, representation, mode,
+                                    constructor);
+                            assertNoExecutedNativeUpdatePreservesState(curve, contract);
+                            assertRejectedNativeTransitionPreservesState(curve, contract);
+                            for (double rebate : new double[] { 0, 20 }) {
+                                Trade incoming = Trade
+                                        .fromFill(
+                                                FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY,
+                                                        rebate == 0 ? 2 : 1, 100, List.of(FuturesAnalysisTestSupport
+                                                                .commission(numFactory, -rebate))),
+                                                RecordedTradeCostModel.INSTANCE);
+                                Position next = new Position(incoming, RecordedTradeCostModel.INSTANCE,
+                                        new ZeroCostModel());
+                                // A zero-PnL first execution still has genuine positive
+                                // notional; a later rebate must not inherit deferred0.
+                                curve.calculatePosition(next, 3);
+                                control.calculatePosition(next, 3);
+                                assertEquals(control.getValues(), curve.getValues());
+                                assertEquals(control.getRawValues(), curve.getRawValues());
+                                assertEquals(control.getSize(), curve.getSize());
+                                assertEquals(control.hasFirstBarReturn(), curve.hasFirstBarReturn());
+                                assertEquals(control.hasSeededFirstBarReturn(), curve.hasSeededFirstBarReturn());
+                                if (constructor == 4 || constructor == 5) {
+                                    int capital = constructor == 4 ? 100 : 150;
+                                    MathContext context = numFactory.one() instanceof DecimalNum decimal
+                                            ? decimal.getMathContext()
+                                            : MathContext.DECIMAL128;
+                                    // Compare economic equity/capital before Num rounding,
+                                    // as required by the retained publication contract.
+                                    Num factor = numFactory.numOf(BigDecimal.valueOf(capital)
+                                            .add(BigDecimal.valueOf((initialState == 2 ? 10 : 0) + rebate))
+                                            .divide(BigDecimal.valueOf(capital), context));
+                                    Num expected = representation == ReturnRepresentation.LOG ? factor.log()
+                                            : representation.toRepresentationFromTotalReturn(factor);
+                                    assertNumEquals(expected, curve.getValue(2));
+                                }
+                                assertNoExecutedNativeUpdatePreservesState(curve, contract);
+                            }
+                        }
                     }
                 }
             }
         }
+    }
+
+    private void assertRejectedNativeTransitionPreservesState(Returns curve, FuturesContract contract) {
+        List<Num> published = curve.getValues();
+        List<Num> raw = curve.getRawValues();
+        int size = curve.getSize();
+        boolean head = curve.hasFirstBarReturn();
+        boolean seed = curve.hasSeededFirstBarReturn();
+        RuntimeException failure = new IllegalArgumentException("holding source failed during accumulation");
+        AtomicBoolean stagedFailure = new AtomicBoolean();
+        Trade entry = Trade.fromFill(
+                FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1, 100,
+                        List.of(FuturesAnalysisTestSupport.commission(numFactory, -30))),
+                RecordedTradeCostModel.INSTANCE);
+        ZeroCostModel holding = new ZeroCostModel() {
+            @Override
+            public Num calculate(Position position, int index) {
+                // Prepricing at finalIndex3 succeeds. Failure at2 belongs to
+                // accumulation inside the staged native publication.
+                if (index == 2) {
+                    stagedFailure.set(true);
+                    throw failure;
+                }
+                return numFactory.zero();
+            }
+        };
+        Position rejected = new Position(entry, RecordedTradeCostModel.INSTANCE, holding);
+        assertSame(failure, assertThrows(RuntimeException.class, () -> curve.calculatePosition(rejected, 3)));
+        assertTrue(stagedFailure.get());
+        assertEquals(published, curve.getValues());
+        assertEquals(raw, curve.getRawValues());
+        assertEquals(size, curve.getSize());
+        assertEquals(head, curve.hasFirstBarReturn());
+        assertEquals(seed, curve.hasSeededFirstBarReturn());
+        assertNoExecutedNativeUpdatePreservesState(curve, contract);
     }
 
     private Returns nativeReturnsConstructor(BarSeries series, TradingRecord record, Position position,
@@ -2085,6 +2164,41 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                 3, representation, mode, OpenPositionHandling.MARK_TO_MARKET);
         default -> throw new AssertionError("Unknown constructor");
         };
+    }
+
+    @Test
+    public void deferredConstructorAcceptsFirstExecutedRebate() {
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 100);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory)
+                .toBuilder()
+                .contractSize(numFactory.one())
+                .build();
+        Position deferred = FuturesAnalysisTestSupport.openPosition(contract, -1, 1, 100);
+        assertTrue(deferred.getEntry().getTime() != null);
+        assertTrue(deferred.getEntry().getFills().getFirst().hasRecordedFees());
+        assertTrue(deferred.getEntry().getFills().getFirst().fees().isEmpty());
+        Returns curve = new Returns(series, deferred, ReturnRepresentation.DECIMAL, EquityCurveMode.REALIZED);
+        assertFalse(curve.hasFirstBarReturn());
+        assertFalse(curve.hasSeededFirstBarReturn());
+        assertTrue(curve.getValue(0).isNaN());
+        assertNumEquals(0, curve.getValue(1));
+        assertNumEquals(0, curve.getValue(2));
+        assertEquals(2, curve.getSize());
+        Trade executed = Trade.fromFill(
+                FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.BUY, 1, 100,
+                        List.of(FuturesAnalysisTestSupport.commission(numFactory, -10))),
+                RecordedTradeCostModel.INSTANCE);
+        Position active = new Position(executed, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        assertNumEquals(100, FuturesPerformanceSupport.entryNotional(active));
+        assertNumEquals(10,
+                active.getProfitComponents(2, numFactory.hundred()).stream().reduce(numFactory.zero(), Num::plus));
+        curve.calculatePosition(active, 2);
+        assertTrue(curve.getValue(0).isNaN());
+        assertNumEquals(0.1, curve.getValue(1));
+        assertNumEquals(0, curve.getValue(2));
+        assertEquals(2, curve.getSize());
+        assertFalse(curve.hasFirstBarReturn());
+        assertFalse(curve.hasSeededFirstBarReturn());
     }
 
 }

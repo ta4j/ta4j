@@ -175,7 +175,9 @@ public class Returns implements PerformanceIndicator {
                 : returnFactors.copy();
         this.spotFirstRetainedSlotSeeded = !futures && materialized.firstRetainedSlotSeeded();
         this.spotDefinesHeadPeriod = spotFirstRetainedSlotSeeded;
-        this.futuresCapital = record.getInitialCapital() == null ? fallbackCapital : record.getInitialCapital();
+        Num initialCapital = record.getInitialCapital() == null ? fallbackCapital : record.getInitialCapital();
+        // Deferred-only exposure has not established normalization capital yet.
+        this.futuresCapital = initialCapital == null || initialCapital.isZero() ? null : initialCapital;
         this.futuresMark = markPriceIndicator;
         this.markFuturesExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
         this.preWindowFuturesActivity = futures
