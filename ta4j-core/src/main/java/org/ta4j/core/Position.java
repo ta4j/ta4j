@@ -861,11 +861,13 @@ public class Position implements Serializable {
         }
         if (executedEntryFills.size() > 1) {
             executedEntryFills = new ArrayList<>(executedEntryFills);
-            executedEntryFills.sort(EXECUTION_FILL_ORDER);
+            executedEntryFills.sort((first, second) -> compareFuturesExecutionOrder(first.index(), first.time(), true,
+                    second.index(), second.time(), true));
         }
         if (executedExitFills.size() > 1) {
             executedExitFills = new ArrayList<>(executedExitFills);
-            executedExitFills.sort(EXECUTION_FILL_ORDER);
+            executedExitFills.sort((first, second) -> compareFuturesExecutionOrder(first.index(), first.time(), false,
+                    second.index(), second.time(), false));
         }
         Deque<TradeFill> closingFills = new ArrayDeque<>(executedExitFills);
         Deque<Num> closingAmounts = new ArrayDeque<>();

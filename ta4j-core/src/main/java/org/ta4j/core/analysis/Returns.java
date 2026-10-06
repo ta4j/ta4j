@@ -659,12 +659,14 @@ public class Returns implements PerformanceIndicator {
      * Publishes one composition of normalized native periods and retained spot
      * factors. A null capital reuses native components already validated before a
      * spot-only update; native construction and mutations validate with their
-     * account capital before publication.
+     * account capital before publication. A zero fallback capital belongs to a
+     * position with no executed exposure: its zero contribution leaves the accepted
+     * normalized components available for the same publication.
      */
     private boolean publishReturnFactors(FuturesPerformanceSupport.PnLAccumulator pnl, Num capital,
             boolean firstActivity, boolean spotHeadPeriod, OffsetNumBuffer spotFactors,
             AnalysisPositionSupport.Window captured, OffsetNumBuffer target) {
-        if (captured.isEmpty() || capital != null && capital.isZero())
+        if (captured.isEmpty())
             return false;
         Num initial = representation == ReturnRepresentation.LOG ? barSeries.numFactory().zero()
                 : barSeries.numFactory().one();
@@ -674,7 +676,7 @@ public class Returns implements PerformanceIndicator {
         // later native activity must not replace it with a historical capital seed.
         int previousIndex = captured.beginIndex() - 1;
         for (long index = captured.beginIndex(); index <= captured.bufferEndIndex(); index++) {
-            if (capital != null)
+            if (capital != null && !capital.isZero())
                 pnl.validatePnL((int) index, capital);
             if (index > captured.beginIndex() || firstReported) {
                 Num ratio = pnl.equityRatio((int) index, previousIndex,

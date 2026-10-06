@@ -1922,4 +1922,168 @@ public class PositionTest {
         }
     }
 
+    @Test
+    public void sameIndexMissingExitChronologyHoldingDouble() {
+        assertSameIndexMissingExitChronology(DoubleNumFactory.getInstance(), 0);
+    }
+
+    @Test
+    public void sameIndexMissingExitChronologyNetProfitDouble() {
+        assertSameIndexMissingExitChronology(DoubleNumFactory.getInstance(), 1);
+    }
+
+    @Test
+    public void sameIndexMissingExitChronologyRealizedProfitDouble() {
+        assertSameIndexMissingExitChronology(DoubleNumFactory.getInstance(), 2);
+    }
+
+    @Test
+    public void sameIndexMissingExitChronologyProfitComponentsDouble() {
+        assertSameIndexMissingExitChronology(DoubleNumFactory.getInstance(), 3);
+    }
+
+    @Test
+    public void sameIndexMissingExitChronologyHoldingDecimal() {
+        assertSameIndexMissingExitChronology(DecimalNumFactory.getInstance(), 0);
+    }
+
+    @Test
+    public void sameIndexMissingExitChronologyNetProfitDecimal() {
+        assertSameIndexMissingExitChronology(DecimalNumFactory.getInstance(), 1);
+    }
+
+    @Test
+    public void sameIndexMissingExitChronologyRealizedProfitDecimal() {
+        assertSameIndexMissingExitChronology(DecimalNumFactory.getInstance(), 2);
+    }
+
+    @Test
+    public void sameIndexMissingExitChronologyProfitComponentsDecimal() {
+        assertSameIndexMissingExitChronology(DecimalNumFactory.getInstance(), 3);
+    }
+
+    private void assertSameIndexMissingExitChronology(NumFactory factory, int metric) {
+        FuturesContract contract = BaseTradeTest.groupedFeeFills(factory)
+                .getFirst()
+                .futuresContract()
+                .toBuilder()
+                .contractSize(factory.one())
+                .build();
+        TradeFill firstEntry = futuresFill(contract, factory, 0, T0, 100, 1, ExecutionSide.BUY);
+        TradeFill secondEntry = futuresFill(contract, factory, 0, T0.plusSeconds(2), 100, 1, ExecutionSide.BUY);
+        Trade entry = Trade.fromFills(TradeType.BUY, List.of(firstEntry, secondEntry), RecordedTradeCostModel.INSTANCE);
+        TradeFill knownExit = futuresFill(contract, factory, 0, T0.plusSeconds(1), 110, 1, ExecutionSide.SELL);
+        TradeFill missingExit = new TradeFill(0, null, factory.numOf(110), factory.one(), factory.zero(),
+                ExecutionSide.SELL, "legacy", null);
+        Trade exit = futuresTradeWithFills(contract, TradeType.SELL, List.of(knownExit, missingExit));
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        assertTrue(position.isClosed());
+        assertNumEquals(2, exit.getAmount());
+        assertNumEquals(110, exit.getPricePerAsset());
+        // Construction accepts BUY@T0, SELL@T0+1, BUY@T0+2,
+        // missing-time SELL last. Both realized price payoffs are 10.
+        assertNumEquals(20, position.getGrossProfit());
+        assertNumEquals(1.1, position.getGrossReturn());
+        assertSame(knownExit, exit.getFills().getFirst());
+        assertSame(missingExit, exit.getFills().getLast());
+        switch (metric) {
+        case 0 -> assertNumEquals(0, position.getHoldingCost(0));
+        case 1 -> assertNumEquals(20, position.getProfit());
+        case 2 -> assertNumEquals(20, position.getRealizedProfit(0));
+        case 3 -> assertNumEquals(20,
+                position.getProfitComponents(0, factory.numOf(110)).stream().reduce(factory.zero(), Num::plus));
+        default -> throw new AssertionError("Unknown accounting getter");
+        }
+    }
+
+    @Test
+    public void nativeHoldingSlicesFollowAcceptedTimesAndKeepEqualTimeCallerOrder() {
+        for (NumFactory factory : factories()) {
+            FuturesContract contract = BaseTradeTest.groupedFeeFills(factory)
+                    .getFirst()
+                    .futuresContract()
+                    .toBuilder()
+                    .contractSize(factory.one())
+                    .build();
+            for (int chronology = 0; chronology < 4; chronology++) {
+                boolean missingEntry = chronology == 1 || chronology == 3;
+                boolean equalTime = chronology == 2;
+                TradeFill firstEntry = missingEntry
+                        ? new TradeFill(0, null, factory.hundred(), factory.one(), factory.numOf(0.03),
+                                ExecutionSide.BUY, "legacy-entry", "entry-correlation")
+                        : futuresFill(contract, factory, 0, equalTime ? T0.plusSeconds(1) : T0, 100, 1,
+                                ExecutionSide.BUY);
+                TradeFill secondEntry = chronology == 3
+                        ? new TradeFill(0, null, factory.numOf(120), factory.one(), factory.zero(), ExecutionSide.BUY,
+                                "legacy-second-entry", null)
+                        : futuresFill(contract, factory, 0, T0.plusSeconds(equalTime ? 1 : 2), 120, 1,
+                                ExecutionSide.BUY);
+                TradeFill firstExit = chronology == 3
+                        ? new TradeFill(0, null, factory.numOf(110), factory.one(), factory.zero(), ExecutionSide.SELL,
+                                "legacy-first-exit", null)
+                        : futuresFill(contract, factory, 0, T0.plusSeconds(1), 110, 1, ExecutionSide.SELL);
+                TradeFill secondExit = equalTime
+                        ? futuresFill(contract, factory, 0, T0.plusSeconds(1), 130, 1, ExecutionSide.SELL)
+                        : new TradeFill(0, null, factory.numOf(130), factory.one(), factory.numOf(0.04),
+                                ExecutionSide.SELL, "legacy-exit", "exit-correlation");
+                List<TradeFill> inputEntries = List.of(secondEntry, firstEntry);
+                List<TradeFill> inputExits = List.of(secondExit, firstExit);
+                List<TradeFill> orderedEntries = chronology >= 2 ? inputEntries : List.of(firstEntry, secondEntry);
+                List<TradeFill> orderedExits = chronology >= 2 ? inputExits : List.of(firstExit, secondExit);
+                List<Position> slices = new ArrayList<>();
+                CostModel holding = new CostModel() {
+                    @Override
+                    public Num calculate(Position slice, int index) {
+                        slices.add(slice);
+                        return slice.getEntry().getPricePerAsset().multipliedBy(factory.numOf(0.01));
+                    }
+
+                    @Override
+                    public Num calculate(Position slice) {
+                        return calculate(slice, 0);
+                    }
+
+                    @Override
+                    public Num calculate(Num price, Num amount) {
+                        return price.getNumFactory().zero();
+                    }
+
+                    @Override
+                    public boolean equals(CostModel other) {
+                        return this == other;
+                    }
+                };
+                Trade entry = futuresTradeWithFills(contract, TradeType.BUY, inputEntries);
+                Trade exit = futuresTradeWithFills(contract, TradeType.SELL, inputExits);
+                Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, holding);
+                assertNumEquals(2.2, position.getHoldingCost(0));
+                assertEquals(2, slices.size());
+                for (int sliceIndex = 0; sliceIndex < slices.size(); sliceIndex++) {
+                    Position slice = slices.get(sliceIndex);
+                    assertEquals(contract, slice.getFuturesContract());
+                    for (boolean opens : new boolean[] { true, false }) {
+                        Trade slicedTrade = opens ? slice.getEntry() : slice.getExit();
+                        TradeFill expected = (opens ? orderedEntries : orderedExits).get(sliceIndex);
+                        TradeFill actual = slicedTrade.getFills().getFirst();
+                        assertEquals(contract, slicedTrade.getFuturesContract());
+                        assertEquals(expected.time(), actual.time());
+                        assertEquals(expected.index(), actual.index());
+                        assertNumEquals(expected.price(), actual.price());
+                        assertNumEquals(expected.amount(), actual.amount());
+                        assertEquals(expected.futuresContract(), actual.futuresContract());
+                        assertEquals(expected.hasRecordedFees(), actual.hasRecordedFees());
+                        assertEquals(expected.fees(), actual.fees());
+                        assertEquals(expected.fee(), actual.fee());
+                        assertEquals(expected.orderId(), actual.orderId());
+                        assertEquals(expected.correlationId(), actual.correlationId());
+                    }
+                }
+                assertSame(secondEntry, entry.getFills().getFirst());
+                assertSame(firstEntry, entry.getFills().getLast());
+                assertSame(secondExit, exit.getFills().getFirst());
+                assertSame(firstExit, exit.getFills().getLast());
+            }
+        }
+    }
+
 }

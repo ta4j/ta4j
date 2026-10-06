@@ -1756,6 +1756,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                                 boolean zeroSeen = false;
                                 boolean reportedHead = retained && spotSeen;
                                 boolean spotDefinesPeriod = reportedHead;
+                                assertNoExecutedNativeUpdatePreservesState(curve, contract);
                                 for (int next : order) {
                                     if ((next == 0 && origin == 3) || (next == 1 && origin == 1))
                                         continue;
@@ -1791,6 +1792,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                                             representation == ReturnRepresentation.MULTIPLICATIVE ? factory.one()
                                                     : factory.zero(),
                                             curve.getValue(3));
+                                    assertNoExecutedNativeUpdatePreservesState(curve, contract);
                                 }
                                 // Extend every original prefix with a second native lot
                                 // and a distinct second spot lot in both interleavings.
@@ -1843,6 +1845,7 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                                     assertEquals(raw, curve.getRawValues());
                                     assertEquals(size, curve.getSize());
                                     assertEquals(capitalSeed, curve.hasSeededFirstBarReturn());
+                                    assertNoExecutedNativeUpdatePreservesState(curve, contract);
                                 }
                                 List<Num> frozen = curve.getValues();
                                 curve.calculatePosition(zero.getPositions().getFirst(), 3);
@@ -1949,6 +1952,139 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                 }
             }
         }
+    }
+
+    @Test
+    public void deferredNativeUpdatePreservesEstablishedHeadValues() {
+        assertDeferredNativeHeadPreserved(0);
+    }
+
+    @Test
+    public void deferredNativeUpdatePreservesEstablishedHeadEligibility() {
+        assertDeferredNativeHeadPreserved(1);
+    }
+
+    @Test
+    public void deferredNativeUpdatePreservesEstablishedHeadSize() {
+        assertDeferredNativeHeadPreserved(2);
+    }
+
+    private void assertDeferredNativeHeadPreserved(int metric) {
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 100, 100);
+        series.setMaximumBarCount(2);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory)
+                .toBuilder()
+                .contractSize(numFactory.one())
+                .build();
+        Returns curve = new Returns(series, new BaseTradingRecord(), 3, ReturnRepresentation.DECIMAL,
+                EquityCurveMode.REALIZED, OpenPositionHandling.MARK_TO_MARKET);
+        Trade entry = Trade.fromFill(
+                FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1, 100,
+                        List.of(FuturesAnalysisTestSupport.commission(numFactory, -10))),
+                RecordedTradeCostModel.INSTANCE);
+        Position active = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        curve.calculatePosition(active, 3);
+        assertNumEquals(0.1, curve.getValue(2));
+        assertNumEquals(0, curve.getValue(3));
+        assertTrue(curve.hasFirstBarReturn());
+        assertEquals(2, curve.getSize());
+        List<Num> before = curve.getValues();
+        Position deferred = FuturesAnalysisTestSupport.openPosition(contract, -1, 1, 100);
+        assertTrue(deferred.isOpened());
+        assertEquals(-1, deferred.getEntry().getIndex());
+        assertFalse(deferred.getEntry().getTime() == null);
+        assertTrue(deferred.getEntry().getFills().getFirst().hasRecordedFees());
+        assertTrue(deferred.getEntry().getFills().getFirst().fees().isEmpty());
+        assertNumEquals(0,
+                deferred.getProfitComponents(3, numFactory.hundred()).stream().reduce(numFactory.zero(), Num::plus));
+        curve.calculatePosition(deferred, 3);
+        switch (metric) {
+        case 0 -> assertEquals(before, curve.getValues());
+        case 1 -> assertTrue(curve.hasFirstBarReturn());
+        case 2 -> assertEquals(2, curve.getSize());
+        default -> throw new AssertionError("Unknown return-view getter");
+        }
+    }
+
+    private void assertNoExecutedNativeUpdatePreservesState(Returns curve, FuturesContract contract) {
+        List<Num> published = curve.getValues();
+        List<Num> raw = curve.getRawValues();
+        int size = curve.getSize();
+        boolean firstBar = curve.hasFirstBarReturn();
+        boolean seed = curve.hasSeededFirstBarReturn();
+        // Deferred fills and executions beyond this curve's cutoff contribute
+        // nothing. In particular, neither can erase an accepted head or seed.
+        for (int entryIndex : new int[] { -1, curve.getEndIndex() + 1 }) {
+            curve.calculatePosition(FuturesAnalysisTestSupport.openPosition(contract, entryIndex, 1, 100),
+                    curve.getEndIndex());
+            assertEquals(published, curve.getValues());
+            assertEquals(raw, curve.getRawValues());
+            assertEquals(size, curve.getSize());
+            assertEquals(firstBar, curve.hasFirstBarReturn());
+            assertEquals(seed, curve.hasSeededFirstBarReturn());
+        }
+    }
+
+    @Test
+    public void noExecutedNativeUpdatesPreserveEveryConstructorAndNextExecutedUpdate() {
+        for (boolean retained : new boolean[] { false, true }) {
+            for (ReturnRepresentation representation : ReturnRepresentation.values()) {
+                for (EquityCurveMode mode : EquityCurveMode.values()) {
+                    BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 100, 100);
+                    if (retained)
+                        series.setMaximumBarCount(2);
+                    FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory)
+                            .toBuilder()
+                            .contractSize(numFactory.one())
+                            .build();
+                    BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 150);
+                    record.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1, 100,
+                            List.of(FuturesAnalysisTestSupport.commission(numFactory, -10))));
+                    Position position = record.getOpenPositions().getFirst();
+                    BaseTradingRecord nextRecord = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 150);
+                    nextRecord.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1, 100,
+                            List.of(FuturesAnalysisTestSupport.commission(numFactory, -20))));
+                    Position next = nextRecord.getOpenPositions().getFirst();
+                    for (int constructor = 0; constructor < 12; constructor++) {
+                        Returns curve = nativeReturnsConstructor(series, record, position, representation, mode,
+                                constructor);
+                        Returns control = nativeReturnsConstructor(series, record, position, representation, mode,
+                                constructor);
+                        assertNoExecutedNativeUpdatePreservesState(curve, contract);
+                        curve.calculatePosition(next, 3);
+                        control.calculatePosition(next, 3);
+                        assertEquals(control.getValues(), curve.getValues());
+                        assertEquals(control.getRawValues(), curve.getRawValues());
+                        assertEquals(control.getSize(), curve.getSize());
+                        assertEquals(control.hasFirstBarReturn(), curve.hasFirstBarReturn());
+                        assertEquals(control.hasSeededFirstBarReturn(), curve.hasSeededFirstBarReturn());
+                        assertNoExecutedNativeUpdatePreservesState(curve, contract);
+                    }
+                }
+            }
+        }
+    }
+
+    private Returns nativeReturnsConstructor(BarSeries series, TradingRecord record, Position position,
+            ReturnRepresentation representation, EquityCurveMode mode, int constructor) {
+        return switch (constructor) {
+        case 0 -> new Returns(series, record, 3, representation, mode, OpenPositionHandling.MARK_TO_MARKET);
+        case 1 -> new Returns(series, position);
+        case 2 -> new Returns(series, position, mode);
+        case 3 -> new Returns(series, position, representation);
+        case 4 -> new Returns(series, position, representation, mode);
+        case 5 -> new Returns(series, record, representation, mode);
+        case 6 -> new Returns(series, record);
+        case 7 -> new Returns(series, record, mode);
+        case 8 -> new Returns(series, record, representation);
+        case 9 -> new Returns(series, record, representation, OpenPositionHandling.MARK_TO_MARKET);
+        case 10 -> new Returns(series, record, representation, mode, OpenPositionHandling.MARK_TO_MARKET);
+        case 11 -> new Returns(series, record,
+                new MockIndicator(series, series.getBeginIndex(), numFactory.hundred(), numFactory.hundred(),
+                        numFactory.hundred(), numFactory.hundred()),
+                3, representation, mode, OpenPositionHandling.MARK_TO_MARKET);
+        default -> throw new AssertionError("Unknown constructor");
+        };
     }
 
 }
