@@ -167,7 +167,13 @@ public final class MetalAccelerationProvider extends ShockPathKernelProvider {
         }
         Process process = null;
         try {
-            process = new ProcessBuilder("sysctl", "-n", "machdep.cpu.brand_string").start();
+            // The brand string is far smaller than the pipe buffer, so waiting before
+            // reading cannot stall the
+            // process, and it keeps the 2-second bound that a blocking read would lose if
+            // sysctl hangs.
+            process = new ProcessBuilder("sysctl", "-n", "machdep.cpu.brand_string")
+                    .redirectError(ProcessBuilder.Redirect.DISCARD)
+                    .start();
             if (!process.waitFor(2, TimeUnit.SECONDS)) {
                 process.destroyForcibly();
                 return null;
@@ -178,11 +184,22 @@ public final class MetalAccelerationProvider extends ShockPathKernelProvider {
         } catch (IOException exception) {
             return null;
         } catch (InterruptedException exception) {
-            if (process != null) {
-                process.destroyForcibly();
-            }
+            process.destroyForcibly();
             Thread.currentThread().interrupt();
             return null;
+        } finally {
+            if (process != null) {
+                closeStreams(process);
+            }
+        }
+    }
+
+    private static void closeStreams(Process process) {
+        try {
+            process.getOutputStream().close();
+            process.getInputStream().close();
+        } catch (IOException exception) {
+            // The probe already has its answer; a failed close leaves nothing to recover.
         }
     }
 }
