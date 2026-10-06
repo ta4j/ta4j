@@ -3,12 +3,12 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TraceTestLogger;
@@ -21,7 +21,7 @@ public class InPipeRuleTest {
     private BarSeries series;
     private TraceTestLogger traceTestLogger;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         series = new MockBarSeriesBuilder().withName("I am empty").build();
         var indicator = new FixedNumIndicator(series, 50d, 70d, 80d, 90d, 99d, 60d, 30d, 20d, 10d, 0d);
@@ -30,7 +30,7 @@ public class InPipeRuleTest {
         traceTestLogger.open();
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         traceTestLogger.close();
     }
@@ -54,10 +54,10 @@ public class InPipeRuleTest {
         assertFalse(rule.isSatisfiedWithTraceMode(3, Rule.TraceMode.VERBOSE));
 
         String logContent = traceTestLogger.getLogOutput();
-        assertTrue("Trace should include the reference value", logContent.contains("value=90"));
-        assertTrue("Trace should include the lower value", logContent.contains("lowerValue=20"));
-        assertTrue("Trace should include the upper value", logContent.contains("upperValue=80"));
-        assertTrue("Trace should explain the failed side", logContent.contains("reason=aboveUpper"));
+        assertTrue(logContent.contains("value=90"), "Trace should include the reference value");
+        assertTrue(logContent.contains("lowerValue=20"), "Trace should include the lower value");
+        assertTrue(logContent.contains("upperValue=80"), "Trace should include the upper value");
+        assertTrue(logContent.contains("reason=aboveUpper"), "Trace should explain the failed side");
     }
 
     @Test

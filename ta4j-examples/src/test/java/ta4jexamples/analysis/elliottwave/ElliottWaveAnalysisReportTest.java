@@ -18,7 +18,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.Assume;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -100,7 +100,7 @@ class ElliottWaveAnalysisReportTest {
 
     @Test
     void from_withBaseCaseChartPlan_encodesChartImage() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+        Assumptions.assumeFalse(GraphicsEnvironment.isHeadless(), "Headless environment");
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
         ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
@@ -120,7 +120,7 @@ class ElliottWaveAnalysisReportTest {
 
     @Test
     void from_withAlternativeChartPlans_encodesChartImages() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+        Assumptions.assumeFalse(GraphicsEnvironment.isHeadless(), "Headless environment");
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
         ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,

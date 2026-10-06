@@ -10,8 +10,8 @@ import java.util.List;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -26,7 +26,7 @@ public class KSTIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         super(numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
 
         data = new MockBarSeriesBuilder().withNumFactory(numFactory)

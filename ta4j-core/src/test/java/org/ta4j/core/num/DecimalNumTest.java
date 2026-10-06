@@ -3,9 +3,9 @@
  */
 package org.ta4j.core.num;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertIndicatorNotEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -15,12 +15,15 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.HashSet;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.Timeout;
+import java.util.concurrent.TimeUnit;
 
 public class DecimalNumTest {
 
@@ -75,11 +78,13 @@ public class DecimalNumTest {
     private Indicator<Num> doubleIndicator;
     private Indicator<Num> lowPrecisionIndicator;
 
-    @Test(expected = ArithmeticException.class)
+    @Test
     public void testPowOverflowExponent() {
-        final Num x = DecimalNum.valueOf("2");
-        final Num n = DecimalNum.valueOf(SUPER_PRECISION_LARGE_STRING);
-        assertNumEquals("1", x.pow(n));
+        assertThrows(ArithmeticException.class, () -> {
+            final Num x = DecimalNum.valueOf("2");
+            final Num n = DecimalNum.valueOf(SUPER_PRECISION_LARGE_STRING);
+            assertNumEquals("1", x.pow(n));
+        });
     }
 
     @Test
@@ -94,7 +99,8 @@ public class DecimalNumTest {
         assertEquals(120, ((DecimalNum) result).getMathContext().getPrecision());
     }
 
-    @Test(timeout = 2000)
+    @Test
+    @Timeout(value = 2000, unit = TimeUnit.MILLISECONDS)
     public void testPowLargeFractionalExponentStaysWithinPrecision() {
         // Annualizing a short span raises a return to about 1/years; the whole part of
         // that exponent must be computed at the working precision, not exactly.
@@ -362,14 +368,18 @@ public class DecimalNumTest {
         }
     }
 
-    @Test(expected = NumberFormatException.class)
+    @Test
     public void testValueOfForFloatNaNShouldThrowNumberFormatException() {
-        DecimalNum.valueOf(Float.NaN);
+        assertThrows(NumberFormatException.class, () -> {
+            DecimalNum.valueOf(Float.NaN);
+        });
     }
 
-    @Test(expected = NumberFormatException.class)
+    @Test
     public void testValueOfForDoubleNaNShouldThrowNumberFormatException() {
-        DecimalNum.valueOf(Double.NaN);
+        assertThrows(NumberFormatException.class, () -> {
+            DecimalNum.valueOf(Double.NaN);
+        });
     }
 
     @Test

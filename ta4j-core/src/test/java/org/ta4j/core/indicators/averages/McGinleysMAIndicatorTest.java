@@ -4,9 +4,9 @@
 package org.ta4j.core.indicators.averages;
 
 import static org.ta4j.core.TestUtils.*;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.CsvTestUtils;
 import org.ta4j.core.Indicator;

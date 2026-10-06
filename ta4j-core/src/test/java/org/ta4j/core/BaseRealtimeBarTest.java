@@ -3,18 +3,18 @@
  */
 package org.ta4j.core;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Proxy;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -145,13 +145,15 @@ public class BaseRealtimeBarTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(1, bar.getMakerTrades());
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test
     public void testConstructorRejectsNullNumFactory() {
-        final var start = Instant.parse("2024-01-01T00:00:00Z");
-        final var period = Duration.ofMinutes(1);
-        final var zero = numFactory.zero();
-        new BaseRealtimeBar(period, start, start.plus(period), null, null, null, null, zero, zero, 0, null, null, null,
-                null, 0, 0, null, null, null, null, 0, 0, false, false, null);
+        assertThrows(NullPointerException.class, () -> {
+            final var start = Instant.parse("2024-01-01T00:00:00Z");
+            final var period = Duration.ofMinutes(1);
+            final var zero = numFactory.zero();
+            new BaseRealtimeBar(period, start, start.plus(period), null, null, null, null, zero, zero, 0, null, null,
+                    null, null, 0, 0, null, null, null, null, 0, 0, false, false, null);
+        });
     }
 
     @Test

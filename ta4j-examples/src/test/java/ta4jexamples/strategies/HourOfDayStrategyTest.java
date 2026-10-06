@@ -3,8 +3,8 @@
  */
 package ta4jexamples.strategies;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Strategy;
@@ -17,13 +17,13 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class HourOfDayStrategyTest {
 
     private BarSeries series;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         NumFactory numFactory = DecimalNumFactory.getInstance();
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -75,49 +75,67 @@ public class HourOfDayStrategyTest {
         }
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testConstructorWithNullParams() {
-        new HourOfDayStrategy(series, (String[]) null);
+        assertThrows(IllegalArgumentException.class, () -> {
+            new HourOfDayStrategy(series, (String[]) null);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testConstructorWithEmptyParams() {
-        new HourOfDayStrategy(series);
+        assertThrows(IllegalArgumentException.class, () -> {
+            new HourOfDayStrategy(series);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testConstructorWithInsufficientParams() {
-        new HourOfDayStrategy(series, "9");
+        assertThrows(IllegalArgumentException.class, () -> {
+            new HourOfDayStrategy(series, "9");
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testConstructorWithInvalidEntryHourNegative() {
-        new HourOfDayStrategy(series, "-1", "17");
+        assertThrows(IllegalArgumentException.class, () -> {
+            new HourOfDayStrategy(series, "-1", "17");
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testConstructorWithInvalidEntryHourTooLarge() {
-        new HourOfDayStrategy(series, "24", "17");
+        assertThrows(IllegalArgumentException.class, () -> {
+            new HourOfDayStrategy(series, "24", "17");
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testConstructorWithInvalidExitHourNegative() {
-        new HourOfDayStrategy(series, "9", "-1");
+        assertThrows(IllegalArgumentException.class, () -> {
+            new HourOfDayStrategy(series, "9", "-1");
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testConstructorWithInvalidExitHourTooLarge() {
-        new HourOfDayStrategy(series, "9", "24");
+        assertThrows(IllegalArgumentException.class, () -> {
+            new HourOfDayStrategy(series, "9", "24");
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testConstructorWithSameEntryAndExitHour() {
-        new HourOfDayStrategy(series, 12, 12);
+        assertThrows(IllegalArgumentException.class, () -> {
+            new HourOfDayStrategy(series, 12, 12);
+        });
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testConstructorWithSameEntryAndExitHourString() {
-        new HourOfDayStrategy(series, "12", "12");
+        assertThrows(IllegalArgumentException.class, () -> {
+            new HourOfDayStrategy(series, "12", "12");
+        });
     }
 
     @Test
@@ -201,7 +219,7 @@ public class HourOfDayStrategyTest {
         for (Strategy strategy : strategies) {
             String name = strategy.getName();
             String[] parts = name.split("_");
-            assertNotEquals("Strategy should not have same entry and exit hour: " + name, parts[1], parts[2]);
+            assertNotEquals(parts[1], parts[2], "Strategy should not have same entry and exit hour: " + name);
         }
     }
 

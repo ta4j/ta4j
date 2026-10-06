@@ -3,16 +3,16 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.apache.logging.log4j.Level;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Indicator;
@@ -36,7 +36,7 @@ public class FixedAmountStopLossRuleTest extends AbstractIndicatorTest<BarSeries
         super(numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 105, 110, 120, 100, 150, 110, 100)
@@ -45,7 +45,7 @@ public class FixedAmountStopLossRuleTest extends AbstractIndicatorTest<BarSeries
         ruleTraceTestLogger.open();
     }
 
-    @After
+    @AfterEach
     public void tearDownLogger() {
         ruleTraceTestLogger.close();
     }
@@ -103,12 +103,12 @@ public class FixedAmountStopLossRuleTest extends AbstractIndicatorTest<BarSeries
         assertTrue(rule.isSatisfied(4, tradingRecord));
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue("Stop trace should include the current price", logContent.contains("currentPrice=100"));
-        assertTrue("Stop trace should include the entry price", logContent.contains("entryPrice=110"));
-        assertTrue("Stop trace should include the stop price", logContent.contains("stopPrice=105"));
-        assertTrue("Stop trace should include the trade side", logContent.contains("side=BUY"));
-        assertTrue("Stop trace should include the fixed loss amount", logContent.contains("lossAmount=5"));
-        assertFalse("Stop trace should emit flat fields rather than a context map", logContent.contains("context={"));
+        assertTrue(logContent.contains("currentPrice=100"), "Stop trace should include the current price");
+        assertTrue(logContent.contains("entryPrice=110"), "Stop trace should include the entry price");
+        assertTrue(logContent.contains("stopPrice=105"), "Stop trace should include the stop price");
+        assertTrue(logContent.contains("side=BUY"), "Stop trace should include the trade side");
+        assertTrue(logContent.contains("lossAmount=5"), "Stop trace should include the fixed loss amount");
+        assertFalse(logContent.contains("context={"), "Stop trace should emit flat fields rather than a context map");
     }
 
     @Test
@@ -124,10 +124,10 @@ public class FixedAmountStopLossRuleTest extends AbstractIndicatorTest<BarSeries
 
         assertTrue(rule.isSatisfied(4, tradingRecord));
 
-        assertEquals("Disabled TRACE should not perform an extra diagnostic price lookup", 1,
-                countingClosePrice.valueCallCount());
-        assertFalse("Disabled TRACE should not emit stop diagnostics",
-                ruleTraceTestLogger.getLogOutput().contains("FixedAmountStopLossRule#isSatisfied"));
+        assertEquals(1, countingClosePrice.valueCallCount(),
+                "Disabled TRACE should not perform an extra diagnostic price lookup");
+        assertFalse(ruleTraceTestLogger.getLogOutput().contains("FixedAmountStopLossRule#isSatisfied"),
+                "Disabled TRACE should not emit stop diagnostics");
     }
 
     @Test
@@ -141,8 +141,8 @@ public class FixedAmountStopLossRuleTest extends AbstractIndicatorTest<BarSeries
         ruleTraceTestLogger.clear();
         assertFalse(rule.isSatisfied(1, tradingRecord));
 
-        assertTrue("Stop trace should report the unavailable current price",
-                ruleTraceTestLogger.getLogOutput().contains("reason=priceUnavailable"));
+        assertTrue(ruleTraceTestLogger.getLogOutput().contains("reason=priceUnavailable"),
+                "Stop trace should report the unavailable current price");
     }
 
     @Test

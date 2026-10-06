@@ -5,8 +5,8 @@ package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
@@ -27,7 +27,7 @@ public class FractalDetectionHelperTest extends AbstractIndicatorTest<Indicator<
         super(numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         highSeries = createSeriesFromHighs(10, 12, 15, 13, 11, 16, 14, 12, 11);
         lowSeries = createSeriesFromLows(15, 13, 10, 12, 14, 9, 11, 13, 14);
