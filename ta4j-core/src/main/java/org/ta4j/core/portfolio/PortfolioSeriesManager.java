@@ -6,10 +6,12 @@ package org.ta4j.core.portfolio;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -189,8 +191,9 @@ public final class PortfolioSeriesManager {
             if (!Num.isFinite(this.initialCash) || this.initialCash.isNegativeOrZero()) {
                 throw new IllegalArgumentException("initialCash must be finite and > 0 but was " + initialCash);
             }
+            Set<String> assetSet = new HashSet<>(assets);
             for (String asset : allocation.getTargetWeights().keySet()) {
-                if (!assets.contains(asset)) {
+                if (!assetSet.contains(asset)) {
                     throw new IllegalArgumentException(
                             "allocation asset is not in the portfolio series: " + asset + " (assets: " + assets + ")");
                 }
