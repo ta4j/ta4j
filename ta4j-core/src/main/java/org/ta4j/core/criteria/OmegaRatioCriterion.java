@@ -3,6 +3,9 @@
  */
 package org.ta4j.core.criteria;
 
+import java.util.Objects;
+import java.util.Optional;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
@@ -13,9 +16,6 @@ import org.ta4j.core.analysis.Returns;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
-
-import java.util.Objects;
-import java.util.Optional;
 
 /**
  * Computes the Omega ratio.
@@ -190,7 +190,15 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         if (position == null || position.getEntry() == null) {
             return numFactory.zero();
         }
-        return calculate(series, new BaseTradingRecord(position));
+        if (position.getFuturesContract() == null) {
+            return calculate(series, new BaseTradingRecord(position));
+        }
+        EquityCurveMode mode = openPositionHandling == OpenPositionHandling.IGNORE ? EquityCurveMode.REALIZED
+                : equityCurveMode;
+        Returns returns = new Returns(series, position, ReturnRepresentation.DECIMAL, mode);
+        return calculate(returns,
+                returns.hasFirstBarReturn() && !returns.hasSeededFirstBarReturn() ? returns.getBeginIndex()
+                        : returns.getBeginIndex() + 1L);
     }
 
     @Override
@@ -219,17 +227,20 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
             return zero;
         }
 
-        Num thresholdNum = series.numFactory().numOf(threshold);
-        Num upsideExcess = zero;
-        Num downsideShortfall = zero;
-
-        // Returns can seed a zero placeholder at their first index; include it only
-        // when the trading record has an exit or eligible mark at the window start.
         boolean includeOpenPositionMarks = equityCurveMode != EquityCurveMode.REALIZED
                 && openPositionHandling != OpenPositionHandling.IGNORE;
-        long firstRateIndex = marksAt(tradingRecord, beginIndex, returns.getEndIndex(), includeOpenPositionMarks)
-                ? beginIndex
-                : beginIndex + 1L;
+        boolean initialReturn = tradingRecord.getFuturesContract() == null
+                ? marksAt(tradingRecord, beginIndex, returns.getEndIndex(), includeOpenPositionMarks)
+                : returns.hasFirstBarReturn() && !returns.hasSeededFirstBarReturn();
+        return calculate(returns, initialReturn ? beginIndex : beginIndex + 1L);
+    }
+
+    private Num calculate(Returns returns, long firstRateIndex) {
+        NumFactory numFactory = returns.getBarSeries().numFactory();
+        Num zero = numFactory.zero();
+        Num thresholdNum = numFactory.numOf(threshold);
+        Num upsideExcess = zero;
+        Num downsideShortfall = zero;
         for (long i = firstRateIndex; i <= returns.getEndIndex(); i++) {
             Num returnRate = returns.getValue((int) i);
             if (returnRate.isNaN()) {

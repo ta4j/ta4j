@@ -8,9 +8,12 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.Objects;
 import java.util.function.Supplier;
+import java.time.Duration;
+import java.time.Instant;
 
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
@@ -18,6 +21,16 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
 public class TradeFillRecordingExampleTest {
+
+    @Test
+    public void futuresMarksHaveContiguousHourlyBoundaries() {
+        BarSeries series = TradeFillRecordingExample.markSeries("hourly-marks", 100, 110);
+        assertEquals(Instant.parse("2026-02-02T00:00:00Z"), series.getBar(0).getBeginTime());
+        assertEquals(Duration.ofHours(1), series.getBar(0).getTimePeriod());
+        assertEquals(series.getBar(0).getEndTime(), series.getBar(1).getBeginTime());
+        assertEquals(Duration.ofHours(1),
+                Duration.between(series.getBar(0).getEndTime(), series.getBar(1).getEndTime()));
+    }
 
     @Test
     public void test() {

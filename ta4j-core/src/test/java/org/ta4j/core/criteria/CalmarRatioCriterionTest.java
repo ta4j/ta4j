@@ -3,6 +3,14 @@
  */
 package org.ta4j.core.criteria;
 
+import java.util.List;
+import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.FuturesContract;
+import org.ta4j.core.TradeFill;
+import org.ta4j.core.TradeFee;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
+import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -397,4 +405,190 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
             }
         }
     }
+
+    @Test
+    public void returnsFuturesEconomics_whenPositionIsEvaluatedDirectly() {
+        BarSeries series = RatioCriterionTestSupport.buildDailySeries(getBarSeries("futures_calmar"),
+                new double[] { 100d, 100.05d, 100.1d }, Instant.parse("2024-01-01T00:00:00Z"));
+        Position position = futuresPosition(series, 100d, 100.1d);
+        Num actual = ((CalmarRatioCriterion) getCriterion()).calculate(series, position);
+        double expected = Math.pow(1.001d, TimeConstants.SECONDS_PER_YEAR / (3d * 86_400d)) - 1d;
+        assertNumEquals(numFactory.numOf(expected), actual, 1e-12);
+    }
+
+    @Test
+    public void annualizesFirstBarFuturesLossOverTheEntireBarDuration() {
+        for (Duration firstBarDuration : List.of(Duration.ofDays(1), Duration.ofHours(6))) {
+            BarSeries series = getBarSeries("calmar_first_bar_loss");
+            Instant firstEnd = Instant.parse("2024-01-02T00:00:00Z");
+            for (int index = 0; index < 2; index++) {
+                series.addBar(series.barBuilder()
+                        .timePeriod(index == 0 ? firstBarDuration : Duration.ofDays(1))
+                        .endTime(firstEnd.plus(Duration.ofDays(index)))
+                        .openPrice(100)
+                        .highPrice(100)
+                        .lowPrice(100)
+                        .closePrice(100)
+                        .volume(1)
+                        .build());
+            }
+            FuturesContract contract = futuresPosition(series, 100d, 100d).getFuturesContract();
+            TradeFill entryFill = fill(contract, series.getBeginIndex(), ExecutionSide.BUY, 100d).toBuilder()
+                    .time(firstEnd.minusSeconds(60))
+                    .build();
+            TradeFill exitFill = fill(contract, series.getBeginIndex(), ExecutionSide.SELL, 99.9d).toBuilder()
+                    .time(firstEnd)
+                    .build();
+            BaseTradingRecord record = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .initialCapital(numFactory.one())
+                    .build();
+            record.operate(entryFill);
+            record.operate(exitFill);
+            CashFlow cashFlow = new CashFlow(series, record);
+            assertTrue(cashFlow.hasInitialReturn());
+            assertNumEquals(numFactory.numOf(0.999d), cashFlow.getValue(series.getBeginIndex()), 1e-12);
+            assertNumEquals(cashFlow.getValue(series.getBeginIndex()), cashFlow.getValue(series.getEndIndex()), 0d);
+
+            double elapsedSeconds = firstBarDuration.plus(Duration.ofDays(1)).getSeconds();
+            double expected = (Math.pow(0.999d, TimeConstants.SECONDS_PER_YEAR / elapsedSeconds) - 1d) / 0.001d;
+            CalmarRatioCriterion criterion = (CalmarRatioCriterion) getCriterion();
+            assertNumEquals(numFactory.numOf(expected), criterion.calculate(series, record), 1e-9);
+            assertNumEquals(numFactory.numOf(expected), criterion.calculate(series, record.getPositions().getFirst()),
+                    1e-9);
+        }
+    }
+
+    @Test
+    public void futuresCalmarSeedsNormalizedInitialCapital() {
+        BarSeries series = buildYearlySeries("calmar_futures_initial_fee", new double[] { 100d, 100d, 100d });
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01))
+                .build();
+        TradeFill entryFill = fill(contract, series.getBeginIndex(), ExecutionSide.BUY, 100d).toBuilder()
+                .fees(List.of(TradeFee.builder()
+                        .type(TradeFee.Type.COMMISSION)
+                        .amount(numFactory.numOf(0.1))
+                        .currency("USD")
+                        .build()))
+                .build();
+        Trade entry = Trade.fromFill(entryFill, RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(fill(contract, series.getEndIndex(), ExecutionSide.SELL, 100d),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        Num actual = ((CalmarRatioCriterion) getCriterion()).calculate(series, position);
+        double years = Duration
+                .between(series.getBar(series.getBeginIndex()).getBeginTime(),
+                        series.getBar(series.getEndIndex()).getEndTime())
+                .getSeconds() / (double) TimeConstants.SECONDS_PER_YEAR;
+        double expected = (Math.pow(0.9d, 1d / years) - 1d) / 0.1d;
+
+        assertNumEquals(numFactory.numOf(expected), actual, 1e-12);
+    }
+
+    @Test
+    public void explicitMarkPriceValuesFuturesForPositionAndRecord() {
+        BarSeries series = buildYearlySeries("calmar_explicit_mark", new double[] { 100d, 100d });
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01))
+                .build();
+        TradeFill positionEntryFill = fill(contract, series.getBeginIndex(), ExecutionSide.BUY, 100d);
+        Position position = new Position(Trade.fromFill(positionEntryFill, RecordedTradeCostModel.INSTANCE),
+                RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        BaseTradingRecord tradingRecord = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.one())
+                .build();
+        tradingRecord.operate(fill(contract, series.getBeginIndex(), ExecutionSide.BUY, 100d));
+        ConstantIndicator<Num> markPrice = new ConstantIndicator<>(series, numFactory.numOf(90d));
+        CalmarRatioCriterion criterion = (CalmarRatioCriterion) getCriterion();
+        double years = Duration
+                .between(series.getBar(series.getBeginIndex()).getBeginTime(),
+                        series.getBar(series.getEndIndex()).getEndTime())
+                .getSeconds() / (double) TimeConstants.SECONDS_PER_YEAR;
+        Num expectedMarked = numFactory.numOf((Math.pow(0.9d, 1d / years) - 1d) / 0.1d);
+
+        assertNumEquals(numFactory.zero(), criterion.calculate(series, position), 0d);
+        assertNumEquals(expectedMarked, criterion.calculate(series, position, markPrice), 1e-12);
+        assertNumEquals(numFactory.zero(), criterion.calculate(series, tradingRecord), 0d);
+        assertNumEquals(expectedMarked, criterion.calculate(series, tradingRecord, markPrice), 1e-12);
+    }
+
+    private Position futuresPosition(BarSeries series, double entryPrice, double exitPrice) {
+        FuturesContract contract = FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01))
+                .build();
+        Trade entry = Trade.fromFill(fill(contract, series.getBeginIndex(), ExecutionSide.BUY, entryPrice),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(fill(contract, series.getEndIndex(), ExecutionSide.SELL, exitPrice),
+                RecordedTradeCostModel.INSTANCE);
+        return new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+    }
+
+    private TradeFill fill(FuturesContract contract, int index, ExecutionSide side, double price) {
+        return TradeFill.builder()
+                .index(index)
+                .time(Instant.parse("2024-01-01T00:00:00Z").plusSeconds(index * 86_400L))
+                .price(numFactory.numOf(price))
+                .amount(numFactory.one())
+                .side(side)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+    }
+
+    @Test
+    public void annualizesSingleBarInitialFuturesLoss() {
+        for (Duration duration : List.of(Duration.ofDays(1), Duration.ofHours(6))) {
+            BarSeries series = getBarSeries("single_bar_initial_futures_loss");
+            Instant end = Instant.parse("2024-01-02T00:00:00Z");
+            series.addBar(series.barBuilder()
+                    .timePeriod(duration)
+                    .endTime(end)
+                    .openPrice(100)
+                    .highPrice(100)
+                    .lowPrice(100)
+                    .closePrice(100)
+                    .volume(1)
+                    .build());
+            FuturesContract contract = futuresPosition(series, 100, 100).getFuturesContract();
+            BaseTradingRecord record = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .initialCapital(numFactory.one())
+                    .build();
+            record.operate(fill(contract, 0, ExecutionSide.BUY, 100).toBuilder().time(end.minusSeconds(60)).build());
+            record.operate(fill(contract, 0, ExecutionSide.SELL, 99.9).toBuilder().time(end).build());
+            CashFlow curve = new CashFlow(series, record);
+            assertTrue(curve.hasInitialReturn());
+            assertNumEquals(0.999, curve.getValue(0));
+            double expected = (Math.pow(0.999, TimeConstants.SECONDS_PER_YEAR / (double) duration.getSeconds()) - 1)
+                    / 0.001;
+            assertNumEquals(numFactory.numOf(expected), getCriterion().calculate(series, record), 1e-8);
+            assertNumEquals(numFactory.numOf(expected),
+                    getCriterion().calculate(series, record.getPositions().getFirst()), 1e-8);
+        }
+    }
+
 }

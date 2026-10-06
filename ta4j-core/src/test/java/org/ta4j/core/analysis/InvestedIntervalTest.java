@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.analysis;
 
+import java.time.Instant;
+import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.FuturesContract;
+import org.ta4j.core.TradeFill;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
@@ -331,6 +336,121 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
         boolean[] expected = { false, true, false };
         for (int index = 0; index < expected.length; index++) {
             assertThat(marked.getValue(3 + index)).as("interval %d", 3 + index).isEqualTo(expected[index]);
+        }
+    }
+
+    @Test
+    public void marksAggregatePartialFuturesPositionThroughFinalBar() {
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 110, 99, 120);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        Trade entry = Trade.fromFills(Trade.TradeType.BUY,
+                List.of(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 2, 100, List.of())),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFills(Trade.TradeType.SELL,
+                List.of(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1, 110, List.of()),
+                        FuturesAnalysisTestSupport.fill(contract, -1, ExecutionSide.SELL, 1, 110, List.of())),
+                RecordedTradeCostModel.INSTANCE);
+        var position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        var tradingRecord = new AggregatePositionTradingRecord(position);
+
+        var indicator = new InvestedInterval(series, tradingRecord, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertThat(indicator.getValue(1)).isTrue();
+        assertThat(indicator.getValue(2)).isTrue();
+        assertThat(indicator.getValue(3)).isTrue();
+    }
+
+    @Test
+    public void marksOnlyNonzeroExposureForAggregateFuturesPosition() {
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 110, 105, 100, 95, 120, 125);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        Trade entry = Trade.fromFills(Trade.TradeType.BUY,
+                List.of(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1, 100, List.of()),
+                        FuturesAnalysisTestSupport.fill(contract, 5, ExecutionSide.BUY, 1, 120, List.of())),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1, 110, List.of()),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        TradingRecord tradingRecord = new AggregatePositionTradingRecord(position);
+
+        InvestedInterval indicator = new InvestedInterval(series, tradingRecord, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertThat(indicator.getValue(1)).isTrue();
+        assertThat(indicator.getValue(2)).isFalse();
+        assertThat(indicator.getValue(3)).isFalse();
+        assertThat(indicator.getValue(4)).isFalse();
+        assertThat(indicator.getValue(5)).isFalse();
+        assertThat(indicator.getValue(6)).isTrue();
+    }
+
+    @Test
+    public void marksPartiallyClosedSpotPositionThroughFinalBar() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 99, 120).build();
+        Trade entry = Trade
+                .fromFills(
+                        Trade.TradeType.BUY, List.of(new TradeFill(0, Instant.EPOCH, numFactory.numOf(100),
+                                numFactory.numOf(2), numFactory.zero(), ExecutionSide.BUY, null, null)),
+                        RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFills(Trade.TradeType.SELL,
+                List.of(new TradeFill(1, Instant.EPOCH.plusSeconds(1), numFactory.numOf(110), numFactory.one(),
+                        numFactory.zero(), ExecutionSide.SELL, null, null),
+                        new TradeFill(-1, Instant.EPOCH.plusSeconds(2), numFactory.numOf(120), numFactory.one(),
+                                numFactory.zero(), ExecutionSide.SELL, null, null)),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        TradingRecord tradingRecord = new AggregatePositionTradingRecord(position);
+
+        InvestedInterval indicator = new InvestedInterval(series, tradingRecord, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertThat(indicator.getValue(1)).isTrue();
+        assertThat(indicator.getValue(2)).isTrue();
+        assertThat(indicator.getValue(3)).isTrue();
+    }
+
+    @Test
+    public void usesLastExecutedExitFillForFullyExitedAggregatePosition() {
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 110, 120, 130, 140, 150, 160, 170, 180);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        Trade entry = Trade.fromFills(Trade.TradeType.BUY,
+                List.of(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 2, 100, List.of()),
+                        FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1, 100, List.of())),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFills(Trade.TradeType.SELL,
+                List.of(FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 1, 130, List.of()),
+                        FuturesAnalysisTestSupport.fill(contract, 5, ExecutionSide.SELL, 1, 150, List.of()),
+                        FuturesAnalysisTestSupport.fill(contract, 7, ExecutionSide.SELL, 1, 170, List.of())),
+                RecordedTradeCostModel.INSTANCE);
+        Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        TradingRecord tradingRecord = new AggregatePositionTradingRecord(position);
+
+        InvestedInterval indicator = new InvestedInterval(series, tradingRecord, OpenPositionHandling.IGNORE);
+
+        assertThat(indicator.getValue(5)).isTrue();
+        assertThat(indicator.getValue(6)).isTrue();
+        assertThat(indicator.getValue(7)).isTrue();
+        assertThat(indicator.getValue(8)).isFalse();
+    }
+
+    private static final class AggregatePositionTradingRecord extends BaseTradingRecord {
+        private final List<Position> positions;
+
+        private AggregatePositionTradingRecord(Position position) {
+            this.positions = List.of(position);
+        }
+
+        @Override
+        public List<Position> getPositions() {
+            return positions;
+        }
+
+        @Override
+        public Position getCurrentPosition() {
+            return positions.getFirst();
+        }
+
+        @Override
+        public List<Position> getOpenPositions() {
+            return List.of();
         }
     }
 }

@@ -3,11 +3,13 @@
  */
 package org.ta4j.core.backtest;
 
+import java.time.Instant;
 import java.util.Objects;
 import java.util.function.Consumer;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Strategy;
@@ -302,6 +304,7 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, Num amount, int startIndex, int finishIndex) {
+        validatePositiveAmount(amount);
         Bounds window = clampToCurrentBounds(startIndex, finishIndex);
         TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, window);
         return run(strategy, tradingRecord, amount, window.begin(), window.end());
@@ -428,7 +431,7 @@ public class BarSeriesManager {
      */
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, Num amount, int startIndex,
             int finishIndex) {
-        Objects.requireNonNull(amount, "amount");
+        validatePositiveAmount(amount);
         return run(strategy, tradingRecord, startIndex, finishIndex, (index, runSeries) -> amount);
     }
 
@@ -652,11 +655,15 @@ public class BarSeriesManager {
             for (int i = runBeginIndex;; i++) {
                 lastProcessedIndex = i;
                 runSeries.markBarProcessed();
+                advanceToBarBoundary(tradingRecord, i, false, runSeries);
                 tradeExecutionModel.onBar(i, tradingRecord, runSeries);
                 // For each bar between both indexes...
                 if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradeExecutionModel.execute(i, tradingRecord, runSeries, amountResolver.amount(i, runSeries));
+                    Num amount = amountResolver.amount(i, runSeries);
+                    if (amount != null)
+                        tradeExecutionModel.execute(i, tradingRecord, runSeries, amount);
                 }
+                advanceToBarBoundary(tradingRecord, i, true, runSeries);
                 if (i == runEndIndex) {
                     break;
                 }
@@ -677,15 +684,24 @@ public class BarSeriesManager {
             TradeType tradeType, BarSeries runSeries) {
         Num amount = positionSizer.amount(positionSizerContext(index, strategy, tradingRecord, tradeType, runSeries));
         validateAmount(amount);
+        if (amount.isZero()) {
+            if (log.isTraceEnabled()) {
+                log.trace("Skipping entry at index {} because the position sizer returned zero", index);
+            }
+            return null;
+        }
         return amount;
     }
 
     private static void validateAmount(Num amount) {
-        if (amount == null || amount.isNaN()) {
-            throw new IllegalArgumentException("Amount must be positive and finite");
+        if (amount == null || !Num.isFinite(amount) || amount.isNegative()) {
+            throw new IllegalArgumentException("Amount must be non-negative and finite");
         }
+    }
 
-        if (amount.isNegativeOrZero() || !Double.isFinite(amount.doubleValue())) {
+    private static void validatePositiveAmount(Num amount) {
+        Objects.requireNonNull(amount, "amount");
+        if (!Num.isFinite(amount) || amount.isNegativeOrZero()) {
             throw new IllegalArgumentException("Amount must be positive and finite");
         }
     }
@@ -704,8 +720,8 @@ public class BarSeriesManager {
         if (target == null) {
             target = fallbackSizingTarget(index, runSeries);
         }
-        return new PositionSizer.Context(index, target.index(), target.price(), strategy, runSeries, tradeType,
-                tradingRecord, transactionCostModel, holdingCostModel);
+        return new PositionSizer.Context(index, target.index(), target.price(), target.time(), strategy, runSeries,
+                tradeType, tradingRecord, tradingRecord.getTransactionCostModel(), tradingRecord.getHoldingCostModel());
     }
 
     private static ExecutionTarget fallbackSizingTarget(int index, BarSeries barSeries) {
@@ -720,7 +736,17 @@ public class BarSeriesManager {
         } else if (fallbackIndex > safeEnd) {
             fallbackIndex = safeEnd;
         }
-        return new ExecutionTarget(fallbackIndex, barSeries.getBar(fallbackIndex).getClosePrice());
+        Bar bar = barSeries.getBar(fallbackIndex);
+        return new ExecutionTarget(fallbackIndex, bar.getClosePrice(), bar.getEndTime());
     }
 
+    /** Advances native funding only through a boundary the run can read. */
+    private void advanceToBarBoundary(TradingRecord record, int index, boolean barEnd, BarSeries runSeries) {
+        if (index < runSeries.getBeginIndex() || index > runSeries.getEndIndex())
+            return;
+        Bar bar = runSeries.getBar(index);
+        Instant time = barEnd ? bar.getEndTime() : bar.getBeginTime();
+        if (time != null)
+            record.advanceTo(time);
+    }
 }

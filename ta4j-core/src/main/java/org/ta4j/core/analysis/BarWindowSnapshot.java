@@ -120,4 +120,10 @@ final class BarWindowSnapshot {
         }
         return true;
     }
+
+    /** Returns the captured begin time, or null outside the window. */
+    Instant beginTime(int index) {
+        long offset = (long) index - beginIndex;
+        return offset < 0 || offset >= barStates.length ? null : barStates[(int) offset].beginTime();
+    }
 }

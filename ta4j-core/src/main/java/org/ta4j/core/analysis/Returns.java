@@ -3,6 +3,10 @@
  */
 package org.ta4j.core.analysis;
 
+import org.ta4j.core.Indicator;
+import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,6 +42,10 @@ import org.ta4j.core.num.Num;
  * rather than at an exit that happened later. {@link #getValue(int)} returns
  * {@link NaN#NaN} outside that materialized range.
  *
+ * <p>
+ * Native period factors compare normalized entering and current equity before
+ * rounding either amount or rescaling by account capital.
+ *
  * @see ReturnRepresentation
  * @see ReturnRepresentationPolicy
  */
@@ -68,6 +76,15 @@ public class Returns implements PerformanceIndicator {
     private final List<Num> values;
 
     private final OffsetNumBuffer returnFactors;
+    private FuturesPerformanceSupport.PnLAccumulator futuresPnL;
+    private OffsetNumBuffer spotReturnFactors;
+    private boolean spotFirstRetainedSlotSeeded;
+    private boolean spotDefinesHeadPeriod;
+    private final Num futuresCapital;
+    private final Indicator<Num> futuresMark;
+    private final boolean markFuturesExposure;
+    private boolean preWindowFuturesActivity;
+    private boolean firstBarFuturesActivity;
 
     /**
      * True when a position entered before the retained window marked the first
@@ -75,6 +92,7 @@ public class Returns implements PerformanceIndicator {
      * though no prior in-window close exists.
      */
     private boolean firstRetainedSlotSeeded;
+    private boolean seededFirstBarReturn;
 
     /**
      * The window captured when the return buffers were materialized. Later rolling
@@ -105,26 +123,71 @@ public class Returns implements PerformanceIndicator {
     private Returns(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
             ReturnRepresentation representation, EquityCurveMode equityCurveMode,
             OpenPositionHandling openPositionHandling, boolean useRecordEnd) {
+        this(barSeries, tradingRecord, finalIndex, representation, equityCurveMode, openPositionHandling, useRecordEnd,
+                new ClosePriceIndicator(barSeries), null);
+    }
+
+    private Returns(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
+            ReturnRepresentation representation, EquityCurveMode equityCurveMode,
+            OpenPositionHandling openPositionHandling, boolean useRecordEnd, Indicator<Num> markPriceIndicator,
+            Num fallbackCapital) {
         this.barSeries = Objects.requireNonNull(barSeries, "barSeries");
         this.representation = Objects.requireNonNull(representation);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
         TradingRecord record = Objects.requireNonNull(tradingRecord);
         OpenPositionHandling handling = Objects.requireNonNull(openPositionHandling);
+        FuturesPerformanceSupport.requireMarkSeries(barSeries, markPriceIndicator);
+        boolean futures = FuturesPerformanceSupport.isFutures(record);
         Materialized materialized = AnalysisPositionSupport.materialize(this, barSeries, record, 0, finalIndex,
                 useRecordEnd, false, true, handling, (captured, positions, costs) -> {
                     Num initial = this.representation == ReturnRepresentation.LOG ? this.barSeries.numFactory().zero()
                             : this.barSeries.numFactory().one();
                     OffsetNumBuffer factors = AnalysisPositionSupport.buffer(captured, initial, NaN.NaN);
                     boolean seeded = false;
-                    for (Position position : positions) {
-                        seeded |= calculatePosition(position, captured.finalIndex(), captured, factors,
-                                costs.get(position));
-                    }
-                    return new Materialized(captured, factors, seeded);
+                    Num zero = this.barSeries.numFactory().zero();
+                    FuturesPerformanceSupport.PnLAccumulator pnl = null;
+                    if (futures) {
+                        Num capital = captured.isEmpty() ? zero
+                                : FuturesPerformanceSupport.accountCapital(barSeries.numFactory(), record,
+                                        fallbackCapital);
+                        pnl = FuturesPerformanceSupport
+                                .pnl(FuturesPerformanceSupport.cursor(barSeries, record, captured.endIndex(),
+                                        FuturesPerformanceSupport.includesExposure(handling, equityCurveMode),
+                                        markPriceIndicator), captured, barSeries.numFactory(), capital);
+                        seeded = publishReturnFactors(pnl, capital,
+                                FuturesPerformanceSupport.hasActivityAtIndex(record, captured.beginIndex()), false,
+                                AnalysisPositionSupport.buffer(captured, initial, NaN.NaN), captured, factors);
+                    } else
+                        for (Position position : positions) {
+                            seeded |= calculatePosition(position, captured.finalIndex(), captured, factors,
+                                    costs.get(position));
+                        }
+                    return new Materialized(captured, factors, pnl, seeded);
                 });
         this.window = materialized.window();
         this.returnFactors = materialized.factors();
+        this.futuresPnL = materialized.pnl() == null
+                ? new FuturesPerformanceSupport.PnLAccumulator(window, barSeries.numFactory())
+                : materialized.pnl();
+        Num spotInitial = representation == ReturnRepresentation.LOG ? barSeries.numFactory().zero()
+                : barSeries.numFactory().one();
+        this.spotReturnFactors = futures ? AnalysisPositionSupport.buffer(window, spotInitial, NaN.NaN)
+                : returnFactors.copy();
+        this.spotFirstRetainedSlotSeeded = !futures && materialized.firstRetainedSlotSeeded();
+        this.spotDefinesHeadPeriod = spotFirstRetainedSlotSeeded;
+        Num initialCapital = record.getInitialCapital() == null ? fallbackCapital : record.getInitialCapital();
+        // Deferred-only exposure has not established normalization capital yet.
+        this.futuresCapital = initialCapital == null || initialCapital.isZero() ? null : initialCapital;
+        this.futuresMark = markPriceIndicator;
+        this.markFuturesExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
+        this.preWindowFuturesActivity = futures
+                && FuturesPerformanceSupport.hasPreWindowActivity(record, window.beginIndex(), markFuturesExposure);
+        this.firstBarFuturesActivity = futures
+                && FuturesPerformanceSupport.hasActivityAtIndex(record, window.beginIndex());
         this.firstRetainedSlotSeeded = materialized.firstRetainedSlotSeeded();
+        this.seededFirstBarReturn = futures && firstRetainedSlotSeeded
+                && FuturesPerformanceSupport.hasPreWindowActivity(record, window.beginIndex(),
+                        FuturesPerformanceSupport.includesExposure(handling, equityCurveMode));
         this.rawValues = new ArrayList<>(returnFactors.size());
         this.values = new ArrayList<>(returnFactors.size());
         buildReturns();
@@ -135,7 +198,7 @@ public class Returns implements PerformanceIndicator {
      * a discarded attempt cannot leave it set.
      */
     private record Materialized(AnalysisPositionSupport.Window window, OffsetNumBuffer factors,
-            boolean firstRetainedSlotSeeded) {
+            FuturesPerformanceSupport.PnLAccumulator pnl, boolean firstRetainedSlotSeeded) {
     }
 
     /**
@@ -187,7 +250,9 @@ public class Returns implements PerformanceIndicator {
      */
     public Returns(BarSeries barSeries, Position position, ReturnRepresentation representation,
             EquityCurveMode equityCurveMode) {
-        this(barSeries, new BaseTradingRecord(position), representation, equityCurveMode);
+        this(barSeries, FuturesPerformanceSupport.analysisRecord(position), 0, representation, equityCurveMode,
+                OpenPositionHandling.MARK_TO_MARKET, true, new ClosePriceIndicator(barSeries),
+                FuturesPerformanceSupport.fallbackCapital(position));
     }
 
     /**
@@ -359,6 +424,16 @@ public class Returns implements PerformanceIndicator {
     /**
      * Calculates the returns for a single position.
      *
+     * <p>
+     * Accepted spot period factors remain composed with the native account's return
+     * factors across later updates, including when an ordinary record supplied the
+     * constructor. A retained-head period established by a spot return keeps that
+     * meaning when later native activity arrives. Each update composes the retained
+     * spot factors with normalized native periods once; rounding a previous
+     * combined view does not become input to a later update. With no native
+     * contribution, the established spot-only composition is preserved.
+     * </p>
+     *
      * @param position   a single position
      * @param finalIndex the index up to which the returns of open positions are
      *                   considered
@@ -369,13 +444,61 @@ public class Returns implements PerformanceIndicator {
     @Override
     public void calculatePosition(Position position, int finalIndex) {
         AnalysisPositionSupport.PricedPosition priced = AnalysisPositionSupport.pricePosition(this, barSeries, position,
-                finalIndex, window, false);
+                finalIndex, window, FuturesPerformanceSupport.isFutures(position));
         if (priced == null) {
             return;
         }
+        if (FuturesPerformanceSupport.isFutures(position)) {
+            Num capital = FuturesPerformanceSupport.accountCapital(barSeries.numFactory(),
+                    FuturesPerformanceSupport.analysisRecord(position),
+                    futuresCapital == null ? FuturesPerformanceSupport.fallbackCapital(position) : futuresCapital);
+            boolean preWindow = preWindowFuturesActivity || FuturesPerformanceSupport.hasPreWindowActivity(position,
+                    window.beginIndex(), markFuturesExposure);
+            boolean firstActivity = firstBarFuturesActivity
+                    || FuturesPerformanceSupport.hasActivityAtIndex(position, window.beginIndex());
+            FuturesPerformanceSupport.PnLAccumulator pnl = futuresPnL.copy();
+            boolean[] firstReported = new boolean[1];
+            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, returnFactors, staged -> {
+                FuturesPerformanceSupport.addPositionPnL(barSeries, position, finalIndex, window, markFuturesExposure,
+                        futuresMark, pnl, capital);
+                firstReported[0] = publishReturnFactors(pnl, capital, firstActivity, spotDefinesHeadPeriod,
+                        spotReturnFactors, window, staged);
+            }, true);
+            futuresPnL = pnl;
+            firstRetainedSlotSeeded = firstReported[0] || spotFirstRetainedSlotSeeded;
+            seededFirstBarReturn = firstReported[0] && preWindow && !spotDefinesHeadPeriod;
+            preWindowFuturesActivity = preWindow;
+            firstBarFuturesActivity = firstActivity;
+            rawValues.clear();
+            values.clear();
+            buildReturns();
+            return;
+        }
         boolean[] seeded = new boolean[1];
-        AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, returnFactors,
-                staged -> seeded[0] = calculatePosition(position, finalIndex, window, staged, priced.holdingCost()));
+        OffsetNumBuffer spotFactors = spotReturnFactors.copy();
+        AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, returnFactors, staged -> {
+            Num initial = representation == ReturnRepresentation.LOG ? barSeries.numFactory().zero()
+                    : barSeries.numFactory().one();
+            OffsetNumBuffer contribution = AnalysisPositionSupport.buffer(window, initial, NaN.NaN);
+            seeded[0] = calculatePosition(position, finalIndex, window, contribution, priced.holdingCost());
+            for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
+                Num factor = contribution.get((int) index);
+                if (representation == ReturnRepresentation.LOG) {
+                    spotFactors.add((int) index, factor);
+                } else {
+                    spotFactors.multiply((int) index, factor);
+                }
+            }
+            // Spot changes do not alter the already-validated native components.
+            // Recompose both retained representations instead of chaining the
+            // rounded combined view into the next spot publication.
+            publishReturnFactors(futuresPnL, null, firstBarFuturesActivity,
+                    spotDefinesHeadPeriod || seeded[0] && !firstRetainedSlotSeeded, spotFactors, window, staged);
+        });
+        spotReturnFactors = spotFactors;
+        if (seeded[0] && !firstRetainedSlotSeeded)
+            spotDefinesHeadPeriod = true;
+        spotFirstRetainedSlotSeeded |= seeded[0];
         // Reached only once the staged factors were verified and published.
         firstRetainedSlotSeeded |= seeded[0];
         rawValues.clear();
@@ -506,4 +629,98 @@ public class Returns implements PerformanceIndicator {
         }
     }
 
+    /**
+     * Constructor for a futures trading record valuing open exposure at an explicit
+     * mark price.
+     *
+     * <p>
+     * The mark price indicator is validated against the analysed series and is
+     * consumed by native futures records only; closing prices remain the documented
+     * backtest mark proxy otherwise.
+     * </p>
+     *
+     * @param barSeries            the bar series
+     * @param tradingRecord        the trading record
+     * @param markPriceIndicator   mark price indicator on the same series
+     * @param finalIndex           the index up to which the returns of open
+     *                             positions are considered
+     * @param representation       the return representation (determines both
+     *                             calculation method and output format)
+     * @param equityCurveMode      the calculation mode
+     * @param openPositionHandling how to handle open positions
+     * @since 0.25.1
+     */
+    public Returns(BarSeries barSeries, TradingRecord tradingRecord, Indicator<Num> markPriceIndicator, int finalIndex,
+            ReturnRepresentation representation, EquityCurveMode equityCurveMode,
+            OpenPositionHandling openPositionHandling) {
+        this(barSeries, tradingRecord, finalIndex, representation, equityCurveMode, openPositionHandling, false,
+                markPriceIndicator, null);
+    }
+
+    /**
+     * Publishes one composition of normalized native periods and retained spot
+     * factors. A null capital reuses native components already validated before a
+     * spot-only update; native construction and mutations validate with their
+     * account capital before publication. A zero fallback capital belongs to a
+     * position with no executed exposure: its zero contribution leaves the accepted
+     * normalized components available for the same publication.
+     */
+    private boolean publishReturnFactors(FuturesPerformanceSupport.PnLAccumulator pnl, Num capital,
+            boolean firstActivity, boolean spotHeadPeriod, OffsetNumBuffer spotFactors,
+            AnalysisPositionSupport.Window captured, OffsetNumBuffer target) {
+        if (captured.isEmpty())
+            return false;
+        Num initial = representation == ReturnRepresentation.LOG ? barSeries.numFactory().zero()
+                : barSeries.numFactory().one();
+        OffsetNumBuffer factors = AnalysisPositionSupport.buffer(captured, initial, NaN.NaN);
+        boolean firstReported = captured.beginIndex() > 0 && (firstActivity || spotHeadPeriod);
+        // A spot return that first defined this slot remains a period sample;
+        // later native activity must not replace it with a historical capital seed.
+        int previousIndex = captured.beginIndex() - 1;
+        for (long index = captured.beginIndex(); index <= captured.bufferEndIndex(); index++) {
+            if (capital != null && !capital.isZero())
+                pnl.validatePnL((int) index, capital);
+            if (index > captured.beginIndex() || firstReported) {
+                Num ratio = pnl.equityRatio((int) index, previousIndex,
+                        index == captured.beginIndex() && spotHeadPeriod);
+                if (representation == ReturnRepresentation.LOG) {
+                    factors.add((int) index, ratio.isPositive() ? ratio.log() : NaN.NaN);
+                } else {
+                    factors.multiply((int) index, ratio);
+                }
+            }
+            // At absolute index zero preserve the established capital-based next sample;
+            // a retained head without activity is instead the first prior equity value.
+            if (index > captured.beginIndex() || captured.beginIndex() > 0)
+                previousIndex = (int) index;
+            if (representation == ReturnRepresentation.LOG)
+                factors.add((int) index, spotFactors.get((int) index));
+            else
+                factors.multiply((int) index, spotFactors.get((int) index));
+        }
+        target.replaceWith(factors);
+        return firstReported;
+    }
+
+    /**
+     * @return whether the captured first slot carries a return rather than a
+     *         placeholder
+     * @since 0.25.1
+     */
+    public boolean hasFirstBarReturn() {
+        return firstRetainedSlotSeeded;
+    }
+
+    /**
+     * Returns whether the value reported at the first stored bar is the cumulative
+     * equity accumulated since the account capital instead of a period return. Risk
+     * criteria omit such a seed, because it repeats results realized before the
+     * retained head of the series.
+     *
+     * @return {@code true} when the first reported value is a cumulative seed
+     * @since 0.25.1
+     */
+    public boolean hasSeededFirstBarReturn() {
+        return seededFirstBarReturn;
+    }
 }

@@ -3,6 +3,10 @@
  */
 package org.ta4j.core.analysis;
 
+import org.ta4j.core.Indicator;
+import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -16,6 +20,8 @@ import org.ta4j.core.num.Num;
 /**
  * Allows to follow the money cash flow involved by a list of positions over a
  * bar series, either marked to market or using realized values only.
+ * Incremental native values and entering equity are published from the retained
+ * components after each update, before rounding the visible total.
  */
 public class CashFlow implements PerformanceIndicator {
 
@@ -38,6 +44,14 @@ public class CashFlow implements PerformanceIndicator {
      * The equity curve calculation mode.
      */
     private final EquityCurveMode equityCurveMode;
+    private boolean initialReturnEligible;
+    private boolean preWindowFuturesActivity;
+    private boolean firstBarFuturesActivity;
+    private final Num futuresCapital;
+    private final Indicator<Num> futuresMark;
+    private final boolean markFuturesExposure;
+    private FuturesPerformanceSupport.PnLAccumulator futuresPnL;
+    private OffsetNumBuffer futuresSpotFactors;
 
     /**
      * Constructor.
@@ -83,8 +97,7 @@ public class CashFlow implements PerformanceIndicator {
      * @since 0.22.2
      */
     public CashFlow(BarSeries barSeries, Position position, EquityCurveMode equityCurveMode) {
-        this(barSeries, new BaseTradingRecord(position), 0, 0, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET,
-                false, true, true);
+        this(barSeries, position, new ClosePriceIndicator(barSeries), equityCurveMode);
     }
 
     /**
@@ -175,27 +188,69 @@ public class CashFlow implements PerformanceIndicator {
     private CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int startIndex, int requestedFinalIndex,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling, boolean useRecordEnd,
             boolean useSeriesEnd, boolean padToSeriesEnd) {
+        this(barSeries, tradingRecord, startIndex, requestedFinalIndex, equityCurveMode, openPositionHandling,
+                useRecordEnd, useSeriesEnd, padToSeriesEnd, new ClosePriceIndicator(barSeries), null);
+    }
+
+    private CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int startIndex, int requestedFinalIndex,
+            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling, boolean useRecordEnd,
+            boolean useSeriesEnd, boolean padToSeriesEnd, Indicator<Num> markPriceIndicator, Num fallbackCapital) {
         this.barSeries = Objects.requireNonNull(barSeries, "barSeries");
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
         TradingRecord record = Objects.requireNonNull(tradingRecord);
         OpenPositionHandling handling = Objects.requireNonNull(openPositionHandling);
-        AnalysisPositionSupport.Curve curve = AnalysisPositionSupport.materialize(this, barSeries, record, startIndex,
+        FuturesPerformanceSupport.requireMarkSeries(barSeries, markPriceIndicator);
+        boolean futures = FuturesPerformanceSupport.isFutures(record);
+        Materialized curve = AnalysisPositionSupport.materialize(this, barSeries, record, startIndex,
                 requestedFinalIndex, useRecordEnd, useSeriesEnd, padToSeriesEnd, handling,
                 (captured, positions, costs) -> {
                     Num one = this.barSeries.numFactory().one();
                     OffsetNumBuffer buffer = AnalysisPositionSupport.buffer(captured, one, one);
-                    for (Position position : positions) {
-                        calculatePosition(position, captured.finalIndex(), captured, buffer, costs.get(position));
-                    }
-                    return new AnalysisPositionSupport.Curve(captured, buffer);
+                    FuturesPerformanceSupport.PnLAccumulator pnl = null;
+                    if (futures) {
+                        pnl = fillFuturesValues(record, captured, buffer, markPriceIndicator, handling,
+                                fallbackCapital);
+                    } else
+                        for (Position position : positions) {
+                            calculatePosition(position, captured.finalIndex(), captured, buffer, costs.get(position));
+                        }
+                    return new Materialized(captured, buffer, pnl);
                 });
         this.window = curve.window();
         this.values = curve.values();
+        this.futuresPnL = curve.pnl() == null
+                ? new FuturesPerformanceSupport.PnLAccumulator(window, barSeries.numFactory())
+                : curve.pnl();
+        this.futuresSpotFactors = futures
+                ? AnalysisPositionSupport.buffer(window, barSeries.numFactory().one(), barSeries.numFactory().one())
+                : values.copy();
+        Num initialCapital = record.getInitialCapital() == null ? fallbackCapital : record.getInitialCapital();
+        // Deferred-only exposure has not established normalization capital yet.
+        this.futuresCapital = initialCapital == null || initialCapital.isZero() ? null : initialCapital;
+        this.futuresMark = markPriceIndicator;
+        this.markFuturesExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
+        this.preWindowFuturesActivity = futures
+                && FuturesPerformanceSupport.hasPreWindowActivity(record, window.beginIndex(), markFuturesExposure);
+        this.firstBarFuturesActivity = futures
+                && FuturesPerformanceSupport.hasActivityAtIndex(record, window.beginIndex());
+        this.initialReturnEligible = futures && !window.isEmpty() && !preWindowFuturesActivity
+                && firstBarFuturesActivity;
+    }
+
+    private record Materialized(AnalysisPositionSupport.Window window, OffsetNumBuffer values,
+            FuturesPerformanceSupport.PnLAccumulator pnl) {
     }
 
     /**
      * Calculates the cash flow for a single position (including accrued cashflow
      * for open positions).
+     *
+     * <p>
+     * Spot positions multiply prior equity; native settlement PnL adds a
+     * contribution normalized by the configured account capital or the position's
+     * settlement notional. Both retain entering equity independently of
+     * retained-bar values.
+     * </p>
      *
      * @param position   a single position
      * @param finalIndex index up until cash flow of open positions is considered
@@ -207,14 +262,58 @@ public class CashFlow implements PerformanceIndicator {
     public void calculatePosition(Position position, int finalIndex) {
         AnalysisPositionSupport.PricedPosition priced = AnalysisPositionSupport.pricePosition(this, barSeries, position,
                 finalIndex, window, true);
+        if (priced != null && FuturesPerformanceSupport.isFutures(position)) {
+            TradingRecord single = FuturesPerformanceSupport.analysisRecord(position);
+            Num capital = FuturesPerformanceSupport.accountCapital(barSeries.numFactory(), single,
+                    futuresCapital == null ? FuturesPerformanceSupport.fallbackCapital(position) : futuresCapital);
+            if (capital.isZero())
+                return;
+            boolean preWindow = preWindowFuturesActivity || FuturesPerformanceSupport.hasPreWindowActivity(position,
+                    window.beginIndex(), markFuturesExposure);
+            boolean firstActivity = firstBarFuturesActivity
+                    || FuturesPerformanceSupport.hasActivityAtIndex(position, window.beginIndex());
+            boolean initialReturn = !preWindow && firstActivity;
+            FuturesPerformanceSupport.PnLAccumulator pnl = futuresPnL.copy();
+            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values, staged -> {
+                FuturesPerformanceSupport.addPositionPnL(barSeries, position, finalIndex, window, markFuturesExposure,
+                        futuresMark, pnl, capital, futuresCapital == null);
+                publishFuturesValues(pnl, futuresSpotFactors, window, staged, futuresCapital == null ? null : capital);
+            }, true);
+            futuresPnL = pnl;
+            preWindowFuturesActivity = preWindow;
+            firstBarFuturesActivity = firstActivity;
+            initialReturnEligible = initialReturn;
+            return;
+        }
         if (priced != null) {
-            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values,
-                    staged -> calculatePosition(position, finalIndex, window, staged, priced.holdingCost()));
+            FuturesPerformanceSupport.PnLAccumulator pnl = futuresPnL.copy();
+            OffsetNumBuffer spotFactors = futuresSpotFactors.copy();
+            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values, staged -> {
+                Num one = barSeries.numFactory().one();
+                OffsetNumBuffer factors = AnalysisPositionSupport.buffer(window, one, one);
+                // Read prices/costs once and test entry equity against the visible
+                // curve, while capturing the exact accepted spot multipliers.
+                calculatePosition(position, finalIndex, window, factors, priced.holdingCost(), staged);
+                pnl.multiply(factors);
+                for (long index = window.beginIndex(); index <= window.bufferEndIndex(); index++) {
+                    Num factor = factors.get((int) index);
+                    spotFactors.multiply((int) index, factor);
+                }
+                spotFactors.multiplyBaseline(factors.baseline());
+                publishFuturesValues(pnl, spotFactors, window, staged, futuresCapital);
+            });
+            futuresPnL = pnl;
+            futuresSpotFactors = spotFactors;
         }
     }
 
     private void calculatePosition(Position position, int finalIndex, AnalysisPositionSupport.Window captured,
             OffsetNumBuffer buffer, Num holdingCost) {
+        calculatePosition(position, finalIndex, captured, buffer, holdingCost, buffer);
+    }
+
+    private void calculatePosition(Position position, int finalIndex, AnalysisPositionSupport.Window captured,
+            OffsetNumBuffer buffer, Num holdingCost, OffsetNumBuffer entryValues) {
         Trade entry = position.getEntry();
         if (entry == null) {
             return;
@@ -235,7 +334,7 @@ public class CashFlow implements PerformanceIndicator {
             if (!captured.carriesBeforeWindow(position)) {
                 return;
             }
-            Num entryEquity = buffer.get(windowStartIndex);
+            Num entryEquity = entryValues.get(windowStartIndex);
             if (!entryEquity.isGreaterThan(barSeries.numFactory().zero())) {
                 return;
             }
@@ -247,7 +346,7 @@ public class CashFlow implements PerformanceIndicator {
             return;
         }
 
-        Num entryEquity = buffer.get(Math.max(entryIndex, windowStartIndex));
+        Num entryEquity = entryValues.get(Math.max(entryIndex, windowStartIndex));
         if (!entryEquity.isGreaterThan(barSeries.numFactory().zero())) {
             return;
         }
@@ -369,5 +468,110 @@ public class CashFlow implements PerformanceIndicator {
             return exitPrice.dividedBy(entryPrice);
         }
         return entryPrice.getNumFactory().numOf(2).minus(exitPrice.dividedBy(entryPrice));
+    }
+
+    /**
+     * Constructor valuing open exposure at an explicit mark price.
+     *
+     * <p>
+     * The mark price indicator is validated against the analysed series and is
+     * consumed by native futures records only; closing prices remain the documented
+     * backtest mark proxy otherwise.
+     * </p>
+     *
+     * @param barSeries            the bar series
+     * @param tradingRecord        the trading record
+     * @param markPriceIndicator   mark price indicator on the same series
+     * @param finalIndex           index up until cash flows of open positions are
+     *                             considered
+     * @param equityCurveMode      the calculation mode
+     * @param openPositionHandling how to handle open positions
+     * @since 0.25.1
+     */
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, Indicator<Num> markPriceIndicator, int finalIndex,
+            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+        this(barSeries, tradingRecord, 0, finalIndex, equityCurveMode, openPositionHandling, false, false, true,
+                markPriceIndicator, null);
+    }
+
+    /**
+     * Constructor materializing only a bounded logical window on the original
+     * series and valuing open exposure at an explicit mark price. Discarded bars
+     * are not stored and retain the neutral value of one.
+     *
+     * @param barSeries            the bar series
+     * @param tradingRecord        the trading record
+     * @param markPriceIndicator   mark price indicator on the same series
+     * @param startIndex           first logical bar index to materialize
+     * @param finalIndex           last logical bar index to materialize and to
+     *                             consider for open positions
+     * @param equityCurveMode      the calculation mode
+     * @param openPositionHandling how to handle open positions
+     * @since 0.25.1
+     */
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, Indicator<Num> markPriceIndicator, int startIndex,
+            int finalIndex, EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+        this(barSeries, tradingRecord, startIndex, finalIndex, equityCurveMode, openPositionHandling, false, false,
+                false, markPriceIndicator, null);
+    }
+
+    /**
+     * Constructor for cash flows of a position using an explicit mark price.
+     *
+     * @param barSeries          the bar series
+     * @param position           a single position
+     * @param markPriceIndicator mark price indicator on the same series
+     * @param equityCurveMode    the calculation mode
+     * @since 0.25.1
+     */
+    public CashFlow(BarSeries barSeries, Position position, Indicator<Num> markPriceIndicator,
+            EquityCurveMode equityCurveMode) {
+        this(barSeries, FuturesPerformanceSupport.analysisRecord(position), 0, 0, equityCurveMode,
+                OpenPositionHandling.MARK_TO_MARKET, false, true, true, markPriceIndicator,
+                FuturesPerformanceSupport.fallbackCapital(position));
+    }
+
+    /**
+     * Whether the first retained bar includes a futures return from initial
+     * capital.
+     *
+     * @return whether the cash flow has an initial futures return
+     * @since 0.25.1
+     */
+    public boolean hasInitialReturn() {
+        return initialReturnEligible;
+    }
+
+    private FuturesPerformanceSupport.PnLAccumulator fillFuturesValues(TradingRecord record,
+            AnalysisPositionSupport.Window captured, OffsetNumBuffer buffer, Indicator<Num> markPrice,
+            OpenPositionHandling handling, Num fallbackCapital) {
+        NumFactory factory = barSeries.numFactory();
+        if (captured.isEmpty())
+            return new FuturesPerformanceSupport.PnLAccumulator(captured, factory);
+        Num capital = FuturesPerformanceSupport.accountCapital(factory, record, fallbackCapital);
+        if (capital.isZero())
+            return new FuturesPerformanceSupport.PnLAccumulator(captured, factory);
+        boolean markExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
+        FuturesPerformanceSupport.Cursor cursor = FuturesPerformanceSupport.cursor(barSeries, record,
+                captured.endIndex(), markExposure, markPrice);
+        FuturesPerformanceSupport.PnLAccumulator pnl = FuturesPerformanceSupport.pnl(cursor, captured, factory,
+                capital);
+        publishFuturesValues(pnl, AnalysisPositionSupport.buffer(captured, factory.one(), factory.one()), captured,
+                buffer, capital);
+        return pnl;
+    }
+
+    /** Publishes entering and retained equity from the same authoritative state. */
+    private void publishFuturesValues(FuturesPerformanceSupport.PnLAccumulator pnl, OffsetNumBuffer spotFactors,
+            AnalysisPositionSupport.Window captured, OffsetNumBuffer buffer, Num capital) {
+        Num one = barSeries.numFactory().one();
+        OffsetNumBuffer result = AnalysisPositionSupport.buffer(captured, one, one);
+        for (long index = captured.beginIndex(); index <= captured.bufferEndIndex(); index++) {
+            if (capital != null)
+                pnl.validatePnL((int) index, capital);
+            result.multiply((int) index, pnl.equity((int) index, spotFactors.get((int) index)));
+        }
+        result.multiplyBaseline(pnl.enteringEquity(spotFactors.baseline()));
+        buffer.replaceWith(result);
     }
 }

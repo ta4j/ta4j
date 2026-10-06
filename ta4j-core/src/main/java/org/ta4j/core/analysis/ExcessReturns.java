@@ -3,6 +3,9 @@
  */
 package org.ta4j.core.analysis;
 
+import org.ta4j.core.Position;
+import org.ta4j.core.BaseTradingRecord;
+
 import java.time.Instant;
 import java.util.Objects;
 
@@ -114,6 +117,12 @@ public final class ExcessReturns {
      */
     public ExcessReturns(BarSeries series, Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy,
             TradingRecord tradingRecord, EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+        this(series, annualRiskFreeRate, cashReturnPolicy, tradingRecord, equityCurveMode, openPositionHandling, null);
+    }
+
+    private ExcessReturns(BarSeries series, Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy,
+            TradingRecord tradingRecord, EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling,
+            Position position) {
         this.series = Objects.requireNonNull(series, "series cannot be null");
         this.annualRiskFreeRate = Objects.requireNonNull(annualRiskFreeRate, "annualRiskFreeRate cannot be null");
         this.cashReturnPolicy = Objects.requireNonNull(cashReturnPolicy, "cashReturnPolicy cannot be null");
@@ -133,7 +142,11 @@ public final class ExcessReturns {
                     .withReadLock(() -> series.isEmpty() ? BarWindowSnapshot.capture(series, 0, -1)
                             : BarWindowSnapshot.capture(series, series.getBeginIndex(), series.getEndIndex()));
             InvestedInterval invested = new InvestedInterval(series, tradingRecord, effectiveOpenPositionHandling);
-            CashFlow flow = new CashFlow(series, tradingRecord, equityCurveMode, effectiveOpenPositionHandling);
+            CashFlow flow = position == null
+                    ? new CashFlow(series, tradingRecord, equityCurveMode, effectiveOpenPositionHandling)
+                    : new CashFlow(series, position,
+                            effectiveOpenPositionHandling == OpenPositionHandling.IGNORE ? EquityCurveMode.REALIZED
+                                    : equityCurveMode);
             if (snapshot.covers(flow.getBeginIndex(), flow.getEndIndex())
                     && series.withReadLock(() -> snapshot.isUnchangedIn(series))) {
                 this.investedInterval = invested;
@@ -179,7 +192,8 @@ public final class ExcessReturns {
      * @since 0.25.1
      */
     public Instant getCapturedEndTime(int index) {
-        return bars.endTime(index);
+        return hasInitialReturn() && index == getBeginIndex() - 1 ? bars.beginTime(getBeginIndex())
+                : bars.endTime(index);
     }
 
     /**
@@ -251,12 +265,40 @@ public final class ExcessReturns {
      *         was not captured or time does not advance
      */
     private Num deltaYears(int previousIndex, int currentIndex, NumFactory numFactory) {
-        Instant previousEnd = bars.endTime(previousIndex);
-        Instant currentEnd = bars.endTime(currentIndex);
+        Instant previousEnd = getCapturedEndTime(previousIndex);
+        Instant currentEnd = getCapturedEndTime(currentIndex);
         if (previousEnd == null || currentEnd == null) {
             return numFactory.zero();
         }
         return BarSeriesUtils.deltaYears(previousEnd, currentEnd, numFactory);
     }
 
+    /**
+     * Creates excess returns for one position. Native futures use the existing
+     * entry-notional capital fallback rather than requiring account capital.
+     *
+     * @param series               the bar series
+     * @param annualRiskFreeRate   the annual risk-free rate
+     * @param cashReturnPolicy     the policy for flat equity intervals
+     * @param position             the position to analyse
+     * @param equityCurveMode      the equity curve mode
+     * @param openPositionHandling how to handle remaining exposure
+     * @since 0.25.1
+     */
+    public ExcessReturns(BarSeries series, Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy, Position position,
+            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+        this(series, annualRiskFreeRate, cashReturnPolicy, FuturesPerformanceSupport.analysisRecord(position),
+                equityCurveMode, openPositionHandling, position);
+    }
+
+    /**
+     * Whether the curve has a first-bar futures return from initial capital, rather
+     * than cumulative activity before the retained window.
+     *
+     * @return whether sampling should include the capital-to-first-bar move
+     * @since 0.25.1
+     */
+    public boolean hasInitialReturn() {
+        return cashFlow.hasInitialReturn();
+    }
 }

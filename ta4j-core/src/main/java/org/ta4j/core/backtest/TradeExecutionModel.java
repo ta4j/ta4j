@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.backtest;
 
+import java.time.Instant;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.Trade.TradeType;
@@ -31,12 +33,32 @@ import org.ta4j.core.num.Num;
 public interface TradeExecutionModel {
 
     /**
-     * Represents the estimated execution bar and fill price for one dynamic sizing
-     * context lookup.
+     * Represents the estimated execution bar, fill price and timestamp for one
+     * dynamic sizing context lookup.
      *
+     * <p>
+     * The timestamp is the resolved execution time of the target price source: the
+     * bar close time for a current-close target and the next bar's begin time for a
+     * next-open target. It may be {@code null} when the series carries no
+     * timestamps.
+     * </p>
+     *
+     * @param index estimated execution bar index
+     * @param price estimated fill price
+     * @param time  resolved execution timestamp, or {@code null} when unknown
      * @since 0.22.9
      */
-    record ExecutionTarget(int index, Num price) {
+    record ExecutionTarget(int index, Num price, Instant time) {
+        /**
+         * Creates a target without a resolved execution timestamp.
+         *
+         * @param index estimated execution bar index
+         * @param price estimated fill price
+         * @since 0.22.9
+         */
+        public ExecutionTarget(int index, Num price) {
+            this(index, price, null);
+        }
     }
 
     /**

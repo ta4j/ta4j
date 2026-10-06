@@ -3,6 +3,14 @@
  */
 package org.ta4j.core.analysis;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFill;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
+
 import java.util.Objects;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -120,14 +128,25 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
         // after it as open there, and drop those under IGNORE.
         for (Position position : AnalysisPositionSupport.positionsForAnalysis(tradingRecord, window.finalIndex(),
                 openPositionHandling, EquityCurveMode.MARK_TO_MARKET)) {
-            markInvestedIntervals(position, invested, beginIndex, window.endIndex());
+            markInvestedIntervals(position, invested, beginIndex, window.endIndex(), openPositionHandling);
         }
         return invested;
     }
 
-    private void markInvestedIntervals(Position position, boolean[] invested, int beginIndex, int endIndex) {
-        long startIndex = Math.max((long) position.getEntry().getIndex() + 1, (long) beginIndex + 1);
-        long lastIndex = position.isClosed() ? Math.min(position.getExit().getIndex(), endIndex) : endIndex;
+    private void markInvestedIntervals(Position position, boolean[] invested, int beginIndex, int endIndex,
+            OpenPositionHandling handling) {
+        if (FuturesPerformanceSupport.isFutures(position)) {
+            markFuturesInvestedIntervals(position, invested, handling, endIndex, beginIndex);
+            return;
+        }
+        int firstFill = firstExecutedFillIndex(position.getEntry(), endIndex);
+        if (firstFill < 0)
+            return;
+        int finalExit = position.getExit() == null ? endIndex : lastExecutedFillIndex(position.getExit(), endIndex);
+        if (handling == OpenPositionHandling.MARK_TO_MARKET && hasResidualExposure(position, endIndex))
+            finalExit = endIndex;
+        long startIndex = Math.max((long) firstFill + 1, (long) beginIndex + 1);
+        long lastIndex = Math.min(finalExit, endIndex);
         for (long i = startIndex; i <= lastIndex; i++) {
             invested[(int) (i - beginIndex)] = true;
         }
@@ -138,4 +157,106 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
         return 0;
     }
 
+    private static void markFuturesInvestedIntervals(Position position, boolean[] invested,
+            OpenPositionHandling openPositionHandling, int finalIndex, int seriesBegin) {
+        if (openPositionHandling != OpenPositionHandling.MARK_TO_MARKET && !position.isClosed()) {
+            return;
+        }
+        List<TradeFill> entryFills = executedFills(position.getEntry(), finalIndex);
+        if (entryFills.isEmpty()) {
+            return;
+        }
+        List<TradeFill> exitFills = executedFills(position.getExit(), finalIndex);
+        int lastIndex = finalIndex;
+        if (openPositionHandling != OpenPositionHandling.MARK_TO_MARKET) {
+            if (exitFills.isEmpty()) {
+                return;
+            }
+            lastIndex = exitFills.get(exitFills.size() - 1).index();
+        }
+
+        long start = Math.max((long) seriesBegin + 1, 1);
+        int end = lastIndex;
+        if (start > end) {
+            return;
+        }
+
+        NumFactory numFactory = position.getEntry().getAmount().getNumFactory();
+        Num exposure = numFactory.zero();
+        int entryCursor = 0;
+        int exitCursor = 0;
+        for (long intervalIndex = start; intervalIndex <= end; intervalIndex++) {
+            int barIndex = (int) intervalIndex - 1;
+            while (entryCursor < entryFills.size() && entryFills.get(entryCursor).index() <= barIndex) {
+                TradeFill fill = entryFills.get(entryCursor++);
+                exposure = exposure.plus(numFactory.numOf(fill.amount().getDelegate()));
+            }
+            while (exitCursor < exitFills.size() && exitFills.get(exitCursor).index() <= barIndex) {
+                TradeFill fill = exitFills.get(exitCursor++);
+                exposure = exposure.minus(numFactory.numOf(fill.amount().getDelegate()));
+            }
+            if (exposure.isPositive()) {
+                invested[(int) (intervalIndex - seriesBegin)] = true;
+            }
+        }
+    }
+
+    private static List<TradeFill> executedFills(Trade trade, int finalIndex) {
+        List<TradeFill> fills = new ArrayList<>();
+        if (trade == null) {
+            return fills;
+        }
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() >= 0 && fill.index() <= finalIndex) {
+                fills.add(fill);
+            }
+        }
+        fills.sort(Comparator.comparingInt(TradeFill::index)
+                .thenComparing(TradeFill::time, Comparator.nullsFirst(Comparator.naturalOrder())));
+        return fills;
+    }
+
+    private static boolean hasResidualExposure(Position position, int finalIndex) {
+        if (position.getEntry() == null || position.getEntry().getIndex() > finalIndex) {
+            return false;
+        }
+        Trade entry = position.getEntry();
+        Num entryAmount = executedAmount(entry, finalIndex);
+        if (!entryAmount.isPositive()) {
+            return false;
+        }
+        Trade exit = position.getExit();
+        return exit == null || entryAmount.isGreaterThan(executedAmount(exit, finalIndex));
+    }
+
+    private static Num executedAmount(Trade trade, int finalIndex) {
+        NumFactory numFactory = trade.getAmount().getNumFactory();
+        Num amount = numFactory.zero();
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() >= 0 && fill.index() <= finalIndex) {
+                amount = amount.plus(numFactory.numOf(fill.amount().getDelegate()));
+            }
+        }
+        return amount;
+    }
+
+    private static int firstExecutedFillIndex(Trade trade, int finalIndex) {
+        int firstIndex = Integer.MAX_VALUE;
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() >= 0 && fill.index() <= finalIndex) {
+                firstIndex = Math.min(firstIndex, fill.index());
+            }
+        }
+        return firstIndex == Integer.MAX_VALUE ? -1 : firstIndex;
+    }
+
+    private static int lastExecutedFillIndex(Trade trade, int finalIndex) {
+        int lastIndex = -1;
+        for (TradeFill fill : Trade.executionFillsOf(trade)) {
+            if (fill.index() >= 0 && fill.index() <= finalIndex) {
+                lastIndex = Math.max(lastIndex, fill.index());
+            }
+        }
+        return lastIndex;
+    }
 }

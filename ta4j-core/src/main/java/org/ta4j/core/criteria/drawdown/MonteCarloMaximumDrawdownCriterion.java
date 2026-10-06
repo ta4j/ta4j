@@ -247,7 +247,7 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
             // Blocks cover only the cash flow's captured window: bars pruned
             // before it carry no returns, and bars after it are never priced.
             int blockStart = Math.max(position.getEntry().getIndex(), cashFlow.getBeginIndex());
-            int blockEnd = Math.min(position.getExit().getIndex(), cashFlow.getEndIndex());
+            int blockEnd = Math.min(lastExecutedIndex(position.getExit()), cashFlow.getEndIndex());
             if (blockEnd < blockStart) {
                 continue;
             }
@@ -279,4 +279,11 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
         return criterionValue1.isLessThan(criterionValue2);
     }
 
+    private static int lastExecutedIndex(org.ta4j.core.Trade trade) {
+        int lastIndex = trade.getIndex();
+        for (org.ta4j.core.TradeFill fill : org.ta4j.core.Trade.executionFillsOf(trade)) {
+            lastIndex = Math.max(lastIndex, fill.index());
+        }
+        return lastIndex;
+    }
 }

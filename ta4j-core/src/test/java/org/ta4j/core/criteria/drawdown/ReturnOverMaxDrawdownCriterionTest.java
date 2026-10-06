@@ -3,6 +3,9 @@
  */
 package org.ta4j.core.criteria.drawdown;
 
+import java.util.List;
+import org.ta4j.core.FuturesContract;
+import org.ta4j.core.TradeFill;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -640,5 +643,60 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void positionReturnClampsTerminalFillToSeriesEnd() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 90, 100).build();
+        Trade entry = Trade.fromFills(Trade.TradeType.BUY,
+                List.of(new TradeFill(0, numFactory.numOf(100), numFactory.numOf(2))), new ZeroCostModel());
+        Trade exit = Trade
+                .fromFills(Trade.TradeType.SELL,
+                        List.of(new TradeFill(1, numFactory.numOf(90), numFactory.one()),
+                                new TradeFill(Integer.MAX_VALUE, numFactory.numOf(90), numFactory.one())),
+                        new ZeroCostModel());
+        Position position = new Position(entry, exit);
+
+        assertNumEquals(-10d / 19d, new ReturnOverMaxDrawdownCriterion().calculate(series, position));
+    }
+
+    @Test
+    public void multiFillFuturesExitUsesLastExecutedIndex() {
+        FuturesContract contract = FuturesContract.builder()
+                .venue("test")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01))
+                .build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 100, 100, 100, 120)
+                .build();
+        Trade entry = Trade.fromFill(futuresFill(contract, 0, org.ta4j.core.ExecutionSide.BUY, 2, 100));
+        Trade exit = Trade.fromFills(Trade.TradeType.SELL,
+                java.util.List.of(futuresFill(contract, 2, org.ta4j.core.ExecutionSide.SELL, 1, 100),
+                        futuresFill(contract, 5, org.ta4j.core.ExecutionSide.SELL, 1, 120)));
+        Position position = new Position(entry, exit, org.ta4j.core.analysis.cost.RecordedTradeCostModel.INSTANCE,
+                new org.ta4j.core.analysis.cost.ZeroCostModel());
+
+        ReturnOverMaxDrawdownCriterion criterion = new ReturnOverMaxDrawdownCriterion();
+
+        assertTrue(criterion.calculate(series, position).isGreaterThan(numFactory.numOf(0.09)));
+    }
+
+    private TradeFill futuresFill(FuturesContract contract, int index, org.ta4j.core.ExecutionSide side, double amount,
+            double price) {
+        return TradeFill.builder()
+                .index(index)
+                .time(java.time.Instant.EPOCH.plusSeconds(index))
+                .price(numFactory.numOf(price))
+                .amount(numFactory.numOf(amount))
+                .side(side)
+                .futuresContract(contract)
+                .fees(java.util.List.of())
+                .build();
     }
 }

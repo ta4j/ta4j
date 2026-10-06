@@ -25,7 +25,8 @@ public class TradeOnCurrentCloseModel implements TradeExecutionModel {
         ExecutionTarget executionTarget = ExecutionModelSupport.resolveExecutionTarget(index, barSeries,
                 TradeExecutionModel.PriceSource.CURRENT_CLOSE);
         if (executionTarget != null) {
-            tradingRecord.operate(executionTarget.index(), executionTarget.price(), amount);
+            ExecutionModelSupport.execute(tradingRecord, barSeries, executionTarget, amount,
+                    TradeExecutionModel.PriceSource.CURRENT_CLOSE);
         }
     }
 

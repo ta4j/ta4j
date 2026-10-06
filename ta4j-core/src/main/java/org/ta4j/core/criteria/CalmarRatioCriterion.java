@@ -3,6 +3,9 @@
  */
 package org.ta4j.core.criteria;
 
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
@@ -39,7 +42,8 @@ import java.util.Optional;
  * <li>{@link CashFlow} to reuse the existing compounded equity curve and derive
  * CAGR from the equity entering the evaluated window
  * ({@link CashFlow#getBaselineValue()}) to its end equity, annualized over the
- * time between the window's first and last bar closes.</li>
+ * time between the window's first and last bar closes, or from its first begin
+ * time when a futures curve includes an initial-capital return.</li>
  * <li>{@link Drawdown} for denominator calculation on that same curve.</li>
  * </ul>
  *
@@ -147,26 +151,12 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        NumFactory numFactory = series.numFactory();
-        if (position == null || position.getEntry() == null) {
-            return numFactory.zero();
-        }
-        return calculate(series, new BaseTradingRecord(position));
+        return calculate(series, position, new ClosePriceIndicator(series));
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        if (tradingRecord == null) {
-            return series.numFactory().zero();
-        }
-        for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-            Num value = calculateTradingRecord(series, tradingRecord);
-            if (value != null) {
-                return value;
-            }
-        }
-        throw new IllegalStateException("Bar series '" + series.getName()
-                + "' evicted or changed the analysis window during each of " + MAX_ATTEMPTS + " attempts");
+        return calculate(series, tradingRecord, new ClosePriceIndicator(series));
     }
 
     @Override
@@ -183,18 +173,24 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * Returns the ratio, or {@code null} when a bar at either end of the cash flow
      * was evicted or given a different time after the analysis started.
      */
-    private Num calculateTradingRecord(BarSeries series, TradingRecord tradingRecord) {
+    private Num calculateTradingRecord(BarSeries series, TradingRecord tradingRecord, Position position,
+            Indicator<Num> markPriceIndicator) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
         // Bar times are captured before the curve so they can be verified against
         // it afterwards: annualizing reads nothing else from the series.
         EndTimes endTimes = series.withReadLock(() -> EndTimes.capture(series));
-        CashFlow cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
+        CashFlow cashFlow = position != null && position.getFuturesContract() != null
+                ? new CashFlow(series, position, markPriceIndicator,
+                        openPositionHandling == OpenPositionHandling.IGNORE ? EquityCurveMode.REALIZED
+                                : equityCurveMode)
+                : new CashFlow(series, tradingRecord, markPriceIndicator, tradingRecord.getEndIndex(series),
+                        equityCurveMode, openPositionHandling);
         Integer explicitStartIndex = tradingRecord.getStartIndex();
         int beginIndex = explicitStartIndex == null ? cashFlow.getBeginIndex()
                 : Math.max(explicitStartIndex, cashFlow.getBeginIndex());
         int endIndex = cashFlow.getEndIndex();
-        if (endIndex <= beginIndex) {
+        if (endIndex < beginIndex || endIndex == beginIndex && !cashFlow.hasInitialReturn()) {
             return zero;
         }
 
@@ -216,7 +212,10 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         // may disagree with the curve, so the analysis runs again.
         Num years = series
                 .withReadLock(() -> endTimes.isCurrentAt(series, beginIndex) && endTimes.isCurrentAt(series, endIndex)
-                        ? BarSeriesUtils.deltaYears(endTimes.at(beginIndex), endTimes.at(endIndex), series.numFactory())
+                        ? BarSeriesUtils.deltaYears(
+                                cashFlow.hasInitialReturn() ? endTimes.begins()[beginIndex - endTimes.beginIndex()]
+                                        : endTimes.at(beginIndex),
+                                endTimes.at(endIndex), series.numFactory())
                         : null);
         if (years == null) {
             return null;
@@ -254,19 +253,21 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @param beginIndex the index of the first captured time
      * @param times      the captured end times
      */
-    private record EndTimes(int beginIndex, Instant[] times) {
+    private record EndTimes(int beginIndex, Instant[] times, Instant[] begins) {
 
         /** Captures the retained bars' end times; runs inside the series read scope. */
         static EndTimes capture(BarSeries series) {
             if (series.isEmpty()) {
-                return new EndTimes(0, new Instant[0]);
+                return new EndTimes(0, new Instant[0], new Instant[0]);
             }
             int beginIndex = series.getBeginIndex();
             Instant[] times = new Instant[series.getEndIndex() - beginIndex + 1];
+            Instant[] begins = new Instant[times.length];
             for (int offset = 0; offset < times.length; offset++) {
+                begins[offset] = series.getBar(beginIndex + offset).getBeginTime();
                 times[offset] = series.getBar(beginIndex + offset).getEndTime();
             }
-            return new EndTimes(beginIndex, times);
+            return new EndTimes(beginIndex, times, begins);
         }
 
         Instant at(int index) {
@@ -279,7 +280,51 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
          */
         boolean isCurrentAt(BarSeries series, int index) {
             return index >= beginIndex && index - beginIndex < times.length && index >= series.getBeginIndex()
-                    && index <= series.getEndIndex() && at(index).equals(series.getBar(index).getEndTime());
+                    && index <= series.getEndIndex() && at(index).equals(series.getBar(index).getEndTime())
+                    && begins[index - beginIndex].equals(series.getBar(index).getBeginTime());
         }
+    }
+
+    /**
+     * Calculates the Calmar ratio for a position using an explicit mark price.
+     *
+     * @param series             the bar series
+     * @param position           the position to evaluate
+     * @param markPriceIndicator mark price indicator on the same series
+     * @return the Calmar ratio
+     * @since 0.25.1
+     */
+    public Num calculate(BarSeries series, Position position, Indicator<Num> markPriceIndicator) {
+        if (position == null || position.getEntry() == null)
+            return series.numFactory().zero();
+        return calculateCaptured(series, new BaseTradingRecord(position), position, markPriceIndicator);
+    }
+
+    /**
+     * Calculates the Calmar ratio for a trading record using an explicit mark
+     * price.
+     *
+     * @param series             the bar series
+     * @param tradingRecord      the trading record to evaluate
+     * @param markPriceIndicator mark price indicator on the same series
+     * @return the Calmar ratio
+     * @since 0.25.1
+     */
+    public Num calculate(BarSeries series, TradingRecord tradingRecord, Indicator<Num> markPriceIndicator) {
+        if (tradingRecord == null)
+            return series.numFactory().zero();
+        return calculateCaptured(series, tradingRecord, null, markPriceIndicator);
+    }
+
+    private Num calculateCaptured(BarSeries series, TradingRecord record, Position position,
+            Indicator<Num> markPriceIndicator) {
+        Objects.requireNonNull(markPriceIndicator, "markPriceIndicator");
+        for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            Num value = calculateTradingRecord(series, record, position, markPriceIndicator);
+            if (value != null)
+                return value;
+        }
+        throw new IllegalStateException("Bar series '" + series.getName()
+                + "' evicted or changed the analysis window during each of " + MAX_ATTEMPTS + " attempts");
     }
 }

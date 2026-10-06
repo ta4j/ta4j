@@ -3,6 +3,12 @@
  */
 package org.ta4j.core.analysis;
 
+import org.ta4j.core.ConcurrentBarSeries;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import java.time.Duration;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -12,6 +18,7 @@ import static org.junit.Assert.assertTrue;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
 import java.time.Instant;
@@ -42,6 +49,17 @@ import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import java.util.ArrayList;
+import java.util.List;
+import org.ta4j.core.Bar;
+import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.FuturesContract;
+import org.ta4j.core.TradeFill;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
+import org.ta4j.core.mocks.MockIndicator;
+import static org.junit.Assert.assertTrue;
 
 public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -68,7 +86,24 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         BarSeries sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         Returns returns = new Returns(sampleBarSeries, new BaseTradingRecord(), ReturnRepresentation.DECIMAL);
 
+        int size = returns.getSize();
+        int end = returns.getEndIndex();
+        List<Num> capturedValues = returns.stream().toList();
         assertSame(sampleBarSeries, returns.getBarSeries());
+        sampleBarSeries.barBuilder()
+                .timePeriod(sampleBarSeries.getLastBar().getTimePeriod())
+                .endTime(sampleBarSeries.getLastBar().getEndTime().plus(sampleBarSeries.getLastBar().getTimePeriod()))
+                .closePrice(4)
+                .add();
+        returns.getBarSeries()
+                .barBuilder()
+                .timePeriod(sampleBarSeries.getLastBar().getTimePeriod())
+                .endTime(sampleBarSeries.getLastBar().getEndTime().plus(sampleBarSeries.getLastBar().getTimePeriod()))
+                .closePrice(5)
+                .add();
+        assertEquals(size, returns.getSize());
+        assertEquals(end, returns.getEndIndex());
+        assertEquals(capturedValues, returns.stream().toList());
     }
 
     @Test
@@ -759,4 +794,1411 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         assertEquals(before, curve.getValues());
     }
+
+    @Test
+    public void spotReturnsWindowedSeriesMatchesUnwindowedInsideWindow() {
+        BarSeries full = series(numFactory, 0);
+        BarSeries windowed = series(numFactory, BEGIN);
+        Position fullPosition = spotPosition(numFactory, 0);
+        Position windowedPosition = spotPosition(numFactory, BEGIN);
+
+        Returns fullReturns = new Returns(full, fullPosition, ReturnRepresentation.DECIMAL);
+        Returns windowedReturns = new Returns(windowed, windowedPosition, ReturnRepresentation.DECIMAL);
+
+        assertEquals(CLOSES.length, windowedReturns.getValues().size());
+        assertTrue("first retained slot without a return is undefined", windowedReturns.getRawValues().get(0).isNaN());
+        assertTrue("returns before the captured window are undefined", windowedReturns.getValue(BEGIN - 1).isNaN());
+        for (int index = 1; index < CLOSES.length; index++) {
+            assertNumEquals(fullReturns.getRawValues().get(index), windowedReturns.getRawValues().get(index));
+            assertNumEquals(windowedReturns.getValues().get(index), windowedReturns.getValue(BEGIN + index));
+        }
+    }
+
+    @Test
+    public void futuresReturnsWindowedSeriesMatchesUnwindowedInsideWindow() {
+        FuturesContract contract = linearPerpetual(numFactory);
+        BarSeries full = series(numFactory, 0);
+        BarSeries windowed = series(numFactory, BEGIN);
+        BaseTradingRecord fullRecord = futuresRecord(contract, 0);
+        BaseTradingRecord windowedRecord = futuresRecord(contract, BEGIN);
+
+        Returns fullReturns = new Returns(full, fullRecord, ReturnRepresentation.DECIMAL);
+        Returns windowedReturns = new Returns(windowed, windowedRecord, ReturnRepresentation.DECIMAL);
+
+        assertEquals(CLOSES.length, windowedReturns.getValues().size());
+        assertTrue(windowedReturns.hasFirstBarReturn());
+        assertNumEquals(0, windowedReturns.getRawValues().get(0));
+        assertTrue("returns before the captured window are undefined", windowedReturns.getValue(BEGIN - 1).isNaN());
+        for (int index = 1; index < CLOSES.length; index++) {
+            assertNumEquals(fullReturns.getRawValues().get(index), windowedReturns.getRawValues().get(index));
+            assertNumEquals(windowedReturns.getValues().get(index), windowedReturns.getValue(BEGIN + index));
+        }
+    }
+
+    @Test
+    public void realizedReturnsKeepZeroActivityAtRetainedHead() {
+        FuturesContract contract = linearPerpetual(numFactory);
+        BarSeries windowed = series(numFactory, BEGIN);
+        BaseTradingRecord record = futuresRecord(contract, 0);
+
+        Returns returns = new Returns(windowed, record, ReturnRepresentation.DECIMAL, EquityCurveMode.REALIZED,
+                OpenPositionHandling.IGNORE);
+
+        assertFalse(returns.hasSeededFirstBarReturn());
+        assertTrue(returns.getRawValues().get(0).isNaN());
+    }
+
+    @Test
+    public void markToMarketReturnsKeepNeutralRetainedHeadWithoutActivity() {
+        FuturesContract contract = linearPerpetual(numFactory);
+        BarSeries windowed = series(numFactory, BEGIN);
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(500))
+                .build();
+        record.operate(fill(contract, 0, ExecutionSide.BUY, 1_000, 90));
+        record.operate(fill(contract, 4, ExecutionSide.SELL, 1_000, 110));
+
+        Returns returns = new Returns(windowed, record, ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        assertFalse(returns.hasFirstBarReturn());
+        assertTrue(returns.getRawValues().get(0).isNaN());
+        assertNumEquals(1.0 / 30.0, returns.getRawValues().get(1));
+    }
+
+    private static Position spotPosition(NumFactory numFactory, int indexOffset) {
+        Num one = numFactory.one();
+        Trade entry = Trade.buyAt(1 + indexOffset, numFactory.numOf(CLOSES[1]), one, RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.sellAt(4 + indexOffset, numFactory.numOf(CLOSES[4]), one, RecordedTradeCostModel.INSTANCE);
+        return new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+    }
+
+    private static BaseTradingRecord futuresRecord(FuturesContract contract, int indexOffset) {
+        NumFactory numFactory = contract.contractSize().getNumFactory();
+        BaseTradingRecord record = BaseTradingRecord.builder()
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(500))
+                .build();
+        record.operate(fill(contract, indexOffset, ExecutionSide.BUY, 1_000, 100));
+        record.operate(fill(contract, indexOffset + 4, ExecutionSide.SELL, 1_000, 110));
+        return record;
+    }
+
+    private static TradeFill fill(FuturesContract contract, int index, ExecutionSide side, double amount,
+            double price) {
+        NumFactory numFactory = contract.contractSize().getNumFactory();
+        return TradeFill.builder()
+                .index(index)
+                .time(T0.plusSeconds(index))
+                .price(numFactory.numOf(price))
+                .amount(numFactory.numOf(amount))
+                .side(side)
+                .orderId("order-" + index)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+    }
+
+    private static BarSeries series(NumFactory numFactory, int beginIndex) {
+        List<Bar> bars = new ArrayList<>();
+        Instant endTime = T0;
+        for (double close : CLOSES) {
+            Num price = numFactory.numOf(close);
+            bars.add(new BaseBar(Duration.ofMinutes(1), endTime.minus(Duration.ofMinutes(1)), endTime, price, price,
+                    price, price, numFactory.zero(), numFactory.zero(), 0));
+            endTime = endTime.plus(Duration.ofMinutes(1));
+        }
+        return new BaseBarSeriesBuilder().withNumFactory(numFactory).withBeginIndex(beginIndex).withBars(bars).build();
+    }
+
+    private static FuturesContract linearPerpetual(NumFactory numFactory) {
+        return FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01))
+                .build();
+    }
+
+    private static final Instant T0 = Instant.parse("2025-01-01T00:00:00Z");
+
+    private static final double[] CLOSES = { 100d, 102d, 105d, 103d, 110d };
+
+    private static final int BEGIN = 2;
+
+    @Test
+    public void futuresReturnsUseConsecutiveEquityRatios() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 500);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 4, ExecutionSide.SELL, 1_000, 110, List.of()));
+
+            Returns decimal = new Returns(barSeries, record, ReturnRepresentation.DECIMAL);
+            Returns percentage = new Returns(barSeries, record, ReturnRepresentation.PERCENTAGE);
+            Returns logarithmic = new Returns(barSeries, record, ReturnRepresentation.LOG);
+
+            assertTrue(decimal.getValue(0).isNaN());
+            assertNumEquals(0.04, decimal.getValue(1));
+            assertNumEquals(0.05769230769230769, decimal.getValue(2));
+            assertNumEquals(-0.03636363636363636, decimal.getValue(3));
+            assertNumEquals(0.1320754716981132, decimal.getValue(4));
+            assertNumEquals(4.0, percentage.getValue(1));
+            assertNumEquals(-3.6363636363636362, percentage.getValue(3));
+            assertNumEquals(0.03922071315328133, logarithmic.getValue(1));
+            assertNumEquals(0.05608946665104358, logarithmic.getValue(2));
+            assertNumEquals(-0.0370412716803491, logarithmic.getValue(3));
+            assertNumEquals(0.12405264866997882, logarithmic.getValue(4));
+
+            Num growth = testFactory.one();
+            for (int index = 1; index <= 4; index++) {
+                growth = growth.multipliedBy(testFactory.one().plus(decimal.getValue(index)));
+            }
+            assertNumEquals(1.2, growth);
+        }
+    }
+
+    @Test
+    public void futuresReturnsWithNonpositiveEquityAreUndefined() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 100, 95, 96);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 500);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 100_000, 100, List.of()));
+
+            Returns decimal = new Returns(barSeries, record, ReturnRepresentation.DECIMAL);
+            Returns logarithmic = new Returns(barSeries, record, ReturnRepresentation.LOG);
+
+            assertTrue(decimal.getValue(0).isNaN());
+            assertNumEquals(-10.0, decimal.getValue(1));
+            assertTrue(decimal.getValue(2).isNaN());
+            assertTrue(logarithmic.getValue(1).isNaN());
+            assertTrue(logarithmic.getValue(2).isNaN());
+        }
+    }
+
+    @Test
+    public void futuresReturnsRequireExplicitAccountCapital() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            BaseTradingRecord record = BaseTradingRecord.builder().futuresContract(contract).build();
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+
+            assertThrows(IllegalStateException.class,
+                    () -> new Returns(barSeries, record, ReturnRepresentation.DECIMAL));
+        }
+    }
+
+    @Test
+    public void futuresPerformanceRejectsUnrepresentablePnlConversion() {
+        Num decimalPnl = DecimalNumFactory.getInstance().numOf("1e-400");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> FuturesPerformanceSupport.toFactory(DoubleNumFactory.getInstance(), decimalPnl));
+    }
+
+    @Test
+    public void singleFuturesPositionReturnsUseEntrySettlementNotional() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            Position position = FuturesAnalysisTestSupport.openPosition(contract, 0, 1_000, 100);
+            Returns returns = new Returns(barSeries, position, ReturnRepresentation.DECIMAL);
+
+            assertTrue(returns.getValue(0).isNaN());
+            assertNumEquals(0.02, returns.getValue(1));
+            assertNumEquals(0.02941176470588236, returns.getValue(2));
+            assertNumEquals(-0.0190476190476191, returns.getValue(3));
+            assertNumEquals(0.06796116504854367, returns.getValue(4));
+        }
+    }
+
+    @Test
+    public void futuresReturnsPropagateUnavailableMarkAsNaN() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 100, 110);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 500);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+            Indicator<Num> markPrice = new MockIndicator(barSeries, List.of(testFactory.numOf(100), NaN.NaN));
+
+            Returns returns = new Returns(barSeries, record, markPrice, 1, ReturnRepresentation.DECIMAL,
+                    EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+            assertTrue(returns.getValue(1).isNaN());
+        }
+    }
+
+    @Test
+    public void allExecutedInverseEntryUsesAggregateTradeBasis() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.inverseBtcPerpetual(testFactory);
+            Trade entry = Trade.fromFills(TradeType.BUY,
+                    List.of(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 100, 20_000, List.of()),
+                            FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.BUY, 100, 25_000, List.of())),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            Num expected = contract.settlementNotional(entry.getAmount(), entry.getPricePerAsset());
+
+            assertNumEquals(expected, FuturesPerformanceSupport.entryNotional(position));
+        }
+    }
+
+    @Test
+    public void partiallyClosedFuturesReturnsUseEachSliceEntryNotional() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 10_000, 11_000);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 1_000_000);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 4, 10_000,
+                    List.of(FuturesAnalysisTestSupport.commission(testFactory, 4))));
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1, 11_000,
+                    List.of(FuturesAnalysisTestSupport.commission(testFactory, 1))));
+
+            Position closedSlice = record.getPositions().getFirst();
+            Returns closedReturns = new Returns(barSeries, closedSlice, ReturnRepresentation.DECIMAL);
+            assertTrue(closedReturns.getValue(0).isNaN());
+            assertNumEquals(0.08000000000000007, closedReturns.getValue(1));
+        }
+    }
+
+    @Test
+    public void futuresReturnsRejectMarkPriceFromAnotherSeries() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            BarSeries otherSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 500);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 4, ExecutionSide.SELL, 1_000, 110, List.of()));
+
+            assertThrows(IllegalArgumentException.class, () -> new Returns(barSeries, record,
+                    new org.ta4j.core.indicators.helpers.ClosePriceIndicator(otherSeries), 4,
+                    ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET));
+        }
+    }
+
+    @Test
+    public void emptyFundedFuturesReturnsAreFlat() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 500);
+            Returns returns = new Returns(barSeries, record, ReturnRepresentation.DECIMAL);
+
+            assertTrue(returns.getValue(0).isNaN());
+            for (int index = 1; index <= barSeries.getEndIndex(); index++) {
+                assertNumEquals(0.0, returns.getValue(index));
+            }
+        }
+    }
+
+    @Test
+    public void deferredEntryFillsDoNotInflateSinglePositionCapital() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            TradeFill executed = FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of());
+            TradeFill deferred = FuturesAnalysisTestSupport.fill(contract, -1, ExecutionSide.BUY, 1_000, 100,
+                    List.of());
+            Trade entry = Trade.fromFills(TradeType.BUY, List.of(executed, deferred), RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            Returns returns = new Returns(barSeries, position, ReturnRepresentation.DECIMAL);
+
+            assertNumEquals(0.02, returns.getValue(1));
+            assertNumEquals(0.02941176470588236, returns.getValue(2));
+        }
+    }
+
+    @Test
+    public void scalarFuturesReturnsUseFallbackExecutionFills() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.series(testFactory, 100, 102);
+            Trade scalarFutures = new BaseTrade(0, Instant.EPOCH, testFactory.numOf(100), testFactory.numOf(1_000),
+                    null, ExecutionSide.BUY, null, null) {
+                @Override
+                public List<TradeFill> getFills() {
+                    return List.of();
+                }
+
+                @Override
+                public FuturesContract getFuturesContract() {
+                    return contract;
+                }
+            };
+            Position position = new Position(scalarFutures, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            TradingRecord record = new AlternateFuturesRecord(contract, testFactory.numOf(1_000), List.of(), position);
+
+            Returns returns = new Returns(barSeries, record, ReturnRepresentation.DECIMAL);
+
+            assertNumEquals(0.02, returns.getValue(1));
+        }
+    }
+
+    @Test
+    public void rejectsFallbackCapitalThatUnderflowsAnalysisFactory() {
+        NumFactory sourceFactory = DecimalNumFactory.getInstance();
+        NumFactory analysisFactory = DoubleNumFactory.getInstance();
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(sourceFactory)
+                .toBuilder()
+                .contractSize(sourceFactory.numOf("1e-400"))
+                .build();
+        BarSeries barSeries = FuturesAnalysisTestSupport.series(analysisFactory, 100, 102);
+        Trade scalarFutures = new BaseTrade(0, Instant.EPOCH, sourceFactory.numOf(100), sourceFactory.one(), null,
+                ExecutionSide.BUY, null, null) {
+            @Override
+            public List<TradeFill> getFills() {
+                return List.of();
+            }
+
+            @Override
+            public FuturesContract getFuturesContract() {
+                return contract;
+            }
+        };
+        Position position = new Position(scalarFutures, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        assertThrows(IllegalStateException.class, () -> new Returns(barSeries, position, ReturnRepresentation.DECIMAL));
+    }
+
+    @Test
+    public void retainedFuturesReturnsKeepNeutralHeadWithoutActivity() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries retained = FuturesAnalysisTestSupport.series(testFactory, 10_000, 10_100, 10_100, 10_100, 10_100);
+            retained.setMaximumBarCount(3);
+            assertEquals(2, retained.getBeginIndex());
+            BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, testFactory, 100);
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1, 10_000, List.of()));
+            record.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1, 10_100, List.of()));
+
+            Returns returns = new Returns(retained, record, ReturnRepresentation.DECIMAL);
+
+            assertFalse(returns.hasFirstBarReturn());
+            assertTrue(returns.getValue(2).isNaN());
+            assertNumEquals(0, returns.getValue(3));
+        }
+    }
+
+    @Test
+    public void whollyDeferredFuturesPositionReturnsNeutralCurve() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            Trade entry = Trade.fromFill(
+                    FuturesAnalysisTestSupport.fill(contract, -1, ExecutionSide.BUY, 1_000, 100, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+            Returns returns = new Returns(barSeries, position, ReturnRepresentation.DECIMAL);
+
+            assertTrue(returns.getValue(0).isNaN());
+            for (int index = 1; index <= barSeries.getEndIndex(); index++) {
+                assertNumEquals(0, returns.getValue(index));
+            }
+        }
+    }
+
+    @Test
+    public void deferredOnlyAndHeadFuturesActivityDoNotSeedRetainedFirstBar() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries retained = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            retained.setMaximumBarCount(4);
+            assertEquals(1, retained.getBeginIndex());
+
+            TradeFill deferred = FuturesAnalysisTestSupport.fill(contract, -1, ExecutionSide.BUY, 1_000, 100,
+                    List.of());
+            TradeFill head = FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.BUY, 1_000, 100, List.of());
+            Position deferredOnly = new Position(Trade.fromFill(deferred, RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            Position headPosition = new Position(
+                    Trade.fromFills(TradeType.BUY, List.of(deferred, head), RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            TradingRecord record = new AlternateFuturesRecord(contract, testFactory.numOf(500), List.of(deferredOnly),
+                    headPosition);
+
+            Returns returns = new Returns(retained, record, ReturnRepresentation.DECIMAL);
+
+            assertFalse(returns.hasSeededFirstBarReturn());
+            assertNumEquals(0.04, returns.getValue(1));
+
+            TradeFill preWindow = FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100,
+                    List.of());
+            Position genuinelyPreWindow = new Position(
+                    Trade.fromFills(TradeType.BUY, List.of(deferred, preWindow, head), RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            TradingRecord seededRecord = new AlternateFuturesRecord(contract, testFactory.numOf(500),
+                    List.of(deferredOnly), genuinelyPreWindow);
+
+            assertTrue(new Returns(retained, seededRecord, ReturnRepresentation.DECIMAL).hasSeededFirstBarReturn());
+        }
+    }
+
+    private static final class AlternateFuturesRecord extends BaseTradingRecord {
+
+        private final FuturesContract contract;
+        private final Num initialCapital;
+        private final List<Position> positions;
+        private final Position currentPosition;
+
+        private AlternateFuturesRecord(FuturesContract contract, Num initialCapital, List<Position> positions,
+                Position currentPosition) {
+            super();
+            this.contract = contract;
+            this.initialCapital = initialCapital;
+            this.positions = positions;
+            this.currentPosition = currentPosition;
+        }
+
+        @Override
+        public FuturesContract getFuturesContract() {
+            return contract;
+        }
+
+        @Override
+        public Num getInitialCapital() {
+            return initialCapital;
+        }
+
+        @Override
+        public List<Position> getPositions() {
+            return positions;
+        }
+
+        @Override
+        public Position getCurrentPosition() {
+            return currentPosition;
+        }
+
+        @Override
+        public List<Position> getOpenPositions() {
+            return List.of(currentPosition);
+        }
+    }
+
+    @Test
+    public void emptySeriesHasNoReturns() {
+        BarSeries emptySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        Returns returns = new Returns(emptySeries, new BaseTradingRecord(), ReturnRepresentation.DECIMAL);
+
+        assertEquals(0, returns.getSize());
+    }
+
+    @Test
+    public void flatExecutedFuturesExposureDoesNotRequireMarkPrice() {
+        for (NumFactory testFactory : FuturesAnalysisTestSupport.factories()) {
+            FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(testFactory);
+            BarSeries barSeries = FuturesAnalysisTestSupport.markToMarketSeries(testFactory);
+            TradeFill executedEntry = FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100,
+                    List.of());
+            TradeFill laterEntry = FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1_000, 100,
+                    List.of());
+            Trade entry = Trade.fromFills(TradeType.BUY, List.of(executedEntry, laterEntry),
+                    RecordedTradeCostModel.INSTANCE);
+            Trade exit = Trade.fromFill(
+                    FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1_000, 110, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+            Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            TradingRecord record = new AlternateFuturesRecord(contract, testFactory.numOf(1_000), List.of(position),
+                    position);
+            Indicator<Num> unavailableMark = new MockIndicator(barSeries, List.of(testFactory.numOf(100), NaN.NaN,
+                    testFactory.numOf(105), testFactory.numOf(103), testFactory.numOf(110)));
+            Returns returns = new Returns(barSeries, record, unavailableMark, 1, ReturnRepresentation.DECIMAL,
+                    EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+            assertNumEquals(0.1, returns.getValue(1));
+        }
+    }
+
+    @Test
+    public void incrementalFuturesPositionSharesConstructorSettlementEconomics() {
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 110);
+        BaseTradingRecord complete = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+        complete.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+        complete.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1_000, 110, List.of()));
+        BaseTradingRecord empty = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+        Returns curve = new Returns(series, empty, org.ta4j.core.criteria.ReturnRepresentation.DECIMAL);
+        curve.calculatePosition(complete.getPositions().getFirst(), 1);
+        assertNumEquals(0.2, curve.getValue(1));
+    }
+
+    @Test
+    public void spotPeriodFactorsSurviveNativeRebuildForEveryConstructorOrigin() {
+        for (int origin = 0; origin < 3; origin++) {
+            for (ReturnRepresentation representation : ReturnRepresentation.values()) {
+                BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 100);
+                FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory)
+                        .toBuilder()
+                        .contractSize(numFactory.one())
+                        .build();
+                Position spot = new Position(Trade.buyAt(0, numFactory.hundred(), numFactory.one()),
+                        Trade.sellAt(1, numFactory.numOf(110), numFactory.one()), new ZeroCostModel(),
+                        new ZeroCostModel());
+                TradingRecord initial = origin == 2 ? FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500)
+                        : origin == 1 ? new BaseTradingRecord(spot) : new BaseTradingRecord();
+                Returns curve = new Returns(series, initial, 2, representation, EquityCurveMode.REALIZED,
+                        OpenPositionHandling.MARK_TO_MARKET);
+                List<Position> lots = FuturesAnalysisTestSupport.crossLotFeeRecord(contract, TradeType.BUY, false)
+                        .getOpenPositions();
+                curve.calculatePosition(lots.getFirst(), 2);
+                curve.calculatePosition(spot, 2);
+                curve.calculatePosition(lots.getLast(), 2);
+                // Spot period factors combine multiplicatively with the final native
+                // factor, independently of update order or an existing spot seed.
+                double total = (origin == 1 ? 1.21 : 1.1) * (1 - 1d / (origin == 2 ? 500 : 100));
+                double expected = switch (representation) {
+                case DECIMAL -> total - 1;
+                case PERCENTAGE -> 100 * (total - 1);
+                case MULTIPLICATIVE -> total;
+                case LOG -> Math.log(total);
+                };
+                assertNumEquals(expected, curve.getValue(1));
+                BaseTradingRecord zero = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+                zero.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.BUY, 1, 100, List.of()));
+                zero.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.SELL, 1, 100, List.of()));
+                curve.calculatePosition(zero.getPositions().getFirst(), 2);
+                assertNumEquals(expected, curve.getValue(1));
+            }
+        }
+    }
+
+    @Test
+    public void spotDefinedHeadPeriodSurvivesZeroNativeHeadActivity() {
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 100, 100);
+        series.setMaximumBarCount(2);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory)
+                .toBuilder()
+                .contractSize(numFactory.one())
+                .build();
+        BaseTradingRecord historical = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+        historical.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1, 100,
+                List.of(FuturesAnalysisTestSupport.commission(numFactory, 1))));
+        historical.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1, 100, List.of()));
+        Returns curve = new Returns(series, historical, 3, ReturnRepresentation.DECIMAL, EquityCurveMode.REALIZED,
+                OpenPositionHandling.MARK_TO_MARKET);
+        Position spot = new Position(Trade.buyAt(0, numFactory.hundred(), numFactory.one()),
+                Trade.sellAt(2, numFactory.numOf(110), numFactory.one()), new ZeroCostModel(), new ZeroCostModel());
+        curve.calculatePosition(spot, 3);
+        assertNumEquals(0.1, curve.getValue(2));
+        BaseTradingRecord zero = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+        zero.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1, 100, List.of()));
+        zero.operate(FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 1, 100, List.of()));
+        curve.calculatePosition(zero.getPositions().getFirst(), 3);
+        assertNumEquals(0.1, curve.getValue(2));
+        assertTrue(curve.hasFirstBarReturn());
+        assertFalse(curve.hasSeededFirstBarReturn());
+    }
+
+    @Test
+    public void incrementalCrossLotFeeComponentsShareConstructorEconomics() {
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory)
+                .toBuilder()
+                .contractSize(numFactory.one())
+                .build();
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 100, 100);
+        // CumulativePnL owns the full constructor-state/closed-state matrix.
+        for (boolean seedFirst : new boolean[] { false, true }) {
+            boolean closed = seedFirst;
+            BaseTradingRecord complete = FuturesAnalysisTestSupport.crossLotFeeRecord(contract, Trade.TradeType.BUY,
+                    closed);
+            List<Position> positions = closed ? complete.getPositions() : complete.getOpenPositions();
+            BaseTradingRecord initial = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+            if (seedFirst) {
+                Position first = positions.getFirst();
+                initial.operate(first.getEntry().getFills().getFirst());
+                if (closed) {
+                    initial.operate(first.getExit().getFills().getFirst());
+                }
+            }
+            Returns constructor = new Returns(series, complete, 3, ReturnRepresentation.DECIMAL,
+                    EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+            Returns incremental = new Returns(series, initial, 3, ReturnRepresentation.DECIMAL,
+                    EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+            assertEquals(2, positions.size());
+            for (int lot = seedFirst ? 1 : 0; lot < positions.size(); lot++) {
+                incremental.calculatePosition(positions.get(lot), 3);
+            }
+            assertNumEquals(-0.002, constructor.getValue(1));
+            assertNumEquals(-0.002, incremental.getValue(1));
+            assertNumEquals(0, incremental.getValue(2));
+            assertNumEquals(0, incremental.getValue(3));
+        }
+    }
+
+    @Test
+    public void incrementalFuturesPositionsShareAccountCapitalAndHonorEachCutoff() {
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 110, 100, 120);
+        BaseTradingRecord complete = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+        complete.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+        complete.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1_000, 110, List.of()));
+        BaseTradingRecord initial = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+        initial.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1_000, 100, List.of()));
+        initial.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1_000, 110, List.of()));
+        complete.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1_000, 100, List.of()));
+        complete.operate(FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 1_000, 120, List.of()));
+        Position second = complete.getPositions().get(1);
+        for (ReturnRepresentation representation : List.of(ReturnRepresentation.DECIMAL,
+                ReturnRepresentation.PERCENTAGE, ReturnRepresentation.LOG)) {
+            Returns curve = new Returns(series, initial, representation);
+            curve.calculatePosition(second, 3);
+            Num factor = numFactory.numOf(800).dividedBy(numFactory.numOf(600));
+            Num expected = representation == ReturnRepresentation.LOG ? factor.log()
+                    : representation.toRepresentationFromTotalReturn(factor);
+            assertNumEquals(expected, curve.getValue(3));
+            assertEquals(new Returns(series, complete, representation).stream().toList(), curve.stream().toList());
+            Returns truncated = new Returns(series, initial, representation);
+            truncated.calculatePosition(second, 2);
+            assertNumEquals(0, truncated.getValue(3));
+        }
+    }
+
+    @Test
+    public void incrementalFuturesMarkRunsUnlockedAndRejectsChangedWindowAtomically() {
+        BaseBarSeries source = (BaseBarSeries) FuturesAnalysisTestSupport.series(numFactory, 100, 110, 130);
+        ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source, lock);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        BaseTradingRecord empty = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 100);
+        Position incoming = FuturesAnalysisTestSupport.openPosition(contract, 0, 100, 100);
+        AtomicBoolean changed = new AtomicBoolean();
+        Indicator<Num> mark = new Indicator<Num>() {
+            @Override
+            public Num getValue(int index) {
+                assertEquals("incremental mark must run outside the read lock", 0, lock.getReadHoldCount());
+                Num value = series.getBar(index).getClosePrice();
+                if (index == 1 && changed.compareAndSet(false, true)) {
+                    Bar original = series.getBar(index);
+                    series.replaceBar(index,
+                            series.barBuilder()
+                                    .timePeriod(original.getTimePeriod())
+                                    .endTime(original.getEndTime())
+                                    .closePrice(120)
+                                    .build());
+                }
+                return value;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            public BarSeries getBarSeries() {
+                return series;
+            }
+        };
+        Returns curve = new Returns(series, empty, mark, 2, ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        List<Num> before = curve.stream().toList();
+        assertThrows(IllegalStateException.class, () -> curve.calculatePosition(incoming, 2));
+        assertTrue(changed.get());
+        assertEquals(before, curve.stream().toList());
+    }
+
+    @Test
+    public void incrementalFuturesCarryExposureAndSettlementPastPreWindowPartialExit() {
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 110, 120);
+        for (int caseIndex = 0; caseIndex < 3; caseIndex++) {
+            Trade entry = Trade.fromFill(
+                    FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 2_000, 100, List.of()),
+                    RecordedTradeCostModel.INSTANCE);
+            List<TradeFill> exits = caseIndex == 2
+                    ? List.of(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 2_000, 110, List.of()))
+                    : caseIndex == 1 ? List.of(
+                            FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1_000, 100, List.of()),
+                            FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 1_000, 120, List.of()))
+                            : List.of(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1_000, 100,
+                                    List.of()));
+            Position incoming = new Position(entry,
+                    Trade.fromFills(Trade.TradeType.SELL, exits, RecordedTradeCostModel.INSTANCE),
+                    RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+            BaseTradingRecord full = new BaseTradingRecord() {
+                @Override
+                public FuturesContract getFuturesContract() {
+                    return contract;
+                }
+
+                @Override
+                public Num getInitialCapital() {
+                    return numFactory.numOf(500);
+                }
+
+                @Override
+                public Integer getStartIndex() {
+                    return 2;
+                }
+
+                @Override
+                public Integer getEndIndex() {
+                    return 3;
+                }
+
+                @Override
+                public List<Position> getPositions() {
+                    return List.of(incoming);
+                }
+            };
+            BaseTradingRecord empty = BaseTradingRecord.builder()
+                    .futuresContract(contract)
+                    .initialCapital(numFactory.numOf(500))
+                    .startIndex(2)
+                    .endIndex(3)
+                    .build();
+            Returns direct = new Returns(series, full, ReturnRepresentation.DECIMAL);
+            Returns incremental = new Returns(series, empty, ReturnRepresentation.DECIMAL);
+            incremental.calculatePosition(incoming, 3);
+            assertNumEquals(caseIndex == 2 ? 0 : 1d / 6d, direct.getValue(3));
+            assertNumEquals(direct.getValue(3), incremental.getValue(3), 1e-10);
+        }
+    }
+
+    @Test
+    public void futuresMaterializationRetriesAfterAMarkReadClearsTheWindow() {
+        BarSeries source = FuturesAnalysisTestSupport.series(numFactory, 100, 110);
+        ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source, lock);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+        record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 100, 100, List.of()));
+        AtomicBoolean cleared = new AtomicBoolean();
+        Indicator<Num> mark = FuturesAnalysisTestSupport.markWithReadAction(series, index -> {
+            assertEquals(0, lock.getReadHoldCount());
+            if (cleared.compareAndSet(false, true))
+                series.clear();
+        });
+        Returns curve = new Returns(series, record, mark, 2, ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        assertTrue(cleared.get());
+        assertEquals(0, curve.getSize());
+    }
+
+    @Test
+    public void incrementalFuturesMarkFailureReportsChangedWindowWithoutPublishing() {
+        BarSeries source = FuturesAnalysisTestSupport.series(numFactory, 100, 110);
+        ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+        ConcurrentBarSeries series = ConstrainedSeriesSupport.seriesWithReadWriteLock(source, lock);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+        AtomicBoolean cleared = new AtomicBoolean();
+        Indicator<Num> mark = FuturesAnalysisTestSupport.markWithReadAction(series, index -> {
+            assertEquals(0, lock.getReadHoldCount());
+            if (cleared.compareAndSet(false, true))
+                series.clear();
+        });
+        Returns curve = new Returns(series, record, mark, 2, ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        List<Num> before = curve.stream().toList();
+        Position position = FuturesAnalysisTestSupport.openPosition(contract, 0, 100, 100);
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> curve.calculatePosition(position, 1));
+        assertTrue(failure.getMessage().contains("changed inside this curve's window"));
+        assertTrue(cleared.get());
+        assertEquals(before, curve.stream().toList());
+    }
+
+    @Test
+    public void futuresMarkFailuresKeepTheirIdentityWhenTheWindowIsUnchanged() {
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 110);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory);
+        BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 500);
+        RuntimeException original = new IllegalArgumentException("mark source failed");
+        Indicator<Num> mark = FuturesAnalysisTestSupport.markWithReadAction(series, index -> {
+            throw original;
+        });
+        Returns curve = new Returns(series, record, mark, 2, ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        List<Num> before = curve.stream().toList();
+        Position position = FuturesAnalysisTestSupport.openPosition(contract, 0, 100, 100);
+        assertSame(original, assertThrows(RuntimeException.class, () -> curve.calculatePosition(position, 1)));
+        assertEquals(before, curve.stream().toList());
+        record.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 100, 100, List.of()));
+        assertSame(original, assertThrows(RuntimeException.class, () -> new Returns(series, record, mark, 2,
+                ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET)));
+    }
+
+    @Test
+    public void crossLotFeeResidualProducesOneExecutedLoss() {
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 100, 100);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory)
+                .toBuilder()
+                .contractSize(numFactory.one())
+                .build();
+        BaseTradingRecord record = FuturesAnalysisTestSupport.crossLotFeeRecord(contract, TradeType.BUY, true);
+        Returns returns = new Returns(series, record, ReturnRepresentation.DECIMAL);
+        assertTrue(returns.getValue(0).isNaN());
+        assertNumEquals(-0.002, returns.getValue(1));
+        assertNumEquals(0, returns.getValue(2));
+        assertNumEquals(0, returns.getValue(3));
+    }
+
+    @Test
+    public void realizedHistoricalComponentLossIsExcludedFromNewReturnSamples() {
+        BarSeries retained = FuturesAnalysisTestSupport.series(numFactory, 100, 1e16 + 100, 100, 100);
+        retained.setMaximumBarCount(2);
+        BaseTradingRecord record = FuturesAnalysisTestSupport.roundedPreWindowProfitRecord(numFactory);
+        Returns returns = new Returns(retained, record, ReturnRepresentation.DECIMAL, EquityCurveMode.REALIZED,
+                OpenPositionHandling.MARK_TO_MARKET);
+        assertNumEquals(-0.002, returns.getValue(2));
+        assertTrue(returns.hasSeededFirstBarReturn());
+        assertNumEquals(0, returns.getValue(3));
+    }
+
+    @Test
+    public void mixedFactoryComponentsPreserveCapitalSampleInEitherOrder() {
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100);
+        for (boolean reverse : new boolean[] { false, true }) {
+            Returns returns = new Returns(series,
+                    FuturesAnalysisTestSupport.mixedFactoryRecord(numFactory, reverse, true),
+                    ReturnRepresentation.DECIMAL);
+            assertTrue(returns.getValue(0).isNaN());
+            // Absolute index zero retains the existing capital-based next sample.
+            assertNumEquals(0.002, returns.getValue(1));
+        }
+    }
+
+    @Test
+    public void fixedCapitalRetainedReturnIgnoresZeroContribution() {
+        NumFactory factory = DecimalNumFactory.getInstance(new MathContext(2, RoundingMode.HALF_UP));
+        BarSeries series = FuturesAnalysisTestSupport.series(factory, 100, 100, 100, 100);
+        series.setMaximumBarCount(2);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(factory)
+                .toBuilder()
+                .contractSize(factory.one())
+                .build();
+        BaseTradingRecord historical = FuturesAnalysisTestSupport.fundedRecord(contract, factory, 150);
+        historical.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1, 100,
+                List.of(FuturesAnalysisTestSupport.commission(factory, -7.2))));
+        historical.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1, 100, List.of()));
+        Returns curve = new Returns(series, historical, 3, ReturnRepresentation.DECIMAL, EquityCurveMode.REALIZED,
+                OpenPositionHandling.MARK_TO_MARKET);
+        Position spot = new Position(Trade.buyAt(0, factory.hundred(), factory.one()),
+                Trade.sellAt(2, factory.numOf(110), factory.one()), new ZeroCostModel(), new ZeroCostModel());
+        curve.calculatePosition(spot, 3);
+        assertNumEquals(0.1, curve.getValue(2));
+        List<Num> beforeZero = curve.stream().toList();
+        BaseTradingRecord zero = FuturesAnalysisTestSupport.fundedRecord(contract, factory, 150);
+        zero.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1, 100, List.of()));
+        zero.operate(FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 1, 100, List.of()));
+        curve.calculatePosition(zero.getPositions().getFirst(), 3);
+        // Entering and current normalized native equity are identical: native factor 1.
+        assertNumEquals(0.1, curve.getValue(2));
+        assertEquals(beforeZero, curve.stream().toList());
+    }
+
+    @Test
+    public void normalizedEquityPeriodsStayInvariantAcrossOriginsOrdersAndRepresentations() {
+        // This owner covers the complete head/period/representation cross-product.
+        // CashFlow has two representative cash orderings with its separate additive
+        // equation.
+        List<NumFactory> precisions = numFactory instanceof DecimalNumFactory
+                ? List.of(DecimalNumFactory.getInstance(new MathContext(2, RoundingMode.HALF_UP)),
+                        DecimalNumFactory.getInstance(new MathContext(3, RoundingMode.HALF_UP)), numFactory)
+                : List.of(numFactory);
+        for (NumFactory factory : precisions) {
+            for (boolean retained : new boolean[] { false, true }) {
+                for (EquityCurveMode mode : EquityCurveMode.values()) {
+                    for (ReturnRepresentation representation : ReturnRepresentation.values()) {
+                        for (int origin = 0; origin < 4; origin++) {
+                            for (int[] order : List.of(new int[] { 0, 1, 2 }, new int[] { 0, 2, 1 },
+                                    new int[] { 1, 0, 2 }, new int[] { 1, 2, 0 }, new int[] { 2, 0, 1 },
+                                    new int[] { 2, 1, 0 })) {
+                                BarSeries series = FuturesAnalysisTestSupport.series(factory, 100, 100, 100, 100);
+                                if (retained)
+                                    series.setMaximumBarCount(2);
+                                FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(factory)
+                                        .toBuilder()
+                                        .contractSize(factory.one())
+                                        .build();
+                                BaseTradingRecord historical = FuturesAnalysisTestSupport.fundedRecord(contract,
+                                        factory, 150);
+                                historical.operate(FuturesAnalysisTestSupport.fill(contract, 0, ExecutionSide.BUY, 1,
+                                        100, List.of(FuturesAnalysisTestSupport.commission(factory, -7.2))));
+                                historical.operate(FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.SELL, 1,
+                                        100, List.of()));
+                                Position nativeLot = historical.getPositions().getFirst();
+                                Position spot = new Position(Trade.buyAt(0, factory.hundred(), factory.one()),
+                                        Trade.sellAt(2, factory.numOf(110), factory.one()), new ZeroCostModel(),
+                                        new ZeroCostModel());
+                                BaseTradingRecord initial = origin == 0 ? new BaseTradingRecord()
+                                        : origin == 1 ? new BaseTradingRecord(spot)
+                                                : origin == 2
+                                                        ? FuturesAnalysisTestSupport.fundedRecord(contract, factory,
+                                                                150)
+                                                        : historical;
+                                Returns curve = new Returns(series, initial, 3, representation, mode,
+                                        OpenPositionHandling.MARK_TO_MARKET);
+                                BaseTradingRecord zero = FuturesAnalysisTestSupport.fundedRecord(contract, factory,
+                                        150);
+                                // Fallback notional 200 differs from the historical lot's
+                                // 100. The configured capital remains 150 when supplied.
+                                zero.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 2, 100,
+                                        List.of()));
+                                zero.operate(FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 2, 100,
+                                        List.of()));
+                                List<Position> updates = List.of(nativeLot, spot, zero.getPositions().getFirst());
+                                java.math.BigDecimal equity = java.math.BigDecimal.ONE
+                                        .add(new java.math.BigDecimal("7.2")
+                                                .divide(java.math.BigDecimal.valueOf(origin < 2 ? 100 : 150)));
+                                boolean nativeSeen = origin == 3;
+                                boolean spotSeen = origin == 1;
+                                boolean zeroSeen = false;
+                                boolean reportedHead = retained && spotSeen;
+                                boolean spotDefinesPeriod = reportedHead;
+                                assertNoExecutedNativeUpdatePreservesState(curve, contract);
+                                for (int next : order) {
+                                    if ((next == 0 && origin == 3) || (next == 1 && origin == 1))
+                                        continue;
+                                    List<Num> before = curve.getValues();
+                                    curve.calculatePosition(updates.get(next), 3);
+                                    if (next == 0) {
+                                        nativeSeen = true;
+                                    } else if (next == 1) {
+                                        if (retained && !reportedHead)
+                                            spotDefinesPeriod = true;
+                                        spotSeen = true;
+                                        reportedHead |= retained;
+                                    } else {
+                                        zeroSeen = true;
+                                        reportedHead |= retained;
+                                        if (spotSeen)
+                                            assertEquals(before, curve.getValues());
+                                    }
+                                    Num nativeFactor = retained && !spotDefinesPeriod && zeroSeen && nativeSeen
+                                            ? factory.numOf(equity)
+                                            : factory.one();
+                                    Num spotFactor = spotSeen ? factory.numOf(1.1) : factory.one();
+                                    // Equal entering/current native equity has factor 1.
+                                    // A reported historical capital seed is deliberately
+                                    // cumulative; it stays distinct from a spot period.
+                                    Num expected = representation == ReturnRepresentation.LOG
+                                            ? nativeFactor.log().plus(spotFactor.log())
+                                            : representation.toRepresentationFromTotalReturn(
+                                                    nativeFactor.multipliedBy(spotFactor));
+                                    if (!retained || reportedHead)
+                                        assertNumEquals(expected, curve.getValue(2));
+                                    assertNumEquals(
+                                            representation == ReturnRepresentation.MULTIPLICATIVE ? factory.one()
+                                                    : factory.zero(),
+                                            curve.getValue(3));
+                                    assertNoExecutedNativeUpdatePreservesState(curve, contract);
+                                }
+                                // Extend every original prefix with a second native lot
+                                // and a distinct second spot lot in both interleavings.
+                                BaseTradingRecord secondNative = FuturesAnalysisTestSupport.fundedRecord(contract,
+                                        factory, 150);
+                                secondNative.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1,
+                                        100, List.of(FuturesAnalysisTestSupport.commission(factory, -45))));
+                                Position secondSpot = new Position(Trade.buyAt(0, factory.hundred(), factory.one()),
+                                        Trade.sellAt(2, factory.numOf(110), factory.one()), new ZeroCostModel(),
+                                        new ZeroCostModel());
+                                java.math.BigDecimal secondContribution = new java.math.BigDecimal("45")
+                                        .divide(java.math.BigDecimal.valueOf(origin < 2 ? 100 : 150));
+                                java.math.BigDecimal acceptedSecond = java.math.BigDecimal.ZERO;
+                                Num retainedSpot = factory.numOf(1.1);
+                                Num retainedLogSpot = retainedSpot.log();
+                                List<Position> subsequent = order[0] == 1
+                                        ? List.of(secondSpot, secondNative.getOpenPositions().getFirst())
+                                        : List.of(secondNative.getOpenPositions().getFirst(), secondSpot);
+                                for (Position next : subsequent) {
+                                    curve.calculatePosition(next, 3);
+                                    if (next == secondSpot) {
+                                        retainedSpot = retainedSpot.multipliedBy(factory.numOf(1.1));
+                                        retainedLogSpot = retainedLogSpot.plus(factory.numOf(1.1).log());
+                                    } else {
+                                        acceptedSecond = secondContribution;
+                                    }
+                                    // Economic equity is 1 + first rebate/capital +
+                                    // second rebate/capital. A period compares it with
+                                    // entering equity; a retained capital seed compares
+                                    // it with 1. Compose the legacy rounded spot group once.
+                                    java.math.BigDecimal previous = retained && !spotDefinesPeriod
+                                            ? java.math.BigDecimal.ONE
+                                            : equity;
+                                    MathContext context = factory.one() instanceof DecimalNum decimal
+                                            ? decimal.getMathContext()
+                                            : MathContext.DECIMAL128;
+                                    Num nativeFactor = factory
+                                            .numOf(equity.add(acceptedSecond).divide(previous, context));
+                                    Num expected = representation == ReturnRepresentation.LOG
+                                            ? nativeFactor.log().plus(retainedLogSpot)
+                                            : representation.toRepresentationFromTotalReturn(
+                                                    nativeFactor.multipliedBy(retainedSpot));
+                                    assertNumEquals(expected, curve.getValue(2));
+                                    List<Num> published = curve.getValues();
+                                    List<Num> raw = curve.getRawValues();
+                                    int size = curve.getSize();
+                                    boolean capitalSeed = curve.hasSeededFirstBarReturn();
+                                    curve.calculatePosition(zero.getPositions().getFirst(), 3);
+                                    assertEquals(published, curve.getValues());
+                                    assertEquals(raw, curve.getRawValues());
+                                    assertEquals(size, curve.getSize());
+                                    assertEquals(capitalSeed, curve.hasSeededFirstBarReturn());
+                                    assertNoExecutedNativeUpdatePreservesState(curve, contract);
+                                }
+                                List<Num> frozen = curve.getValues();
+                                curve.calculatePosition(zero.getPositions().getFirst(), 3);
+                                assertEquals(frozen, curve.getValues());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void multipleSpotUpdatesPublishRetainedCompositionImmediately() {
+        assertMultipleSpotPublication(true);
+    }
+
+    @Test
+    public void multipleSpotUpdatesRemainUnchangedAfterZeroNativeUpdate() {
+        assertMultipleSpotPublication(false);
+    }
+
+    private void assertMultipleSpotPublication(boolean immediate) {
+        // This fixed MC2 fixture repeats under the existing runner labels.
+        NumFactory factory = DecimalNumFactory.getInstance(new MathContext(2, RoundingMode.HALF_UP));
+        BarSeries series = FuturesAnalysisTestSupport.series(factory, 100, 100, 100, 100);
+        series.setMaximumBarCount(2);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(factory)
+                .toBuilder()
+                .contractSize(factory.one())
+                .build();
+        BaseTradingRecord empty = FuturesAnalysisTestSupport.fundedRecord(contract, factory, 150);
+        Returns curve = new Returns(series, empty, 3, ReturnRepresentation.MULTIPLICATIVE, EquityCurveMode.REALIZED,
+                OpenPositionHandling.MARK_TO_MARKET);
+        BaseTradingRecord nativeLot = FuturesAnalysisTestSupport.fundedRecord(contract, factory, 150);
+        nativeLot.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1, 100,
+                List.of(FuturesAnalysisTestSupport.commission(factory, -45))));
+        curve.calculatePosition(nativeLot.getOpenPositions().getFirst(), 3);
+        assertNumEquals(1.3, curve.getValue(2));
+        for (int lot = 0; lot < 2; lot++) {
+            Position spot = new Position(Trade.buyAt(0, factory.hundred(), factory.one()),
+                    Trade.sellAt(2, factory.numOf(110), factory.one()), new ZeroCostModel(), new ZeroCostModel());
+            curve.calculatePosition(spot, 3);
+        }
+        if (immediate) {
+            // Native equity 1+45/150, composed once with the retained spot
+            // product round(1.1*1.1)=1.2: round(1.3*1.2)=1.6.
+            assertNumEquals(1.6, curve.getValue(2));
+        } else {
+            List<Num> before = curve.getValues();
+            BaseTradingRecord zero = FuturesAnalysisTestSupport.fundedRecord(contract, factory, 150);
+            zero.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1, 100, List.of()));
+            zero.operate(FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 1, 100, List.of()));
+            curve.calculatePosition(zero.getPositions().getFirst(), 3);
+            assertEquals(before, curve.getValues());
+        }
+    }
+
+    @Test
+    public void spotOnlyPublicationKeepsLegacyCompositionAcrossNativeZeroUpdates() {
+        List<NumFactory> precisions = numFactory instanceof DecimalNumFactory
+                ? List.of(DecimalNumFactory.getInstance(new MathContext(2, RoundingMode.HALF_UP)),
+                        DecimalNumFactory.getInstance(new MathContext(3, RoundingMode.HALF_UP)), numFactory)
+                : List.of(numFactory);
+        for (NumFactory factory : precisions) {
+            for (boolean retained : new boolean[] { false, true }) {
+                for (ReturnRepresentation representation : ReturnRepresentation.values()) {
+                    BarSeries series = FuturesAnalysisTestSupport.series(factory, 100, 100, 100, 100);
+                    if (retained)
+                        series.setMaximumBarCount(2);
+                    Returns incremental = new Returns(series, new BaseTradingRecord(), 3, representation,
+                            EquityCurveMode.REALIZED, OpenPositionHandling.MARK_TO_MARKET);
+                    List<Position> positions = new ArrayList<>();
+                    Num factor = factory.one();
+                    Num log = factory.zero();
+                    for (int price : new int[] { 110, 110, 120 }) {
+                        Position position = new Position(Trade.buyAt(0, factory.hundred(), factory.one()),
+                                Trade.sellAt(2, factory.numOf(price), factory.one()), new ZeroCostModel(),
+                                new ZeroCostModel());
+                        positions.add(position);
+                        incremental.calculatePosition(position, 3);
+                        Num spot = factory.numOf(price).dividedBy(factory.hundred());
+                        // Compatibility means retaining the established rounding at
+                        // each spot-only factor multiplication, not exact compounding.
+                        factor = factor.multipliedBy(spot);
+                        log = log.plus(spot.log());
+                        Num expected = representation == ReturnRepresentation.LOG ? log
+                                : representation.toRepresentationFromTotalReturn(factor);
+                        assertNumEquals(expected, incremental.getValue(2));
+                        Returns direct = new Returns(series, new BaseTradingRecord(positions), 3, representation,
+                                EquityCurveMode.REALIZED, OpenPositionHandling.MARK_TO_MARKET);
+                        assertEquals(direct.getValues(), incremental.getValues());
+                    }
+                    FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(factory)
+                            .toBuilder()
+                            .contractSize(factory.one())
+                            .build();
+                    BaseTradingRecord zero = FuturesAnalysisTestSupport.fundedRecord(contract, factory, 150);
+                    zero.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 2, 100, List.of()));
+                    zero.operate(FuturesAnalysisTestSupport.fill(contract, 3, ExecutionSide.SELL, 2, 100, List.of()));
+                    List<Num> before = incremental.getValues();
+                    incremental.calculatePosition(zero.getPositions().getFirst(), 3);
+                    assertEquals(before, incremental.getValues());
+                }
+            }
+        }
+    }
+
+    @Test
+    public void deferredNativeUpdatePreservesEstablishedHeadValues() {
+        assertDeferredNativeHeadPreserved(0);
+    }
+
+    @Test
+    public void deferredNativeUpdatePreservesEstablishedHeadEligibility() {
+        assertDeferredNativeHeadPreserved(1);
+    }
+
+    @Test
+    public void deferredNativeUpdatePreservesEstablishedHeadSize() {
+        assertDeferredNativeHeadPreserved(2);
+    }
+
+    private void assertDeferredNativeHeadPreserved(int metric) {
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 100, 100);
+        series.setMaximumBarCount(2);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory)
+                .toBuilder()
+                .contractSize(numFactory.one())
+                .build();
+        Returns curve = new Returns(series, new BaseTradingRecord(), 3, ReturnRepresentation.DECIMAL,
+                EquityCurveMode.REALIZED, OpenPositionHandling.MARK_TO_MARKET);
+        Trade entry = Trade.fromFill(
+                FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1, 100,
+                        List.of(FuturesAnalysisTestSupport.commission(numFactory, -10))),
+                RecordedTradeCostModel.INSTANCE);
+        Position active = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        curve.calculatePosition(active, 3);
+        assertNumEquals(0.1, curve.getValue(2));
+        assertNumEquals(0, curve.getValue(3));
+        assertTrue(curve.hasFirstBarReturn());
+        assertEquals(2, curve.getSize());
+        List<Num> before = curve.getValues();
+        Position deferred = FuturesAnalysisTestSupport.openPosition(contract, -1, 1, 100);
+        assertTrue(deferred.isOpened());
+        assertEquals(-1, deferred.getEntry().getIndex());
+        assertFalse(deferred.getEntry().getTime() == null);
+        assertTrue(deferred.getEntry().getFills().getFirst().hasRecordedFees());
+        assertTrue(deferred.getEntry().getFills().getFirst().fees().isEmpty());
+        assertNumEquals(0,
+                deferred.getProfitComponents(3, numFactory.hundred()).stream().reduce(numFactory.zero(), Num::plus));
+        curve.calculatePosition(deferred, 3);
+        switch (metric) {
+        case 0 -> assertEquals(before, curve.getValues());
+        case 1 -> assertTrue(curve.hasFirstBarReturn());
+        case 2 -> assertEquals(2, curve.getSize());
+        default -> throw new AssertionError("Unknown return-view getter");
+        }
+    }
+
+    private void assertNoExecutedNativeUpdatePreservesState(Returns curve, FuturesContract contract) {
+        List<Num> published = curve.getValues();
+        List<Num> raw = curve.getRawValues();
+        int size = curve.getSize();
+        boolean firstBar = curve.hasFirstBarReturn();
+        boolean seed = curve.hasSeededFirstBarReturn();
+        // Deferred fills and executions beyond this curve's cutoff contribute
+        // nothing. In particular, neither can erase an accepted head or seed.
+        for (int entryIndex : new int[] { -1, curve.getEndIndex() + 1 }) {
+            curve.calculatePosition(FuturesAnalysisTestSupport.openPosition(contract, entryIndex, 1, 100),
+                    curve.getEndIndex());
+            assertEquals(published, curve.getValues());
+            assertEquals(raw, curve.getRawValues());
+            assertEquals(size, curve.getSize());
+            assertEquals(firstBar, curve.hasFirstBarReturn());
+            assertEquals(seed, curve.hasSeededFirstBarReturn());
+        }
+    }
+
+    @Test
+    public void noExecutedNativeUpdatesPreserveEveryConstructorAndNextExecutedUpdate() {
+        for (boolean retained : new boolean[] { false, true }) {
+            for (ReturnRepresentation representation : ReturnRepresentation.values()) {
+                for (EquityCurveMode mode : EquityCurveMode.values()) {
+                    for (int initialState = 0; initialState < 3; initialState++) {
+                        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 100, 100);
+                        if (retained)
+                            series.setMaximumBarCount(2);
+                        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory)
+                                .toBuilder()
+                                .contractSize(numFactory.one())
+                                .build();
+                        // Empty, wholly deferred, and already executed construction
+                        // are distinct capital states. Funded records always retain150.
+                        Position position = initialState == 0 ? new Position()
+                                : FuturesAnalysisTestSupport.openPosition(contract, -1, 1, 100);
+                        BaseTradingRecord record = FuturesAnalysisTestSupport.fundedRecord(contract, numFactory, 150);
+                        if (initialState == 1) {
+                            record = new AlternateFuturesRecord(contract, numFactory.numOf(150), List.of(), position);
+                        } else if (initialState == 2) {
+                            record.operate(FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1, 100,
+                                    List.of(FuturesAnalysisTestSupport.commission(numFactory, -10))));
+                            position = record.getOpenPositions().getFirst();
+                        }
+                        for (int constructor = 0; constructor < 12; constructor++) {
+                            if (initialState == 0 && constructor >= 1 && constructor <= 4) {
+                                // Position overloads require an entry; empty records
+                                // are the supported empty-construction state.
+                                int emptyConstructor = constructor;
+                                TradingRecord initialRecord = record;
+                                Position empty = position;
+                                assertThrows(IllegalArgumentException.class, () -> nativeReturnsConstructor(series,
+                                        initialRecord, empty, representation, mode, emptyConstructor));
+                                continue;
+                            }
+                            Returns curve = nativeReturnsConstructor(series, record, position, representation, mode,
+                                    constructor);
+                            Returns control = nativeReturnsConstructor(series, record, position, representation, mode,
+                                    constructor);
+                            assertNoExecutedNativeUpdatePreservesState(curve, contract);
+                            assertRejectedNativeTransitionPreservesState(curve, contract);
+                            for (double rebate : new double[] { 0, 20 }) {
+                                Trade incoming = Trade
+                                        .fromFill(
+                                                FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY,
+                                                        rebate == 0 ? 2 : 1, 100, List.of(FuturesAnalysisTestSupport
+                                                                .commission(numFactory, -rebate))),
+                                                RecordedTradeCostModel.INSTANCE);
+                                Position next = new Position(incoming, RecordedTradeCostModel.INSTANCE,
+                                        new ZeroCostModel());
+                                // A zero-PnL first execution still has genuine positive
+                                // notional; a later rebate must not inherit deferred0.
+                                curve.calculatePosition(next, 3);
+                                control.calculatePosition(next, 3);
+                                assertEquals(control.getValues(), curve.getValues());
+                                assertEquals(control.getRawValues(), curve.getRawValues());
+                                assertEquals(control.getSize(), curve.getSize());
+                                assertEquals(control.hasFirstBarReturn(), curve.hasFirstBarReturn());
+                                assertEquals(control.hasSeededFirstBarReturn(), curve.hasSeededFirstBarReturn());
+                                if (constructor == 4 || constructor == 5) {
+                                    int capital = constructor == 4 ? 100 : 150;
+                                    MathContext context = numFactory.one() instanceof DecimalNum decimal
+                                            ? decimal.getMathContext()
+                                            : MathContext.DECIMAL128;
+                                    // Compare economic equity/capital before Num rounding,
+                                    // as required by the retained publication contract.
+                                    Num factor = numFactory.numOf(BigDecimal.valueOf(capital)
+                                            .add(BigDecimal.valueOf((initialState == 2 ? 10 : 0) + rebate))
+                                            .divide(BigDecimal.valueOf(capital), context));
+                                    Num expected = representation == ReturnRepresentation.LOG ? factor.log()
+                                            : representation.toRepresentationFromTotalReturn(factor);
+                                    assertNumEquals(expected, curve.getValue(2));
+                                }
+                                assertNoExecutedNativeUpdatePreservesState(curve, contract);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void assertRejectedNativeTransitionPreservesState(Returns curve, FuturesContract contract) {
+        List<Num> published = curve.getValues();
+        List<Num> raw = curve.getRawValues();
+        int size = curve.getSize();
+        boolean head = curve.hasFirstBarReturn();
+        boolean seed = curve.hasSeededFirstBarReturn();
+        RuntimeException failure = new IllegalArgumentException("holding source failed during accumulation");
+        AtomicBoolean stagedFailure = new AtomicBoolean();
+        Trade entry = Trade.fromFill(
+                FuturesAnalysisTestSupport.fill(contract, 2, ExecutionSide.BUY, 1, 100,
+                        List.of(FuturesAnalysisTestSupport.commission(numFactory, -30))),
+                RecordedTradeCostModel.INSTANCE);
+        ZeroCostModel holding = new ZeroCostModel() {
+            @Override
+            public Num calculate(Position position, int index) {
+                // Prepricing at finalIndex3 succeeds. Failure at2 belongs to
+                // accumulation inside the staged native publication.
+                if (index == 2) {
+                    stagedFailure.set(true);
+                    throw failure;
+                }
+                return numFactory.zero();
+            }
+        };
+        Position rejected = new Position(entry, RecordedTradeCostModel.INSTANCE, holding);
+        assertSame(failure, assertThrows(RuntimeException.class, () -> curve.calculatePosition(rejected, 3)));
+        assertTrue(stagedFailure.get());
+        assertEquals(published, curve.getValues());
+        assertEquals(raw, curve.getRawValues());
+        assertEquals(size, curve.getSize());
+        assertEquals(head, curve.hasFirstBarReturn());
+        assertEquals(seed, curve.hasSeededFirstBarReturn());
+        assertNoExecutedNativeUpdatePreservesState(curve, contract);
+    }
+
+    private Returns nativeReturnsConstructor(BarSeries series, TradingRecord record, Position position,
+            ReturnRepresentation representation, EquityCurveMode mode, int constructor) {
+        return switch (constructor) {
+        case 0 -> new Returns(series, record, 3, representation, mode, OpenPositionHandling.MARK_TO_MARKET);
+        case 1 -> new Returns(series, position);
+        case 2 -> new Returns(series, position, mode);
+        case 3 -> new Returns(series, position, representation);
+        case 4 -> new Returns(series, position, representation, mode);
+        case 5 -> new Returns(series, record, representation, mode);
+        case 6 -> new Returns(series, record);
+        case 7 -> new Returns(series, record, mode);
+        case 8 -> new Returns(series, record, representation);
+        case 9 -> new Returns(series, record, representation, OpenPositionHandling.MARK_TO_MARKET);
+        case 10 -> new Returns(series, record, representation, mode, OpenPositionHandling.MARK_TO_MARKET);
+        case 11 -> new Returns(series, record,
+                new MockIndicator(series, series.getBeginIndex(), numFactory.hundred(), numFactory.hundred(),
+                        numFactory.hundred(), numFactory.hundred()),
+                3, representation, mode, OpenPositionHandling.MARK_TO_MARKET);
+        default -> throw new AssertionError("Unknown constructor");
+        };
+    }
+
+    @Test
+    public void deferredConstructorAcceptsFirstExecutedRebate() {
+        BarSeries series = FuturesAnalysisTestSupport.series(numFactory, 100, 100, 100);
+        FuturesContract contract = FuturesAnalysisTestSupport.linearBtcPerpetual(numFactory)
+                .toBuilder()
+                .contractSize(numFactory.one())
+                .build();
+        Position deferred = FuturesAnalysisTestSupport.openPosition(contract, -1, 1, 100);
+        assertTrue(deferred.getEntry().getTime() != null);
+        assertTrue(deferred.getEntry().getFills().getFirst().hasRecordedFees());
+        assertTrue(deferred.getEntry().getFills().getFirst().fees().isEmpty());
+        Returns curve = new Returns(series, deferred, ReturnRepresentation.DECIMAL, EquityCurveMode.REALIZED);
+        assertFalse(curve.hasFirstBarReturn());
+        assertFalse(curve.hasSeededFirstBarReturn());
+        assertTrue(curve.getValue(0).isNaN());
+        assertNumEquals(0, curve.getValue(1));
+        assertNumEquals(0, curve.getValue(2));
+        assertEquals(2, curve.getSize());
+        Trade executed = Trade.fromFill(
+                FuturesAnalysisTestSupport.fill(contract, 1, ExecutionSide.BUY, 1, 100,
+                        List.of(FuturesAnalysisTestSupport.commission(numFactory, -10))),
+                RecordedTradeCostModel.INSTANCE);
+        Position active = new Position(executed, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        assertNumEquals(100, FuturesPerformanceSupport.entryNotional(active));
+        assertNumEquals(10,
+                active.getProfitComponents(2, numFactory.hundred()).stream().reduce(numFactory.zero(), Num::plus));
+        curve.calculatePosition(active, 2);
+        assertTrue(curve.getValue(0).isNaN());
+        assertNumEquals(0.1, curve.getValue(1));
+        assertNumEquals(0, curve.getValue(2));
+        assertEquals(2, curve.getSize());
+        assertFalse(curve.hasFirstBarReturn());
+        assertFalse(curve.hasSeededFirstBarReturn());
+    }
+
 }

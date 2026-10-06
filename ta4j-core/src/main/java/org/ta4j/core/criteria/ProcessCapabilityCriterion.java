@@ -11,7 +11,10 @@ import java.util.Objects;
 import java.util.Optional;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.FuturesContract;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.num.Num;
@@ -51,15 +54,23 @@ import org.ta4j.core.num.NumFactory;
  * applying its finite {@link MathContext}, preserving small means produced by
  * cancellation between very large long and short returns. The regular path uses
  * compensated (Neumaier) summation and remains order-stable across the record.
- * Gross returns with non-finite magnitude are treated as decimals. When a limit
- * overflows the active representation (for example an LSL of -1e400 on a
- * {@code DoubleNum} series) or factory narrowing alters the retained limit (for
- * example a precision-2 LSL of 0.944 becoming 0.94), the mean-to-limit distance
- * is computed in decimal space and narrowed once against the complete 3-sigma
- * denominator. Decimal factories retain their configured finite precision
- * during this recovery, so representable capabilities stay finite and a limit
- * only marginally beyond the representation range or the rounding gap still
- * scores its full positive capability instead of collapsing to zero.
+ * Gross returns with non-finite magnitude are treated as decimals. A native
+ * futures position uses the contract-aware gross return, so its orientation
+ * follows the contract: the driving ratio is exit over entry for a linear
+ * contract and entry over exit for an inverse one, and a linear {@code BUY} and
+ * an inverse {@code SELL} gain with that ratio, while a linear {@code SELL} and
+ * an inverse {@code BUY} gain with its inverse. The underflow boundaries, the
+ * mixed-return centering, and the decimal recovery all apply that same
+ * orientation, so an inverse series scores exactly like the equivalent linear
+ * series. When a limit overflows the active representation (for example an LSL
+ * of -1e400 on a {@code DoubleNum} series) or factory narrowing alters the
+ * retained limit (for example a precision-2 LSL of 0.944 becoming 0.94), the
+ * mean-to-limit distance is computed in decimal space and narrowed once against
+ * the complete 3-sigma denominator. Decimal factories retain their configured
+ * finite precision during this recovery, so representable capabilities stay
+ * finite and a limit only marginally beyond the representation range or the
+ * rounding gap still scores its full positive capability instead of collapsing
+ * to zero.
  *
  * @since 0.24.2
  */
@@ -127,7 +138,7 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
      * @return {@code true} when decimal recovery is required
      */
     private static boolean isUnderflowedGrossReturn(BarSeries series, Position position, Num grossReturn) {
-        boolean roundedBoundary = position.getEntry().isBuy() ? grossReturn.isZero()
+        boolean roundedBoundary = gainsWithRisingRatio(position) ? grossReturn.isZero()
                 : grossReturn.isEqual(series.numFactory().two());
         if (!roundedBoundary) {
             return false;
@@ -135,6 +146,99 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         Num entryPrice = position.getEntry().getPricePerAsset(series);
         Num exitPrice = position.getExit().getPricePerAsset(series);
         return Num.isFinite(entryPrice) && Num.isFinite(exitPrice) && !entryPrice.isZero() && !exitPrice.isZero();
+    }
+
+    /**
+     * Tests whether a closed position gains as its price ratio rises.
+     *
+     * <p>
+     * A linear {@code BUY} and an inverse {@code SELL} gain with the ratio; a
+     * linear {@code SELL} and an inverse {@code BUY} gain against it. Spot
+     * positions follow their entry side.
+     * </p>
+     *
+     * @param position the closed position
+     * @return {@code true} when a rising ratio is a gain
+     */
+    private static boolean gainsWithRisingRatio(Position position) {
+        boolean buy = position.getEntry().isBuy();
+        return isInverse(position) ? !buy : buy;
+    }
+
+    /**
+     * @param position the closed position
+     * @return {@code true} for an inverse (coin-settled) contract
+     */
+    private static boolean isInverse(Position position) {
+        FuturesContract contract = position.getFuturesContract();
+        return contract != null && contract.settlementType() == FuturesContract.SettlementType.INVERSE;
+    }
+
+    /**
+     * Returns the price ratio that drives the gross return of a closed position:
+     * exit over entry for a linear contract, entry over exit for an inverse one.
+     * Native futures prices exclude deferred fills on both sides, matching the
+     * executed notional and payoff used by the position's gross return.
+     *
+     * @param position   the closed position
+     * @param entryPrice the entry price
+     * @param exitPrice  the exit price
+     * @param context    the decimal context for the quotient
+     * @return the contract-aware price ratio
+     */
+    private static BigDecimal priceRatio(Position position, Num entryPrice, Num exitPrice, MathContext context) {
+        BigDecimal entry = entryPrice.bigDecimalValue();
+        BigDecimal exit = exitPrice.bigDecimalValue();
+        if (position.getFuturesContract() != null) {
+            entry = executedPrice(position.getEntry(), entryPrice, context);
+            exit = executedPrice(position.getExit(), exitPrice, context);
+        }
+        return isInverse(position) ? entry.divide(exit, context) : exit.divide(entry, context);
+    }
+
+    /**
+     * Recovers a native trade's executed price basis without deferred quantities.
+     * Window projections have already removed fills beyond their end index.
+     */
+    private static BigDecimal executedPrice(Trade trade, Num aggregatePrice, MathContext context) {
+        List<TradeFill> fills = Trade.executionFillsOf(trade);
+        List<TradeFill> executedFills = fills.stream().filter(fill -> fill.index() >= 0).toList();
+        if (executedFills.isEmpty() || executedFills.size() == fills.size()) {
+            return aggregatePrice.bigDecimalValue();
+        }
+        // Reuse native aggregation for arithmetic or inverse harmonic basis,
+        // retaining decimal precision when contract notional underflows. Fees
+        // do not participate in a gross price ratio.
+        List<TradeFill> decimalFills = executedFills.stream().map(fill -> {
+            TradeFill.Builder builder = fill.toBuilder()
+                    .price(DecimalNum.valueOf(fill.price().bigDecimalValue(), context))
+                    .amount(DecimalNum.valueOf(fill.amount().bigDecimalValue(), context));
+            if (fill.futuresContract() == null) {
+                // A native custom Trade may expose legacy scalar fills. Keep that
+                // representation: component metadata is illegal without a fill contract.
+                builder.fee(DecimalNum.valueOf(0, context));
+            } else {
+                builder.fee(null).fees(List.of());
+            }
+            return builder.build();
+        }).toList();
+        if (decimalFills.stream().anyMatch(fill -> fill.futuresContract() == null)) {
+            // A custom native Trade can expose scalar fills, including a mixed
+            // scalar/native list that Trade.fromFills cannot aggregate. Keep the
+            // representation and use the owning contract's arithmetic/harmonic basis.
+            boolean inverse = trade.getFuturesContract().settlementType() == FuturesContract.SettlementType.INVERSE;
+            BigDecimal amount = BigDecimal.ZERO;
+            BigDecimal weightedPrice = BigDecimal.ZERO;
+            for (TradeFill fill : decimalFills) {
+                BigDecimal quantity = fill.amount().bigDecimalValue();
+                BigDecimal price = fill.price().bigDecimalValue();
+                amount = amount.add(quantity, context);
+                weightedPrice = weightedPrice
+                        .add(inverse ? quantity.divide(price, context) : quantity.multiply(price, context), context);
+            }
+            return inverse ? amount.divide(weightedPrice, context) : weightedPrice.divide(amount, context);
+        }
+        return Trade.fromFills(trade.getType(), decimalFills).getPricePerAsset().bigDecimalValue();
     }
 
     @Override
@@ -150,7 +254,15 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             if (!position.isClosed()) {
                 continue;
             }
-            Num grossReturn = grossReturnCriterion.calculate(series, position);
+            Num grossReturn;
+            try {
+                grossReturn = grossReturnCriterion.calculate(series, position);
+            } catch (IllegalArgumentException exception) {
+                if (!isNumericRepresentationFailure(exception)) {
+                    throw exception;
+                }
+                return calculateDecimalCpk(series, tradingRecord, factory);
+            }
             if (!Num.isFinite(grossReturn) || isUnderflowedGrossReturn(series, position, grossReturn)) {
                 // A finite price ratio overflowed or underflowed the factory's
                 // representation. Recompute the capability entirely in decimal
@@ -309,8 +421,11 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
      * preserves separation between finite returns when only their sum overflows.
      * Mixed long/short returns share a center of one, so their large ratio terms
      * cancel exactly before bounded-precision mean and capability arithmetic;
-     * all-short returns retain their center of two. Raw zero or non-finite prices
-     * are genuinely degenerate, so the criterion keeps its zero-score behavior.
+     * all-short returns retain their center of two. A futures position joins the
+     * side of its contract-aware ratio, and an inverse ratio is the entry-over-exit
+     * quotient, so the recovery stays sign-symmetric across contract types. Raw
+     * zero or non-finite prices are genuinely degenerate, so the criterion keeps
+     * its zero-score behavior.
      *
      * @param series        the bar series (source of the price numerics)
      * @param tradingRecord the record whose closed positions supply the prices
@@ -324,8 +439,9 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
         boolean hasShortReturns = false;
         for (Position position : tradingRecord.getPositions()) {
             if (position.isClosed()) {
-                hasLongReturns |= position.getEntry().isBuy();
-                hasShortReturns |= !position.getEntry().isBuy();
+                boolean risingRatio = gainsWithRisingRatio(position);
+                hasLongReturns |= risingRatio;
+                hasShortReturns |= !risingRatio;
             }
         }
         boolean mixedDirections = hasLongReturns && hasShortReturns;
@@ -337,15 +453,27 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             if (!position.isClosed()) {
                 continue;
             }
+            if (position.getFuturesContract() != null && (Trade.executionFillsOf(position.getEntry())
+                    .stream()
+                    .noneMatch(fill -> fill.index() >= 0)
+                    || Trade.executionFillsOf(position.getExit()).stream().noneMatch(fill -> fill.index() >= 0))) {
+                // No executed entry has zero notional and returns one. Without an
+                // executed exit, native closed-position payoff is also zero. Match
+                // that neutral return before reading deferred price metadata, in
+                // the same centered domain as every other recovered return.
+                returns.add(BigDecimal.ONE.subtract(returnCenter));
+                continue;
+            }
             Num entryPrice = position.getEntry().getPricePerAsset(series);
             Num exitPrice = position.getExit().getPricePerAsset(series);
-            if (!Num.isFinite(entryPrice) || !Num.isFinite(exitPrice) || entryPrice.isZero()) {
-                // A zero entry or non-finite price makes the gross return
+            if (!Num.isFinite(entryPrice) || !Num.isFinite(exitPrice) || entryPrice.isZero()
+                    || (isInverse(position) && exitPrice.isZero())) {
+                // A zero divisor or non-finite price makes the gross return
                 // genuinely undefined, not merely unrepresentable.
                 return factory.zero();
             }
-            BigDecimal ratio = exitPrice.bigDecimalValue().divide(entryPrice.bigDecimalValue(), context);
-            if (position.getEntry().isBuy()) {
+            BigDecimal ratio = priceRatio(position, entryPrice, exitPrice, context);
+            if (gainsWithRisingRatio(position)) {
                 // Mixed-direction returns share a center of one:
                 // ratio - 1 and (2 - ratio) - 1 are exact opposites when
                 // their ratios match, so cancellation retains the base.
@@ -435,6 +563,13 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
             sum = next;
         }
         return sum.plus(compensation);
+    }
+
+    private static boolean isNumericRepresentationFailure(IllegalArgumentException exception) {
+        String message = exception.getMessage();
+        return "notional must be finite".equals(message) || "profit must be finite".equals(message)
+                || "profit cannot be represented in price number factory".equals(message)
+                || "contracts * contractSize cannot be represented in price number factory".equals(message);
     }
 
     @Override

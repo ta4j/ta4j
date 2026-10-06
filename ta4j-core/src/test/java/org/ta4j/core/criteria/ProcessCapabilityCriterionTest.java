@@ -11,14 +11,27 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.FuturesContract;
+import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.TradeFee;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
+import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.analysis.AnalysisWindow;
 import org.ta4j.core.indicators.statistics.SinglePrecisionNumFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
@@ -676,4 +689,712 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
         assertTrue(capability.isLessThan(large.numOf(1e-10)));
         assertTrue(capability.isGreaterThan(large.numOf(1e-30)));
     }
+
+    @Test
+    public void inverseFuturesGainsWithTheContractRatioLikeTheEquivalentLinearFutures() {
+        // Bars 100 -> 120 and 100 -> 110 are linear long-ratio gross returns of
+        // 1.2 and 1.1. An inverse contract settles in the base asset, so its
+        // ratio is the entry-over-exit quotient: the mirrored 120 -> 100 and
+        // 110 -> 100 pairs produce the same 1.2 and 1.1.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 120, 100, 110, 120, 100, 110, 100)
+                .build();
+        FuturesContract linear = linearBtcPerpetual();
+        FuturesContract inverse = inverseBtcPerpetual();
+
+        BaseTradingRecord linearRecord = futuresRecord(linear, TradeType.BUY);
+        linearRecord.operate(futuresFill(linear, 0, ExecutionSide.BUY, 100));
+        linearRecord.operate(futuresFill(linear, 1, ExecutionSide.SELL, 120));
+        linearRecord.operate(futuresFill(linear, 2, ExecutionSide.BUY, 100));
+        linearRecord.operate(futuresFill(linear, 3, ExecutionSide.SELL, 110));
+
+        BaseTradingRecord inverseRecord = futuresRecord(inverse, TradeType.SELL);
+        inverseRecord.operate(futuresFill(inverse, 4, ExecutionSide.SELL, 120));
+        inverseRecord.operate(futuresFill(inverse, 5, ExecutionSide.BUY, 100));
+        inverseRecord.operate(futuresFill(inverse, 6, ExecutionSide.SELL, 110));
+        inverseRecord.operate(futuresFill(inverse, 7, ExecutionSide.BUY, 100));
+
+        // Both records carry mean 1.15 and sigma 0.05, so the distance to
+        // either specification limit is three sigma and Cpk is 1.
+        AnalysisCriterion oneSided = getCriterion(1);
+        AnalysisCriterion twoSided = getCriterion(1, 1.3);
+        assertNumEquals(numFactory.numOf(1), oneSided.calculate(series, linearRecord), 1e-12);
+        assertNumEquals(numFactory.numOf(1), twoSided.calculate(series, linearRecord), 1e-12);
+        assertNumEquals(numFactory.numOf(1), oneSided.calculate(series, inverseRecord), 1e-12);
+        assertNumEquals(numFactory.numOf(1), twoSided.calculate(series, inverseRecord), 1e-12);
+    }
+
+    @Test
+    public void inverseFuturesLosesAgainstTheContractRatioLikeTheEquivalentLinearFutures() {
+        // The same price pairs taken against the ratio return 2 - ratio: linear
+        // sells and inverse buys both score 2 - 1.2 and 2 - 1.1, so the mirrored
+        // contract types agree on 0.8 and 0.9 as well.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 120, 100, 110, 120, 100, 110, 100)
+                .build();
+        FuturesContract linear = linearBtcPerpetual();
+        FuturesContract inverse = inverseBtcPerpetual();
+
+        BaseTradingRecord linearRecord = futuresRecord(linear, TradeType.SELL);
+        linearRecord.operate(futuresFill(linear, 0, ExecutionSide.SELL, 100));
+        linearRecord.operate(futuresFill(linear, 1, ExecutionSide.BUY, 120));
+        linearRecord.operate(futuresFill(linear, 2, ExecutionSide.SELL, 100));
+        linearRecord.operate(futuresFill(linear, 3, ExecutionSide.BUY, 110));
+
+        BaseTradingRecord inverseRecord = futuresRecord(inverse, TradeType.BUY);
+        inverseRecord.operate(futuresFill(inverse, 4, ExecutionSide.BUY, 120));
+        inverseRecord.operate(futuresFill(inverse, 5, ExecutionSide.SELL, 100));
+        inverseRecord.operate(futuresFill(inverse, 6, ExecutionSide.BUY, 110));
+        inverseRecord.operate(futuresFill(inverse, 7, ExecutionSide.SELL, 100));
+
+        // Mean 0.85 and sigma 0.05 put both limits three sigma away.
+        AnalysisCriterion cpk = getCriterion(0.7, 1.0);
+        assertNumEquals(numFactory.numOf(1), cpk.calculate(series, linearRecord), 1e-12);
+        assertNumEquals(numFactory.numOf(1), cpk.calculate(series, inverseRecord), 1e-12);
+    }
+
+    @Test
+    public void inverseFuturesRatioUnderflowKeepsRepresentableCapability() {
+        // Inverse buys entered at 1e-308 and covered at 1e300 / 2e300 produce
+        // 2 - entry/exit returns of 2 - 1e-608 and 2 - 2e-608. DoubleNum rounds
+        // both gross returns to 2 and DecimalNum retains ratios below its double
+        // range, while the one-sided Cpk against USL 2 stays 1: the orientation
+        // aware boundary check must recognize the rounded short side of an
+        // inverse contract and recover the score instead of reporting no
+        // dispersion.
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1e-308, 1e300, 1e-308, 2e300)
+                .build();
+        FuturesContract inverse = inverseBtcPerpetual();
+        BaseTradingRecord record = futuresRecord(inverse, TradeType.BUY);
+        record.operate(futuresFill(inverse, 0, ExecutionSide.BUY, 1e-308));
+        record.operate(futuresFill(inverse, 1, ExecutionSide.SELL, 1e300));
+        record.operate(futuresFill(inverse, 2, ExecutionSide.BUY, 1e-308));
+        record.operate(futuresFill(inverse, 3, ExecutionSide.SELL, 2e300));
+
+        AnalysisCriterion cpk = getCriterion(0, 2);
+        assertNumEquals(numFactory.numOf(1), cpk.calculate(series, record), 1e-12);
+    }
+
+    @Test
+    public void fractionalQuantityWithSubnormalContractSizeUsesDecimalFallback() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 100, 110).build();
+        FuturesContract linear = linearBtcPerpetual().toBuilder()
+                .contractSize(numFactory.numOf(Double.MIN_VALUE))
+                .build();
+        BaseTradingRecord record = futuresRecord(linear, TradeType.BUY);
+        record.operate(futuresFill(linear, 0, ExecutionSide.BUY, 100, 0.5));
+        record.operate(futuresFill(linear, 1, ExecutionSide.SELL, 120, 0.5));
+        record.operate(futuresFill(linear, 2, ExecutionSide.BUY, 100, 0.5));
+        record.operate(futuresFill(linear, 3, ExecutionSide.SELL, 110, 0.5));
+
+        AnalysisCriterion cpk = getCriterion(0.7, 1.3);
+        assertNumEquals(numFactory.numOf(1), cpk.calculate(series, record), 1e-12);
+    }
+
+    @Test
+    public void decimalFallbackIgnoresDeferredLinearEntryBasis() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 100, 110).build();
+        for (double size : new double[] { 1, Double.MIN_VALUE }) {
+            FuturesContract contract = linearBtcPerpetual().toBuilder().contractSize(numFactory.numOf(size)).build();
+            Position first = closedPositionWithDeferredEntry(contract, TradeType.BUY,
+                    List.of(futuresFill(contract, 0, ExecutionSide.BUY, 100, 0.5)), 1, 120);
+            Position second = closedPositionWithDeferredEntry(contract, TradeType.BUY,
+                    List.of(futuresFill(contract, 2, ExecutionSide.BUY, 100, 0.5)), 3, 110);
+            BaseTradingRecord record = new BaseTradingRecord(List.of(first, second));
+
+            assertEquals(2, record.getPositionCount());
+            assertTrue(record.isClosed());
+            // The deferred 0.5 @ 300 makes the aggregate trade price 200,
+            // but executed returns remain 120/100 and 110/100, giving Cpk 1.
+            assertNumEquals(200, record.getPositions().getFirst().getEntry().getPricePerAsset());
+            assertNumEquals(numFactory.one(), getCriterion(0.7, 1.3).calculate(series, record), 1e-12);
+        }
+    }
+
+    @Test
+    public void decimalFallbackUsesExecutedInverseHarmonicEntryBasis() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(120, 100, 110, 100).build();
+        for (double size : new double[] { 1, Double.MIN_VALUE }) {
+            FuturesContract contract = inverseBtcPerpetual().toBuilder().contractSize(numFactory.numOf(size)).build();
+            Position first = closedPositionWithDeferredEntry(contract, TradeType.SELL,
+                    List.of(futuresFill(contract, 0, ExecutionSide.SELL, 100, 0.25),
+                            futuresFill(contract, 0, ExecutionSide.SELL, 150, 0.25)),
+                    1, 100);
+            Position second = closedPositionWithDeferredEntry(contract, TradeType.SELL,
+                    List.of(futuresFill(contract, 2, ExecutionSide.SELL, 110, 0.5)), 3, 100);
+            BaseTradingRecord record = new BaseTradingRecord(List.of(first, second));
+
+            assertEquals(2, record.getPositionCount());
+            assertTrue(record.isClosed());
+            // The first executed entry has harmonic basis 120, not arithmetic
+            // basis 125 or the basis including the deferred 0.5 @ 300.
+            assertNumEquals(numFactory.one(), getCriterion(0.7, 1.3).calculate(series, record), 1e-12);
+        }
+    }
+
+    @Test
+    public void decimalFallbackIgnoresDeferredLinearExitBasis() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 100, 110).build();
+        for (double size : new double[] { 1, Double.MIN_VALUE }) {
+            FuturesContract contract = linearBtcPerpetual().toBuilder().contractSize(numFactory.numOf(size)).build();
+            Position first = closedPositionWithDeferredEntry(contract, TradeType.BUY,
+                    List.of(futuresFill(contract, 0, ExecutionSide.BUY, 100, 0.5)), 1, 120);
+            Position second = closedPositionWithDeferredEntry(contract, TradeType.BUY,
+                    List.of(futuresFill(contract, 2, ExecutionSide.BUY, 100, 0.5)), 3, 110);
+            BaseTradingRecord record = new BaseTradingRecord(
+                    List.of(withDeferredExit(first, first.getExit().getFills()),
+                            withDeferredExit(second, second.getExit().getFills())));
+
+            assertTrue(record.isClosed());
+            assertEquals(2, record.getPositionCount());
+            assertNumEquals(210, record.getPositions().getFirst().getExit().getPricePerAsset());
+            assertNumEquals(205, record.getPositions().getLast().getExit().getPricePerAsset());
+            // Deferred entry and exit fills have no executed exposure. The
+            // returns remain 1.2/1.1, rather than 2.1/2.05 from exit metadata.
+            assertNumEquals(numFactory.one(), getCriterion(0.7, 1.3).calculate(series, record), 1e-12);
+        }
+    }
+
+    @Test
+    public void decimalFallbackUsesExecutedInverseHarmonicExitBasis() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(120, 100, 110, 100).build();
+        for (double size : new double[] { 1, Double.MIN_VALUE }) {
+            FuturesContract contract = inverseBtcPerpetual().toBuilder().contractSize(numFactory.numOf(size)).build();
+            Position first = closedPositionWithDeferredEntry(contract, TradeType.SELL,
+                    List.of(futuresFill(contract, 0, ExecutionSide.SELL, 100, 0.25),
+                            futuresFill(contract, 0, ExecutionSide.SELL, 150, 0.25)),
+                    1, 100);
+            Position second = closedPositionWithDeferredEntry(contract, TradeType.SELL,
+                    List.of(futuresFill(contract, 2, ExecutionSide.SELL, 110, 0.5)), 3, 100);
+            BaseTradingRecord record = new BaseTradingRecord(List.of(
+                    withDeferredExit(first,
+                            List.of(futuresFill(contract, 1, ExecutionSide.BUY, 80, 0.25),
+                                    futuresFill(contract, 1, ExecutionSide.BUY, 400d / 3, 0.25))),
+                    withDeferredExit(second, second.getExit().getFills())));
+
+            assertTrue(record.isClosed());
+            assertEquals(2, record.getPositionCount());
+            // Executed inverse entry/exit harmonic bases are 120/100 and
+            // 110/100. The arithmetic exit basis would change the first return.
+            assertNumEquals(numFactory.one(), getCriterion(0.7, 1.3).calculate(series, record), 1e-12);
+        }
+    }
+
+    @Test
+    public void decimalRecoveryExcludesClosedPositionsBeyondTheWindowEnd() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 120, 100, 110, 100, 300)
+                .build();
+        FuturesContract contract = linearBtcPerpetual().toBuilder()
+                .contractSize(numFactory.numOf(Double.MIN_VALUE))
+                .build();
+        Position first = closedPositionWithDeferredEntry(contract, TradeType.BUY,
+                List.of(futuresFill(contract, 0, ExecutionSide.BUY, 100, 0.5)), 1, 120);
+        Position second = closedPositionWithDeferredEntry(contract, TradeType.BUY,
+                List.of(futuresFill(contract, 2, ExecutionSide.BUY, 100, 0.5)), 3, 110);
+        Position future = closedPositionWithDeferredEntry(contract, TradeType.BUY,
+                List.of(futuresFill(contract, 4, ExecutionSide.BUY, 100, 0.5)), 5, 300);
+        BaseTradingRecord record = new BaseTradingRecord(List.of(withDeferredExit(first, first.getExit().getFills()),
+                withDeferredExit(second, second.getExit().getFills()), future));
+
+        AnalysisCriterion criterion = getCriterion(0.7, 1.3);
+        assertNumEquals(numFactory.one(), criterion.calculate(series, record, AnalysisWindow.barRange(0, 3)), 1e-12);
+        assertTrue(criterion.calculate(series, record, AnalysisWindow.barRange(0, 5)).isLessThan(numFactory.zero()));
+    }
+
+    @Test
+    public void decimalRecoveryPreservesTheNativeExecutionPartition() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 100, 120).build();
+        for (FuturesContract template : List.of(linearBtcPerpetual(), inverseBtcPerpetual())) {
+            boolean inverse = template.settlementType() == FuturesContract.SettlementType.INVERSE;
+            for (TradeType type : TradeType.values()) {
+                boolean risingRatio = inverse ? type == TradeType.SELL : type == TradeType.BUY;
+                double firstEntryPrice = inverse ? (risingRatio ? 110 : 90) : 100;
+                double firstExitPrice = inverse ? 100 : (risingRatio ? 110 : 90);
+                double anchorEntryPrice = inverse ? (risingRatio ? 120 : 80) : 100;
+                double anchorExitPrice = inverse ? 100 : (risingRatio ? 120 : 80);
+                for (double size : new double[] { 1, Double.MIN_VALUE }) {
+                    FuturesContract contract = template.toBuilder().contractSize(numFactory.numOf(size)).build();
+                    Position anchor = new Position(executionPartitionTrade(contract, type, 2, 2, anchorEntryPrice),
+                            executionPartitionTrade(contract, type.complementType(), 2, 3, anchorExitPrice),
+                            RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+                    // 0 = no executed fills, 1 = executed and deferred, 2 = all executed.
+                    for (int entryPartition = 0; entryPartition < 3; entryPartition++) {
+                        for (int exitPartition = 0; exitPartition < 3; exitPartition++) {
+                            Trade entry = executionPartitionTrade(contract, type, entryPartition, 0, firstEntryPrice);
+                            Trade exit = executionPartitionTrade(contract, type.complementType(), exitPartition, 1,
+                                    exitPartition == 0 ? 300 : firstExitPrice);
+                            if (entryPartition == 0 && exitPartition != 0) {
+                                assertThrows(IllegalArgumentException.class, () -> new Position(entry, exit,
+                                        RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+                                continue;
+                            }
+                            Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE,
+                                    new ZeroCostModel());
+                            BaseTradingRecord record = new BaseTradingRecord(List.of(position, anchor));
+                            AnalysisCriterion criterion = getCriterion(0.7, 1.3);
+                            if (entryPartition != 0 && exitPartition == 0) {
+                                assertEquals(1, record.getPositionCount());
+                                assertEquals(1, record.getOpenPositions().size());
+                                assertNumEquals(numFactory.zero(), criterion.calculate(series, record));
+                                assertNumEquals(numFactory.zero(),
+                                        criterion.calculate(series, record, AnalysisWindow.barRange(0, 3)));
+                                continue;
+                            }
+                            assertEquals(2, record.getPositionCount());
+                            assertTrue(record.getOpenPositions().isEmpty());
+                            if (entryPartition == 0) {
+                                assertNumEquals(numFactory.one(), position.getGrossReturn());
+                            }
+                            // Neutral1 with anchor1.2 gives2/3; executed1.1 with
+                            // anchor1.2 gives1. Window projection excludes the neutral
+                            // deferred-only position, leaving zero variance.
+                            double expectedWhole = entryPartition == 0 ? 2d / 3 : 1;
+                            double expectedWindow = entryPartition == 0 ? 0 : 1;
+                            assertNumEquals(numFactory.numOf(expectedWhole), criterion.calculate(series, record),
+                                    1e-12);
+                            assertNumEquals(numFactory.numOf(expectedWindow),
+                                    criterion.calculate(series, record, AnalysisWindow.barRange(0, 3)), 1e-12);
+                            assertNumEquals(numFactory.zero(),
+                                    criterion.calculate(series, record, AnalysisWindow.barRange(0, 1)));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void decimalRecoveryCentersDeferredNativeReturnsWithOppositeSides() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120).build();
+        for (FuturesContract template : List.of(linearBtcPerpetual(), inverseBtcPerpetual())) {
+            boolean inverse = template.settlementType() == FuturesContract.SettlementType.INVERSE;
+            for (TradeType deferredType : TradeType.values()) {
+                TradeType executedType = deferredType.complementType();
+                boolean risingRatio = inverse ? executedType == TradeType.SELL : executedType == TradeType.BUY;
+                double entryPrice = inverse ? (risingRatio ? 120 : 80) : 100;
+                double exitPrice = inverse ? 100 : (risingRatio ? 120 : 80);
+                for (double size : new double[] { 1, Double.MIN_VALUE }) {
+                    FuturesContract contract = template.toBuilder().contractSize(numFactory.numOf(size)).build();
+                    Position deferred = new Position(executionPartitionTrade(contract, deferredType, 0, 0, 100),
+                            executionPartitionTrade(contract, deferredType.complementType(), 0, 1, 300),
+                            RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+                    Position executed = new Position(executionPartitionTrade(contract, executedType, 2, 0, entryPrice),
+                            executionPartitionTrade(contract, executedType.complementType(), 2, 1, exitPrice),
+                            RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+                    BaseTradingRecord record = new BaseTradingRecord(List.of(deferred, executed));
+
+                    assertEquals(2, record.getPositionCount());
+                    assertNumEquals(numFactory.numOf(2d / 3), getCriterion(0.7, 1.3).calculate(series, record), 1e-12);
+                    assertNumEquals(numFactory.zero(),
+                            getCriterion(0.7, 1.3).calculate(series, record, AnalysisWindow.barRange(0, 1)));
+                }
+            }
+        }
+    }
+
+    private Trade executionPartitionTrade(FuturesContract contract, TradeType type, int partition, int index,
+            double price) {
+        ExecutionSide side = type == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+        TradeFill fill = futuresFill(contract, index, side, price, 0.5);
+        List<TradeFill> fills = new ArrayList<>();
+        fills.add(partition == 0 ? fill.toBuilder().index(-1).build() : fill);
+        if (partition == 1) {
+            fills.add(fill.toBuilder().index(-1).price(numFactory.numOf(300)).build());
+        }
+        return Trade.fromFills(type, fills, RecordedTradeCostModel.INSTANCE);
+    }
+
+    private Position withDeferredExit(Position position, List<TradeFill> executedExits) {
+        TradeType exitType = position.getExit().getType();
+        ExecutionSide exitSide = exitType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+        List<TradeFill> exitFills = new ArrayList<>(executedExits);
+        exitFills.add(futuresFill(position.getFuturesContract(), -1, exitSide, 300, 0.5));
+        Trade exit = Trade.fromFills(exitType, exitFills, RecordedTradeCostModel.INSTANCE);
+        return new Position(position.getEntry(), exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+    }
+
+    private Position closedPositionWithDeferredEntry(FuturesContract contract, TradeType type,
+            List<TradeFill> executedEntries, int exitIndex, double exitPrice) {
+        ExecutionSide entrySide = type == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+        ExecutionSide exitSide = type == TradeType.BUY ? ExecutionSide.SELL : ExecutionSide.BUY;
+        List<TradeFill> entryFills = new ArrayList<>(executedEntries);
+        entryFills.add(futuresFill(contract, -1, entrySide, 300, 0.5));
+        Trade entry = Trade.fromFills(type, entryFills, RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFill(futuresFill(contract, exitIndex, exitSide, exitPrice, 0.5),
+                RecordedTradeCostModel.INSTANCE);
+        return new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+    }
+
+    private FuturesContract linearBtcPerpetual() {
+        return FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.LINEAR)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("USD")
+                .contractSize(numFactory.numOf(0.01))
+                .build();
+    }
+
+    private FuturesContract inverseBtcPerpetual() {
+        return FuturesContract.builder()
+                .venue("CDE")
+                .symbol("BTC-PERP-INVERSE")
+                .productType(FuturesContract.ProductType.PERPETUAL)
+                .settlementType(FuturesContract.SettlementType.INVERSE)
+                .baseCurrency("BTC")
+                .quoteCurrency("USD")
+                .settlementCurrency("BTC")
+                .contractSize(numFactory.numOf(100))
+                .build();
+    }
+
+    private BaseTradingRecord futuresRecord(FuturesContract contract, TradeType startingType) {
+        return BaseTradingRecord.builder()
+                .startingType(startingType)
+                .futuresContract(contract)
+                .initialCapital(numFactory.numOf(1_000))
+                .build();
+    }
+
+    private TradeFill futuresFill(FuturesContract contract, int index, ExecutionSide side, double price) {
+        return futuresFill(contract, index, side, price, 1);
+    }
+
+    private TradeFill futuresFill(FuturesContract contract, int index, ExecutionSide side, double price,
+            double amount) {
+        return TradeFill.builder()
+                .index(index)
+                .time(Instant.parse("2025-01-01T00:00:00Z").plusSeconds(index))
+                .price(numFactory.numOf(price))
+                .amount(numFactory.numOf(amount))
+                .side(side)
+                .orderId("order-" + index)
+                .futuresContract(contract)
+                .fees(List.of())
+                .build();
+    }
+
+    @Test
+    public void decimalRecoveryRetainsLegacyScalarFillRepresentation() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 100, 110).build();
+        for (double size : new double[] { 1, Double.MIN_VALUE }) {
+            FuturesContract contract = linearBtcPerpetual().toBuilder().contractSize(numFactory.numOf(size)).build();
+            Position first = legacyScalarPosition(contract, 0, 120);
+            Position second = legacyScalarPosition(contract, 2, 110);
+            List<Position> positions = List.of(first, second);
+            TradingRecord record = new BaseTradingRecord() {
+                @Override
+                public List<Position> getPositions() {
+                    return positions;
+                }
+
+                @Override
+                public FuturesContract getFuturesContract() {
+                    return contract;
+                }
+            };
+            assertTrue(first.isClosed());
+            assertEquals(contract, first.getEntry().getFuturesContract());
+            assertEquals(null, first.getEntry().getFills().getFirst().futuresContract());
+            assertNumEquals(1, first.getEntry().getFills().getFirst().fee());
+            assertNumEquals(numFactory.one(), getCriterion(0.7, 1.3).calculate(series, record), 1e-12);
+            // Gross-price recovery must not rewrite the accepted source metadata or scalar
+            // fees.
+            assertEquals(null, first.getEntry().getFills().getFirst().futuresContract());
+            assertNumEquals(1, first.getEntry().getFills().getFirst().fee());
+        }
+    }
+
+    private Position legacyScalarPosition(FuturesContract contract, int index, double exitPrice) {
+        Trade entry = legacyNativeTrade(contract, TradeType.BUY,
+                List.of(new TradeFill(index, Instant.EPOCH.plusSeconds(index), numFactory.hundred(),
+                        numFactory.numOf(0.5), numFactory.one(), ExecutionSide.BUY, null, null),
+                        new TradeFill(-1, Instant.EPOCH.minusSeconds(1), numFactory.numOf(300), numFactory.numOf(0.5),
+                                numFactory.one(), ExecutionSide.BUY, null, null)));
+        Trade exit = legacyNativeTrade(contract, TradeType.SELL,
+                List.of(new TradeFill(index + 1, Instant.EPOCH.plusSeconds(index + 1), numFactory.numOf(exitPrice),
+                        numFactory.numOf(0.5), numFactory.one(), ExecutionSide.SELL, null, null)));
+        return new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+    }
+
+    @Test
+    public void mixedPartialExitUsesOnlyExecutedGrossPrices() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 100, 110).build();
+        FuturesContract contract = linearBtcPerpetual().toBuilder().contractSize(numFactory.one()).build();
+        Trade entry = Trade.fromFills(TradeType.BUY,
+                List.of(futuresFill(contract, 0, ExecutionSide.BUY, 100, 0.5).toBuilder().time(Instant.EPOCH).build()),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = legacyNativeTrade(contract, TradeType.SELL,
+                List.of(new TradeFill(1, Instant.EPOCH.plusSeconds(1), numFactory.numOf(120), numFactory.numOf(0.25),
+                        numFactory.zero(), ExecutionSide.SELL, null, null),
+                        futuresFill(contract, 1, ExecutionSide.SELL, 120, 0.25).toBuilder()
+                                .time(Instant.EPOCH.plusSeconds(1))
+                                .build(),
+                        new TradeFill(-1, Instant.EPOCH.minusSeconds(1), numFactory.numOf(300), numFactory.numOf(0.5),
+                                numFactory.zero(), ExecutionSide.SELL, null, null)));
+        Position first = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        Trade secondEntry = Trade.fromFills(TradeType.BUY,
+                List.of(futuresFill(contract, 2, ExecutionSide.BUY, 100, 0.5).toBuilder()
+                        .time(Instant.EPOCH.plusSeconds(2))
+                        .build()),
+                RecordedTradeCostModel.INSTANCE);
+        Trade secondExit = Trade.fromFills(TradeType.SELL,
+                List.of(futuresFill(contract, 3, ExecutionSide.SELL, 110, 0.5).toBuilder()
+                        .time(Instant.EPOCH.plusSeconds(3))
+                        .build()),
+                RecordedTradeCostModel.INSTANCE);
+        Position second = new Position(secondEntry, secondExit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        assertTrue(first.isClosed());
+        assertNumEquals(210, exit.getPricePerAsset());
+        assertNumEquals(1, exit.getAmount());
+        Num executedExitAmount = exit.getFills()
+                .stream()
+                .filter(fill -> fill.index() >= 0)
+                .map(TradeFill::amount)
+                .reduce(numFactory.zero(), Num::plus);
+        assertNumEquals(0.5, executedExitAmount);
+        // Executed returns are 1.2 and 1.1: mean 1.15, sigma .05, Cpk=1.
+        assertNumEquals(numFactory.one(),
+                getCriterion(0.7, 1.3).calculate(series, legacyPositionRecord(contract, List.of(first, second))),
+                1e-12);
+    }
+
+    @Test
+    public void mixedPartialExitKeepsUnequalContractPriceBases() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 100, 110).build();
+        for (FuturesContract template : List.of(linearBtcPerpetual(), inverseBtcPerpetual())) {
+            boolean inverse = template.settlementType() == FuturesContract.SettlementType.INVERSE;
+            TradeType type = inverse ? TradeType.SELL : TradeType.BUY;
+            ExecutionSide entrySide = inverse ? ExecutionSide.SELL : ExecutionSide.BUY;
+            ExecutionSide exitSide = inverse ? ExecutionSide.BUY : ExecutionSide.SELL;
+            for (double size : new double[] { 1, Double.MIN_VALUE }) {
+                FuturesContract contract = template.toBuilder().contractSize(numFactory.numOf(size)).build();
+                Trade entry = Trade.fromFills(type,
+                        List.of(futuresFill(contract, 0, entrySide, inverse ? 115.2 : 100, 0.5).toBuilder()
+                                .time(Instant.EPOCH)
+                                .build()),
+                        RecordedTradeCostModel.INSTANCE);
+                Trade exit = legacyNativeTrade(contract, type.complementType(),
+                        List.of(new TradeFill(1, Instant.EPOCH.plusSeconds(1), numFactory.numOf(80),
+                                numFactory.numOf(0.25), numFactory.zero(), exitSide, null, null),
+                                futuresFill(contract, 1, exitSide, inverse ? 120 : 160, 0.25).toBuilder()
+                                        .time(Instant.EPOCH.plusSeconds(1))
+                                        .build(),
+                                new TradeFill(-1, Instant.EPOCH.minusSeconds(1), numFactory.numOf(300),
+                                        numFactory.numOf(0.5), numFactory.zero(), exitSide, null, null)));
+                Position first = new Position(entry, exit, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+                Trade secondEntry = Trade.fromFills(type,
+                        List.of(futuresFill(contract, 2, entrySide, inverse ? 110 : 100, 0.5).toBuilder()
+                                .time(Instant.EPOCH.plusSeconds(2))
+                                .build()),
+                        RecordedTradeCostModel.INSTANCE);
+                Trade secondExit = Trade.fromFills(type.complementType(),
+                        List.of(futuresFill(contract, 3, exitSide, inverse ? 100 : 110, 0.5).toBuilder()
+                                .time(Instant.EPOCH.plusSeconds(3))
+                                .build()),
+                        RecordedTradeCostModel.INSTANCE);
+                Position second = new Position(secondEntry, secondExit, RecordedTradeCostModel.INSTANCE,
+                        new ZeroCostModel());
+                // Arithmetic exit basis is 120; inverse harmonic basis is 96.
+                assertNumEquals(numFactory.one(), getCriterion(0.7, 1.3).calculate(series,
+                        legacyPositionRecord(contract, List.of(first, second))), 1e-12);
+                assertEquals(null, exit.getFills().getFirst().futuresContract());
+                assertEquals(contract, exit.getFills().get(1).futuresContract());
+                assertEquals(3, exit.getFills().size());
+            }
+        }
+    }
+
+    private Trade legacyNativeTrade(FuturesContract contract, TradeType type, List<TradeFill> fills) {
+        List<TradeFill> nativePriceFills = fills.stream()
+                .map(fill -> fill.toBuilder().futuresContract(contract).fee(null).fees(List.of()).build())
+                .toList();
+        Trade delegate = Trade.fromFills(type, nativePriceFills, RecordedTradeCostModel.INSTANCE);
+        return new Trade() {
+            @Override
+            public TradeType getType() {
+                return type;
+            }
+
+            @Override
+            public int getIndex() {
+                return delegate.getIndex();
+            }
+
+            @Override
+            public Num getPricePerAsset() {
+                return delegate.getPricePerAsset();
+            }
+
+            @Override
+            public Num getNetPrice() {
+                return delegate.getNetPrice();
+            }
+
+            @Override
+            public Num getAmount() {
+                return delegate.getAmount();
+            }
+
+            @Override
+            public Num getCost() {
+                return delegate.getCost();
+            }
+
+            @Override
+            public CostModel getCostModel() {
+                return delegate.getCostModel();
+            }
+
+            @Override
+            public FuturesContract getFuturesContract() {
+                return contract;
+            }
+
+            @Override
+            public List<TradeFill> getFills() {
+                return fills;
+            }
+        };
+    }
+
+    @Test
+    public void legacyNativeFillPartitionsKeepContractAwareRecovery() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 100, 120).build();
+        for (FuturesContract template : List.of(linearBtcPerpetual(), inverseBtcPerpetual())) {
+            boolean inverse = template.settlementType() == FuturesContract.SettlementType.INVERSE;
+            for (TradeType type : TradeType.values()) {
+                boolean rising = inverse ? type == TradeType.SELL : type == TradeType.BUY;
+                double firstEntry = inverse ? (rising ? 110 : 90) : 100;
+                double firstExit = inverse ? 100 : (rising ? 110 : 90);
+                double anchorEntry = inverse ? (rising ? 120 : 80) : 100;
+                double anchorExit = inverse ? 100 : (rising ? 120 : 80);
+                for (double size : new double[] { 1, Double.MIN_VALUE }) {
+                    FuturesContract contract = template.toBuilder().contractSize(numFactory.numOf(size)).build();
+                    Position anchor = new Position(legacyPartitionTrade(contract, type, 2, 2, anchorEntry),
+                            legacyPartitionTrade(contract, type.complementType(), 2, 3, anchorExit),
+                            RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+                    for (int entryPartition = 0; entryPartition < 3; entryPartition++) {
+                        for (int exitPartition = 0; exitPartition < 3; exitPartition++) {
+                            Trade entry = legacyPartitionTrade(contract, type, entryPartition, 0, firstEntry);
+                            Trade exit = legacyPartitionTrade(contract, type.complementType(), exitPartition, 1,
+                                    exitPartition == 0 ? 300 : firstExit);
+                            if (entryPartition == 0 && exitPartition != 0) {
+                                assertThrows(IllegalArgumentException.class, () -> new Position(entry, exit,
+                                        RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+                                continue;
+                            }
+                            // Executed-entry/deferred-only-exit belongs to the open-position
+                            // partition, already owned by the native record/window matrix.
+                            if (entryPartition != 0 && exitPartition == 0) {
+                                continue;
+                            }
+                            Position position = new Position(entry, exit, RecordedTradeCostModel.INSTANCE,
+                                    new ZeroCostModel());
+                            TradingRecord record = legacyPositionRecord(contract, List.of(position, anchor));
+                            assertNumEquals(numFactory.numOf(entryPartition == 0 ? 2d / 3 : 1),
+                                    getCriterion(0.7, 1.3).calculate(series, record), 1e-12);
+                            assertEquals(null, entry.getFills().getFirst().futuresContract());
+                            assertNumEquals(1, entry.getFills().getFirst().fee());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    public void legacyInverseRecoveryUsesUnequalExecutedHarmonicPrices() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(120, 100, 110, 100).build();
+        for (double size : new double[] { 1, Double.MIN_VALUE }) {
+            FuturesContract contract = inverseBtcPerpetual().toBuilder().contractSize(numFactory.numOf(size)).build();
+            Position nativeFirst = closedPositionWithDeferredEntry(contract, TradeType.SELL,
+                    List.of(futuresFill(contract, 0, ExecutionSide.SELL, 100, 0.25),
+                            futuresFill(contract, 0, ExecutionSide.SELL, 150, 0.25)),
+                    1, 100);
+            Position nativeSecond = closedPositionWithDeferredEntry(contract, TradeType.SELL,
+                    List.of(futuresFill(contract, 2, ExecutionSide.SELL, 110, 0.5)), 3, 100);
+            List<Position> legacy = new ArrayList<>();
+            for (Position position : List.of(nativeFirst, nativeSecond)) {
+                legacy.add(new Position(asLegacyNativeTrade(position.getEntry()),
+                        asLegacyNativeTrade(position.getExit()), RecordedTradeCostModel.INSTANCE, new ZeroCostModel()));
+            }
+            assertNumEquals(numFactory.one(),
+                    getCriterion(0.7, 1.3).calculate(series, legacyPositionRecord(contract, legacy)), 1e-12);
+        }
+    }
+
+    private TradingRecord legacyPositionRecord(FuturesContract contract, List<Position> positions) {
+        // Custom native Trades with scalar fills are supported as public Positions;
+        // the native record import adapter does not accept this representation.
+        return new BaseTradingRecord() {
+            @Override
+            public List<Position> getPositions() {
+                return positions;
+            }
+
+            @Override
+            public FuturesContract getFuturesContract() {
+                return contract;
+            }
+        };
+    }
+
+    private Trade legacyPartitionTrade(FuturesContract contract, TradeType type, int partition, int index,
+            double price) {
+        return asLegacyNativeTrade(executionPartitionTrade(contract, type, partition, index, price));
+    }
+
+    private Trade asLegacyNativeTrade(Trade trade) {
+        List<TradeFill> scalar = trade.getFills()
+                .stream()
+                .map(fill -> new TradeFill(fill.index(), fill.time(), fill.price(), fill.amount(), numFactory.one(),
+                        fill.side(), fill.orderId(), fill.correlationId()))
+                .toList();
+        return legacyNativeTrade(trade.getFuturesContract(), trade.getType(), scalar);
+    }
+
+    @Test
+    public void decimalRecoveryAcceptsMixedScalarAndNativeExecutedFills() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 100, 110).build();
+        for (FuturesContract template : List.of(linearBtcPerpetual(), inverseBtcPerpetual())) {
+            boolean inverse = template.settlementType() == FuturesContract.SettlementType.INVERSE;
+            TradeType type = inverse ? TradeType.SELL : TradeType.BUY;
+            ExecutionSide side = inverse ? ExecutionSide.SELL : ExecutionSide.BUY;
+            for (double size : new double[] { 1, Double.MIN_VALUE }) {
+                FuturesContract contract = template.toBuilder().contractSize(numFactory.numOf(size)).build();
+                double firstEntry = inverse ? 120 : 100;
+                double firstExit = inverse ? 100 : 120;
+                double secondEntry = inverse ? 110 : 100;
+                double secondExit = inverse ? 100 : 110;
+                Position first = closedPositionWithDeferredEntry(contract, type,
+                        List.of(futuresFill(contract, 0, side, firstEntry, 0.25),
+                                futuresFill(contract, 0, side, firstEntry, 0.25)),
+                        1, firstExit);
+                Position second = closedPositionWithDeferredEntry(contract, type,
+                        List.of(futuresFill(contract, 2, side, secondEntry, 0.5)), 3, secondExit);
+                List<TradeFill> mixed = new ArrayList<>();
+                for (int index = 0; index < first.getEntry().getFills().size(); index++) {
+                    TradeFill fill = first.getEntry().getFills().get(index);
+                    mixed.add(index == 1 ? fill
+                            : new TradeFill(fill.index(), fill.time(), fill.price(), fill.amount(), numFactory.one(),
+                                    fill.side(), fill.orderId(), fill.correlationId()));
+                }
+                Trade entry = legacyNativeTrade(contract, type, mixed);
+                Position accepted = new Position(entry, first.getExit(), RecordedTradeCostModel.INSTANCE,
+                        new ZeroCostModel());
+                assertTrue(accepted.isClosed());
+                assertNumEquals(numFactory.one(), getCriterion(0.7, 1.3).calculate(series,
+                        legacyPositionRecord(contract, List.of(accepted, second))), 1e-12);
+                assertEquals(null, entry.getFills().getFirst().futuresContract());
+                assertEquals(contract, entry.getFills().get(1).futuresContract());
+            }
+        }
+    }
+
 }

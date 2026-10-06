@@ -265,4 +265,49 @@ public class DrawdownTest extends AbstractIndicatorTest<org.ta4j.core.Indicator<
             }
         }
     }
+
+    @Test
+    public void negativeGenericCurveRetainsZeroPeakAtWindowStart() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        Indicator<Num> curve = new Indicator<Num>() {
+            @Override
+            public Num getValue(int index) {
+                return index == 1 ? numFactory.numOf(-10) : numFactory.numOf(-20);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            public BarSeries getBarSeries() {
+                return series;
+            }
+        };
+        var record = new BaseTradingRecord(TradeType.BUY, 1, 2, new ZeroCostModel(), new ZeroCostModel());
+
+        assertNumEquals(20, Drawdown.amount(series, record, curve, false));
+        assertNumEquals(1, Drawdown.length(series, record, curve, false));
+    }
+
+    @Test
+    public void initialCashFlowLossSpansFromInitialCapital() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
+        CashFlow cashFlow = new CashFlow(series, new BaseTradingRecord()) {
+            @Override
+            public Num getValue(int index) {
+                return numFactory.numOf(0.9);
+            }
+
+            @Override
+            public boolean hasInitialReturn() {
+                return true;
+            }
+        };
+        var record = new BaseTradingRecord(TradeType.BUY, 1, 2, new ZeroCostModel(), new ZeroCostModel());
+
+        assertNumEquals(1, Drawdown.length(series, null, cashFlow, true));
+        assertNumEquals(0, Drawdown.length(series, record, cashFlow, true));
+    }
 }

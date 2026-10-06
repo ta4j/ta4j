@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.ta4j.core.analysis.Returns;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -16,8 +17,8 @@ import org.ta4j.core.num.NumFactory;
  * {@link ExpectedShortfallCriterion}.
  * <p>
  * Both risk criteria operate on the same view of a return series: the raw
- * returns excluding the initial placeholder value at index 0, sorted ascending,
- * with the tail size derived from the confidence level.
+ * returns excluding the placeholder value at the first stored position, sorted
+ * ascending, with the tail size derived from the confidence level.
  */
 final class RiskTailSupport {
 
@@ -37,8 +38,8 @@ final class RiskTailSupport {
      */
     static List<Num> sortedRates(Returns returns) {
         List<Num> rawValues = returns.getRawValues();
-        List<Num> returnRates = new ArrayList<>(
-                rawValues.subList(rawValues.size() - returns.getSize(), rawValues.size()));
+        List<Num> returnRates = new ArrayList<>(rawValues.subList(
+                rawValues.size() - returns.getSize() + (returns.hasSeededFirstBarReturn() ? 1 : 0), rawValues.size()));
         for (Num rate : returnRates) {
             if (rate.isNaN()) {
                 return null;
@@ -46,6 +47,15 @@ final class RiskTailSupport {
         }
         Collections.sort(returnRates);
         return returnRates;
+    }
+
+    static boolean hasNonFinite(List<Num> returnRates) {
+        for (Num returnRate : returnRates) {
+            if (!Num.isFinite(returnRate)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

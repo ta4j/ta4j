@@ -3,6 +3,10 @@
  */
 package org.ta4j.core.analysis;
 
+import org.ta4j.core.Indicator;
+import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -31,6 +35,9 @@ public final class CumulativePnL implements PerformanceIndicator {
     /** The window captured when the curve was materialized. */
     private final AnalysisPositionSupport.Window window;
     private final OffsetNumBuffer values;
+    private FuturesPerformanceSupport.PnLAccumulator futuresPnL;
+    private final Indicator<Num> futuresMark;
+    private final boolean markFuturesExposure;
 
     /**
      * Constructor for a trading record with a specified final index.
@@ -50,21 +57,48 @@ public final class CumulativePnL implements PerformanceIndicator {
     private CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, int requestedFinalIndex,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling, boolean useRecordEnd,
             boolean useSeriesEnd) {
+        this(barSeries, tradingRecord, requestedFinalIndex, equityCurveMode, openPositionHandling, useRecordEnd,
+                useSeriesEnd, new ClosePriceIndicator(barSeries));
+    }
+
+    private CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, int requestedFinalIndex,
+            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling, boolean useRecordEnd,
+            boolean useSeriesEnd, Indicator<Num> markPriceIndicator) {
         this.barSeries = Objects.requireNonNull(barSeries, "barSeries");
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
         TradingRecord record = Objects.requireNonNull(tradingRecord);
         OpenPositionHandling handling = Objects.requireNonNull(openPositionHandling);
-        AnalysisPositionSupport.Curve curve = AnalysisPositionSupport.materialize(this, barSeries, record, 0,
-                requestedFinalIndex, useRecordEnd, useSeriesEnd, true, handling, (captured, positions, costs) -> {
+        FuturesPerformanceSupport.requireMarkSeries(barSeries, markPriceIndicator);
+        Materialized curve = AnalysisPositionSupport.materialize(this, barSeries, record, 0, requestedFinalIndex,
+                useRecordEnd, useSeriesEnd, true, handling, (captured, positions, costs) -> {
                     Num zero = this.barSeries.numFactory().zero();
                     OffsetNumBuffer buffer = AnalysisPositionSupport.buffer(captured, zero, zero);
-                    for (Position position : positions) {
-                        calculatePosition(position, captured.finalIndex(), captured, buffer, costs.get(position));
+                    FuturesPerformanceSupport.PnLAccumulator pnl = null;
+                    if (FuturesPerformanceSupport.isFutures(record)) {
+                        FuturesPerformanceSupport.Cursor cursor = FuturesPerformanceSupport.cursor(barSeries, record,
+                                captured.endIndex(),
+                                FuturesPerformanceSupport.includesExposure(handling, equityCurveMode),
+                                markPriceIndicator);
+                        pnl = FuturesPerformanceSupport.pnl(cursor, captured, barSeries.numFactory());
+                        buffer = pnl.values();
+                    } else {
+                        for (Position position : positions) {
+                            calculatePosition(position, captured.finalIndex(), captured, buffer, costs.get(position));
+                        }
+                        pnl = new FuturesPerformanceSupport.PnLAccumulator(captured, barSeries.numFactory());
+                        pnl.add(buffer);
                     }
-                    return new AnalysisPositionSupport.Curve(captured, buffer);
+                    return new Materialized(captured, buffer, pnl);
                 });
+        this.futuresMark = markPriceIndicator;
+        this.markFuturesExposure = FuturesPerformanceSupport.includesExposure(handling, equityCurveMode);
         this.window = curve.window();
         this.values = curve.values();
+        this.futuresPnL = curve.pnl();
+    }
+
+    private record Materialized(AnalysisPositionSupport.Window window, OffsetNumBuffer values,
+            FuturesPerformanceSupport.PnLAccumulator pnl) {
     }
 
     /**
@@ -76,8 +110,8 @@ public final class CumulativePnL implements PerformanceIndicator {
      * @since 0.22.2
      */
     public CumulativePnL(BarSeries barSeries, Position position, EquityCurveMode equityCurveMode) {
-        this(barSeries, new BaseTradingRecord(position), 0, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET, false,
-                true);
+        this(barSeries, FuturesPerformanceSupport.analysisRecord(position), 0, equityCurveMode,
+                OpenPositionHandling.MARK_TO_MARKET, false, true);
     }
 
     /**
@@ -170,6 +204,14 @@ public final class CumulativePnL implements PerformanceIndicator {
     /**
      * Calculates the cumulative PnL for a single position.
      *
+     * <p>
+     * Native settlement components are retained across updates regardless of the
+     * constructor's record type. Results carried before the captured window remain
+     * separate from contributions recognized on its retained bars. Every accepted
+     * update publishes a view of those retained components, rounding only the final
+     * values.
+     * </p>
+     *
      * @param position   the position
      * @param finalIndex the final index to calculate up to
      * @throws IllegalStateException if a bar this curve was materialized from was
@@ -180,9 +222,26 @@ public final class CumulativePnL implements PerformanceIndicator {
     public void calculatePosition(Position position, int finalIndex) {
         AnalysisPositionSupport.PricedPosition priced = AnalysisPositionSupport.pricePosition(this, barSeries, position,
                 finalIndex, window, true);
+        if (priced != null && FuturesPerformanceSupport.isFutures(position)) {
+            FuturesPerformanceSupport.PnLAccumulator pnl = futuresPnL.copy();
+            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values, staged -> {
+                FuturesPerformanceSupport.addPositionPnL(barSeries, position, finalIndex, window, markFuturesExposure,
+                        futuresMark, pnl);
+                staged.replaceWith(pnl.values());
+            }, true);
+            futuresPnL = pnl;
+            return;
+        }
         if (priced != null) {
-            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values,
-                    staged -> calculatePosition(position, finalIndex, window, staged, priced.holdingCost()));
+            FuturesPerformanceSupport.PnLAccumulator pnl = futuresPnL.copy();
+            AnalysisPositionSupport.updateCapturedCurve(barSeries, window, priced, values, staged -> {
+                Num zero = barSeries.numFactory().zero();
+                OffsetNumBuffer deltas = AnalysisPositionSupport.buffer(window, zero, zero);
+                calculatePosition(position, finalIndex, window, deltas, priced.holdingCost());
+                pnl.add(deltas);
+                staged.replaceWith(pnl.values());
+            });
+            futuresPnL = pnl;
         }
     }
 
@@ -328,4 +387,27 @@ public final class CumulativePnL implements PerformanceIndicator {
         return equityCurveMode;
     }
 
+    /**
+     * Constructor for a futures trading record valuing open exposure at an explicit
+     * mark price.
+     *
+     * <p>
+     * The mark price indicator is validated against the analysed series and is
+     * consumed by native futures records only; closing prices remain the documented
+     * backtest mark proxy otherwise.
+     * </p>
+     *
+     * @param barSeries            the bar series
+     * @param tradingRecord        the trading record
+     * @param markPriceIndicator   mark price indicator on the same series
+     * @param finalIndex           the final index to calculate up to
+     * @param equityCurveMode      the calculation mode
+     * @param openPositionHandling how to handle open positions
+     * @since 0.25.1
+     */
+    public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, Indicator<Num> markPriceIndicator,
+            int finalIndex, EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+        this(barSeries, tradingRecord, finalIndex, equityCurveMode, openPositionHandling, false, false,
+                markPriceIndicator);
+    }
 }
