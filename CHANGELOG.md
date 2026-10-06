@@ -6,7 +6,7 @@
 
 ### Changed
 
-- **For contributors: quiet, JUnit 5-only builds**: all tests now run on JUnit Jupiter (parameterized suites use `@ParameterizedClass`, and assumptions use `org.junit.jupiter.api.Assumptions`), so `junit-vintage-engine` is gone from the build. `mvn verify` now prints no discovery notices, compiler notes or coverage warnings. The JaCoCo minimums for each module (`ta4j.jacoco.line.minimum`, `ta4j.jacoco.branch.minimum`) are set to that module's current coverage, so they act as a ratchet that warns when coverage regresses.
+- **For contributors: quiet, JUnit 5-only builds (`CF-621`)**: all tests now run on JUnit Jupiter (parameterized suites use `@ParameterizedClass`, and assumptions use `org.junit.jupiter.api.Assumptions`), so `junit-vintage-engine` is gone from the build. `mvn verify` and the quiet build gate now print no discovery notices, compiler notes, coverage warnings or release-script fixture chatter. The JaCoCo minimums for each module (`ta4j.jacoco.line.minimum`, `ta4j.jacoco.branch.minimum`) are set to that module's current coverage, so they act as a ratchet that warns when coverage regresses.
 
 ### Fixed
 
