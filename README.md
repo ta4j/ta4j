@@ -411,7 +411,7 @@ ta4j lets you choose `DecimalNum` for precision-first workflows or `DoubleNum` f
 
 Measure changes on your own workload rather than relying on generic claims. Use the [`BacktestPerformanceTuningHarness`](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java), the [Num guide](https://ta4j.github.io/ta4j-wiki/Num.html), and [Performance Characterization](https://ta4j.github.io/ta4j-wiki/Performance-Characterization.html) for repeatable comparisons.
 
-Eligible `DoubleNum` Monte Carlo forecasts can optionally run on a GPU through the separate `ta4j-acceleration` artifact; it is off unless enabled with `-Dta4j.acceleration.enabled=auto` and always falls back to the scalar result. See the [acceleration guide](https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration).
+Monte Carlo price forecasts can optionally run on a GPU through the separate `ta4j-acceleration` artifact; it is off unless enabled with `-Dta4j.acceleration.enabled=auto` and always falls back to the scalar result. See the [acceleration guide](https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration).
 
 ## Real-world examples
 

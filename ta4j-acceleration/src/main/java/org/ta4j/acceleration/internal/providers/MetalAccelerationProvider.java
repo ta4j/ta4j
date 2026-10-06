@@ -21,7 +21,7 @@ import org.ta4j.core.acceleration.AccelerationRuntime.Backend;
  * <p>
  * The FP32 Metal kernel cannot reproduce float64 scalar results bit for bit, so
  * exact requests stay scalar with a diagnostic that says so. Approximate
- * requests, which the core planner emits only when
+ * requests, which {@code AccelerationRuntime} emits only when
  * {@code -Dta4j.acceleration.approximateTolerance=<value>} is set, engage only
  * when {@link ShockPathErrorBound} certifies the tolerance for single precision
  * and the device family has a qualified crossover row. The public constructor

@@ -25,9 +25,9 @@ The package phase produces a runnable fat jar at `ta4j-cli/target/ta4j-cli-<vers
 
 ## Acceleration
 
-CLI runs are scalar. Native acceleration is a library feature of the separate
-`ta4j-acceleration` artifact: it batches `DoubleNum` Monte Carlo forecasts inside
-`BarSeriesManager` backtests, while the CLI loads data as `DecimalNum` series. See
+CLI runs are scalar: the CLI does not bundle an acceleration provider. Native
+acceleration is a library feature of the separate `ta4j-acceleration` artifact,
+which batches Monte Carlo price forecasts inside `BarSeriesManager` backtests. See
 [the acceleration guide](https://github.com/ta4j/ta4j-wiki/wiki/Indicator-Acceleration)
 for classifiers, opt-in properties, diagnostics, and benchmark evidence.
 

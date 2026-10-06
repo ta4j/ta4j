@@ -76,6 +76,10 @@ import org.ta4j.core.Indicator;
  * Values read outside a scope are computed on the CPU.</li>
  * <li>{@value #MAX_DEVICE_BYTES_PROPERTY} caps the per-request device memory
  * estimate (default 1 GiB); larger workloads are chunked or declined.</li>
+ * <li>{@value #APPROXIMATE_TOLERANCE_PROPERTY} opts provider batches into
+ * {@link Determinism#APPROXIMATE} results within that finite positive
+ * tolerance; unset, every request is {@link Determinism#BITWISE_IDENTICAL}. See
+ * {@link #approximateTolerance()}.</li>
  * <li>{@link #lastDiagnostic()} reports whether the current or last closed
  * scope accelerated and, if not, the typed reason.</li>
  * </ul>
