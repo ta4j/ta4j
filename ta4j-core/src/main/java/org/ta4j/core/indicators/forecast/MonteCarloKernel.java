@@ -70,8 +70,8 @@ package org.ta4j.core.indicators.forecast;
  * </ol>
  *
  * <p>
- * Per-path stream (RNG version 1): path {@code p} of decision index {@code i}
- * draws from the SplitMix-style stream seeded by
+ * Per-path stream: path {@code p} of decision index {@code i} draws from the
+ * SplitMix-style stream seeded by
  * {@link #initialPathState(long, int, int, int)}. Each draw advances the state
  * with {@code state = advanceState(state)} and obtains output bits with
  * {@code mix64(state)}. Uniforms use {@link #toUnitDouble(long)}; a standard

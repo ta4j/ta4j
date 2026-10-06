@@ -11,8 +11,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 import java.util.List;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -35,16 +33,6 @@ public class MonteCarloShockPathPlannerTest {
 
     private static final double DOWN = Math.log(0.9);
     private static final double UP = Math.log(1.1);
-
-    @Before
-    public void selectPerPathRng() {
-        System.setProperty(MonteCarloSimulation.RNG_VERSION_PROPERTY, "1");
-    }
-
-    @After
-    public void clearPerPathRng() {
-        System.clearProperty(MonteCarloSimulation.RNG_VERSION_PROPERTY);
-    }
 
     @Test
     public void snapshotsScalarInputsExactly() {
@@ -251,15 +239,6 @@ public class MonteCarloShockPathPlannerTest {
 
         assertPermanent(new MonteCarloShockPathPlanner().plan(indicator, 2, 2, factory, Long.MAX_VALUE),
                 "DoubleNum prices");
-    }
-
-    @Test
-    public void declinesForecastsBuiltWithTheLegacyStreamWithTheirReason() {
-        System.setProperty(MonteCarloSimulation.RNG_VERSION_PROPERTY, "0");
-        Fixture fixture = fixture(DoubleNumFactory.getInstance());
-
-        assertPermanent(new MonteCarloShockPathPlanner().plan(fixture.indicator, 2, 2, fixture.series.numFactory(),
-                Long.MAX_VALUE), MonteCarloSimulation.RNG_VERSION_PROPERTY);
     }
 
     @Test

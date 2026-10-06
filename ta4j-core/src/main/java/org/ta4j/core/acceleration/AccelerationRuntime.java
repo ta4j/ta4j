@@ -57,6 +57,59 @@ import org.ta4j.core.num.NumFactory;
  * run a request, the scope diagnostic keeps the first provider-attributed
  * decline.
  *
+ * <h2>Eligible indicators</h2>
+ * <p>
+ * Today exactly one calculation is eligible:
+ * {@link org.ta4j.core.indicators.forecast.MonteCarloPriceForecastIndicator}
+ * built with the default shock-path method (no custom {@code MonteCarloMethod})
+ * over a series whose {@link NumFactory} is {@code DoubleNumFactory}. It lowers
+ * to {@link Operation#MONTE_CARLO_SHOCK_PATHS_V1}. Every other indicator, and
+ * any forecast with a custom method or another {@code Num} type, always runs on
+ * the scalar lane; the scope diagnostic says why.
+ *
+ * <h2>Control</h2>
+ * <ul>
+ * <li>{@value #PROPERTY}: {@code auto} or {@code true} enables scopes; unset,
+ * {@code off} or {@code false} (the default) keeps every run on the CPU without
+ * touching provider code.</li>
+ * <li>A {@link Provider} implementation on the classpath, discovered through
+ * {@link ServiceLoader}. Without one, enabled scopes fall back to the CPU.</li>
+ * <li>A scope: {@code BarSeriesManager} opens one around each run; other
+ * callers use {@link #open(BarSeries, int, int)} with try-with-resources.
+ * Values read outside a scope are computed on the CPU.</li>
+ * <li>{@value #MAX_DEVICE_BYTES_PROPERTY} caps the per-request device memory
+ * estimate (default 1 GiB); larger workloads are chunked or declined.</li>
+ * <li>{@link #lastDiagnostic()} reports whether the current or last closed
+ * scope accelerated and, if not, the typed reason.</li>
+ * </ul>
+ *
+ * <h2>Making another indicator eligible</h2>
+ * <p>
+ * A calculation qualifies only when all of the following hold:
+ * <ul>
+ * <li><b>Core-owned lowering.</b> A core {@link OperationPlanner}, registered
+ * through {@link #registerPlanner(OperationPlanner)}, claims the indicator and
+ * a new versioned {@link Operation} constant names its kernel contract.
+ * Providers never receive indicators, series or {@code Num} values.</li>
+ * <li><b>Primitive snapshot.</b> Every input the kernel reads can be captured
+ * on the CPU as primitive arrays in a {@link KernelRequest}, with all inputs
+ * drawn from the scope's series so a mid-run change is detectable.</li>
+ * <li><b>Independent, batchable work.</b> Given that snapshot, each index (and
+ * each unit of work inside it, such as a Monte Carlo path) is computed without
+ * reading another index's output, so ranges can be batched and chunked.</li>
+ * <li><b>Exact reproducibility.</b> A {@link NumericEncoding#FLOAT64} kernel on
+ * {@code DoubleNum} whose output is {@link Determinism#BITWISE_IDENTICAL} to a
+ * scalar reference kernel, independent of thread or device scheduling;
+ * randomness must come from counter-based per-unit streams, never a shared
+ * sequential generator.</li>
+ * <li><b>Enough work.</b> Per-index compute heavy enough that a device beats
+ * the scalar baseline after transfer costs, with memory that is bounded and
+ * estimable per row so requests fit {@value #MAX_DEVICE_BYTES_PROPERTY}.</li>
+ * </ul>
+ * Path-dependent recursions (EMA-style state carried across indexes),
+ * {@code DecimalNum} arithmetic, and user-supplied callbacks fail these
+ * requirements and stay on the CPU.
+ *
  * @since 0.26.1
  */
 public final class AccelerationRuntime {

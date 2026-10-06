@@ -33,8 +33,9 @@ import org.ta4j.core.num.NumFactory;
  *
  * <p>
  * The planner replicates the scalar eligibility gates exactly: double-only
- * numerics, the scalar first-stable forecast index, the explicit per-path RNG
- * stream, per-index state stability and window completeness. The unavailable
+ * numerics, the scalar first-stable forecast index, per-index state stability
+ * and window completeness. Both lanes draw each path from the same per-path
+ * stream, so the kernel needs no RNG state beyond the seed. The unavailable
  * prefix before the first stable index stays on the scalar lane and the planner
  * lowers the eligible suffix instead. A range that exceeds the device or host
  * budget is lowered as the longest prefix that fits, and a row that is not
@@ -77,10 +78,6 @@ final class MonteCarloShockPathPlanner implements OperationPlanner {
         MonteCarloPriceForecastIndicator.ShockPathKernelConfig config = forecast.shockPathKernelConfig();
         if (config == null) {
             return unsupported("a custom MonteCarloMethod is not lowered; only the default shock-path method is");
-        }
-        if (!forecast.usesPerPathRng()) {
-            return unsupported("requires -D" + MonteCarloSimulation.RNG_VERSION_PROPERTY
-                    + "=1 (per-path stream) when the forecast is built");
         }
         if (fromInclusive < 0 || toInclusive < fromInclusive) {
             return unsupported("invalid request range [" + fromInclusive + ", " + toInclusive + "]");

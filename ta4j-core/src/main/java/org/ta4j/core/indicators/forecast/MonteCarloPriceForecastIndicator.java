@@ -32,6 +32,13 @@ import org.ta4j.core.num.NumFactory;
  * empirical distribution is summarized, so every returned moment and quantile
  * describes the same transformed paths.
  *
+ * <p>
+ * With the default shock-path method on a {@code DoubleNum} series, this
+ * indicator can be computed by an installed acceleration provider (for example
+ * a GPU) inside an {@link AccelerationRuntime} scope, with results bitwise
+ * identical to the CPU. See {@link AccelerationRuntime} for how acceleration is
+ * enabled and which calculations are eligible.
+ *
  * @since 0.22.9
  */
 public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Forecast>
@@ -222,14 +229,6 @@ public final class MonteCarloPriceForecastIndicator extends CachedIndicator<Fore
      */
     ShockPathKernelConfig shockPathKernelConfig() {
         return kernelConfig;
-    }
-
-    /**
-     * Whether this forecast draws from the per-path stream that accelerated
-     * evaluation requires.
-     */
-    boolean usesPerPathRng() {
-        return simulation.usesPerPathRng();
     }
 
     /**
