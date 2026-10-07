@@ -1,0 +1,599 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+package org.ta4j.core.analysis;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.function.BiFunction;
+
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.statistics.CorrelationCoefficientIndicator;
+import org.ta4j.core.indicators.statistics.SampleType;
+import org.ta4j.core.indicators.IndicatorUtils;
+import org.ta4j.core.num.NaN;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
+
+/**
+ * Groups indicators by similarity over a single {@link BarSeries}.
+ * <p>
+ * Callers provide already-instantiated indicators and stable display names. The
+ * manager compares each pair with an absolute population correlation score and
+ * uses deterministic complete-link clustering: every pair inside a family must
+ * have a defined average absolute similarity at or above the threshold. Names
+ * are sorted by their natural String order; ties use that canonical order. The
+ * default constructor uses a 120-bar rolling correlation window; use
+ * {@link #IndicatorFamilyManager(BarSeries, int)} when shorter or longer
+ * windows better match the analysis horizon.
+ * <p>
+ * Custom metric factories may be supplied when a different signed similarity
+ * stream is more appropriate. The returned metric indicator must use the same
+ * {@link BarSeries} and must return values in {@code [-1, 1]}; invalid values
+ * are skipped. Unstable-bar counts remain relative to the retained begin; the
+ * manager translates them to absolute eligibility indexes before sampling.
+ *
+ * @since 0.26.1
+ */
+public final class IndicatorFamilyManager
+        implements AnalysisRunner<Map<String, Indicator<Num>>, IndicatorFamilyResult> {
+
+    /**
+     * Maximum admitted pair count (128 indicators). Work is rejected before catalog
+     * copying or metric construction when this budget is exceeded. History length
+     * and metric cost remain the caller's responsibility.
+     *
+     * @since 0.26.1
+     */
+    public static final int MAX_PAIR_COUNT = 8_128;
+
+    private static final int DEFAULT_CORRELATION_WINDOW = 120;
+    private static final Number DEFAULT_SIMILARITY_THRESHOLD = 0.93;
+    private static final String FAMILY_ID_PREFIX = "family-";
+
+    private final BarSeries barSeries;
+    private final BiFunction<Indicator<Num>, Indicator<Num>, Indicator<Num>> similarityMetricFactory;
+    private final int maxParallelism;
+    private final int correlationWindow;
+
+    /**
+     * Constructor using the default rolling correlation window.
+     *
+     * @param barSeries bar series shared by every indicator passed to
+     *                  {@link #analyze(Map)}
+     * @throws IllegalArgumentException if {@code barSeries} is empty
+     * @throws NullPointerException     if {@code barSeries} is {@code null}
+     * @since 0.26.1
+     */
+    public IndicatorFamilyManager(BarSeries barSeries) {
+        this(barSeries, DEFAULT_CORRELATION_WINDOW);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param barSeries         bar series shared by every indicator passed to
+     *                          {@link #analyze(Map)}
+     * @param correlationWindow number of bars used for each rolling pairwise
+     *                          correlation; must be at least {@code 2}
+     * @throws IllegalArgumentException if {@code barSeries} is empty or
+     *                                  {@code correlationWindow} is less than
+     *                                  {@code 2}
+     * @throws NullPointerException     if {@code barSeries} is {@code null}
+     * @since 0.26.1
+     */
+    public IndicatorFamilyManager(BarSeries barSeries, int correlationWindow) {
+        this(barSeries, correlationWindow, 1);
+    }
+
+    /**
+     * Constructor using the default rolling correlation window and a
+     * caller-provided pairwise similarity metric.
+     *
+     * @param barSeries               bar series shared by every indicator passed to
+     *                                {@link #analyze(Map)}
+     * @param similarityMetricFactory factory that creates a signed similarity
+     *                                indicator for each indicator pair
+     * @throws IllegalArgumentException if {@code barSeries} is empty
+     * @throws NullPointerException     if {@code barSeries} or
+     *                                  {@code similarityMetricFactory} is
+     *                                  {@code null}
+     * @since 0.26.1
+     */
+    public IndicatorFamilyManager(BarSeries barSeries,
+            BiFunction<Indicator<Num>, Indicator<Num>, Indicator<Num>> similarityMetricFactory) {
+        this(barSeries, similarityMetricFactory, 1);
+    }
+
+    /**
+     * Constructor using the default population-correlation metric with opt-in
+     * bounded pair-level parallelism.
+     * <p>
+     * Use this only when the supplied indicators and their {@link BarSeries} are
+     * safe for concurrent reads. A value of {@code 1} forces sequential execution.
+     *
+     * @param barSeries         bar series shared by every indicator passed to
+     *                          {@link #analyze(Map)}
+     * @param correlationWindow number of bars used for each rolling pairwise
+     *                          correlation; must be at least {@code 2}
+     * @param maxParallelism    maximum number of pair analyses to run concurrently;
+     *                          must be at least {@code 1}
+     * @throws IllegalArgumentException if {@code barSeries} is empty,
+     *                                  {@code correlationWindow} is less than
+     *                                  {@code 2}, or {@code maxParallelism} is less
+     *                                  than {@code 1}
+     * @throws NullPointerException     if {@code barSeries} is {@code null}
+     * @since 0.26.1
+     */
+    public IndicatorFamilyManager(BarSeries barSeries, int correlationWindow, int maxParallelism) {
+        this(barSeries, defaultSimilarityMetric(correlationWindow), maxParallelism, correlationWindow);
+    }
+
+    /**
+     * Constructor using a caller-provided pairwise similarity metric with opt-in
+     * bounded pair-level parallelism.
+     * <p>
+     * Use parallelism only when the supplied indicators, metric factory, and
+     * {@link BarSeries} are safe for concurrent reads. A value of {@code 1} forces
+     * sequential execution.
+     *
+     * @param barSeries               bar series shared by every indicator passed to
+     *                                {@link #analyze(Map)}
+     * @param similarityMetricFactory factory that creates a signed similarity
+     *                                indicator for each indicator pair
+     * @param maxParallelism          maximum number of pair analyses to run
+     *                                concurrently; must be at least {@code 1}
+     * @throws IllegalArgumentException if {@code barSeries} is empty or
+     *                                  {@code maxParallelism} is less than
+     *                                  {@code 1}
+     * @throws NullPointerException     if {@code barSeries} or
+     *                                  {@code similarityMetricFactory} is
+     *                                  {@code null}
+     * @since 0.26.1
+     */
+    public IndicatorFamilyManager(BarSeries barSeries,
+            BiFunction<Indicator<Num>, Indicator<Num>, Indicator<Num>> similarityMetricFactory, int maxParallelism) {
+        this(barSeries, similarityMetricFactory, maxParallelism, 0);
+    }
+
+    private IndicatorFamilyManager(BarSeries barSeries,
+            BiFunction<Indicator<Num>, Indicator<Num>, Indicator<Num>> similarityMetricFactory, int maxParallelism,
+            int correlationWindow) {
+        this.barSeries = Objects.requireNonNull(barSeries, "barSeries");
+        if (barSeries.isEmpty()) {
+            throw new IllegalArgumentException("barSeries must not be empty");
+        }
+        if (maxParallelism < 1) {
+            throw new IllegalArgumentException("maxParallelism must be at least 1");
+        }
+        this.similarityMetricFactory = Objects.requireNonNull(similarityMetricFactory, "similarityMetricFactory");
+        this.maxParallelism = maxParallelism;
+        this.correlationWindow = correlationWindow;
+    }
+
+    /**
+     * Analyzes indicator families with the default similarity threshold.
+     *
+     * @param indicators named indicators, canonicalized by natural String order
+     * @return family analysis result
+     * @since 0.26.1
+     */
+    public IndicatorFamilyResult analyze(Map<String, Indicator<Num>> indicators) {
+        return analyze(indicators, DEFAULT_SIMILARITY_THRESHOLD);
+    }
+
+    /**
+     * Analyzes indicator families with a caller-provided similarity threshold.
+     *
+     * @param indicators          named indicators, canonicalized by natural String
+     *                            order
+     * @param similarityThreshold minimum average absolute correlation required for
+     *                            every pair inside a family; converted with this
+     *                            manager's {@link BarSeries} number factory
+     * @return family analysis result
+     * @since 0.26.1
+     */
+    public IndicatorFamilyResult analyze(Map<String, Indicator<Num>> indicators, Number similarityThreshold) {
+        Num threshold = requireSimilarityThreshold(similarityThreshold);
+        LinkedHashMap<String, Indicator<Num>> orderedIndicators = validateIndicators(indicators);
+
+        List<String> indicatorNames = new ArrayList<>(orderedIndicators.keySet());
+        List<Indicator<Num>> indicatorValues = new ArrayList<>(orderedIndicators.values());
+        List<PairRequest> pairRequests = buildPairRequests(indicatorNames, indicatorValues);
+        List<PairAnalysis> pairAnalyses = analyzePairs(pairRequests);
+
+        int stableIndex = clampStableIndex(maximumStableBoundary(indicatorValues));
+        List<IndicatorFamilyResult.PairSimilarity> pairSimilarities = new ArrayList<>(pairAnalyses.size());
+        for (PairAnalysis pairAnalysis : pairAnalyses) {
+            stableIndex = Math.max(stableIndex, pairAnalysis.stableIndex());
+            pairSimilarities.add(pairAnalysis.pairSimilarity());
+        }
+
+        List<IndicatorFamilyResult.Family> families = clusterIntoFamilies(indicatorNames, pairAnalyses, threshold,
+                barSeries.numFactory());
+        Map<String, String> familyByIndicator = mapIndicatorToFamily(families);
+        return new IndicatorFamilyResult(threshold, stableIndex, familyByIndicator, families, pairSimilarities);
+    }
+
+    /**
+     * Runs this series-bound manager through the shared analysis interface.
+     *
+     * @param series     series bound to this manager
+     * @param indicators named indicators to analyze
+     * @return family analysis at the default threshold
+     * @throws IllegalArgumentException if series is not this manager's series
+     * @since 0.26.1
+     */
+    @Override
+    public IndicatorFamilyResult analyze(BarSeries series, Map<String, Indicator<Num>> indicators) {
+        if (!IndicatorUtils.isSameSeries(Objects.requireNonNull(series, "series"), barSeries)) {
+            throw new IllegalArgumentException("analysis must use the manager bar series");
+        }
+        return analyze(indicators);
+    }
+
+    private static BiFunction<Indicator<Num>, Indicator<Num>, Indicator<Num>> defaultSimilarityMetric(
+            int correlationWindow) {
+        if (correlationWindow < 2) {
+            throw new IllegalArgumentException("correlationWindow must be at least 2");
+        }
+        return (first, second) -> new CorrelationCoefficientIndicator(first, second, correlationWindow,
+                SampleType.POPULATION);
+    }
+
+    private LinkedHashMap<String, Indicator<Num>> validateIndicators(Map<String, Indicator<Num>> indicators) {
+        if (indicators == null || indicators.isEmpty()) {
+            throw new IllegalArgumentException("indicators must not be empty");
+        }
+
+        pairCount(indicators.size());
+        LinkedHashMap<String, Indicator<Num>> orderedIndicators = new LinkedHashMap<>(indicators.size());
+        for (Map.Entry<String, Indicator<Num>> entry : indicators.entrySet()) {
+            String name = Objects.requireNonNull(entry.getKey(), "indicator names must not be null");
+            if (name.isBlank()) {
+                throw new IllegalArgumentException("indicator names must not be blank");
+            }
+
+            Indicator<Num> indicator = IndicatorUtils.requireIndicator(entry.getValue(), "indicator " + name);
+            BarSeries indicatorSeries = Objects.requireNonNull(indicator.getBarSeries(),
+                    "indicator " + name + " must reference a bar series");
+            if (!IndicatorUtils.isSameSeries(indicatorSeries, barSeries)) {
+                throw new IllegalArgumentException("indicator " + name + " must use the manager bar series");
+            }
+            orderedIndicators.put(name, indicator);
+        }
+        LinkedHashMap<String, Indicator<Num>> canonical = new LinkedHashMap<>(orderedIndicators.size());
+        orderedIndicators.keySet().stream().sorted().forEach(name -> canonical.put(name, orderedIndicators.get(name)));
+        return canonical;
+    }
+
+    private Num requireSimilarityThreshold(Number similarityThreshold) {
+        Objects.requireNonNull(similarityThreshold, "similarityThreshold");
+        Num threshold;
+        try {
+            threshold = barSeries.numFactory().numOf(similarityThreshold);
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("similarityThreshold must be between 0.0 and 1.0", exception);
+        }
+        if (!Num.isFinite(threshold) || threshold.isNegative()
+                || threshold.isGreaterThan(barSeries.numFactory().one())) {
+            throw new IllegalArgumentException("similarityThreshold must be between 0.0 and 1.0");
+        }
+        return threshold;
+    }
+
+    private static long maximumStableBoundary(List<Indicator<Num>> indicators) {
+        long boundary = 0;
+        for (Indicator<Num> indicator : indicators) {
+            boundary = Math.max(boundary, stableBoundary(indicator));
+        }
+        return boundary;
+    }
+
+    private static long stableBoundary(Indicator<Num> indicator) {
+        return Math.max(0L, indicator.getBarSeries().getBeginIndex())
+                + Math.max(0L, indicator.getCountOfUnstableBars());
+    }
+
+    private static int clampStableIndex(long boundary) {
+        return (int) Math.min(Integer.MAX_VALUE, boundary);
+    }
+
+    private List<PairRequest> buildPairRequests(List<String> indicatorNames, List<Indicator<Num>> indicatorValues) {
+        List<PairRequest> pairRequests = new ArrayList<>(pairCount(indicatorValues.size()));
+        int ordinal = 0;
+        for (int left = 0; left < indicatorValues.size(); left++) {
+            for (int right = left + 1; right < indicatorValues.size(); right++) {
+                pairRequests.add(new PairRequest(ordinal, left, right, indicatorNames.get(left),
+                        indicatorNames.get(right), indicatorValues.get(left), indicatorValues.get(right)));
+                ordinal++;
+            }
+        }
+        return pairRequests;
+    }
+
+    private List<PairAnalysis> analyzePairs(List<PairRequest> pairRequests) {
+        if (pairRequests.isEmpty()) {
+            return List.of();
+        }
+        if (maxParallelism == 1 || pairRequests.size() == 1) {
+            List<PairAnalysis> pairAnalyses = new ArrayList<>(pairRequests.size());
+            for (PairRequest pairRequest : pairRequests) {
+                pairAnalyses.add(analyzePair(pairRequest));
+            }
+            return pairAnalyses;
+        }
+
+        int parallelism = Math.min(Math.min(maxParallelism, Runtime.getRuntime().availableProcessors()),
+                pairRequests.size());
+        ExecutorService executor = Executors.newFixedThreadPool(parallelism);
+        try {
+            List<PairAnalysis> ordered = new ArrayList<>(pairRequests.size());
+            for (int offset = 0; offset < pairRequests.size(); offset += parallelism) {
+                int limit = Math.min(offset + parallelism, pairRequests.size());
+                List<Future<PairAnalysis>> futures = new ArrayList<>(limit - offset);
+                for (int ordinal = offset; ordinal < limit; ordinal++) {
+                    PairRequest request = pairRequests.get(ordinal);
+                    futures.add(executor.submit(() -> analyzePair(request)));
+                }
+                for (Future<PairAnalysis> future : futures) {
+                    ordered.add(getPairAnalysis(future));
+                }
+            }
+            return ordered;
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    private static PairAnalysis getPairAnalysis(Future<PairAnalysis> future) {
+        try {
+            return future.get();
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while analyzing indicator similarities", exception);
+        } catch (ExecutionException exception) {
+            rethrowParallelFailure(exception.getCause());
+            throw new IllegalStateException("Unreachable pair-analysis failure", exception);
+        }
+    }
+
+    private static void rethrowParallelFailure(Throwable cause) {
+        if (cause instanceof Error error) {
+            throw error;
+        }
+        if (cause instanceof RuntimeException runtimeException) {
+            throw runtimeException;
+        }
+        throw new IllegalStateException("Indicator similarity analysis failed", cause);
+    }
+
+    private PairAnalysis analyzePair(PairRequest pairRequest) {
+        Indicator<Num> similarityMetric = Objects.requireNonNull(
+                similarityMetricFactory.apply(pairRequest.leftIndicator(), pairRequest.rightIndicator()),
+                "similarityMetricFactory must return an indicator");
+        BarSeries metricSeries = Objects.requireNonNull(similarityMetric.getBarSeries(),
+                "similarity metric must reference a bar series");
+        if (!IndicatorUtils.isSameSeries(metricSeries, barSeries)) {
+            throw new IllegalArgumentException("similarity metric must use the manager bar series");
+        }
+
+        long sourceBoundary = Math.max(stableBoundary(pairRequest.leftIndicator()),
+                stableBoundary(pairRequest.rightIndicator()));
+        // Keep the built-in full-window boundary exact even when its public int
+        // unstable count saturates. Custom metrics declare their own relative count.
+        long windowBoundary = sourceBoundary + Math.max(0L, (long) correlationWindow - 1L);
+        long boundary = Math.max(windowBoundary, stableBoundary(similarityMetric));
+        IndicatorFamilyResult.PairSimilarity pairSimilarity = estimatePairSimilarity(pairRequest, similarityMetric,
+                boundary);
+        return new PairAnalysis(pairRequest.ordinal(), pairRequest.leftIndex(), pairRequest.rightIndex(),
+                clampStableIndex(boundary), pairSimilarity);
+    }
+
+    private static IndicatorFamilyResult.PairSimilarity estimatePairSimilarity(PairRequest pairRequest,
+            Indicator<Num> similarityMetric, long startIndex) {
+        int endIndex = similarityMetric.getBarSeries().getEndIndex();
+        NumFactory numFactory = similarityMetric.getBarSeries().numFactory();
+        Num absoluteTotal = numFactory.zero();
+        Num signedTotal = numFactory.zero();
+        Num latestSignedSimilarity = numFactory.zero();
+        Num minimumSignedSimilarity = null;
+        Num maximumSignedSimilarity = null;
+        int samples = 0;
+        for (long index = startIndex; index <= (long) endIndex; index++) {
+            Num value = similarityMetric.getValue((int) index);
+            if (!Num.isFinite(value)) {
+                continue;
+            }
+            requireSignedSimilarityValue(value);
+            Num signedSimilarity = clampSigned(value, numFactory);
+
+            absoluteTotal = absoluteTotal.plus(signedSimilarity.abs());
+            signedTotal = signedTotal.plus(signedSimilarity);
+            latestSignedSimilarity = signedSimilarity;
+            minimumSignedSimilarity = minimumSignedSimilarity == null ? signedSimilarity
+                    : minimumSignedSimilarity.min(signedSimilarity);
+            maximumSignedSimilarity = maximumSignedSimilarity == null ? signedSimilarity
+                    : maximumSignedSimilarity.max(signedSimilarity);
+            samples = Math.incrementExact(samples);
+        }
+        if (samples == 0) {
+            return new IndicatorFamilyResult.PairSimilarity(pairRequest.leftName(), pairRequest.rightName(), NaN.NaN,
+                    NaN.NaN, NaN.NaN, 0, NaN.NaN, NaN.NaN);
+        }
+        Num sampleCount = numFactory.numOf(samples);
+        Num similarity = clamp(absoluteTotal.dividedBy(sampleCount), numFactory);
+        Num signedAverageSimilarity = clampSigned(signedTotal.dividedBy(sampleCount), numFactory);
+        return new IndicatorFamilyResult.PairSimilarity(pairRequest.leftName(), pairRequest.rightName(), similarity,
+                signedAverageSimilarity, latestSignedSimilarity, samples, minimumSignedSimilarity,
+                maximumSignedSimilarity);
+    }
+
+    private static void requireSignedSimilarityValue(Num value) {
+        NumFactory numFactory = value.getNumFactory();
+        Num lowerBound = numFactory.minusOne().minus(numFactory.epsilon());
+        Num upperBound = numFactory.one().plus(numFactory.epsilon());
+        if (value.isLessThan(lowerBound) || value.isGreaterThan(upperBound)) {
+            throw new IllegalArgumentException("similarity metric values must be between -1.0 and 1.0");
+        }
+    }
+
+    private static List<IndicatorFamilyResult.Family> clusterIntoFamilies(List<String> indicatorNames,
+            List<PairAnalysis> pairAnalyses, Num similarityThreshold, NumFactory numFactory) {
+        List<List<Integer>> grouped = new ArrayList<>(indicatorNames.size());
+        for (int index = 0; index < indicatorNames.size(); index++) {
+            grouped.add(new ArrayList<>(List.of(index)));
+        }
+        // Merge the strongest complete link. Equal scores retain the first
+        // canonical family pair encountered, independent of input map order.
+        while (true) {
+            int bestLeft = -1;
+            int bestRight = -1;
+            Num bestScore = null;
+            for (int left = 0; left < grouped.size(); left++) {
+                for (int right = left + 1; right < grouped.size(); right++) {
+                    Num weakest = numFactory.one();
+                    for (int leftMember : grouped.get(left)) {
+                        for (int rightMember : grouped.get(right)) {
+                            Num similarity = pairSimilarity(leftMember, rightMember, indicatorNames.size(),
+                                    pairAnalyses);
+                            if (similarity.isNaN()) {
+                                weakest = NaN.NaN;
+                                break;
+                            }
+                            weakest = weakest.min(similarity);
+                        }
+                        if (weakest.isNaN()) {
+                            break;
+                        }
+                    }
+                    if (!weakest.isNaN() && weakest.isGreaterThanOrEqual(similarityThreshold)
+                            && (bestScore == null || weakest.isGreaterThan(bestScore))) {
+                        bestLeft = left;
+                        bestRight = right;
+                        bestScore = weakest;
+                    }
+                }
+            }
+            if (bestLeft < 0) {
+                break;
+            }
+            grouped.get(bestLeft).addAll(grouped.remove(bestRight));
+            grouped.get(bestLeft).sort(Integer::compareTo);
+        }
+
+        List<IndicatorFamilyResult.Family> families = new ArrayList<>(grouped.size());
+        for (List<Integer> familyMemberIndexes : grouped) {
+            List<String> familyMembers = new ArrayList<>(familyMemberIndexes.size());
+            for (int index : familyMemberIndexes) {
+                familyMembers.add(indicatorNames.get(index));
+            }
+            FamilyStats familyStats = computeFamilyStats(familyMemberIndexes, indicatorNames, pairAnalyses, numFactory);
+            String familyId = String.format(Locale.ROOT, "%s%03d", FAMILY_ID_PREFIX, families.size() + 1);
+            families.add(
+                    new IndicatorFamilyResult.Family(familyId, familyMembers, familyStats.representativeIndicatorName(),
+                            familyStats.averageInternalSimilarity(), familyStats.minimumInternalSimilarity()));
+        }
+        return families;
+    }
+
+    private static FamilyStats computeFamilyStats(List<Integer> familyMemberIndexes, List<String> indicatorNames,
+            List<PairAnalysis> pairAnalyses, NumFactory numFactory) {
+        if (familyMemberIndexes.size() == 1) {
+            return new FamilyStats(indicatorNames.get(familyMemberIndexes.get(0)), numFactory.one(), numFactory.one());
+        }
+
+        Num internalTotal = numFactory.zero();
+        Num minimumInternalSimilarity = numFactory.one();
+        int internalPairs = 0;
+        String representativeIndicatorName = indicatorNames.get(familyMemberIndexes.get(0));
+        Num representativeScore = numFactory.minusOne();
+
+        for (int memberIndex : familyMemberIndexes) {
+            Num memberTotal = numFactory.zero();
+            for (int otherIndex : familyMemberIndexes) {
+                if (memberIndex == otherIndex) {
+                    continue;
+                }
+                memberTotal = memberTotal
+                        .plus(pairSimilarity(memberIndex, otherIndex, indicatorNames.size(), pairAnalyses));
+            }
+            Num memberAverage = memberTotal.dividedBy(numFactory.numOf(familyMemberIndexes.size() - 1));
+            if (memberAverage.isGreaterThan(representativeScore)) {
+                representativeScore = memberAverage;
+                representativeIndicatorName = indicatorNames.get(memberIndex);
+            }
+        }
+
+        for (int left = 0; left < familyMemberIndexes.size(); left++) {
+            for (int right = left + 1; right < familyMemberIndexes.size(); right++) {
+                Num similarity = pairSimilarity(familyMemberIndexes.get(left), familyMemberIndexes.get(right),
+                        indicatorNames.size(), pairAnalyses);
+                internalTotal = internalTotal.plus(similarity);
+                minimumInternalSimilarity = minimumInternalSimilarity.min(similarity);
+                internalPairs++;
+            }
+        }
+
+        Num averageInternalSimilarity = internalTotal.dividedBy(numFactory.numOf(internalPairs));
+        return new FamilyStats(representativeIndicatorName, averageInternalSimilarity, minimumInternalSimilarity);
+    }
+
+    private static Map<String, String> mapIndicatorToFamily(List<IndicatorFamilyResult.Family> families) {
+        Map<String, String> familyByIndicator = new LinkedHashMap<>();
+        for (IndicatorFamilyResult.Family family : families) {
+            for (String indicatorName : family.indicatorNames()) {
+                familyByIndicator.put(indicatorName, family.familyId());
+            }
+        }
+        return familyByIndicator;
+    }
+
+    private static Num clamp(Num value, NumFactory numFactory) {
+        return value.max(numFactory.zero()).min(numFactory.one());
+    }
+
+    private static Num clampSigned(Num value, NumFactory numFactory) {
+        return value.max(numFactory.minusOne()).min(numFactory.one());
+    }
+
+    private static int pairCount(int indicatorCount) {
+        long count = Math.multiplyExact((long) indicatorCount, indicatorCount - 1L) / 2L;
+        if (count > MAX_PAIR_COUNT) {
+            throw new IllegalArgumentException("indicator catalog exceeds pair budget of " + MAX_PAIR_COUNT);
+        }
+        return Math.toIntExact(count);
+    }
+
+    private record PairRequest(int ordinal, int leftIndex, int rightIndex, String leftName, String rightName,
+            Indicator<Num> leftIndicator, Indicator<Num> rightIndicator) {
+    }
+
+    private record PairAnalysis(int ordinal, int leftIndex, int rightIndex, int stableIndex,
+            IndicatorFamilyResult.PairSimilarity pairSimilarity) {
+
+        private Num similarity() {
+            return pairSimilarity.similarity();
+        }
+    }
+
+    private record FamilyStats(String representativeIndicatorName, Num averageInternalSimilarity,
+            Num minimumInternalSimilarity) {
+    }
+
+    private static Num pairSimilarity(int first, int second, int indicatorCount, List<PairAnalysis> pairs) {
+        int left = Math.min(first, second);
+        int right = Math.max(first, second);
+        int ordinal = left * (2 * indicatorCount - left - 1) / 2 + right - left - 1;
+        return pairs.get(ordinal).similarity();
+    }
+}
