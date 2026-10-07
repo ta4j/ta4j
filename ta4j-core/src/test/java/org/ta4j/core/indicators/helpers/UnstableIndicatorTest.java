@@ -3,11 +3,11 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -24,7 +24,7 @@ public class UnstableIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         super(numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         unstableBars = 5;
         unstableIndicator = new UnstableIndicator(new ClosePriceIndicator(

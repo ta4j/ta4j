@@ -3,11 +3,11 @@
  */
 package org.ta4j.core.indicators.volume;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -23,7 +23,7 @@ public class ROCVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         super(numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().closePrice(1355.69).volume(1000).add();

@@ -3,15 +3,15 @@
  */
 package org.ta4j.core.analysis.montecarlo;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SplittableRandom;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.forecast.state.ReturnMoments;

@@ -8,12 +8,12 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -28,7 +28,7 @@ public class DonchianChannelMiddleIndicatorTest extends AbstractIndicatorTest<Ba
         super(numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         this.series = new MockBarSeriesBuilder().withName("DonchianChannelMiddleIndicatorTestSeries")
                 .withNumFactory(numFactory)
@@ -45,7 +45,7 @@ public class DonchianChannelMiddleIndicatorTest extends AbstractIndicatorTest<Ba
         series.barBuilder().openPrice(100).highPrice(105).lowPrice(95).closePrice(100).add();
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
     }
 

@@ -3,12 +3,12 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
@@ -25,7 +25,7 @@ public class IsLowestRuleTest {
     private BarSeries series;
     private TraceTestLogger traceTestLogger;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         series = new BaseBarSeriesBuilder().build();
         Indicator<Num> indicator = new FixedNumIndicator(series, 1, -5, 3, -6, 5, -7, 0, -1, 2, -8);
@@ -34,7 +34,7 @@ public class IsLowestRuleTest {
         traceTestLogger.open();
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         traceTestLogger.close();
     }
@@ -60,8 +60,8 @@ public class IsLowestRuleTest {
 
         assertFalse(nanRule.isSatisfiedWithTraceMode(0, Rule.TraceMode.VERBOSE));
 
-        assertTrue("Trace should explain NaN-specific false results",
-                traceTestLogger.getLogOutput().contains("reason=valueNaN"));
+        assertTrue(traceTestLogger.getLogOutput().contains("reason=valueNaN"),
+                "Trace should explain NaN-specific false results");
     }
 
     @Test

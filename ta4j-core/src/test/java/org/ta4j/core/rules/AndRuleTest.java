@@ -3,9 +3,9 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -16,9 +16,9 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.Level;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TraceTestLogger;
@@ -31,7 +31,7 @@ public class AndRuleTest {
     private BarSeries series;
     private TraceTestLogger ruleTraceTestLogger;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         ruleTraceTestLogger = new TraceTestLogger();
         ruleTraceTestLogger.open();
@@ -41,7 +41,7 @@ public class AndRuleTest {
         series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
     }
 
-    @After
+    @AfterEach
     public void tearDownLogger() {
         ruleTraceTestLogger.close();
     }
@@ -73,10 +73,10 @@ public class AndRuleTest {
         andRule.isSatisfiedWithTraceMode(1, null, Rule.TraceMode.SUMMARY);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue("Summary mode should still log the parent composite rule",
-                logContent.contains("EntryAndExit#isSatisfied"));
-        assertFalse("Summary mode should suppress child rule logs", logContent.contains("Entry Rule#isSatisfied"));
-        assertFalse("Summary mode should suppress child rule logs", logContent.contains("Exit Rule#isSatisfied"));
+        assertTrue(logContent.contains("EntryAndExit#isSatisfied"),
+                "Summary mode should still log the parent composite rule");
+        assertFalse(logContent.contains("Entry Rule#isSatisfied"), "Summary mode should suppress child rule logs");
+        assertFalse(logContent.contains("Exit Rule#isSatisfied"), "Summary mode should suppress child rule logs");
     }
 
     @Test
@@ -93,9 +93,9 @@ public class AndRuleTest {
         andRule.isSatisfied(1);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue("Verbose mode should log the parent composite rule", logContent.contains("Rule Pair#isSatisfied"));
-        assertTrue("Verbose mode should keep child rule logs", logContent.contains("Rule 1#isSatisfied"));
-        assertTrue("Verbose mode should keep child rule logs", logContent.contains("Rule 2#isSatisfied"));
+        assertTrue(logContent.contains("Rule Pair#isSatisfied"), "Verbose mode should log the parent composite rule");
+        assertTrue(logContent.contains("Rule 1#isSatisfied"), "Verbose mode should keep child rule logs");
+        assertTrue(logContent.contains("Rule 2#isSatisfied"), "Verbose mode should keep child rule logs");
     }
 
     @Test
@@ -112,17 +112,17 @@ public class AndRuleTest {
             Future<Boolean> summaryEvaluation = executor
                     .submit(() -> summaryParent.isSatisfiedWithTraceMode(1, null, Rule.TraceMode.SUMMARY));
 
-            assertTrue("Both parent evaluations should reach the shared child",
-                    sharedChild.awaitEntered(5, TimeUnit.SECONDS));
+            assertTrue(sharedChild.awaitEntered(5, TimeUnit.SECONDS),
+                    "Both parent evaluations should reach the shared child");
 
             sharedChild.release();
 
             assertTrue(verboseEvaluation.get(5, TimeUnit.SECONDS));
             assertTrue(summaryEvaluation.get(5, TimeUnit.SECONDS));
-            assertTrue("Shared child should observe the verbose parent scope",
-                    sharedChild.observedModes().contains("VERBOSE"));
-            assertTrue("Shared child should observe summary child suppression",
-                    sharedChild.observedModes().contains("null"));
+            assertTrue(sharedChild.observedModes().contains("VERBOSE"),
+                    "Shared child should observe the verbose parent scope");
+            assertTrue(sharedChild.observedModes().contains("null"),
+                    "Shared child should observe summary child suppression");
         } finally {
             executor.shutdownNow();
         }
@@ -143,11 +143,13 @@ public class AndRuleTest {
         root.isSatisfied(1);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue("Left repeated child should have a unique path", logContent.contains(
-                "Repeated Child#isSatisfied(1): true mode=VERBOSE ruleType=FixedRule path=root.rule1.rule1 depth=2"));
-        assertTrue("Right repeated child should have a unique path", logContent.contains(
-                "Repeated Child#isSatisfied(1): true mode=VERBOSE ruleType=FixedRule path=root.rule2.rule1 depth=2"));
-        assertTrue("Repeated child events should retain parent attribution", logContent.contains("parent=Same Label"));
+        assertTrue(logContent.contains(
+                "Repeated Child#isSatisfied(1): true mode=VERBOSE ruleType=FixedRule path=root.rule1.rule1 depth=2"),
+                "Left repeated child should have a unique path");
+        assertTrue(logContent.contains(
+                "Repeated Child#isSatisfied(1): true mode=VERBOSE ruleType=FixedRule path=root.rule2.rule1 depth=2"),
+                "Right repeated child should have a unique path");
+        assertTrue(logContent.contains("parent=Same Label"), "Repeated child events should retain parent attribution");
     }
 
     @Test
@@ -163,17 +165,17 @@ public class AndRuleTest {
         assertTrue(andRule.isSatisfiedWithTraceMode(1, null, Rule.TraceMode.SUMMARY));
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue("Scoped summary evaluation should log the parent", logContent.contains("Scoped Parent#isSatisfied"));
-        assertFalse("Scoped summary evaluation should suppress first child logs",
-                logContent.contains("Scoped Child 1#isSatisfied"));
-        assertFalse("Scoped summary evaluation should suppress second child logs",
-                logContent.contains("Scoped Child 2#isSatisfied"));
+        assertTrue(logContent.contains("Scoped Parent#isSatisfied"), "Scoped summary evaluation should log the parent");
+        assertFalse(logContent.contains("Scoped Child 1#isSatisfied"),
+                "Scoped summary evaluation should suppress first child logs");
+        assertFalse(logContent.contains("Scoped Child 2#isSatisfied"),
+                "Scoped summary evaluation should suppress second child logs");
 
         ruleTraceTestLogger.clear();
         assertTrue(andRule.isSatisfied(1));
         String defaultTrace = ruleTraceTestLogger.getLogOutput();
-        assertTrue("A scoped summary evaluation should not suppress later default child traces",
-                defaultTrace.contains("Scoped Child 1#isSatisfied"));
+        assertTrue(defaultTrace.contains("Scoped Child 1#isSatisfied"),
+                "A scoped summary evaluation should not suppress later default child traces");
     }
 
     @Test
@@ -191,12 +193,12 @@ public class AndRuleTest {
         assertTrue(andRule.isSatisfied(1));
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertFalse("Composite should not emit parent logs when the composite logger is not tracing",
-                logContent.contains("Composite Parent#isSatisfied"));
-        assertTrue("A TRACE-enabled child logger should still emit its own default trace",
-                logContent.contains("Composite Child#isSatisfied"));
-        assertTrue("Child trace should not inherit a parent frame when the composite logger is not tracing",
-                logContent.contains("path=root depth=0"));
+        assertFalse(logContent.contains("Composite Parent#isSatisfied"),
+                "Composite should not emit parent logs when the composite logger is not tracing");
+        assertTrue(logContent.contains("Composite Child#isSatisfied"),
+                "A TRACE-enabled child logger should still emit its own default trace");
+        assertTrue(logContent.contains("path=root depth=0"),
+                "Child trace should not inherit a parent frame when the composite logger is not tracing");
     }
 
     @Test

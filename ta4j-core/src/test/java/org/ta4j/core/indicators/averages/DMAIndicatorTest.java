@@ -3,11 +3,11 @@
  */
 package org.ta4j.core.indicators.averages;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.ta4j.core.TestUtils.*;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -31,7 +31,7 @@ public class DMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
             3.33333333333333, 3.33333333333333, 3.33333333333333, 3, 3.66666666666667, 4, 5.66666666666667,
             6.33333333333333, 8, 9, 10, 11, 11.3333333333333, 11, 10, 9, 8, 7, 6, 5, 4, 3 };
 
-    @Before
+    @BeforeEach
     public void setUp() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2, 6, 4, 7, 8, 9, 10, 11, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3,

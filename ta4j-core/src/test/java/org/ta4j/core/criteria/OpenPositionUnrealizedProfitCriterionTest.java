@@ -5,12 +5,12 @@ package org.ta4j.core.criteria;
 
 import java.time.Instant;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ConstrainedSeriesSupport;
@@ -113,7 +113,7 @@ public class OpenPositionUnrealizedProfitCriterionTest extends AbstractCriterion
                 .criterionWindowFixtures(numFactory)) {
             Num actual = criterion.calculate(fixture.series(), fixture.tradingRecord());
             Num expected = criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord());
-            assertEquals(fixture.name(), expected.doubleValue(), actual.doubleValue(), 1e-10);
+            assertEquals(expected.doubleValue(), actual.doubleValue(), 1e-10, fixture.name());
             if (fixture.position() != null && fixture.equivalentPosition() != null) {
                 Num actualPosition = criterion.calculate(fixture.series(), fixture.position());
                 Num expectedPosition = criterion.calculate(fixture.equivalentSeries(), fixture.equivalentPosition());

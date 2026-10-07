@@ -3,17 +3,17 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.Serializable;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TraceTestLogger;
@@ -28,7 +28,7 @@ public class ChainRuleTest {
     private BarSeries series;
     private TraceTestLogger ruleTraceTestLogger;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         ruleTraceTestLogger = new TraceTestLogger();
         ruleTraceTestLogger.open();
@@ -42,7 +42,7 @@ public class ChainRuleTest {
                 new ChainLink(isEqualRule, 2));
     }
 
-    @After
+    @AfterEach
     public void tearDownLogger() {
         ruleTraceTestLogger.close();
     }
@@ -117,9 +117,9 @@ public class ChainRuleTest {
         testChainRule.isSatisfiedWithTraceMode(4, null, Rule.TraceMode.SUMMARY);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue("Summary mode should log the chain rule", logContent.contains("Chain Summary#isSatisfied"));
-        assertFalse("Summary mode should suppress child rule logs", logContent.contains("Initial#isSatisfied"));
-        assertFalse("Summary mode should suppress child rule logs", logContent.contains("Chain Child#isSatisfied"));
+        assertTrue(logContent.contains("Chain Summary#isSatisfied"), "Summary mode should log the chain rule");
+        assertFalse(logContent.contains("Initial#isSatisfied"), "Summary mode should suppress child rule logs");
+        assertFalse(logContent.contains("Chain Child#isSatisfied"), "Summary mode should suppress child rule logs");
     }
 
     @Test
@@ -136,10 +136,10 @@ public class ChainRuleTest {
         testChainRule.isSatisfied(4);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue("Verbose mode should log the chain rule", logContent.contains("Chain Verbose#isSatisfied"));
-        assertTrue("Verbose mode should keep child rule logs", logContent.contains("Initial#isSatisfied"));
-        assertTrue("Verbose mode should keep child rule logs", logContent.contains("Chain Child#isSatisfied"));
-        assertTrue("Verbose mode should attribute child path", logContent.contains("path=root.chainRule0 depth=1"));
+        assertTrue(logContent.contains("Chain Verbose#isSatisfied"), "Verbose mode should log the chain rule");
+        assertTrue(logContent.contains("Initial#isSatisfied"), "Verbose mode should keep child rule logs");
+        assertTrue(logContent.contains("Chain Child#isSatisfied"), "Verbose mode should keep child rule logs");
+        assertTrue(logContent.contains("path=root.chainRule0 depth=1"), "Verbose mode should attribute child path");
     }
 
     @Test
@@ -154,9 +154,9 @@ public class ChainRuleTest {
         testChainRule.isSatisfiedWithTraceMode(4, null, Rule.TraceMode.SUMMARY);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue("Summary failure should log the chain rule", logContent.contains("Chain Failure#isSatisfied"));
-        assertTrue("Summary failure should include failed chain rule", logContent.contains("failedChainRule=0"));
-        assertTrue("Summary failure should include threshold", logContent.contains("threshold=1"));
+        assertTrue(logContent.contains("Chain Failure#isSatisfied"), "Summary failure should log the chain rule");
+        assertTrue(logContent.contains("failedChainRule=0"), "Summary failure should include failed chain rule");
+        assertTrue(logContent.contains("threshold=1"), "Summary failure should include threshold");
     }
 
     @Test
