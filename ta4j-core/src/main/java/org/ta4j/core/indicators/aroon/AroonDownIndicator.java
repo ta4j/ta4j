@@ -23,7 +23,6 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
     private final int barCount;
     private final Indicator<Num> lowPriceIndicator;
     private final transient LowestValueIndicator lowestLowPriceIndicator;
-    private final transient Num barCountNum;
 
     /**
      * Constructor.
@@ -36,7 +35,6 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
         super(lowPriceIndicator);
         this.barCount = barCount;
         this.lowPriceIndicator = lowPriceIndicator;
-        this.barCountNum = getBarSeries().numFactory().numOf(barCount);
         // + 1 needed for last possible iteration in loop
         this.lowestLowPriceIndicator = new LowestValueIndicator(lowPriceIndicator, barCount + 1);
     }
@@ -67,9 +65,8 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
             nbBars++;
         }
 
-        // TODO is Num needed?
-        final var numFactory = getBarSeries().numFactory();
-        return numFactory.numOf(barCount - nbBars).dividedBy(barCountNum).multipliedBy(numFactory.hundred());
+        double aroonDown = (double) (barCount - nbBars) / barCount * 100.0;
+        return getBarSeries().numFactory().numOf(aroonDown);
     }
 
     @Override
