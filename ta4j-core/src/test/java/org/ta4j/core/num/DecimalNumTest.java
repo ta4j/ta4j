@@ -75,6 +75,26 @@ public class DecimalNumTest {
     private Indicator<Num> doubleIndicator;
     private Indicator<Num> lowPrecisionIndicator;
 
+    @Test
+    public void testPowNaNExponentReturnsNaN() {
+        final Num x = DecimalNum.valueOf(2);
+        assertTrue(x.pow(NaN.NaN).isNaN());
+    }
+
+    @Test
+    public void testPowNegativeBaseFractionalExponentReturnsNaN() {
+        final Num x = DecimalNum.valueOf(-4);
+        final Num n = DecimalNum.valueOf(0.5);
+        assertTrue(x.pow(n).isNaN());
+    }
+
+    @Test
+    public void testPowZeroBaseNegativeExponentReturnsNaN() {
+        final Num zero = DecimalNum.valueOf(0);
+        final Num n = DecimalNum.valueOf(-0.5);
+        assertTrue(zero.pow(n).isNaN());
+    }
+
     @Test(expected = ArithmeticException.class)
     public void testPowOverflowExponent() {
         final Num x = DecimalNum.valueOf("2");

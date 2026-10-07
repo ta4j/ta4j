@@ -733,13 +733,31 @@ public final class DecimalNum implements Num {
         return this.delegate.toString();
     }
 
-    /***
-     * TODO: DecimalNum throws NumberFormatException when Math.pow returns
-     * NaN/Infinity This is also an edge case behavior that should be documented or
-     * handled properly.
+    /**
+     * Returns a {@code Num} whose value is <code>(this<sup>n</sup>)</code>.
+     *
+     * <p>
+     * If {@code n} is {@link NaN}, or if calculating the power produces an
+     * undefined or infinite value (such as taking a fractional power of a negative
+     * number or dividing by zero), {@link NaN#NaN} is returned.
+     *
+     * @param n power to raise this {@code Num} to
+     * @return <code>this<sup>n</sup></code>, or {@link NaN#NaN} if invalid or
+     *         infinite
+     * @throws ArithmeticException if the integer part of the exponent {@code n}
+     *                             overflows {@code int}
      */
     @Override
     public Num pow(final Num n) {
+        if (n.isNaN()) {
+            return NaN;
+        }
+        if (this.isZero() && n.isNegative()) {
+            return NaN;
+        }
+
+        final DecimalNum decimalN = n instanceof DecimalNum dn ? dn : DecimalNum.valueOf(n);
+
         // There is no BigDecimal.pow(BigDecimal). We could do:
         // double Math.pow(double delegate.doubleValue(), double n)
         // But that could overflow any of the three doubles.
@@ -756,7 +774,7 @@ public final class DecimalNum implements Num {
         // As suggested: https://stackoverflow.com/a/3590314
 
         // get n = a+b, same precision as n
-        final BigDecimal aplusb = (((DecimalNum) n).delegate);
+        final BigDecimal aplusb = decimalN.delegate;
         // get the remainder 0 <= b < 1, looses precision as double
         final BigDecimal b = aplusb.remainder(BigDecimal.ONE);
         // bDouble looses precision
@@ -775,6 +793,9 @@ public final class DecimalNum implements Num {
         final BigDecimal xpowa = this.delegate.pow(aInt, powContext);
         // use double pow(double, double)
         final double xpowb = Math.pow(this.delegate.doubleValue(), bDouble);
+        if (!Double.isFinite(xpowb)) {
+            return NaN;
+        }
         // use PrecisionNum.multiply(PrecisionNum)
         final BigDecimal result = xpowa.multiply(BigDecimal.valueOf(xpowb));
         return new DecimalNum(result.toString(), this.mathContext);
