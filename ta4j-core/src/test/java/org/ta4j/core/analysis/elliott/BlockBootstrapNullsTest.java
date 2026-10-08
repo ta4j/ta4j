@@ -625,6 +625,31 @@ class BlockBootstrapNullsTest {
         }
     }
 
+    @Test
+    void memberRegeneratesExactlyTheEnsembleMemberAtItsIndex() {
+        final BarSeries source = buildWickSeries();
+        final long seed = 77L;
+        final List<BarSeries> ensemble = BlockBootstrapNulls.generate(source, 3, 4, seed);
+
+        for (int memberIndex = 0; memberIndex < ensemble.size(); memberIndex++) {
+            final BarSeries expected = ensemble.get(memberIndex);
+            final BarSeries regenerated = BlockBootstrapNulls.member(source, 3, seed, memberIndex);
+            assertEquals(expected.getBarCount(), regenerated.getBarCount());
+            for (int index = expected.getBeginIndex(); index <= expected.getEndIndex(); index++) {
+                final Bar expectedBar = expected.getBar(index);
+                final Bar actualBar = regenerated.getBar(index);
+                final String label = "member " + memberIndex + " bar " + index;
+                assertEquals(expectedBar.getEndTime(), actualBar.getEndTime(), label);
+                assertEquals(expectedBar.getOpenPrice(), actualBar.getOpenPrice(), label);
+                assertEquals(expectedBar.getHighPrice(), actualBar.getHighPrice(), label);
+                assertEquals(expectedBar.getLowPrice(), actualBar.getLowPrice(), label);
+                assertEquals(expectedBar.getClosePrice(), actualBar.getClosePrice(), label);
+            }
+        }
+        assertThrows(IllegalArgumentException.class, () -> BlockBootstrapNulls.member(source, 3, seed, -1));
+        assertThrows(IllegalArgumentException.class, () -> BlockBootstrapNulls.member(source, 0, seed, 0));
+    }
+
     /** Synthetic wick tape shared by shape-travel assertions. */
     private static BarSeries buildWickSeries() {
         final double[] closes = { 100, 101.5, 99.2, 104.1, 102.3, 107.8, 105.2, 110.9, 108.4, 113.6, 111.1, 116.9 };

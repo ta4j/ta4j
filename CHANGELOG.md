@@ -2,6 +2,7 @@
 
 ### Added
 
+- **Reproducible Elliott pattern research runs (`CF-585`)**: maintainers can run the experimental Elliott study from one command, `ElliottResearch` via `mvn -pl ta4j-core test-compile exec:java`, with an offline `smoke` recipe, the frozen `frozen-cf525` study, or `explore` over their own candles and settings. Each run writes a relocatable directory: `run.json` provenance (revision and whether the worktree was clean or dirty), per-dataset reports, `comparisons.csv` of observed metrics against per-partition null reference bands and empirical reference ranks, coverage that flags partitions without bars or with long internal gaps, a summary, and optional per-bar evidence traces for the real data or one selected null member. `summarize` rebuilds the summary without recomputing, and `inspect <run> <key>` traces a comparison back to its supporting bars, counterexamples and rule disagreements; its recapture command refuses to run against a changed configuration or edited candles. Frozen outputs are unchanged with capture on or off.
 - **Composable Monte Carlo techniques**: any `MonteCarloMethod` now chains decorators fluently: `pooledWith(other)` pools two techniques 50/50 through derived sub-generators, `widenedByRecentVolatility()` widens terminal samples by the bounded ratio of recent realized to state volatility, and `withStudentTScaleMixing()` fattens tails with a mean-normalized Student-t scale-mixing factor; `NormalInverseGammaForecastMethod.overResiduals(method)` and `overSmoothedResiduals()` layer posterior parameter uncertainty over another technique's standardized residual paths. For example `shockPath.pooledWith(NormalInverseGammaForecastMethod.withEmpiricalPriors().overSmoothedResiduals()).widenedByRecentVolatility().withStudentTScaleMixing()` is passed straight to `.monteCarloMethod(...)`. Every composition draws exclusively from `MonteCarloContext.random()`, so seeded forecasts stay reproducible, and degrades to an unstable forecast when a component returns null, miscounts, or emits non-finite samples. Widening scales around the inner technique's empirical center (dispersion only, never a location shift); Student-t mixing stays finite with bounded expected cost for arbitrarily large degrees of freedom; and foreign-precision inner samples are normalized through the context's `NumFactory`. `WalkForwardCalibrationBakeoffExample` builds its arms with this API, forecasts through `MonteCarloReturnProjectionIndicator`, persists per-arm checkpoints incrementally, and serializes empty volatility regimes as `null`.
 
 ### Changed
@@ -10,6 +11,7 @@
 
 ### Fixed
 
+- **Elliott research coverage (`CF-585`)**: gap detection considers each configured partition separately, so intentionally unrequested intervals between noncontiguous partitions no longer mark otherwise complete data as partial. Long gaps within a partition still report partial coverage.
 - **Gamma boosts exclude the zero endpoint**: Shape-below-one gamma sampling now uses an open-closed uniform boost, keeping inverse-gamma forecasts finite for valid low-shape priors even when a supplied generator returns the legal value `0.0`. This reflects the boost draw for seeded shape-below-one streams while leaving shape-at-least-one streams unchanged; the uniform distribution and sampler correctness are preserved.
 
 ## 0.26.0 (2026-10-05)
@@ -42,6 +44,7 @@
 - **For contributors: faster test runs**: Surefire runs test classes in four bounded JVM forks (`ta4j.test.forkCount`); the benchmark and analysis-demo lanes stay on one fork so their timings and shared outputs don't interfere.
 
 ### Fixed
+
 
 - **Fresh swing and forecast results on revisionless series (CF-638)**: `AbstractRecentSwingIndicator`, `ProminenceSwingDetector`, `AdaptiveZigZagSwingDetector` and `EwmaReturnForecastStateIndicator` revalidate retained bar values for series without history revisions. Repeated queries, appends after interior edits and mutations during calculation reset stale swing or EWMA state, including registered SMA/ATR inputs. EWMA refreshes shared return caches before accepting appended ranges, and direct detector-backed price reads refresh cached fallback sources. Each fallback history comparison costs O(retained bars); an initial or replayed detector-backed recent-swing scan can perform O(retained bars²) validation work across its historical queries, in addition to the underlying swing algorithm's cost. Revision-aware series keep constant-time history checks. Queries retry until the observed history is stable; continuous mutation can delay completion.
 
