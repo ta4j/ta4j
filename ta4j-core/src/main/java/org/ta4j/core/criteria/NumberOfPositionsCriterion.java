@@ -5,7 +5,6 @@ package org.ta4j.core.criteria;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicReference;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
@@ -107,6 +106,9 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        if (statusFilter == PositionStatusFilter.CLOSED) {
+            tradingRecord = boundedTradingRecord(series, tradingRecord);
+        }
         return series.numFactory().numOf(countPositions(series, tradingRecord));
     }
 
@@ -156,10 +158,8 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
 
     private TradingRecord projectClosedPositions(BarSeries series, TradingRecord tradingRecord, AnalysisWindow window,
             AnalysisContext context) {
-        AtomicReference<TradingRecord> projectedRecordRef = new AtomicReference<>();
-        AnalysisContext closedOnlyContext = context.withOpenPositionHandling(OpenPositionHandling.IGNORE);
-        new ProjectionCaptureCriterion(projectedRecordRef).calculate(series, tradingRecord, window, closedOnlyContext);
-        return Objects.requireNonNull(projectedRecordRef.get(), "projectedRecord");
+        return projectTradingRecord(series, tradingRecord, window,
+                context.withOpenPositionHandling(OpenPositionHandling.IGNORE));
     }
 
     private static int countClosedPositionsAtOrBefore(TradingRecord tradingRecord, int endIndex) {
@@ -232,27 +232,4 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
         return isOpenAt(position, endIndex) && position.getEntry().getIndex() >= startIndex;
     }
 
-    private static final class ProjectionCaptureCriterion extends AbstractAnalysisCriterion {
-        private final AtomicReference<TradingRecord> projectedRecordRef;
-
-        private ProjectionCaptureCriterion(AtomicReference<TradingRecord> projectedRecordRef) {
-            this.projectedRecordRef = Objects.requireNonNull(projectedRecordRef, "projectedRecordRef");
-        }
-
-        @Override
-        public Num calculate(BarSeries series, Position position) {
-            return series.numFactory().zero();
-        }
-
-        @Override
-        public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-            projectedRecordRef.set(tradingRecord);
-            return series.numFactory().zero();
-        }
-
-        @Override
-        public boolean betterThan(Num criterionValue1, Num criterionValue2) {
-            return false;
-        }
-    }
 }

@@ -50,6 +50,7 @@ public class TotalFeesCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        tradingRecord = boundedTradingRecordWithOpenEntries(series, tradingRecord);
         NumFactory factory = series.numFactory();
         Num recordedFees = tradingRecord.getRecordedTotalFees();
         if (recordedFees != null) {

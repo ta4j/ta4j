@@ -51,12 +51,25 @@ public class CommissionsCriterion extends AbstractAnalysisCriterion {
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        boolean bounded = tradingRecord.getStartIndex() != null || tradingRecord.getEndIndex() != null;
+        tradingRecord = boundedTradingRecordWithOpenEntries(series, tradingRecord);
         var model = tradingRecord.getTransactionCostModel();
         var closedPositionsCommissions = tradingRecord.getPositions()
                 .stream()
                 .filter(Position::isClosed)
                 .map(model::calculate)
                 .reduce(series.numFactory().zero(), Num::plus);
+
+        if (bounded) {
+            // A net open position merges distinct entries. Modeled per-position
+            // fees must instead account for each entry retained by the selection.
+            int finalIndex = tradingRecord.getEndIndex(series);
+            Num openCommissions = tradingRecord.getOpenPositions()
+                    .stream()
+                    .map(position -> model.calculate(position, finalIndex))
+                    .reduce(series.numFactory().zero(), Num::plus);
+            return closedPositionsCommissions.plus(openCommissions);
+        }
 
         var current = tradingRecord.getCurrentPosition();
         if (current.isOpened()) {

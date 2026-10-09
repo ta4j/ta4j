@@ -20,6 +20,7 @@ public class NumberOfBreakEvenPositionsCriterion extends AbstractAnalysisCriteri
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        tradingRecord = boundedTradingRecord(series, tradingRecord);
         long numberOfBreakEvenTrades = tradingRecord.getPositions()
                 .stream()
                 .filter(Position::isClosed)

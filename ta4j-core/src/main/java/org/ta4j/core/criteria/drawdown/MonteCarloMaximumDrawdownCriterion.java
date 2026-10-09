@@ -204,7 +204,8 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        List<List<Num>> blocks = buildBlocks(series, tradingRecord);
+        TradingRecord selected = boundedTradingRecordWithOpenEntries(series, tradingRecord);
+        List<List<Num>> blocks = buildBlocks(series, selected);
         if (blocks.size() < 3) {
             return maximumDrawdownCriterion.calculate(series, tradingRecord);
         }

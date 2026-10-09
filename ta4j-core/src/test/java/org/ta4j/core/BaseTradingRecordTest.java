@@ -54,6 +54,68 @@ class BaseTradingRecordTest {
     private final NumFactory numFactory = DoubleNumFactory.getInstance();
 
     @Test
+    void boundedOpenSnapshotsReuniteNativePartialSlicesWithoutMutatingTheBook() {
+        for (ExecutionMatchPolicy policy : ExecutionMatchPolicy.values()) {
+            BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, policy, new ZeroCostModel(),
+                    new ZeroCostModel(), 2, 7);
+            record.operate(new BaseTrade(3, Instant.EPOCH, numFactory.hundred(), numFactory.two(), numFactory.one(),
+                    ExecutionSide.BUY, "entry", "lot"));
+            record.operate(new BaseTrade(8, Instant.EPOCH.plusSeconds(8), numFactory.numOf(110), numFactory.one(),
+                    numFactory.one(), ExecutionSide.SELL, "exit", "lot"));
+            List<Position> snapshot = record.getOpenPositions(7);
+            assertEquals(1, snapshot.size());
+            Trade entry = snapshot.getFirst().getEntry();
+            assertEquals(numFactory.two(), entry.getAmount());
+            assertEquals(numFactory.one(), entry.getCost());
+            if (policy != ExecutionMatchPolicy.AVG_COST) {
+                assertEquals("entry", entry.getOrderId());
+                assertEquals("lot", entry.getCorrelationId());
+            }
+            assertThrows(UnsupportedOperationException.class, () -> snapshot.add(null));
+            assertNotSame(snapshot.getFirst(), record.getOpenPositions(7).getFirst());
+            assertEquals(numFactory.one(), record.getOpenPositions().getFirst().getEntry().getAmount());
+            assertEquals(1, record.getPositions().size());
+            assertEquals(numFactory.one(), record.getOpenPositions(8).getFirst().getEntry().getAmount());
+            assertTrue(record.getOpenPositions(2).isEmpty());
+        }
+    }
+
+    @Test
+    void boundedOpenSnapshotsPreserveIdenticalEntriesAndAverageCostCohorts() {
+        for (ExecutionMatchPolicy policy : new ExecutionMatchPolicy[] { ExecutionMatchPolicy.FIFO,
+                ExecutionMatchPolicy.LIFO, ExecutionMatchPolicy.AVG_COST }) {
+            BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, policy, new ZeroCostModel(),
+                    new ZeroCostModel(), 2, 7);
+            record.operate(new BaseTrade(3, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.one(),
+                    ExecutionSide.BUY, null, null));
+            record.operate(new BaseTrade(3, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.one(),
+                    ExecutionSide.BUY, null, null));
+            record.operate(new BaseTrade(8, Instant.EPOCH.plusSeconds(8), numFactory.numOf(110), numFactory.numOf(0.5),
+                    numFactory.one(), ExecutionSide.SELL, null, null));
+            List<Position> snapshot = record.getOpenPositions(7);
+            assertEquals(policy == ExecutionMatchPolicy.AVG_COST ? 1 : 2, snapshot.size());
+            assertEquals(numFactory.two(),
+                    snapshot.stream().map(p -> p.getEntry().getAmount()).reduce(numFactory.zero(), Num::plus));
+            assertEquals(numFactory.two(),
+                    snapshot.stream().map(p -> p.getEntry().getCost()).reduce(numFactory.zero(), Num::plus));
+        }
+    }
+
+    @Test
+    void boundedOpenSnapshotsRetainNativeEntryOrderForOutOfOrderIndices() {
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), 2, 7);
+        record.operate(new BaseTrade(5, Instant.EPOCH, numFactory.hundred(), numFactory.two(), numFactory.zero(),
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(3, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.zero(),
+                ExecutionSide.BUY, null, null));
+        List<Integer> nativeOrder = record.getOpenPositions().stream().map(p -> p.getEntry().getIndex()).toList();
+        record.operate(new BaseTrade(8, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.zero(),
+                ExecutionSide.SELL, null, null));
+        assertEquals(nativeOrder, record.getOpenPositions(7).stream().map(p -> p.getEntry().getIndex()).toList());
+    }
+
+    @Test
     void recordsPartialFillsUsingFifo() {
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);

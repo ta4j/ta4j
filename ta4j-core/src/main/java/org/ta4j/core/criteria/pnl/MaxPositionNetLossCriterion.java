@@ -46,6 +46,7 @@ public final class MaxPositionNetLossCriterion extends AbstractAnalysisCriterion
      */
     @Override
     public Num calculate(BarSeries barSeries, TradingRecord tradingRecord) {
+        tradingRecord = boundedTradingRecord(barSeries, tradingRecord);
         return tradingRecord.getPositions()
                 .stream()
                 .filter(Position::isClosed)

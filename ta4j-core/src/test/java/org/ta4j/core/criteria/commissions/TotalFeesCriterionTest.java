@@ -10,6 +10,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.analysis.AnalysisWindow;
+import org.ta4j.core.analysis.AnalysisContext.PositionInclusionPolicy;
+import org.ta4j.core.analysis.AnalysisContext;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
@@ -170,4 +174,33 @@ public class TotalFeesCriterionTest extends AbstractCriterionTest {
             return delegate.getEndIndex();
         }
     }
+
+    @Test
+    public void directBoundedRecordTotalsRecordedFeesAsOfEnd() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 110, 100, 120, 100, 105, 100, 110, 130)
+                .build();
+        for (boolean futureExit : new boolean[] { false, true }) {
+            BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, 2, 8, new ZeroCostModel(),
+                    new ZeroCostModel());
+            int[] indices = futureExit ? new int[] { 0, 2, 3, 4, 5, 6, 7, 9 } : new int[] { 0, 2, 3, 4, 5, 6, 7 };
+            for (int tradeIndex = 0; tradeIndex < indices.length; tradeIndex++) {
+                int index = indices[tradeIndex];
+                ExecutionSide side = tradeIndex % 2 == 0 ? ExecutionSide.BUY : ExecutionSide.SELL;
+                record.operate(new BaseTrade(index, Instant.EPOCH.plusSeconds(index),
+                        series.getBar(index).getClosePrice(), numFactory.one(), numFactory.one(), side, null, null));
+            }
+            TotalFeesCriterion criterion = new TotalFeesCriterion();
+            // Actual fees: selected entries/exits at 3,4,5,6 and entry at 7.
+            assertNumEquals(5, criterion.calculate(series, record));
+            AnalysisContext context = AnalysisContext.defaults()
+                    .withPositionInclusionPolicy(PositionInclusionPolicy.FULLY_CONTAINED);
+            assertNumEquals(4, criterion.calculate(series, record, AnalysisWindow.barRange(2, 8), context));
+            // Zero-cost synthetic exit must not invent an additional recorded execution
+            // fee.
+            assertNumEquals(5, criterion.calculate(series, record, AnalysisWindow.barRange(2, 8),
+                    context.withOpenPositionHandling(OpenPositionHandling.MARK_TO_MARKET)));
+        }
+    }
+
 }

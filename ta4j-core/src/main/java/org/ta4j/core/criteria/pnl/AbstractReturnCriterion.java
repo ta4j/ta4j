@@ -120,6 +120,7 @@ public abstract class AbstractReturnCriterion extends AbstractAnalysisCriterion 
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        tradingRecord = boundedTradingRecord(series, tradingRecord);
         var one = series.numFactory().one();
         var totalReturn = tradingRecord.getPositions()
                 .stream()

@@ -24,6 +24,7 @@ public abstract class AbstractPnlCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        tradingRecord = boundedTradingRecord(series, tradingRecord);
         var zero = series.numFactory().zero();
         return tradingRecord.getPositions()
                 .stream()

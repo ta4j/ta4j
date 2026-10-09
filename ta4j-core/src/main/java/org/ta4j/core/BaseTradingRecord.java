@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Stream;
@@ -438,6 +440,31 @@ public class BaseTradingRecord implements TradingRecord {
     @Override
     public List<Position> getOpenPositions() {
         return openPositionsSnapshot();
+    }
+
+    /**
+     * Returns native entry cohorts still open at the given end index. Entry
+     * portions closed after that index are reunited with their remaining open
+     * portions by the record's internal lot identity. Entry amounts and recorded
+     * fees are combined without changing the matching policy or the record.
+     *
+     * <p>
+     * This is a snapshot of the existing native cohorts, not execution-history
+     * replay. In particular, average-cost entries retain the record's existing
+     * merged entry price and index.
+     * </p>
+     *
+     * @param endIndex inclusive logical end index
+     * @return immutable open-position snapshots, in native entry order
+     * @since 0.26.1
+     */
+    public List<Position> getOpenPositions(int endIndex) {
+        lock.readLock().lock();
+        try {
+            return List.copyOf(positionBook.openPositions(endIndex));
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     /**
@@ -1082,6 +1109,35 @@ public class BaseTradingRecord implements TradingRecord {
             return positions;
         }
 
+        private List<Position> openPositions(int endIndex) {
+            Map<Long, PositionLot> cohorts = new LinkedHashMap<>();
+            for (ClosedPosition closed : closedPositions) {
+                if (closed.position().getExit().getIndex() > endIndex) {
+                    addEntryPortion(cohorts, closed.position().getEntry(), closed.entrySequence(), endIndex);
+                }
+            }
+            for (SequencedTrade open : openEntryTradesWithSequence()) {
+                addEntryPortion(cohorts, open.trade(), open.sequence(), endIndex);
+            }
+            return cohorts.values()
+                    .stream()
+                    .sorted(Comparator.comparingLong(PositionLot::entrySequence))
+                    .map(lot -> new Position(
+                            recordedTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(), lot.fee(),
+                                    lot.side(), lot.orderId(), lot.correlationId()),
+                            RecordedTradeCostModel.INSTANCE, holdingCostModel))
+                    .toList();
+        }
+
+        private static void addEntryPortion(Map<Long, PositionLot> cohorts, Trade entry, long sequence, int endIndex) {
+            if (entry.getIndex() <= endIndex) {
+                PositionLot portion = new PositionLot(entry.getIndex(), entry.getTime(), entry.getPricePerAsset(),
+                        sideOf(entry.getType()), entry.getAmount(), entry.getCost(), entry.getOrderId(),
+                        entry.getCorrelationId(), sequence);
+                cohorts.merge(sequence, portion, PositionLot::reunite);
+            }
+        }
+
         private Position netOpenPosition() {
             if (openLots.isEmpty()) {
                 return null;
@@ -1299,6 +1355,14 @@ public class BaseTradingRecord implements TradingRecord {
                 amount = amount.minus(reduceAmount);
                 fee = fee.minus(reduceFee);
                 return this;
+            }
+
+            private PositionLot reunite(PositionLot other) {
+                PositionLot combined = merge(other);
+                return new PositionLot(combined.entryIndex(), combined.entryTime(), combined.entryPrice(),
+                        combined.side(), combined.amount(), combined.fee(),
+                        Objects.equals(orderId, other.orderId) ? orderId : null,
+                        Objects.equals(correlationId, other.correlationId) ? correlationId : null, entrySequence);
             }
 
             private PositionLot merge(PositionLot other) {

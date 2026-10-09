@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.criteria.pnl;
 
+import java.util.Objects;
+import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
@@ -20,6 +22,23 @@ import org.ta4j.core.num.Num;
  * @since 0.19
  */
 public abstract class AbstractConsecutivePnlCriterion extends AbstractAnalysisCriterion {
+
+    private final OpenPositionHandling openPositionHandling;
+
+    /** Creates a streak criterion that ignores positions open at a bounded end. */
+    protected AbstractConsecutivePnlCriterion() {
+        this(OpenPositionHandling.IGNORE);
+    }
+
+    /**
+     * Creates a streak criterion with configurable bounded-record open handling.
+     *
+     * @param openPositionHandling handling at the logical end
+     * @since 0.26.1
+     */
+    protected AbstractConsecutivePnlCriterion(OpenPositionHandling openPositionHandling) {
+        this.openPositionHandling = Objects.requireNonNull(openPositionHandling, "openPositionHandling");
+    }
 
     /**
      * Positive for profit-streaks, negative for loss-streaks.
@@ -61,6 +80,7 @@ public abstract class AbstractConsecutivePnlCriterion extends AbstractAnalysisCr
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        tradingRecord = boundedTradingRecord(series, tradingRecord, openPositionHandling);
         var zero = series.numFactory().zero();
         var current = zero;
         var best = zero;
