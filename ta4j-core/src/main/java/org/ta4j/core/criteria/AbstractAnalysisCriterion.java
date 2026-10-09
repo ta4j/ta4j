@@ -7,7 +7,8 @@ import java.util.Optional;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.Set;
 import java.util.ArrayDeque;
 import java.util.Map;
@@ -103,22 +104,28 @@ public abstract class AbstractAnalysisCriterion implements AnalysisCriterion {
                 AnalysisWindow.barRange(start, end), context);
         // Projection owns membership and valuation; direct calls retain source order
         // and original closed-position snapshots for position-level consumers.
-        Set<PositionKey> actualClosedKeys = new HashSet<>();
+        Map<PositionKey, Integer> actualClosedOccurrences = new HashMap<>();
         for (Position position : tradingRecord.getPositions()) {
             if (position.isClosed() && position.getExit().getIndex() <= end) {
-                actualClosedKeys.add(PositionKey.of(position));
+                actualClosedOccurrences.merge(PositionKey.of(position), 1, Integer::sum);
             }
         }
+        // The existing projector appends actual closes before synthetic marks and
+        // uses a stable exit sort. Reserve only the actual occurrence count, even
+        // when an actual exit and a synthetic mark have identical trade values.
         Map<PositionKey, ArrayDeque<Position>> closed = new HashMap<>();
         Map<TradeKey, ArrayDeque<Position>> synthetic = new HashMap<>();
         for (Position position : selected.getPositions()) {
             PositionKey key = PositionKey.of(position);
-            if (actualClosedKeys.contains(key)) {
+            int remainingActual = actualClosedOccurrences.getOrDefault(key, 0);
+            if (remainingActual > 0) {
+                actualClosedOccurrences.put(key, remainingActual - 1);
                 closed.computeIfAbsent(key, ignored -> new ArrayDeque<>()).add(position);
             } else {
                 synthetic.computeIfAbsent(key.entry(), ignored -> new ArrayDeque<>()).add(position);
             }
         }
+        Set<Position> consumed = Collections.newSetFromMap(new IdentityHashMap<>());
         List<Position> ordered = new ArrayList<>();
         for (Position position : tradingRecord.getPositions()) {
             boolean actuallyClosed = position.isClosed() && position.getExit().getIndex() <= end;
@@ -126,16 +133,14 @@ public abstract class AbstractAnalysisCriterion implements AnalysisCriterion {
                     : synthetic.get(TradeKey.of(position.getEntry()));
             if (matches != null && !matches.isEmpty()) {
                 Position projected = matches.removeFirst();
+                consumed.add(projected);
                 ordered.add(actuallyClosed ? position : projected);
             }
         }
         // Native open lots are not necessarily in getPositions(); retain their
         // already-projected marks after the source's ordered closed snapshots.
         for (Position position : selected.getPositions()) {
-            PositionKey key = PositionKey.of(position);
-            ArrayDeque<Position> matches = actualClosedKeys.contains(key) ? closed.get(key)
-                    : synthetic.get(key.entry());
-            if (matches != null && matches.remove(position)) {
+            if (!consumed.contains(position)) {
                 ordered.add(position);
             }
         }

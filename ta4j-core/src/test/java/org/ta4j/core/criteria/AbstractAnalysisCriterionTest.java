@@ -347,6 +347,25 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
         }
     }
 
+    @Test
+    public void equalActualAndMarkedExitsRetainTheirSourceOccurrences() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 100, 100, 100, 110, 120, 130)
+                .build();
+        TradingRecord source = new BaseTradingRecord(TradeType.BUY, 0, 6, new ZeroCostModel(), new ZeroCostModel());
+        source.enter(1, numFactory.hundred(), numFactory.two());
+        source.exit(7, numFactory.numOf(130), numFactory.one());
+        source.exit(6, numFactory.numOf(120), numFactory.one());
+
+        TradingRecord selected = new ProjectionProbe().select(series, source, OpenPositionHandling.MARK_TO_MARKET);
+
+        // Equal-valued actual and synthetic exits still represent distinct source
+        // occurrences.
+        assertEquals(2, selected.getPositionCount());
+        assertSame(source.getPositions().get(1), selected.getPositions().get(1));
+        assertNumEquals(40, new NetProfitCriterion().calculate(series, selected));
+    }
+
     private BarSeries boundedSeries() {
         return new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 100, 110, 100, 120, 100, 105, 100, 110, 130)
