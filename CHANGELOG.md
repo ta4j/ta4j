@@ -10,6 +10,8 @@
 
 ### Fixed
 
+- **Position criteria respect a trading record's logical bounds**: directly bounded PnL, returns, closed counts, streaks, fees, risk averages, and composed statistics now use one contained population and exclude future exits. Native fee analysis retains open-entry fees without inventing exit fees; Monte Carlo resampling selects contained closed blocks while retaining its existing curve fallback. Explicit windows preserve `EXIT_IN_WINDOW`, `FULLY_CONTAINED`, and their open-position context. Unbounded results and numeric factories are unchanged. Linear costs and consecutive PnL criteria accept the existing `OpenPositionHandling` setting for bounded end valuation, defaulting to `IGNORE`.
+
 - **Gamma boosts exclude the zero endpoint**: Shape-below-one gamma sampling now uses an open-closed uniform boost, keeping inverse-gamma forecasts finite for valid low-shape priors even when a supplied generator returns the legal value `0.0`. This reflects the boost draw for seeded shape-below-one streams while leaving shape-at-least-one streams unchanged; the uniform distribution and sampler correctness are preserved.
 
 ## 0.26.0 (2026-10-05)

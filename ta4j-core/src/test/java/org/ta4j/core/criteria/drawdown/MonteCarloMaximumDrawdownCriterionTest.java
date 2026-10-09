@@ -3,6 +3,9 @@
  */
 package org.ta4j.core.criteria.drawdown;
 
+import org.ta4j.core.analysis.AnalysisWindow;
+import org.ta4j.core.analysis.AnalysisContext.PositionInclusionPolicy;
+import org.ta4j.core.analysis.AnalysisContext;
 import org.ta4j.core.BarSeries;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.random.RandomGenerator;
@@ -454,4 +457,34 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
             }
         }
     }
+
+    @Test
+    public void boundedRecordResamplesOnlySelectedClosedBlocks() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 90, 110, 100, 70, 100, 80, 50, 20)
+                .build();
+        BaseTradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY, 2, 8, new ZeroCostModel(),
+                new ZeroCostModel());
+        for (int[] leg : new int[][] { { 0, 2 }, { 2, 3 }, { 4, 5 }, { 6, 7 }, { 7, 9 } }) {
+            record.enter(leg[0], series.getBar(leg[0]).getClosePrice(), numFactory.one());
+            record.exit(leg[1], series.getBar(leg[1]).getClosePrice(), numFactory.one());
+        }
+        MonteCarloMaximumDrawdownCriterion criterion = new MonteCarloMaximumDrawdownCriterion(1000, 4, 42L,
+                Statistics.P95, EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+        AnalysisContext context = AnalysisContext.defaults()
+                .withPositionInclusionPolicy(PositionInclusionPolicy.FULLY_CONTAINED)
+                .withOpenPositionHandling(OpenPositionHandling.IGNORE);
+        AnalysisWindow window = AnalysisWindow.barRange(2, 8);
+        // Three contained blocks: 110/90, 70/100 and 80/100, so this exercises
+        // resampling.
+        Num expected = criterion.calculate(series, record, window, context);
+        Num historical = new MaximumDrawdownCriterion(EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE)
+                .calculate(series, record, window, context);
+        // Resampling four blocks can repeat losses beyond the realized 1 - 0.7 * 0.8 =
+        // 0.44.
+        Assertions.assertTrue(expected.isGreaterThan(historical));
+        assertNumEquals(expected, criterion.calculate(series, record));
+        assertNumEquals(expected, criterion.calculate(series, record, window, context));
+    }
+
 }

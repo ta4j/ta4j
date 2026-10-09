@@ -9,9 +9,11 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -58,4 +60,40 @@ public class StandardErrorCriterionTest extends AbstractCriterionTest {
                 getCriterion(new NetProfitLossCriterion()), 0);
     }
 
+    @Test
+    public void boundedRecordUsesSelectedPopulation() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 110, 100, 120, 100, 105, 100, 110, 130)
+                .build();
+        TradingRecord record = boundedRecord(series, 2, 8);
+
+        // Profits [20, 5] have standard deviation 7.5 and sample count 2.
+        assertNumEquals(7.5 / Math.sqrt(2), getCriterion(new NetProfitLossCriterion()).calculate(series, record));
+    }
+
+    @Test
+    public void emptySelectedPopulationPreservesEmptyRecordResult() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 110, 100, 120, 100, 105, 100, 110, 130)
+                .build();
+        TradingRecord record = boundedRecord(series, 8, 8);
+
+        // The source retains four closed positions, but none belongs to [8, 8].
+        assertFalse(record.getPositions().isEmpty());
+        assertNumEquals(0, getCriterion(new NetProfitLossCriterion()).calculate(series, record));
+    }
+
+    private TradingRecord boundedRecord(BarSeries series, int startIndex, int endIndex) {
+        TradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY, startIndex, endIndex, new ZeroCostModel(),
+                new ZeroCostModel());
+        record.operate(Trade.buyAt(0, series, numFactory.one()));
+        record.operate(Trade.sellAt(2, series, numFactory.one()));
+        record.operate(Trade.buyAt(3, series, numFactory.one()));
+        record.operate(Trade.sellAt(4, series, numFactory.one()));
+        record.operate(Trade.buyAt(5, series, numFactory.one()));
+        record.operate(Trade.sellAt(6, series, numFactory.one()));
+        record.operate(Trade.buyAt(7, series, numFactory.one()));
+        record.operate(Trade.sellAt(9, series, numFactory.one()));
+        return record;
+    }
 }

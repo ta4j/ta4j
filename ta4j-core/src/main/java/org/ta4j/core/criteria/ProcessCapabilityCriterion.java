@@ -144,6 +144,7 @@ public class ProcessCapabilityCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        tradingRecord = boundedTradingRecord(series, tradingRecord);
         NumFactory factory = series.numFactory();
         List<Num> values = new ArrayList<>();
         for (Position position : tradingRecord.getPositions()) {

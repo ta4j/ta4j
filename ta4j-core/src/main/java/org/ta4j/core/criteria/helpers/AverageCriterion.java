@@ -59,6 +59,7 @@ public class AverageCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        tradingRecord = boundedTradingRecord(series, tradingRecord);
         if (tradingRecord.getPositions().isEmpty()) {
             return series.numFactory().zero();
         }

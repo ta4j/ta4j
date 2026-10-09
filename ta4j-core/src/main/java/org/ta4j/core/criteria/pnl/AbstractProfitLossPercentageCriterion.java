@@ -73,6 +73,7 @@ public abstract class AbstractProfitLossPercentageCriterion extends AbstractAnal
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        tradingRecord = boundedTradingRecord(series, tradingRecord);
         var numFactory = series.numFactory();
         var zero = numFactory.zero();
 

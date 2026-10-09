@@ -51,6 +51,7 @@ public class CommissionsCriterion extends AbstractAnalysisCriterion {
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        tradingRecord = boundedTradingRecordWithOpenEntries(series, tradingRecord);
         var model = tradingRecord.getTransactionCostModel();
         var closedPositionsCommissions = tradingRecord.getPositions()
                 .stream()

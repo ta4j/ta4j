@@ -4,6 +4,7 @@
 package org.ta4j.core.criteria.pnl;
 
 import org.ta4j.core.num.Num;
+import org.ta4j.core.analysis.OpenPositionHandling;
 
 /**
  * Analysis criterion that finds the most profitable streak of consecutive
@@ -17,6 +18,22 @@ import org.ta4j.core.num.Num;
  * @since 0.19
  */
 public class MaxConsecutiveProfitCriterion extends AbstractConsecutivePnlCriterion {
+
+    /** Creates a criterion that ignores positions open at a bounded end. */
+    public MaxConsecutiveProfitCriterion() {
+        super();
+    }
+
+    /**
+     * Creates a criterion using the requested handling at a bounded record's end.
+     * Explicit-window context takes precedence; unbounded results are unchanged.
+     *
+     * @param openPositionHandling handling of positions open at the logical end
+     * @since 0.26.1
+     */
+    public MaxConsecutiveProfitCriterion(OpenPositionHandling openPositionHandling) {
+        super(openPositionHandling);
+    }
 
     @Override
     protected boolean accepts(Num profit) {

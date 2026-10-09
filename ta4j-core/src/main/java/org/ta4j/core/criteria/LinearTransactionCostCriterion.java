@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.criteria;
 
+import java.util.Objects;
+import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
@@ -19,6 +21,8 @@ import org.ta4j.core.num.Num;
  * linear function defined by a and b (a * x + b).
  */
 public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
+
+    private final OpenPositionHandling openPositionHandling;
 
     private final double initialAmount;
 
@@ -48,6 +52,23 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      *                      trade})
      */
     public LinearTransactionCostCriterion(double initialAmount, double a, double b) {
+        this(initialAmount, a, b, OpenPositionHandling.IGNORE);
+    }
+
+    /**
+     * Creates a cost criterion with configurable bounded-record open handling.
+     * Explicit-window context overrides this setting. Unbounded records retain
+     * their historical open-entry cost calculation.
+     *
+     * @param initialAmount        the initially traded amount
+     * @param a                    the proportional trade cost coefficient
+     * @param b                    the fixed trade cost
+     * @param openPositionHandling handling at a bounded record's logical end
+     * @since 0.26.1
+     */
+    public LinearTransactionCostCriterion(double initialAmount, double a, double b,
+            OpenPositionHandling openPositionHandling) {
+        this.openPositionHandling = Objects.requireNonNull(openPositionHandling, "openPositionHandling");
         this.initialAmount = initialAmount;
         this.a = a;
         this.b = b;
@@ -63,6 +84,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        tradingRecord = boundedTradingRecord(series, tradingRecord, openPositionHandling);
         Num totalCosts = series.numFactory().zero();
         Num tradedAmount = series.numFactory().numOf(initialAmount);
 

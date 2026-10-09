@@ -7,6 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.analysis.AnalysisWindow;
+import org.ta4j.core.analysis.AnalysisContext.PositionInclusionPolicy;
+import org.ta4j.core.analysis.AnalysisContext;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.BarSeries;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
@@ -107,4 +114,31 @@ public class MaxConsecutiveLossCriterionTest extends AbstractCriterionTest {
         assertTrue(criterion.betterThan(numFactory.numOf(-2), numFactory.numOf(-5)));
         assertFalse(criterion.betterThan(numFactory.numOf(-6), numFactory.numOf(-3)));
     }
+
+    @Test
+    public void configuredMarkToMarketIncludesAsOfStreakUnlessExplicitContextIgnoresIt() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 90, 100, 80, 100, 95, 100, 90, 70)
+                .build();
+        TradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY, 2, 8, new ZeroCostModel(),
+                new ZeroCostModel());
+        record.operate(Trade.buyAt(0, series, numFactory.one()));
+        record.operate(Trade.sellAt(2, series, numFactory.one()));
+        record.operate(Trade.buyAt(3, series, numFactory.one()));
+        record.operate(Trade.sellAt(4, series, numFactory.one()));
+        record.operate(Trade.buyAt(5, series, numFactory.one()));
+        record.operate(Trade.sellAt(6, series, numFactory.one()));
+        record.operate(Trade.buyAt(7, series, numFactory.one()));
+        record.operate(Trade.sellAt(9, series, numFactory.one()));
+        MaxConsecutiveLossCriterion markToMarket = new MaxConsecutiveLossCriterion(OpenPositionHandling.MARK_TO_MARKET);
+        assertNumEquals(-25, new MaxConsecutiveLossCriterion().calculate(series, record));
+        // Selected closed streak is -25; the future-exit position adds its as-of-end
+        // PnL.
+        assertNumEquals(-35, markToMarket.calculate(series, record));
+        AnalysisContext context = AnalysisContext.defaults()
+                .withPositionInclusionPolicy(PositionInclusionPolicy.FULLY_CONTAINED)
+                .withOpenPositionHandling(OpenPositionHandling.IGNORE);
+        assertNumEquals(-25, markToMarket.calculate(series, record, AnalysisWindow.barRange(2, 8), context));
+    }
+
 }

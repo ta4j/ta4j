@@ -8,6 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.analysis.AnalysisContext.PositionInclusionPolicy;
+import org.ta4j.core.analysis.AnalysisContext;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
@@ -281,4 +284,31 @@ public class NumberOfPositionsCriterionTest extends AbstractCriterionTest {
                 numFactory.zero(), ExecutionSide.SELL, null, null));
         return record;
     }
+
+    @Test
+    public void directClosedCountExcludesEntriesBeforeRecordStart() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 110, 100, 120, 100, 105, 100, 110, 130)
+                .build();
+        TradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY, 2, 8, new ZeroCostModel(),
+                new ZeroCostModel());
+        record.operate(Trade.buyAt(0, series, numFactory.one()));
+        record.operate(Trade.sellAt(2, series, numFactory.one()));
+        record.operate(Trade.buyAt(3, series, numFactory.one()));
+        record.operate(Trade.sellAt(4, series, numFactory.one()));
+        record.operate(Trade.buyAt(5, series, numFactory.one()));
+        record.operate(Trade.sellAt(6, series, numFactory.one()));
+        record.operate(Trade.buyAt(7, series, numFactory.one()));
+        record.operate(Trade.sellAt(9, series, numFactory.one()));
+        NumberOfPositionsCriterion criterion = new NumberOfPositionsCriterion(
+                NumberOfPositionsCriterion.PositionStatusFilter.CLOSED);
+        assertNumEquals(2, criterion.calculate(series, record));
+        assertNumEquals(4, criterion.calculate(series, new BaseTradingRecord(record.getPositions())));
+        AnalysisWindow window = AnalysisWindow.barRange(2, 8);
+        AnalysisContext context = AnalysisContext.defaults();
+        assertNumEquals(3, criterion.calculate(series, record, window, context));
+        assertNumEquals(2, criterion.calculate(series, record, window,
+                context.withPositionInclusionPolicy(PositionInclusionPolicy.FULLY_CONTAINED)));
+    }
+
 }

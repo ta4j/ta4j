@@ -401,6 +401,31 @@ ta4j lets you choose `DecimalNum` for precision-first workflows or `DoubleNum` f
 
 Measure changes on your own workload rather than relying on generic claims. Use the [`BacktestPerformanceTuningHarness`](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java), the [Num guide](https://ta4j.github.io/ta4j-wiki/Num.html), and [Performance Characterization](https://ta4j.github.io/ta4j-wiki/Performance-Characterization.html) for repeatable comparisons.
 
+### Choose the analysis population
+
+Position-based criteria evaluate directly bounded trading records using entries
+and exits contained in the record's logical range. Exits after the logical end
+are open as of that end. Closed-position metrics ignore them by default; native
+fee metrics retain fees on the open entry. Linear costs and consecutive PnL
+criteria can instead mark these positions at the end with
+`OpenPositionHandling.MARK_TO_MARKET`. Records with no explicit bounds preserve
+historical results.
+
+For an explicit analysis window, `AnalysisContext.defaults()` uses
+`EXIT_IN_WINDOW`: an earlier entry is included when its exit is inside the
+window. Choose `FULLY_CONTAINED` to exclude entries before the start:
+
+```java
+AnalysisContext context = AnalysisContext.defaults()
+        .withPositionInclusionPolicy(AnalysisContext.PositionInclusionPolicy.FULLY_CONTAINED);
+Num profit = new NetProfitCriterion().calculate(series, tradingRecord,
+        AnalysisWindow.barRange(2, 8), context);
+```
+
+The explicit context controls open-position handling, including when a criterion
+has a different constructor setting. Synthetic window-end exits can carry modeled
+costs; they are distinct from native open-entry fee totals.
+
 ## Real-world examples
 
 The `ta4j-examples` module is organized as progressive learning tracks:
