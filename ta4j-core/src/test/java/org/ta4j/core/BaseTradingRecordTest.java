@@ -102,6 +102,20 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    void boundedOpenSnapshotsRetainNativeEntryOrderForOutOfOrderIndices() {
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), 2, 7);
+        record.operate(new BaseTrade(5, Instant.EPOCH, numFactory.hundred(), numFactory.two(), numFactory.zero(),
+                ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(3, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.zero(),
+                ExecutionSide.BUY, null, null));
+        List<Integer> nativeOrder = record.getOpenPositions().stream().map(p -> p.getEntry().getIndex()).toList();
+        record.operate(new BaseTrade(8, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.zero(),
+                ExecutionSide.SELL, null, null));
+        assertEquals(nativeOrder, record.getOpenPositions(7).stream().map(p -> p.getEntry().getIndex()).toList());
+    }
+
+    @Test
     void recordsPartialFillsUsingFifo() {
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);

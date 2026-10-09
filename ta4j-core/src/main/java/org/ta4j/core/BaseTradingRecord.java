@@ -1121,8 +1121,7 @@ public class BaseTradingRecord implements TradingRecord {
             }
             return cohorts.values()
                     .stream()
-                    .sorted(Comparator.comparingInt(PositionLot::entryIndex)
-                            .thenComparingLong(PositionLot::entrySequence))
+                    .sorted(Comparator.comparingLong(PositionLot::entrySequence))
                     .map(lot -> new Position(
                             recordedTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(), lot.fee(),
                                     lot.side(), lot.orderId(), lot.correlationId()),
