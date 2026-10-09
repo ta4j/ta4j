@@ -7,6 +7,8 @@ import java.util.Optional;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.ArrayDeque;
 import java.util.Map;
 import org.ta4j.core.Trade;
@@ -101,20 +103,38 @@ public abstract class AbstractAnalysisCriterion implements AnalysisCriterion {
                 AnalysisWindow.barRange(start, end), context);
         // Projection owns membership and valuation; direct calls retain source order
         // and original closed-position snapshots for position-level consumers.
-        Map<Trade, ArrayDeque<Position>> byEntry = new HashMap<>();
+        Set<PositionKey> actualClosedKeys = new HashSet<>();
+        for (Position position : tradingRecord.getPositions()) {
+            if (position.isClosed() && position.getExit().getIndex() <= end) {
+                actualClosedKeys.add(PositionKey.of(position));
+            }
+        }
+        Map<PositionKey, ArrayDeque<Position>> closed = new HashMap<>();
+        Map<TradeKey, ArrayDeque<Position>> synthetic = new HashMap<>();
         for (Position position : selected.getPositions()) {
-            byEntry.computeIfAbsent(position.getEntry(), entry -> new ArrayDeque<>()).add(position);
+            PositionKey key = PositionKey.of(position);
+            if (actualClosedKeys.contains(key)) {
+                closed.computeIfAbsent(key, ignored -> new ArrayDeque<>()).add(position);
+            } else {
+                synthetic.computeIfAbsent(key.entry(), ignored -> new ArrayDeque<>()).add(position);
+            }
         }
         List<Position> ordered = new ArrayList<>();
         for (Position position : tradingRecord.getPositions()) {
-            ArrayDeque<Position> matches = byEntry.get(position.getEntry());
+            boolean actuallyClosed = position.isClosed() && position.getExit().getIndex() <= end;
+            ArrayDeque<Position> matches = actuallyClosed ? closed.get(PositionKey.of(position))
+                    : synthetic.get(TradeKey.of(position.getEntry()));
             if (matches != null && !matches.isEmpty()) {
                 Position projected = matches.removeFirst();
-                ordered.add(position.isClosed() && position.getExit().getIndex() <= end ? position : projected);
+                ordered.add(actuallyClosed ? position : projected);
             }
         }
+        // Native open lots are not necessarily in getPositions(); retain their
+        // already-projected marks after the source's ordered closed snapshots.
         for (Position position : selected.getPositions()) {
-            ArrayDeque<Position> matches = byEntry.get(position.getEntry());
+            PositionKey key = PositionKey.of(position);
+            ArrayDeque<Position> matches = actualClosedKeys.contains(key) ? closed.get(key)
+                    : synthetic.get(key.entry());
             if (matches != null && matches.remove(position)) {
                 ordered.add(position);
             }
@@ -164,6 +184,22 @@ public abstract class AbstractAnalysisCriterion implements AnalysisCriterion {
         if (position != null && position.getEntry() != null && position.getEntry().getIndex() >= start
                 && position.getEntry().getIndex() <= end) {
             target.operate(position.getEntry());
+        }
+    }
+
+    // Match public trade values rather than implementation-specific equality.
+    // A partial close can share its entry values with another slice, so actual
+    // closes also include the exit and both maps retain occurrence counts.
+    private record TradeKey(int index, Trade.TradeType type, Num price, Num amount, Num cost) {
+        private static TradeKey of(Trade trade) {
+            return new TradeKey(trade.getIndex(), trade.getType(), trade.getPricePerAsset(), trade.getAmount(),
+                    trade.getCost());
+        }
+    }
+
+    private record PositionKey(TradeKey entry, TradeKey exit) {
+        private static PositionKey of(Position position) {
+            return new PositionKey(TradeKey.of(position.getEntry()), TradeKey.of(position.getExit()));
         }
     }
 

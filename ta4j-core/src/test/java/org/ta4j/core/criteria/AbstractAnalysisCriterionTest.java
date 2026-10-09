@@ -26,6 +26,7 @@ import org.ta4j.core.analysis.AnalysisWindow;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.criteria.commissions.CommissionsCriterion;
 import org.ta4j.core.criteria.helpers.AverageCriterion;
 import org.ta4j.core.criteria.helpers.VarianceCriterion;
@@ -252,6 +253,98 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
         assertNumEquals(3, commissions.calculate(series, unbounded));
         assertNumEquals(3, commissions.calculate(series, bounded));
         assertTrue(bounded.getCurrentPosition().isOpened());
+    }
+
+    @Test
+    public void equalEntryPartialClosesKeepActualAndSyntheticExitsDistinct() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 100, 100, 100, 110, 120, 130)
+                .build();
+        TradingRecord source = new BaseTradingRecord(TradeType.BUY, 0, 6, new ZeroCostModel(), new ZeroCostModel());
+        source.enter(1, numFactory.hundred(), numFactory.two());
+        source.exit(7, numFactory.numOf(130), numFactory.one());
+        source.exit(5, numFactory.numOf(110), numFactory.one());
+
+        TradingRecord selected = new ProjectionProbe().select(series, source, OpenPositionHandling.MARK_TO_MARKET);
+
+        // Equal entry slices: the first is still open at6, the second actually closed
+        // at5.
+        assertEquals(2, selected.getPositionCount());
+        assertEquals(6, selected.getPositions().get(0).getExit().getIndex());
+        assertEquals(5, selected.getPositions().get(1).getExit().getIndex());
+        assertNumEquals(30, new NetProfitCriterion().calculate(series, selected));
+        assertEquals(7, source.getPositions().get(0).getExit().getIndex());
+        assertEquals(5, source.getPositions().get(1).getExit().getIndex());
+    }
+
+    @Test
+    public void customTradeEqualityDoesNotChangeDirectOrderOrPositionSnapshots() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 95, 100, 120, 100, 100, 100, 110)
+                .build();
+        List<Position> positions = new ArrayList<>();
+        for (int[] leg : new int[][] { { 7, 8 }, { 1, 2 }, { 3, 4 } }) {
+            positions.add(new Position(new IdentityTrade(Trade.buyAt(leg[0], series, numFactory.one())),
+                    new IdentityTrade(Trade.sellAt(leg[1], series, numFactory.one()))));
+        }
+        TradingRecord source = new BaseTradingRecord(TradeType.BUY, 0, 8, new ZeroCostModel(), new ZeroCostModel()) {
+            @Override
+            public List<Position> getPositions() {
+                return List.copyOf(positions);
+            }
+        };
+        TradingRecord selected = new ProjectionProbe().select(series, source);
+
+        assertNumEquals(20, new MaxConsecutiveProfitCriterion().calculate(series, source));
+        assertEquals(List.of(7, 1, 3),
+                selected.getPositions().stream().map(position -> position.getEntry().getIndex()).toList());
+        for (int index = 0; index < positions.size(); index++) {
+            assertSame(positions.get(index), selected.getPositions().get(index));
+        }
+    }
+
+    // A valid public Trade adapter whose equality is intentionally identity-based.
+    private static final class IdentityTrade implements Trade {
+        private final Trade delegate;
+
+        private IdentityTrade(Trade delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public TradeType getType() {
+            return delegate.getType();
+        }
+
+        @Override
+        public int getIndex() {
+            return delegate.getIndex();
+        }
+
+        @Override
+        public Num getPricePerAsset() {
+            return delegate.getPricePerAsset();
+        }
+
+        @Override
+        public Num getNetPrice() {
+            return delegate.getNetPrice();
+        }
+
+        @Override
+        public Num getAmount() {
+            return delegate.getAmount();
+        }
+
+        @Override
+        public Num getCost() {
+            return delegate.getCost();
+        }
+
+        @Override
+        public CostModel getCostModel() {
+            return delegate.getCostModel();
+        }
     }
 
     private BarSeries boundedSeries() {
