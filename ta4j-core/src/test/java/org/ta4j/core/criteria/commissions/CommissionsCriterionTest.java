@@ -16,6 +16,8 @@ import org.ta4j.core.BarSeries;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
@@ -122,6 +124,30 @@ public class CommissionsCriterionTest extends AbstractCriterionTest {
             // Explicit mark-to-market retains its modeled synthetic exit cost.
             assertNumEquals(6, criterion.calculate(series, record, AnalysisWindow.barRange(2, 8),
                     context.withOpenPositionHandling(OpenPositionHandling.MARK_TO_MARKET)));
+        }
+    }
+
+    @Test
+    public void boundedNativeFeesCountEveryRetainedOpenEntry() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 100, 100, 100, 100, 100, 100, 110, 120)
+                .build();
+        FixedTransactionCostModel model = new FixedTransactionCostModel(1);
+        for (boolean futureClosed : new boolean[] { false, true }) {
+            TradingRecord bounded = new BaseTradingRecord(TradeType.BUY, 2, 7, model, new ZeroCostModel());
+            TradingRecord unbounded = new BaseTradingRecord(TradeType.BUY, model, new ZeroCostModel());
+            for (TradingRecord record : java.util.List.of(bounded, unbounded)) {
+                record.operate(Trade.buyAt(3, series, numFactory.one(), model));
+                record.operate(Trade.buyAt(5, series, numFactory.one(), model));
+                if (futureClosed) {
+                    record.operate(Trade.sellAt(8, series, numFactory.one(), model));
+                    record.operate(Trade.sellAt(9, series, numFactory.one(), model));
+                }
+            }
+            assertNumEquals(2, getCriterion().calculate(series, bounded));
+            // Historical unbounded net-open convention is retained.
+            assertNumEquals(futureClosed ? 4 : 1, getCriterion().calculate(series, unbounded));
+            assertNumEquals(2, new TotalFeesCriterion().calculate(series, bounded));
         }
     }
 
