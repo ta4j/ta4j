@@ -151,4 +151,21 @@ public class CommissionsCriterionTest extends AbstractCriterionTest {
         }
     }
 
+    @Test
+    public void boundedNativeEntryCommissionDoesNotDependOnFuturePartialExits() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 100, 100, 100, 100, 100, 100, 110, 120)
+                .build();
+        FixedTransactionCostModel model = new FixedTransactionCostModel(1);
+        for (boolean futurePartialExit : new boolean[] { false, true }) {
+            TradingRecord record = new BaseTradingRecord(TradeType.BUY, 2, 7, model, new ZeroCostModel());
+            record.operate(Trade.buyAt(3, series, numFactory.two(), model));
+            if (futurePartialExit) {
+                record.operate(Trade.sellAt(8, series, numFactory.one(), model));
+            }
+            assertNumEquals(1, getCriterion().calculate(series, record));
+            assertNumEquals(1, new TotalFeesCriterion().calculate(series, record));
+        }
+    }
+
 }

@@ -169,6 +169,14 @@ public abstract class AbstractAnalysisCriterion implements AnalysisCriterion {
         if (start > end) {
             return result;
         }
+        // Custom subclasses may expose positions outside the native lot book.
+        if (tradingRecord.getClass() == BaseTradingRecord.class) {
+            BaseTradingRecord source = (BaseTradingRecord) tradingRecord;
+            for (Position position : source.getOpenPositions(end)) {
+                appendOpenEntry(result, position, start, end);
+            }
+            return result;
+        }
         for (Position position : tradingRecord.getPositions()) {
             if (position.isClosed() && position.getExit().getIndex() > end) {
                 appendOpenEntry(result, position, start, end);
