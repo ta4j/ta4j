@@ -12,9 +12,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.IntStream;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import org.junit.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ConcurrentBarSeries;
@@ -28,6 +28,8 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.utils.TimeConstants;
+import org.junit.jupiter.api.Timeout;
+import java.util.concurrent.TimeUnit;
 
 public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -35,7 +37,8 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
         super(numFactory);
     }
 
-    @Test(timeout = 5000)
+    @Test
+    @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
     public void compoundsIntervalEndingAtMaximumIntegerIndex() {
         BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 50d).build();
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
