@@ -3,30 +3,25 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class OpenedPositionMinimumBarCountRuleTest {
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void testAtLeastBarCountRuleForNegativeNumberShouldThrowException() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            new OpenedPositionMinimumBarCountRule(-1);
-        });
+        new OpenedPositionMinimumBarCountRule(-1);
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void testAtLeastBarCountRuleForZeroShouldThrowException() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            new OpenedPositionMinimumBarCountRule(0);
-        });
+        new OpenedPositionMinimumBarCountRule(0);
     }
 
     @Test

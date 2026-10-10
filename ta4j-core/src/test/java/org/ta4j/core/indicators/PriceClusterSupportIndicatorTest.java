@@ -9,8 +9,8 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import java.util.Set;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -35,7 +35,7 @@ public class PriceClusterSupportIndicatorTest extends AbstractIndicatorTest<Indi
     /**
      * Initializes the test fixtures used by these scenarios.
      */
-    @BeforeEach
+    @Before
     public void setUp() {
         series = buildSeries(new double[] { 20, 20, 20, 12, 12, 12, 15, 15, 15 },
                 new double[] { 5, 4, 6, 10, 11, 12, 7, 8, 9 });

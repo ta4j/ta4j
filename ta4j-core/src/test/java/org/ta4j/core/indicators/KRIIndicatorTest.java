@@ -9,8 +9,8 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 import java.util.List;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -26,7 +26,7 @@ public class KRIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         // Values borrowed from HMAIndicatorTest
         series = new MockBarSeriesBuilder().withNumFactory(numFactory)

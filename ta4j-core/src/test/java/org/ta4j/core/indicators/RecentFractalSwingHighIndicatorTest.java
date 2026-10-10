@@ -4,11 +4,11 @@
 package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.num.NaN.NaN;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.RecentFractalSwingHighIndicator;
@@ -29,7 +29,7 @@ public class RecentFractalSwingHighIndicatorTest extends AbstractIndicatorTest<I
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         series = createSeriesFromHighs(10, 12, 15, 13, 11, 17, 16, 14, 18, 16, 13, 19, 17, 16);
     }

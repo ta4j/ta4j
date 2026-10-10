@@ -3,12 +3,12 @@
  */
 package org.ta4j.core.criteria.drawdown;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.Trade;
@@ -138,7 +138,7 @@ public class MaximumDrawdownBarLengthCriterionTest extends AbstractCriterionTest
                     var criterion = new MaximumDrawdownBarLengthCriterion(mode, handling);
                     double expected = criterion.calculate(fixture.series(), fixture.tradingRecord()).doubleValue();
                     double actual = criterion.calculate(fixture.series(), fixture.position()).doubleValue();
-                    assertEquals(expected, actual, 1e-10, fixture.name() + " " + mode + "/" + handling);
+                    assertEquals(fixture.name() + " " + mode + "/" + handling, expected, actual, 1e-10);
                 }
             }
         }

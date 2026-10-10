@@ -645,13 +645,9 @@ public final class IndicatorSerialization {
             return value.toString();
         }
         if (targetType.isEnum()) {
-            String name = value.toString();
-            for (Object constant : targetType.getEnumConstants()) {
-                if (((Enum<?>) constant).name().equals(name)) {
-                    return constant;
-                }
-            }
-            throw new IllegalArgumentException("No enum constant " + targetType.getCanonicalName() + "." + name);
+            @SuppressWarnings({ "unchecked", "rawtypes" })
+            Class<? extends Enum> enumClass = (Class<? extends Enum>) targetType;
+            return Enum.valueOf(enumClass, value.toString());
         }
         if (Num.class.isAssignableFrom(targetType)) {
             BigDecimal decimal = JsonNumberConversions.parseFiniteJsonNumber(value.toString(), "numeric parameter");

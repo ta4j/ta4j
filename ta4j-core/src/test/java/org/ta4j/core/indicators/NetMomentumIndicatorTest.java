@@ -3,8 +3,8 @@
  */
 package org.ta4j.core.indicators;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -14,7 +14,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.Assert.*;
 
 public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -25,7 +25,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         this.series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         // Create a series with values that will produce known RSI values
@@ -74,10 +74,10 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         NetMomentumIndicator decayed = NetMomentumIndicator.forRsiWithDecay(rsi, 5, 0.9);
 
         int stableIndex = series.getBarCount() - 1;
-        assertFalse(rsi.getValue(stableIndex).isNaN(), "RSI should provide valid data once warmed up");
-        assertFalse(subject.getValue(stableIndex).isNaN(), "Net momentum should recover from initial NaN inputs");
-        assertFalse(decayed.getValue(stableIndex).isNaN(),
-                "Net momentum with decay should recover from initial NaN inputs");
+        assertFalse("RSI should provide valid data once warmed up", rsi.getValue(stableIndex).isNaN());
+        assertFalse("Net momentum should recover from initial NaN inputs", subject.getValue(stableIndex).isNaN());
+        assertFalse("Net momentum with decay should recover from initial NaN inputs",
+                decayed.getValue(stableIndex).isNaN());
     }
 
     @Test
@@ -275,7 +275,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         Num expected = null;
         for (int i = 0; i <= targetIndex; i++) {
             if (i < unstableBars) {
-                assertTrue(Num.isNaNOrNull(decayed.getValue(i)), "Expected NaN at index " + i);
+                assertTrue("Expected NaN at index " + i, Num.isNaNOrNull(decayed.getValue(i)));
                 continue;
             }
 
@@ -316,12 +316,12 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
         int unstableBars = instant.getCountOfUnstableBars();
         for (int i = 0; i < unstableBars; i++) {
-            assertTrue(Num.isNaNOrNull(instant.getValue(i)), "Expected NaN at index " + i);
+            assertTrue("Expected NaN at index " + i, Num.isNaNOrNull(instant.getValue(i)));
         }
 
         for (int i = unstableBars; i < series.getBarCount(); i++) {
             Num expected = contribution(deltaIndicator.getValue(i), 50);
-            assertTrue(instant.getValue(i).isEqual(expected), "Mismatch at index " + i);
+            assertTrue("Mismatch at index " + i, instant.getValue(i).isEqual(expected));
         }
     }
 
@@ -392,8 +392,8 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         NetMomentumIndicator subject = new NetMomentumIndicator(oscillator, timeFrame, 50);
         int unstableBars = subject.getCountOfUnstableBars();
 
-        assertTrue(Num.isNaNOrNull(subject.getValue(unstableBars - 1)), "Last unstable bar must be NaN");
-        assertFalse(Num.isNaNOrNull(subject.getValue(unstableBars)), "First stable bar must be non-NaN");
+        assertTrue("Last unstable bar must be NaN", Num.isNaNOrNull(subject.getValue(unstableBars - 1)));
+        assertFalse("First stable bar must be non-NaN", Num.isNaNOrNull(subject.getValue(unstableBars)));
     }
 
     @Test
@@ -426,7 +426,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
                     expected = expected.plus(contribution(deltaIndicator.getValue(j), pivot));
                 }
             }
-            assertTrue(decayOne.getValue(i).isEqual(expected), "Decay=1 must match windowed battery sum at index " + i);
+            assertTrue("Decay=1 must match windowed battery sum at index " + i, decayOne.getValue(i).isEqual(expected));
         }
     }
 
@@ -460,12 +460,12 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         int unstableBars = decayed.getCountOfUnstableBars();
         int lastIndex = series.getBarCount() - 1;
 
-        assertTrue(lastIndex >= unstableBars + timeFrame,
-                "After warmup, decayed value should converge toward steady state");
+        assertTrue("After warmup, decayed value should converge toward steady state",
+                lastIndex >= unstableBars + timeFrame);
         Num actual = decayed.getValue(lastIndex);
         Num tolerance = numOf(1e-6);
-        assertTrue(actual.minus(steadyState).abs().isLessThan(tolerance),
-                "Decay<1 steady-state mismatch: actual=" + actual + " expected~" + steadyState);
+        assertTrue("Decay<1 steady-state mismatch: actual=" + actual + " expected~" + steadyState,
+                actual.minus(steadyState).abs().isLessThan(tolerance));
     }
 
     @Test
@@ -497,7 +497,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
         // Check a few indices
         for (int i = 0; i < series.getBarCount(); i++) {
-            assertTrue(subject.getValue(i).isZero(), "Expected zero at index " + i);
+            assertTrue("Expected zero at index " + i, subject.getValue(i).isZero());
         }
     }
 
@@ -574,7 +574,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         NetMomentumIndicator subject = new NetMomentumIndicator(osc, 6, 50);
         assertEquals(8, subject.getCountOfUnstableBars());
         for (int i = 0; i < subject.getCountOfUnstableBars(); i++) {
-            assertTrue(Num.isNaNOrNull(subject.getValue(i)), "Expected NaN at index " + i);
+            assertTrue("Expected NaN at index " + i, Num.isNaNOrNull(subject.getValue(i)));
         }
     }
 
@@ -600,12 +600,12 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         for (int i = 0; i < series.getBarCount(); i++) {
             Num actual = indicator.getValue(i);
             if (i < unstableBars) {
-                assertTrue(Num.isNaNOrNull(actual), "Expected NaN at index " + i);
+                assertTrue("Expected NaN at index " + i, Num.isNaNOrNull(actual));
                 continue;
             }
             int window = Math.min(i - unstableBars + 1, timeFrame);
             Num expected = contribution(numOf(51.25 - pivot), pivot).multipliedBy(numOf(window));
-            assertTrue(actual.isEqual(expected), "Unexpected value at index " + i);
+            assertTrue("Unexpected value at index " + i, actual.isEqual(expected));
         }
     }
 
@@ -633,13 +633,13 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         Num tolerance = numOf(1e-9);
         for (int i = 0; i <= maxIndex; i++) {
             if (i < unstableBars) {
-                assertTrue(Num.isNaNOrNull(forwardValues[i]), "Expected NaN at index " + i);
-                assertTrue(Num.isNaNOrNull(reverseValues[i]), "Expected NaN at index " + i);
+                assertTrue("Expected NaN at index " + i, Num.isNaNOrNull(forwardValues[i]));
+                assertTrue("Expected NaN at index " + i, Num.isNaNOrNull(reverseValues[i]));
                 continue;
             }
             Num delta = forwardValues[i].minus(reverseValues[i]).abs();
-            assertTrue(delta.isLessThan(tolerance),
-                    "Access-order dependent mismatch at index " + i + " (delta=" + delta + ")");
+            assertTrue("Access-order dependent mismatch at index " + i + " (delta=" + delta + ")",
+                    delta.isLessThan(tolerance));
         }
     }
 
@@ -658,8 +658,8 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
         Num actual = farFirst.getValue(targetIndex);
         Num tolerance = numOf(1e-9);
-        assertTrue(expected.minus(actual).abs().isLessThan(tolerance),
-                "Large first access mismatch: expected=" + expected + " actual=" + actual);
+        assertTrue("Large first access mismatch: expected=" + expected + " actual=" + actual,
+                expected.minus(actual).abs().isLessThan(tolerance));
     }
 
     @Test
@@ -676,7 +676,7 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
         int beginIndex = movingSeries.getBeginIndex();
         int endIndex = movingSeries.getEndIndex();
-        assertTrue(beginIndex <= endIndex, "Expected retained bars after populating the moving series");
+        assertTrue("Expected retained bars after populating the moving series", beginIndex <= endIndex);
         Num expected = sequential.getValue(beginIndex);
         for (int i = beginIndex + 1; i <= endIndex; i++) {
             expected = sequential.getValue(i);
@@ -684,8 +684,8 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
 
         Num actual = farFirst.getValue(endIndex);
         Num tolerance = numOf(1e-9);
-        assertTrue(expected.minus(actual).abs().isLessThan(tolerance),
-                "Pruned-series large first access mismatch: expected=" + expected + " actual=" + actual);
+        assertTrue("Pruned-series large first access mismatch: expected=" + expected + " actual=" + actual,
+                expected.minus(actual).abs().isLessThan(tolerance));
     }
 
     @Test
@@ -758,8 +758,8 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     }
 
     private void assertClose(Num actual, Num expected, int index) {
-        assertTrue(actual.minus(expected).abs().isLessThan(numOf(1e-9)),
-                "Anchored-expiration mismatch at index " + index + ": expected=" + expected + " actual=" + actual);
+        assertTrue("Anchored-expiration mismatch at index " + index + ": expected=" + expected + " actual=" + actual,
+                actual.minus(expected).abs().isLessThan(numOf(1e-9)));
     }
 
     private CachedIndicator<Num> buildOscillator() {

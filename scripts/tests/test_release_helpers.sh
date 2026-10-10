@@ -81,7 +81,7 @@ test_model_preflight_accepts_exact_model() {
   GITHUB_OUTPUT=outputs.txt bash "$SCRIPT" model-preflight \
     --model gpt-5.6-luna \
     --model-file model.json \
-    --output release-ai-model.json >/dev/null
+    --output release-ai-model.json
 
   expect_json_value release-ai-model.json id gpt-5.6-luna
   expect_json_value release-ai-model.json provider openai
@@ -159,7 +159,7 @@ test_extract_response_content_accepts_output_messages() {
   ]
 }
 EOF
-  bash "$SCRIPT" extract-response-content --raw-file response.json --output ai-content.txt --failure-reason-output failure.txt >/dev/null
+  bash "$SCRIPT" extract-response-content --raw-file response.json --output ai-content.txt --failure-reason-output failure.txt
   expect_file_contains ai-content.txt '"should_release":false' "response extraction should collect output text"
   expect_file_contains ai-content.txt '"bump":"patch"' "response extraction should join output fragments"
   if [[ -s failure.txt ]]; then
@@ -230,7 +230,7 @@ test_sanitize_response_artifact_omits_reasoning_output() {
   ]
 }
 EOF
-  bash "$SCRIPT" sanitize-response --raw-file response.json --output sanitized-response.json >/dev/null
+  bash "$SCRIPT" sanitize-response --raw-file response.json --output sanitized-response.json
 
   expect_json_value sanitized-response.json reasoningOutputOmitted true
   expect_file_contains sanitized-response.json 'should_release' \
@@ -258,7 +258,7 @@ test_ai_transport_diagnostics_records_response_validation_failure() {
     --response-status 200 \
     --curl-exit-code 0 \
     --output release-ai-transport-diagnostics.json \
-    --fallback-output ai-content.txt >/dev/null
+    --fallback-output ai-content.txt
 
   expect_json_value release-ai-transport-diagnostics.json classification response_validation_failure
   expect_file_contains release-ai-transport-diagnostics.json "output_text content" \
@@ -288,7 +288,7 @@ test_ai_transport_diagnostics_records_openai_request_id() {
     --response-headers response-headers.txt \
     --response response.json \
     --output release-ai-transport-diagnostics.json \
-    --fallback-output ai-content.txt >/dev/null
+    --fallback-output ai-content.txt
 
   expect_json_value release-ai-transport-diagnostics.json openaiRequestId req_fixture_123
 
@@ -305,7 +305,7 @@ test_parse_decision_normalizes_major_and_invalid_json() {
 {"should_release":true,"bump":"major","confidence":0.91,"reason":"Breaking but pre-1.0 change","evidence":["public API changed"]}
 ```
 EOF
-  bash "$SCRIPT" parse-decision --raw-file ai-content.txt --output decision.json --github-output outputs.txt >/dev/null
+  bash "$SCRIPT" parse-decision --raw-file ai-content.txt --output decision.json --github-output outputs.txt
   expect_json_value decision.json should_release true
   expect_json_value decision.json bump minor
   expect_file_contains outputs.txt "bump=minor" "major bumps should be downgraded in outputs"
@@ -313,26 +313,26 @@ EOF
   cat > ai-content.txt <<'EOF'
 {"should_release":"false","bump":"minor","confidence":0.7,"reason":"No release needed"}
 EOF
-  bash "$SCRIPT" parse-decision --raw-file ai-content.txt --output string-false.json >/dev/null
+  bash "$SCRIPT" parse-decision --raw-file ai-content.txt --output string-false.json
   expect_json_value string-false.json should_release false
   expect_json_value string-false.json bump patch
 
   cat > ai-content.txt <<'EOF'
 {"should_release":"1","bump":"patch","confidence":0.7,"reason":"Release needed"}
 EOF
-  bash "$SCRIPT" parse-decision --raw-file ai-content.txt --output string-true.json >/dev/null
+  bash "$SCRIPT" parse-decision --raw-file ai-content.txt --output string-true.json
   expect_json_value string-true.json should_release true
 
   cat > ai-content.txt <<'EOF'
 {"should_release":"maybe","bump":"minor","confidence":0.7,"reason":"Ambiguous response"}
 EOF
-  bash "$SCRIPT" parse-decision --raw-file ai-content.txt --output invalid-flag.json >/dev/null
+  bash "$SCRIPT" parse-decision --raw-file ai-content.txt --output invalid-flag.json
   expect_json_value invalid-flag.json should_release false
   expect_json_value invalid-flag.json bump patch
   expect_file_contains invalid-flag.json "invalid should_release 'maybe'" "invalid flag should be called out"
 
   printf 'not-json' > ai-content.txt
-  bash "$SCRIPT" parse-decision --raw-file ai-content.txt --output invalid.json >/dev/null
+  bash "$SCRIPT" parse-decision --raw-file ai-content.txt --output invalid.json
   expect_json_value invalid.json should_release false
   expect_json_value invalid.json bump patch
   expect_json_value invalid.json warning "Invalid AI JSON"
@@ -349,7 +349,7 @@ test_release_pr_review_plan_defaults_to_owner() {
     --release-owner TheCookieLab \
     --pr-author maintainer \
     --output release-review-plan.json \
-    --github-output outputs.txt >/dev/null
+    --github-output outputs.txt
 
   expect_json_value release-review-plan.json hasReviewTargets true
   expect_json_compact release-review-plan.json reviewers '["TheCookieLab"]'
@@ -393,7 +393,7 @@ test_release_pr_review_plan_uses_non_author_fallback_reviewers() {
     --pr-author TheCookieLab \
     --reviewers $'TheCookieLab, maintainer\nMaintainer other maintainer' \
     --output release-review-plan.json \
-    --github-output outputs.txt >/dev/null
+    --github-output outputs.txt
 
   expect_json_value release-review-plan.json hasReviewTargets true
   expect_json_compact release-review-plan.json reviewers '["maintainer","other"]'
@@ -415,7 +415,7 @@ test_release_pr_review_plan_preserves_team_reviewers() {
     --reviewers TheCookieLab \
     --team-reviewers "release-managers release-owners,release-managers" \
     --output release-review-plan.json \
-    --github-output outputs.txt >/dev/null
+    --github-output outputs.txt
 
   expect_json_value release-review-plan.json hasReviewTargets true
   expect_json_compact release-review-plan.json reviewers '[]'
@@ -435,7 +435,6 @@ test_build_dossier_groups_and_truncates_diff() {
   git init -q -b master
   git config user.name "Test User"
   git config user.email "test@example.com"
-  git config core.autocrlf false
   mkdir -p ta4j-core/src/main/java/org/ta4j/core scripts
   cat > CHANGELOG.md <<'EOF'
 ## Unreleased
@@ -478,7 +477,7 @@ EOF
     --pom-base 1.0.1 \
     --max-diff-chars 120 \
     --output release-dossier.md \
-    --audit-output release-audit.json >/dev/null
+    --audit-output release-audit.json
 
   expect_file_contains release-dossier.md "production code" "dossier should group production code"
   expect_file_contains release-dossier.md "Public API Signals" "dossier should include API signal section"
@@ -549,7 +548,7 @@ test_build_ai_request_compacts_oversized_dossier() {
     --max-dossier-chars 12000 \
     --max-request-bytes 12000 \
     --output request.json \
-    --metadata-output release-ai-request-metadata.json >/dev/null
+    --metadata-output release-ai-request-metadata.json
 
   request_size="$(wc -c < request.json | tr -d ' ')"
   if (( request_size > 12000 )); then
@@ -601,7 +600,7 @@ test_build_ai_request_includes_release_cadence() {
     --last-release-tag 1.0.0 \
     --last-release-date 2026-08-03 \
     --output request.json \
-    --metadata-output release-ai-request-metadata.json >/dev/null
+    --metadata-output release-ai-request-metadata.json
 
   expect_file_contains request.json "Release cadence:" \
     "request should include the release cadence section when a last release tag is known"
@@ -631,7 +630,7 @@ test_build_ai_request_includes_release_cadence() {
     --last-release-tag none \
     --last-release-date none \
     --output request-none.json \
-    --metadata-output release-ai-request-metadata-none.json >/dev/null
+    --metadata-output release-ai-request-metadata-none.json
   if grep -Fq "Release cadence:" request-none.json; then
     fail "request should omit the release cadence section when there is no last release tag"
   fi
@@ -720,7 +719,7 @@ EOF
     --curl-exit-code 18 \
     --attempts 1 \
     --output release-ai-transport-diagnostics.json \
-    --fallback-output ai-content.txt >/dev/null
+    --fallback-output ai-content.txt
 
   expect_json_value release-ai-transport-diagnostics.json classification curl_partial_file_transport_close
   expect_json_value release-ai-transport-diagnostics.json connectionClosedDuring response_read
@@ -756,7 +755,7 @@ test_artifact_manifest_validates_expected_release_jars() {
     : > "$file"
   done
 
-  bash "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --strict >/dev/null
+  bash "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --strict
   expect_file_contains artifact-manifest.txt "Missing release artifacts:" "manifest should include missing section"
   expect_file_contains artifact-manifest.txt "- (none)" "manifest should report no missing artifacts"
 
@@ -787,7 +786,7 @@ EOF
     --output javadoc-warnings.txt \
     --github-output outputs.txt \
     --fail-on-new \
-    release.log >/dev/null
+    release.log
   expect_file_contains outputs.txt "javadoc_warning_new_count=0" "baseline match should not report new warnings"
   expect_file_contains javadoc-warnings.txt "current_count=1" "compiler warnings should not count as Javadoc warnings"
 

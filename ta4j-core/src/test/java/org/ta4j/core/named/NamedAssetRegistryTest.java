@@ -4,13 +4,13 @@
 package org.ta4j.core.named;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.Assert.assertThrows;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.serialization.ComponentDescriptor;
 
 public class NamedAssetRegistryTest {

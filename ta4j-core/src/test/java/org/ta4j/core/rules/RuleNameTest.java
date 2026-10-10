@@ -3,10 +3,10 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
 import java.util.concurrent.CountDownLatch;
@@ -145,10 +145,10 @@ public class RuleNameTest {
         }
         start.countDown();
         boolean finished = done.await(10, TimeUnit.SECONDS);
-        assertTrue(finished, "Threads did not finish in time");
+        assertTrue("Threads did not finish in time", finished);
         assertEquals("CountingRule", rule.getName());
-        assertEquals(threads + 1, rule.getCreateDefaultNameCalls(),
-                "Default name should be built once per call under contention plus final read");
+        assertEquals("Default name should be built once per call under contention plus final read", threads + 1,
+                rule.getCreateDefaultNameCalls());
     }
 
     @Test
@@ -191,7 +191,7 @@ public class RuleNameTest {
         writer.join(1000);
         readerDone.await(3, TimeUnit.SECONDS);
 
-        assertTrue(seenCustom.get() > 0, "Custom name should become visible to reader thread");
+        assertTrue("Custom name should become visible to reader thread", seenCustom.get() > 0);
         assertEquals(customName, rule.getName());
     }
 

@@ -11,7 +11,7 @@ import static org.ta4j.core.TestUtils.assertNumNotEquals;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;

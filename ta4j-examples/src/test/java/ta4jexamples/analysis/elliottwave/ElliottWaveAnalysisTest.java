@@ -21,7 +21,7 @@ import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.JFreeChart;
-import org.junit.jupiter.api.Assumptions;
+import org.junit.Assume;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -84,7 +84,7 @@ class ElliottWaveAnalysisTest {
     @Test
     @Tag("analysis-demo")
     void rendersWaveLabelsOnChart() {
-        Assumptions.assumeFalse(GraphicsEnvironment.isHeadless(), "Headless environment");
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         BarSeries series = loadOssifiedSeries();
         ElliottSwingIndicator swingIndicator = ElliottSwingIndicator.zigZag(series, ElliottDegree.PRIMARY);
         ElliottFibonacciValidator validator = new ElliottFibonacciValidator(series.numFactory(),

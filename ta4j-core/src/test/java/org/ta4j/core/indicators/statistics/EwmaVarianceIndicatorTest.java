@@ -3,9 +3,9 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
@@ -23,8 +23,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BarSeries;
@@ -51,7 +51,7 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
         ewmaVariance = new EwmaVarianceIndicator(new MockIndicator(data, 0, numOf(1), numOf(2), numOf(3), numOf(4)), 3,
@@ -701,8 +701,8 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
                 if (index == 3 && blockCurrentIndex.compareAndSet(true, false)) {
                     calculationStarted.countDown();
                     try {
-                        assertTrue(allowCalculation.await(5, TimeUnit.SECONDS),
-                                "recursive calculation was not released");
+                        assertTrue("recursive calculation was not released",
+                                allowCalculation.await(5, TimeUnit.SECONDS));
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         throw new AssertionError(e);
@@ -727,7 +727,7 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
         try {
             Future<Num> recursiveRead = executor.submit(() -> variance.getValue(3));
-            assertTrue(calculationStarted.await(5, TimeUnit.SECONDS), "recursive calculation never started");
+            assertTrue("recursive calculation never started", calculationStarted.await(5, TimeUnit.SECONDS));
             series.barBuilder().endTime(series.getLastBar().getEndTime().plusSeconds(1)).closePrice(5).add();
 
             Future<Num> resetRead = executor.submit(() -> {
@@ -735,7 +735,7 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
                 resetReaderStarted.countDown();
                 return variance.getValue(4);
             });
-            assertTrue(resetReaderStarted.await(5, TimeUnit.SECONDS), "reset reader never started");
+            assertTrue("reset reader never started", resetReaderStarted.await(5, TimeUnit.SECONDS));
 
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
             Thread.State resetReaderState;
@@ -747,10 +747,9 @@ public class EwmaVarianceIndicatorTest extends AbstractIndicatorTest<Indicator<N
                 }
                 Thread.onSpinWait();
             } while (System.nanoTime() < deadline);
-            assertTrue(
+            assertTrue("reset reader did not reach the retained-head synchronization boundary",
                     resetReaderState == Thread.State.BLOCKED || resetReaderState == Thread.State.WAITING
-                            || resetReaderState == Thread.State.TIMED_WAITING,
-                    "reset reader did not reach the retained-head synchronization boundary");
+                            || resetReaderState == Thread.State.TIMED_WAITING);
 
             allowCalculation.countDown();
             assertTrue(Num.isFinite(recursiveRead.get(5, TimeUnit.SECONDS)));

@@ -9,8 +9,8 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -27,7 +27,7 @@ public class KeltnerChannelMiddleIndicatorTest extends AbstractIndicatorTest<Ind
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
 
         data = new MockBarSeriesBuilder().withNumFactory(numFactory).build();

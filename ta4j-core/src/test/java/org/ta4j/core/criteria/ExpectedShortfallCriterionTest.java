@@ -3,10 +3,10 @@
  */
 package org.ta4j.core.criteria;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.Collections;
@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.num.Num;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
@@ -200,14 +200,14 @@ public class ExpectedShortfallCriterionTest {
                 ExpectedShortfallCriterion criterion = new ExpectedShortfallCriterion(0.95, representation);
                 Num actual = criterion.calculate(fixture.series(), fixture.tradingRecord());
                 Num expected = criterion.calculate(fixture.equivalentSeries(), fixture.markedEquivalentRecord());
-                assertEquals(expected.doubleValue(), actual.doubleValue(), 1e-10,
-                        fixture.name() + ": trading-record return window");
+                assertEquals(fixture.name() + ": trading-record return window", expected.doubleValue(),
+                        actual.doubleValue(), 1e-10);
                 if (fixture.position() != null && fixture.markedEquivalentPosition() != null) {
                     Num actualPosition = criterion.calculate(fixture.series(), fixture.position());
                     Num expectedPosition = criterion.calculate(fixture.equivalentSeries(),
                             fixture.markedEquivalentPosition());
-                    assertEquals(expectedPosition.doubleValue(), actualPosition.doubleValue(), 1e-10,
-                            fixture.name() + ": position return window");
+                    assertEquals(fixture.name() + ": position return window", expectedPosition.doubleValue(),
+                            actualPosition.doubleValue(), 1e-10);
                 }
             }
         }

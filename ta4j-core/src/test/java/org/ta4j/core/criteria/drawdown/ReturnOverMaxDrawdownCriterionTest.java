@@ -3,13 +3,13 @@
  */
 package org.ta4j.core.criteria.drawdown;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.BaseTradingRecord;
@@ -37,7 +37,7 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         super(params -> new ReturnOverMaxDrawdownCriterion(), numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         this.returnOverMaxDrawDown = getCriterion();
     }
@@ -625,16 +625,16 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
                         var criterion = new ReturnOverMaxDrawdownCriterion(representation, mode, handling);
                         Num actual = criterion.calculate(fixture.series(), fixture.tradingRecord());
                         Num expected = criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord(mode));
-                        assertEquals(expected.doubleValue(), actual.doubleValue(), 1e-10,
-                                fixture.name() + ": " + mode + "/" + handling + "/" + representation);
+                        assertEquals(fixture.name() + ": " + mode + "/" + handling + "/" + representation,
+                                expected.doubleValue(), actual.doubleValue(), 1e-10);
                         Position expectedPosition = fixture.equivalentPosition(mode);
                         if (fixture.position() != null && expectedPosition != null) {
                             Num actualPosition = criterion.calculate(fixture.series(), fixture.position());
                             Num expectedPositionValue = !fixture.position().isOpened() && expectedPosition.isOpened()
                                     ? criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord(mode))
                                     : criterion.calculate(fixture.equivalentSeries(), expectedPosition);
-                            assertEquals(expectedPositionValue.doubleValue(), actualPosition.doubleValue(), 1e-10,
-                                    fixture.name() + ": position " + mode + "/" + handling + "/" + representation);
+                            assertEquals(fixture.name() + ": position " + mode + "/" + handling + "/" + representation,
+                                    expectedPositionValue.doubleValue(), actualPosition.doubleValue(), 1e-10);
                         }
                     }
                 }
