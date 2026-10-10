@@ -3,11 +3,11 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
@@ -18,7 +18,7 @@ public class BooleanIndicatorRuleTest {
     private BooleanIndicatorRule rule;
     private BarSeries series;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         series = new MockBarSeriesBuilder().build();
         Indicator<Boolean> indicator = new FixedIndicator<>(series, true, true, false, false, true);

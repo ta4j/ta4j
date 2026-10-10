@@ -3,16 +3,16 @@
  */
 package org.ta4j.core.analysis.montecarlo;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SplittableRandom;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.forecast.state.ReturnMoments;
@@ -93,7 +93,7 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
         assertNotNull(first);
         assertNotNull(second);
         boolean differs = !first.equals(second);
-        assertTrue("different seeds must produce different samples", differs);
+        assertTrue(differs, "different seeds must produce different samples");
     }
 
     @Test
@@ -194,7 +194,7 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
             variance = variance.plus(deviation.multipliedBy(deviation));
         }
         variance = variance.dividedBy(FACTORY.numOf(samples.size()));
-        assertTrue("posterior scale must produce positive sample variance", variance.doubleValue() > 0d);
+        assertTrue(variance.doubleValue() > 0d, "posterior scale must produce positive sample variance");
     }
 
     @Test
@@ -239,7 +239,7 @@ public class PosteriorSmoothedResidualMonteCarloMethodTest {
         assertNotNull(samples);
         assertEquals(count, samples.size());
         for (Num sample : samples) {
-            assertTrue("sample must be finite", Num.isFinite(sample));
+            assertTrue(Num.isFinite(sample), "sample must be finite");
         }
     }
 
