@@ -98,10 +98,9 @@ public class PriceClusterSupportIndicatorTest extends AbstractIndicatorTest<Indi
 
         var indicator = new PriceClusterSupportIndicator(withNaN, 2, numOf(0.1));
 
-        // KDE weights are rounded to the factory precision (16 digits for DecimalNum),
-        // so the weighted cluster price may differ from 20 by a few ulps.
-        assertThat(indicator.getValue(2).minus(numOf(20)).abs()).as("valid values should survive mixed window")
-                .isLessThanOrEqualTo(numOf(1e-13));
+        assertThat(indicator.getValue(2).minus(numOf(20)).abs().isLessThan(numOf(1e-13)))
+                .as("valid values should survive mixed window")
+                .isTrue();
         assertThat(indicator.getClusterIndex(2)).isEqualTo(2);
 
         assertThat(indicator.getValue(7).isNaN()).as("NaN when entire lookback is invalid").isTrue();

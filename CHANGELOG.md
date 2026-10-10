@@ -7,7 +7,6 @@
 ### Changed
 
 - **For contributors: quiet, JUnit 5-only builds (`CF-621`)**: all tests now run on JUnit Jupiter (parameterized suites use `@ParameterizedClass`, and assumptions use `org.junit.jupiter.api.Assumptions`), so `junit-vintage-engine` is gone from the build. `mvn verify` and the quiet build gate now print no discovery notices, compiler notes, coverage warnings or release-script fixture chatter. The JaCoCo minimums for each module (`ta4j.jacoco.line.minimum`, `ta4j.jacoco.branch.minimum`) are set to that module's current coverage, so they act as a ratchet that warns when coverage regresses.
-- **Correctly rounded `DecimalNum` square roots**: `DecimalNum.sqrt()` and `sqrt(MathContext)` now use the JDK's correctly rounded `BigDecimal.sqrt` instead of a hand-rolled Newton iteration, so square roots no longer pay for repeated high-precision divisions and trace-log formatting. Perfect squares are exact even at unlimited precision. Results can differ from earlier releases in the last digit of the requested precision (for example `VolumeProfileKDEIndicator` weights at the default 16 digits).
 
 ### Fixed
 
