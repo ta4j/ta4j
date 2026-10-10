@@ -5,8 +5,8 @@ package org.ta4j.core.indicators.helpers;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -23,7 +23,7 @@ public class CloseLocationValueIndicatorTest extends AbstractIndicatorTest<Indic
         super(numFactory);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() {
         series = new MockBarSeriesBuilder().build();
         series.barBuilder().openPrice(10).closePrice(18).highPrice(20).lowPrice(10).add();

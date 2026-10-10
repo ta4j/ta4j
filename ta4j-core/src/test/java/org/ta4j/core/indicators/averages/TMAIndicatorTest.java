@@ -8,10 +8,10 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.ta4j.core.TestUtils.*;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.CsvTestUtils;
 import org.ta4j.core.Indicator;
@@ -68,12 +68,12 @@ public class TMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         for (int i = 0; i < unstableBars; i++) {
             assertNumEquals(NaN.NaN, tma.getValue(i));
         }
-        assertEquals("TMA at index 4", 30, tma.getValue(4).doubleValue(), 0.001);
-        assertEquals("TMA at index 5", 40, tma.getValue(5).doubleValue(), 0.001);
-        assertEquals("TMA at index 6", 50, tma.getValue(6).doubleValue(), 0.001);
-        assertEquals("TMA at index 7", 60, tma.getValue(7).doubleValue(), 0.001);
-        assertEquals("TMA at index 8", 70, tma.getValue(8).doubleValue(), 0.001);
-        assertEquals("TMA at index 9", 80, tma.getValue(9).doubleValue(), 0.001);
+        assertEquals(30, tma.getValue(4).doubleValue(), 0.001, "TMA at index 4");
+        assertEquals(40, tma.getValue(5).doubleValue(), 0.001, "TMA at index 5");
+        assertEquals(50, tma.getValue(6).doubleValue(), 0.001, "TMA at index 6");
+        assertEquals(60, tma.getValue(7).doubleValue(), 0.001, "TMA at index 7");
+        assertEquals(70, tma.getValue(8).doubleValue(), 0.001, "TMA at index 8");
+        assertEquals(80, tma.getValue(9).doubleValue(), 0.001, "TMA at index 9");
     }
 
     @Override
