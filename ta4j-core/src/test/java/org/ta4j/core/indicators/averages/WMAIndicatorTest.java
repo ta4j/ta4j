@@ -6,7 +6,7 @@ package org.ta4j.core.indicators.averages;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;

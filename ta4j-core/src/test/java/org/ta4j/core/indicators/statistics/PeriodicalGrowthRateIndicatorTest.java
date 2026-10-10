@@ -3,12 +3,12 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
@@ -32,7 +32,7 @@ public class PeriodicalGrowthRateIndicatorTest extends AbstractIndicatorTest<Ind
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         var mockSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(29.49, 28.30, 27.74, 27.65, 27.60, 28.70, 28.60, 28.19, 27.40, 27.20, 27.28, 27.00, 27.59,

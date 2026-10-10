@@ -3,10 +3,10 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.Assert.assertEquals;
 
 import java.time.Instant;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;

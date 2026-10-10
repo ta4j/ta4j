@@ -9,14 +9,14 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.time.Instant;
 import java.util.List;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.analysis.cost.CostModel;
@@ -26,7 +26,7 @@ public class TradingRecordTest {
     private final DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
     private TradingRecord emptyRecord, openedRecord, closedRecord;
 
-    @BeforeEach
+    @Before
     public void setUp() {
         emptyRecord = new BaseTradingRecord();
         openedRecord = new BaseTradingRecord(buyAt(0), sellAt(3), buyAt(7));

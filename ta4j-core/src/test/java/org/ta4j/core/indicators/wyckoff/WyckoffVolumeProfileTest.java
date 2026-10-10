@@ -4,11 +4,11 @@
 package org.ta4j.core.indicators.wyckoff;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.num.NaN.NaN;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -29,7 +29,7 @@ public class WyckoffVolumeProfileTest extends AbstractIndicatorTest<BarSeries, N
     /**
      * Initializes the test fixtures used by these scenarios.
      */
-    @BeforeEach
+    @Before
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         addBar(series, 100);

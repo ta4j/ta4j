@@ -10,8 +10,8 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.LocalDate;
@@ -19,8 +19,8 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -30,7 +30,7 @@ import org.ta4j.core.num.NumFactory;
 public class AroonOscillatorIndicatorTest {
     private BarSeries data;
 
-    @BeforeEach
+    @Before
     public void init() {
         // fb_daily, 2017/01/03 - 2017/08/18
         // date, close, volume, open, high, low

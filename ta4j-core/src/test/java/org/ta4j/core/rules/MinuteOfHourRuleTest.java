@@ -3,12 +3,12 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.time.Instant;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.DateTimeIndicator;
@@ -74,7 +74,7 @@ public class MinuteOfHourRuleTest extends AbstractIndicatorTest<Object, Object> 
         MinuteOfHourRule rule = new MinuteOfHourRule(dateTime, allMinutes);
 
         for (int i = 0; i < 60; i++) {
-            assertTrue(rule.isSatisfied(i, null), "Minute " + i + " should be satisfied");
+            assertTrue("Minute " + i + " should be satisfied", rule.isSatisfied(i, null));
         }
     }
 

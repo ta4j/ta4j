@@ -13,8 +13,8 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Instant;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -29,7 +29,7 @@ public class FisherIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         super(null, numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
 
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).withName("NaN test").build();

@@ -17,8 +17,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -41,7 +41,7 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
     /**
      * Initializes the test fixtures used by these scenarios.
      */
-    @BeforeEach
+    @Before
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(10).closePrice(10).highPrice(10).lowPrice(10).volume(100).add();

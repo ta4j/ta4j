@@ -19,7 +19,9 @@ import java.io.StringWriter;
 import java.time.Duration;
 import java.time.Instant;
 
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
+import static org.hamcrest.core.Is.is;
+import static org.hamcrest.core.IsNull.notNullValue;
+import static org.junit.Assume.assumeThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -67,7 +69,7 @@ public class BitStampCSVTradesBarSeriesDataSourceTest {
         // Pattern: Bitstamp-{ticker}-{interval}-{startDate}_{endDate}.csv
         String expectedFile = "Bitstamp-BTC-USD-PT5M-20131125_20131201.csv";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
-        assumeTrue(resourceStream != null, "File " + expectedFile + " does not exist");
+        assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
 
         BitStampCsvTradesFileBarSeriesDataSource dataSource = new BitStampCsvTradesFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-11-25T00:00:00Z");
@@ -177,7 +179,7 @@ public class BitStampCSVTradesBarSeriesDataSourceTest {
         Instant end = Instant.parse("2013-12-01T23:59:59Z");
         String expectedFile = "Bitstamp-BTC-USD-PT5M-20131125_20131201.csv";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
-        assumeTrue(resourceStream != null, "File " + expectedFile + " does not exist");
+        assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
 
         BarSeries series = dataSource.loadSeries("BTC-USD", Duration.ofMinutes(5), start, end);
         assertNotNull(series, "Should find file using source name prefix");
@@ -196,7 +198,7 @@ public class BitStampCSVTradesBarSeriesDataSourceTest {
         // behavior (null return) rather than the warning.
         String expectedFile = "Bitstamp-BTC-USD-PT5M-20131125_20131201.csv";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
-        assumeTrue(resourceStream != null, "File " + expectedFile + " does not exist");
+        assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
 
         BitStampCsvTradesFileBarSeriesDataSource dataSource = new BitStampCsvTradesFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-11-25T00:00:00Z");

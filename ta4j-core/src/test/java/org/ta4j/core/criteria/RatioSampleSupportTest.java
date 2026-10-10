@@ -3,16 +3,16 @@
  */
 package org.ta4j.core.criteria;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedClass;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
@@ -29,8 +29,7 @@ import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.utils.BarSeriesUtils;
 
-@ParameterizedClass(name = "NumFactory: {index} (1=DoubleNum, 2=DecimalNum)")
-@MethodSource("numFactories")
+@RunWith(Parameterized.class)
 public class RatioSampleSupportTest {
 
     private final NumFactory numFactory;
@@ -39,6 +38,7 @@ public class RatioSampleSupportTest {
         this.numFactory = numFactory;
     }
 
+    @Parameterized.Parameters(name = "NumFactory: {index} (0=DoubleNum, 1=DecimalNum)")
     public static List<NumFactory> numFactories() {
         return List.of(DoubleNumFactory.getInstance(), DecimalNumFactory.getInstance());
     }

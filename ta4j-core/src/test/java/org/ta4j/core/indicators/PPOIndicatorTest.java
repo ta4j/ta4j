@@ -5,8 +5,8 @@ package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -22,7 +22,7 @@ public class PPOIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(22.27, 22.19, 22.08, 22.17, 22.18, 22.13, 22.23, 22.43, 22.24, 22.29, 22.15, 22.39, 22.38,

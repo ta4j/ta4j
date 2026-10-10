@@ -3,15 +3,15 @@
  */
 package ta4jexamples.research;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
@@ -158,7 +158,7 @@ public class RelationshipObjectiveSearchExampleTest {
                 break;
             }
         }
-        assertTrue(rallyIndex >= 0, "series has no rally inside the synchronization window");
+        assertTrue("series has no rally inside the synchronization window", rallyIndex >= 0);
 
         Boolean[] clean = new Boolean[windowSeries.getBarCount()];
         Boolean[] contaminated = new Boolean[windowSeries.getBarCount()];
@@ -201,7 +201,7 @@ public class RelationshipObjectiveSearchExampleTest {
                 break;
             }
         }
-        assertTrue(rallyIndex >= 0, "series has no rally in the evaluable window");
+        assertTrue("series has no rally in the evaluable window", rallyIndex >= 0);
 
         Boolean[] silent = new Boolean[windowSeries.getBarCount()];
         ObjectiveEvaluation evaluation = RelationshipObjectiveSearchExample
@@ -210,7 +210,7 @@ public class RelationshipObjectiveSearchExampleTest {
 
         assertEquals(ObjectiveEvaluation.Status.VALID, evaluation.status());
         assertEquals(0.0, evaluation.score().doubleValue(), 1e-12);
-        assertFalse(evaluation.metrics().isEmpty(), "zero-F1 candidate still carries finite diagnostics");
+        assertFalse("zero-F1 candidate still carries finite diagnostics", evaluation.metrics().isEmpty());
         for (Num metric : evaluation.metrics().values()) {
             assertTrue(Num.isFinite(metric));
         }

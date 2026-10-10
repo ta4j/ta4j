@@ -10,10 +10,10 @@ import org.ta4j.core.analysis.frequency.Sample;
 import org.ta4j.core.analysis.frequency.SampleSummary;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.num.NumFactory;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class SampleSummaryTest extends AbstractCriterionTest {
 

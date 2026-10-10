@@ -3,19 +3,18 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.time.Instant;
 import java.util.Random;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NaN;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class PreviousValueIndicatorTest {
 
@@ -30,7 +29,7 @@ public class PreviousValueIndicatorTest {
 
     private BarSeries series;
 
-    @BeforeEach
+    @Before
     public void setUp() {
         var r = new Random();
         var now = Instant.now();
@@ -143,10 +142,8 @@ public class PreviousValueIndicatorTest {
         assertTrue(prevValueIndicatorAsString.endsWith("]"));
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void testPreviousValueIndicatorWithNonPositiveN() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            prevValueIndicator = new PreviousValueIndicator(openPriceIndicator, 0);
-        });
+        prevValueIndicator = new PreviousValueIndicator(openPriceIndicator, 0);
     }
 }

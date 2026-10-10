@@ -3,19 +3,19 @@
  */
 package org.ta4j.core.indicators.candles;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import java.time.Duration;
 import java.time.Instant;
 import java.lang.ref.WeakReference;
 import java.util.Map;
 import java.util.List;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.Bar;
 import java.util.Collections;
 import org.ta4j.core.BarSeries;
@@ -39,13 +39,13 @@ public class CandleThresholdSupportTest {
         CandleThresholdSupport support = new CandleThresholdSupport(series);
 
         for (int index = 0; index < 5; index++) {
-            assertFalse(support.isValid(index), "expected warm-up below the boundary at " + index);
+            assertFalse("expected warm-up below the boundary at " + index, support.isValid(index));
             assertFalse(support.isLongBody(index));
             assertFalse(support.isShortBody(index));
             assertFalse(support.isDoji(index));
         }
         for (int index = 5; index < 8; index++) {
-            assertTrue(support.isValid(index), "expected a valid threshold at " + index);
+            assertTrue("expected a valid threshold at " + index, support.isValid(index));
         }
     }
 

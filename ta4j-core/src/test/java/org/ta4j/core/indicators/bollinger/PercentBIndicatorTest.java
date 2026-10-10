@@ -3,11 +3,11 @@
  */
 package org.ta4j.core.indicators.bollinger;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -23,7 +23,7 @@ public class PercentBIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         var data = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(10, 12, 15, 14, 17, 20, 21, 20, 20, 19, 20, 17, 12, 12, 9, 8, 9, 10, 9, 10)

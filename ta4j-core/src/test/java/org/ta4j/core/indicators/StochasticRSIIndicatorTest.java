@@ -8,8 +8,8 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 
 import java.util.List;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
@@ -20,7 +20,7 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class StochasticRSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
@@ -42,7 +42,7 @@ public class StochasticRSIIndicatorTest extends AbstractIndicatorTest<Indicator<
         assertNumEquals(52.23449323656383, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex() - 1));
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(50.45, 50.30, 50.20, 50.15, 50.05, 50.06, 50.10, 50.08, 50.03, 50.07, 50.01, 50.14, 50.22,
