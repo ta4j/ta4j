@@ -737,8 +737,8 @@ public final class DecimalNum implements Num {
      * Returns a {@code Num} whose value is <code>(this<sup>n</sup>)</code>.
      *
      * <p>
-     * If {@code n} is {@link NaN} or infinite (including primitive-backed values), or if
-     * calculating the power produces an undefined or infinite value (such as
+     * If {@code n} is {@link NaN} or infinite (including primitive-backed values),
+     * or if calculating the power produces an undefined or infinite value (such as
      * taking a fractional power of a negative number or dividing by zero),
      * {@link NaN#NaN} is returned.
      *
