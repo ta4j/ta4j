@@ -3,13 +3,13 @@
  */
 package org.ta4j.core;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -41,9 +41,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 
 import org.apache.logging.log4j.LogManager;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries.BarSeriesChangeSnapshot;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
@@ -80,7 +80,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         executorService = Executors.newFixedThreadPool(8);
         barBuilderFactory = new MockBarBuilderFactory();
@@ -104,7 +104,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         }
     }
 
-    @AfterEach
+    @After
     public void tearDown() {
         if (executorService != null) {
             executorService.shutdownNow();
@@ -245,8 +245,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         assertEquals(barCount, series.getBarCount());
         assertEquals(beginIndex, series.getBeginIndex());
         assertEquals(endIndex, series.getEndIndex());
-        assertTrue(lock.wasWriteLockHeldDuringReplacement(),
-                "Concurrent replacement should validate the new bar while holding the write lock");
+        assertTrue("Concurrent replacement should validate the new bar while holding the write lock",
+                lock.wasWriteLockHeldDuringReplacement());
     }
 
     // ==================== getName() and numFactory() Tests ====================
@@ -292,7 +292,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         }
 
         startLatch.countDown();
-        assertTrue(endLatch.await(10, TimeUnit.SECONDS), "All getName() operations should complete within timeout");
+        assertTrue("All getName() operations should complete within timeout", endLatch.await(10, TimeUnit.SECONDS));
         assertEquals(readerCount, successCount.get());
     }
 
@@ -379,7 +379,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         }
 
         startLatch.countDown();
-        assertTrue(endLatch.await(10, TimeUnit.SECONDS), "All numFactory() operations should complete within timeout");
+        assertTrue("All numFactory() operations should complete within timeout", endLatch.await(10, TimeUnit.SECONDS));
         assertEquals(readerCount, successCount.get());
     }
 
@@ -415,7 +415,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         }
 
         startLatch.countDown();
-        assertTrue(endLatch.await(10, TimeUnit.SECONDS), "All combined operations should complete within timeout");
+        assertTrue("All combined operations should complete within timeout", endLatch.await(10, TimeUnit.SECONDS));
         assertEquals(readerCount, successCount.get());
     }
 
@@ -472,7 +472,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         }
 
         startLatch.countDown();
-        assertTrue(endLatch.await(10, TimeUnit.SECONDS), "All readers should complete within timeout");
+        assertTrue("All readers should complete within timeout", endLatch.await(10, TimeUnit.SECONDS));
         assertEquals(readerCount, successCount.get());
     }
 
@@ -525,11 +525,11 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         });
 
         startLatch.countDown();
-        assertTrue(endLatch.await(10, TimeUnit.SECONDS), "Writer should complete within timeout");
+        assertTrue("Writer should complete within timeout", endLatch.await(10, TimeUnit.SECONDS));
         assertEquals(1, successCount.get());
 
         // Verify final state is consistent
-        assertTrue(series.getBarCount() > 0, "Series should have bars after writes");
+        assertTrue("Series should have bars after writes", series.getBarCount() > 0);
     }
 
     @Test
@@ -572,7 +572,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         }
 
         startLatch.countDown();
-        assertTrue(endLatch.await(10, TimeUnit.SECONDS), "All readers should complete within timeout");
+        assertTrue("All readers should complete within timeout", endLatch.await(10, TimeUnit.SECONDS));
         assertEquals(readerCount, successCount.get());
     }
 
@@ -626,7 +626,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         series.addBar(newBar);
 
         // Snapshot should remain unchanged
-        assertEquals(originalSize, snapshot.size(), "Snapshot should remain unchanged after mutation");
+        assertEquals("Snapshot should remain unchanged after mutation", originalSize, snapshot.size());
 
         // New snapshot should reflect the change
         List<Bar> newSnapshot = series.getBarData();
@@ -646,7 +646,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
         BarSeries subSeries = series.getSubSeries(1, 4);
 
-        assertTrue(subSeries instanceof ConcurrentBarSeries, "SubSeries should be ConcurrentBarSeries");
+        assertTrue("SubSeries should be ConcurrentBarSeries", subSeries instanceof ConcurrentBarSeries);
         assertEquals(3, subSeries.getBarCount());
         assertEquals(0, subSeries.getBeginIndex());
         assertEquals(2, subSeries.getEndIndex());
@@ -737,8 +737,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         });
 
         startLatch.countDown();
-        assertTrue(endLatch.await(10, TimeUnit.SECONDS), "All operations should complete within timeout");
-        assertTrue(success.get(), "All operations should succeed");
+        assertTrue("All operations should complete within timeout", endLatch.await(10, TimeUnit.SECONDS));
+        assertTrue("All operations should succeed", success.get());
     }
 
     // ==================== Lock Contention and Deadlock Prevention Tests
@@ -795,8 +795,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         });
 
         startLatch.countDown();
-        assertTrue(endLatch.await(5, TimeUnit.SECONDS), "Operations should complete without deadlock");
-        assertTrue(success.get(), "All operations should succeed");
+        assertTrue("Operations should complete without deadlock", endLatch.await(5, TimeUnit.SECONDS));
+        assertTrue("All operations should succeed", success.get());
     }
 
     @Test
@@ -1068,7 +1068,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         checking.set(true);
 
         origin.get().addPrice(numOf(20));
-        assertTrue(observed.get(), "write-lock observer was not invoked");
+        assertTrue("write-lock observer was not invoked", observed.get());
     }
 
     @Test
@@ -1189,7 +1189,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
             reader.set(Thread.currentThread());
             detector.detectPivots(series, 0);
         });
-        assertTrue(readerReadAttempted.await(2, TimeUnit.SECONDS), "reader did not reach detector history read");
+        assertTrue("reader did not reach detector history read", readerReadAttempted.await(2, TimeUnit.SECONDS));
         final Future<?> writerFuture = executorService
                 .submit(() -> series.withWriteLock(() -> detector.detectPivots(series, 0)));
 
@@ -1334,8 +1334,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         });
 
         startLatch.countDown();
-        assertTrue(endLatch.await(20, TimeUnit.SECONDS), "All operations should complete within timeout");
-        assertTrue(success.get(), "All operations should succeed");
+        assertTrue("All operations should complete within timeout", endLatch.await(20, TimeUnit.SECONDS));
+        assertTrue("All operations should succeed", success.get());
     }
 
     @Test
@@ -1383,7 +1383,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
             if (writeLockAcquired) {
                 seriesLock.writeLock().unlock();
             }
-            assertFalse(writeLockAcquired, "read scope must hold the series read lock");
+            assertFalse("read scope must hold the series read lock", writeLockAcquired);
             assertEquals(0, series.getBeginIndex());
             assertEquals(0, series.getEndIndex());
             assertEquals(1, series.getBarCount());
@@ -1394,7 +1394,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                 series.addBar(appended);
             });
             try {
-                assertTrue(writerStarted.await(2, TimeUnit.SECONDS), "writer did not start");
+                assertTrue("writer did not start", writerStarted.await(2, TimeUnit.SECONDS));
             } catch (InterruptedException interruption) {
                 Thread.currentThread().interrupt();
                 throw new AssertionError("writer did not start", interruption);
@@ -1428,9 +1428,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         series.addTrade(numOf(1), numOf(100));
 
         BarSeriesChangeSnapshot snapshot = series.getBarSeriesChangeSnapshot(baselineRevision);
-        assertTrue(snapshot.earliestChangedIndex() <= 1,
-                "Concurrently mutated retained bar must be journaled, but earliest changed index was "
-                        + snapshot.earliestChangedIndex());
+        assertTrue("Concurrently mutated retained bar must be journaled, but earliest changed index was "
+                + snapshot.earliestChangedIndex(), snapshot.earliestChangedIndex() <= 1);
     }
 
     @Test
@@ -1476,13 +1475,13 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                 lock.writeLock().unlock();
             }
         });
-        assertTrue(writerLocked.await(10, TimeUnit.SECONDS), "Writer should acquire the lock within the timeout");
+        assertTrue("Writer should acquire the lock within the timeout", writerLocked.await(10, TimeUnit.SECONDS));
         final Future<?> mutation = executorService.submit(() -> retainedBar.addPrice(numOf(20)));
         try {
-            assertEquals(RetainedMutationEvent.WRITE_LOCK_ATTEMPT, events.poll(10, TimeUnit.SECONDS),
-                    "Mutation should attempt the series write lock within the timeout");
+            assertEquals("Mutation should attempt the series write lock within the timeout",
+                    RetainedMutationEvent.WRITE_LOCK_ATTEMPT, events.poll(10, TimeUnit.SECONDS));
             evictHead.countDown();
-            assertTrue(evictionComplete.await(10, TimeUnit.SECONDS), "Eviction should complete within the timeout");
+            assertTrue("Eviction should complete within the timeout", evictionComplete.await(10, TimeUnit.SECONDS));
         } finally {
             evictHead.countDown();
             releaseWriter.countDown();
@@ -1569,7 +1568,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         });
 
         startLatch.countDown();
-        assertTrue(endLatch.await(5, TimeUnit.SECONDS), "All operations should complete within timeout");
+        assertTrue("All operations should complete within timeout", endLatch.await(5, TimeUnit.SECONDS));
 
         // Should have no unexpected exceptions
         assertEquals(0, exceptionCount.get());
@@ -1613,8 +1612,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
                         // Verify consistency after each addition
                         List<Bar> snapshot = series.getBarData();
-                        assertNotNull(snapshot, "Snapshot should not be null");
-                        assertTrue(snapshot.size() <= totalBarsAdded.get(), "Snapshot size should be reasonable");
+                        assertNotNull("Snapshot should not be null", snapshot);
+                        assertTrue("Snapshot size should be reasonable", snapshot.size() <= totalBarsAdded.get());
                     }
                 } catch (Exception e) {
                     fail("Writer failed: " + e.getMessage());
@@ -1625,7 +1624,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         }
 
         startLatch.countDown();
-        assertTrue(endLatch.await(20, TimeUnit.SECONDS), "All writers should complete within timeout");
+        assertTrue("All writers should complete within timeout", endLatch.await(20, TimeUnit.SECONDS));
 
         // Final verification
         assertEquals(totalBarsAdded.get(), series.getBarCount());
@@ -1693,7 +1692,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         });
 
         startLatch.countDown();
-        assertTrue(endLatch.await(30, TimeUnit.SECONDS), "High frequency operations should complete within timeout");
+        assertTrue("High frequency operations should complete within timeout", endLatch.await(30, TimeUnit.SECONDS));
 
         assertEquals(operationCount, readCount.get());
         assertEquals(operationCount, writeCount.get());
@@ -2249,7 +2248,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         }
 
         startLatch.countDown();
-        assertTrue(endLatch.await(10, TimeUnit.SECONDS), "All getFirstBar() operations should complete");
+        assertTrue("All getFirstBar() operations should complete", endLatch.await(10, TimeUnit.SECONDS));
         assertEquals(readerCount, successCount.get());
     }
 
@@ -2341,7 +2340,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         }
 
         startLatch.countDown();
-        assertTrue(endLatch.await(10, TimeUnit.SECONDS), "All period description operations should complete");
+        assertTrue("All period description operations should complete", endLatch.await(10, TimeUnit.SECONDS));
         assertEquals(readerCount, successCount.get());
     }
 
@@ -2407,7 +2406,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         }
 
         startLatch.countDown();
-        assertTrue(endLatch.await(10, TimeUnit.SECONDS), "All addPrice() operations should complete");
+        assertTrue("All addPrice() operations should complete", endLatch.await(10, TimeUnit.SECONDS));
         assertEquals(writerCount, successCount.get());
     }
 
@@ -2668,7 +2667,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         }
 
         startLatch.countDown();
-        assertTrue(endLatch.await(10, TimeUnit.SECONDS), "All tradeBarBuilder() calls should complete");
+        assertTrue("All tradeBarBuilder() calls should complete", endLatch.await(10, TimeUnit.SECONDS));
         assertEquals(threadCount, builders.size());
 
         for (BarBuilder builder : builders) {
@@ -2746,7 +2745,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     for (int j = 0; j < 10; j++) {
                         series.setMaximumBarCount(maxCount + j);
                         int currentMax = series.getMaximumBarCount();
-                        assertTrue(currentMax > 0, "Max bar count should be set");
+                        assertTrue("Max bar count should be set", currentMax > 0);
                     }
                     successCount.incrementAndGet();
                 } catch (Exception e) {
@@ -2759,7 +2758,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         }
 
         startLatch.countDown();
-        assertTrue(endLatch.await(10, TimeUnit.SECONDS), "All setMaximumBarCount() operations should complete");
+        assertTrue("All setMaximumBarCount() operations should complete", endLatch.await(10, TimeUnit.SECONDS));
         assertEquals(writerCount, successCount.get());
     }
 
@@ -2818,7 +2817,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         }
 
         startLatch.countDown();
-        assertTrue(endLatch.await(10, TimeUnit.SECONDS), "All barBuilder() operations should complete");
+        assertTrue("All barBuilder() operations should complete", endLatch.await(10, TimeUnit.SECONDS));
         assertEquals(readerCount, successCount.get());
     }
 
@@ -2851,7 +2850,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     startLatch.await();
                     for (int j = 0; j < 50; j++) {
                         int removedCount = series.getRemovedBarsCount();
-                        assertTrue(removedCount >= 0, "Removed count should be non-negative");
+                        assertTrue("Removed count should be non-negative", removedCount >= 0);
                     }
                     successCount.incrementAndGet();
                 } catch (Exception e) {
@@ -2864,7 +2863,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         }
 
         startLatch.countDown();
-        assertTrue(endLatch.await(10, TimeUnit.SECONDS), "All getRemovedBarsCount() operations should complete");
+        assertTrue("All getRemovedBarsCount() operations should complete", endLatch.await(10, TimeUnit.SECONDS));
         assertEquals(readerCount, successCount.get());
     }
 
@@ -2941,7 +2940,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         assertEquals(2, snapshot.size());
         assertNotSame(snapshot, series.getBarData());
         series.barBuilder().endTime(now.plus(Duration.ofMinutes(2))).closePrice(3).add();
-        assertEquals(2, snapshot.size(), "snapshot must remain unchanged after concurrent mutation");
+        assertEquals("snapshot must remain unchanged after concurrent mutation", 2, snapshot.size());
         try {
             snapshot.add(snapshot.get(0));
             fail("snapshot list must be immutable");

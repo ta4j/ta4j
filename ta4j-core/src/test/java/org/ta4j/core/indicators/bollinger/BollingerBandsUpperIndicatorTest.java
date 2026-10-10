@@ -5,8 +5,8 @@ package org.ta4j.core.indicators.bollinger;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -29,7 +29,7 @@ public class BollingerBandsUpperIndicatorTest extends AbstractIndicatorTest<Indi
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         BarSeries data = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2)

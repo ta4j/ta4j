@@ -3,13 +3,13 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.List;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -22,7 +22,7 @@ public class SumIndicatorTest {
     private Indicator<Num> mockIndicator2;
     private SumIndicator sumIndicator;
 
-    @BeforeEach
+    @Before
     public void setUp() {
         BarSeries series = new MockBarSeriesBuilder().build();
         constantIndicator = new ConstantIndicator<>(series, series.numFactory().numOf(6));

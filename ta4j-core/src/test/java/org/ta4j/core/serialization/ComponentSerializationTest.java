@@ -4,12 +4,12 @@
 package org.ta4j.core.serialization;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.Assert.assertThrows;
 
 import com.google.gson.JsonParseException;
 import java.util.Map;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;

@@ -5,7 +5,7 @@ package org.ta4j.core.backtest;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
@@ -35,7 +35,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.Assert.*;
 
 public class BacktestExecutionResultTest {
 
@@ -78,32 +78,32 @@ public class BacktestExecutionResultTest {
 
         String jsonString = result.toString();
 
-        assertNotNull(jsonString, "toString() should not return null");
-        assertFalse(jsonString.isEmpty(), "toString() should return non-empty JSON");
+        assertNotNull("toString() should not return null", jsonString);
+        assertFalse("toString() should return non-empty JSON", jsonString.isEmpty());
 
         JsonObject json = JsonParser.parseString(jsonString).getAsJsonObject();
 
-        assertTrue(json.has("barSeriesName"), "JSON should contain barSeriesName");
-        assertEquals(series.getName(), json.get("barSeriesName").getAsString(),
-                "barSeriesName should match series name");
+        assertTrue("JSON should contain barSeriesName", json.has("barSeriesName"));
+        assertEquals("barSeriesName should match series name", series.getName(),
+                json.get("barSeriesName").getAsString());
 
-        assertTrue(json.has("tradingStatementsCount"), "JSON should contain tradingStatementsCount");
-        assertEquals(strategies.size(), json.get("tradingStatementsCount").getAsInt(),
-                "tradingStatementsCount should match actual count");
+        assertTrue("JSON should contain tradingStatementsCount", json.has("tradingStatementsCount"));
+        assertEquals("tradingStatementsCount should match actual count", strategies.size(),
+                json.get("tradingStatementsCount").getAsInt());
 
-        assertTrue(json.has("runtimeReport"), "JSON should contain runtimeReport");
-        assertNotNull(json.get("runtimeReport"), "runtimeReport should not be null");
-        assertTrue(json.get("runtimeReport").isJsonObject(), "runtimeReport should be a JSON object");
+        assertTrue("JSON should contain runtimeReport", json.has("runtimeReport"));
+        assertNotNull("runtimeReport should not be null", json.get("runtimeReport"));
+        assertTrue("runtimeReport should be a JSON object", json.get("runtimeReport").isJsonObject());
 
         JsonObject runtimeReportJson = json.get("runtimeReport").getAsJsonObject();
-        assertTrue(runtimeReportJson.has("overallRuntime"), "runtimeReport should contain overallRuntime");
-        assertTrue(runtimeReportJson.has("minStrategyRuntime"), "runtimeReport should contain minStrategyRuntime");
-        assertTrue(runtimeReportJson.has("maxStrategyRuntime"), "runtimeReport should contain maxStrategyRuntime");
-        assertTrue(runtimeReportJson.has("averageStrategyRuntime"),
-                "runtimeReport should contain averageStrategyRuntime");
-        assertTrue(runtimeReportJson.has("medianStrategyRuntime"),
-                "runtimeReport should contain medianStrategyRuntime");
-        assertFalse(runtimeReportJson.has("strategyRuntimes"), "runtimeReport should NOT contain strategyRuntimes");
+        assertTrue("runtimeReport should contain overallRuntime", runtimeReportJson.has("overallRuntime"));
+        assertTrue("runtimeReport should contain minStrategyRuntime", runtimeReportJson.has("minStrategyRuntime"));
+        assertTrue("runtimeReport should contain maxStrategyRuntime", runtimeReportJson.has("maxStrategyRuntime"));
+        assertTrue("runtimeReport should contain averageStrategyRuntime",
+                runtimeReportJson.has("averageStrategyRuntime"));
+        assertTrue("runtimeReport should contain medianStrategyRuntime",
+                runtimeReportJson.has("medianStrategyRuntime"));
+        assertFalse("runtimeReport should NOT contain strategyRuntimes", runtimeReportJson.has("strategyRuntimes"));
     }
 
     @Test
@@ -114,14 +114,14 @@ public class BacktestExecutionResultTest {
 
         String jsonString = result.toString();
 
-        assertNotNull(jsonString, "toString() should not return null");
-        assertFalse(jsonString.isEmpty(), "toString() should return non-empty JSON");
+        assertNotNull("toString() should not return null", jsonString);
+        assertFalse("toString() should return non-empty JSON", jsonString.isEmpty());
 
         JsonObject json = JsonParser.parseString(jsonString).getAsJsonObject();
 
-        assertEquals(0, json.get("tradingStatementsCount").getAsInt(),
-                "tradingStatementsCount should be 0 for empty list");
-        assertTrue(json.has("runtimeReport"), "JSON should contain runtimeReport");
+        assertEquals("tradingStatementsCount should be 0 for empty list", 0,
+                json.get("tradingStatementsCount").getAsInt());
+        assertTrue("JSON should contain runtimeReport", json.has("runtimeReport"));
     }
 
     @Test
@@ -238,8 +238,8 @@ public class BacktestExecutionResultTest {
 
         IllegalStateException replacement = assertThrows(IllegalStateException.class,
                 () -> BacktestExecutionResult.verifyUnchanged(replaced, replacedBaseline));
-        assertTrue(replacement.getMessage().contains("window [0, 2]"), replacement.getMessage());
-        assertTrue(replacement.getMessage().contains("bar 2 was replaced or updated"), replacement.getMessage());
+        assertTrue(replacement.getMessage(), replacement.getMessage().contains("window [0, 2]"));
+        assertTrue(replacement.getMessage(), replacement.getMessage().contains("bar 2 was replaced or updated"));
 
         BarSeries updated = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
         BarSeries updatedBaseline = BacktestExecutionResult.snapshot(updated);
@@ -263,7 +263,7 @@ public class BacktestExecutionResultTest {
         trailing.getBar(1).addPrice(numFactory.numOf(25));
         IllegalStateException change = assertThrows(IllegalStateException.class,
                 () -> BacktestExecutionResult.verifyUnchanged(trailing, trailingBaseline));
-        assertTrue(change.getMessage().contains("bar 1 was replaced or updated"), change.getMessage());
+        assertTrue(change.getMessage(), change.getMessage().contains("bar 1 was replaced or updated"));
     }
 
     @Test
@@ -277,7 +277,7 @@ public class BacktestExecutionResultTest {
 
         IllegalStateException change = assertThrows(IllegalStateException.class,
                 () -> BacktestExecutionResult.verifyUnchanged(leading, baseline));
-        assertTrue(change.getMessage().contains("bar 0 before the window changed"), change.getMessage());
+        assertTrue(change.getMessage(), change.getMessage().contains("bar 0 before the window changed"));
     }
 
     @Test
@@ -298,7 +298,7 @@ public class BacktestExecutionResultTest {
 
         IllegalStateException eviction = assertThrows(IllegalStateException.class,
                 () -> BacktestExecutionResult.verifyUnchanged(source, baseline));
-        assertTrue(eviction.getMessage().contains("bars before index 1 were evicted"), eviction.getMessage());
+        assertTrue(eviction.getMessage(), eviction.getMessage().contains("bars before index 1 were evicted"));
     }
 
     @Test
@@ -319,7 +319,7 @@ public class BacktestExecutionResultTest {
 
         IllegalStateException change = assertThrows(IllegalStateException.class,
                 () -> BacktestExecutionResult.verifyUnchanged(untracked, baseline));
-        assertTrue(change.getMessage().contains("bar 1 was replaced or updated"), change.getMessage());
+        assertTrue(change.getMessage(), change.getMessage().contains("bar 1 was replaced or updated"));
     }
 
     @Test
@@ -335,10 +335,10 @@ public class BacktestExecutionResultTest {
 
         series.getBar(1).addPrice(numFactory.numOf(25));
 
-        assertEquals(revision, series.getBarHistoryRevision(), "custom bars cannot publish their mutation");
+        assertEquals("custom bars cannot publish their mutation", revision, series.getBarHistoryRevision());
         IllegalStateException change = assertThrows(IllegalStateException.class,
                 () -> BacktestExecutionResult.verifyUnchanged(series, baseline));
-        assertTrue(change.getMessage().contains("bar 1 was replaced or updated"), change.getMessage());
+        assertTrue(change.getMessage(), change.getMessage().contains("bar 1 was replaced or updated"));
     }
 
     @Test
@@ -362,7 +362,7 @@ public class BacktestExecutionResultTest {
         assertEquals(pinnedRevision[0], series.getBarHistoryRevision());
         IllegalStateException change = assertThrows(IllegalStateException.class,
                 () -> BacktestExecutionResult.verifyUnchanged(series, baseline));
-        assertTrue(change.getMessage().contains("bar 1 was replaced or updated"), change.getMessage());
+        assertTrue(change.getMessage(), change.getMessage().contains("bar 1 was replaced or updated"));
     }
 
     /** A custom bar whose in-place price updates the series cannot observe. */
@@ -484,14 +484,14 @@ public class BacktestExecutionResultTest {
         AnalysisCriterion netProfitCriterion = new NetProfitCriterion();
         List<TradingStatement> topStrategies = result.getTopStrategies(2, netProfitCriterion);
 
-        assertEquals(2, topStrategies.size(), "Should return 2 strategies");
+        assertEquals("Should return 2 strategies", 2, topStrategies.size());
 
         // Verify the strategies are sorted by profit (strategy3 should be best, then
         // strategy2)
         Num profit1 = netProfitCriterion.calculate(result.barSeries(), topStrategies.get(0).getTradingRecord());
         Num profit2 = netProfitCriterion.calculate(result.barSeries(), topStrategies.get(1).getTradingRecord());
-        assertTrue(netProfitCriterion.betterThan(profit1, profit2) || profit1.equals(profit2),
-                "First strategy should have better or equal profit than second");
+        assertTrue("First strategy should have better or equal profit than second",
+                netProfitCriterion.betterThan(profit1, profit2) || profit1.equals(profit2));
     }
 
     @Test
@@ -514,7 +514,7 @@ public class BacktestExecutionResultTest {
         AnalysisCriterion expectancyCriterion = new ExpectancyCriterion();
         List<TradingStatement> topStrategies = result.getTopStrategies(3, positionsCriterion, expectancyCriterion);
 
-        assertEquals(3, topStrategies.size(), "Should return all 3 strategies");
+        assertEquals("Should return all 3 strategies", 3, topStrategies.size());
 
         // Verify ordering by primary criterion
         for (int i = 0; i < topStrategies.size() - 1; i++) {
@@ -523,8 +523,8 @@ public class BacktestExecutionResultTest {
                     topStrategies.get(i + 1).getTradingRecord());
 
             // First criterion should be better or equal
-            assertTrue(positionsCriterion.betterThan(positions1, positions2) || positions1.equals(positions2),
-                    "Strategies should be sorted by primary criterion");
+            assertTrue("Strategies should be sorted by primary criterion",
+                    positionsCriterion.betterThan(positions1, positions2) || positions1.equals(positions2));
 
             // If equal on first criterion, second criterion should be better or equal
             if (positions1.equals(positions2)) {
@@ -532,8 +532,8 @@ public class BacktestExecutionResultTest {
                         topStrategies.get(i).getTradingRecord());
                 Num expectancy2 = expectancyCriterion.calculate(result.barSeries(),
                         topStrategies.get(i + 1).getTradingRecord());
-                assertTrue(expectancyCriterion.betterThan(expectancy1, expectancy2) || expectancy1.equals(expectancy2),
-                        "Strategies with equal primary criterion should be sorted by secondary criterion");
+                assertTrue("Strategies with equal primary criterion should be sorted by secondary criterion",
+                        expectancyCriterion.betterThan(expectancy1, expectancy2) || expectancy1.equals(expectancy2));
             }
         }
     }
@@ -552,7 +552,7 @@ public class BacktestExecutionResultTest {
         AnalysisCriterion criterion = new NetProfitCriterion();
         List<TradingStatement> topStrategies = result.getTopStrategies(5, criterion);
 
-        assertEquals(5, topStrategies.size(), "Should return only 5 strategies even though 10 were provided");
+        assertEquals("Should return only 5 strategies even though 10 were provided", 5, topStrategies.size());
     }
 
     @Test
@@ -569,7 +569,7 @@ public class BacktestExecutionResultTest {
         AnalysisCriterion criterion = new NetProfitCriterion();
         List<TradingStatement> topStrategies = result.getTopStrategies(100, criterion);
 
-        assertEquals(2, topStrategies.size(), "Should return all available strategies when limit exceeds count");
+        assertEquals("Should return all available strategies when limit exceeds count", 2, topStrategies.size());
     }
 
     @Test
@@ -583,7 +583,7 @@ public class BacktestExecutionResultTest {
         AnalysisCriterion criterion = new NetProfitCriterion();
         List<TradingStatement> topStrategies = result.getTopStrategies(0, criterion);
 
-        assertTrue(topStrategies.isEmpty(), "Should return empty list when limit is 0");
+        assertTrue("Should return empty list when limit is 0", topStrategies.isEmpty());
     }
 
     @Test
@@ -656,13 +656,13 @@ public class BacktestExecutionResultTest {
         List<TradingStatement> listResult = result.getTopStrategies(2,
                 Arrays.asList(netProfitCriterion, expectancyCriterion));
 
-        assertEquals(varargsResult.size(), listResult.size(),
-                "Varargs and List methods should return same number of results");
+        assertEquals("Varargs and List methods should return same number of results", varargsResult.size(),
+                listResult.size());
 
         // Verify same strategies in same order
         for (int i = 0; i < varargsResult.size(); i++) {
-            assertEquals(varargsResult.get(i).getStrategy().getName(), listResult.get(i).getStrategy().getName(),
-                    "Varargs and List methods should return same strategies in same order");
+            assertEquals("Varargs and List methods should return same strategies in same order",
+                    varargsResult.get(i).getStrategy().getName(), listResult.get(i).getStrategy().getName());
         }
     }
 
@@ -675,7 +675,7 @@ public class BacktestExecutionResultTest {
         AnalysisCriterion criterion = new NetProfitCriterion();
         List<TradingStatement> topStrategies = result.getTopStrategies(10, criterion);
 
-        assertTrue(topStrategies.isEmpty(), "Should return empty list when no trading statements exist");
+        assertTrue("Should return empty list when no trading statements exist", topStrategies.isEmpty());
     }
 
     @Test
@@ -697,30 +697,30 @@ public class BacktestExecutionResultTest {
         AnalysisCriterion expectancyCriterion = new ExpectancyCriterion();
         List<TradingStatement> topStrategies = result.getTopStrategies(3, netProfitCriterion, expectancyCriterion);
 
-        assertEquals(3, topStrategies.size(), "Should return all 3 strategies");
+        assertEquals("Should return all 3 strategies", 3, topStrategies.size());
 
         // Verify that criterion scores are stored and accessible
         for (TradingStatement statement : topStrategies) {
             // Check that scores are available via getCriterionScore
-            assertTrue(statement.getCriterionScore(netProfitCriterion).isPresent(),
-                    "Net profit score should be available");
-            assertTrue(statement.getCriterionScore(expectancyCriterion).isPresent(),
-                    "Expectancy score should be available");
+            assertTrue("Net profit score should be available",
+                    statement.getCriterionScore(netProfitCriterion).isPresent());
+            assertTrue("Expectancy score should be available",
+                    statement.getCriterionScore(expectancyCriterion).isPresent());
 
             // Verify the scores match what we would calculate
             Num storedNetProfit = statement.getCriterionScore(netProfitCriterion).get();
             Num calculatedNetProfit = netProfitCriterion.calculate(result.barSeries(), statement.getTradingRecord());
-            assertEquals(storedNetProfit, calculatedNetProfit, "Stored net profit should match calculated value");
+            assertEquals("Stored net profit should match calculated value", storedNetProfit, calculatedNetProfit);
 
             Num storedExpectancy = statement.getCriterionScore(expectancyCriterion).get();
             Num calculatedExpectancy = expectancyCriterion.calculate(result.barSeries(), statement.getTradingRecord());
-            assertEquals(storedExpectancy, calculatedExpectancy, "Stored expectancy should match calculated value");
+            assertEquals("Stored expectancy should match calculated value", storedExpectancy, calculatedExpectancy);
 
             // Check that all scores are available via getCriterionScores
             var allScores = statement.getCriterionScores();
-            assertEquals(2, allScores.size(), "Should have 2 criterion scores stored");
-            assertTrue(allScores.containsKey(netProfitCriterion), "Should contain net profit criterion");
-            assertTrue(allScores.containsKey(expectancyCriterion), "Should contain expectancy criterion");
+            assertEquals("Should have 2 criterion scores stored", 2, allScores.size());
+            assertTrue("Should contain net profit criterion", allScores.containsKey(netProfitCriterion));
+            assertTrue("Should contain expectancy criterion", allScores.containsKey(expectancyCriterion));
         }
     }
 }

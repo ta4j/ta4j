@@ -3,16 +3,16 @@
  */
 package org.ta4j.core.indicators.candles;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.stableIndexes;
 
 import java.util.List;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -240,7 +240,7 @@ public class EveningStarIndicatorTest extends AbstractIndicatorTest<Indicator<Bo
         EveningStarIndicator indicator = new EveningStarIndicator(series);
         assertEquals(7, indicator.getCountOfUnstableBars());
         for (int i = 0; i < indicator.getCountOfUnstableBars(); i++) {
-            assertFalse(indicator.getValue(i), "expected false at " + i);
+            assertFalse("expected false at " + i, indicator.getValue(i));
         }
         assertTrue(indicator.getValue(7));
     }

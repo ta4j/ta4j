@@ -3,7 +3,7 @@
  */
 package org.ta4j.core.indicators;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ConcurrentBarSeries;
@@ -19,8 +19,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 /**
@@ -64,7 +64,7 @@ public class RecursiveCachedIndicatorConcurrencyTest {
             // bar BELOW the prefill position while the reader is blocked inside
             // calculate(), so the next nested getValue() deterministically observes
             // the revision change (the mutation cannot be overtaken by the prefill).
-            assertTrue(indicator.reached.await(120, TimeUnit.SECONDS), "prefill never reached the latch index");
+            assertTrue("prefill never reached the latch index", indicator.reached.await(120, TimeUnit.SECONDS));
             Bar bar = series.getBar(latchIndex);
             Bar replacement = series.barBuilder()
                     .timePeriod(bar.getTimePeriod())
@@ -79,7 +79,7 @@ public class RecursiveCachedIndicatorConcurrencyTest {
             indicator.proceed.countDown();
 
             reader.get(120, TimeUnit.SECONDS);
-            assertNull(readerFailure.get(), "recursive read crashed: " + readerFailure.get());
+            assertNull("recursive read crashed: " + readerFailure.get(), readerFailure.get());
             assertNumEquals(barCount, indicator.getValue(barCount - 1));
         } finally {
             pool.shutdownNow();
@@ -102,7 +102,7 @@ public class RecursiveCachedIndicatorConcurrencyTest {
             if (index == latchIndex) {
                 reached.countDown();
                 try {
-                    assertTrue(proceed.await(120, TimeUnit.SECONDS), "prefill did not resume in time");
+                    assertTrue("prefill did not resume in time", proceed.await(120, TimeUnit.SECONDS));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }

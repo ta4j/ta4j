@@ -3,7 +3,7 @@
  */
 package ta4jexamples.strategies;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import ta4jexamples.charting.display.SwingChartDisplayer;
 
 public class RSI2StrategyTest {

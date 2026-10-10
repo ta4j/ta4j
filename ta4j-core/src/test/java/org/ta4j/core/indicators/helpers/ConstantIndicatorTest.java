@@ -5,15 +5,15 @@ package org.ta4j.core.indicators.helpers;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 
 public class ConstantIndicatorTest {
     private ConstantIndicator<Num> constantIndicator;
 
-    @BeforeEach
+    @Before
     public void setUp() {
         var series = new MockBarSeriesBuilder().build();
         constantIndicator = new ConstantIndicator<>(series, series.numFactory().numOf(30.33));

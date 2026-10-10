@@ -7,8 +7,8 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Instant;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -26,7 +26,7 @@ public class CovarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         int i = 20;
         var now = Instant.now();

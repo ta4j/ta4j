@@ -3,14 +3,14 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -28,7 +28,7 @@ public class ClosePriceIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
         closePrice = new ClosePriceIndicator(barSeries);

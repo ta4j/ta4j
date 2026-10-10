@@ -5,15 +5,15 @@ package org.ta4j.core.serialization;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.Assert.assertThrows;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.BaseTradingRecord;
@@ -50,7 +50,7 @@ public class StrategySerializationTest {
      * between test runs, especially when tests execute in parallel or the test
      * suite runs multiple times in the same JVM.
      */
-    @AfterEach
+    @After
     public void tearDown() {
         // Unregister test-specific named strategies that use static initializers
         NamedStrategy.unregisterImplementation(ToggleNamedStrategy.class);

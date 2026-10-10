@@ -25,13 +25,13 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade.TradeType;
@@ -50,13 +50,13 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
 
     private TraceTestLogger ruleTraceTestLogger;
 
-    @BeforeEach
+    @Before
     public void setUpLogger() {
         ruleTraceTestLogger = new TraceTestLogger();
         ruleTraceTestLogger.open();
     }
 
-    @AfterEach
+    @After
     public void tearDownLogger() {
         ruleTraceTestLogger.close();
     }
@@ -101,10 +101,10 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
         rule.isSatisfied(4, tradingRecord);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue(logContent.contains("5min Trailing Stop#isSatisfied"),
-                "TrailingStopLossRule trace log should contain custom name when set");
-        assertFalse(logContent.contains("TrailingStopLossRule#isSatisfied"),
-                "TrailingStopLossRule trace log should not contain class name when custom name is set");
+        assertTrue("TrailingStopLossRule trace log should contain custom name when set",
+                logContent.contains("5min Trailing Stop#isSatisfied"));
+        assertFalse("TrailingStopLossRule trace log should not contain class name when custom name is set",
+                logContent.contains("TrailingStopLossRule#isSatisfied"));
     }
 
     @Test
@@ -119,8 +119,8 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
         rule.isSatisfied(4, tradingRecord);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue(logContent.contains("TrailingStopLossRule#isSatisfied"),
-                "TrailingStopLossRule trace log should contain class name when no custom name is set");
+        assertTrue("TrailingStopLossRule trace log should contain class name when no custom name is set",
+                logContent.contains("TrailingStopLossRule#isSatisfied"));
     }
 
     @Test
@@ -136,24 +136,24 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
         rule.isSatisfied(4, tradingRecord);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue(logContent.contains("Custom Stop Loss#isSatisfied"),
-                "TrailingStopLossRule trace log should include custom name");
-        assertTrue(logContent.contains("currentPrice=117"),
-                "TrailingStopLossRule trace log should include current price");
-        assertTrue(logContent.contains("stopPrice=117"), "TrailingStopLossRule trace log should include stop price");
-        assertTrue(logContent.contains("side=BUY"), "TrailingStopLossRule trace log should include trade side");
-        assertTrue(logContent.contains("highestPrice=130"),
-                "TrailingStopLossRule trace log should include trailing high");
-        assertTrue(logContent.contains("lossPercentage=10"),
-                "TrailingStopLossRule trace log should include configured percentage");
-        assertFalse(logContent.contains("Current price:"),
-                "TrailingStopLossRule trace log should keep structured key=value formatting without legacy suffix");
-        assertTrue(logContent.contains("ruleType=TrailingStopLossRule"),
-                "TrailingStopLossRule trace log should include rule type");
-        assertTrue(logContent.contains("mode=VERBOSE"),
-                "TrailingStopLossRule trace log should include active trace mode");
-        assertTrue(logContent.contains("path=root"), "TrailingStopLossRule trace log should include root path");
-        assertTrue(logContent.contains("depth=0"), "TrailingStopLossRule trace log should include root depth");
+        assertTrue("TrailingStopLossRule trace log should include custom name",
+                logContent.contains("Custom Stop Loss#isSatisfied"));
+        assertTrue("TrailingStopLossRule trace log should include current price",
+                logContent.contains("currentPrice=117"));
+        assertTrue("TrailingStopLossRule trace log should include stop price", logContent.contains("stopPrice=117"));
+        assertTrue("TrailingStopLossRule trace log should include trade side", logContent.contains("side=BUY"));
+        assertTrue("TrailingStopLossRule trace log should include trailing high",
+                logContent.contains("highestPrice=130"));
+        assertTrue("TrailingStopLossRule trace log should include configured percentage",
+                logContent.contains("lossPercentage=10"));
+        assertFalse("TrailingStopLossRule trace log should keep structured key=value formatting without legacy suffix",
+                logContent.contains("Current price:"));
+        assertTrue("TrailingStopLossRule trace log should include rule type",
+                logContent.contains("ruleType=TrailingStopLossRule"));
+        assertTrue("TrailingStopLossRule trace log should include active trace mode",
+                logContent.contains("mode=VERBOSE"));
+        assertTrue("TrailingStopLossRule trace log should include root path", logContent.contains("path=root"));
+        assertTrue("TrailingStopLossRule trace log should include root depth", logContent.contains("depth=0"));
     }
 
     @Test
@@ -167,8 +167,8 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
         ruleTraceTestLogger.clear();
         assertFalse(rule.isSatisfied(1, tradingRecord));
 
-        assertTrue(ruleTraceTestLogger.getLogOutput().contains("reason=indexBeforeEntry"),
-                "Pre-entry evaluation should be traced with a clear reason");
+        assertTrue("Pre-entry evaluation should be traced with a clear reason",
+                ruleTraceTestLogger.getLogOutput().contains("reason=indexBeforeEntry"));
     }
 
     @Test

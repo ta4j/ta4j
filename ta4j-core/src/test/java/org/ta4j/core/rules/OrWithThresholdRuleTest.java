@@ -3,20 +3,19 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertTrue;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedNumIndicator;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class OrWithThresholdRuleTest {
 
@@ -25,7 +24,7 @@ public class OrWithThresholdRuleTest {
     private BarSeries series;
     private TraceTestLogger ruleTraceTestLogger;
 
-    @BeforeEach
+    @Before
     public void setUp() {
         ruleTraceTestLogger = new TraceTestLogger();
         ruleTraceTestLogger.open();
@@ -35,7 +34,7 @@ public class OrWithThresholdRuleTest {
         series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10).build();
     }
 
-    @AfterEach
+    @After
     public void tearDownLogger() {
         ruleTraceTestLogger.close();
     }
@@ -190,32 +189,24 @@ public class OrWithThresholdRuleTest {
         assertTrue(rule.isSatisfied(7));
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void constructorThrowsExceptionWhenThresholdIsZero() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            new OrWithThresholdRule(satisfiedRule, satisfiedRule, 0);
-        });
+        new OrWithThresholdRule(satisfiedRule, satisfiedRule, 0);
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void constructorThrowsExceptionWhenThresholdIsNegative() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            new OrWithThresholdRule(satisfiedRule, satisfiedRule, -1);
-        });
+        new OrWithThresholdRule(satisfiedRule, satisfiedRule, -1);
     }
 
-    @Test
+    @Test(expected = NullPointerException.class)
     public void constructorThrowsExceptionWhenRule1IsNull() {
-        assertThrows(NullPointerException.class, () -> {
-            new OrWithThresholdRule(null, satisfiedRule, 1);
-        });
+        new OrWithThresholdRule(null, satisfiedRule, 1);
     }
 
-    @Test
+    @Test(expected = NullPointerException.class)
     public void constructorThrowsExceptionWhenRule2IsNull() {
-        assertThrows(NullPointerException.class, () -> {
-            new OrWithThresholdRule(satisfiedRule, null, 1);
-        });
+        new OrWithThresholdRule(satisfiedRule, null, 1);
     }
 
     @Test
@@ -256,10 +247,10 @@ public class OrWithThresholdRuleTest {
         rule.isSatisfied(7);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue(logContent.contains("Threshold Or#isSatisfied"), "Verbose mode should log threshold OR");
-        assertTrue(logContent.contains("threshold=4"), "Verbose mode should include threshold value");
-        assertTrue(logContent.contains("rule1=true"), "Verbose mode should include first child result");
-        assertTrue(logContent.contains("Threshold Rule 1#isSatisfied"), "Verbose mode should log first child");
+        assertTrue("Verbose mode should log threshold OR", logContent.contains("Threshold Or#isSatisfied"));
+        assertTrue("Verbose mode should include threshold value", logContent.contains("threshold=4"));
+        assertTrue("Verbose mode should include first child result", logContent.contains("rule1=true"));
+        assertTrue("Verbose mode should log first child", logContent.contains("Threshold Rule 1#isSatisfied"));
     }
 
     @Test
@@ -271,13 +262,13 @@ public class OrWithThresholdRuleTest {
         rule.isSatisfiedWithTraceMode(2, null, Rule.TraceMode.SUMMARY);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue(logContent.contains("Threshold Or Failure#isSatisfied"),
-                "Summary mode should log threshold OR failure");
-        assertTrue(logContent.contains("threshold=4"), "Summary mode should include threshold");
-        assertTrue(logContent.contains("windowStart=0"), "Summary mode should include window start");
-        assertTrue(logContent.contains("windowEnd=2"), "Summary mode should include window end");
-        assertTrue(logContent.contains("reason=insufficientBars"),
-                "Summary mode should include insufficient bars reason");
+        assertTrue("Summary mode should log threshold OR failure",
+                logContent.contains("Threshold Or Failure#isSatisfied"));
+        assertTrue("Summary mode should include threshold", logContent.contains("threshold=4"));
+        assertTrue("Summary mode should include window start", logContent.contains("windowStart=0"));
+        assertTrue("Summary mode should include window end", logContent.contains("windowEnd=2"));
+        assertTrue("Summary mode should include insufficient bars reason",
+                logContent.contains("reason=insufficientBars"));
     }
 
     @Test

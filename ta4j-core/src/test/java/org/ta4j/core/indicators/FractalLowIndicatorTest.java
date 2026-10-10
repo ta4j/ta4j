@@ -4,10 +4,10 @@
 package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.Assert.assertThrows;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
@@ -24,7 +24,7 @@ public class FractalLowIndicatorTest extends AbstractIndicatorTest<Indicator<Boo
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
     }

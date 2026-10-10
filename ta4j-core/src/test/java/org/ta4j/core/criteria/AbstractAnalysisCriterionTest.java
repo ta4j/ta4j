@@ -3,13 +3,13 @@
  */
 package org.ta4j.core.criteria;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static junit.framework.TestCase.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
@@ -34,7 +34,7 @@ public class AbstractAnalysisCriterionTest extends AbstractCriterionTest {
         super(params -> new GrossReturnCriterion(), numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         alwaysStrategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
         buyAndHoldStrategy = new BaseStrategy(new FixedRule(0), new FixedRule(4));

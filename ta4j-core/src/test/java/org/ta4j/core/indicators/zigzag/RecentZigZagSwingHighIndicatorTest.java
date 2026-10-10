@@ -5,8 +5,8 @@ package org.ta4j.core.indicators.zigzag;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -30,7 +30,7 @@ public class RecentZigZagSwingHighIndicatorTest extends AbstractIndicatorTest<In
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
     }
@@ -166,7 +166,7 @@ public class RecentZigZagSwingHighIndicatorTest extends AbstractIndicatorTest<In
         final BarSeries otherSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         otherSeries.barBuilder().closePrice(100).add();
 
-        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+        org.junit.Assert.assertThrows(IllegalArgumentException.class,
                 () -> new RecentZigZagSwingHighIndicator(state, new ClosePriceIndicator(otherSeries)));
     }
 

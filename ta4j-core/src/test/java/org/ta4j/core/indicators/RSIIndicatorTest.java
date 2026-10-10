@@ -3,8 +3,8 @@
  */
 package org.ta4j.core.indicators;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
@@ -20,7 +20,7 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.Assert.assertEquals;
 
 public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -32,7 +32,7 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         xls = new XLSIndicatorTest(this.getClass(), "RSI.xls", 10, numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() throws Exception {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(50.45, 50.30, 50.20, 50.15, 50.05, 50.06, 50.10, 50.08, 50.03, 50.07, 50.01, 50.14, 50.22,
