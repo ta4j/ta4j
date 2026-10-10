@@ -3,11 +3,11 @@
  */
 package org.ta4j.core.indicators.forecast;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.lang.reflect.InvocationTargetException;
@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -433,7 +433,7 @@ public class EwmaReturnForecastStateIndicatorTest
 
             @Override
             public Num getValue(int index) {
-                assertFalse("Return graph evaluated inside source read scope", inReadScope.get());
+                assertFalse(inReadScope.get(), "Return graph evaluated inside source read scope");
                 // Count and shared mean consume the original prefix first.
                 // Change an interior close when variance starts reading it.
                 if (index == 4 && ++targetReads == 3) {

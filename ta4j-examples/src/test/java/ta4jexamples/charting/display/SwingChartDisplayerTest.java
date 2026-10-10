@@ -5,7 +5,7 @@ package ta4jexamples.charting.display;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.JFreeChart;
-import org.junit.Assume;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -145,7 +145,7 @@ class SwingChartDisplayerTest {
     @Test
     @Tag("requires-display")
     void testDisplayCreatesNonFocusableWindowWhenEnabled() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+        Assumptions.assumeFalse(GraphicsEnvironment.isHeadless(), "Headless environment");
 
         String title = "Focusability Test " + UUID.randomUUID();
         System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
@@ -175,7 +175,7 @@ class SwingChartDisplayerTest {
     @Tag("requires-headless")
     void testDisplayHandlesHeadlessEnvironment() {
         // This test only runs in headless environments
-        Assume.assumeTrue("Test requires headless environment", GraphicsEnvironment.isHeadless());
+        Assumptions.assumeTrue(GraphicsEnvironment.isHeadless(), "Test requires headless environment");
 
         // Clear the disable display property so we can test actual headless behavior
         System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
@@ -374,7 +374,7 @@ class SwingChartDisplayerTest {
     @Tag("requires-headless")
     void testDisplayHandlesCascadingInHeadlessEnvironment() {
         // This test only runs in headless environments
-        Assume.assumeTrue("Test requires headless environment", GraphicsEnvironment.isHeadless());
+        Assumptions.assumeTrue(GraphicsEnvironment.isHeadless(), "Test requires headless environment");
 
         // Clear the disable display property so we can test actual headless behavior
         System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);

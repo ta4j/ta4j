@@ -4,13 +4,13 @@
 package org.ta4j.core.indicators.averages;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
@@ -46,7 +46,7 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
     private BarSeries data;
 
-    @Before
+    @BeforeEach
     public void setUp() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(64.75, 63.79, 63.73, 63.73, 63.55, 63.19, 63.91, 63.85, 62.95, 63.37, 61.33, 61.51)
@@ -125,8 +125,8 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
                 if (index == 3 && blockCurrentIndex.compareAndSet(true, false)) {
                     calculationStarted.countDown();
                     try {
-                        assertTrue("recursive calculation was not released",
-                                allowCalculation.await(5, TimeUnit.SECONDS));
+                        assertTrue(allowCalculation.await(5, TimeUnit.SECONDS),
+                                "recursive calculation was not released");
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         throw new AssertionError(e);
@@ -151,7 +151,7 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
 
         try {
             Future<Num> recursiveRead = executor.submit(() -> ema.getValue(3));
-            assertTrue("recursive calculation never started", calculationStarted.await(5, TimeUnit.SECONDS));
+            assertTrue(calculationStarted.await(5, TimeUnit.SECONDS), "recursive calculation never started");
             series.barBuilder().endTime(series.getLastBar().getEndTime().plusSeconds(1)).closePrice(5).add();
 
             Future<Num> resetRead = executor.submit(() -> {
@@ -159,7 +159,7 @@ public class EMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
                 resetReaderStarted.countDown();
                 return ema.getValue(4);
             });
-            assertTrue("reset reader never started", resetReaderStarted.await(5, TimeUnit.SECONDS));
+            assertTrue(resetReaderStarted.await(5, TimeUnit.SECONDS), "reset reader never started");
 
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
             Thread.State resetReaderState;

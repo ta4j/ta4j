@@ -3,17 +3,17 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TraceTestLogger;
@@ -23,13 +23,13 @@ public class VoteRuleTest {
 
     private TraceTestLogger ruleTraceTestLogger;
 
-    @Before
+    @BeforeEach
     public void setUpLogger() {
         ruleTraceTestLogger = new TraceTestLogger();
         ruleTraceTestLogger.open();
     }
 
-    @After
+    @AfterEach
     public void tearDownLogger() {
         ruleTraceTestLogger.close();
     }
@@ -90,12 +90,12 @@ public class VoteRuleTest {
         voteRule.isSatisfiedWithTraceMode(2, null, Rule.TraceMode.SUMMARY);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue("Summary mode should log voting rule", logContent.contains("Vote Summary#isSatisfied"));
-        assertTrue("Summary mode should include vote count", logContent.contains("votes=1"));
-        assertTrue("Summary mode should include required votes", logContent.contains("requiredVotes=2"));
-        assertTrue("Summary mode should include evaluated rule count", logContent.contains("evaluatedRules=3"));
-        assertFalse("Summary mode should suppress first child log", logContent.contains("Vote Rule 1#isSatisfied"));
-        assertFalse("Summary mode should suppress second child log", logContent.contains("Vote Rule 2#isSatisfied"));
-        assertFalse("Summary mode should suppress third child log", logContent.contains("Vote Rule 3#isSatisfied"));
+        assertTrue(logContent.contains("Vote Summary#isSatisfied"), "Summary mode should log voting rule");
+        assertTrue(logContent.contains("votes=1"), "Summary mode should include vote count");
+        assertTrue(logContent.contains("requiredVotes=2"), "Summary mode should include required votes");
+        assertTrue(logContent.contains("evaluatedRules=3"), "Summary mode should include evaluated rule count");
+        assertFalse(logContent.contains("Vote Rule 1#isSatisfied"), "Summary mode should suppress first child log");
+        assertFalse(logContent.contains("Vote Rule 2#isSatisfied"), "Summary mode should suppress second child log");
+        assertFalse(logContent.contains("Vote Rule 3#isSatisfied"), "Summary mode should suppress third child log");
     }
 }

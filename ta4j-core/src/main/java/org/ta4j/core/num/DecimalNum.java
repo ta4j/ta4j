@@ -737,9 +737,10 @@ public final class DecimalNum implements Num {
      * Returns a {@code Num} whose value is <code>(this<sup>n</sup>)</code>.
      *
      * <p>
-     * If {@code n} is {@link NaN}, or if calculating the power produces an
-     * undefined or infinite value (such as taking a fractional power of a negative
-     * number or dividing by zero), {@link NaN#NaN} is returned.
+     * If {@code n} is {@link NaN} or infinite (including primitive-backed values), or if
+     * calculating the power produces an undefined or infinite value (such as
+     * taking a fractional power of a negative number or dividing by zero),
+     * {@link NaN#NaN} is returned.
      *
      * @param n power to raise this {@code Num} to
      * @return <code>this<sup>n</sup></code>, or {@link NaN#NaN} if invalid or
@@ -749,7 +750,7 @@ public final class DecimalNum implements Num {
      */
     @Override
     public Num pow(final Num n) {
-        if (n.isNaN()) {
+        if (!Num.isFinite(n)) {
             return NaN;
         }
         if (this.isZero() && n.isNegative()) {
@@ -783,6 +784,11 @@ public final class DecimalNum implements Num {
         final BigDecimal a = aplusb.subtract(b);
         // convert a to an int, fails on overflow
         final int aInt = a.intValueExact();
+        // a fractional power of a negative base is undefined; detect it before x^a,
+        // which BigDecimal rejects for negative whole parts at unlimited precision
+        if (this.delegate.signum() < 0 && b.signum() != 0) {
+            return NaN;
+        }
         // x^a at the working precision plus guard digits: an exact power grows by
         // digits(x) * a digits, which stalls large exponents, and the result is
         // rounded to mathContext anyway. Also accepts negative whole parts.

@@ -9,10 +9,10 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -34,7 +34,7 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
     /**
      * Initializes the test fixtures used by these scenarios.
      */
-    @Before
+    @BeforeEach
     public void setUp() {
         accumulationSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         addBar(accumulationSeries, 101, 102, 100, 101, 800);

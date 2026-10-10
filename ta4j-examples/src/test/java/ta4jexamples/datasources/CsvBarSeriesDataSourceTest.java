@@ -10,9 +10,7 @@ import java.io.InputStream;
 import java.time.Duration;
 import java.time.Instant;
 
-import static org.hamcrest.core.Is.is;
-import static org.hamcrest.core.IsNull.notNullValue;
-import static org.junit.Assume.assumeThat;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -32,7 +30,7 @@ public class CsvBarSeriesDataSourceTest {
         // Pattern: {ticker}-{interval}-{startDate}_{endDate}.csv
         String expectedFile = "AAPL-PT1D-20130102_20131231.csv";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
-        assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
+        assumeTrue(resourceStream != null, "File " + expectedFile + " does not exist");
 
         CsvFileBarSeriesDataSource dataSource = new CsvFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-01-02T00:00:00Z");
@@ -131,7 +129,7 @@ public class CsvBarSeriesDataSourceTest {
         Instant end = Instant.parse("2013-12-31T23:59:59Z");
         String expectedFile = "AAPL-PT1D-20130102_20131231.csv";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
-        assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
+        assumeTrue(resourceStream != null, "File " + expectedFile + " does not exist");
 
         BarSeries series = dataSource.loadSeries("AAPL", Duration.ofDays(1), start, end);
         assertNotNull(series, "Should find file without source name prefix");
@@ -153,7 +151,7 @@ public class CsvBarSeriesDataSourceTest {
         // wildcard
         String expectedFile = "AAPL-PT1D-20130102_20131231.csv";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
-        assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
+        assumeTrue(resourceStream != null, "File " + expectedFile + " does not exist");
 
         CsvFileBarSeriesDataSource dataSource = new CsvFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-01-02T00:00:00Z");
@@ -177,7 +175,7 @@ public class CsvBarSeriesDataSourceTest {
         // value
         String expectedFile = "AAPL-PT1D-20130102_20131231.csv";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
-        assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
+        assumeTrue(resourceStream != null, "File " + expectedFile + " does not exist");
 
         CsvFileBarSeriesDataSource dataSource = new CsvFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-01-02T00:00:00Z");
@@ -203,7 +201,7 @@ public class CsvBarSeriesDataSourceTest {
         // This exercises the date-only broader pattern fallback
         String expectedFile = "AAPL-PT1D-20130102_20131231.csv";
         InputStream resourceStream = getClass().getClassLoader().getResourceAsStream(expectedFile);
-        assumeThat("File " + expectedFile + " does not exist", resourceStream, is(notNullValue()));
+        assumeTrue(resourceStream != null, "File " + expectedFile + " does not exist");
 
         CsvFileBarSeriesDataSource dataSource = new CsvFileBarSeriesDataSource();
         Instant start = Instant.parse("2013-01-02T00:00:00Z");
