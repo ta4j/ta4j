@@ -79,6 +79,53 @@ public class DecimalNumTest {
     private Indicator<Num> lowPrecisionIndicator;
 
     @Test
+    public void testPowNaNExponentReturnsNaN() {
+        final Num x = DecimalNum.valueOf(2);
+        assertTrue(x.pow(NaN.NaN).isNaN());
+    }
+
+    @Test
+    public void testPowNegativeBaseFractionalExponentReturnsNaN() {
+        final Num x = DecimalNum.valueOf(-4);
+        final Num n = DecimalNum.valueOf(0.5);
+        assertTrue(x.pow(n).isNaN());
+    }
+
+    @Test
+    public void testPowZeroBaseNegativeExponentReturnsNaN() {
+        final Num zero = DecimalNum.valueOf(0);
+        final Num n = DecimalNum.valueOf(-0.5);
+        assertTrue(zero.pow(n).isNaN());
+    }
+
+    @Test
+    public void testPowPrimitiveNaNOrInfiniteExponentReturnsNaN() {
+        final Num x = DecimalNum.valueOf(2);
+        assertTrue(x.pow(DoubleNum.valueOf(Double.NaN)).isNaN());
+        assertTrue(x.pow(DoubleNum.valueOf(Double.POSITIVE_INFINITY)).isNaN());
+    }
+
+    @Test
+    public void testPowNegativeBaseNegativeFractionalExponentAtUnlimitedPrecisionReturnsNaN() {
+        final Num x = DecimalNum.valueOf(BigDecimal.valueOf(-4), MathContext.UNLIMITED);
+        final Num n = DecimalNum.valueOf(BigDecimal.valueOf(-2.5), MathContext.UNLIMITED);
+        assertTrue(x.pow(n).isNaN());
+    }
+
+    @Test
+    public void testPowNegativeWholeExponentAtUnlimitedPrecisionReturnsReciprocal() {
+        final Num two = DecimalNum.valueOf(BigDecimal.valueOf(2), MathContext.UNLIMITED);
+        final Num minusOne = DecimalNum.valueOf(BigDecimal.valueOf(-1), MathContext.UNLIMITED);
+        final Num minusTwo = DecimalNum.valueOf(BigDecimal.valueOf(-2), MathContext.UNLIMITED);
+
+        assertEquals(0, new BigDecimal("0.5").compareTo(new BigDecimal(two.pow(minusOne).toString())));
+        assertEquals(0, new BigDecimal("0.25").compareTo(new BigDecimal(two.pow(minusTwo).toString())));
+        // 1/3 does not terminate; the reciprocal is rounded instead of throwing
+        final Num three = DecimalNum.valueOf(BigDecimal.valueOf(3), MathContext.UNLIMITED);
+        assertTrue(!three.pow(minusOne).isNaN());
+    }
+
+    @Test
     public void testPowOverflowExponent() {
         assertThrows(ArithmeticException.class, () -> {
             final Num x = DecimalNum.valueOf("2");
