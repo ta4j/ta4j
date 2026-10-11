@@ -487,18 +487,13 @@ public final class DecimalNum implements Num {
             return DecimalNumFactory.getInstance().zero();
         }
 
-        if (precisionContext.getPrecision() != 0) {
-            return DecimalNum.valueOf(this.delegate.sqrt(precisionContext), precisionContext);
-        }
-
-        // Unlimited precision: fall back to DEFAULT_PRECISION when the root is
-        // non-terminating
-        try {
-            return DecimalNum.valueOf(this.delegate.sqrt(precisionContext), precisionContext);
-        } catch (ArithmeticException e) {
-            final MathContext workingContext = new MathContext(DEFAULT_PRECISION, precisionContext.getRoundingMode());
-            return DecimalNum.valueOf(this.delegate.sqrt(workingContext), precisionContext);
-        }
+        // BigDecimal.sqrt cannot take unlimited precision without proving the root
+        // terminates, which is unbounded work for large non-squares; use
+        // DEFAULT_PRECISION instead, as before.
+        final MathContext workingContext = precisionContext.getPrecision() == 0
+                ? new MathContext(DEFAULT_PRECISION, precisionContext.getRoundingMode())
+                : precisionContext;
+        return DecimalNum.valueOf(this.delegate.sqrt(workingContext), precisionContext);
     }
 
     @Override
