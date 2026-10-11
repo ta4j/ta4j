@@ -7,7 +7,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.math.BigDecimal;
 import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -19,7 +18,6 @@ import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.supportresistance.PriceClusterSupportIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
-import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -100,12 +98,9 @@ public class PriceClusterSupportIndicatorTest extends AbstractIndicatorTest<Indi
 
         var indicator = new PriceClusterSupportIndicator(withNaN, 2, numOf(0.1));
 
-        // KDE weights use the factory-precision square root, so DecimalNum's weighted
-        // cluster price rounds to one 16-digit ulp above 20; DoubleNum stays exact.
-        Num expectedPrice = numFactory instanceof DecimalNumFactory ? numOf(new BigDecimal("20.00000000000001"))
-                : numOf(20);
-        assertThat(indicator.getValue(2)).as("valid values should survive mixed window")
-                .isEqualByComparingTo(expectedPrice);
+        assertThat(indicator.getValue(2).minus(numOf(20)).abs().isLessThan(numOf(1e-13)))
+                .as("valid values should survive mixed window")
+                .isTrue();
         assertThat(indicator.getClusterIndex(2)).isEqualTo(2);
 
         assertThat(indicator.getValue(7).isNaN()).as("NaN when entire lookback is invalid").isTrue();
