@@ -3,11 +3,11 @@
  */
 package org.ta4j.core.criteria;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.Assert.*;
 
 public class ReturnRepresentationPolicyTest {
 

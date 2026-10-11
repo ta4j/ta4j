@@ -3,12 +3,12 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TraceTestLogger;
@@ -20,14 +20,14 @@ public class CrossedUpIndicatorRuleTest {
     private BarSeries series;
     private TraceTestLogger traceTestLogger;
 
-    @BeforeEach
+    @Before
     public void setUp() {
         series = new MockBarSeriesBuilder().build();
         traceTestLogger = new TraceTestLogger();
         traceTestLogger.open();
     }
 
-    @AfterEach
+    @After
     public void tearDown() {
         traceTestLogger.close();
     }
@@ -55,13 +55,13 @@ public class CrossedUpIndicatorRuleTest {
         assertTrue(rule.isSatisfiedWithTraceMode(3, Rule.TraceMode.VERBOSE));
 
         String logContent = traceTestLogger.getLogOutput();
-        assertTrue(logContent.contains("firstValue=12"), "Trace should include the current evaluated value");
-        assertTrue(logContent.contains("secondValue=10"), "Trace should include the current threshold value");
-        assertTrue(logContent.contains("previousFirstValue=10"), "Trace should include the previous evaluated value");
-        assertTrue(logContent.contains("previousSecondValue=10"), "Trace should include the previous threshold value");
-        assertTrue(logContent.contains("priorFirstValue=9"), "Trace should include the cross-base evaluated value");
-        assertTrue(logContent.contains("priorSecondValue=10"), "Trace should include the cross-base threshold value");
-        assertTrue(logContent.contains("reason=crossedUp"), "Trace should explain the cross result");
+        assertTrue("Trace should include the current evaluated value", logContent.contains("firstValue=12"));
+        assertTrue("Trace should include the current threshold value", logContent.contains("secondValue=10"));
+        assertTrue("Trace should include the previous evaluated value", logContent.contains("previousFirstValue=10"));
+        assertTrue("Trace should include the previous threshold value", logContent.contains("previousSecondValue=10"));
+        assertTrue("Trace should include the cross-base evaluated value", logContent.contains("priorFirstValue=9"));
+        assertTrue("Trace should include the cross-base threshold value", logContent.contains("priorSecondValue=10"));
+        assertTrue("Trace should explain the cross result", logContent.contains("reason=crossedUp"));
     }
 
     @Test
@@ -83,7 +83,7 @@ public class CrossedUpIndicatorRuleTest {
 
         assertFalse(rule.isSatisfied(0));
         assertFalse(rule.isSatisfied(1));
-        assertTrue(rule.isSatisfied(2), "first cross up");
+        assertTrue("first cross up", rule.isSatisfied(2));
         assertFalse(rule.isSatisfied(3));
         assertFalse(rule.isSatisfied(4));
         assertFalse(rule.isSatisfied(5));

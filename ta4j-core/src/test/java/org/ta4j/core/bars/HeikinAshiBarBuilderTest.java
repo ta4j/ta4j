@@ -3,7 +3,7 @@
  */
 package org.ta4j.core.bars;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.indicators.AbstractIndicatorTest;

@@ -3,11 +3,11 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -25,7 +25,7 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 0, 9).build();
     }
@@ -111,8 +111,8 @@ public class VarianceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>,
         source.resetReadCount();
         assertNumEquals(1.25, variance.getValue(4));
 
-        assertTrue(source.readCount() <= 6,
-                "A sequential variance window reread the source " + source.readCount() + " times");
+        assertTrue("A sequential variance window reread the source " + source.readCount() + " times",
+                source.readCount() <= 6);
     }
 
     @Test

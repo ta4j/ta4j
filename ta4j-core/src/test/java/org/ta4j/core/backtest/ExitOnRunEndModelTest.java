@@ -3,16 +3,16 @@
  */
 package org.ta4j.core.backtest;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ConstrainedSeriesSupport;
 import org.ta4j.core.BaseStrategy;
@@ -185,7 +185,7 @@ public class ExitOnRunEndModelTest {
         for (StrategyWalkForwardExecutionResult.FoldResult fold : result.folds()) {
             TradingRecord record = fold.tradingRecord();
             int testEnd = fold.split().testEnd();
-            assertTrue(record.isClosed(), fold.split().foldId());
+            assertTrue(fold.split().foldId(), record.isClosed());
             assertEquals(1, record.getPositionCount());
             Trade exit = record.getPositions().getFirst().getExit();
             assertEquals(testEnd, exit.getIndex());
@@ -306,12 +306,12 @@ public class ExitOnRunEndModelTest {
 
             TradingRecord record = manager.run(enterAtLogicalBegin, TradeType.BUY, numFactory.one());
 
-            assertTrue(record.isClosed(), scenarios[scenario]);
+            assertTrue(scenarios[scenario], record.isClosed());
             Position position = record.getPositions().getFirst();
-            assertEquals(begin, position.getEntry().getIndex(), scenarios[scenario]);
-            assertEquals(end, position.getExit().getIndex(), scenarios[scenario]);
-            assertEquals(series.getBar(end).getClosePrice(), position.getExit().getPricePerAsset(),
-                    scenarios[scenario]);
+            assertEquals(scenarios[scenario], begin, position.getEntry().getIndex());
+            assertEquals(scenarios[scenario], end, position.getExit().getIndex());
+            assertEquals(scenarios[scenario], series.getBar(end).getClosePrice(),
+                    position.getExit().getPricePerAsset());
         }
     }
 }

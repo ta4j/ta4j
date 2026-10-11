@@ -7,11 +7,12 @@ import org.ta4j.core.BarSeries;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.random.RandomGenerator;
 
-import org.junit.jupiter.api.Assertions;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import org.junit.jupiter.api.Test;
+import org.junit.Assert;
+import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ConstrainedSeriesSupport;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.BaseTrade;
@@ -26,9 +27,8 @@ import org.ta4j.core.criteria.Statistics;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.num.Num;
 import java.time.Instant;
-import org.junit.jupiter.api.Timeout;
-import java.util.concurrent.TimeUnit;
 
 public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTest {
 
@@ -36,8 +36,7 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         super(params -> new MonteCarloMaximumDrawdownCriterion(), numFactory);
     }
 
-    @Test
-    @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
+    @Test(timeout = 5000)
     public void pricesClosedBlockEndingAtMaximumIntegerIndex() {
         BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 50d).build();
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
@@ -51,8 +50,7 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
                 new MonteCarloMaximumDrawdownCriterion(1, null, 42L, Statistics.MAX).calculate(series, record));
     }
 
-    @Test
-    @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
+    @Test(timeout = 5000)
     public void blocksStartAtTheCapturedWindowForPreWindowEntries() {
         BarSeries source = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 80d).build();
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
@@ -112,7 +110,7 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         var criterion = new MonteCarloMaximumDrawdownCriterion(1, null, 123L, Statistics.P95);
 
         // Positions entered before the retained window must not read pruned bars.
-        Assertions.assertFalse(criterion.calculate(series, record).isNaN());
+        Assert.assertFalse(criterion.calculate(series, record).isNaN());
     }
 
     @Test
@@ -143,7 +141,7 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         var median = medianCriterion.calculate(series, record);
         var max = maxCriterion.calculate(series, record);
         // max drawdown should be at least as large as median drawdown
-        Assertions.assertTrue(max.isGreaterThanOrEqual(median));
+        Assert.assertTrue(max.isGreaterThanOrEqual(median));
     }
 
     @Test
@@ -242,7 +240,7 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         var closedOnlyValue = ignoreOpen.calculate(series, closedOnly);
 
         assertNumEquals(closedOnlyValue, ignoreValue);
-        Assertions.assertFalse(markToMarketValue.isEqual(ignoreValue));
+        Assert.assertFalse(markToMarketValue.isEqual(ignoreValue));
     }
 
     @Test
@@ -276,7 +274,7 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         var markToMarketValue = seedMarkToMarket.calculate(series, record);
         var ignoreValue = seedIgnore.calculate(series, record);
 
-        Assertions.assertTrue(markToMarketValue.isGreaterThan(ignoreValue));
+        Assert.assertTrue(markToMarketValue.isGreaterThan(ignoreValue));
     }
 
     @Test
@@ -448,8 +446,8 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
                             handling);
                     Num actual = criterion.calculate(fixture.series(), fixture.tradingRecord());
                     Num expected = criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord(mode));
-                    Assertions.assertEquals(expected.doubleValue(), actual.doubleValue(), 1e-10,
-                            fixture.name() + ": " + mode + "/" + handling);
+                    Assert.assertEquals(fixture.name() + ": " + mode + "/" + handling, expected.doubleValue(),
+                            actual.doubleValue(), 1e-10);
                 }
             }
         }

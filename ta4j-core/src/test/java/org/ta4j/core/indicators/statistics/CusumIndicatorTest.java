@@ -3,10 +3,10 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.assertIndicatorRoundTrips;
 import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSupport.serializationSeries;
@@ -21,8 +21,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Indicator;
@@ -52,7 +52,7 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3).build();
         source = new MockIndicator(data, 0, numOf(0.010), numOf(0.010), numOf(-0.100));
@@ -763,8 +763,8 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
                 if (index == 3 && blockCurrentIndex.compareAndSet(true, false)) {
                     calculationStarted.countDown();
                     try {
-                        assertTrue(allowCalculation.await(5, TimeUnit.SECONDS),
-                                "recursive calculation was not released");
+                        assertTrue("recursive calculation was not released",
+                                allowCalculation.await(5, TimeUnit.SECONDS));
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         throw new AssertionError(e);
@@ -789,7 +789,7 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
 
         try {
             Future<Num> recursiveRead = executor.submit(() -> cusum.getValue(3));
-            assertTrue(calculationStarted.await(5, TimeUnit.SECONDS), "recursive calculation never started");
+            assertTrue("recursive calculation never started", calculationStarted.await(5, TimeUnit.SECONDS));
             series.barBuilder().endTime(series.getLastBar().getEndTime().plusSeconds(1)).closePrice(5).add();
 
             Future<Num> resetRead = executor.submit(() -> {
@@ -797,7 +797,7 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
                 resetReaderStarted.countDown();
                 return cusum.getValue(4);
             });
-            assertTrue(resetReaderStarted.await(5, TimeUnit.SECONDS), "reset reader never started");
+            assertTrue("reset reader never started", resetReaderStarted.await(5, TimeUnit.SECONDS));
 
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
             Thread.State resetReaderState;
@@ -809,10 +809,8 @@ public class CusumIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
                 }
                 Thread.onSpinWait();
             } while (System.nanoTime() < deadline);
-            assertTrue(
-                    resetReaderState == Thread.State.BLOCKED || resetReaderState == Thread.State.WAITING
-                            || resetReaderState == Thread.State.TIMED_WAITING,
-                    "reset reader did not contend with the recursive read");
+            assertTrue("reset reader did not contend with the recursive read", resetReaderState == Thread.State.BLOCKED
+                    || resetReaderState == Thread.State.WAITING || resetReaderState == Thread.State.TIMED_WAITING);
 
             allowCalculation.countDown();
             assertNumEquals(21, recursiveRead.get(5, TimeUnit.SECONDS));

@@ -3,11 +3,11 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.indicators.helpers.FixedNumIndicator;
@@ -16,7 +16,7 @@ public class CrossedDownIndicatorRuleTest {
 
     private BarSeries series;
 
-    @BeforeEach
+    @Before
     public void setUp() {
         series = new BaseBarSeriesBuilder().build();
     }
@@ -54,7 +54,7 @@ public class CrossedDownIndicatorRuleTest {
 
         assertFalse(rule.isSatisfied(0));
         assertFalse(rule.isSatisfied(1));
-        assertTrue(rule.isSatisfied(2), "first cross down");
+        assertTrue("first cross down", rule.isSatisfied(2));
         assertFalse(rule.isSatisfied(3));
         assertFalse(rule.isSatisfied(4));
         assertFalse(rule.isSatisfied(5));

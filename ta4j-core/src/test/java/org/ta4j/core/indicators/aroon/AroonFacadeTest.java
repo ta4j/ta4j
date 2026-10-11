@@ -9,16 +9,16 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 import java.util.List;
 import org.ta4j.core.BarSeries;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.indicators.IndicatorUtils.isSameSeries;
 
 import java.time.Duration;
 import java.time.Instant;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -35,7 +35,7 @@ public class AroonFacadeTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void init() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory).withName("Aroon data").build();
         Instant now = Instant.now();

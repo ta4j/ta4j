@@ -12,8 +12,8 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -26,7 +26,7 @@ public class CompressionIndicatorTest {
 
     private BarSeries series;
 
-    @BeforeEach
+    @Before
     public void setUp() {
         series = new MockBarSeriesBuilder().build();
         for (int i = 0; i < 8; i++) {

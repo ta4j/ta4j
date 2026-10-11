@@ -3,8 +3,8 @@
  */
 package org.ta4j.core.indicators;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.averages.ZLEMAIndicator;
@@ -20,7 +20,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.Assert.*;
 
 public class RecursiveCachedIndicatorPrefillTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -32,7 +32,7 @@ public class RecursiveCachedIndicatorPrefillTest extends AbstractIndicatorTest<I
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         double[] data = new double[TARGET_INDEX + 10];
         for (int i = 0; i < data.length; i++) {
@@ -143,16 +143,16 @@ public class RecursiveCachedIndicatorPrefillTest extends AbstractIndicatorTest<I
         // cache
         int indicatorHighest = indicator.getHighestResultIndex();
         int cacheHighest = indicator.getCacheHighestResultIndex();
-        assertEquals(cacheHighest, indicatorHighest,
-                "highestResultIndex should be synchronized from cache after prefill");
-        assertTrue(indicatorHighest >= 200, "highestResultIndex should be >= 200 after prefill");
+        assertEquals("highestResultIndex should be synchronized from cache after prefill", cacheHighest,
+                indicatorHighest);
+        assertTrue("highestResultIndex should be >= 200 after prefill", indicatorHighest >= 200);
 
         // Request another value that requires prefill
         indicator.getValue(250);
 
         // Should still be synchronized
-        assertEquals(indicator.getCacheHighestResultIndex(), indicator.getHighestResultIndex(),
-                "highestResultIndex should remain synchronized after second prefill");
+        assertEquals("highestResultIndex should remain synchronized after second prefill",
+                indicator.getCacheHighestResultIndex(), indicator.getHighestResultIndex());
     }
 
     @Test
@@ -181,8 +181,8 @@ public class RecursiveCachedIndicatorPrefillTest extends AbstractIndicatorTest<I
         // highestResultIndex should be updated to endIndex when last bar is accessed
         // first
         // This ensures RecursiveCachedIndicator prefilling logic works correctly
-        assertEquals(endIndex, indicator.getHighestResultIndex(),
-                "highestResultIndex should be updated when last bar is accessed first");
+        assertEquals("highestResultIndex should be updated when last bar is accessed first", endIndex,
+                indicator.getHighestResultIndex());
     }
 
     @Test
@@ -202,7 +202,7 @@ public class RecursiveCachedIndicatorPrefillTest extends AbstractIndicatorTest<I
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
             Future<Num> prefillFuture = executor.submit(() -> indicator.getValue(200));
-            assertTrue(prefillBlocked.await(30, TimeUnit.SECONDS), "Prefill did not reach blocking point in time");
+            assertTrue("Prefill did not reach blocking point in time", prefillBlocked.await(30, TimeUnit.SECONDS));
 
             indicator.forceHighestResultIndex(endIndex);
             assertEquals(endIndex, indicator.getHighestResultIndex());
@@ -215,8 +215,8 @@ public class RecursiveCachedIndicatorPrefillTest extends AbstractIndicatorTest<I
             executor.awaitTermination(30, TimeUnit.SECONDS);
         }
 
-        assertEquals(endIndex, indicator.getHighestResultIndex(),
-                "highestResultIndex should not regress after last-bar access");
+        assertEquals("highestResultIndex should not regress after last-bar access", endIndex,
+                indicator.getHighestResultIndex());
     }
 
     /**
@@ -322,8 +322,8 @@ public class RecursiveCachedIndicatorPrefillTest extends AbstractIndicatorTest<I
             if (index == blockIndex) {
                 prefillBlocked.countDown();
                 try {
-                    assertTrue(allowPrefillContinue.await(30, TimeUnit.SECONDS),
-                            "Timed out waiting to allow prefill to continue");
+                    assertTrue("Timed out waiting to allow prefill to continue",
+                            allowPrefillContinue.await(30, TimeUnit.SECONDS));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }

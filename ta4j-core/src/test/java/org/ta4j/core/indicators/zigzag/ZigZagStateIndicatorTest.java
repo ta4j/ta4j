@@ -5,8 +5,8 @@ package org.ta4j.core.indicators.zigzag;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -30,7 +30,7 @@ public class ZigZagStateIndicatorTest extends AbstractIndicatorTest<Indicator<Zi
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
     }
@@ -55,10 +55,10 @@ public class ZigZagStateIndicatorTest extends AbstractIndicatorTest<Indicator<Zi
         final Indicator<Num> low = new LowPriceIndicator(series);
         final Indicator<Num> threshold = new ConstantIndicator<>(series, reversalThreshold);
 
-        final IllegalArgumentException threeArgument = org.junit.jupiter.api.Assertions
-                .assertThrows(IllegalArgumentException.class, () -> new ZigZagStateIndicator(null, low, threshold));
-        final IllegalArgumentException fourArgument = org.junit.jupiter.api.Assertions.assertThrows(
-                IllegalArgumentException.class, () -> new ZigZagStateIndicator(null, low, low, threshold));
+        final IllegalArgumentException threeArgument = org.junit.Assert.assertThrows(IllegalArgumentException.class,
+                () -> new ZigZagStateIndicator(null, low, threshold));
+        final IllegalArgumentException fourArgument = org.junit.Assert.assertThrows(IllegalArgumentException.class,
+                () -> new ZigZagStateIndicator(null, low, low, threshold));
 
         assertThat(threeArgument).hasMessage("highPrice must not be null");
         assertThat(fourArgument).hasMessage("highPrice must not be null");

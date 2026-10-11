@@ -3,8 +3,8 @@
  */
 package org.ta4j.core.indicators;
 
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
+import org.junit.Assert;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -59,8 +59,8 @@ public class CorrentropyKalmanWeightIndicatorTest extends AbstractIndicatorTest<
     private void assertInUnitInterval(CorrentropyKalmanWeightIndicator weight, int fromIndex, int toIndex) {
         for (int i = fromIndex; i <= toIndex; i++) {
             double value = weight.getValue(i).doubleValue();
-            Assertions.assertTrue(value >= 0.0 && value <= 1.0,
-                    "weight at index " + i + " must be in [0, 1] but was " + value);
+            Assert.assertTrue("weight at index " + i + " must be in [0, 1] but was " + value,
+                    value >= 0.0 && value <= 1.0);
         }
     }
 
@@ -72,10 +72,10 @@ public class CorrentropyKalmanWeightIndicatorTest extends AbstractIndicatorTest<
         BarSeries series = seriesOf(10, 10.2, 10.1, 10.3);
         CorrentropyKalmanWeightIndicator weight = weight(new ClosePriceIndicator(series), 1e-3, 1e-2, 2);
 
-        Assertions.assertEquals(1.0, weight.getValue(0).doubleValue(), 0.0);
-        Assertions.assertEquals(0.893288290866, weight.getValue(1).doubleValue(), 1e-9);
-        Assertions.assertEquals(0.999881827845, weight.getValue(2).doubleValue(), 1e-9);
-        Assertions.assertEquals(0.784452745524, weight.getValue(3).doubleValue(), 1e-9);
+        Assert.assertEquals(1.0, weight.getValue(0).doubleValue(), 0.0);
+        Assert.assertEquals(0.893288290866, weight.getValue(1).doubleValue(), 1e-9);
+        Assert.assertEquals(0.999881827845, weight.getValue(2).doubleValue(), 1e-9);
+        Assert.assertEquals(0.784452745524, weight.getValue(3).doubleValue(), 1e-9);
         assertInUnitInterval(weight, 0, 3);
     }
 
@@ -85,10 +85,10 @@ public class CorrentropyKalmanWeightIndicatorTest extends AbstractIndicatorTest<
         BarSeries series = seriesOf(10, 10.2, 50, 10.4);
         CorrentropyKalmanWeightIndicator weight = weight(new ClosePriceIndicator(series), 1e-3, 0.2, 2);
 
-        Assertions.assertEquals(1.0, weight.getValue(0).doubleValue(), 0.0);
-        Assertions.assertEquals(0.992622679915, weight.getValue(1).doubleValue(), 1e-9);
-        Assertions.assertEquals(0.0, weight.getValue(2).doubleValue(), 0.0);
-        Assertions.assertEquals(0.972381273952, weight.getValue(3).doubleValue(), 1e-9);
+        Assert.assertEquals(1.0, weight.getValue(0).doubleValue(), 0.0);
+        Assert.assertEquals(0.992622679915, weight.getValue(1).doubleValue(), 1e-9);
+        Assert.assertEquals(0.0, weight.getValue(2).doubleValue(), 0.0);
+        Assert.assertEquals(0.972381273952, weight.getValue(3).doubleValue(), 1e-9);
     }
 
     @Test
@@ -99,11 +99,11 @@ public class CorrentropyKalmanWeightIndicatorTest extends AbstractIndicatorTest<
         BarSeries series = seriesOf(10, 10.1, 12, 20, 50, 10.2);
         CorrentropyKalmanWeightIndicator weight = weight(new ClosePriceIndicator(series), 1e-3, 0.2, 2);
 
-        Assertions.assertEquals(0.998152080344, weight.getValue(1).doubleValue(), 1e-9);
-        Assertions.assertEquals(0.116922682100, weight.getValue(2).doubleValue(), 1e-9);
-        Assertions.assertEquals(0.0, weight.getValue(3).doubleValue(), 0.0);
-        Assertions.assertEquals(0.0, weight.getValue(4).doubleValue(), 0.0);
-        Assertions.assertEquals(0.999140908352, weight.getValue(5).doubleValue(), 1e-9);
+        Assert.assertEquals(0.998152080344, weight.getValue(1).doubleValue(), 1e-9);
+        Assert.assertEquals(0.116922682100, weight.getValue(2).doubleValue(), 1e-9);
+        Assert.assertEquals(0.0, weight.getValue(3).doubleValue(), 0.0);
+        Assert.assertEquals(0.0, weight.getValue(4).doubleValue(), 0.0);
+        Assert.assertEquals(0.999140908352, weight.getValue(5).doubleValue(), 1e-9);
     }
 
     @Test
@@ -114,9 +114,9 @@ public class CorrentropyKalmanWeightIndicatorTest extends AbstractIndicatorTest<
         CorrentropyKalmanWeightIndicator weight = weight(new ClosePriceIndicator(series), 1e-4, 0.2, 2);
 
         assertInUnitInterval(weight, 0, 20);
-        Assertions.assertEquals(0.141967218392, weight.getValue(8).doubleValue(), 1e-9);
-        Assertions.assertEquals(5.080125477351625E-7, weight.getValue(12).doubleValue(), 1e-9);
-        Assertions.assertEquals(0.970011161794, weight.getValue(20).doubleValue(), 1e-9);
+        Assert.assertEquals(0.141967218392, weight.getValue(8).doubleValue(), 1e-9);
+        Assert.assertEquals(5.080125477351625E-7, weight.getValue(12).doubleValue(), 1e-9);
+        Assert.assertEquals(0.970011161794, weight.getValue(20).doubleValue(), 1e-9);
     }
 
     @Test
@@ -127,11 +127,11 @@ public class CorrentropyKalmanWeightIndicatorTest extends AbstractIndicatorTest<
         CorrentropyKalmanWeightIndicator weight = weight(source, 1e-3, 10, 2);
 
         for (int index : new int[] { 0, 1, 2 }) {
-            Assertions.assertTrue(weight.getValue(index).isNaN(), "expected NaN at index " + index);
+            Assert.assertTrue("expected NaN at index " + index, weight.getValue(index).isNaN());
         }
-        Assertions.assertEquals(1.0, weight.getValue(3).doubleValue(), 0.0);
-        Assertions.assertEquals(0.306560818580, weight.getValue(4).doubleValue(), 1e-9);
-        Assertions.assertEquals(0.0, weight.getValue(7).doubleValue(), 0.0);
+        Assert.assertEquals(1.0, weight.getValue(3).doubleValue(), 0.0);
+        Assert.assertEquals(0.306560818580, weight.getValue(4).doubleValue(), 1e-9);
+        Assert.assertEquals(0.0, weight.getValue(7).doubleValue(), 0.0);
 
         // An invalid joint observation (zero process noise) leaves the filtered
         // state unavailable, so the weight is NaN at that index.
@@ -141,9 +141,9 @@ public class CorrentropyKalmanWeightIndicatorTest extends AbstractIndicatorTest<
                 constant(otherSeries, 1e-2), numOf(2));
         CorrentropyKalmanWeightIndicator otherWeight = filter.measurementWeight();
 
-        Assertions.assertEquals(1.0, otherWeight.getValue(0).doubleValue(), 0.0);
-        Assertions.assertTrue(otherWeight.getValue(1).isNaN());
-        Assertions.assertEquals(0.971871337085, otherWeight.getValue(2).doubleValue(), 1e-9);
+        Assert.assertEquals(1.0, otherWeight.getValue(0).doubleValue(), 0.0);
+        Assert.assertTrue(otherWeight.getValue(1).isNaN());
+        Assert.assertEquals(0.971871337085, otherWeight.getValue(2).doubleValue(), 1e-9);
     }
 
     @Test
@@ -154,9 +154,9 @@ public class CorrentropyKalmanWeightIndicatorTest extends AbstractIndicatorTest<
 
         CorrentropyKalmanWeightIndicator first = filter.measurementWeight();
         CorrentropyKalmanWeightIndicator second = filter.measurementWeight();
-        Assertions.assertSame(first, second);
-        Assertions.assertEquals(filter.getBarSeries(), first.getBarSeries());
-        Assertions.assertEquals(filter.getCountOfUnstableBars(), first.getCountOfUnstableBars());
+        Assert.assertSame(first, second);
+        Assert.assertEquals(filter.getBarSeries(), first.getBarSeries());
+        Assert.assertEquals(filter.getCountOfUnstableBars(), first.getCountOfUnstableBars());
     }
 
     @Test
@@ -169,17 +169,17 @@ public class CorrentropyKalmanWeightIndicatorTest extends AbstractIndicatorTest<
         CorrentropyKalmanWeightIndicator weight = filter.measurementWeight();
 
         ComponentDescriptor descriptor = weight.toDescriptor();
-        Assertions.assertEquals(1, descriptor.getComponents().size());
-        Assertions.assertEquals("CorrentropyKalmanFilterIndicator", descriptor.getComponents().get(0).getType());
+        Assert.assertEquals(1, descriptor.getComponents().size());
+        Assert.assertEquals("CorrentropyKalmanFilterIndicator", descriptor.getComponents().get(0).getType());
 
         Indicator<?> descriptorCopy = IndicatorSerialization.fromDescriptor(series, descriptor);
         Indicator<?> jsonCopy = Indicator.fromJson(series, weight.toJson());
 
-        Assertions.assertEquals(descriptor, descriptorCopy.toDescriptor());
-        Assertions.assertEquals(descriptor, jsonCopy.toDescriptor());
+        Assert.assertEquals(descriptor, descriptorCopy.toDescriptor());
+        Assert.assertEquals(descriptor, jsonCopy.toDescriptor());
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            Assertions.assertEquals(weight.getValue(i), descriptorCopy.getValue(i));
-            Assertions.assertEquals(weight.getValue(i), jsonCopy.getValue(i));
+            Assert.assertEquals(weight.getValue(i), descriptorCopy.getValue(i));
+            Assert.assertEquals(weight.getValue(i), jsonCopy.getValue(i));
         }
     }
 }

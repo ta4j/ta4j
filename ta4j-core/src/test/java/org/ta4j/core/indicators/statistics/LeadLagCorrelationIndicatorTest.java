@@ -3,17 +3,17 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalInt;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.Indicator;
@@ -251,10 +251,10 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
 
         for (Point point : profile.points()) {
             if (point.lag() < -1 || point.lag() > 1) {
-                assertFalse(point.isDefined(), "lag " + point.lag() + " should be undefined");
+                assertFalse("lag " + point.lag() + " should be undefined", point.isDefined());
                 assertEquals(0, point.sampleCount());
             } else {
-                assertTrue(point.isDefined(), "lag " + point.lag() + " should be defined");
+                assertTrue("lag " + point.lag() + " should be defined", point.isDefined());
                 assertEquals(5, point.sampleCount());
             }
         }
@@ -276,10 +276,10 @@ public class LeadLagCorrelationIndicatorTest extends AbstractIndicatorTest<Indic
         assertFalse(profile.points().get(profile.points().size() - 1).isDefined());
         for (Point point : profile.points()) {
             if (point.lag() <= -23 || point.lag() >= 23) {
-                assertFalse(point.isDefined(), "lag " + point.lag() + " should be undefined");
+                assertFalse("lag " + point.lag() + " should be undefined", point.isDefined());
                 assertEquals(0, point.sampleCount());
             } else {
-                assertTrue(point.isDefined(), "lag " + point.lag() + " should be defined");
+                assertTrue("lag " + point.lag() + " should be defined", point.isDefined());
                 assertEquals(8, point.sampleCount());
             }
         }

@@ -109,7 +109,7 @@ test_maven_workflow_jobs_setup_jdk25_before_maven() {
       continue
     fi
 
-    MAVEN_RUN_REGEX="$maven_run_regex" awk -v file="${workflow#"$ROOT"/}" '
+    awk -v file="${workflow#"$ROOT"/}" -v maven_run_regex="$maven_run_regex" '
       /^jobs:/ { in_jobs = 1; next }
       in_jobs && /^  [A-Za-z0-9_-]+:$/ {
         job = $1
@@ -130,7 +130,7 @@ test_maven_workflow_jobs_setup_jdk25_before_maven() {
       setup && /distribution: temurin/ { temurin = 1 }
       setup && /java-version: 25/ { jdk25 = 1 }
       /^[[:space:]]*#/ { next }
-      $0 ~ ENVIRON["MAVEN_RUN_REGEX"] {
+      $0 ~ maven_run_regex {
         if (!setup || !temurin || !jdk25) {
           printf("[FAIL] %s job %s runs Maven before Temurin JDK 25 setup at line %d\n", file, job ? job : "(unknown)", NR) > "/dev/stderr"
           exit 1

@@ -15,12 +15,12 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import org.junit.jupiter.api.BeforeEach;
+import static org.junit.Assert.*;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
+import org.junit.Before;
 import org.ta4j.core.num.DoubleNumFactory;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
@@ -38,7 +38,7 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
         super(null, numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         this.beginTime = Instant.parse("2014-06-25T00:00:00Z");
         this.endTime = Instant.parse("2014-06-25T01:00:00Z");
@@ -176,7 +176,7 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
                 doubleFactory.zero(), 0);
         final byte[] serialized = serialize(bar);
         final int highOffset = indexOfDouble(serialized, 987654.321d);
-        assertTrue(highOffset >= 0, "serialized stream must contain the high price");
+        assertTrue("serialized stream must contain the high price", highOffset >= 0);
         writeDouble(serialized, highOffset, 1.0d);
         assertThrows(InvalidObjectException.class, () -> deserialize(serialized));
     }
@@ -252,35 +252,29 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(barWithoutTimePeriod.getTimePeriod(), Duration.between(beginTime, endTime));
     }
 
-    @Test
+    @Test(expected = NullPointerException.class)
     @SuppressWarnings("unused")
     public void createBarsWithMissingBeginTime() {
-        assertThrows(NullPointerException.class, () -> {
-            // TimePeriod is not given and cannot be computed due to missing beginTime.
-            var bar = new TimeBarBuilder(this.numFactory).endTime(endTime).volume(0).amount(0).build();
-        });
+        // TimePeriod is not given and cannot be computed due to missing beginTime.
+        var bar = new TimeBarBuilder(this.numFactory).endTime(endTime).volume(0).amount(0).build();
     }
 
-    @Test
+    @Test(expected = NullPointerException.class)
     @SuppressWarnings("unused")
     public void createBarsWithMissingEndTime() {
-        assertThrows(NullPointerException.class, () -> {
-            // TimePeriod is not given and cannot be computed due to missing endTime.
-            var bar = new TimeBarBuilder(this.numFactory).beginTime(beginTime).volume(0).amount(0).build();
-        });
+        // TimePeriod is not given and cannot be computed due to missing endTime.
+        var bar = new TimeBarBuilder(this.numFactory).beginTime(beginTime).volume(0).amount(0).build();
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     @SuppressWarnings("unused")
     public void createBarsWithInvalidTimePeriod() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            var barByBeginTime = new TimeBarBuilder(this.numFactory).timePeriod(Duration.ofHours(2))
-                    .beginTime(this.beginTime)
-                    .endTime(this.endTime)
-                    .volume(0)
-                    .amount(0)
-                    .build();
-        });
+        var barByBeginTime = new TimeBarBuilder(this.numFactory).timePeriod(Duration.ofHours(2))
+                .beginTime(this.beginTime)
+                .endTime(this.endTime)
+                .volume(0)
+                .amount(0)
+                .build();
     }
 
     @Test

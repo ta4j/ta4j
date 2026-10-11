@@ -3,7 +3,7 @@
  */
 package org.ta4j.core.indicators;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
@@ -22,7 +22,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class TrendLineIndicatorConfigurationTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -111,25 +110,19 @@ public class TrendLineIndicatorConfigurationTest extends AbstractIndicatorTest<I
         assertThat(tolerance.minimumAbsolute).isZero();
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void shouldRejectInfiniteScoringWeight() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            AbstractTrendLineIndicator.ScoringWeights.of(Double.POSITIVE_INFINITY, 0.2d, 0.2d, 0.1d, 0.1d);
-        });
+        AbstractTrendLineIndicator.ScoringWeights.of(Double.POSITIVE_INFINITY, 0.2d, 0.2d, 0.1d, 0.1d);
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void shouldRejectNegativeToleranceValue() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            ToleranceSettings.percentage(-0.01d, 0.0d);
-        });
+        ToleranceSettings.percentage(-0.01d, 0.0d);
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void shouldRejectInfiniteToleranceValue() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            ToleranceSettings.absolute(Double.POSITIVE_INFINITY);
-        });
+        ToleranceSettings.absolute(Double.POSITIVE_INFINITY);
     }
 
     @Test

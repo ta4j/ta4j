@@ -3,13 +3,13 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TraceTestLogger;
@@ -22,7 +22,7 @@ public class XorRuleTest {
     private BarSeries series;
     private TraceTestLogger ruleTraceTestLogger;
 
-    @BeforeEach
+    @Before
     public void setUp() {
         ruleTraceTestLogger = new TraceTestLogger();
         ruleTraceTestLogger.open();
@@ -32,7 +32,7 @@ public class XorRuleTest {
         series = new MockBarSeriesBuilder().withData(1).build();
     }
 
-    @AfterEach
+    @After
     public void tearDownLogger() {
         ruleTraceTestLogger.close();
     }
@@ -76,10 +76,10 @@ public class XorRuleTest {
         xorRule.isSatisfied(1);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue(logContent.contains("Xor Rule 1#isSatisfied"), "Verbose mode should log first XOR child");
-        assertTrue(logContent.contains("Xor Rule 2#isSatisfied"), "Verbose mode should log second XOR child");
-        assertTrue(logContent.contains("Xor Pair#isSatisfied"), "Verbose mode should log parent XOR");
-        assertTrue(logContent.contains("path=root.rule1 depth=1"), "Verbose mode should attribute first child path");
-        assertTrue(logContent.contains("path=root.rule2 depth=1"), "Verbose mode should attribute second child path");
+        assertTrue("Verbose mode should log first XOR child", logContent.contains("Xor Rule 1#isSatisfied"));
+        assertTrue("Verbose mode should log second XOR child", logContent.contains("Xor Rule 2#isSatisfied"));
+        assertTrue("Verbose mode should log parent XOR", logContent.contains("Xor Pair#isSatisfied"));
+        assertTrue("Verbose mode should attribute first child path", logContent.contains("path=root.rule1 depth=1"));
+        assertTrue("Verbose mode should attribute second child path", logContent.contains("path=root.rule2 depth=1"));
     }
 }

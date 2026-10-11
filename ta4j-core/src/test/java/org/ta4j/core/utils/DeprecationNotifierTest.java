@@ -15,9 +15,9 @@ import org.apache.logging.log4j.core.appender.WriterAppender;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.layout.PatternLayout;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 public class DeprecationNotifierTest {
 
@@ -30,7 +30,7 @@ public class DeprecationNotifierTest {
     private Appender appender;
     private StringWriter logOutput;
 
-    @BeforeEach
+    @Before
     public void setUp() {
         DeprecationNotifier.resetForTests();
 
@@ -53,7 +53,7 @@ public class DeprecationNotifierTest {
         loggerContext.updateLoggers();
     }
 
-    @AfterEach
+    @After
     public void tearDown() {
         if (loggerConfiguration != null) {
             loggerConfiguration.removeLogger(LOGGER_NAME);

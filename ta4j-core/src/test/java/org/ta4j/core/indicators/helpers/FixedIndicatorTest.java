@@ -5,8 +5,8 @@ package org.ta4j.core.indicators.helpers;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
+import org.junit.Assert;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 
@@ -30,10 +30,10 @@ public class FixedIndicatorTest {
     public void getValueOnFixedBooleanIndicator() {
         BarSeries series = new BaseBarSeriesBuilder().build();
         var fixedBooleanIndicator = new FixedBooleanIndicator(series, false, false, true, false, true);
-        Assertions.assertFalse(fixedBooleanIndicator.getValue(0));
-        Assertions.assertFalse(fixedBooleanIndicator.getValue(1));
-        Assertions.assertTrue(fixedBooleanIndicator.getValue(2));
-        Assertions.assertFalse(fixedBooleanIndicator.getValue(3));
-        Assertions.assertTrue(fixedBooleanIndicator.getValue(4));
+        Assert.assertFalse(fixedBooleanIndicator.getValue(0));
+        Assert.assertFalse(fixedBooleanIndicator.getValue(1));
+        Assert.assertTrue(fixedBooleanIndicator.getValue(2));
+        Assert.assertFalse(fixedBooleanIndicator.getValue(3));
+        Assert.assertTrue(fixedBooleanIndicator.getValue(4));
     }
 }

@@ -3,10 +3,10 @@
  */
 package org.ta4j.core.criteria;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.criteria.RatioCriterionTestSupport.alwaysInvested;
 import static org.ta4j.core.criteria.RatioCriterionTestSupport.buildDailySeries;
@@ -14,7 +14,7 @@ import static org.ta4j.core.criteria.RatioCriterionTestSupport.buildDailySeries;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
@@ -455,15 +455,15 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
                         OmegaRatioCriterion criterion = new OmegaRatioCriterion(representation, 0d, mode, handling);
                         Num actual = criterion.calculate(fixture.series(), fixture.tradingRecord());
                         Num expected = criterion.calculate(fixture.equivalentSeries(), fixture.equivalentRecord(mode));
-                        assertEquals(expected.doubleValue(), actual.doubleValue(), 1e-10,
-                                fixture.name() + ": " + mode + "/" + handling + "/" + representation);
+                        assertEquals(fixture.name() + ": " + mode + "/" + handling + "/" + representation,
+                                expected.doubleValue(), actual.doubleValue(), 1e-10);
                         Position expectedPosition = fixture.equivalentPosition(mode);
                         if (fixture.position() != null && expectedPosition != null) {
                             Num actualPosition = criterion.calculate(fixture.series(), fixture.position());
                             Num expectedPositionValue = criterion.calculate(fixture.equivalentSeries(),
                                     expectedPosition);
-                            assertEquals(expectedPositionValue.doubleValue(), actualPosition.doubleValue(), 1e-10,
-                                    fixture.name() + ": position " + mode + "/" + handling + "/" + representation);
+                            assertEquals(fixture.name() + ": position " + mode + "/" + handling + "/" + representation,
+                                    expectedPositionValue.doubleValue(), actualPosition.doubleValue(), 1e-10);
                         }
                     }
                 }

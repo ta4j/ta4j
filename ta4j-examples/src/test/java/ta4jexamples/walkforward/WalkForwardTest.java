@@ -3,7 +3,7 @@
  */
 package ta4jexamples.walkforward;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import ta4jexamples.charting.display.SwingChartDisplayer;
 
 public class WalkForwardTest {

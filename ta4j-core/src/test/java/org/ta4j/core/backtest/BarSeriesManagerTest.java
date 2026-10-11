@@ -3,11 +3,11 @@
  */
 package org.ta4j.core.backtest;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -23,8 +23,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ConcurrentBarSeries;
@@ -91,7 +91,7 @@ public class BarSeriesManagerTest {
         }
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         HUNDRED = numOf(100);
         seriesForRun = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -883,7 +883,7 @@ public class BarSeriesManagerTest {
                     Thread.currentThread().interrupt();
                     throw new AssertionError(interruption);
                 }
-                assertTrue(!feed.isAlive(), "the feed writer was blocked by the run");
+                assertTrue("the feed writer was blocked by the run", !feed.isAlive());
             }
             return false;
         };
@@ -1065,14 +1065,14 @@ public class BarSeriesManagerTest {
             List<Position> positions = new BarSeriesManager(window, new TradeOnCurrentCloseModel()).run(boundarySignals)
                     .getPositions();
 
-            assertEquals(1, positions.size(), scenarios[scenario]);
+            assertEquals(scenarios[scenario], 1, positions.size());
             Position actual = positions.get(0);
-            assertEquals(begin, actual.getEntry().getIndex(), scenarios[scenario]);
-            assertEquals(end, actual.getExit().getIndex(), scenarios[scenario]);
-            assertEquals(freshPosition.getEntry().getPricePerAsset(), actual.getEntry().getPricePerAsset(),
-                    scenarios[scenario]);
-            assertEquals(freshPosition.getExit().getPricePerAsset(), actual.getExit().getPricePerAsset(),
-                    scenarios[scenario]);
+            assertEquals(scenarios[scenario], begin, actual.getEntry().getIndex());
+            assertEquals(scenarios[scenario], end, actual.getExit().getIndex());
+            assertEquals(scenarios[scenario], freshPosition.getEntry().getPricePerAsset(),
+                    actual.getEntry().getPricePerAsset());
+            assertEquals(scenarios[scenario], freshPosition.getExit().getPricePerAsset(),
+                    actual.getExit().getPricePerAsset());
         }
     }
 
@@ -1091,8 +1091,8 @@ public class BarSeriesManagerTest {
 
             TradingRecord record = new BarSeriesManager(window, new TradeOnCurrentCloseModel()).run(finalBarEntry);
 
-            assertEquals(end, record.getCurrentPosition().getEntry().getIndex(), scenarios[scenario]);
-            assertTrue(record.getCurrentPosition().isOpened(), scenarios[scenario]);
+            assertEquals(scenarios[scenario], end, record.getCurrentPosition().getEntry().getIndex());
+            assertTrue(scenarios[scenario], record.getCurrentPosition().isOpened());
         }
     }
 
@@ -1112,8 +1112,8 @@ public class BarSeriesManagerTest {
             new BarSeriesManager(window, new TradeOnCurrentCloseModel()).run(exitOnOnlyBar, record, numOf(1), index,
                     index);
 
-            assertTrue(record.isClosed(), scenarios[scenario]);
-            assertEquals(index, record.getPositions().get(0).getExit().getIndex(), scenarios[scenario]);
+            assertTrue(scenarios[scenario], record.isClosed());
+            assertEquals(scenarios[scenario], index, record.getPositions().get(0).getExit().getIndex());
         }
     }
 }

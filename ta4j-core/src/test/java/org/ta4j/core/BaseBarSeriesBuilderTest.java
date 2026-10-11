@@ -3,8 +3,8 @@
  */
 package org.ta4j.core;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.BigDecimal;
@@ -13,7 +13,9 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -21,6 +23,7 @@ import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
+@RunWith(Parameterized.class)
 public class BaseBarSeriesBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     public BaseBarSeriesBuilderTest(NumFactory numFactory) {
@@ -217,87 +220,83 @@ public class BaseBarSeriesBuilderTest extends AbstractIndicatorTest<BarSeries, N
         assertEquals(bar, series.getBar(0));
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     @SuppressWarnings("unused")
     public void testBuildWithBarsAndWithNumFactory() {
-        assertThrows(IllegalArgumentException.class, () -> {
 
-            // When we create a series with predefined bars, we need to make sure that the
-            // NumFactory of the series and the NumFactory of the bars are the same.
+        // When we create a series with predefined bars, we need to make sure that the
+        // NumFactory of the series and the NumFactory of the bars are the same.
 
-            final NumFactory doubleNumFactory = DoubleNumFactory.getInstance();
-            final NumFactory decimalNumFactory = DecimalNumFactory.getInstance();
+        final NumFactory doubleNumFactory = DoubleNumFactory.getInstance();
+        final NumFactory decimalNumFactory = DecimalNumFactory.getInstance();
 
-            final Instant beginTime = Instant.parse("2014-06-25T00:00:00Z");
-            final Instant endTime = Instant.parse("2014-06-25T01:00:00Z");
-            final Duration duration = Duration.between(beginTime, endTime);
+        final Instant beginTime = Instant.parse("2014-06-25T00:00:00Z");
+        final Instant endTime = Instant.parse("2014-06-25T01:00:00Z");
+        final Duration duration = Duration.between(beginTime, endTime);
 
-            // we build bars with DoubleNumFactory
-            final var bar1 = new TimeBarBuilder(doubleNumFactory).timePeriod(duration)
-                    .endTime(endTime)
-                    .openPrice(BigDecimal.valueOf(101.0))
-                    .highPrice(BigDecimal.valueOf(103))
-                    .lowPrice(BigDecimal.valueOf(100))
-                    .closePrice(BigDecimal.valueOf(102))
-                    .trades(4)
-                    .volume(BigDecimal.valueOf(40))
-                    .amount(BigDecimal.valueOf(4020))
-                    .build();
+        // we build bars with DoubleNumFactory
+        final var bar1 = new TimeBarBuilder(doubleNumFactory).timePeriod(duration)
+                .endTime(endTime)
+                .openPrice(BigDecimal.valueOf(101.0))
+                .highPrice(BigDecimal.valueOf(103))
+                .lowPrice(BigDecimal.valueOf(100))
+                .closePrice(BigDecimal.valueOf(102))
+                .trades(4)
+                .volume(BigDecimal.valueOf(40))
+                .amount(BigDecimal.valueOf(4020))
+                .build();
 
-            final var bars = new ArrayList<Bar>();
-            bars.add(bar1);
+        final var bars = new ArrayList<Bar>();
+        bars.add(bar1);
 
-            // The user explicitly assigns DecimalNumFactory to the series, but the bar
-            // uses DoubleNumFactory, therefore throw an exception.
-            final var series = new BaseBarSeriesBuilder().withNumFactory(decimalNumFactory).withBars(bars).build();
-        });
+        // The user explicitly assigns DecimalNumFactory to the series, but the bar
+        // uses DoubleNumFactory, therefore throw an exception.
+        final var series = new BaseBarSeriesBuilder().withNumFactory(decimalNumFactory).withBars(bars).build();
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     @SuppressWarnings("unused")
     public void testBuildWithBarsWithDifferentNumFactory() {
-        assertThrows(IllegalArgumentException.class, () -> {
 
-            // When we create a series with predefined bars, we need to make sure that the
-            // NumFactory of all the bars are the same.
+        // When we create a series with predefined bars, we need to make sure that the
+        // NumFactory of all the bars are the same.
 
-            final NumFactory doubleNumFactory = DoubleNumFactory.getInstance();
-            final NumFactory decimalNumFactory = DecimalNumFactory.getInstance();
+        final NumFactory doubleNumFactory = DoubleNumFactory.getInstance();
+        final NumFactory decimalNumFactory = DecimalNumFactory.getInstance();
 
-            final Instant beginTime = Instant.parse("2014-06-25T00:00:00Z");
-            final Instant endTime = Instant.parse("2014-06-25T01:00:00Z");
-            final Duration duration = Duration.between(beginTime, endTime);
+        final Instant beginTime = Instant.parse("2014-06-25T00:00:00Z");
+        final Instant endTime = Instant.parse("2014-06-25T01:00:00Z");
+        final Duration duration = Duration.between(beginTime, endTime);
 
-            // we build bars with DoubleNumFactory
-            final var bar1 = new TimeBarBuilder(doubleNumFactory).timePeriod(duration)
-                    .endTime(endTime)
-                    .openPrice(BigDecimal.valueOf(101.0))
-                    .highPrice(BigDecimal.valueOf(103))
-                    .lowPrice(BigDecimal.valueOf(100))
-                    .closePrice(BigDecimal.valueOf(102))
-                    .trades(4)
-                    .volume(BigDecimal.valueOf(40))
-                    .amount(BigDecimal.valueOf(4020))
-                    .build();
+        // we build bars with DoubleNumFactory
+        final var bar1 = new TimeBarBuilder(doubleNumFactory).timePeriod(duration)
+                .endTime(endTime)
+                .openPrice(BigDecimal.valueOf(101.0))
+                .highPrice(BigDecimal.valueOf(103))
+                .lowPrice(BigDecimal.valueOf(100))
+                .closePrice(BigDecimal.valueOf(102))
+                .trades(4)
+                .volume(BigDecimal.valueOf(40))
+                .amount(BigDecimal.valueOf(4020))
+                .build();
 
-            // we build bars with DecimalNumFactory
-            final var bar2 = new TimeBarBuilder(decimalNumFactory).timePeriod(duration)
-                    .endTime(endTime)
-                    .openPrice(BigDecimal.valueOf(101.0))
-                    .highPrice(BigDecimal.valueOf(103))
-                    .lowPrice(BigDecimal.valueOf(100))
-                    .closePrice(BigDecimal.valueOf(102))
-                    .trades(4)
-                    .volume(BigDecimal.valueOf(40))
-                    .amount(BigDecimal.valueOf(4020))
-                    .build();
+        // we build bars with DecimalNumFactory
+        final var bar2 = new TimeBarBuilder(decimalNumFactory).timePeriod(duration)
+                .endTime(endTime)
+                .openPrice(BigDecimal.valueOf(101.0))
+                .highPrice(BigDecimal.valueOf(103))
+                .lowPrice(BigDecimal.valueOf(100))
+                .closePrice(BigDecimal.valueOf(102))
+                .trades(4)
+                .volume(BigDecimal.valueOf(40))
+                .amount(BigDecimal.valueOf(4020))
+                .build();
 
-            final var bars = new ArrayList<Bar>();
-            bars.add(bar1);
-            bars.add(bar2);
+        final var bars = new ArrayList<Bar>();
+        bars.add(bar1);
+        bars.add(bar2);
 
-            // bar1 and bar2 have different numFactories, therefore throw an exception.
-            final var series = new BaseBarSeriesBuilder().withBars(bars).build();
-        });
+        // bar1 and bar2 have different numFactories, therefore throw an exception.
+        final var series = new BaseBarSeriesBuilder().withBars(bars).build();
     }
 }

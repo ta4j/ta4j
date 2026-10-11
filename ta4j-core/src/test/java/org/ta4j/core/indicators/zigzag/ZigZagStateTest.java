@@ -5,7 +5,7 @@ package org.ta4j.core.indicators.zigzag;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 

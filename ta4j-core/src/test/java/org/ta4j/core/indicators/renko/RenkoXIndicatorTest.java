@@ -5,7 +5,7 @@ package org.ta4j.core.indicators.renko;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -13,7 +13,6 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class RenkoXIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>, Num> {
 
@@ -57,18 +56,14 @@ public class RenkoXIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean
         assertThat(indicator.getValue(2)).as("subsequent bearish move forms bricks").isTrue();
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void rejectsNonPositivePointSize() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            new RenkoXIndicator(new ClosePriceIndicator(buildSeries(100d, 100.6d)), 0d, 3);
-        });
+        new RenkoXIndicator(new ClosePriceIndicator(buildSeries(100d, 100.6d)), 0d, 3);
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void rejectsNonPositiveBrickCount() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            new RenkoXIndicator(new ClosePriceIndicator(buildSeries(100d, 100.6d)), 0.5d, 0);
-        });
+        new RenkoXIndicator(new ClosePriceIndicator(buildSeries(100d, 100.6d)), 0.5d, 0);
     }
 
     private BarSeries buildSeries(double... closes) {

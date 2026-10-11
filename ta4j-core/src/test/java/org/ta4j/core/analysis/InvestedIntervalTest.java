@@ -23,7 +23,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolean>, Num> {
 

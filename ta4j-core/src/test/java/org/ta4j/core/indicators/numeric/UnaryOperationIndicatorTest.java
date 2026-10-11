@@ -3,7 +3,7 @@
  */
 package org.ta4j.core.indicators.numeric;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -16,8 +16,8 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.indicators.IndicatorUtils.isSameSeries;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -147,11 +147,11 @@ public class UnaryOperationIndicatorTest extends AbstractIndicatorTest<UnaryOper
 
         final var result = UnaryOperationIndicator.sqrt(indicator);
 
-        assertTrue(result.getValue(0).isNaN(), "sqrt(-1) should be NaN");
-        assertTrue(result.getValue(1).isNaN(), "sqrt(-4) should be NaN");
-        assertTrue(result.getValue(2).isNaN(), "sqrt(-9) should be NaN");
-        assertTrue(result.getValue(3).isNaN(), "sqrt(-16) should be NaN");
-        assertTrue(result.getValue(4).isNaN(), "sqrt(-25) should be NaN");
+        assertTrue("sqrt(-1) should be NaN", result.getValue(0).isNaN());
+        assertTrue("sqrt(-4) should be NaN", result.getValue(1).isNaN());
+        assertTrue("sqrt(-9) should be NaN", result.getValue(2).isNaN());
+        assertTrue("sqrt(-16) should be NaN", result.getValue(3).isNaN());
+        assertTrue("sqrt(-25) should be NaN", result.getValue(4).isNaN());
     }
 
     @Test
@@ -165,17 +165,17 @@ public class UnaryOperationIndicatorTest extends AbstractIndicatorTest<UnaryOper
         final Num logZero = result.getValue(0);
         if (logZero.isNaN()) {
             // Implementation returns NaN for log(0)
-            assertTrue(logZero.isNaN(), "log(0) should be NaN or -Infinity");
+            assertTrue("log(0) should be NaN or -Infinity", logZero.isNaN());
         } else {
             // If implementation returns -Infinity, verify it
-            assertTrue(Double.isInfinite(logZero.doubleValue()) && logZero.doubleValue() == Double.NEGATIVE_INFINITY,
-                    "log(0) should be -Infinity");
+            assertTrue("log(0) should be -Infinity",
+                    Double.isInfinite(logZero.doubleValue()) && logZero.doubleValue() == Double.NEGATIVE_INFINITY);
         }
 
         // log(negative) should always be NaN
-        assertTrue(result.getValue(1).isNaN(), "log(-1) should be NaN");
-        assertTrue(result.getValue(2).isNaN(), "log(-5) should be NaN");
-        assertTrue(result.getValue(3).isNaN(), "log(-10) should be NaN");
+        assertTrue("log(-1) should be NaN", result.getValue(1).isNaN());
+        assertTrue("log(-5) should be NaN", result.getValue(2).isNaN());
+        assertTrue("log(-10) should be NaN", result.getValue(3).isNaN());
     }
 
     @Test
@@ -202,12 +202,13 @@ public class UnaryOperationIndicatorTest extends AbstractIndicatorTest<UnaryOper
                 // DoubleNum
                 // DoubleNum doesn't override isNaN(), so we check the underlying double value
                 // For DecimalNum, this should throw NumberFormatException (caught below)
-                assertTrue(Num.isNaNOrNull(halfResult),
-                        "pow(" + series.getBar(i).getClosePrice() + ", 0.5) should be NaN, but got: " + halfResult);
-                assertTrue(Num.isNaNOrNull(thirdResult),
-                        "pow(" + series.getBar(i).getClosePrice() + ", 1/3) should be NaN, but got: " + thirdResult);
-                assertTrue(Num.isNaNOrNull(twoThirdsResult), "pow(" + series.getBar(i).getClosePrice()
-                        + ", 2/3) should be NaN, but got: " + twoThirdsResult);
+                assertTrue("pow(" + series.getBar(i).getClosePrice() + ", 0.5) should be NaN, but got: " + halfResult,
+                        Num.isNaNOrNull(halfResult));
+                assertTrue("pow(" + series.getBar(i).getClosePrice() + ", 1/3) should be NaN, but got: " + thirdResult,
+                        Num.isNaNOrNull(thirdResult));
+                assertTrue(
+                        "pow(" + series.getBar(i).getClosePrice() + ", 2/3) should be NaN, but got: " + twoThirdsResult,
+                        Num.isNaNOrNull(twoThirdsResult));
             } catch (NumberFormatException e) {
                 // DecimalNum throws NumberFormatException when Math.pow returns NaN/Infinity
                 // This is also an edge case behavior that should be documented

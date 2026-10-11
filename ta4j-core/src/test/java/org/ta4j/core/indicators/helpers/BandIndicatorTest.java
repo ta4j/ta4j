@@ -6,8 +6,8 @@ package org.ta4j.core.indicators.helpers;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -30,7 +30,7 @@ public class BandIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     /**
      * Initializes the test fixtures used by these scenarios.
      */
-    @BeforeEach
+    @Before
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().closePrice(10).openPrice(10).highPrice(10).lowPrice(10).volume(1).add();

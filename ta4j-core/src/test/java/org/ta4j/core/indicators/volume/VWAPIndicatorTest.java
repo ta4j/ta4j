@@ -11,8 +11,8 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.List;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -38,7 +38,7 @@ public class VWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     /**
      * Initializes the test fixtures used by these scenarios.
      */
-    @BeforeEach
+    @Before
     public void setUp() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         data.barBuilder().openPrice(44.98).closePrice(45.05).highPrice(45.17).lowPrice(44.96).volume(1).add();

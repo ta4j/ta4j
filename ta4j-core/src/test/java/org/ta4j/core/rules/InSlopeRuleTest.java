@@ -3,13 +3,13 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.Indicator;
@@ -25,7 +25,7 @@ public class InSlopeRuleTest {
     private BarSeries series;
     private TraceTestLogger traceTestLogger;
 
-    @BeforeEach
+    @Before
     public void setUp() {
         series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10).build();
         Indicator<Num> indicator = new FixedNumIndicator(series, 50, 70, 80, 90, 99, 60, 30, 20, 10, 0);
@@ -35,7 +35,7 @@ public class InSlopeRuleTest {
         traceTestLogger.open();
     }
 
-    @AfterEach
+    @After
     public void tearDown() {
         traceTestLogger.close();
     }
@@ -58,12 +58,12 @@ public class InSlopeRuleTest {
         assertTrue(rulePositiveSlope.isSatisfiedWithTraceMode(1, Rule.TraceMode.VERBOSE));
 
         String logContent = traceTestLogger.getLogOutput();
-        assertTrue(logContent.contains("currentValue=70"), "Trace should include the current value");
-        assertTrue(logContent.contains("previousValue=50"), "Trace should include the previous value");
-        assertTrue(logContent.contains("slope=20"), "Trace should include the computed slope");
-        assertTrue(logContent.contains("minSlope=20"), "Trace should include the minimum slope");
-        assertTrue(logContent.contains("maxSlope=30"), "Trace should include the maximum slope");
-        assertTrue(logContent.contains("reason=withinSlopeRange"), "Trace should explain the slope result");
+        assertTrue("Trace should include the current value", logContent.contains("currentValue=70"));
+        assertTrue("Trace should include the previous value", logContent.contains("previousValue=50"));
+        assertTrue("Trace should include the computed slope", logContent.contains("slope=20"));
+        assertTrue("Trace should include the minimum slope", logContent.contains("minSlope=20"));
+        assertTrue("Trace should include the maximum slope", logContent.contains("maxSlope=30"));
+        assertTrue("Trace should explain the slope result", logContent.contains("reason=withinSlopeRange"));
     }
 
     @Test

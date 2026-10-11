@@ -3,7 +3,7 @@
  */
 package ta4jexamples.logging;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 
 public class StrategyExecutionLoggingTest {
 

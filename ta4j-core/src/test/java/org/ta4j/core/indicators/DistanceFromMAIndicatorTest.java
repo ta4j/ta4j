@@ -4,12 +4,12 @@
 
 package org.ta4j.core.indicators;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.Assert.assertEquals;
 
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
@@ -17,7 +17,6 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class DistanceFromMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     private BarSeries data;
@@ -26,7 +25,7 @@ public class DistanceFromMAIndicatorTest extends AbstractIndicatorTest<Indicator
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(10, 15, 20, 18, 17, 18, 15, 12, 10, 8, 5, 2)
@@ -59,11 +58,9 @@ public class DistanceFromMAIndicatorTest extends AbstractIndicatorTest<Indicator
         assertEquals("explicit", indicator.getBarSeries().getName());
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void DistanceFromIllegalMovingAverage() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(data);
-            new DistanceFromMAIndicator(data, closePriceIndicator);
-        });
+        ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(data);
+        new DistanceFromMAIndicator(data, closePriceIndicator);
     }
 }

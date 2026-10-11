@@ -3,13 +3,13 @@
  */
 package org.ta4j.core.indicators.renko;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -38,16 +38,16 @@ public class RenkoCounterTest {
         counter.stateAt(series.getEndIndex());
 
         int beginIndex = series.getBeginIndex();
-        assertTrue(counting.requestedIndices.stream().allMatch(i -> i >= beginIndex),
-                "evicted indices were read: " + counting.requestedIndices);
+        assertTrue("evicted indices were read: " + counting.requestedIndices,
+                counting.requestedIndices.stream().allMatch(i -> i >= beginIndex));
 
         var fresh = new RenkoCounter(new ClosePriceIndicator(series), series.numFactory().numOf(0.5));
         for (int i = beginIndex; i <= series.getEndIndex(); i++) {
             var expected = fresh.stateAt(i);
             var actual = counter.stateAt(i);
-            assertEquals(expected.getConsecutiveUp(), actual.getConsecutiveUp(), "consecutive up bricks at index " + i);
-            assertEquals(expected.getConsecutiveDown(), actual.getConsecutiveDown(),
-                    "consecutive down bricks at index " + i);
+            assertEquals("consecutive up bricks at index " + i, expected.getConsecutiveUp(), actual.getConsecutiveUp());
+            assertEquals("consecutive down bricks at index " + i, expected.getConsecutiveDown(),
+                    actual.getConsecutiveDown());
         }
     }
 

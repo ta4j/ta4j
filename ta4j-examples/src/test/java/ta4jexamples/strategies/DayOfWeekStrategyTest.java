@@ -3,8 +3,8 @@
  */
 package ta4jexamples.strategies;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Strategy;
@@ -18,13 +18,13 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.Assert.*;
 
 public class DayOfWeekStrategyTest {
 
     private BarSeries series;
 
-    @BeforeEach
+    @Before
     public void setUp() {
         NumFactory numFactory = DecimalNumFactory.getInstance();
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -124,39 +124,29 @@ public class DayOfWeekStrategyTest {
         }
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void testConstructorWithNullParams() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            new DayOfWeekStrategy(series, (String[]) null);
-        });
+        new DayOfWeekStrategy(series, (String[]) null);
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void testConstructorWithEmptyParams() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            new DayOfWeekStrategy(series);
-        });
+        new DayOfWeekStrategy(series);
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void testConstructorWithInsufficientParams() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            new DayOfWeekStrategy(series, "MONDAY");
-        });
+        new DayOfWeekStrategy(series, "MONDAY");
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void testConstructorWithInvalidEntryDay() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            new DayOfWeekStrategy(series, "INVALID_DAY", "FRIDAY");
-        });
+        new DayOfWeekStrategy(series, "INVALID_DAY", "FRIDAY");
     }
 
-    @Test
+    @Test(expected = IllegalArgumentException.class)
     public void testConstructorWithInvalidExitDay() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            new DayOfWeekStrategy(series, "MONDAY", "INVALID_DAY");
-        });
+        new DayOfWeekStrategy(series, "MONDAY", "INVALID_DAY");
     }
 
     @Test
@@ -228,7 +218,7 @@ public class DayOfWeekStrategyTest {
         for (Strategy strategy : strategies) {
             String name = strategy.getName();
             String[] parts = name.split("_");
-            assertNotEquals(parts[1], parts[2], "Strategy should not have same entry and exit day: " + name);
+            assertNotEquals("Strategy should not have same entry and exit day: " + name, parts[1], parts[2]);
         }
     }
 

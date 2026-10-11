@@ -3,11 +3,11 @@
  */
 package org.ta4j.core.indicators.helpers;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -35,7 +35,7 @@ public class BooleanTransformIndicatorTest extends AbstractIndicatorTest<Indicat
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         final Num four = this.numFactory.numOf(4);
         final ConstantIndicator<Num> constantIndicator = new ConstantIndicator<>(new MockBarSeriesBuilder().build(),

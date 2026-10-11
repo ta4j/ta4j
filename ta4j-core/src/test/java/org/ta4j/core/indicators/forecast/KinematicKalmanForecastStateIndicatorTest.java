@@ -3,10 +3,10 @@
  */
 package org.ta4j.core.indicators.forecast;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import org.apache.commons.math3.filter.DefaultMeasurementModel;
 import org.apache.commons.math3.filter.DefaultProcessModel;
@@ -14,7 +14,7 @@ import org.apache.commons.math3.filter.KalmanFilter;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.RealMatrix;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -256,7 +256,7 @@ public class KinematicKalmanForecastStateIndicatorTest
             state.getValue(index);
         }
 
-        assertTrue(source.readCount() <= barCount + 2L, "Reverse reads should reuse cached state");
+        assertTrue("Reverse reads should reuse cached state", source.readCount() <= barCount + 2L);
     }
 
     @Test

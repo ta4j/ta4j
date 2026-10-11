@@ -8,10 +8,10 @@ import static org.ta4j.core.indicators.IndicatorSerializationRoundTripTestSuppor
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static junit.framework.TestCase.assertEquals;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
@@ -26,7 +26,7 @@ public class StochasticOscillatorDIndicatorTest extends AbstractIndicatorTest<In
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
 
         data = new MockBarSeriesBuilder().withNumFactory(numFactory).build();

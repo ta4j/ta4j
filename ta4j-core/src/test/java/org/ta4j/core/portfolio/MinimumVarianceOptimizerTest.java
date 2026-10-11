@@ -3,10 +3,10 @@
  */
 package org.ta4j.core.portfolio;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.portfolio.MinimumVarianceOptimizer.CovarianceEstimator.LEDOIT_WOLF;
 import static org.ta4j.core.portfolio.MinimumVarianceOptimizer.CovarianceEstimator.SAMPLE;
@@ -19,7 +19,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -104,10 +104,10 @@ public class MinimumVarianceOptimizerTest {
 
             assertKkt(series, uncapped, 1.0);
             assertKkt(series, capped, 0.3);
-            assertTrue(uncapped.getTargetWeights().values().stream().anyMatch(Num::isZero),
-                    "a high-beta asset should be excluded");
-            assertTrue(capped.getTargetWeights().values().stream().anyMatch(weight -> weight.doubleValue() == 0.3),
-                    "the cap should bind");
+            assertTrue("a high-beta asset should be excluded",
+                    uncapped.getTargetWeights().values().stream().anyMatch(Num::isZero));
+            assertTrue("the cap should bind",
+                    capped.getTargetWeights().values().stream().anyMatch(weight -> weight.doubleValue() == 0.3));
         }
     }
 
@@ -212,7 +212,7 @@ public class MinimumVarianceOptimizerTest {
                 lambda = gradient[asset];
             }
         }
-        assertTrue(Double.isFinite(lambda), "expected at least one interior weight");
+        assertTrue("expected at least one interior weight", Double.isFinite(lambda));
         double tolerance = 1e-7 * Math.abs(lambda);
         for (int asset = 0; asset < assets.size(); asset++) {
             if (weights[asset] <= 1e-9) {

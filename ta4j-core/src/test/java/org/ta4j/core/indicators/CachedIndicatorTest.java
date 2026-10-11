@@ -4,7 +4,7 @@
 package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.Assert.*;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.TestUtils.saturatedRetainedWindowSeries;
 
@@ -21,8 +21,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.*;
 import org.ta4j.core.TestUtils;
 import org.ta4j.core.indicators.averages.EDMAIndicator;
@@ -52,7 +52,6 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
-import org.junit.jupiter.api.Timeout;
 
 public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -62,7 +61,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1, 2, 3, 4, 3, 4, 5, 4, 3, 3, 4, 3, 2)
@@ -171,7 +170,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
             Future<Num> olderSnapshotRead = executor.submit(() -> indicator.getValue(barSeries.getEndIndex()));
-            assertTrue(barSeries.awaitBlockedSnapshot(), "Older snapshot was not captured");
+            assertTrue("Older snapshot was not captured", barSeries.awaitBlockedSnapshot());
 
             barSeries.setSnapshotMaximumBarCount(2);
             Future<Num> newerSnapshotRead = executor.submit(() -> indicator.getValue(barSeries.getEndIndex()));
@@ -756,11 +755,11 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         ready.await();
         start.countDown();
-        assertTrue(done.await(5, TimeUnit.SECONDS), "Concurrent tasks did not finish in time");
+        assertTrue("Concurrent tasks did not finish in time", done.await(5, TimeUnit.SECONDS));
         executor.shutdownNow();
 
-        assertEquals(1, indicator.getCalculationCount(),
-                "Only one calculation should be performed for the requested index despite concurrent access.");
+        assertEquals("Only one calculation should be performed for the requested index despite concurrent access.", 1,
+                indicator.getCalculationCount());
     }
 
     @Test
@@ -791,16 +790,16 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         ready.await();
         start.countDown();
-        assertTrue(done.await(5, TimeUnit.SECONDS), "Concurrent tasks did not finish in time");
+        assertTrue("Concurrent tasks did not finish in time", done.await(5, TimeUnit.SECONDS));
         executor.shutdownNow();
 
-        assertEquals(1, indicator.getCalculationCount(),
-                "Only one calculation should be performed for the last bar despite concurrent access.");
+        assertEquals("Only one calculation should be performed for the last bar despite concurrent access.", 1,
+                indicator.getCalculationCount());
 
         // Mutate last bar to force invalidation and ensure a recomputation occurs
         barSeries.getLastBar().addTrade(numOf(1), numOf(7));
         indicator.getValue(endIndex);
-        assertEquals(2, indicator.getCalculationCount(), "Mutation should trigger recomputation of last-bar cache.");
+        assertEquals("Mutation should trigger recomputation of last-bar cache.", 2, indicator.getCalculationCount());
     }
 
     @Test
@@ -814,17 +813,17 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
             Future<Num> writeLockedFuture = executor.submit(() -> indicator.getValue(endIndex - 1));
-            assertTrue(indicator.writeLockedCalculationStarted.await(30, TimeUnit.SECONDS),
-                    "Write-locked calculation did not start in time");
+            assertTrue("Write-locked calculation did not start in time",
+                    indicator.writeLockedCalculationStarted.await(30, TimeUnit.SECONDS));
 
             Future<Num> lastBarFuture = executor.submit(() -> indicator.getValue(endIndex));
-            assertTrue(indicator.lastBarCalculationStarted.await(30, TimeUnit.SECONDS),
-                    "Last-bar calculation did not start in time");
+            assertTrue("Last-bar calculation did not start in time",
+                    indicator.lastBarCalculationStarted.await(30, TimeUnit.SECONDS));
 
             assertNumEquals(endIndex - 1, writeLockedFuture.get(30, TimeUnit.SECONDS));
             assertNumEquals(endIndex, lastBarFuture.get(30, TimeUnit.SECONDS));
-            assertTrue(indicator.writeLockedDuringLastBarRead.get(),
-                    "Expected last-bar read to occur while holding cache write lock");
+            assertTrue("Expected last-bar read to occur while holding cache write lock",
+                    indicator.writeLockedDuringLastBarRead.get());
         } finally {
             executor.shutdownNow();
             executor.awaitTermination(30, TimeUnit.SECONDS);
@@ -859,7 +858,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         ExecutorService executor = Executors.newSingleThreadExecutor();
         try {
             Future<Num> future = executor.submit(() -> indicator.getValue(endIndex));
-            assertTrue(tradesReadStarted.await(30, TimeUnit.SECONDS), "Expected last-bar cache read to start in time");
+            assertTrue("Expected last-bar cache read to start in time", tradesReadStarted.await(30, TimeUnit.SECONDS));
 
             barSeries.addBar(barSeries.barBuilder()
                     .closePrice(2)
@@ -946,8 +945,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         try {
             Future<Num> future = executor.submit(() -> indicator.getValue(endIndex));
 
-            assertTrue(indicator.lastBarCalculationStarted.await(30, TimeUnit.SECONDS),
-                    "Last-bar calculation did not start in time");
+            assertTrue("Last-bar calculation did not start in time",
+                    indicator.lastBarCalculationStarted.await(30, TimeUnit.SECONDS));
 
             indicator.invalidateFrom(endIndex);
             indicator.allowLastBarCalculation.countDown();
@@ -980,8 +979,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         // Access last bar first - should update highestResultIndex
         Num value = indicator.getValue(endIndex);
         assertNumEquals(endIndex, value);
-        assertEquals(endIndex, indicator.getHighestResultIndex(),
-                "highestResultIndex should be updated when last bar is accessed first");
+        assertEquals("highestResultIndex should be updated when last bar is accessed first", endIndex,
+                indicator.getHighestResultIndex());
     }
 
     @Test
@@ -995,7 +994,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         // Access last bar first - sets highestResultIndex to endIndex
         indicator.getValue(endIndex);
-        assertEquals(endIndex, indicator.getHighestResultIndex(), "highestResultIndex should be set to endIndex");
+        assertEquals("highestResultIndex should be set to endIndex", endIndex, indicator.getHighestResultIndex());
 
         // Access an earlier index - should NOT decrease highestResultIndex
         // The cache's highestResultIndex might be smaller, but we should take the max
@@ -1003,8 +1002,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         indicator.getValue(earlierIndex);
 
         // highestResultIndex should remain at endIndex (or higher), not decrease
-        assertTrue(indicator.getHighestResultIndex() >= endIndex,
-                "highestResultIndex should not decrease when accessing earlier index after last bar");
+        assertTrue("highestResultIndex should not decrease when accessing earlier index after last bar",
+                indicator.getHighestResultIndex() >= endIndex);
     }
 
     @Test
@@ -1023,8 +1022,9 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         // Invalidate from an index that does not affect the cached last-bar index.
         indicator.invalidateFrom(endIndex + 1);
 
-        assertEquals(endIndex, indicator.getHighestResultIndex(),
-                "highestResultIndex should remain at least at the last-bar cached index when last-bar cache remains valid");
+        assertEquals(
+                "highestResultIndex should remain at least at the last-bar cached index when last-bar cache remains valid",
+                endIndex, indicator.getHighestResultIndex());
     }
 
     @Test
@@ -1332,13 +1332,13 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         // The recursive last-bar access should NOT advance highestResultIndex because
         // snapshotInvalidationCount is -1 when the write lock is already held.
         // Only the outer calculation (endIndex - 1) should advance it.
-        assertEquals(endIndex - 1, indicator.getHighestResultIndex(),
-                "highestResultIndex should only reflect the outer calculation, not the recursive last-bar access");
+        assertEquals("highestResultIndex should only reflect the outer calculation, not the recursive last-bar access",
+                endIndex - 1, indicator.getHighestResultIndex());
 
         // Accessing the last bar normally should now update highestResultIndex
         indicator.getValue(endIndex);
-        assertEquals(endIndex, indicator.getHighestResultIndex(),
-                "highestResultIndex should be updated after normal last-bar access");
+        assertEquals("highestResultIndex should be updated after normal last-bar access", endIndex,
+                indicator.getHighestResultIndex());
     }
 
     @Test
@@ -1368,7 +1368,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             });
 
             // Wait for first computation to start
-            assertTrue(firstComputationStarted.await(30, TimeUnit.SECONDS), "First computation should start");
+            assertTrue("First computation should start", firstComputationStarted.await(30, TimeUnit.SECONDS));
 
             // Start second thread that should timeout waiting and compute independently
             Future<Num> secondFuture = executor.submit(() -> indicator.getValue(endIndex));
@@ -1380,7 +1380,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
                 Num result = secondFuture.get(1, TimeUnit.SECONDS);
                 // Either gets a computed value or times out waiting - both are acceptable
                 // The key is that it doesn't block forever
-                assertNotNull(result, "Second thread should get a result after timeout");
+                assertNotNull("Second thread should get a result after timeout", result);
             } catch (TimeoutException e) {
                 fail("Second thread should not block forever waiting for first computation");
             }
@@ -1431,14 +1431,14 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         ready.await();
         start.countDown();
-        assertTrue(done.await(60, TimeUnit.SECONDS), "Stress test did not complete in time");
+        assertTrue("Stress test did not complete in time", done.await(60, TimeUnit.SECONDS));
         executor.shutdownNow();
 
         // All reads should succeed
-        assertEquals(threads * iterationsPerThread, successCount.get(), "All reads should succeed");
+        assertEquals("All reads should succeed", threads * iterationsPerThread, successCount.get());
 
         // Last bar should only be computed once (subsequent reads use cache)
-        assertEquals(1, indicator.getCalculationCount(), "Last bar should be computed exactly once");
+        assertEquals("Last bar should be computed exactly once", 1, indicator.getCalculationCount());
     }
 
     @Test
@@ -1505,14 +1505,14 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         ready.await();
         start.countDown();
-        assertTrue(done.await(60, TimeUnit.SECONDS), "Stress test with mutations did not complete in time");
+        assertTrue("Stress test with mutations did not complete in time", done.await(60, TimeUnit.SECONDS));
         executor.shutdownNow();
 
         // Should have performed many reads
-        assertTrue(totalReads.get() >= minimumReads, "Should have performed many concurrent reads");
+        assertTrue("Should have performed many concurrent reads", totalReads.get() >= minimumReads);
 
         // Each mutation should trigger a recomputation
-        assertTrue(indicator.getCalculationCount() > 1, "Should have recomputed after mutations");
+        assertTrue("Should have recomputed after mutations", indicator.getCalculationCount() > 1);
     }
 
     private final static class SelfRecursiveKeepingIndicator extends CachedIndicator<Num> {
@@ -1629,8 +1629,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             if (index == endIndex) {
                 lastBarCalculationStarted.countDown();
                 try {
-                    assertTrue(allowLastBarCalculation.await(30, TimeUnit.SECONDS),
-                            "Last-bar calculation was not allowed to proceed in time");
+                    assertTrue("Last-bar calculation was not allowed to proceed in time",
+                            allowLastBarCalculation.await(30, TimeUnit.SECONDS));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -1669,8 +1669,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             if (index == endIndex) {
                 lastBarCalculationStarted.countDown();
                 try {
-                    assertTrue(writeLockedCalculationStarted.await(30, TimeUnit.SECONDS),
-                            "Write-locked calculation did not start in time");
+                    assertTrue("Write-locked calculation did not start in time",
+                            writeLockedCalculationStarted.await(30, TimeUnit.SECONDS));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -1680,8 +1680,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             if (index == endIndex - 1) {
                 writeLockedCalculationStarted.countDown();
                 try {
-                    assertTrue(lastBarCalculationStarted.await(30, TimeUnit.SECONDS),
-                            "Last-bar calculation did not start in time");
+                    assertTrue("Last-bar calculation did not start in time",
+                            lastBarCalculationStarted.await(30, TimeUnit.SECONDS));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -1863,8 +1863,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             if (maximumBarCount == blockTriggerMaximumBarCount && blockNextSnapshot.compareAndSet(true, false)) {
                 snapshotBlocked.countDown();
                 try {
-                    assertTrue(releaseSnapshot.await(30, TimeUnit.SECONDS),
-                            "Timed out waiting to release older snapshot");
+                    assertTrue("Timed out waiting to release older snapshot",
+                            releaseSnapshot.await(30, TimeUnit.SECONDS));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     fail("Interrupted while waiting to release older snapshot");
@@ -1997,8 +1997,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             if (blockingEnabled.get() && blocked.compareAndSet(false, true)) {
                 tradesReadStarted.countDown();
                 try {
-                    assertTrue(allowTradesRead.await(30, TimeUnit.SECONDS),
-                            "Timed out waiting to allow getTrades to proceed");
+                    assertTrue("Timed out waiting to allow getTrades to proceed",
+                            allowTradesRead.await(30, TimeUnit.SECONDS));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -2087,8 +2087,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
     }
 
-    @Test
-    @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
+    @Test(timeout = 5000)
     public void sharedDependencySubgraphReconciliationStaysBounded() {
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(0d, 50d, 50d, 50d, 50d)

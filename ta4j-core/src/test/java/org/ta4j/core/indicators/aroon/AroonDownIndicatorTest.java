@@ -3,12 +3,12 @@
  */
 package org.ta4j.core.indicators.aroon;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static junit.framework.TestCase.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -24,7 +24,7 @@ public class AroonDownIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         super(null, numFunction);
     }
 
-    @BeforeEach
+    @Before
     public void init() {
         // FB, daily, Sept 19, 2017
         data = new MockBarSeriesBuilder().withNumFactory(numFactory).withName("Aroon data").build();

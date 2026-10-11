@@ -3,10 +3,12 @@
  */
 package org.ta4j.core.analysis;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
@@ -18,6 +20,7 @@ import org.ta4j.core.num.NumFactory;
  * a spurious in-window position, and ranges disjoint from the window must be
  * ignored.
  */
+@RunWith(Parameterized.class)
 public class OffsetNumBufferTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     public OffsetNumBufferTest(NumFactory numFactory) {

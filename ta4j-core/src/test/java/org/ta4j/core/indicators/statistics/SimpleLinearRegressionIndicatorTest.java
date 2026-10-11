@@ -3,12 +3,12 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.apache.commons.math3.stat.regression.SimpleRegression;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -25,7 +25,7 @@ public class SimpleLinearRegressionIndicatorTest extends AbstractIndicatorTest<I
         super(numFactory);
     }
 
-    @BeforeEach
+    @Before
     public void setUp() {
         double[] data = { 10, 20, 30, 40, 30, 40, 30, 20, 30, 50, 60, 70, 80 };
         closePrice = new ClosePriceIndicator(

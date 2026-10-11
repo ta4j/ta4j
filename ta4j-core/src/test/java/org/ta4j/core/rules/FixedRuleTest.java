@@ -3,16 +3,16 @@
  */
 package org.ta4j.core.rules;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 
 import org.apache.logging.log4j.Level;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TraceTestLogger;
@@ -23,13 +23,13 @@ public class FixedRuleTest {
 
     private TraceTestLogger ruleTraceTestLogger;
 
-    @BeforeEach
+    @Before
     public void setUpLogger() {
         ruleTraceTestLogger = new TraceTestLogger();
         ruleTraceTestLogger.open();
     }
 
-    @AfterEach
+    @After
     public void tearDownLogger() {
         ruleTraceTestLogger.close();
     }
@@ -70,9 +70,9 @@ public class FixedRuleTest {
         rule.isSatisfied(1);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue(logContent.contains("FixedRule#isSatisfied"),
-                "TRACE logging should be enough to emit a default verbose rule trace");
-        assertTrue(logContent.contains("mode=VERBOSE"), "Default rule traces should use verbose mode");
+        assertTrue("TRACE logging should be enough to emit a default verbose rule trace",
+                logContent.contains("FixedRule#isSatisfied"));
+        assertTrue("Default rule traces should use verbose mode", logContent.contains("mode=VERBOSE"));
     }
 
     @Test
@@ -83,8 +83,8 @@ public class FixedRuleTest {
         rule.isSatisfied(0);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue(logContent.contains("FixedRule#isSatisfied"),
-                "Trace log should contain class name when no custom name is set");
+        assertTrue("Trace log should contain class name when no custom name is set",
+                logContent.contains("FixedRule#isSatisfied"));
     }
 
     @Test
@@ -96,10 +96,10 @@ public class FixedRuleTest {
         rule.isSatisfied(0);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue(logContent.contains("My Custom Entry Rule#isSatisfied"),
-                "Trace log should contain custom name when set");
-        assertFalse(logContent.contains("FixedRule#isSatisfied"),
-                "Trace log should not contain class name when custom name is set");
+        assertTrue("Trace log should contain custom name when set",
+                logContent.contains("My Custom Entry Rule#isSatisfied"));
+        assertFalse("Trace log should not contain class name when custom name is set",
+                logContent.contains("FixedRule#isSatisfied"));
     }
 
     @Test
@@ -112,10 +112,10 @@ public class FixedRuleTest {
         rule.isSatisfied(0);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue(logContent.contains("FixedRule#isSatisfied"),
-                "Trace log should fall back to class name when custom name is reset");
-        assertFalse(logContent.contains("My Custom Rule#isSatisfied"),
-                "Trace log should not contain custom name after reset");
+        assertTrue("Trace log should fall back to class name when custom name is reset",
+                logContent.contains("FixedRule#isSatisfied"));
+        assertFalse("Trace log should not contain custom name after reset",
+                logContent.contains("My Custom Rule#isSatisfied"));
     }
 
     @Test
@@ -131,10 +131,10 @@ public class FixedRuleTest {
         rule2.isSatisfied(2);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue(logContent.contains("Entry Rule 5min#isSatisfied"),
-                "First rule should use its custom name in trace log");
-        assertTrue(logContent.contains("Exit Rule 15min#isSatisfied"),
-                "Second rule should use its custom name in trace log");
+        assertTrue("First rule should use its custom name in trace log",
+                logContent.contains("Entry Rule 5min#isSatisfied"));
+        assertTrue("Second rule should use its custom name in trace log",
+                logContent.contains("Exit Rule 15min#isSatisfied"));
     }
 
     @Test
@@ -146,8 +146,8 @@ public class FixedRuleTest {
         rule.isSatisfied(1);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertFalse(logContent.contains("FixedRule#isSatisfied"),
-                "Trace log should be empty when the rule logger is not TRACE");
+        assertFalse("Trace log should be empty when the rule logger is not TRACE",
+                logContent.contains("FixedRule#isSatisfied"));
     }
 
     @Test
@@ -158,14 +158,14 @@ public class FixedRuleTest {
         assertTrue(rule.isSatisfiedWithTraceMode(1, Rule.TraceMode.VERBOSE));
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue(logContent.contains("FixedRule#isSatisfied"), "Scoped verbose evaluation should emit trace output");
-        assertTrue(logContent.contains("mode=VERBOSE"), "Scoped verbose evaluation should mark verbose mode");
-        assertTrue(logContent.contains("path=root"), "Scoped verbose evaluation should keep root path");
+        assertTrue("Scoped verbose evaluation should emit trace output", logContent.contains("FixedRule#isSatisfied"));
+        assertTrue("Scoped verbose evaluation should mark verbose mode", logContent.contains("mode=VERBOSE"));
+        assertTrue("Scoped verbose evaluation should keep root path", logContent.contains("path=root"));
 
         ruleTraceTestLogger.clear();
         assertTrue(rule.isSatisfied(1));
-        assertTrue(ruleTraceTestLogger.getLogOutput().contains("mode=VERBOSE"),
-                "A scoped evaluation should not suppress later default TRACE behavior");
+        assertTrue("A scoped evaluation should not suppress later default TRACE behavior",
+                ruleTraceTestLogger.getLogOutput().contains("mode=VERBOSE"));
     }
 
     @Test
@@ -177,10 +177,10 @@ public class FixedRuleTest {
         assertTrue(rule.isSatisfiedWithTraceMode(1, Rule.TraceMode.VERBOSE));
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertFalse(rule.observedTraceFrame(),
-                "Scoped trace evaluation should not create a trace frame when logger trace is disabled");
-        assertFalse(logContent.contains("FrameObservingFixedRule#isSatisfied"),
-                "Scoped trace evaluation should not emit trace output when logger trace is disabled");
+        assertFalse("Scoped trace evaluation should not create a trace frame when logger trace is disabled",
+                rule.observedTraceFrame());
+        assertFalse("Scoped trace evaluation should not emit trace output when logger trace is disabled",
+                logContent.contains("FrameObservingFixedRule#isSatisfied"));
     }
 
     @Test
