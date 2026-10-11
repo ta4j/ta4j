@@ -746,7 +746,9 @@ public final class DecimalNum implements Num {
      * @return <code>this<sup>n</sup></code>, or {@link NaN#NaN} if invalid or
      *         infinite
      * @throws ArithmeticException if the integer part of the exponent {@code n}
-     *                             overflows {@code int}
+     *                             overflows {@code int} or its magnitude exceeds
+     *                             {@code 999999999}, the limit of
+     *                             {@link BigDecimal#pow(int, MathContext)}
      */
     @Override
     public Num pow(final Num n) {
@@ -791,12 +793,20 @@ public final class DecimalNum implements Num {
         }
         // x^a at the working precision plus guard digits: an exact power grows by
         // digits(x) * a digits, which stalls large exponents, and the result is
-        // rounded to mathContext anyway. Also accepts negative whole parts.
-        // Precision 0 means unlimited: keep x^a exact rather than 10 digits.
+        // rounded to mathContext anyway.
         final int precision = this.mathContext.getPrecision();
-        final MathContext powContext = precision == 0 ? MathContext.UNLIMITED
-                : new MathContext(precision + POW_GUARD_DIGITS, this.mathContext.getRoundingMode());
-        final BigDecimal xpowa = this.delegate.pow(aInt, powContext);
+        final BigDecimal xpowa;
+        if (precision == 0) {
+            // Unlimited precision: BigDecimal.pow rejects negative exponents without a
+            // finite context, so use the exact positive power and, for negative
+            // exponents, a reciprocal at DEFAULT_PRECISION (1/x^k need not terminate).
+            xpowa = aInt >= 0 ? this.delegate.pow(aInt)
+                    : BigDecimal.ONE.divide(this.delegate.pow(Math.negateExact(aInt)),
+                            new MathContext(DEFAULT_PRECISION, this.mathContext.getRoundingMode()));
+        } else {
+            xpowa = this.delegate.pow(aInt,
+                    new MathContext(precision + POW_GUARD_DIGITS, this.mathContext.getRoundingMode()));
+        }
         // use double pow(double, double)
         final double xpowb = Math.pow(this.delegate.doubleValue(), bDouble);
         if (!Double.isFinite(xpowb)) {
