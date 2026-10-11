@@ -491,7 +491,8 @@ public final class DecimalNum implements Num {
             return DecimalNum.valueOf(this.delegate.sqrt(precisionContext), precisionContext);
         }
 
-        // Unlimited precision: fall back to DEFAULT_PRECISION when the root is non-terminating
+        // Unlimited precision: fall back to DEFAULT_PRECISION when the root is
+        // non-terminating
         try {
             return DecimalNum.valueOf(this.delegate.sqrt(precisionContext), precisionContext);
         } catch (ArithmeticException e) {
