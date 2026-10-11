@@ -748,7 +748,10 @@ public final class DecimalNum implements Num {
      * @throws ArithmeticException if the integer part of the exponent {@code n}
      *                             overflows {@code int} or its magnitude exceeds
      *                             {@code 999999999}, the limit of
-     *                             {@link BigDecimal#pow(int, MathContext)}
+     *                             {@link BigDecimal#pow(int, MathContext)}; or if
+     *                             this number's {@link MathContext} uses
+     *                             {@link RoundingMode#UNNECESSARY} and the result
+     *                             is inexact
      */
     @Override
     public Num pow(final Num n) {
