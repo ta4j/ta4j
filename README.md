@@ -395,36 +395,15 @@ Beyond the basic strategy loop, ta4j includes building blocks for batch backtest
 
 These capabilities are intentionally not expanded into mini-manuals here. Use the [examples index](ta4j-examples/README.md), [core API guide](ta4j-core/README.md), [Javadoc](https://ta4j.github.io/ta4j/), and [wiki](https://ta4j.github.io/ta4j-wiki/) to go deeper without losing the onboarding path.
 
+### Bounded trading records
+
+A `BaseTradingRecord` created with a start or end index scopes position-based criteria to that range: positions entered before the start are excluded, and positions exiting after the end count as still open at the end. Use `TradingRecord.getContainedPositions(series)` to inspect the closed positions a criterion will see, or `AnalysisWindow` with `AnalysisContext` to choose a different inclusion policy for an unbounded record.
+
 ### Performance
 
 ta4j lets you choose `DecimalNum` for precision-first workflows or `DoubleNum` for throughput-first workflows with accepted floating-point tradeoffs. Moving series can cap retained history, indicator values are cached, and independent strategy candidates can be evaluated in parallel.
 
 Measure changes on your own workload rather than relying on generic claims. Use the [`BacktestPerformanceTuningHarness`](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java), the [Num guide](https://ta4j.github.io/ta4j-wiki/Num.html), and [Performance Characterization](https://ta4j.github.io/ta4j-wiki/Performance-Characterization.html) for repeatable comparisons.
-
-### Choose the analysis population
-
-Position-based criteria evaluate directly bounded trading records using entries
-and exits contained in the record's logical range. Exits after the logical end
-are open as of that end. Closed-position metrics ignore them by default; native
-fee metrics retain fees on the open entry. Linear costs and consecutive PnL
-criteria can instead mark these positions at the end with
-`OpenPositionHandling.MARK_TO_MARKET`. Records with no explicit bounds preserve
-historical results.
-
-For an explicit analysis window, `AnalysisContext.defaults()` uses
-`EXIT_IN_WINDOW`: an earlier entry is included when its exit is inside the
-window. Choose `FULLY_CONTAINED` to exclude entries before the start:
-
-```java
-AnalysisContext context = AnalysisContext.defaults()
-        .withPositionInclusionPolicy(AnalysisContext.PositionInclusionPolicy.FULLY_CONTAINED);
-Num profit = new NetProfitCriterion().calculate(series, tradingRecord,
-        AnalysisWindow.barRange(2, 8), context);
-```
-
-The explicit context controls open-position handling, including when a criterion
-has a different constructor setting. Synthetic window-end exits can carry modeled
-costs; they are distinct from native open-entry fee totals.
 
 ## Real-world examples
 

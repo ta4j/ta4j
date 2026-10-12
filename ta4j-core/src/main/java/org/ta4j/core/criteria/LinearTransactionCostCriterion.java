@@ -3,8 +3,6 @@
  */
 package org.ta4j.core.criteria;
 
-import java.util.Objects;
-import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
@@ -21,8 +19,6 @@ import org.ta4j.core.num.Num;
  * linear function defined by a and b (a * x + b).
  */
 public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
-
-    private final OpenPositionHandling openPositionHandling;
 
     private final double initialAmount;
 
@@ -52,23 +48,6 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      *                      trade})
      */
     public LinearTransactionCostCriterion(double initialAmount, double a, double b) {
-        this(initialAmount, a, b, OpenPositionHandling.IGNORE);
-    }
-
-    /**
-     * Creates a cost criterion with configurable bounded-record open handling.
-     * Explicit-window context overrides this setting. Unbounded records retain
-     * their historical open-entry cost calculation.
-     *
-     * @param initialAmount        the initially traded amount
-     * @param a                    the proportional trade cost coefficient
-     * @param b                    the fixed trade cost
-     * @param openPositionHandling handling at a bounded record's logical end
-     * @since 0.26.1
-     */
-    public LinearTransactionCostCriterion(double initialAmount, double a, double b,
-            OpenPositionHandling openPositionHandling) {
-        this.openPositionHandling = Objects.requireNonNull(openPositionHandling, "openPositionHandling");
         this.initialAmount = initialAmount;
         this.a = a;
         this.b = b;
@@ -84,11 +63,10 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        tradingRecord = boundedTradingRecord(series, tradingRecord, openPositionHandling);
         Num totalCosts = series.numFactory().zero();
         Num tradedAmount = series.numFactory().numOf(initialAmount);
 
-        for (Position position : tradingRecord.getPositions()) {
+        for (Position position : tradingRecord.getContainedPositions(series)) {
             Num tradeCost = getTradeCost(series, position, tradedAmount);
             totalCosts = totalCosts.plus(tradeCost);
             // To calculate the new traded amount:
@@ -100,10 +78,9 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
             tradedAmount = tradedAmount.minus(getTradeCost(position.getExit(), tradedAmount));
         }
 
-        // Special case: if the current position is open
-        Position currentPosition = tradingRecord.getCurrentPosition();
-        if (currentPosition.isOpened()) {
-            totalCosts = totalCosts.plus(getTradeCost(currentPosition.getEntry(), tradedAmount));
+        // Positions still open at the logical end only pay their entry cost
+        for (Position openPosition : positionsOpenAtEnd(series, tradingRecord)) {
+            totalCosts = totalCosts.plus(getTradeCost(openPosition.getEntry(), tradedAmount));
         }
 
         return totalCosts;

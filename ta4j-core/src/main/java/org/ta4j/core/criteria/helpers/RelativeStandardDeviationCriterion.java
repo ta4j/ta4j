@@ -65,8 +65,7 @@ public class RelativeStandardDeviationCriterion extends AbstractAnalysisCriterio
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        tradingRecord = boundedTradingRecord(series, tradingRecord);
-        if (tradingRecord.getPositions().isEmpty()) {
+        if (tradingRecord.getContainedPositions(series).isEmpty()) {
             return series.numFactory().zero();
         }
         Num average = averageCriterion.calculate(series, tradingRecord);

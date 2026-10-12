@@ -76,8 +76,7 @@ public class SqnCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        tradingRecord = boundedTradingRecord(series, tradingRecord);
-        if (tradingRecord.getPositions().isEmpty()) {
+        if (tradingRecord.getContainedPositions(series).isEmpty()) {
             return series.numFactory().zero();
         }
         Num stdDevPnl = standardDeviationCriterion.calculate(series, tradingRecord);

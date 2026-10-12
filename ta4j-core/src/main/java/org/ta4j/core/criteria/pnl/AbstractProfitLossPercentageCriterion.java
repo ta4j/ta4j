@@ -73,18 +73,13 @@ public abstract class AbstractProfitLossPercentageCriterion extends AbstractAnal
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        tradingRecord = boundedTradingRecord(series, tradingRecord);
         var numFactory = series.numFactory();
         var zero = numFactory.zero();
 
-        var totalProfit = tradingRecord.getPositions()
-                .stream()
-                .filter(Position::isClosed)
-                .map(this::profit)
-                .reduce(zero, Num::plus);
+        var positions = tradingRecord.getContainedPositions(series);
+        var totalProfit = positions.stream().filter(Position::isClosed).map(this::profit).reduce(zero, Num::plus);
 
-        var totalEntryPrice = tradingRecord.getPositions()
-                .stream()
+        var totalEntryPrice = positions.stream()
                 .filter(Position::isClosed)
                 .map(Position::getEntry)
                 .map(Trade::getValue)

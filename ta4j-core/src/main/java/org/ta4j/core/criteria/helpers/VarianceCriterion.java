@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.criteria.helpers;
 
+import java.util.List;
+
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
@@ -65,8 +67,8 @@ public class VarianceCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        tradingRecord = boundedTradingRecord(series, tradingRecord);
-        if (tradingRecord.getPositions().isEmpty()) {
+        List<Position> positions = tradingRecord.getContainedPositions(series);
+        if (positions.isEmpty()) {
             return series.numFactory().zero();
         }
         Num criterionValue = criterion.calculate(series, tradingRecord);
@@ -75,7 +77,7 @@ public class VarianceCriterion extends AbstractAnalysisCriterion {
         Num variance = series.numFactory().zero();
         Num average = criterionValue.dividedBy(numberOfPositions);
 
-        for (Position position : tradingRecord.getPositions()) {
+        for (Position position : positions) {
             Num pow = criterion.calculate(series, position).minus(average).pow(2);
             variance = variance.plus(pow);
         }

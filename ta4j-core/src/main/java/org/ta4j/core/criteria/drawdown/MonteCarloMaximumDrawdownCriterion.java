@@ -204,8 +204,7 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        TradingRecord selected = boundedTradingRecordWithOpenEntries(series, tradingRecord);
-        List<List<Num>> blocks = buildBlocks(series, selected);
+        List<List<Num>> blocks = buildBlocks(series, tradingRecord);
         if (blocks.size() < 3) {
             return maximumDrawdownCriterion.calculate(series, tradingRecord);
         }
@@ -241,7 +240,7 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
         List<List<Num>> blocks = new ArrayList<>();
         CashFlow cashFlow = new CashFlow(series, record, equityCurveMode, openPositionHandling);
         Num one = series.numFactory().one();
-        for (Position position : record.getPositions()) {
+        for (Position position : record.getContainedPositions(series)) {
             if (!position.isClosed()) {
                 continue;
             }

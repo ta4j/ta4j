@@ -31,10 +31,9 @@ public class NumberOfConsecutivePositionsCriterion extends AbstractAnalysisCrite
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        tradingRecord = boundedTradingRecord(series, tradingRecord);
         int maxConsecutive = 0;
         int consecutives = 0;
-        for (Position position : tradingRecord.getPositions()) {
+        for (Position position : tradingRecord.getContainedPositions(series)) {
             if (isConsecutive(position)) {
                 consecutives = consecutives + 1;
             } else {
