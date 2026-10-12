@@ -395,6 +395,10 @@ Beyond the basic strategy loop, ta4j includes building blocks for batch backtest
 
 These capabilities are intentionally not expanded into mini-manuals here. Use the [examples index](ta4j-examples/README.md), [core API guide](ta4j-core/README.md), [Javadoc](https://ta4j.github.io/ta4j/), and [wiki](https://ta4j.github.io/ta4j-wiki/) to go deeper without losing the onboarding path.
 
+### Bounded trading records
+
+A `BaseTradingRecord` created with a start or end index scopes position-based criteria to that range: positions entered before the start are excluded, and positions exiting after the end count as still open at the end. Use `TradingRecord.getContainedPositions(series)` to inspect the closed positions a criterion will see, or `AnalysisWindow` with `AnalysisContext` to choose a different inclusion policy for an unbounded record.
+
 ### Performance
 
 ta4j lets you choose `DecimalNum` for precision-first workflows or `DoubleNum` for throughput-first workflows with accepted floating-point tradeoffs. Moving series can cap retained history, indicator values are cached, and independent strategy candidates can be evaluated in parallel.

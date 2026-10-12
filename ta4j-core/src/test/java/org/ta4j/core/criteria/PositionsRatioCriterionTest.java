@@ -10,10 +10,15 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.AnalysisCriterion.PositionFilter;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.AnalysisContext;
+import org.ta4j.core.analysis.AnalysisContext.PositionInclusionPolicy;
+import org.ta4j.core.analysis.AnalysisWindow;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 
@@ -155,4 +160,65 @@ public class PositionsRatioCriterionTest extends AbstractCriterionTest {
                 logCriterion.calculate(series, winningPosition));
     }
 
+    @Test
+    public void boundedRecordUsesSelectedPopulation() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 110, 100, 120, 100, 95, 100, 110, 130)
+                .build();
+        TradingRecord record = boundedRecord(series, 2, 8);
+
+        // Only profits [20, -5] are selected: one winner among two positions.
+        assertNumEquals(0.5, getCriterion(PositionFilter.PROFIT).calculate(series, record));
+        assertNumEquals(0.5, getCriterion(PositionFilter.LOSS).calculate(series, record));
+    }
+
+    @Test
+    public void directBoundsAndAnalysisWindowSelectTheSamePopulation() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 110, 100, 120, 100, 95, 100, 110, 130)
+                .build();
+        TradingRecord bounded = boundedRecord(series, 2, 8);
+        TradingRecord unbounded = new BaseTradingRecord(Trade.TradeType.BUY, new ZeroCostModel(), new ZeroCostModel());
+        for (Position position : bounded.getPositions()) {
+            unbounded.operate(position.getEntry());
+            unbounded.operate(position.getExit());
+        }
+        AnalysisContext context = AnalysisContext.defaults()
+                .withPositionInclusionPolicy(PositionInclusionPolicy.FULLY_CONTAINED);
+
+        // The ratio composes a winner count with the population size; both must see
+        // the same positions whether the range comes from record bounds or a window.
+        for (PositionFilter filter : PositionFilter.values()) {
+            AnalysisCriterion criterion = getCriterion(filter);
+            assertNumEquals(criterion.calculate(series, bounded),
+                    criterion.calculate(series, unbounded, AnalysisWindow.barRange(2, 8), context));
+        }
+    }
+
+    @Test
+    public void emptySelectedPopulationPreservesEmptyRecordResult() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 110, 100, 120, 100, 95, 100, 110, 130)
+                .build();
+        TradingRecord record = boundedRecord(series, 8, 8);
+
+        // The source retains four closed positions, but none belongs to [8, 8].
+        assertFalse(record.getPositions().isEmpty());
+        assertTrue(getCriterion(PositionFilter.PROFIT).calculate(series, record).isNaN());
+        assertTrue(getCriterion(PositionFilter.LOSS).calculate(series, record).isNaN());
+    }
+
+    private TradingRecord boundedRecord(BarSeries series, int startIndex, int endIndex) {
+        TradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY, startIndex, endIndex, new ZeroCostModel(),
+                new ZeroCostModel());
+        record.operate(Trade.buyAt(0, series, numFactory.one()));
+        record.operate(Trade.sellAt(2, series, numFactory.one()));
+        record.operate(Trade.buyAt(3, series, numFactory.one()));
+        record.operate(Trade.sellAt(4, series, numFactory.one()));
+        record.operate(Trade.buyAt(5, series, numFactory.one()));
+        record.operate(Trade.sellAt(6, series, numFactory.one()));
+        record.operate(Trade.buyAt(7, series, numFactory.one()));
+        record.operate(Trade.sellAt(9, series, numFactory.one()));
+        return record;
+    }
 }

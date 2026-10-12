@@ -65,7 +65,7 @@ public abstract class AbstractConsecutivePnlCriterion extends AbstractAnalysisCr
         var current = zero;
         var best = zero;
 
-        for (var position : tradingRecord.getPositions()) {
+        for (var position : tradingRecord.getContainedPositions(series)) {
             var contribution = position.isClosed() ? calculate(series, position) : zero;
             if (!contribution.isZero()) {
                 current = current.plus(contribution);

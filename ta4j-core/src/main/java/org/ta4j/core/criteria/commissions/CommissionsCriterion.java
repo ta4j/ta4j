@@ -43,7 +43,10 @@ public class CommissionsCriterion extends AbstractAnalysisCriterion {
     }
 
     /**
-     * Calculates the total commission paid for every position in a trading record.
+     * Calculates the total commission paid for the positions in a trading record.
+     * Closed positions contained in the record's logical range pay their full
+     * commission; positions still open at the logical end pay the commission
+     * accrued up to that end.
      *
      * @param series        the bar series used for number creation
      * @param tradingRecord the trading record containing the positions to evaluate
@@ -52,18 +55,17 @@ public class CommissionsCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         var model = tradingRecord.getTransactionCostModel();
-        var closedPositionsCommissions = tradingRecord.getPositions()
+        var commissions = tradingRecord.getContainedPositions(series)
                 .stream()
                 .filter(Position::isClosed)
                 .map(model::calculate)
                 .reduce(series.numFactory().zero(), Num::plus);
 
-        var current = tradingRecord.getCurrentPosition();
-        if (current.isOpened()) {
-            var openPositionCommissions = model.calculate(current, tradingRecord.getEndIndex(series));
-            return closedPositionsCommissions.plus(openPositionCommissions);
+        int endIndex = tradingRecord.getEndIndex(series);
+        for (Position openPosition : positionsOpenAtEnd(series, tradingRecord)) {
+            commissions = commissions.plus(model.calculate(openPosition, endIndex));
         }
-        return closedPositionsCommissions;
+        return commissions;
     }
 
     /**

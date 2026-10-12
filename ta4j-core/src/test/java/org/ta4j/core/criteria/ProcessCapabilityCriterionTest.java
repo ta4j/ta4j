@@ -4,6 +4,7 @@
 package org.ta4j.core.criteria;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -18,6 +19,7 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.statistics.SinglePrecisionNumFactory;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -675,5 +677,42 @@ public class ProcessCapabilityCriterionTest extends AbstractCriterionTest {
         assertTrue(capability.isPositive());
         assertTrue(capability.isLessThan(large.numOf(1e-10)));
         assertTrue(capability.isGreaterThan(large.numOf(1e-30)));
+    }
+
+    @Test
+    public void boundedRecordUsesSelectedPopulation() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 110, 100, 120, 100, 105, 100, 110, 130)
+                .build();
+        TradingRecord record = boundedRecord(series, 2, 8);
+
+        // Gross returns [1.2, 1.05]: mean 1.125, sigma 0.075, both limit gaps 0.225.
+        assertNumEquals(numFactory.one(), getCriterion(0.9, 1.35).calculate(series, record), 1e-12);
+    }
+
+    @Test
+    public void emptySelectedPopulationPreservesEmptyRecordResult() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 100, 110, 100, 120, 100, 105, 100, 110, 130)
+                .build();
+        TradingRecord record = boundedRecord(series, 8, 8);
+
+        // The source retains four closed positions, but none belongs to [8, 8].
+        assertFalse(record.getPositions().isEmpty());
+        assertNumEquals(0, getCriterion(0.9, 1.35).calculate(series, record));
+    }
+
+    private TradingRecord boundedRecord(BarSeries series, int startIndex, int endIndex) {
+        TradingRecord record = new BaseTradingRecord(Trade.TradeType.BUY, startIndex, endIndex, new ZeroCostModel(),
+                new ZeroCostModel());
+        record.operate(Trade.buyAt(0, series, numFactory.one()));
+        record.operate(Trade.sellAt(2, series, numFactory.one()));
+        record.operate(Trade.buyAt(3, series, numFactory.one()));
+        record.operate(Trade.sellAt(4, series, numFactory.one()));
+        record.operate(Trade.buyAt(5, series, numFactory.one()));
+        record.operate(Trade.sellAt(6, series, numFactory.one()));
+        record.operate(Trade.buyAt(7, series, numFactory.one()));
+        record.operate(Trade.sellAt(9, series, numFactory.one()));
+        return record;
     }
 }
