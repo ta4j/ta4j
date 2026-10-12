@@ -139,6 +139,54 @@ backtest-scored workflow and
 `ta4jexamples.research.RelationshipObjectiveSearchExample` for an
 event-synchronization (F1) workflow with a one-line grid/GA/PSO switch.
 
+## Run Elliott wave pattern research (maintainers)
+
+The experimental Elliott pattern study (test scope, not public API) has a
+launcher, `ElliottResearch`, that writes one relocatable run directory per run.
+Prerequisites: JDK 25, Maven, and dependencies already cached; the `smoke`
+recipe is offline and finishes in seconds. Run from the repository root.
+
+Unix shells:
+
+```bash
+mvn -q -pl ta4j-core test-compile exec:java -Dexec.args="run smoke --out target/elliott-research/smoke"
+mvn -q -pl ta4j-core test-compile exec:java -Dexec.args="summarize target/elliott-research/smoke"
+mvn -q -pl ta4j-core test-compile exec:java -Dexec.args="inspect target/elliott-research/smoke '<key from comparisons.csv>'"
+```
+
+PowerShell (quote the whole `-D` argument):
+
+```powershell
+mvn -q -pl ta4j-core test-compile exec:java "-Dexec.args=run smoke --out target/elliott-research/smoke"
+mvn -q -pl ta4j-core test-compile exec:java "-Dexec.args=summarize target/elliott-research/smoke"
+mvn -q -pl ta4j-core test-compile exec:java "-Dexec.args=inspect target/elliott-research/smoke '<key from comparisons.csv>'"
+```
+
+Relative paths resolve against the directory you run Maven from, here the
+repository root. Recipes: `smoke` (synthetic,
+real-data trace on by default), `frozen-cf525` (the frozen study over the bundled
+datasets) and `explore --source candles.json --recipe recipe.json` (your own
+candles and study settings). `--trace off|real|selected-null-member` with
+`--block L --member M` controls evidence capture; `--overwrite` reuses an existing
+run directory. `help` lists every option.
+
+A run directory holds `run.json` (revision and whether the worktree was dirty,
+recipe, configuration, dataset
+sources and status), `reports/` (one study report per dataset),
+`comparisons.csv` (one row per dataset, section, mode, detector, partition,
+metric and null block length), `coverage.csv`, `summary.md`, `traces/`
+(JSON lines per as-of bar) and `.run.lock`, which a run holds while it writes so
+a second run into the same directory is refused. Each comparison sets the observed value against a
+null reference band of member-level 2.5%-97.5% quantiles and an empirical
+reference rank; neither is a confidence interval or a p-value, and partitions
+are never pooled. `inspect` rebuilds a row's support from its trace and lists
+counterexamples and rule disagreements; when the trace is missing or truncated
+it exits with status 2 and prints the recapture command, quoted for a POSIX shell.
+The command carries `--expect-fingerprint` (and, for `explore`, `--expect-source-sha256`),
+so a recapture against a changed configuration or edited candles fails instead of
+tracing different data. Coverage marks a partition `partial` when it has no bars or
+a gap longer than seven bar periods.
+
 ## Companion user guides
 
 - Backtesting: https://ta4j.github.io/ta4j-wiki/Backtesting.html

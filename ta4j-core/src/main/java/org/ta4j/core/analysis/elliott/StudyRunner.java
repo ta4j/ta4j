@@ -56,6 +56,8 @@ final class StudyRunner {
     private final List<RelationshipRule> rules;
     private final List<RuleAblation.Mode> ablationModes;
     private static final List<String> STRUCTURAL_COMPETING_MODES = List.of("3+3", "5+5", "change-point-baseline");
+    private static final List<TopologyGrammar> NULL_GRAMMARS = List.of(TopologyGrammar.MOTIVE_5,
+            TopologyGrammar.CYCLE_5_3);
 
     private final Configuration configuration;
 
@@ -149,6 +151,30 @@ final class StudyRunner {
      * @since 0.25.1
      */
     StudyReport evaluate(final String assetId, final BarSeries series, final int fromIndex, final int toIndex) {
+        return evaluate(assetId, series, fromIndex, toIndex, null);
+    }
+
+    /**
+     * Evaluates one named asset while streaming every real-data observation to an
+     * optional observer.
+     *
+     * <p>
+     * The observer witnesses the H1, H2 ablation, competing, and detector
+     * robustness sections; null ensembles are never exported from here (see
+     * {@link #replayNullMember}). The returned report is identical with or without
+     * an observer.
+     * </p>
+     *
+     * @param assetId   report asset identifier
+     * @param series    source bars
+     * @param fromIndex first requested index, inclusive
+     * @param toIndex   last requested index, inclusive
+     * @param observer  optional observation sink, or {@code null}
+     * @return immutable study report
+     * @since 0.25.1
+     */
+    StudyReport evaluate(final String assetId, final BarSeries series, final int fromIndex, final int toIndex,
+            final StudyObserver observer) {
         if (assetId == null || assetId.isBlank()) {
             throw new IllegalArgumentException("assetId must not be blank");
         }
@@ -163,14 +189,16 @@ final class StudyRunner {
         // caller grammars belong to the competing-grammar section below and
         // must never appear under the motive-labeled hypothesis report.
         h1Modes.add(evaluateTopologyMode(series, start, end, configuration.partitions(), detectorFactory,
-                TopologyGrammar.MOTIVE_5, "topology-only"));
+                TopologyGrammar.MOTIVE_5, "topology-only", observer,
+                realScope("h1", "topology-only", TopologyGrammar.MOTIVE_5.name(), List.of())));
 
         final List<StudyReport.ModeReport> ablations = new ArrayList<>();
         final List<StudyReport.AmbiguousCandidateEvidence> ambiguousCandidateEvidence = new ArrayList<>();
         for (final RuleAblation.Mode mode : ablationModes) {
             ablations.add(evaluateMode(series, start, end, configuration.partitions(), detectorFactory,
                     TopologyGrammar.CYCLE_5_3, mode.name(), mode.rules(),
-                    "classical-all".equals(mode.name()) ? ambiguousCandidateEvidence : null));
+                    "classical-all".equals(mode.name()) ? ambiguousCandidateEvidence : null, observer,
+                    realScope("h2", mode.name(), TopologyGrammar.CYCLE_5_3.name(), activeRuleIds(mode.rules()))));
         }
 
         final List<StudyReport.ModeReport> competing = new ArrayList<>();
@@ -191,22 +219,25 @@ final class StudyRunner {
         for (final String grammarName : competingNames) {
             final StudyReport.ModeReport mode;
             if ("change-point-baseline".equals(grammarName)) {
-                mode = evaluateChangePointBaseline(series, start, end, configuration.partitions());
+                mode = evaluateChangePointBaseline(series, start, end, configuration.partitions(), observer,
+                        realScope("competing", "competing-change-point-baseline", "change-point-baseline", List.of()));
             } else {
                 final TopologyGrammar grammar = parseKernelGrammar(grammarName);
                 if (grammar != null) {
                     mode = evaluateTopologyMode(series, start, end, configuration.partitions(), detectorFactory,
-                            grammar, "competing-" + grammarName);
+                            grammar, "competing-" + grammarName, observer,
+                            realScope("competing", "competing-" + grammarName, grammarName, List.of()));
                 } else {
                     mode = evaluateAlternativeGrammar(series, start, end, configuration.partitions(), detectorFactory,
-                            grammarName);
+                            grammarName, observer,
+                            realScope("competing", "competing-" + grammarName, grammarName, List.of()));
                 }
             }
             competing.add(mode);
         }
 
         final StudyReport.RobustnessReport robustness = DetectorRobustnessMatrix.evaluate(series, start, end,
-                configuration.partitions(), configuration.robustnessDetectors());
+                configuration.partitions(), configuration.robustnessDetectors(), observer);
         final List<StudyReport.NullReport> nullReports = evaluateNulls(series, start, end);
         final StudyReport.HypothesisReport h1 = new StudyReport.HypothesisReport("H1", TopologyGrammar.MOTIVE_5.name(),
                 h1Modes);
@@ -224,15 +255,18 @@ final class StudyRunner {
                 h1, h2, competing, ablations, robustness, nullReports, ambiguousCandidateEvidence);
     }
 
+    private StudyObserver.Scope realScope(final String section, final String mode, final String grammar,
+            final List<String> activeRules) {
+        return StudyObserver.Scope.real(section, mode, grammar, activeRules, configuration.primaryDetector());
+    }
+
     private List<StudyReport.NullReport> evaluateNulls(final BarSeries source, final int start, final int end) {
         final List<StudyReport.NullReport> reports = new ArrayList<>();
-        final List<TopologyGrammar> nullGrammars = List.of(TopologyGrammar.MOTIVE_5, TopologyGrammar.CYCLE_5_3);
-        final boolean hasEvaluationWindow = start <= end;
         final Partitions partitions = configuration.partitions();
         for (final int blockLength : configuration.nullBlockLengths()) {
             final Map<TopologyGrammar, List<MetricAccumulator>> totalsByGrammar = new LinkedHashMap<>();
             final Map<TopologyGrammar, List<List<MetricAccumulator>>> memberTotalsByGrammar = new LinkedHashMap<>();
-            for (final TopologyGrammar grammar : nullGrammars) {
+            for (final TopologyGrammar grammar : NULL_GRAMMARS) {
                 totalsByGrammar.put(grammar, newAccumulators(List.of(), partitions));
                 final List<List<MetricAccumulator>> memberTotals = new ArrayList<>(configuration.nullEnsembleSize());
                 for (int memberIndex = 0; memberIndex < configuration.nullEnsembleSize(); memberIndex++) {
@@ -250,82 +284,19 @@ final class StudyRunner {
                 }
                 h2MemberTotals.add(memberTotals);
             }
-            // An evaluation window before or after the series records no
-            // real topology; generating full-series null ensembles anyway
-            // would compare non-empty null partitions against empty real
-            // ones. Keep both sides symmetrically empty instead.
-            if (hasEvaluationWindow) {
-                final int sourceBegin = source.getBeginIndex();
-                final BarSeries causalSource = subSeriesThrough(source, sourceBegin, end);
-                // Look-ahead-free sampling: every partition's ensemble is drawn
-                // only from returns available at that partition's last bar, so a
-                // calibration partition's null baseline can never incorporate
-                // validation or holdout returns. The shared seed keeps the RNG
-                // stream comparable across partitions over different tapes.
-                for (int partitionIndex = 0; partitionIndex < totalsByGrammar.get(nullGrammars.get(0))
-                        .size(); partitionIndex++) {
-                    final int partitionLastBar = lastBarInPartition(causalSource, partitions, partitionIndex);
-                    if (partitionLastBar < causalSource.getBeginIndex()) {
-                        continue;
-                    }
-                    if (partitionLastBar == causalSource.getBeginIndex()) {
-                        recordSingleBarNullPartition(causalSource, sourceBegin, partitionIndex, partitionLastBar, start,
-                                nullGrammars, totalsByGrammar, memberTotalsByGrammar, h2Totals, h2MemberTotals);
-                        continue;
-                    }
-                    final BarSeries truncated = subSeriesThrough(causalSource, causalSource.getBeginIndex(),
-                            partitionLastBar);
-                    final int partition = partitionIndex;
-                    BlockBootstrapNulls.forEachMember(truncated, blockLength, configuration.nullEnsembleSize(),
-                            configuration.seed(), (memberIndex, member) -> {
-                                final ConfirmationTracker.CausalReplay replay = observeReplay(member);
-                                // Members are freshly-built series rebased to index 0;
-                                // the requested window stays in source coordinates and
-                                // must be translated before recording. Fresh accumulators
-                                // per member and grammar so label-stability transitions
-                                // never leak across ensemble members.
-                                for (final TopologyGrammar grammar : nullGrammars) {
-                                    final List<MetricAccumulator> memberAccumulators = newAccumulators(List.of(),
-                                            partitions);
-                                    final List<List<MetricAccumulator>> modeAccumulators = new ArrayList<>(
-                                            ablationModes.size());
-                                    final List<TopologyRecording> recordings = new ArrayList<>(
-                                            1 + ablationModes.size());
-                                    recordings.add(new TopologyRecording(List.of(), memberAccumulators));
-                                    if (grammar == TopologyGrammar.CYCLE_5_3) {
-                                        for (final RuleAblation.Mode mode : ablationModes) {
-                                            final List<MetricAccumulator> modeMetrics = newAccumulators(mode.rules(),
-                                                    partitions);
-                                            modeAccumulators.add(modeMetrics);
-                                            recordings.add(new TopologyRecording(mode.rules(), modeMetrics));
-                                        }
-                                    }
-                                    recordTopologyWithRecordings(member,
-                                            Math.max(member.getBeginIndex(), start - sourceBegin), member.getEndIndex(),
-                                            partitions, replay, grammar, recordings, sourceBegin);
-                                    totalsByGrammar.get(grammar)
-                                            .get(partition)
-                                            .mergeFrom(memberAccumulators.get(partition));
-                                    memberTotalsByGrammar.get(grammar)
-                                            .get(memberIndex)
-                                            .get(partition)
-                                            .mergeFrom(memberAccumulators.get(partition));
-                                    if (grammar == TopologyGrammar.CYCLE_5_3) {
-                                        for (int modeIndex = 0; modeIndex < modeAccumulators.size(); modeIndex++) {
-                                            final MetricAccumulator modeMetrics = modeAccumulators.get(modeIndex)
-                                                    .get(partition);
-                                            h2Totals.get(modeIndex).get(partition).mergeFrom(modeMetrics);
-                                            h2MemberTotals.get(modeIndex)
-                                                    .get(memberIndex)
-                                                    .get(partition)
-                                                    .mergeFrom(modeMetrics);
-                                        }
-                                    }
-                                }
-                            });
-                }
-            }
-            for (final TopologyGrammar grammar : nullGrammars) {
+            replayNullOutcomes(source, start, end, blockLength, -1, null,
+                    (partition, memberIndex, grammar, topologyMetrics, modeMetrics) -> {
+                        totalsByGrammar.get(grammar).get(partition).mergeFrom(topologyMetrics);
+                        memberTotalsByGrammar.get(grammar).get(memberIndex).get(partition).mergeFrom(topologyMetrics);
+                        for (int modeIndex = 0; modeIndex < modeMetrics.size(); modeIndex++) {
+                            h2Totals.get(modeIndex).get(partition).mergeFrom(modeMetrics.get(modeIndex));
+                            h2MemberTotals.get(modeIndex)
+                                    .get(memberIndex)
+                                    .get(partition)
+                                    .mergeFrom(modeMetrics.get(modeIndex));
+                        }
+                    });
+            for (final TopologyGrammar grammar : NULL_GRAMMARS) {
                 final List<StudyReport.NullModeReport> modes = grammar == TopologyGrammar.CYCLE_5_3
                         ? nullModeReports(ablationModes, h2Totals, h2MemberTotals, partitions)
                         : List.of();
@@ -335,6 +306,159 @@ final class StudyRunner {
             }
         }
         return List.copyOf(reports);
+    }
+
+    /**
+     * Regenerates one configured null ensemble member alone and replays it through
+     * the exact per-partition causal prefixes, index translation, and degenerate
+     * single-bar semantics of the full ensemble evaluation.
+     *
+     * <p>
+     * The returned per-partition metrics equal that member's entries in the full
+     * report's null section. The optional observer receives every observation of
+     * this member only; no other member is generated or exported.
+     * </p>
+     *
+     * @param series      source bars
+     * @param fromIndex   first requested index, inclusive
+     * @param toIndex     last requested index, inclusive
+     * @param blockLength configured null block length
+     * @param memberIndex configured ensemble member index
+     * @param observer    optional observation sink, or {@code null}
+     * @return member metrics per null grammar and H2 ablation mode
+     * @since 0.25.1
+     */
+    List<NullMemberReplay> replayNullMember(final BarSeries series, final int fromIndex, final int toIndex,
+            final int blockLength, final int memberIndex, final StudyObserver observer) {
+        Objects.requireNonNull(series, "series");
+        validateRange(series, fromIndex, toIndex);
+        configuration.partitions().assertCalibrationConfiguration();
+        if (!configuration.nullBlockLengths().contains(blockLength)) {
+            throw new IllegalArgumentException("blockLength " + blockLength + " is not configured; expected one of "
+                    + configuration.nullBlockLengths());
+        }
+        if (memberIndex < 0 || memberIndex >= configuration.nullEnsembleSize()) {
+            throw new IllegalArgumentException(
+                    "memberIndex must be in [0, " + configuration.nullEnsembleSize() + "), was " + memberIndex);
+        }
+        final Partitions partitions = configuration.partitions();
+        final Map<TopologyGrammar, List<MetricAccumulator>> topology = new LinkedHashMap<>();
+        for (final TopologyGrammar grammar : NULL_GRAMMARS) {
+            topology.put(grammar, newAccumulators(List.of(), partitions));
+        }
+        final List<List<MetricAccumulator>> modes = new ArrayList<>(ablationModes.size());
+        for (final RuleAblation.Mode mode : ablationModes) {
+            modes.add(newAccumulators(mode.rules(), partitions));
+        }
+        replayNullOutcomes(series, Math.max(fromIndex, series.getBeginIndex()), Math.min(toIndex, series.getEndIndex()),
+                blockLength, memberIndex, observer,
+                (partition, ignoredMemberIndex, grammar, topologyMetrics, modeMetrics) -> {
+                    topology.get(grammar).get(partition).mergeFrom(topologyMetrics);
+                    for (int modeIndex = 0; modeIndex < modeMetrics.size(); modeIndex++) {
+                        modes.get(modeIndex).get(partition).mergeFrom(modeMetrics.get(modeIndex));
+                    }
+                });
+        final List<NullMemberReplay> replays = new ArrayList<>(NULL_GRAMMARS.size() + ablationModes.size());
+        for (final TopologyGrammar grammar : NULL_GRAMMARS) {
+            replays.add(new NullMemberReplay(grammar.name(), null, List.of(),
+                    memberMetrics(List.of(topology.get(grammar)), partitions, memberIndex)));
+        }
+        for (int modeIndex = 0; modeIndex < ablationModes.size(); modeIndex++) {
+            final RuleAblation.Mode mode = ablationModes.get(modeIndex);
+            replays.add(new NullMemberReplay(TopologyGrammar.CYCLE_5_3.name(), mode.name(), activeRuleIds(mode.rules()),
+                    memberMetrics(List.of(modes.get(modeIndex)), partitions, memberIndex)));
+        }
+        return List.copyOf(replays);
+    }
+
+    /**
+     * Receives one null member's freshly recorded metrics for one partition and
+     * null grammar, in deterministic evaluation order.
+     */
+    @FunctionalInterface
+    private interface NullOutcomeSink {
+        void accept(int partitionIndex, int memberIndex, TopologyGrammar grammar, MetricAccumulator topologyMetrics,
+                List<MetricAccumulator> modeMetrics);
+    }
+
+    /**
+     * Drives the null ensemble over look-ahead-free partition prefixes.
+     *
+     * @param selectedMember member to regenerate alone, or {@code -1} for the full
+     *                       configured ensemble
+     */
+    private void replayNullOutcomes(final BarSeries source, final int start, final int end, final int blockLength,
+            final int selectedMember, final StudyObserver observer, final NullOutcomeSink sink) {
+        // An evaluation window before or after the series records no real
+        // topology; generating full-series null ensembles anyway would compare
+        // non-empty null partitions against empty real ones. Keep both sides
+        // symmetrically empty instead.
+        if (start > end) {
+            return;
+        }
+        final Partitions partitions = configuration.partitions();
+        final int sourceBegin = source.getBeginIndex();
+        final BarSeries causalSource = subSeriesThrough(source, sourceBegin, end);
+        // Look-ahead-free sampling: every partition's ensemble is drawn only
+        // from returns available at that partition's last bar, so a
+        // calibration partition's null baseline can never incorporate
+        // validation or holdout returns. The shared seed keeps the RNG stream
+        // comparable across partitions over different tapes.
+        for (int partitionIndex = 0; partitionIndex < partitions.entries().size(); partitionIndex++) {
+            final int partitionLastBar = lastBarInPartition(causalSource, partitions, partitionIndex);
+            if (partitionLastBar < causalSource.getBeginIndex()) {
+                continue;
+            }
+            if (partitionLastBar == causalSource.getBeginIndex()) {
+                recordSingleBarNullPartition(causalSource, sourceBegin, partitionIndex, partitionLastBar, start,
+                        blockLength, selectedMember, observer, sink);
+                continue;
+            }
+            final BarSeries truncated = subSeriesThrough(causalSource, causalSource.getBeginIndex(), partitionLastBar);
+            final int partition = partitionIndex;
+            if (selectedMember < 0) {
+                BlockBootstrapNulls.forEachMember(truncated, blockLength, configuration.nullEnsembleSize(),
+                        configuration.seed(), (memberIndex, member) -> recordNullMember(member, memberIndex, partition,
+                                blockLength, start, sourceBegin, observer, sink));
+            } else {
+                recordNullMember(
+                        BlockBootstrapNulls.member(truncated, blockLength, configuration.seed(), selectedMember),
+                        selectedMember, partition, blockLength, start, sourceBegin, observer, sink);
+            }
+        }
+    }
+
+    private void recordNullMember(final BarSeries member, final int memberIndex, final int partition,
+            final int blockLength, final int start, final int sourceBegin, final StudyObserver observer,
+            final NullOutcomeSink sink) {
+        final Partitions partitions = configuration.partitions();
+        final ConfirmationTracker.CausalReplay replay = observeReplay(member);
+        // Members are freshly-built series rebased to index 0; the requested
+        // window stays in source coordinates and must be translated before
+        // recording. Fresh accumulators per member and grammar so
+        // label-stability transitions never leak across ensemble members.
+        for (final TopologyGrammar grammar : NULL_GRAMMARS) {
+            final List<MetricAccumulator> memberAccumulators = newAccumulators(List.of(), partitions);
+            final List<List<MetricAccumulator>> modeAccumulators = new ArrayList<>(ablationModes.size());
+            final List<TopologyRecording> recordings = new ArrayList<>(1 + ablationModes.size());
+            recordings.add(new TopologyRecording(List.of(), memberAccumulators,
+                    nullScope(grammar.name(), grammar.name(), List.of(), blockLength, memberIndex)));
+            if (grammar == TopologyGrammar.CYCLE_5_3) {
+                for (final RuleAblation.Mode mode : ablationModes) {
+                    final List<MetricAccumulator> modeMetrics = newAccumulators(mode.rules(), partitions);
+                    modeAccumulators.add(modeMetrics);
+                    recordings.add(new TopologyRecording(mode.rules(), modeMetrics, nullScope(mode.name(),
+                            grammar.name(), activeRuleIds(mode.rules()), blockLength, memberIndex)));
+                }
+            }
+            recordTopologyWithRecordings(member, Math.max(member.getBeginIndex(), start - sourceBegin),
+                    member.getEndIndex(), partitions, replay, grammar, recordings, sourceBegin, observer, partition);
+            final List<MetricAccumulator> modeMetrics = new ArrayList<>(modeAccumulators.size());
+            for (final List<MetricAccumulator> accumulators : modeAccumulators) {
+                modeMetrics.add(accumulators.get(partition));
+            }
+            sink.accept(partition, memberIndex, grammar, memberAccumulators.get(partition), modeMetrics);
+        }
     }
 
     /**
@@ -351,11 +475,8 @@ final class StudyRunner {
      * </p>
      */
     private void recordSingleBarNullPartition(final BarSeries causalSource, final int sourceBegin,
-            final int partitionIndex, final int partitionLastBar, final int requestedStart,
-            final List<TopologyGrammar> nullGrammars,
-            final Map<TopologyGrammar, List<MetricAccumulator>> totalsByGrammar,
-            final Map<TopologyGrammar, List<List<MetricAccumulator>>> memberTotalsByGrammar,
-            final List<List<MetricAccumulator>> h2Totals, final List<List<List<MetricAccumulator>>> h2MemberTotals) {
+            final int partitionIndex, final int partitionLastBar, final int requestedStart, final int blockLength,
+            final int selectedMember, final StudyObserver observer, final NullOutcomeSink sink) {
         // Members are rebased to position zero, and the recorded-index offset
         // restores source coordinates; the single prefix bar sits at position
         // zero of the causal tape.
@@ -367,23 +488,46 @@ final class StudyRunner {
         }
         final Partitions partitions = configuration.partitions();
         partitions.assertCalibrationDateAllowed(barDate(causalSource, partitionLastBar));
-        for (int memberIndex = 0; memberIndex < configuration.nullEnsembleSize(); memberIndex++) {
-            for (final TopologyGrammar grammar : nullGrammars) {
+        final int firstMember = selectedMember < 0 ? 0 : selectedMember;
+        final int lastMember = selectedMember < 0 ? configuration.nullEnsembleSize() - 1 : selectedMember;
+        for (int memberIndex = firstMember; memberIndex <= lastMember; memberIndex++) {
+            for (final TopologyGrammar grammar : NULL_GRAMMARS) {
                 final MetricAccumulator memberMetrics = new MetricAccumulator(List.of());
                 memberMetrics.recordInsufficientHistory(recordedIndex);
-                totalsByGrammar.get(grammar).get(partitionIndex).mergeFrom(memberMetrics);
-                memberTotalsByGrammar.get(grammar).get(memberIndex).get(partitionIndex).mergeFrom(memberMetrics);
+                final List<MetricAccumulator> modeMetrics = new ArrayList<>(ablationModes.size());
+                if (observer != null) {
+                    observeSingleBar(observer, causalSource, partitionIndex, partitionLastBar, recordedIndex,
+                            nullScope(grammar.name(), grammar.name(), List.of(), blockLength, memberIndex));
+                }
                 if (grammar == TopologyGrammar.CYCLE_5_3) {
-                    for (int modeIndex = 0; modeIndex < h2Totals.size(); modeIndex++) {
-                        final MetricAccumulator modeMetrics = new MetricAccumulator(
-                                ablationModes.get(modeIndex).rules());
-                        modeMetrics.recordInsufficientHistory(recordedIndex);
-                        h2Totals.get(modeIndex).get(partitionIndex).mergeFrom(modeMetrics);
-                        h2MemberTotals.get(modeIndex).get(memberIndex).get(partitionIndex).mergeFrom(modeMetrics);
+                    for (final RuleAblation.Mode mode : ablationModes) {
+                        final MetricAccumulator metrics = new MetricAccumulator(mode.rules());
+                        metrics.recordInsufficientHistory(recordedIndex);
+                        modeMetrics.add(metrics);
+                        if (observer != null) {
+                            observeSingleBar(observer, causalSource, partitionIndex, partitionLastBar, recordedIndex,
+                                    nullScope(mode.name(), grammar.name(), activeRuleIds(mode.rules()), blockLength,
+                                            memberIndex));
+                        }
                     }
                 }
+                sink.accept(partitionIndex, memberIndex, grammar, memberMetrics, modeMetrics);
             }
         }
+    }
+
+    private void observeSingleBar(final StudyObserver observer, final BarSeries causalSource, final int partitionIndex,
+            final int partitionLastBar, final int recordedIndex, final StudyObserver.Scope scope) {
+        observer.topology(scope, configuration.partitions().entries().get(partitionIndex).name(), recordedIndex,
+                causalSource.getBar(partitionLastBar).getEndTime(), List.of(),
+                TopologyAnalysis.insufficientHistory("single-bar causal prefix cannot seed a bootstrap member"),
+                List.of());
+    }
+
+    private StudyObserver.Scope nullScope(final String mode, final String grammar, final List<String> activeRules,
+            final int blockLength, final int memberIndex) {
+        return new StudyObserver.Scope("null", mode, grammar, activeRules, configuration.primaryDetector(), blockLength,
+                memberIndex);
     }
 
     private static BarSeries subSeriesThrough(final BarSeries series, final int start, final int inclusiveEnd) {
@@ -422,40 +566,47 @@ final class StudyRunner {
     private StudyReport.ModeReport evaluateMode(final BarSeries series, final int start, final int end,
             final Partitions partitions, final Supplier<SwingDetector> factory, final TopologyGrammar grammar,
             final String mode, final List<RelationshipRule> activeRules,
-            final List<StudyReport.AmbiguousCandidateEvidence> ambiguousCandidateEvidence) {
+            final List<StudyReport.AmbiguousCandidateEvidence> ambiguousCandidateEvidence, final StudyObserver observer,
+            final StudyObserver.Scope scope) {
         final List<MetricAccumulator> accumulators = newAccumulators(activeRules, ambiguousCandidateEvidence);
         final ConfirmationTracker.CausalReplay replay = observeReplay(series, factory, end);
-        recordTopology(series, start, end, partitions, replay, grammar, activeRules, accumulators, 0);
+        recordTopologyWithRecordings(series, start, end, partitions, replay, grammar,
+                List.of(new TopologyRecording(activeRules, accumulators, scope)), 0, observer, ALL_PARTITIONS);
         return new StudyReport.ModeReport(mode, grammar.name(), activeRuleIds(activeRules),
                 metrics(accumulators, partitions));
     }
 
     static StudyReport.ModeReport evaluateTopologyMode(final BarSeries series, final int start, final int end,
             final Partitions partitions, final Supplier<SwingDetector> factory, final TopologyGrammar grammar,
-            final String mode) {
+            final String mode, final StudyObserver observer, final StudyObserver.Scope scope) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(partitions, "partitions");
         Objects.requireNonNull(factory, "factory");
         final List<MetricAccumulator> accumulators = newAccumulators(List.of(), partitions);
         final ConfirmationTracker.CausalReplay replay = observeReplay(series, factory, end);
-        recordTopology(series, start, end, partitions, replay, grammar, List.of(), accumulators, 0);
+        recordTopologyWithRecordings(series, start, end, partitions, replay, grammar,
+                List.of(new TopologyRecording(List.of(), accumulators, scope)), 0, observer, ALL_PARTITIONS);
         return new StudyReport.ModeReport(mode, grammar.name(), List.of(), metrics(accumulators, partitions));
     }
 
-    private record TopologyRecording(List<RelationshipRule> activeRules, List<MetricAccumulator> accumulators) {
+    private record TopologyRecording(List<RelationshipRule> activeRules, List<MetricAccumulator> accumulators,
+            StudyObserver.Scope scope) {
     }
 
-    private static void recordTopology(final BarSeries series, final int start, final int end,
-            final Partitions partitions, final ConfirmationTracker.CausalReplay replay, final TopologyGrammar grammar,
-            final List<RelationshipRule> activeRules, final List<MetricAccumulator> accumulators,
-            final int recordedIndexOffset) {
-        recordTopologyWithRecordings(series, start, end, partitions, replay, grammar,
-                List.of(new TopologyRecording(activeRules, accumulators)), recordedIndexOffset);
-    }
+    /** Observed-partition selector meaning every partition is exported. */
+    private static final int ALL_PARTITIONS = -1;
 
+    /**
+     * Replays one tape. Accumulators always see every partition's bars, but the
+     * observer only witnesses {@code observedPartition} (or all partitions for
+     * {@link #ALL_PARTITIONS}): a null-member prefix tape contains earlier
+     * partitions' bars that belong to those partitions' own tapes, and exporting
+     * them here would mix different tapes under one partition label.
+     */
     private static void recordTopologyWithRecordings(final BarSeries series, final int start, final int end,
             final Partitions partitions, final ConfirmationTracker.CausalReplay replay, final TopologyGrammar grammar,
-            final List<TopologyRecording> recordings, final int recordedIndexOffset) {
+            final List<TopologyRecording> recordings, final int recordedIndexOffset, final StudyObserver observer,
+            final int observedPartition) {
         if (start > end) {
             return;
         }
@@ -464,13 +615,26 @@ final class StudyRunner {
             if (partitionIndex >= 0) {
                 final LocalDate date = barDate(series, index);
                 partitions.assertCalibrationDateAllowed(date);
-                final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(grammar, replay.at(index), index);
+                final List<ConfirmedPivot> visible = replay.at(index);
+                final TopologyAnalysis analysis = new TopologyAnalyzer().analyze(grammar, visible, index);
                 // Null ensemble members are rebased sub-series; the offset restores
                 // source coordinates so null and real metric bounds are comparable.
+                final int recordedIndex = index + recordedIndexOffset;
+                final boolean observed = observer != null
+                        && (observedPartition == ALL_PARTITIONS || observedPartition == partitionIndex);
+                // Observers see one coordinate system: pivots and placements move
+                // with the as-of index, never mixing rebased and source positions.
+                final List<ConfirmedPivot> observedVisible = observed ? translate(visible, recordedIndexOffset) : null;
+                final TopologyAnalysis observedAnalysis = observed ? translate(analysis, recordedIndexOffset) : null;
                 for (final TopologyRecording recording : recordings) {
+                    if (observed) {
+                        observer.topology(recording.scope(), partitions.entries().get(partitionIndex).name(),
+                                recordedIndex, series.getBar(index).getEndTime(), observedVisible, observedAnalysis,
+                                candidateEvidence(analysis, recording.activeRules(), series));
+                    }
                     recording.accumulators()
                             .get(partitionIndex)
-                            .record(analysis, index + recordedIndexOffset, recording.activeRules(), series);
+                            .record(analysis, recordedIndex, recording.activeRules(), series);
                 }
             }
             if (index == end) {
@@ -479,8 +643,46 @@ final class StudyRunner {
         }
     }
 
+    private static List<ConfirmedPivot> translate(final List<ConfirmedPivot> pivots, final int offset) {
+        if (offset == 0) {
+            return pivots;
+        }
+        final List<ConfirmedPivot> translated = new ArrayList<>(pivots.size());
+        for (final ConfirmedPivot pivot : pivots) {
+            translated.add(new ConfirmedPivot(pivot.pivotIndex() + offset, pivot.confirmationIndex() + offset,
+                    pivot.price(), pivot.type()));
+        }
+        return translated;
+    }
+
+    private static TopologyAnalysis translate(final TopologyAnalysis analysis, final int offset) {
+        if (offset == 0) {
+            return analysis;
+        }
+        final List<TopologyCandidate> candidates = new ArrayList<>(analysis.candidates().size());
+        for (final TopologyCandidate candidate : analysis.candidates()) {
+            candidates.add(new TopologyCandidate(candidate.grammar(), candidate.direction(),
+                    translate(candidate.pivots(), offset)));
+        }
+        final boolean forming = analysis.status() == TopologyStatus.FORMING;
+        return new TopologyAnalysis(analysis.status(), analysis.direction(), candidates, analysis.explanation(),
+                forming ? analysis.formingStartBarIndex() + offset : -1,
+                forming ? analysis.formingEndBarIndex() + offset : -1);
+    }
+
+    private static List<List<RuleEvidence>> candidateEvidence(final TopologyAnalysis analysis,
+            final List<RelationshipRule> activeRules, final BarSeries series) {
+        final List<List<RuleEvidence>> evidence = new ArrayList<>(analysis.candidates().size());
+        for (final TopologyCandidate candidate : analysis.candidates()) {
+            evidence.add(
+                    activeRules.isEmpty() ? List.of() : MetricAccumulator.ruleEvidence(candidate, activeRules, series));
+        }
+        return evidence;
+    }
+
     private static StudyReport.ModeReport evaluateAlternativeGrammar(final BarSeries series, final int start,
-            final int end, final Partitions partitions, final Supplier<SwingDetector> factory, final String name) {
+            final int end, final Partitions partitions, final Supplier<SwingDetector> factory, final String name,
+            final StudyObserver observer, final StudyObserver.Scope scope) {
         final AlternativeGrammar grammar = AlternativeGrammar.of(name);
         final List<MetricAccumulator> accumulators = newAccumulators(List.of(), partitions);
         final ConfirmationTracker.CausalReplay replay = observeReplay(series, factory, end);
@@ -493,27 +695,40 @@ final class StudyRunner {
                     final List<ConfirmedPivot> visible = replay.at(index);
                     final List<String> matches = grammar.matches(visible);
                     final MetricAccumulator accumulator = accumulators.get(partitionIndex);
+                    final String outcome;
+                    final Set<String> labels;
                     if (visible.size() < 2) {
-                        accumulator.recordAlternative(index, false, false, false, "insufficient-history",
-                                Set.of("insufficient-history"));
+                        outcome = "insufficient-history";
+                        labels = Set.of("insufficient-history");
                     } else if (matches.size() == 1) {
-                        accumulator.recordAlternative(index, true, false, false, matches.get(0),
-                                Set.of(matches.get(0)));
+                        outcome = "complete";
+                        labels = Set.of(matches.get(0));
                     } else if (matches.size() > 1) {
                         // Ambiguity stability must compare the actual placement
                         // identities, not a constant token, or the Jaccard metric
                         // reads 1 across shifting match sets.
-                        accumulator.recordAlternative(index, false, true, false, "ambiguous", Set.copyOf(matches));
+                        outcome = "ambiguous";
+                        labels = Set.copyOf(matches);
                     } else {
                         final Set<String> partialMatches = grammar.partialMatches(visible);
                         if (partialMatches.size() > 1) {
-                            accumulator.recordAlternative(index, false, true, false, "ambiguous", partialMatches);
+                            outcome = "ambiguous";
+                            labels = partialMatches;
                         } else if (!partialMatches.isEmpty()) {
-                            accumulator.recordAlternative(index, false, false, true, "forming", partialMatches);
+                            outcome = "forming";
+                            labels = partialMatches;
                         } else {
-                            accumulator.recordAlternative(index, false, false, false, "no-match", Set.of("no-match"));
+                            outcome = "no-match";
+                            labels = Set.of("no-match");
                         }
                     }
+                    if (observer != null) {
+                        observer.alternative(scope, partitions.entries().get(partitionIndex).name(), index,
+                                series.getBar(index).getEndTime(), visible, outcome, labels);
+                    }
+                    final boolean complete = "complete".equals(outcome);
+                    accumulator.recordAlternative(index, complete, "ambiguous".equals(outcome),
+                            "forming".equals(outcome), complete ? matches.get(0) : outcome, labels);
                 }
                 if (index == end) {
                     break;
@@ -524,7 +739,7 @@ final class StudyRunner {
     }
 
     private static StudyReport.ModeReport evaluateChangePointBaseline(final BarSeries series, final int start,
-            final int end, final Partitions partitions) {
+            final int end, final Partitions partitions, final StudyObserver observer, final StudyObserver.Scope scope) {
         final List<MetricAccumulator> accumulators = newAccumulators(List.of(), partitions);
         if (start <= end) {
             for (int index = start;; index++) {
@@ -533,9 +748,13 @@ final class StudyRunner {
                     final LocalDate date = barDate(series, index);
                     partitions.assertCalibrationDateAllowed(date);
                     final MetricAccumulator accumulator = accumulators.get(partitionIndex);
+                    final String outcome;
+                    final String label;
+                    final boolean change;
                     if (index - 2 < series.getBeginIndex()) {
-                        accumulator.recordAlternative(index, false, false, false, "insufficient-history",
-                                Set.of("insufficient-history"));
+                        outcome = "insufficient-history";
+                        label = outcome;
+                        change = false;
                     } else {
                         final Num previousPreviousClose = series.getBar(index - 2).getClosePrice();
                         final Num previousClose = series.getBar(index - 1).getClosePrice();
@@ -544,11 +763,15 @@ final class StudyRunner {
                         final Num second = currentClose.minus(previousClose);
                         requireFiniteChangePointInputs(index, previousPreviousClose, previousClose, currentClose, first,
                                 second);
-                        final boolean change = !first.isZero() && !second.isZero()
-                                && first.isPositive() != second.isPositive();
-                        final String label = change ? "change@" + index : "stable";
-                        accumulator.recordAlternative(index, change, false, false, label, Set.of(label));
+                        change = !first.isZero() && !second.isZero() && first.isPositive() != second.isPositive();
+                        label = change ? "change@" + index : "stable";
+                        outcome = change ? "complete" : "no-match";
                     }
+                    if (observer != null) {
+                        observer.alternative(scope, partitions.entries().get(partitionIndex).name(), index,
+                                series.getBar(index).getEndTime(), List.of(), outcome, Set.of(label));
+                    }
+                    accumulator.recordAlternative(index, change, false, false, label, Set.of(label));
                 }
                 if (index == end) {
                     break;
@@ -616,16 +839,43 @@ final class StudyRunner {
 
     private static List<StudyReport.NullMemberMetrics> memberMetrics(
             final List<List<MetricAccumulator>> memberAccumulators, final Partitions partitions) {
+        return memberMetrics(memberAccumulators, partitions, 0);
+    }
+
+    private static List<StudyReport.NullMemberMetrics> memberMetrics(
+            final List<List<MetricAccumulator>> memberAccumulators, final Partitions partitions,
+            final int memberIndexOffset) {
         final int partitionCount = partitions.entries().size();
         final List<StudyReport.NullMemberMetrics> metrics = new ArrayList<>(memberAccumulators.size() * partitionCount);
         for (int memberIndex = 0; memberIndex < memberAccumulators.size(); memberIndex++) {
             for (int partitionIndex = 0; partitionIndex < partitionCount; partitionIndex++) {
                 final String partitionName = partitions.entries().get(partitionIndex).name();
-                metrics.add(new StudyReport.NullMemberMetrics(memberIndex, partitionName,
+                metrics.add(new StudyReport.NullMemberMetrics(memberIndex + memberIndexOffset, partitionName,
                         List.of(memberAccumulators.get(memberIndex).get(partitionIndex).toMetrics(partitionName))));
             }
         }
         return List.copyOf(metrics);
+    }
+
+    /**
+     * One null grammar's or H2 ablation mode's metrics for a single regenerated
+     * ensemble member.
+     *
+     * @param grammar       null grammar name
+     * @param mode          H2 ablation mode name, or {@code null} for the
+     *                      grammar-level topology metrics
+     * @param activeRuleIds active relationship rule ids of the mode
+     * @param partitions    per-partition member metrics
+     * @since 0.25.1
+     */
+    record NullMemberReplay(String grammar, String mode, List<String> activeRuleIds,
+            List<StudyReport.NullMemberMetrics> partitions) {
+
+        NullMemberReplay {
+            Objects.requireNonNull(grammar, "grammar");
+            activeRuleIds = List.copyOf(activeRuleIds);
+            partitions = List.copyOf(partitions);
+        }
     }
 
     private static List<StudyReport.NullModeReport> nullModeReports(final List<RuleAblation.Mode> modes,
@@ -999,7 +1249,8 @@ final class StudyRunner {
         }
 
         private double scoreMean() {
-            return scoredCount == 0 ? Double.NaN : scoreSum / scoredCount;
+            // Repeated identical scores can sum one ulp beyond their range.
+            return scoredCount == 0 ? Double.NaN : Math.max(scoreMin, Math.min(scoreMax, scoreSum / scoredCount));
         }
 
         private void mergeFrom(final RuleCounter other) {

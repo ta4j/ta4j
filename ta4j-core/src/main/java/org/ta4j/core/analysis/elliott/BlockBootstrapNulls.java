@@ -84,16 +84,45 @@ final class BlockBootstrapNulls {
         if (blockLength <= 0 || ensembleSize <= 0) {
             throw new IllegalArgumentException("blockLength and ensembleSize must be positive");
         }
-        final int count = source.getBarCount();
-        if (count < 2) {
+        final double[] logReturns = bootstrapReturns(source);
+        for (int ensembleIndex = 0; ensembleIndex < ensembleSize; ensembleIndex++) {
+            memberConsumer.accept(ensembleIndex,
+                    generateMember(source, logReturns, blockLength, memberSeed(seed, ensembleIndex), ensembleIndex));
+        }
+    }
+
+    /**
+     * Regenerates exactly the ensemble member that
+     * {@link #forEachMember(BarSeries, int, int, long, BiConsumer)} emits at
+     * {@code memberIndex}, without generating any other member.
+     *
+     * @param source      source price series
+     * @param blockLength expected block length in bars
+     * @param seed        stable ensemble seed
+     * @param memberIndex zero-based ensemble member index
+     * @return the regenerated member series
+     */
+    static BarSeries member(final BarSeries source, final int blockLength, final long seed, final int memberIndex) {
+        Objects.requireNonNull(source, "source");
+        if (blockLength <= 0) {
+            throw new IllegalArgumentException("blockLength must be positive");
+        }
+        if (memberIndex < 0) {
+            throw new IllegalArgumentException("memberIndex must not be negative");
+        }
+        return generateMember(source, bootstrapReturns(source), blockLength, memberSeed(seed, memberIndex),
+                memberIndex);
+    }
+
+    private static double[] bootstrapReturns(final BarSeries source) {
+        if (source.getBarCount() < 2) {
             throw new IllegalArgumentException("stationary bootstrap requires at least two bars");
         }
-        final double[] logReturns = logReturns(source);
-        for (int ensembleIndex = 0; ensembleIndex < ensembleSize; ensembleIndex++) {
-            final long memberSeed = seed * SEED_MULTIPLIER + ensembleIndex;
-            memberConsumer.accept(ensembleIndex,
-                    generateMember(source, logReturns, blockLength, memberSeed, ensembleIndex));
-        }
+        return logReturns(source);
+    }
+
+    private static long memberSeed(final long seed, final int memberIndex) {
+        return seed * SEED_MULTIPLIER + memberIndex;
     }
 
     /**

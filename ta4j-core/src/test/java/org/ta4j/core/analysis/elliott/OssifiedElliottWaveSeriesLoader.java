@@ -50,30 +50,43 @@ final class OssifiedElliottWaveSeriesLoader {
                         actualSha256);
                 return null;
             }
-            final JsonObject root = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
-            final BarSeries series = new BaseBarSeriesBuilder().withName(seriesName).build();
-            final List<JsonObject> candles = new ArrayList<>();
-            for (final JsonElement element : root.getAsJsonArray("candles")) {
-                candles.add(element.getAsJsonObject());
-            }
-            candles.sort(Comparator.comparingLong(candle -> candle.get("start").getAsLong()));
-            for (final JsonObject candle : candles) {
-                final Instant endTime = Instant.ofEpochSecond(candle.get("start").getAsLong()).plus(Duration.ofDays(1));
-                series.addBar(series.barBuilder()
-                        .timePeriod(Duration.ofDays(1))
-                        .endTime(endTime)
-                        .openPrice(candle.get("open").getAsString())
-                        .highPrice(candle.get("high").getAsString())
-                        .lowPrice(candle.get("low").getAsString())
-                        .closePrice(candle.get("close").getAsString())
-                        .volume(candle.get("volume").getAsString())
-                        .trades(0)
-                        .build());
-            }
-            return series;
+            return parseCandles(bytes, seriesName);
         } catch (Exception ex) {
             logger.error("Failed to load dataset from {}: {}", resource, ex.getMessage(), ex);
             return null;
         }
+    }
+
+    /**
+     * Parses the bundled candle JSON layout ({@code {"candles":[{start, open, high,
+     * low, close, volume}]}}, {@code start} in epoch seconds) into daily bars.
+     *
+     * @param bytes      UTF-8 candle JSON
+     * @param seriesName name of the created series
+     * @return series ordered by candle start
+     * @since 0.25.1
+     */
+    static BarSeries parseCandles(final byte[] bytes, final String seriesName) {
+        final JsonObject root = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
+        final BarSeries series = new BaseBarSeriesBuilder().withName(seriesName).build();
+        final List<JsonObject> candles = new ArrayList<>();
+        for (final JsonElement element : root.getAsJsonArray("candles")) {
+            candles.add(element.getAsJsonObject());
+        }
+        candles.sort(Comparator.comparingLong(candle -> candle.get("start").getAsLong()));
+        for (final JsonObject candle : candles) {
+            final Instant endTime = Instant.ofEpochSecond(candle.get("start").getAsLong()).plus(Duration.ofDays(1));
+            series.addBar(series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(endTime)
+                    .openPrice(candle.get("open").getAsString())
+                    .highPrice(candle.get("high").getAsString())
+                    .lowPrice(candle.get("low").getAsString())
+                    .closePrice(candle.get("close").getAsString())
+                    .volume(candle.get("volume").getAsString())
+                    .trades(0)
+                    .build());
+        }
+        return series;
     }
 }
