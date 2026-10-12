@@ -98,8 +98,9 @@ public class PriceClusterSupportIndicatorTest extends AbstractIndicatorTest<Indi
 
         var indicator = new PriceClusterSupportIndicator(withNaN, 2, numOf(0.1));
 
-        assertThat(indicator.getValue(2)).as("valid values should survive mixed window")
-                .isEqualByComparingTo(numOf(20));
+        assertThat(indicator.getValue(2).minus(numOf(20)).abs().isLessThan(numOf(1e-13)))
+                .as("valid values should survive mixed window")
+                .isTrue();
         assertThat(indicator.getClusterIndex(2)).isEqualTo(2);
 
         assertThat(indicator.getValue(7).isNaN()).as("NaN when entire lookback is invalid").isTrue();

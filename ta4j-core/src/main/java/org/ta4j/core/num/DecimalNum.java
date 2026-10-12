@@ -9,9 +9,6 @@ import org.slf4j.LoggerFactory;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
-import java.text.DecimalFormat;
-import java.text.ParseException;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -490,44 +487,18 @@ public final class DecimalNum implements Num {
             return DecimalNumFactory.getInstance().zero();
         }
 
-        final MathContext workingContext = precisionContext.getPrecision() == 0
-                ? new MathContext(DEFAULT_PRECISION, precisionContext.getRoundingMode())
-                : precisionContext;
-
-        BigDecimal estimate;
-        final double doubleVal = this.delegate.doubleValue();
-        if (Double.isFinite(doubleVal) && doubleVal >= Double.MIN_NORMAL) {
-            estimate = BigDecimal.valueOf(Math.sqrt(doubleVal));
-        } else {
-            estimate = this.delegate.sqrt(workingContext);
+        if (precisionContext.getPrecision() != 0) {
+            return DecimalNum.valueOf(this.delegate.sqrt(precisionContext), precisionContext);
         }
-        BigDecimal delta;
-        BigDecimal test;
-        BigDecimal sum;
-        BigDecimal newEstimate;
-        final BigDecimal two = BigDecimal.TWO;
-        String estimateString;
-        int endIndex;
-        int frontEndIndex;
-        int backStartIndex;
-        int i = 1;
-        do {
-            test = this.delegate.divide(estimate, workingContext);
-            sum = estimate.add(test);
-            newEstimate = sum.divide(two, workingContext);
-            delta = newEstimate.subtract(estimate).abs();
-            estimate = newEstimate;
-            if (log.isTraceEnabled()) {
-                estimateString = String.format("%1." + workingContext.getPrecision() + "e", estimate);
-                endIndex = estimateString.length();
-                frontEndIndex = 20 > endIndex ? endIndex : 20;
-                backStartIndex = 20 > endIndex ? 0 : endIndex - 20;
-                log.trace("x[{}] = {}..{}, delta = {}", i, estimateString.substring(0, frontEndIndex),
-                        estimateString.substring(backStartIndex, endIndex), String.format("%1.1e", delta));
-                i++;
-            }
-        } while (delta.compareTo(BigDecimal.ZERO) > 0);
-        return DecimalNum.valueOf(estimate, precisionContext);
+
+        // Unlimited precision: fall back to DEFAULT_PRECISION when the root is
+        // non-terminating
+        try {
+            return DecimalNum.valueOf(this.delegate.sqrt(precisionContext), precisionContext);
+        } catch (ArithmeticException e) {
+            final MathContext workingContext = new MathContext(DEFAULT_PRECISION, precisionContext.getRoundingMode());
+            return DecimalNum.valueOf(this.delegate.sqrt(workingContext), precisionContext);
+        }
     }
 
     @Override
