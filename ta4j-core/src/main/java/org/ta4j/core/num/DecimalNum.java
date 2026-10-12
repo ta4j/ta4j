@@ -9,9 +9,6 @@ import org.slf4j.LoggerFactory;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
-import java.text.DecimalFormat;
-import java.text.ParseException;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -490,44 +487,13 @@ public final class DecimalNum implements Num {
             return DecimalNumFactory.getInstance().zero();
         }
 
+        // BigDecimal.sqrt cannot take unlimited precision without proving the root
+        // terminates, which is unbounded work for large non-squares; use
+        // DEFAULT_PRECISION instead, as before.
         final MathContext workingContext = precisionContext.getPrecision() == 0
                 ? new MathContext(DEFAULT_PRECISION, precisionContext.getRoundingMode())
                 : precisionContext;
-
-        BigDecimal estimate;
-        final double doubleVal = this.delegate.doubleValue();
-        if (Double.isFinite(doubleVal) && doubleVal >= Double.MIN_NORMAL) {
-            estimate = BigDecimal.valueOf(Math.sqrt(doubleVal));
-        } else {
-            estimate = this.delegate.sqrt(workingContext);
-        }
-        BigDecimal delta;
-        BigDecimal test;
-        BigDecimal sum;
-        BigDecimal newEstimate;
-        final BigDecimal two = BigDecimal.TWO;
-        String estimateString;
-        int endIndex;
-        int frontEndIndex;
-        int backStartIndex;
-        int i = 1;
-        do {
-            test = this.delegate.divide(estimate, workingContext);
-            sum = estimate.add(test);
-            newEstimate = sum.divide(two, workingContext);
-            delta = newEstimate.subtract(estimate).abs();
-            estimate = newEstimate;
-            if (log.isTraceEnabled()) {
-                estimateString = String.format("%1." + workingContext.getPrecision() + "e", estimate);
-                endIndex = estimateString.length();
-                frontEndIndex = 20 > endIndex ? endIndex : 20;
-                backStartIndex = 20 > endIndex ? 0 : endIndex - 20;
-                log.trace("x[{}] = {}..{}, delta = {}", i, estimateString.substring(0, frontEndIndex),
-                        estimateString.substring(backStartIndex, endIndex), String.format("%1.1e", delta));
-                i++;
-            }
-        } while (delta.compareTo(BigDecimal.ZERO) > 0);
-        return DecimalNum.valueOf(estimate, precisionContext);
+        return DecimalNum.valueOf(this.delegate.sqrt(workingContext), precisionContext);
     }
 
     @Override
@@ -733,13 +699,37 @@ public final class DecimalNum implements Num {
         return this.delegate.toString();
     }
 
-    /***
-     * TODO: DecimalNum throws NumberFormatException when Math.pow returns
-     * NaN/Infinity This is also an edge case behavior that should be documented or
-     * handled properly.
+    /**
+     * Returns a {@code Num} whose value is <code>(this<sup>n</sup>)</code>.
+     *
+     * <p>
+     * If {@code n} is {@link NaN} or infinite (including primitive-backed values),
+     * or if calculating the power produces an undefined or infinite value (such as
+     * taking a fractional power of a negative number or dividing by zero),
+     * {@link NaN#NaN} is returned.
+     *
+     * @param n power to raise this {@code Num} to
+     * @return <code>this<sup>n</sup></code>, or {@link NaN#NaN} if invalid or
+     *         infinite
+     * @throws ArithmeticException if the integer part of the exponent {@code n}
+     *                             overflows {@code int} or its magnitude exceeds
+     *                             {@code 999999999}, the limit of
+     *                             {@link BigDecimal#pow(int, MathContext)}; or if
+     *                             this number's {@link MathContext} uses
+     *                             {@link RoundingMode#UNNECESSARY} and the result
+     *                             is inexact
      */
     @Override
     public Num pow(final Num n) {
+        if (!Num.isFinite(n)) {
+            return NaN;
+        }
+        if (this.isZero() && n.isNegative()) {
+            return NaN;
+        }
+
+        final DecimalNum decimalN = n instanceof DecimalNum dn ? dn : DecimalNum.valueOf(n);
+
         // There is no BigDecimal.pow(BigDecimal). We could do:
         // double Math.pow(double delegate.doubleValue(), double n)
         // But that could overflow any of the three doubles.
@@ -756,7 +746,7 @@ public final class DecimalNum implements Num {
         // As suggested: https://stackoverflow.com/a/3590314
 
         // get n = a+b, same precision as n
-        final BigDecimal aplusb = (((DecimalNum) n).delegate);
+        final BigDecimal aplusb = decimalN.delegate;
         // get the remainder 0 <= b < 1, looses precision as double
         final BigDecimal b = aplusb.remainder(BigDecimal.ONE);
         // bDouble looses precision
@@ -765,16 +755,32 @@ public final class DecimalNum implements Num {
         final BigDecimal a = aplusb.subtract(b);
         // convert a to an int, fails on overflow
         final int aInt = a.intValueExact();
+        // a fractional power of a negative base is undefined; detect it before x^a,
+        // which BigDecimal rejects for negative whole parts at unlimited precision
+        if (this.delegate.signum() < 0 && b.signum() != 0) {
+            return NaN;
+        }
         // x^a at the working precision plus guard digits: an exact power grows by
         // digits(x) * a digits, which stalls large exponents, and the result is
-        // rounded to mathContext anyway. Also accepts negative whole parts.
-        // Precision 0 means unlimited: keep x^a exact rather than 10 digits.
+        // rounded to mathContext anyway.
         final int precision = this.mathContext.getPrecision();
-        final MathContext powContext = precision == 0 ? MathContext.UNLIMITED
-                : new MathContext(precision + POW_GUARD_DIGITS, this.mathContext.getRoundingMode());
-        final BigDecimal xpowa = this.delegate.pow(aInt, powContext);
+        final BigDecimal xpowa;
+        if (precision == 0) {
+            // Unlimited precision: BigDecimal.pow rejects negative exponents without a
+            // finite context, so use the exact positive power and, for negative
+            // exponents, a reciprocal at DEFAULT_PRECISION (1/x^k need not terminate).
+            xpowa = aInt >= 0 ? this.delegate.pow(aInt)
+                    : BigDecimal.ONE.divide(this.delegate.pow(Math.negateExact(aInt)),
+                            new MathContext(DEFAULT_PRECISION, this.mathContext.getRoundingMode()));
+        } else {
+            xpowa = this.delegate.pow(aInt,
+                    new MathContext(precision + POW_GUARD_DIGITS, this.mathContext.getRoundingMode()));
+        }
         // use double pow(double, double)
         final double xpowb = Math.pow(this.delegate.doubleValue(), bDouble);
+        if (!Double.isFinite(xpowb)) {
+            return NaN;
+        }
         // use PrecisionNum.multiply(PrecisionNum)
         final BigDecimal result = xpowa.multiply(BigDecimal.valueOf(xpowb));
         return new DecimalNum(result.toString(), this.mathContext);
