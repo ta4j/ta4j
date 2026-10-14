@@ -8,13 +8,14 @@ import java.util.List;
 import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.TreeSet;
+import java.util.function.IntFunction;
 import java.util.random.RandomGenerator;
 
+import org.ta4j.core.analysis.montecarlo.MonteCarloContext;
+import org.ta4j.core.analysis.montecarlo.MonteCarloMethod;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.ReturnIndicator;
-import org.ta4j.core.analysis.montecarlo.MonteCarloContext;
-import org.ta4j.core.analysis.montecarlo.MonteCarloMethod;
 import org.ta4j.core.indicators.forecast.projection.Forecast;
 import org.ta4j.core.indicators.forecast.state.ReturnForecastStateIndicator;
 import org.ta4j.core.indicators.forecast.state.ReturnMomentState;
@@ -30,6 +31,12 @@ import org.ta4j.core.num.NumFactory;
  * window assembly, deterministic seed derivation, terminal value mapping, and
  * forecast assembly. The swappable {@link MonteCarloMethod} receives a prepared
  * {@link MonteCarloContext} and generates the terminal samples.
+ *
+ * <p>
+ * Every simulated path draws from its own deterministic stream
+ * ({@link MonteCarloContext#randomForPath(int)}), so forecasts are reproducible
+ * regardless of path execution order -- the property that lets accelerated
+ * evaluation match the CPU lane bit for bit.
  */
 final class MonteCarloSimulation {
 
@@ -40,11 +47,10 @@ final class MonteCarloSimulation {
 
     MonteCarloSimulation(ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator,
             MonteCarloSettings settings, MonteCarloMethod method) {
-        this.stateIndicator = validateStateIndicator(stateIndicator);
-        this.returnIndicator = this.stateIndicator.getReturnIndicator();
+        this.stateIndicator = stateIndicator;
+        this.returnIndicator = validatedReturnIndicator(stateIndicator);
         this.settings = Objects.requireNonNull(settings, "settings must not be null");
         this.method = Objects.requireNonNull(method, "method must not be null");
-        IndicatorUtils.requireSameSeries(returnIndicator, this.stateIndicator);
     }
 
     /**
@@ -78,8 +84,10 @@ final class MonteCarloSimulation {
         }
 
         RandomGenerator random = new SplittableRandom(mixSeed(settings.seed(), index, settings.horizon()));
+        IntFunction<RandomGenerator> perPathRandoms = path -> DeterministicRandom.forPath(settings.seed(), index,
+                settings.horizon(), path);
         List<Num> terminalSamples = method.terminalReturns(new MonteCarloContext(index, settings.horizon(),
-                settings.iterationCount(), historicalReturns, moments, random, numFactory));
+                settings.iterationCount(), historicalReturns, moments, random, numFactory, perPathRandoms));
         if (terminalSamples == null || terminalSamples.size() != settings.iterationCount()) {
             return Forecast.unstable(index, settings.horizon());
         }
@@ -106,6 +114,14 @@ final class MonteCarloSimulation {
     }
 
     int getCountOfUnstableBars() {
+        return countOfUnstableBars(stateIndicator, returnIndicator, settings);
+    }
+
+    /**
+     * Returns the first index whose state and full return window are stable.
+     */
+    static int countOfUnstableBars(ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator,
+            ReturnIndicator returnIndicator, MonteCarloSettings settings) {
         return Math.max(stateIndicator.getCountOfUnstableBars(),
                 returnIndicator.getCountOfUnstableBars() + settings.lookbackBarCount() - 1);
     }
@@ -115,23 +131,22 @@ final class MonteCarloSimulation {
     }
 
     private List<Num> historicalReturns(int index, NumFactory numFactory) {
-        int startIndex = index - settings.lookbackBarCount() + 1;
-        List<Num> values = new ArrayList<>(settings.lookbackBarCount());
-        for (int i = startIndex; i <= index; i++) {
-            Num value = returnIndicator.getValue(i);
-            if (!Num.isFinite(value)) {
+        List<Num> historicalReturns = new ArrayList<>(settings.lookbackBarCount());
+        for (int barIndex = index - settings.lookbackBarCount() + 1; barIndex <= index; barIndex++) {
+            Num value = normalize(returnIndicator.getValue(barIndex), numFactory);
+            if (value == null) {
                 return List.of();
             }
-            Num normalized = normalize(value, numFactory);
-            if (!Num.isFinite(normalized)) {
-                return List.of();
-            }
-            values.add(normalized);
+            historicalReturns.add(value);
         }
-        return values;
+        return historicalReturns;
     }
 
-    private static ReturnForecastStateIndicator<? extends ReturnMomentState> validateStateIndicator(
+    /**
+     * Validates a log-return state source and returns its return indicator, which
+     * must belong to the state's series.
+     */
+    static ReturnIndicator validatedReturnIndicator(
             ReturnForecastStateIndicator<? extends ReturnMomentState> stateIndicator) {
         ReturnForecastStateIndicator<? extends ReturnMomentState> validated = Objects.requireNonNull(stateIndicator,
                 "stateIndicator must not be null");
@@ -141,7 +156,8 @@ final class MonteCarloSimulation {
                 || validated.getReturnRepresentation() != ReturnRepresentation.LOG) {
             throw new IllegalArgumentException("stateIndicator must use ReturnRepresentation.LOG");
         }
-        return validated;
+        IndicatorUtils.requireSameSeries(source, validated);
+        return source;
     }
 
     private static Num normalize(Num value, NumFactory numFactory) {
@@ -164,5 +180,74 @@ final class MonteCarloSimulation {
     @FunctionalInterface
     interface TerminalValueMapper {
         Num map(Num cumulativeReturn);
+    }
+
+    /**
+     * Counter-based deterministic random generator whose stream for one simulated
+     * path depends only on the seed derivation inputs, never on execution order.
+     */
+    static final class DeterministicRandom implements RandomGenerator {
+
+        private long state;
+
+        private DeterministicRandom(long state) {
+            this.state = state;
+        }
+
+        static DeterministicRandom forPath(long seed, int decisionIndex, int horizon, int pathIndex) {
+            return new DeterministicRandom(MonteCarloKernel.initialPathState(seed, decisionIndex, horizon, pathIndex));
+        }
+
+        /** Restarts this generator at the first draw of another path's stream. */
+        void resetToPath(long seed, int decisionIndex, int horizon, int pathIndex) {
+            state = MonteCarloKernel.initialPathState(seed, decisionIndex, horizon, pathIndex);
+        }
+
+        @Override
+        public int nextInt(int bound) {
+            if (bound <= 0) {
+                throw new IllegalArgumentException("bound must be > 0");
+            }
+            long candidate = nextLong() >>> 1;
+            long remainder = candidate % bound;
+            while (candidate - remainder + bound - 1 < 0L) {
+                candidate = nextLong() >>> 1;
+                remainder = candidate % bound;
+            }
+            return (int) remainder;
+        }
+
+        @Override
+        public double nextGaussian() {
+            return MonteCarloKernel.gaussian(nextDouble(), nextDouble());
+        }
+
+        @Override
+        public int nextInt() {
+            return (int) nextLong();
+        }
+
+        @Override
+        public long nextLong() {
+            state = MonteCarloKernel.advanceState(state);
+            return MonteCarloKernel.mix64(state);
+        }
+
+        @Override
+        public double nextDouble() {
+            return MonteCarloKernel.toUnitDouble(nextLong());
+        }
+
+        @Override
+        public float nextFloat() {
+            // 24 random mantissa bits keep the result strictly below 1.0f; narrowing
+            // nextDouble() would round draws near 1 up to exactly 1.0f.
+            return (nextLong() >>> 40) * 0x1.0p-24f;
+        }
+
+        @Override
+        public boolean nextBoolean() {
+            return nextLong() < 0L;
+        }
     }
 }

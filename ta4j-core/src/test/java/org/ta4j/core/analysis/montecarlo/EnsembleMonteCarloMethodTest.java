@@ -67,6 +67,32 @@ public class EnsembleMonteCarloMethodTest {
     }
 
     @Test
+    public void componentPathsMapOntoDisjointParentPathStreams() {
+        List<Integer> requestedParentPaths = new ArrayList<>();
+        MonteCarloMethod pathEcho = context -> {
+            List<Num> samples = new ArrayList<>(context.iterationCount());
+            for (int path = 0; path < context.iterationCount(); path++) {
+                samples.add(FACTORY.numOf(context.randomForPath(path).nextInt()));
+            }
+            return samples;
+        };
+        MonteCarloContext parent = new MonteCarloContext(100, 4, 5, window(0.01d, -0.01d, 0.01d), moments(0d),
+                new SplittableRandom(7L), FACTORY, path -> {
+                    requestedParentPaths.add(path);
+                    return new SplittableRandom(path);
+                });
+
+        List<Num> pooled = new EnsembleMonteCarloMethod(pathEcho, pathEcho).terminalReturns(parent);
+
+        assertEquals(List.of(0, 1, 2, 3, 4), requestedParentPaths);
+        List<Num> expected = new ArrayList<>();
+        for (int path = 0; path < 5; path++) {
+            expected.add(FACTORY.numOf(new SplittableRandom(path).nextInt()));
+        }
+        assertEquals(expected, pooled);
+    }
+
+    @Test
     public void sameSeedReproducesIdenticalSamples() {
         MonteCarloMethod method = new EnsembleMonteCarloMethod(
                 new ShockPathMonteCarloMethod(ShockModel.HISTORICAL_BOOTSTRAP, VolatilityUpdateMode.EWMA, 0.94d),

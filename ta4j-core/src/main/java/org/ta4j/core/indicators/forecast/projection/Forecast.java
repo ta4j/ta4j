@@ -4,7 +4,9 @@
 package org.ta4j.core.indicators.forecast.projection;
 
 import java.math.BigDecimal;
+import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -13,6 +15,8 @@ import java.util.Objects;
 import java.util.TreeMap;
 
 import org.ta4j.core.analysis.frequency.SampleSummary;
+import org.ta4j.core.num.DoubleNum;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -193,15 +197,17 @@ public final class Forecast {
             if (numFactory == null) {
                 numFactory = sample.getNumFactory();
             }
-            Num value = coerce(sample, numFactory, "sample");
+            Num value = numFactory instanceof DoubleNumFactory && sample instanceof DoubleNum
+                    ? normalizeDouble(sample, numFactory)
+                    : coerce(sample, numFactory, "sample");
             normalized.add(value);
         }
         if (normalized.isEmpty()) {
             return unstable(decisionIndex, horizon);
         }
 
-        List<Num> sortedSamples = new ArrayList<>(normalized);
-        sortedSamples.sort(Num::compareTo);
+        List<Num> sortedSamples = numFactory instanceof DoubleNumFactory ? sortedDoubles(normalized)
+                : sortedNums(normalized);
         SampleMoments moments = sampleMoments(normalized, numFactory);
         if (moments == null) {
             return unstable(decisionIndex, horizon);
@@ -218,14 +224,76 @@ public final class Forecast {
                 .build();
     }
 
+    /**
+     * Equivalent to {@link #coerce} for a finite {@link DoubleNum} entering a
+     * {@link DoubleNumFactory}: the decimal round trip is the identity except that
+     * it turns {@code -0.0} into {@code +0.0}.
+     */
+    private static Num normalizeDouble(Num sample, NumFactory numFactory) {
+        return sample.isZero() ? numFactory.zero() : sample;
+    }
+
+    private static List<Num> sortedNums(List<Num> samples) {
+        List<Num> sorted = new ArrayList<>(samples);
+        sorted.sort(Num::compareTo);
+        return sorted;
+    }
+
+    /**
+     * Sorts normalized {@link DoubleNum} samples as primitives, which orders finite
+     * values without signed zeros exactly like {@link DoubleNum#compareTo}.
+     */
+    private static List<Num> sortedDoubles(List<Num> samples) {
+        double[] values = new double[samples.size()];
+        for (int i = 0; i < values.length; i++) {
+            values[i] = samples.get(i).doubleValue();
+        }
+        Arrays.sort(values);
+        return new AbstractList<>() {
+            @Override
+            public Num get(int index) {
+                return DoubleNum.valueOf(values[index]);
+            }
+
+            @Override
+            public int size() {
+                return values.length;
+            }
+        };
+    }
+
     private static SampleMoments sampleMoments(List<Num> samples, NumFactory numFactory) {
-        SampleSummary summary = SampleSummary.fromValues(samples.stream(), numFactory);
-        Num mean = summary.mean();
+        Num mean;
+        Num sumOfSquaredDeviations;
+        if (numFactory instanceof DoubleNumFactory) {
+            // Same Welford update as SampleSummary, without its boxed m3/m4 terms.
+            double runningMean = 0d;
+            double runningM2 = 0d;
+            int count = 0;
+            for (Num sample : samples) {
+                double value = sample.doubleValue();
+                if (count == 0) {
+                    runningMean = value;
+                } else {
+                    double delta = value - runningMean;
+                    double deltaN = delta / (count + 1);
+                    runningM2 += delta * deltaN * count;
+                    runningMean += deltaN;
+                }
+                count++;
+            }
+            mean = numFactory.numOf(runningMean);
+            sumOfSquaredDeviations = numFactory.numOf(runningM2);
+        } else {
+            SampleSummary summary = SampleSummary.fromValues(samples.stream(), numFactory);
+            mean = summary.mean();
+            sumOfSquaredDeviations = summary.m2();
+        }
         if (!Num.isFinite(mean)) {
             return null;
         }
         Num count = numFactory.numOf(samples.size());
-        Num variance = summary.m2().dividedBy(count);
+        Num variance = sumOfSquaredDeviations.dividedBy(count);
         if (Num.isFinite(variance) && variance.isPositive()) {
             Num standardDeviation = variance.sqrt();
             return Num.isFinite(standardDeviation) && !standardDeviation.isZero()
